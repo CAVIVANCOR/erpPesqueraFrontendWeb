@@ -24,6 +24,7 @@ import {
   finalizarDescargaConMovimientos,
 } from "../../api/descargaFaenaPesca";
 import { obtenerPlataformasPorEntidad } from "../../api/detPlataformaRecepcionPesca";
+import { getCalasPorFaena } from "../../api/cala";
 import { confirmDialog } from "primereact/confirmdialog";
 import { getPrecioCombustibleVigente } from "../../api/precioCombustible";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
@@ -267,42 +268,82 @@ export default function DescargaFaenaPescaForm({
         precioPorTonComisionFidelizacion:
           detalle.precioPorTonComisionFidelizacion || 0.0,
       });
-    } else {
+        } else {
       // Resetear para nuevo registro con valores fijos de faena
-      reset({
-        faenaPescaId: faenaPescaId,
-        temporadaPescaId: temporadaPescaId,
-        puertoDescargaId: null,
-        fechaHoraArriboPuerto: null,
-        fechaHoraLlegadaPuerto: null,
-        clienteId: null,
-        plataformaRecepcionPescaId: null,
-        numPlataformaDescarga: "",
-        turnoPlataformaDescarga: "DIA",
-        fechaHoraInicioDescarga: null,
-        fechaHoraFinDescarga: null,
-        numWinchaPesaje: "",
-        urlComprobanteWincha: "",
-        patronId: patronId,
-        motoristaId: motoristaId,
-        bahiaId: bahiaId,
-        latitud: 0,
-        longitud: 0,
-        combustibleAbastecidoGalones: 0,
-        urlValeAbastecimiento: "",
-        urlInformeDescargaProduce: "",
-        movIngresoAlmacenId: null,
-        observaciones: "",
-        especieId: null,
-        toneladas: 0,
-        porcentajeJuveniles: 0,
-        numReporteRecepcion: "",
-        fechaHoraFondeo: null,
-        latitudFondeo: 0,
-        longitudFondeo: 0,
-        puertoFondeoId: null,
-        precioPorTonComisionFidelizacion: 0.0,
-      });
+      // Cargar coordenadas de última cala como inicio de retorno por defecto
+      const cargarCoordenadasUltimaCala = async () => {
+        let latitudInicio = 0;
+        let longitudInicio = 0;
+
+        if (faenaPescaId) {
+          try {
+            const calas = await getCalasPorFaena(faenaPescaId);
+            if (calas && calas.length > 0) {
+              // Ordenar por fechaHoraFin descendente para obtener la última cala
+              const calasOrdenadas = calas.sort((a, b) => {
+                if (!a.fechaHoraFin) return 1;
+                if (!b.fechaHoraFin) return -1;
+                return new Date(b.fechaHoraFin) - new Date(a.fechaHoraFin);
+              });
+
+              const ultimaCala = calasOrdenadas[0];
+              
+              // Usar latitudFin/longitudFin de la última cala si existen
+              if (ultimaCala.latitudFin && ultimaCala.longitudFin) {
+                latitudInicio = Number(ultimaCala.latitudFin);
+                longitudInicio = Number(ultimaCala.longitudFin);
+              }
+            }
+          } catch (error) {
+            console.error("Error al cargar coordenadas de última cala:", error);
+            // Continuar con valores por defecto (0, 0)
+          }
+        }
+
+        reset({
+          faenaPescaId: faenaPescaId,
+          puertoDescargaId: null,
+          fechaHoraArriboPuerto: null,
+          fechaHoraLlegadaPuerto: null,
+          numPlataformaDescarga: "",
+          turnoPlataformaDescarga: "",
+          fechaHoraInicioDescarga: null,
+          fechaHoraFinDescarga: null,
+          numWinchaPesaje: "",
+          urlComprobanteWincha: "",
+          patronId: patronId,
+          motoristaId: motoristaId,
+          bahiaId: bahiaId,
+          latitud: latitudInicio,
+          longitud: longitudInicio,
+          combustibleAbastecidoGalones: 0,
+          urlValeAbastecimiento: "",
+          observaciones: "",
+          temporadaPescaId: temporadaPescaId,
+          clienteId: null,
+          plataformaRecepcionPescaId: null,
+          urlInformeDescargaProduce: "",
+          movIngresoAlmacenId: null,
+          movSalidaAlmacenId: null,
+          especieId: null,
+          toneladas: 0,
+          porcentajeJuveniles: 0,
+          numReporteRecepcion: "",
+          fechaHoraFondeo: null,
+          latitudFondeo: 0,
+          longitudFondeo: 0,
+          puertoFondeoId: null,
+          precioPorTonComisionFidelizacion: 0,
+        });
+
+        // Actualizar posición del mapa si hay coordenadas válidas
+        if (latitudInicio !== 0 && longitudInicio !== 0) {
+          setMapPosition([latitudInicio, longitudInicio]);
+          setMapKey((prev) => prev + 1);
+        }
+      };
+
+      cargarCoordenadasUltimaCala();
     }
   }, [
     detalle,
@@ -477,42 +518,12 @@ export default function DescargaFaenaPescaForm({
       );
 
       if (plataformaSeleccionada) {
-        // Asignar nombre de la plataforma al campo numPlataformaDescarga
+               // Asignar nombre de la plataforma al campo numPlataformaDescarga
         setValue("numPlataformaDescarga", plataformaSeleccionada.label);
-        
-        if (plataformaSeleccionada.latitud && plataformaSeleccionada.longitud) {
-          // Asignar coordenadas de la plataforma
-          setValue("latitud", Number(plataformaSeleccionada.latitud));
-          setValue("longitud", Number(plataformaSeleccionada.longitud));
 
-          // Actualizar posición del mapa
-          setMapPosition([
-            Number(plataformaSeleccionada.latitud),
-            Number(plataformaSeleccionada.longitud),
-          ]);
-          setMapKey((prev) => prev + 1);
-
-          // Analizar coordenadas para obtener información geográfica
-          const analizarCoordenadasPlataforma = async () => {
-            setLoadingGeo(true);
-            setErrorGeo(null);
-            try {
-              const infoGeo = await analizarCoordenadasConReferencia(
-                Number(plataformaSeleccionada.latitud),
-                Number(plataformaSeleccionada.longitud),
-                null
-              );
-              setInfoGeografica(infoGeo);
-            } catch (error) {
-              console.error("Error al analizar coordenadas de plataforma:", error);
-              setErrorGeo("No se pudo obtener la información geográfica");
-            } finally {
-              setLoadingGeo(false);
-            }
-          };
-
-          analizarCoordenadasPlataforma();
-        }
+        // ✅ NO asignar coordenadas a latitud/longitud
+        // Esos campos son para INICIO DE RETORNO, no para la plataforma
+        // La plataforma se marca en el mapa usando sus propias coordenadas desde plataformasRecepcion
       }
     }
   };
@@ -593,15 +604,12 @@ export default function DescargaFaenaPescaForm({
     setValue("longitudFondeo", decimal);
   };
 
-  /**
+   /**
    * Componente de marker draggable para el mapa de DESCARGA
+   * 🔵 AZUL - Representa el INICIO DE RETORNO (coordenadas donde inicia el viaje hacia puerto)
    */
   const DraggableMarker = () => {
     const markerRef = useRef(null);
-    const nombrePuerto = watch("puertoDescargaId")
-      ? puertos.find((p) => Number(p.id) === Number(watch("puertoDescargaId")))
-        ?.nombre || "Puerto"
-      : "Puerto de Descarga";
 
     const eventHandlers = {
       dragend() {
@@ -615,15 +623,30 @@ export default function DescargaFaenaPescaForm({
       },
     };
 
+    // Icono AZUL para Inicio de Retorno
+    const iconInicioRetorno = L.icon({
+      iconUrl:
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
+      shadowUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+
     return (
       <Marker
         position={mapPosition}
         draggable={!loading && !camposDeshabilitados}
         eventHandlers={eventHandlers}
         ref={markerRef}
+        icon={iconInicioRetorno}
       >
         <Popup>
-          <strong>{nombrePuerto}</strong>
+          <strong>🔵 Inicio de Retorno</strong>
+          <br />
+          Coordenadas donde inicia el viaje hacia puerto
           <br />
           Lat: {formatearNumero(Number(latitud), 6)}
           <br />

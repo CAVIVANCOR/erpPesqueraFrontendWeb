@@ -227,17 +227,6 @@ export default function CalaForm({
         </div>
       </div>
       <div className="p-field">
-        <label htmlFor="profundidadM">Profundidad (m)</label>
-        <InputNumber
-          id="profundidadM"
-          value={profundidadM}
-          onValueChange={(e) => setProfundidadM(e.value)}
-          mode="decimal"
-          minFractionDigits={2}
-          disabled={loading}
-        />
-      </div>
-      <div className="p-field">
         <label htmlFor="toneladasCapturadas">Toneladas Capturadas</label>
         <InputNumber
           id="toneladasCapturadas"

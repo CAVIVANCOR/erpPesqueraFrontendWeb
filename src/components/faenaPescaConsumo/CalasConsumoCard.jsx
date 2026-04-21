@@ -1561,26 +1561,6 @@ export default function CalasConsumoCard({
                 )}
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="profundidadM">Profundidad (m)</label>
-              <Controller
-                name="profundidadM"
-                control={controlCala}
-                render={({ field }) => (
-                  <InputNumber
-                    id="profundidadM"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={0}
-                    maxFractionDigits={2}
-                    suffix=" m"
-                    inputStyle={{ fontWeight: "bold" }}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </div>
           </div>
 
           {/* GPS INICIO - Tabla verde */}

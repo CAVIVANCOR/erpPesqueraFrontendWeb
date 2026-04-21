@@ -38,6 +38,7 @@ import {
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { analizarCoordenadasConReferencia } from "../../api/geolocalizacion";
 import { obtenerPlataformasPorEntidad } from "../../api/detPlataformaRecepcionPesca";
+import { getCalasFaenaConsumoPorFaena } from "../../api/calaFaenaConsumo";
 import { DEFAULT_MAP_ZOOM, MARKER_ICONS } from "../../config/mapConfig";
 import L from "leaflet";
 import PanelMapaGeografico from "../shared/PanelMapaGeografico";
@@ -582,43 +583,83 @@ export default function DescargaFaenaConsumoForm({
           ? Number(detalle.katanaTripulacionId)
           : null,
       });
-    } else {
+        } else {
       // Resetear para nuevo registro con valores fijos de faena
-      reset({
-        faenaPescaConsumoId: faenaPescaConsumoId,
-        puertoDescargaId: null,
-        fechaHoraArriboPuerto: null,
-        fechaHoraLlegadaPuerto: null,
-        clienteId: null,
-        plataformaRecepcionPescaId: null,
-        numPlataformaDescarga: "",
-        turnoPlataformaDescarga: "DIA",
-        fechaHoraInicioDescarga: null,
-        fechaHoraFinDescarga: null,
-        numWinchaPesaje: "",
-        urlComprobanteWincha: "",
-        patronId: patronId,
-        motoristaId: motoristaId,
-        bahiaId: bahiaId,
-        latitud: 0,
-        longitud: 0,
-        combustibleAbastecidoGalones: 0,
-        urlValeAbastecimiento: "",
-        urlInformeDescargaProduce: "",
-        movIngresoAlmacenId: null,
-        observaciones: "",
-        especieId: null,
-        toneladas: 0,
-        porcentajeJuveniles: 0,
-        fechaHoraFondeo: null,
-        latitudFondeo: 0,
-        longitudFondeo: 0,
-        puertoFondeoId: null,
-        nroCubetas: 0,
-        precioPorKgEspecie: 0,
-        precioTotal: 0,
-        katanaTripulacionId: null,
-      });
+      // Cargar coordenadas de última cala como inicio de retorno por defecto
+      const cargarCoordenadasUltimaCala = async () => {
+        let latitudInicio = 0;
+        let longitudInicio = 0;
+
+        if (faenaPescaConsumoId) {
+          try {
+            const calas = await getCalasFaenaConsumoPorFaena(faenaPescaConsumoId);
+            if (calas && calas.length > 0) {
+              // Ordenar por fechaHoraFin descendente para obtener la última cala
+              const calasOrdenadas = calas.sort((a, b) => {
+                if (!a.fechaHoraFin) return 1;
+                if (!b.fechaHoraFin) return -1;
+                return new Date(b.fechaHoraFin) - new Date(a.fechaHoraFin);
+              });
+
+              const ultimaCala = calasOrdenadas[0];
+              
+              // Usar latitudFin/longitudFin de la última cala si existen
+              if (ultimaCala.latitudFin && ultimaCala.longitudFin) {
+                latitudInicio = Number(ultimaCala.latitudFin);
+                longitudInicio = Number(ultimaCala.longitudFin);
+              }
+            }
+          } catch (error) {
+            console.error("Error al cargar coordenadas de última cala:", error);
+            // Continuar con valores por defecto (0, 0)
+          }
+        }
+
+        reset({
+          faenaPescaConsumoId: faenaPescaConsumoId,
+          puertoDescargaId: null,
+          fechaHoraArriboPuerto: null,
+          fechaHoraLlegadaPuerto: null,
+          clienteId: null,
+          plataformaRecepcionPescaId: null,
+          numPlataformaDescarga: "",
+          turnoPlataformaDescarga: "",
+          fechaHoraInicioDescarga: null,
+          fechaHoraFinDescarga: null,
+          numWinchaPesaje: "",
+          urlComprobanteWincha: "",
+          patronId: patronId,
+          motoristaId: motoristaId,
+          bahiaId: bahiaId,
+          latitud: latitudInicio,
+          longitud: longitudInicio,
+          combustibleAbastecidoGalones: 0,
+          urlValeAbastecimiento: "",
+          urlInformeDescargaProduce: "",
+          observaciones: "",
+          movIngresoAlmacenId: null,
+          movSalidaAlmacenId: null,
+          especieId: null,
+          toneladas: 0,
+          porcentajeJuveniles: 0,
+          fechaHoraFondeo: null,
+          latitudFondeo: 0,
+          longitudFondeo: 0,
+          puertoFondeoId: null,
+          nroCubetas: 0,
+          precioPorKgEspecie: 0,
+          precioTotal: 0,
+          katanaTripulacionId: null,
+        });
+
+        // Actualizar posición del mapa si hay coordenadas válidas
+        if (latitudInicio !== 0 && longitudInicio !== 0) {
+          setMapPosition([latitudInicio, longitudInicio]);
+          setMapKey((prev) => prev + 1);
+        }
+      };
+
+      cargarCoordenadasUltimaCala();
     }
     }, [detalle, reset, bahiaId, motoristaId, patronId, faenaPescaConsumoId]);
 
@@ -977,36 +1018,12 @@ export default function DescargaFaenaConsumoForm({
     setValue("longitudFondeo", decimal);
   };
 
-    /**
+     /**
    * Componente de marker draggable para el mapa de DESCARGA
-   * PRIORIDAD: Si hay plataforma seleccionada, muestra plataforma. Sino, muestra puerto.
+   * 🔵 AZUL - Representa el INICIO DE RETORNO (coordenadas donde inicia el viaje hacia puerto)
    */
   const DraggableMarker = () => {
     const markerRef = useRef(null);
-    const plataformaRecepcionPescaId = watch("plataformaRecepcionPescaId");
-    const puertoDescargaId = watch("puertoDescargaId");
-
-    // PRIORIDAD 1: Si hay plataforma seleccionada, mostrar nombre de plataforma
-    let nombreMarcador = "Puerto de Descarga";
-    let esPlataforma = false;
-
-    if (plataformaRecepcionPescaId && plataformasRecepcion.length > 0) {
-      const plataforma = plataformasRecepcion.find(
-        (p) => Number(p.value) === Number(plataformaRecepcionPescaId),
-      );
-      if (plataforma) {
-        nombreMarcador = plataforma.label;
-        esPlataforma = true;
-      }
-    } else if (puertoDescargaId && puertos.length > 0) {
-      // PRIORIDAD 2: Si no hay plataforma, mostrar puerto de descarga
-      const puerto = puertos.find(
-        (p) => Number(p.id) === Number(puertoDescargaId),
-      );
-      if (puerto) {
-        nombreMarcador = puerto.nombre;
-      }
-    }
 
     const eventHandlers = {
       dragend() {
@@ -1020,24 +1037,124 @@ export default function DescargaFaenaConsumoForm({
       },
     };
 
+    // Icono AZUL para Inicio de Retorno
+    const iconInicioRetorno = L.icon({
+      iconUrl:
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
+      shadowUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+
     return (
       <Marker
         position={mapPosition}
         draggable={!loading}
         eventHandlers={eventHandlers}
         ref={markerRef}
+        icon={iconInicioRetorno}
       >
         <Popup>
-          <strong>
-            {esPlataforma ? "🔴 " : "🔴 "}
-            {nombreMarcador}
-          </strong>
+          <strong>🔵 Inicio de Retorno</strong>
           <br />
-          {esPlataforma ? "Plataforma de Recepción" : "Puerto de Descarga"}
+          Coordenadas donde inicia el viaje hacia puerto
           <br />
           Lat: {Number(latitud).toFixed(6)}
           <br />
           Lon: {Number(longitud).toFixed(6)}
+        </Popup>
+      </Marker>
+    );
+    };
+
+  /**
+   * Componente de marcador FIJO para Puerto o Plataforma de Descarga
+   * 🔴 ROJO - Muestra la ubicación del puerto o plataforma donde se descarga
+   * PRIORIDAD: Si hay plataforma seleccionada, muestra plataforma. Sino, muestra puerto.
+   */
+  const MarkerPuertoDescarga = () => {
+    const plataformaRecepcionPescaId = watch("plataformaRecepcionPescaId");
+    const puertoDescargaId = watch("puertoDescargaId");
+
+    // PRIORIDAD 1: Si hay plataforma seleccionada, mostrar plataforma
+    if (plataformaRecepcionPescaId && plataformasRecepcion.length > 0) {
+      const plataforma = plataformasRecepcion.find(
+        (p) => Number(p.value) === Number(plataformaRecepcionPescaId),
+      );
+
+      if (plataforma?.latitud && plataforma?.longitud) {
+        const iconPlataforma = L.icon({
+          iconUrl:
+            "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
+          shadowUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41],
+        });
+
+        return (
+          <Marker
+            position={[
+              Number(plataforma.latitud),
+              Number(plataforma.longitud),
+            ]}
+            icon={iconPlataforma}
+          >
+            <Popup>
+              <strong>🔴 {plataforma.label}</strong>
+              <br />
+              Plataforma de Recepción
+              <br />
+              Lat: {Number(plataforma.latitud).toFixed(6)}
+              <br />
+              Lon: {Number(plataforma.longitud).toFixed(6)}
+            </Popup>
+          </Marker>
+        );
+      }
+    }
+
+    // PRIORIDAD 2: Si no hay plataforma, mostrar puerto de descarga
+    if (!puertoDescargaId || !puertos.length) return null;
+
+    const puertoDescarga = puertos.find(
+      (p) => Number(p.id) === Number(puertoDescargaId),
+    );
+
+    if (!puertoDescarga?.latitud || !puertoDescarga?.longitud) return null;
+
+    const iconPuertoDescarga = L.icon({
+      iconUrl:
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
+      shadowUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+
+    return (
+      <Marker
+        position={[
+          Number(puertoDescarga.latitud),
+          Number(puertoDescarga.longitud),
+        ]}
+        icon={iconPuertoDescarga}
+      >
+        <Popup>
+          <strong>🔴 {puertoDescarga.nombre}</strong>
+          <br />
+          Puerto de Descarga
+          <br />
+          Lat: {Number(puertoDescarga.latitud).toFixed(6)}
+          <br />
+          Lon: {Number(puertoDescarga.longitud).toFixed(6)}
         </Popup>
       </Marker>
     );
@@ -1133,42 +1250,12 @@ export default function DescargaFaenaConsumoForm({
       );
 
       if (plataformaSeleccionada) {
-        // Asignar nombre de la plataforma al campo numPlataformaDescarga
+               // Asignar nombre de la plataforma al campo numPlataformaDescarga
         setValue("numPlataformaDescarga", plataformaSeleccionada.label);
 
-        if (plataformaSeleccionada.latitud && plataformaSeleccionada.longitud) {
-          // Asignar coordenadas de la plataforma
-          setValue("latitud", Number(plataformaSeleccionada.latitud));
-          setValue("longitud", Number(plataformaSeleccionada.longitud));
-
-          // Actualizar posición del mapa
-          setMapPosition([
-            Number(plataformaSeleccionada.latitud),
-            Number(plataformaSeleccionada.longitud),
-          ]);
-          setMapKey((prev) => prev + 1);
-
-          // Analizar coordenadas para obtener información geográfica
-          const analizarCoordenadasPlataforma = async () => {
-            setLoadingGeo(true);
-            setErrorGeo(null);
-            try {
-              const infoGeo = await analizarCoordenadasConReferencia(
-                Number(plataformaSeleccionada.latitud),
-                Number(plataformaSeleccionada.longitud),
-                null
-              );
-              setInfoGeografica(infoGeo);
-            } catch (error) {
-              console.error("Error al analizar coordenadas de plataforma:", error);
-              setErrorGeo("No se pudo obtener la información geográfica");
-            } finally {
-              setLoadingGeo(false);
-            }
-          };
-
-          analizarCoordenadasPlataforma();
-        }
+        // ✅ NO asignar coordenadas a latitud/longitud
+        // Esos campos son para INICIO DE RETORNO, no para la plataforma
+        // La plataforma se marca en el mapa usando sus propias coordenadas desde plataformasRecepcion
       }
     }
   };
@@ -2113,7 +2200,8 @@ export default function DescargaFaenaConsumoForm({
         getClasificacionAguasColor={getClasificacionAguasColor}
         titulo="📍 Información Geográfica - Descarga"
         colapsadoPorDefecto={true}
-      >
+            >
+        <MarkerPuertoDescarga />
         <DraggableMarker />
         <UserLocationMarker />
         <DistanceLine />

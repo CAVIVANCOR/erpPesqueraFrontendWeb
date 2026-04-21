@@ -454,30 +454,6 @@ export default function CalaProduceForm({ cala, onGuardadoExitoso, onCancelar })
             )}
           />
         </div>
-
-        {/* Profundidad */}
-        <div className="col-12 md:col-4">
-          <label htmlFor="profundidadM" className="block text-900 font-medium mb-2">
-            Profundidad (m)
-          </label>
-          <Controller
-            name="profundidadM"
-            control={control}
-            render={({ field }) => (
-              <InputNumber
-                id="profundidadM"
-                value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                min={0}
-                placeholder="Ej: 150.50"
-              />
-            )}
-          />
-        </div>
-
         {/* Toneladas Capturadas */}
         <div className="col-12 md:col-6">
           <label htmlFor="toneladasCapturadas" className="block text-900 font-medium mb-2">

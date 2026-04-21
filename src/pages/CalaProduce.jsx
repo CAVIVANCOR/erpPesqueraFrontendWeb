@@ -299,15 +299,6 @@ export default function CalaProduce() {
             sortable
             style={{ minWidth: '8rem' }}
           />
-          
-          <Column
-            field="profundidadM"
-            header="Profundidad (m)"
-            body={(rowData) => decimalTemplate(rowData, 'profundidadM')}
-            sortable
-            style={{ minWidth: '8rem' }}
-          />
-          
           <Column
             field="observaciones"
             header="Observaciones"

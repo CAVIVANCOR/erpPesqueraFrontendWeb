@@ -374,9 +374,9 @@ const DetalleCalasForm = ({
       const a =
         Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
         Math.cos(lat1) *
-          Math.cos(lat2) *
-          Math.sin(deltaLon / 2) *
-          Math.sin(deltaLon / 2);
+        Math.cos(lat2) *
+        Math.sin(deltaLon / 2) *
+        Math.sin(deltaLon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       const distancia = R * c;
 
@@ -398,9 +398,9 @@ const DetalleCalasForm = ({
       const a =
         Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
         Math.cos(lat1) *
-          Math.cos(lat2) *
-          Math.sin(deltaLon / 2) *
-          Math.sin(deltaLon / 2);
+        Math.cos(lat2) *
+        Math.sin(deltaLon / 2) *
+        Math.sin(deltaLon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       const distancia = R * c;
 
@@ -1913,39 +1913,6 @@ const DetalleCalasForm = ({
                 style={{ fontWeight: "bold" }}
               />
             </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "end",
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-              marginTop: 10,
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <label htmlFor="createdAt">Fecha Creación</label>
-              <Calendar
-                id="createdAt"
-                value={createdAt}
-                showTime
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="updatedAt">Fecha Actualización</label>
-              <Calendar
-                id="updatedAt"
-                value={updatedAt}
-                showTime
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled
-              />
-            </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="fechaHoraInicio">Fecha y Hora Inicio</label>
               <Calendar
@@ -1963,1103 +1930,1092 @@ const DetalleCalasForm = ({
                 }
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="profundidadM">Profundidad (m)</label>
-              <InputNumber
-                id="profundidadM"
-                value={profundidadM}
-                onValueChange={(e) => setProfundidadM(e.value)}
-                mode="decimal"
-                minFractionDigits={0}
-                maxFractionDigits={2}
-                suffix=" m"
-                inputStyle={{ fontWeight: "bold" }}
-                disabled={
-                  loading ||
-                  (calaFinalizada && !esSuperUsuario) ||
-                  camposDeshabilitados
-                }
-              />
-            </div>
           </div>
-
-          <div
-            style={{
-              border: "6px solid #10B981",
-              padding: "0.5rem",
-              borderRadius: "8px",
-              marginTop: "1rem",
-              marginBottom: "0.5rem",
-              display: "flex",
-              alignItems: "self-end",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
+          <Panel
+            header="Coordenadas Cala Inicio y Fin"
+            toggleable
+            collapsed
+            className="p-mt-3"
           >
-            <div style={{ flex: 1 }}>
-              <Button
-                type="button"
-                label="Capturar GPS INICIO"
-                icon="pi pi-map-marker"
-                className="p-button-success"
-                onClick={async () => {
-                  try {
-                    await capturarGPS(
-                      async (latitude, longitude, accuracy) => {
-                        setLatitud(latitude);
-                        setLongitud(longitude);
+            <div
+              style={{
+                border: "6px solid #10B981",
+                padding: "0.5rem",
+                borderRadius: "8px",
+                marginTop: "1rem",
+                marginBottom: "0.5rem",
+                display: "flex",
+                alignItems: "self-end",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <Button
+                  type="button"
+                  label="Capturar GPS INICIO"
+                  icon="pi pi-map-marker"
+                  className="p-button-success"
+                  onClick={async () => {
+                    try {
+                      await capturarGPS(
+                        async (latitude, longitude, accuracy) => {
+                          setLatitud(latitude);
+                          setLongitud(longitude);
 
-                        toast.current?.show({
-                          severity: "success",
-                          summary: "GPS INICIO capturado",
-                          detail: `GPS capturado con precisión de ${accuracy.toFixed(
-                            1,
-                          )}m. Guardando cala...`,
-                          life: 3000,
-                        });
+                          toast.current?.show({
+                            severity: "success",
+                            summary: "GPS INICIO capturado",
+                            detail: `GPS capturado con precisión de ${accuracy.toFixed(
+                              1,
+                            )}m. Guardando cala...`,
+                            life: 3000,
+                          });
 
-                        setLoadingGeo(true);
-                        setErrorGeo(null);
-                        try {
-                          const infoGeo =
-                            await analizarCoordenadasConReferencia(
-                              latitude,
-                              longitude,
-                              null,
+                          setLoadingGeo(true);
+                          setErrorGeo(null);
+                          try {
+                            const infoGeo =
+                              await analizarCoordenadasConReferencia(
+                                latitude,
+                                longitude,
+                                null,
+                              );
+                            setInfoGeografica(infoGeo);
+
+                            toast.current?.show({
+                              severity: "info",
+                              summary: "Información geográfica obtenida",
+                              detail: `Ubicación: ${infoGeo.ubicacion?.ciudad || "N/A"}`,
+                              life: 3000,
+                            });
+                          } catch (error) {
+                            console.error(
+                              "Error al analizar coordenadas:",
+                              error,
                             );
-                          setInfoGeografica(infoGeo);
+                            setErrorGeo(
+                              "No se pudo obtener la información geográfica",
+                            );
+                            toast.current?.show({
+                              severity: "warn",
+                              summary: "Advertencia",
+                              detail:
+                                "GPS capturado pero no se pudo obtener información geográfica",
+                              life: 3000,
+                            });
+                          } finally {
+                            setLoadingGeo(false);
+                          }
 
-                          toast.current?.show({
-                            severity: "info",
-                            summary: "Información geográfica obtenida",
-                            detail: `Ubicación: ${infoGeo.ubicacion?.ciudad || "N/A"}`,
-                            life: 3000,
-                          });
-                        } catch (error) {
-                          console.error(
-                            "Error al analizar coordenadas:",
-                            error,
-                          );
-                          setErrorGeo(
-                            "No se pudo obtener la información geográfica",
-                          );
-                          toast.current?.show({
-                            severity: "warn",
-                            summary: "Advertencia",
-                            detail:
-                              "GPS capturado pero no se pudo obtener información geográfica",
-                            life: 3000,
-                          });
-                        } finally {
-                          setLoadingGeo(false);
-                        }
-
-                        try {
-                          await guardarCala(false);
-                        } catch (error) {
-                          console.error(
-                            "Error al guardar cala automáticamente:",
-                            error,
-                          );
+                          try {
+                            await guardarCala(false);
+                          } catch (error) {
+                            console.error(
+                              "Error al guardar cala automáticamente:",
+                              error,
+                            );
+                            toast.current?.show({
+                              severity: "error",
+                              summary: "Error",
+                              detail:
+                                "GPS capturado pero error al guardar la cala",
+                              life: 4000,
+                            });
+                          }
+                        },
+                        (errorMessage) => {
                           toast.current?.show({
                             severity: "error",
                             summary: "Error",
-                            detail:
-                              "GPS capturado pero error al guardar la cala",
-                            life: 4000,
+                            detail: errorMessage,
+                            life: 3000,
                           });
-                        }
-                      },
-                      (errorMessage) => {
-                        toast.current?.show({
-                          severity: "error",
-                          summary: "Error",
-                          detail: errorMessage,
-                          life: 3000,
-                        });
-                      },
-                    );
-                  } catch (error) {
-                    console.error("Error capturando GPS:", error);
+                        },
+                      );
+                    } catch (error) {
+                      console.error("Error capturando GPS:", error);
+                    }
+                  }}
+                  disabled={
+                    loading ||
+                    (calaFinalizada && !esSuperUsuario) ||
+                    camposDeshabilitados
                   }
-                }}
-                disabled={
-                  loading ||
-                  (calaFinalizada && !esSuperUsuario) ||
-                  camposDeshabilitados
-                }
-                size="small"
-              />
-            </div>
+                  size="small"
+                />
+              </div>
 
-            <div style={{ flex: 3 }}>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  border: "3px solid #10B981",
-                }}
-              >
-                <thead>
-                  <tr style={{ backgroundColor: "#10B981", color: "white" }}>
-                    <th
-                      style={{
-                        padding: "8px",
-                        border: "1px solid #10B981",
-                        fontSize: "14px",
-                        fontWeight: "bold",
-                        width: "100px",
-                        minWidth: "100px",
-                      }}
-                    >
-                      Formato
-                    </th>
-                    <th
-                      colSpan="4"
-                      style={{
-                        padding: "8px",
-                        border: "1px solid #10B981",
-                        fontSize: "14px",
-                        fontWeight: "bold",
-                        textAlign: "center",
-                      }}
-                    >
-                      Latitud INICIO
-                    </th>
-                    <th
-                      colSpan="4"
-                      style={{
-                        padding: "8px",
-                        border: "1px solid #10B981",
-                        fontSize: "14px",
-                        fontWeight: "bold",
-                        textAlign: "center",
-                      }}
-                    >
-                      Longitud INICIO
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td
-                      style={{
-                        padding: "8px",
-                        border: "1px solid #10B981",
-                        fontWeight: "bold",
-                        fontSize: "14px",
-                        backgroundColor: "#d1fae5",
-                        width: "100px",
-                      }}
-                    >
-                      Decimal
-                    </td>
-                    <td
-                      colSpan="4"
-                      style={{ padding: "4px", border: "1px solid #10B981" }}
-                    >
-                      <InputNumber
-                        value={latitud}
-                        onValueChange={(e) => setLatitud(e.value)}
-                        disabled={
-                          (calaFinalizada && !esSuperUsuario) ||
-                          camposDeshabilitados
-                        }
-                        mode="decimal"
-                        minFractionDigits={0}
-                        maxFractionDigits={14}
-                        min={-90}
-                        max={90}
+              <div style={{ flex: 3 }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    border: "3px solid #10B981",
+                  }}
+                >
+                  <thead>
+                    <tr style={{ backgroundColor: "#10B981", color: "white" }}>
+                      <th
                         style={{
-                          width: "100%",
-                          fontSize: "20px",
                           padding: "8px",
-                        }}
-                      />
-                    </td>
-                    <td
-                      colSpan="4"
-                      style={{ padding: "4px", border: "1px solid #10B981" }}
-                    >
-                      <InputNumber
-                        value={longitud}
-                        onValueChange={(e) => setLongitud(e.value)}
-                        disabled={
-                          (calaFinalizada && !esSuperUsuario) ||
-                          camposDeshabilitados
-                        }
-                        mode="decimal"
-                        minFractionDigits={0}
-                        maxFractionDigits={14}
-                        min={-180}
-                        max={180}
-                        style={{
-                          width: "100%",
-                          fontSize: "20px",
-                          padding: "8px",
-                        }}
-                      />
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td
-                      style={{
-                        padding: "8px",
-                        border: "1px solid #10B981",
-                        fontWeight: "bold",
-                        fontSize: "14px",
-                        backgroundColor: "#d1fae5",
-                      }}
-                    >
-                      DMS
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "4px",
+                          border: "1px solid #10B981",
+                          fontSize: "14px",
+                          fontWeight: "bold",
+                          width: "100px",
+                          minWidth: "100px",
                         }}
                       >
-                        <input
-                          type="number"
-                          value={latGrados}
-                          onChange={(e) =>
-                            setLatGrados(Number(e.target.value) || 0)
-                          }
-                          onBlur={actualizarLatitudDesdeDMS}
-                          disabled={
-                            (calaFinalizada && !esSuperUsuario) ||
-                            camposDeshabilitados
-                          }
-                          min="0"
-                          max="90"
-                          style={{
-                            width: "140px",
-                            padding: "8px",
-                            border: "2px solid #059669",
-                            fontSize: "18px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                            borderRadius: "4px",
-                          }}
-                        />
-                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                          °
-                        </span>
-                      </div>
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
-                      <div
+                        Formato
+                      </th>
+                      <th
+                        colSpan="4"
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <input
-                          type="number"
-                          value={latMinutos}
-                          onChange={(e) =>
-                            setLatMinutos(Number(e.target.value) || 0)
-                          }
-                          onBlur={actualizarLatitudDesdeDMS}
-                          disabled={
-                            (calaFinalizada && !esSuperUsuario) ||
-                            camposDeshabilitados
-                          }
-                          min="0"
-                          max="59"
-                          style={{
-                            width: "140px",
-                            padding: "8px",
-                            border: "2px solid #059669",
-                            fontSize: "18px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                            borderRadius: "4px",
-                          }}
-                        />
-                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                          '
-                        </span>
-                      </div>
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <input
-                          type="number"
-                          value={latSegundos}
-                          onChange={(e) =>
-                            setLatSegundos(parseFloat(e.target.value) || 0)
-                          }
-                          onBlur={actualizarLatitudDesdeDMS}
-                          disabled={
-                            (calaFinalizada && !esSuperUsuario) ||
-                            camposDeshabilitados
-                          }
-                          min="0"
-                          max="59.99"
-                          step="0.01"
-                          style={{
-                            width: "140px",
-                            padding: "8px",
-                            border: "2px solid #059669",
-                            fontSize: "18px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                            borderRadius: "4px",
-                          }}
-                        />
-                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                          "
-                        </span>
-                      </div>
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
-                      <select
-                        value={latDireccion}
-                        onChange={(e) => {
-                          setLatDireccion(e.target.value);
-                          actualizarLatitudDesdeDMS();
-                        }}
-                        disabled={
-                          !esSuperUsuario ||
-                          (calaFinalizada && !esSuperUsuario) ||
-                          camposDeshabilitados
-                        }
-                        style={{
-                          width: "100%",
                           padding: "8px",
-                          border: esSuperUsuario
-                            ? "2px solid #f59e0b"
-                            : "2px solid #94a3b8",
-                          fontSize: "18px",
+                          border: "1px solid #10B981",
+                          fontSize: "14px",
                           fontWeight: "bold",
                           textAlign: "center",
-                          borderRadius: "4px",
-                          backgroundColor: esSuperUsuario
-                            ? "#fef3c7"
-                            : "#f1f5f9",
-                          cursor: esSuperUsuario ? "pointer" : "not-allowed",
                         }}
                       >
-                        <option value="N">N</option>
-                        <option value="S">S</option>
-                      </select>
-                      {!esSuperUsuario && (
-                        <div
-                          style={{
-                            fontSize: "10px",
-                            color: "#64748b",
-                            textAlign: "center",
-                            marginTop: "2px",
-                          }}
-                        >
-                          🔒 Fijo
-                        </div>
-                      )}
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
-                      <div
+                        Latitud INICIO
+                      </th>
+                      <th
+                        colSpan="4"
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <input
-                          type="number"
-                          value={lonGrados}
-                          onChange={(e) =>
-                            setLonGrados(Number(e.target.value) || 0)
-                          }
-                          onBlur={actualizarLongitudDesdeDMS}
-                          disabled={
-                            (calaFinalizada && !esSuperUsuario) ||
-                            camposDeshabilitados
-                          }
-                          min="0"
-                          max="180"
-                          style={{
-                            width: "140px",
-                            padding: "8px",
-                            border: "2px solid #2563eb",
-                            fontSize: "18px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                            borderRadius: "4px",
-                          }}
-                        />
-                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                          °
-                        </span>
-                      </div>
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <input
-                          type="number"
-                          value={lonMinutos}
-                          onChange={(e) =>
-                            setLonMinutos(Number(e.target.value) || 0)
-                          }
-                          onBlur={actualizarLongitudDesdeDMS}
-                          disabled={
-                            (calaFinalizada && !esSuperUsuario) ||
-                            camposDeshabilitados
-                          }
-                          min="0"
-                          max="59"
-                          style={{
-                            width: "140px",
-                            padding: "8px",
-                            border: "2px solid #2563eb",
-                            fontSize: "18px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                            borderRadius: "4px",
-                          }}
-                        />
-                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                          '
-                        </span>
-                      </div>
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <input
-                          type="number"
-                          value={lonSegundos}
-                          onChange={(e) =>
-                            setLonSegundos(parseFloat(e.target.value) || 0)
-                          }
-                          onBlur={actualizarLongitudDesdeDMS}
-                          disabled={
-                            (calaFinalizada && !esSuperUsuario) ||
-                            camposDeshabilitados
-                          }
-                          min="0"
-                          max="59.99"
-                          step="0.01"
-                          style={{
-                            width: "140px",
-                            padding: "8px",
-                            border: "2px solid #2563eb",
-                            fontSize: "18px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                            borderRadius: "4px",
-                          }}
-                        />
-                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                          "
-                        </span>
-                      </div>
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
-                      <select
-                        value={lonDireccion}
-                        onChange={(e) => {
-                          setLonDireccion(e.target.value);
-                          actualizarLongitudDesdeDMS();
-                        }}
-                        disabled={
-                          !esSuperUsuario ||
-                          (calaFinalizada && !esSuperUsuario) ||
-                          camposDeshabilitados
-                        }
-                        style={{
-                          width: "100%",
                           padding: "8px",
-                          border: esSuperUsuario
-                            ? "2px solid #f59e0b"
-                            : "2px solid #94a3b8",
-                          fontSize: "18px",
+                          border: "1px solid #10B981",
+                          fontSize: "14px",
                           fontWeight: "bold",
                           textAlign: "center",
-                          borderRadius: "4px",
-                          backgroundColor: esSuperUsuario
-                            ? "#fef3c7"
-                            : "#f1f5f9",
-                          cursor: esSuperUsuario ? "pointer" : "not-allowed",
                         }}
                       >
-                        <option value="E">E</option>
-                        <option value="W">W</option>
-                      </select>
-                      {!esSuperUsuario && (
+                        Longitud INICIO
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td
+                        style={{
+                          padding: "8px",
+                          border: "1px solid #10B981",
+                          fontWeight: "bold",
+                          fontSize: "14px",
+                          backgroundColor: "#d1fae5",
+                          width: "100px",
+                        }}
+                      >
+                        Decimal
+                      </td>
+                      <td
+                        colSpan="4"
+                        style={{ padding: "4px", border: "1px solid #10B981" }}
+                      >
+                        <InputNumber
+                          value={latitud}
+                          onValueChange={(e) => setLatitud(e.value)}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
+                          mode="decimal"
+                          minFractionDigits={0}
+                          maxFractionDigits={14}
+                          min={-90}
+                          max={90}
+                          style={{
+                            width: "100%",
+                            fontSize: "20px",
+                            padding: "8px",
+                          }}
+                        />
+                      </td>
+                      <td
+                        colSpan="4"
+                        style={{ padding: "4px", border: "1px solid #10B981" }}
+                      >
+                        <InputNumber
+                          value={longitud}
+                          onValueChange={(e) => setLongitud(e.value)}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
+                          mode="decimal"
+                          minFractionDigits={0}
+                          maxFractionDigits={14}
+                          min={-180}
+                          max={180}
+                          style={{
+                            width: "100%",
+                            fontSize: "20px",
+                            padding: "8px",
+                          }}
+                        />
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td
+                        style={{
+                          padding: "8px",
+                          border: "1px solid #10B981",
+                          fontWeight: "bold",
+                          fontSize: "14px",
+                          backgroundColor: "#d1fae5",
+                        }}
+                      >
+                        DMS
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #10B981" }}>
                         <div
                           style={{
-                            fontSize: "10px",
-                            color: "#64748b",
-                            textAlign: "center",
-                            marginTop: "2px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "4px",
                           }}
                         >
-                          🔒 Fijo
+                          <input
+                            type="number"
+                            value={latGrados}
+                            onChange={(e) =>
+                              setLatGrados(Number(e.target.value) || 0)
+                            }
+                            onBlur={actualizarLatitudDesdeDMS}
+                            disabled={
+                              (calaFinalizada && !esSuperUsuario) ||
+                              camposDeshabilitados
+                            }
+                            min="0"
+                            max="90"
+                            style={{
+                              width: "140px",
+                              padding: "8px",
+                              border: "2px solid #059669",
+                              fontSize: "18px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                            °
+                          </span>
                         </div>
-                      )}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #10B981" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <input
+                            type="number"
+                            value={latMinutos}
+                            onChange={(e) =>
+                              setLatMinutos(Number(e.target.value) || 0)
+                            }
+                            onBlur={actualizarLatitudDesdeDMS}
+                            disabled={
+                              (calaFinalizada && !esSuperUsuario) ||
+                              camposDeshabilitados
+                            }
+                            min="0"
+                            max="59"
+                            style={{
+                              width: "140px",
+                              padding: "8px",
+                              border: "2px solid #059669",
+                              fontSize: "18px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                            '
+                          </span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #10B981" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <input
+                            type="number"
+                            value={latSegundos}
+                            onChange={(e) =>
+                              setLatSegundos(parseFloat(e.target.value) || 0)
+                            }
+                            onBlur={actualizarLatitudDesdeDMS}
+                            disabled={
+                              (calaFinalizada && !esSuperUsuario) ||
+                              camposDeshabilitados
+                            }
+                            min="0"
+                            max="59.99"
+                            step="0.01"
+                            style={{
+                              width: "140px",
+                              padding: "8px",
+                              border: "2px solid #059669",
+                              fontSize: "18px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                            "
+                          </span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #10B981" }}>
+                        <select
+                          value={latDireccion}
+                          onChange={(e) => {
+                            setLatDireccion(e.target.value);
+                            actualizarLatitudDesdeDMS();
+                          }}
+                          disabled={
+                            !esSuperUsuario ||
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
+                          style={{
+                            width: "100%",
+                            padding: "8px",
+                            border: esSuperUsuario
+                              ? "2px solid #f59e0b"
+                              : "2px solid #94a3b8",
+                            fontSize: "18px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                            borderRadius: "4px",
+                            backgroundColor: esSuperUsuario
+                              ? "#fef3c7"
+                              : "#f1f5f9",
+                            cursor: esSuperUsuario ? "pointer" : "not-allowed",
+                          }}
+                        >
+                          <option value="N">N</option>
+                          <option value="S">S</option>
+                        </select>
+                        {!esSuperUsuario && (
+                          <div
+                            style={{
+                              fontSize: "10px",
+                              color: "#64748b",
+                              textAlign: "center",
+                              marginTop: "2px",
+                            }}
+                          >
+                            🔒 Fijo
+                          </div>
+                        )}
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #10B981" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <input
+                            type="number"
+                            value={lonGrados}
+                            onChange={(e) =>
+                              setLonGrados(Number(e.target.value) || 0)
+                            }
+                            onBlur={actualizarLongitudDesdeDMS}
+                            disabled={
+                              (calaFinalizada && !esSuperUsuario) ||
+                              camposDeshabilitados
+                            }
+                            min="0"
+                            max="180"
+                            style={{
+                              width: "140px",
+                              padding: "8px",
+                              border: "2px solid #2563eb",
+                              fontSize: "18px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                            °
+                          </span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #10B981" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <input
+                            type="number"
+                            value={lonMinutos}
+                            onChange={(e) =>
+                              setLonMinutos(Number(e.target.value) || 0)
+                            }
+                            onBlur={actualizarLongitudDesdeDMS}
+                            disabled={
+                              (calaFinalizada && !esSuperUsuario) ||
+                              camposDeshabilitados
+                            }
+                            min="0"
+                            max="59"
+                            style={{
+                              width: "140px",
+                              padding: "8px",
+                              border: "2px solid #2563eb",
+                              fontSize: "18px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                            '
+                          </span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #10B981" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <input
+                            type="number"
+                            value={lonSegundos}
+                            onChange={(e) =>
+                              setLonSegundos(parseFloat(e.target.value) || 0)
+                            }
+                            onBlur={actualizarLongitudDesdeDMS}
+                            disabled={
+                              (calaFinalizada && !esSuperUsuario) ||
+                              camposDeshabilitados
+                            }
+                            min="0"
+                            max="59.99"
+                            step="0.01"
+                            style={{
+                              width: "140px",
+                              padding: "8px",
+                              border: "2px solid #2563eb",
+                              fontSize: "18px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                            "
+                          </span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #10B981" }}>
+                        <select
+                          value={lonDireccion}
+                          onChange={(e) => {
+                            setLonDireccion(e.target.value);
+                            actualizarLongitudDesdeDMS();
+                          }}
+                          disabled={
+                            !esSuperUsuario ||
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
+                          style={{
+                            width: "100%",
+                            padding: "8px",
+                            border: esSuperUsuario
+                              ? "2px solid #f59e0b"
+                              : "2px solid #94a3b8",
+                            fontSize: "18px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                            borderRadius: "4px",
+                            backgroundColor: esSuperUsuario
+                              ? "#fef3c7"
+                              : "#f1f5f9",
+                            cursor: esSuperUsuario ? "pointer" : "not-allowed",
+                          }}
+                        >
+                          <option value="E">E</option>
+                          <option value="W">W</option>
+                        </select>
+                        {!esSuperUsuario && (
+                          <div
+                            style={{
+                              fontSize: "10px",
+                              color: "#64748b",
+                              textAlign: "center",
+                              marginTop: "2px",
+                            }}
+                          >
+                            🔒 Fijo
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
 
-          <div
-            style={{
-              border: "6px solid #EF4444",
-              padding: "0.5rem",
-              borderRadius: "8px",
-              marginTop: "0.5rem",
-              marginBottom: "1rem",
-              display: "flex",
-              alignItems: "self-end",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <Button
-                type="button"
-                label="Capturar GPS FIN"
-                icon="pi pi-map-marker"
-                className="p-button-danger"
-                onClick={async () => {
-                  try {
-                    await capturarGPS(
-                      async (latitude, longitude, accuracy) => {
-                        setLatitudFin(latitude);
-                        setLongitudFin(longitude);
+            <div
+              style={{
+                border: "6px solid #EF4444",
+                padding: "0.5rem",
+                borderRadius: "8px",
+                marginTop: "0.5rem",
+                marginBottom: "1rem",
+                display: "flex",
+                alignItems: "self-end",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <Button
+                  type="button"
+                  label="Capturar GPS FIN"
+                  icon="pi pi-map-marker"
+                  className="p-button-danger"
+                  onClick={async () => {
+                    try {
+                      await capturarGPS(
+                        async (latitude, longitude, accuracy) => {
+                          setLatitudFin(latitude);
+                          setLongitudFin(longitude);
 
-                        toast.current?.show({
-                          severity: "success",
-                          summary: "GPS FIN capturado",
-                          detail: `GPS capturado con precisión de ${accuracy.toFixed(
-                            1,
-                          )}m. Guardando cala...`,
-                          life: 3000,
-                        });
+                          toast.current?.show({
+                            severity: "success",
+                            summary: "GPS FIN capturado",
+                            detail: `GPS capturado con precisión de ${accuracy.toFixed(
+                              1,
+                            )}m. Guardando cala...`,
+                            life: 3000,
+                          });
 
-                        try {
-                          await guardarCala(false);
-                        } catch (error) {
-                          console.error(
-                            "Error al guardar cala automáticamente:",
-                            error,
-                          );
+                          try {
+                            await guardarCala(false);
+                          } catch (error) {
+                            console.error(
+                              "Error al guardar cala automáticamente:",
+                              error,
+                            );
+                            toast.current?.show({
+                              severity: "error",
+                              summary: "Error",
+                              detail:
+                                "GPS capturado pero error al guardar la cala",
+                              life: 4000,
+                            });
+                          }
+                        },
+                        (errorMessage) => {
                           toast.current?.show({
                             severity: "error",
                             summary: "Error",
-                            detail:
-                              "GPS capturado pero error al guardar la cala",
-                            life: 4000,
+                            detail: errorMessage,
+                            life: 3000,
                           });
-                        }
-                      },
-                      (errorMessage) => {
-                        toast.current?.show({
-                          severity: "error",
-                          summary: "Error",
-                          detail: errorMessage,
-                          life: 3000,
-                        });
-                      },
-                    );
-                  } catch (error) {
-                    console.error("Error capturando GPS FIN:", error);
+                        },
+                      );
+                    } catch (error) {
+                      console.error("Error capturando GPS FIN:", error);
+                    }
+                  }}
+                  disabled={
+                    loading ||
+                    (calaFinalizada && !esSuperUsuario) ||
+                    camposDeshabilitados
                   }
-                }}
-                disabled={
-                  loading ||
-                  (calaFinalizada && !esSuperUsuario) ||
-                  camposDeshabilitados
-                }
-                size="small"
-              />
-            </div>
+                  size="small"
+                />
+              </div>
 
-            <div style={{ flex: 3 }}>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  border: "3px solid #EF4444",
-                }}
-              >
-                <thead>
-                  <tr style={{ backgroundColor: "#EF4444", color: "white" }}>
-                    <th
-                      style={{
-                        padding: "8px",
-                        border: "1px solid #EF4444",
-                        fontSize: "14px",
-                        fontWeight: "bold",
-                        width: "100px",
-                        minWidth: "100px",
-                      }}
-                    >
-                      Formato
-                    </th>
-                    <th
-                      colSpan="4"
-                      style={{
-                        padding: "8px",
-                        border: "1px solid #EF4444",
-                        fontSize: "14px",
-                        fontWeight: "bold",
-                        textAlign: "center",
-                      }}
-                    >
-                      Latitud FIN
-                    </th>
-                    <th
-                      colSpan="4"
-                      style={{
-                        padding: "8px",
-                        border: "1px solid #EF4444",
-                        fontSize: "14px",
-                        fontWeight: "bold",
-                        textAlign: "center",
-                      }}
-                    >
-                      Longitud FIN
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td
-                      style={{
-                        padding: "8px",
-                        border: "1px solid #EF4444",
-                        fontWeight: "bold",
-                        fontSize: "14px",
-                        backgroundColor: "#fee2e2",
-                        width: "100px",
-                      }}
-                    >
-                      Decimal
-                    </td>
-                    <td
-                      colSpan="4"
-                      style={{ padding: "4px", border: "1px solid #EF4444" }}
-                    >
-                      <InputNumber
-                        value={latitudFin}
-                        onValueChange={(e) => setLatitudFin(e.value)}
-                        disabled={
-                          (calaFinalizada && !esSuperUsuario) ||
-                          camposDeshabilitados
-                        }
-                        mode="decimal"
-                        minFractionDigits={0}
-                        maxFractionDigits={14}
-                        min={-90}
-                        max={90}
+              <div style={{ flex: 3 }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    border: "3px solid #EF4444",
+                  }}
+                >
+                  <thead>
+                    <tr style={{ backgroundColor: "#EF4444", color: "white" }}>
+                      <th
                         style={{
-                          width: "100%",
-                          fontSize: "20px",
                           padding: "8px",
-                        }}
-                      />
-                    </td>
-                    <td
-                      colSpan="4"
-                      style={{ padding: "4px", border: "1px solid #EF4444" }}
-                    >
-                      <InputNumber
-                        value={longitudFin}
-                        onValueChange={(e) => setLongitudFin(e.value)}
-                        disabled={
-                          (calaFinalizada && !esSuperUsuario) ||
-                          camposDeshabilitados
-                        }
-                        mode="decimal"
-                        minFractionDigits={0}
-                        maxFractionDigits={14}
-                        min={-180}
-                        max={180}
-                        style={{
-                          width: "100%",
-                          fontSize: "20px",
-                          padding: "8px",
-                        }}
-                      />
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td
-                      style={{
-                        padding: "8px",
-                        border: "1px solid #EF4444",
-                        fontWeight: "bold",
-                        fontSize: "14px",
-                        backgroundColor: "#fee2e2",
-                      }}
-                    >
-                      DMS
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "4px",
+                          border: "1px solid #EF4444",
+                          fontSize: "14px",
+                          fontWeight: "bold",
+                          width: "100px",
+                          minWidth: "100px",
                         }}
                       >
-                        <input
-                          type="number"
-                          value={latFinGrados}
-                          onChange={(e) =>
-                            setLatFinGrados(Number(e.target.value) || 0)
-                          }
-                          onBlur={actualizarLatitudFinDesdeDMS}
-                          disabled={
-                            (calaFinalizada && !esSuperUsuario) ||
-                            camposDeshabilitados
-                          }
-                          min="0"
-                          max="90"
-                          style={{
-                            width: "140px",
-                            padding: "8px",
-                            border: "2px solid #dc2626",
-                            fontSize: "18px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                            borderRadius: "4px",
-                          }}
-                        />
-                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                          °
-                        </span>
-                      </div>
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
-                      <div
+                        Formato
+                      </th>
+                      <th
+                        colSpan="4"
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <input
-                          type="number"
-                          value={latFinMinutos}
-                          onChange={(e) =>
-                            setLatFinMinutos(Number(e.target.value) || 0)
-                          }
-                          onBlur={actualizarLatitudFinDesdeDMS}
-                          disabled={
-                            (calaFinalizada && !esSuperUsuario) ||
-                            camposDeshabilitados
-                          }
-                          min="0"
-                          max="59"
-                          style={{
-                            width: "140px",
-                            padding: "8px",
-                            border: "2px solid #dc2626",
-                            fontSize: "18px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                            borderRadius: "4px",
-                          }}
-                        />
-                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                          '
-                        </span>
-                      </div>
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <input
-                          type="number"
-                          value={latFinSegundos}
-                          onChange={(e) =>
-                            setLatFinSegundos(parseFloat(e.target.value) || 0)
-                          }
-                          onBlur={actualizarLatitudFinDesdeDMS}
-                          disabled={
-                            (calaFinalizada && !esSuperUsuario) ||
-                            camposDeshabilitados
-                          }
-                          min="0"
-                          max="59.99"
-                          step="0.01"
-                          style={{
-                            width: "140px",
-                            padding: "8px",
-                            border: "2px solid #dc2626",
-                            fontSize: "18px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                            borderRadius: "4px",
-                          }}
-                        />
-                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                          "
-                        </span>
-                      </div>
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
-                      <select
-                        value={latFinDireccion}
-                        onChange={(e) => {
-                          setLatFinDireccion(e.target.value);
-                          actualizarLatitudFinDesdeDMS();
-                        }}
-                        disabled={
-                          !esSuperUsuario ||
-                          (calaFinalizada && !esSuperUsuario) ||
-                          camposDeshabilitados
-                        }
-                        style={{
-                          width: "100%",
                           padding: "8px",
-                          border: esSuperUsuario
-                            ? "2px solid #f59e0b"
-                            : "2px solid #94a3b8",
-                          fontSize: "18px",
+                          border: "1px solid #EF4444",
+                          fontSize: "14px",
                           fontWeight: "bold",
                           textAlign: "center",
-                          borderRadius: "4px",
-                          backgroundColor: esSuperUsuario
-                            ? "#fef3c7"
-                            : "#f1f5f9",
-                          cursor: esSuperUsuario ? "pointer" : "not-allowed",
                         }}
                       >
-                        <option value="N">N</option>
-                        <option value="S">S</option>
-                      </select>
-                      {!esSuperUsuario && (
-                        <div
-                          style={{
-                            fontSize: "10px",
-                            color: "#64748b",
-                            textAlign: "center",
-                            marginTop: "2px",
-                          }}
-                        >
-                          🔒 Fijo
-                        </div>
-                      )}
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
-                      <div
+                        Latitud FIN
+                      </th>
+                      <th
+                        colSpan="4"
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <input
-                          type="number"
-                          value={lonFinGrados}
-                          onChange={(e) =>
-                            setLonFinGrados(Number(e.target.value) || 0)
-                          }
-                          onBlur={actualizarLongitudFinDesdeDMS}
-                          disabled={
-                            (calaFinalizada && !esSuperUsuario) ||
-                            camposDeshabilitados
-                          }
-                          min="0"
-                          max="180"
-                          style={{
-                            width: "140px",
-                            padding: "8px",
-                            border: "2px solid #dc2626",
-                            fontSize: "18px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                            borderRadius: "4px",
-                          }}
-                        />
-                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                          °
-                        </span>
-                      </div>
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <input
-                          type="number"
-                          value={lonFinMinutos}
-                          onChange={(e) =>
-                            setLonFinMinutos(Number(e.target.value) || 0)
-                          }
-                          onBlur={actualizarLongitudFinDesdeDMS}
-                          disabled={
-                            (calaFinalizada && !esSuperUsuario) ||
-                            camposDeshabilitados
-                          }
-                          min="0"
-                          max="59"
-                          style={{
-                            width: "140px",
-                            padding: "8px",
-                            border: "2px solid #dc2626",
-                            fontSize: "18px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                            borderRadius: "4px",
-                          }}
-                        />
-                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                          '
-                        </span>
-                      </div>
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <input
-                          type="number"
-                          value={lonFinSegundos}
-                          onChange={(e) =>
-                            setLonFinSegundos(parseFloat(e.target.value) || 0)
-                          }
-                          onBlur={actualizarLongitudFinDesdeDMS}
-                          disabled={
-                            (calaFinalizada && !esSuperUsuario) ||
-                            camposDeshabilitados
-                          }
-                          min="0"
-                          max="59.99"
-                          step="0.01"
-                          style={{
-                            width: "140px",
-                            padding: "8px",
-                            border: "2px solid #dc2626",
-                            fontSize: "18px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                            borderRadius: "4px",
-                          }}
-                        />
-                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                          "
-                        </span>
-                      </div>
-                    </td>
-
-                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
-                      <select
-                        value={lonFinDireccion}
-                        onChange={(e) => {
-                          setLonFinDireccion(e.target.value);
-                          actualizarLongitudFinDesdeDMS();
-                        }}
-                        disabled={
-                          !esSuperUsuario ||
-                          (calaFinalizada && !esSuperUsuario) ||
-                          camposDeshabilitados
-                        }
-                        style={{
-                          width: "100%",
                           padding: "8px",
-                          border: esSuperUsuario
-                            ? "2px solid #f59e0b"
-                            : "2px solid #94a3b8",
-                          fontSize: "18px",
+                          border: "1px solid #EF4444",
+                          fontSize: "14px",
                           fontWeight: "bold",
                           textAlign: "center",
-                          borderRadius: "4px",
-                          backgroundColor: esSuperUsuario
-                            ? "#fef3c7"
-                            : "#f1f5f9",
-                          cursor: esSuperUsuario ? "pointer" : "not-allowed",
                         }}
                       >
-                        <option value="E">E</option>
-                        <option value="W">W</option>
-                      </select>
-                      {!esSuperUsuario && (
+                        Longitud FIN
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td
+                        style={{
+                          padding: "8px",
+                          border: "1px solid #EF4444",
+                          fontWeight: "bold",
+                          fontSize: "14px",
+                          backgroundColor: "#fee2e2",
+                          width: "100px",
+                        }}
+                      >
+                        Decimal
+                      </td>
+                      <td
+                        colSpan="4"
+                        style={{ padding: "4px", border: "1px solid #EF4444" }}
+                      >
+                        <InputNumber
+                          value={latitudFin}
+                          onValueChange={(e) => setLatitudFin(e.value)}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
+                          mode="decimal"
+                          minFractionDigits={0}
+                          maxFractionDigits={14}
+                          min={-90}
+                          max={90}
+                          style={{
+                            width: "100%",
+                            fontSize: "20px",
+                            padding: "8px",
+                          }}
+                        />
+                      </td>
+                      <td
+                        colSpan="4"
+                        style={{ padding: "4px", border: "1px solid #EF4444" }}
+                      >
+                        <InputNumber
+                          value={longitudFin}
+                          onValueChange={(e) => setLongitudFin(e.value)}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
+                          mode="decimal"
+                          minFractionDigits={0}
+                          maxFractionDigits={14}
+                          min={-180}
+                          max={180}
+                          style={{
+                            width: "100%",
+                            fontSize: "20px",
+                            padding: "8px",
+                          }}
+                        />
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td
+                        style={{
+                          padding: "8px",
+                          border: "1px solid #EF4444",
+                          fontWeight: "bold",
+                          fontSize: "14px",
+                          backgroundColor: "#fee2e2",
+                        }}
+                      >
+                        DMS
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
                         <div
                           style={{
-                            fontSize: "10px",
-                            color: "#64748b",
-                            textAlign: "center",
-                            marginTop: "2px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "4px",
                           }}
                         >
-                          🔒 Fijo
+                          <input
+                            type="number"
+                            value={latFinGrados}
+                            onChange={(e) =>
+                              setLatFinGrados(Number(e.target.value) || 0)
+                            }
+                            onBlur={actualizarLatitudFinDesdeDMS}
+                            disabled={
+                              (calaFinalizada && !esSuperUsuario) ||
+                              camposDeshabilitados
+                            }
+                            min="0"
+                            max="90"
+                            style={{
+                              width: "140px",
+                              padding: "8px",
+                              border: "2px solid #dc2626",
+                              fontSize: "18px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                            °
+                          </span>
                         </div>
-                      )}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <input
+                            type="number"
+                            value={latFinMinutos}
+                            onChange={(e) =>
+                              setLatFinMinutos(Number(e.target.value) || 0)
+                            }
+                            onBlur={actualizarLatitudFinDesdeDMS}
+                            disabled={
+                              (calaFinalizada && !esSuperUsuario) ||
+                              camposDeshabilitados
+                            }
+                            min="0"
+                            max="59"
+                            style={{
+                              width: "140px",
+                              padding: "8px",
+                              border: "2px solid #dc2626",
+                              fontSize: "18px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                            '
+                          </span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <input
+                            type="number"
+                            value={latFinSegundos}
+                            onChange={(e) =>
+                              setLatFinSegundos(parseFloat(e.target.value) || 0)
+                            }
+                            onBlur={actualizarLatitudFinDesdeDMS}
+                            disabled={
+                              (calaFinalizada && !esSuperUsuario) ||
+                              camposDeshabilitados
+                            }
+                            min="0"
+                            max="59.99"
+                            step="0.01"
+                            style={{
+                              width: "140px",
+                              padding: "8px",
+                              border: "2px solid #dc2626",
+                              fontSize: "18px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                            "
+                          </span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                        <select
+                          value={latFinDireccion}
+                          onChange={(e) => {
+                            setLatFinDireccion(e.target.value);
+                            actualizarLatitudFinDesdeDMS();
+                          }}
+                          disabled={
+                            !esSuperUsuario ||
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
+                          style={{
+                            width: "100%",
+                            padding: "8px",
+                            border: esSuperUsuario
+                              ? "2px solid #f59e0b"
+                              : "2px solid #94a3b8",
+                            fontSize: "18px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                            borderRadius: "4px",
+                            backgroundColor: esSuperUsuario
+                              ? "#fef3c7"
+                              : "#f1f5f9",
+                            cursor: esSuperUsuario ? "pointer" : "not-allowed",
+                          }}
+                        >
+                          <option value="N">N</option>
+                          <option value="S">S</option>
+                        </select>
+                        {!esSuperUsuario && (
+                          <div
+                            style={{
+                              fontSize: "10px",
+                              color: "#64748b",
+                              textAlign: "center",
+                              marginTop: "2px",
+                            }}
+                          >
+                            🔒 Fijo
+                          </div>
+                        )}
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <input
+                            type="number"
+                            value={lonFinGrados}
+                            onChange={(e) =>
+                              setLonFinGrados(Number(e.target.value) || 0)
+                            }
+                            onBlur={actualizarLongitudFinDesdeDMS}
+                            disabled={
+                              (calaFinalizada && !esSuperUsuario) ||
+                              camposDeshabilitados
+                            }
+                            min="0"
+                            max="180"
+                            style={{
+                              width: "140px",
+                              padding: "8px",
+                              border: "2px solid #dc2626",
+                              fontSize: "18px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                            °
+                          </span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <input
+                            type="number"
+                            value={lonFinMinutos}
+                            onChange={(e) =>
+                              setLonFinMinutos(Number(e.target.value) || 0)
+                            }
+                            onBlur={actualizarLongitudFinDesdeDMS}
+                            disabled={
+                              (calaFinalizada && !esSuperUsuario) ||
+                              camposDeshabilitados
+                            }
+                            min="0"
+                            max="59"
+                            style={{
+                              width: "140px",
+                              padding: "8px",
+                              border: "2px solid #dc2626",
+                              fontSize: "18px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                            '
+                          </span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <input
+                            type="number"
+                            value={lonFinSegundos}
+                            onChange={(e) =>
+                              setLonFinSegundos(parseFloat(e.target.value) || 0)
+                            }
+                            onBlur={actualizarLongitudFinDesdeDMS}
+                            disabled={
+                              (calaFinalizada && !esSuperUsuario) ||
+                              camposDeshabilitados
+                            }
+                            min="0"
+                            max="59.99"
+                            step="0.01"
+                            style={{
+                              width: "140px",
+                              padding: "8px",
+                              border: "2px solid #dc2626",
+                              fontSize: "18px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                            "
+                          </span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                        <select
+                          value={lonFinDireccion}
+                          onChange={(e) => {
+                            setLonFinDireccion(e.target.value);
+                            actualizarLongitudFinDesdeDMS();
+                          }}
+                          disabled={
+                            !esSuperUsuario ||
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
+                          style={{
+                            width: "100%",
+                            padding: "8px",
+                            border: esSuperUsuario
+                              ? "2px solid #f59e0b"
+                              : "2px solid #94a3b8",
+                            fontSize: "18px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                            borderRadius: "4px",
+                            backgroundColor: esSuperUsuario
+                              ? "#fef3c7"
+                              : "#f1f5f9",
+                            cursor: esSuperUsuario ? "pointer" : "not-allowed",
+                          }}
+                        >
+                          <option value="E">E</option>
+                          <option value="W">W</option>
+                        </select>
+                        {!esSuperUsuario && (
+                          <div
+                            style={{
+                              fontSize: "10px",
+                              color: "#64748b",
+                              textAlign: "center",
+                              marginTop: "2px",
+                            }}
+                          >
+                            🔒 Fijo
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          </Panel>
+
 
           <PanelMapaGeografico
             mapPosition={mapPosition}
@@ -3156,6 +3112,28 @@ const DetalleCalasForm = ({
                 style={{ fontWeight: "bold", fontStyle: "italic" }}
                 rows={1}
                 cols={20}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="createdAt">Fecha Creación</label>
+              <Calendar
+                id="createdAt"
+                value={createdAt}
+                showTime
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="updatedAt">Fecha Actualización</label>
+              <Calendar
+                id="updatedAt"
+                value={updatedAt}
+                showTime
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled
               />
             </div>
           </div>

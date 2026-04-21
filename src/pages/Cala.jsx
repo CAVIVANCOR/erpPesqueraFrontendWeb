@@ -131,7 +131,6 @@ export default function Cala({ ruta }) {
         <Column field="fechaHoraFin" header="Fin" body={rowData => new Date(rowData.fechaHoraFin).toLocaleString()} />
         <Column field="latitud" header="Latitud" />
         <Column field="longitud" header="Longitud" />
-        <Column field="profundidadM" header="Profundidad (m)" />
         <Column field="toneladasCapturadas" header="Toneladas" />
         <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
       </DataTable>
