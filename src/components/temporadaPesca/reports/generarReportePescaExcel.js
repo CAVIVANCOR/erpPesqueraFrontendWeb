@@ -9,19 +9,21 @@ export async function generarReportePescaExcel(data) {
 
   worksheet.views = [{ showGridLines: false }];
 
-  worksheet.getColumn(1).width = 5;
-  worksheet.getColumn(2).width = 12;
-  worksheet.getColumn(3).width = 14;
-  worksheet.getColumn(4).width = 30;
-  worksheet.getColumn(5).width = 14;
-  worksheet.getColumn(6).width = 22;
-  worksheet.getColumn(7).width = 12;
-  worksheet.getColumn(8).width = 14;
-  worksheet.getColumn(9).width = 14;
-  worksheet.getColumn(10).width = 12;
+  // ⭐ AJUSTAR ANCHOS DE COLUMNAS (11 columnas ahora)
+  worksheet.getColumn(1).width = 5;    // N°
+  worksheet.getColumn(2).width = 18;   // Fecha I/D (nueva)
+  worksheet.getColumn(3).width = 12;   // Especie
+  worksheet.getColumn(4).width = 30;   // Cliente
+  worksheet.getColumn(5).width = 14;   // Puerto
+  worksheet.getColumn(6).width = 16;   // Plataforma
+  worksheet.getColumn(7).width = 10;   // Observaciones (reducida)
+  worksheet.getColumn(8).width = 12;   // Reporte
+  worksheet.getColumn(9).width = 14;   // Petroleo Gal.
+  worksheet.getColumn(10).width = 10;  // Toneladas (reducida)
+  worksheet.getColumn(11).width = 12;  // % Juveniles
 
-  const TOTAL_COLS = 10;
-  const lastCol = 'J';
+  const TOTAL_COLS = 11;
+  const lastCol = 'K';
 
   let currentRow = 1;
 
@@ -116,7 +118,7 @@ export async function generarReportePescaExcel(data) {
     cell.alignment = { horizontal: 'center', vertical: 'middle' };
     cell.border = borderCeleste;
   });
-  worksheet.mergeCells(currentRow, 8, currentRow, 10);
+  worksheet.mergeCells(currentRow, 8, currentRow, 11);
   const limiteTonHeader = worksheet.getCell(currentRow, 8);
   limiteTonHeader.value = "Limite Ton.";
   limiteTonHeader.font = { bold: true, size: 8 };
@@ -163,7 +165,7 @@ export async function generarReportePescaExcel(data) {
         cell.numFmt = '0.000000';
       }
     });
-    worksheet.mergeCells(currentRow, 8, currentRow, 10);
+    worksheet.mergeCells(currentRow, 8, currentRow, 11);
     const limiteTonCell = worksheet.getCell(currentRow, 8);
     limiteTonCell.value = limiteTon;
     limiteTonCell.numFmt = '#,##0.000';
@@ -184,7 +186,7 @@ export async function generarReportePescaExcel(data) {
     cell.value = i === 7 ? "TOTAL" : "";
     if (i === 7) cell.alignment = { horizontal: 'center', vertical: 'middle' };
   }
-  worksheet.mergeCells(currentRow, 8, currentRow, 10);
+  worksheet.mergeCells(currentRow, 8, currentRow, 11);
   const totalCuotaCell = worksheet.getCell(currentRow, 8);
   totalCuotaCell.value = totalCalculado;
   totalCuotaCell.numFmt = '#,##0.000';
@@ -223,7 +225,7 @@ export async function generarReportePescaExcel(data) {
   const saldoTotal = totalCalculado - avanceTotal;
   const porcentajeAvanzado = totalCalculado > 0 ? (avanceTotal / totalCalculado) * 100 : 0;
 
-  // Headers resumen: A-D celeste, E-J limpias
+  // Headers resumen: A-D celeste, E-K limpias
   const resumenHeaders = ["Cuota Total", "Avance", "Saldo", "% Avanzado"];
   resumenHeaders.forEach((header, i) => {
     const cell = worksheet.getCell(currentRow, i + 1);
@@ -242,7 +244,7 @@ export async function generarReportePescaExcel(data) {
   worksheet.getRow(currentRow).height = 18;
   currentRow++;
 
-  // Datos resumen: A-D con borde, E-J limpias
+  // Datos resumen: A-D con borde, E-K limpias
   const resumenData = [
     { val: totalCalculado, fmt: '#,##0.000 "Ton."' },
     { val: avanceTotal, fmt: '#,##0.000 "Ton."' },
@@ -291,7 +293,7 @@ export async function generarReportePescaExcel(data) {
   currentRow++;
 
   // ─── HEADERS TABLA DESCARGA ───────────────────────────────────────
-  const descargaHeaders = ["N°", "Especie", "Cliente", "Puerto", "Plataforma", "Observaciones", "Reporte", "Petroleo Gal.", "Toneladas", "% Juveniles"];
+  const descargaHeaders = ["N°", "Fecha I/D", "Especie", "Cliente", "Puerto", "Plataforma", "Observaciones", "Reporte", "Petroleo Gal.", "Toneladas", "% Juveniles"];
   descargaHeaders.forEach((header, i) => {
     const cell = worksheet.getCell(currentRow, i + 1);
     cell.value = header;
@@ -309,6 +311,16 @@ export async function generarReportePescaExcel(data) {
     let totalGalones = 0;
 
     descargas.forEach((descarga, index) => {
+      const fechaInicioDescarga = descarga.fechaHoraInicioDescarga
+        ? new Date(descarga.fechaHoraInicioDescarga).toLocaleString("es-PE", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+        : "-";
       const especieNombre = descarga.especie?.nombre || "-";
       const clienteNombre = descarga.cliente?.razonSocial || descarga.cliente?.nombre || "-";
       const puertoNombre = descarga.puertoDescarga?.nombre || "-";
@@ -325,7 +337,7 @@ export async function generarReportePescaExcel(data) {
       totalGalones += galones;
 
       const rowData = [
-        index + 1, especieNombre, clienteNombre, puertoNombre,
+        index + 1, fechaInicioDescarga, especieNombre, clienteNombre, puertoNombre,
         plataforma, observaciones, reporte, galones, toneladas, porcentajeJuveniles
       ];
 
@@ -336,17 +348,17 @@ export async function generarReportePescaExcel(data) {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
         cell.border = borderThin;
         cell.font = { size: 8 };
-        if (colIndex === 0 || colIndex === 6) {
+        if (colIndex === 0 || colIndex === 1 || colIndex === 7) {
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        } else if (colIndex >= 1 && colIndex <= 5) {
+        } else if (colIndex >= 2 && colIndex <= 6) {
           cell.alignment = { horizontal: 'left', vertical: 'middle' };
-        } else if (colIndex === 7) {
-          cell.alignment = { horizontal: 'right', vertical: 'middle' };
-          cell.numFmt = '#,##0.00';
         } else if (colIndex === 8) {
           cell.alignment = { horizontal: 'right', vertical: 'middle' };
-          cell.numFmt = '#,##0.000';
+          cell.numFmt = '#,##0.00';
         } else if (colIndex === 9) {
+          cell.alignment = { horizontal: 'right', vertical: 'middle' };
+          cell.numFmt = '#,##0.000';
+        } else if (colIndex === 10) {
           cell.alignment = { horizontal: 'right', vertical: 'middle' };
           cell.numFmt = '0.00%';
         }
@@ -362,14 +374,14 @@ export async function generarReportePescaExcel(data) {
       cell.font = { bold: true, size: 8 };
       cell.border = borderCeleste;
       cell.value = "";
-      if (i === 6) {
+      if (i === 7) {
         cell.value = "TOTALES";
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      } else if (i === 8) {
+      } else if (i === 9) {
         cell.value = totalGalones;
         cell.numFmt = '#,##0.00';
         cell.alignment = { horizontal: 'right', vertical: 'middle' };
-      } else if (i === 9) {
+      } else if (i === 10) {
         cell.value = totalToneladas;
         cell.numFmt = '#,##0.000 "Ton."';
         cell.alignment = { horizontal: 'right', vertical: 'middle' };

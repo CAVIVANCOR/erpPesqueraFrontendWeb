@@ -6,6 +6,8 @@ import React, { useState } from "react";
 import { Panel } from "primereact/panel";
 import MapaConControles from "./MapaConControles";
 import InformacionGeograficaPanel from "./InformacionGeograficaPanel";
+import InformacionGeograficaMultiple from "./InformacionGeograficaMultiple";
+import ResumenRecorrido from "./ResumenRecorrido";
 
 /**
  * PanelMapaGeografico
@@ -55,10 +57,29 @@ export default function PanelMapaGeografico({
   mapContainerRef,
   mapaFullscreen,
 
-  // Props del panel de información
+  // Props del panel de información (modo simple)
   infoGeografica,
   loadingGeo,
   getClasificacionAguasColor,
+
+  // Props del panel de información (modo múltiple)
+  usarModoMultiple = false,
+  infoInicioRetorno,
+  infoPlataforma,
+  infoFondeo,
+  loadingInicioRetorno,
+  loadingPlataforma,
+  loadingFondeo,
+
+  // Props para ResumenRecorrido (modo múltiple)
+  distanciaRetornoPuerto,
+  consumoRetornoPuerto,
+  costoRetornoPuerto,
+  distanciaDescargaFondeo,
+  consumoDescargaFondeo,
+  costoDescargaFondeo,
+  loadingRetornoPuerto,
+  loadingDescargaFondeo,
 
   // Props del panel colapsable
   titulo = "📍 Información Geográfica",
@@ -109,11 +130,38 @@ export default function PanelMapaGeografico({
           </MapaConControles>
         )}
 
-        <InformacionGeograficaPanel
-          infoGeografica={infoGeografica}
-          loadingGeo={loadingGeo}
-          getClasificacionAguasColor={getClasificacionAguasColor}
-        />
+        {usarModoMultiple ? (
+          <>
+            {/* Columna 1: Ubicación Geográfica (3 ubicaciones) */}
+            <InformacionGeograficaMultiple
+              infoInicioRetorno={infoInicioRetorno}
+              infoPlataforma={infoPlataforma}
+              infoFondeo={infoFondeo}
+              loadingInicioRetorno={loadingInicioRetorno}
+              loadingPlataforma={loadingPlataforma}
+              loadingFondeo={loadingFondeo}
+            />
+
+            {/* Columna 2: Resumen de Recorrido */}
+            <ResumenRecorrido
+              distanciaRetornoPuerto={distanciaRetornoPuerto}
+              consumoRetornoPuerto={consumoRetornoPuerto}
+              costoRetornoPuerto={costoRetornoPuerto}
+              distanciaDescargaFondeo={distanciaDescargaFondeo}
+              consumoDescargaFondeo={consumoDescargaFondeo}
+              costoDescargaFondeo={costoDescargaFondeo}
+              hayFondeo={!!infoFondeo}
+              loadingRetornoPuerto={loadingRetornoPuerto}
+              loadingDescargaFondeo={loadingDescargaFondeo}
+            />
+          </>
+        ) : (
+          <InformacionGeograficaPanel
+            infoGeografica={infoGeografica}
+            loadingGeo={loadingGeo}
+            getClasificacionAguasColor={getClasificacionAguasColor}
+          />
+        )}
       </div>
     </Panel>
   );

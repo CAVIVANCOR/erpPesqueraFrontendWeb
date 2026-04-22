@@ -510,9 +510,14 @@ export default function DatosLiquidacionPersonalPesca({
 
       const todasDescargas = await getAllDescargaFaenaPesca();
       const faenaIds = faenasTemporada.map((f) => Number(f.id));
-      const descargasTemporada = todasDescargas.filter((d) =>
-        faenaIds.includes(Number(d.faenaPescaId)),
-      );
+      const descargasTemporada = todasDescargas
+        .filter((d) => faenaIds.includes(Number(d.faenaPescaId)))
+        .sort((a, b) => {
+          // Ordenar por fechaHoraInicioDescarga ascendente (más antigua primero)
+          const fechaA = a.fechaHoraInicioDescarga ? new Date(a.fechaHoraInicioDescarga) : new Date(0);
+          const fechaB = b.fechaHoraInicioDescarga ? new Date(b.fechaHoraInicioDescarga) : new Date(0);
+          return fechaA - fechaB;
+        });
 
       reportStates.pesca.setReportData({
         temporada: temporadaCompleta,
@@ -681,7 +686,7 @@ export default function DatosLiquidacionPersonalPesca({
             d.formaParteCalculoLiqAlquilerCuota === true &&
             d.validadoTesoreria === true &&
             Number(d.entidadComercialId) ===
-              Number(entidadEmpresarialAlquiladaId) &&
+            Number(entidadEmpresarialAlquiladaId) &&
             d.producto?.descripcionBase === "ADELANTO" &&
             d.producto?.descripcionExtendida === "ALQUILERES",
         );
@@ -772,7 +777,7 @@ export default function DatosLiquidacionPersonalPesca({
             d.formaParteCalculoLiqAlquilerCuota === true &&
             d.validadoTesoreria === true &&
             Number(d.entidadComercialId) ===
-              Number(entidadComercialComisionistaAlquiler) &&
+            Number(entidadComercialComisionistaAlquiler) &&
             d.producto?.descripcionBase === "ADELANTO" &&
             d.producto?.descripcionExtendida === "COMISIONES",
         );
@@ -912,7 +917,7 @@ export default function DatosLiquidacionPersonalPesca({
             d.formaParteCalculoLiquidacionTripulantes === true &&
             d.validadoTesoreria === true &&
             Number(d.entidadComercialId) ===
-              Number(entidadComercialMotorista) &&
+            Number(entidadComercialMotorista) &&
             d.producto?.descripcionBase === "ADELANTO" &&
             d.producto?.descripcionExtendida === "COMISIONES",
         );
@@ -1023,55 +1028,55 @@ export default function DatosLiquidacionPersonalPesca({
       // Obtener nombre de embarcación (primera faena activa)
       const faenas = await getFaenasPesca(temporadaId);
       const primeraFaena = faenas.find((f) => f.embarcacion?.activo);
-     const nombreEmbarcacion =
-  primeraFaena?.embarcacion?.nombre || "SIN EMBARCACION";
+      const nombreEmbarcacion =
+        primeraFaena?.embarcacion?.nombre || "SIN EMBARCACION";
 
-// Preparar datos para el reporte
-const datosReporte = {
-  temporada: temporadaCompleta,
-  descargas: descargasData,
-  comisionesGeneradas: comisionesGeneradas,
-  baseLiquidacionReal: watch("baseLiquidacionReal") || 0,
-  
-  // ✅ Estos SÍ son campos del formulario (funcionan con watch)
-  liqComisionPatronReal: watch("liqComisionPatronReal") || 0,
-  liqComisionMotoristaReal: watch("liqComisionMotoristaReal") || 0,
-  liqComisionPangueroReal: watch("liqComisionPangueroReal") || 0,
-  liqTripulantesPescaEstimado: watch("liqTripulantesPescaEstimado") || 0,
-  liqTripulantesPescaReal: watch("liqTripulantesPescaReal") || 0,
-  
-  // ⭐ CALCULAR liqComisionAlquilerAdicional (NO es campo del formulario)
-  liqComisionAlquilerAdicional:
-    Number(temporadaCompleta.cuotaAlquiladaTon || 0) *
-    Number(temporadaCompleta.precioPorTonComisionAlquilerDolares || 0),
-  
- // ⭐ CALCULAR fidelizacionPersonal (NO es campo del formulario)
-// Fórmula: SUMA de todas las comisiones.montoPagarFidelizacionDolares
-fidelizacionPersonal: comisionesGeneradas.reduce((total, comision) => {
-  return total + Number(comision.montoPagarFidelizacionDolares || 0);
-}, 0),
-  
-  cantPersonalCalcComisionMotorista:
-    watch("cantPersonalCalcComisionMotorista") || 0,
-  nombreEmbarcacion: nombreEmbarcacion,
-  ingresosTotalPesca: watch("ingresosTotalPesca") || 0,
-  ingresoFidelizacion: watch("ingresoFidelizacion") || 0,
-  ingresosPorAlquilerCuotaSur: watch("ingresosPorAlquilerCuotaSur") || 0,
-  
-  // Agregar estos datos al objeto datosReporte:
-  faenas: faenas,
-  detCuotaPescaAlquilada:
-    await obtenerDetCuotaPescaAlquilada(temporadaCompleta),
-  detCuotaPescaPropia:
-    await obtenerDetCuotaPescaPropia(temporadaCompleta),
-  
-  // ⭐ CALCULAR totalIngresosCalculado (NO es campo del formulario)
-  // Fórmula: cuotaPropiaTon × precioPorTonDolares × (porcentajeBaseLiqPesca / 100)
-  totalIngresosCalculado:
-    Number(temporadaCompleta.cuotaPropiaTon || 0) *
-    Number(temporadaCompleta.precioPorTonDolares || 0) *
-    (Number(temporadaCompleta.porcentajeBaseLiqPesca || 0) / 100),
-};
+      // Preparar datos para el reporte
+      const datosReporte = {
+        temporada: temporadaCompleta,
+        descargas: descargasData,
+        comisionesGeneradas: comisionesGeneradas,
+        baseLiquidacionReal: watch("baseLiquidacionReal") || 0,
+
+        // ✅ Estos SÍ son campos del formulario (funcionan con watch)
+        liqComisionPatronReal: watch("liqComisionPatronReal") || 0,
+        liqComisionMotoristaReal: watch("liqComisionMotoristaReal") || 0,
+        liqComisionPangueroReal: watch("liqComisionPangueroReal") || 0,
+        liqTripulantesPescaEstimado: watch("liqTripulantesPescaEstimado") || 0,
+        liqTripulantesPescaReal: watch("liqTripulantesPescaReal") || 0,
+
+        // ⭐ CALCULAR liqComisionAlquilerAdicional (NO es campo del formulario)
+        liqComisionAlquilerAdicional:
+          Number(temporadaCompleta.cuotaAlquiladaTon || 0) *
+          Number(temporadaCompleta.precioPorTonComisionAlquilerDolares || 0),
+
+        // ⭐ CALCULAR fidelizacionPersonal (NO es campo del formulario)
+        // Fórmula: SUMA de todas las comisiones.montoPagarFidelizacionDolares
+        fidelizacionPersonal: comisionesGeneradas.reduce((total, comision) => {
+          return total + Number(comision.montoPagarFidelizacionDolares || 0);
+        }, 0),
+
+        cantPersonalCalcComisionMotorista:
+          watch("cantPersonalCalcComisionMotorista") || 0,
+        nombreEmbarcacion: nombreEmbarcacion,
+        ingresosTotalPesca: watch("ingresosTotalPesca") || 0,
+        ingresoFidelizacion: watch("ingresoFidelizacion") || 0,
+        ingresosPorAlquilerCuotaSur: watch("ingresosPorAlquilerCuotaSur") || 0,
+
+        // Agregar estos datos al objeto datosReporte:
+        faenas: faenas,
+        detCuotaPescaAlquilada:
+          await obtenerDetCuotaPescaAlquilada(temporadaCompleta),
+        detCuotaPescaPropia:
+          await obtenerDetCuotaPescaPropia(temporadaCompleta),
+
+        // ⭐ CALCULAR totalIngresosCalculado (NO es campo del formulario)
+        // Fórmula: cuotaPropiaTon × precioPorTonDolares × (porcentajeBaseLiqPesca / 100)
+        totalIngresosCalculado:
+          Number(temporadaCompleta.cuotaPropiaTon || 0) *
+          Number(temporadaCompleta.precioPorTonDolares || 0) *
+          (Number(temporadaCompleta.porcentajeBaseLiqPesca || 0) / 100),
+      };
 
       // Mostrar selector de formato
       reportStates.consolidadoPesca.setShowFormatSelector(true);

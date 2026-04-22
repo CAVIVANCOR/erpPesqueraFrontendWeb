@@ -762,7 +762,7 @@ const TemporadaPesca = ({ ruta }) => {
 
     return (
       <div className="text-center">
-        <Badge value={`${porcentaje.toFixed(1)}%`} severity={severity} />
+        <Badge value={`${porcentaje.toFixed(2)}%`} severity={severity} />
       </div>
     );
   };

@@ -8,7 +8,7 @@
  * @version 1.0.0
  */
 
-import React, { useState, useEffect, useRef, forwardRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef, useMemo } from "react";
 import { Card } from "primereact/card";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -148,6 +148,35 @@ const DetalleFaenasPescaCard = forwardRef(
           (f) => f.temporadaId === temporadaPescaId,
         );
         setFaenas(faenasFiltradas);
+
+        // Cargar descargas de todas las faenas para mostrar combustible total
+        const descargasPromises = faenasFiltradas.map(async (faena) => {
+          try {
+            const descargas = await getDescargasPorFaena(faena.id);
+
+            // Verificar si tienen combustibleAbastecidoGalones
+            descargas.forEach((descarga, index) => {
+            });
+
+            return { faenaId: faena.id, descargas };
+          } catch (error) {
+            console.error(`❌ Error cargando descargas de faena ${faena.id}:`, error);
+            return { faenaId: faena.id, descargas: [] };
+          }
+        });
+
+        const descargasResults = await Promise.all(descargasPromises);
+
+        // Actualizar estado de descargas
+        const newDescargasData = {};
+        descargasResults.forEach(({ faenaId, descargas }) => {
+          newDescargasData[faenaId] = descargas;
+
+          // Calcular total para verificar
+          const total = descargas.reduce((sum, d) => sum + (Number(d.combustibleAbastecidoGalones) || 0), 0);
+        });
+
+        setDescargasData(newDescargasData);
       } catch (error) {
         console.error("Error cargando faenas:", error);
         toast.current?.show({
@@ -401,8 +430,8 @@ const DetalleFaenasPescaCard = forwardRef(
       return puerto ? puerto.nombre : "N/A";
     };
 
-    // Configuración de columnas
-    const columns = [
+    // Configuración de columnas - Memoizada con dependencias reactivas
+    const columns = useMemo(() => [
       {
         field: "id",
         header: "ID Faena",
@@ -518,6 +547,20 @@ const DetalleFaenasPescaCard = forwardRef(
         },
       },
       {
+        field: "combustibleTotal",
+        header: "Combustible Total",
+        sortable: true,
+        body: (rowData) => {
+          const descargas = descargasData[rowData.id] || [];
+          const combustibleTotal = descargas.reduce((sum, descarga) => {
+            return sum + (Number(descarga.combustibleAbastecidoGalones) || 0);
+          }, 0);
+          return combustibleTotal > 0
+            ? `${combustibleTotal.toFixed(2)} gal.`
+            : "-";
+        },
+      },
+      {
         header: "Acciones",
         body: (rowData) => (
           <div className="flex gap-2">
@@ -536,7 +579,7 @@ const DetalleFaenasPescaCard = forwardRef(
           </div>
         ),
       },
-    ];
+    ], [embarcaciones, boliches, bahiasComerciales, patrones, motoristas, puertosData, descargasData]);
 
     // Template para mostrar descargas de una faena
     const descargasTemplate = (faenaData) => {
@@ -1244,6 +1287,7 @@ const DetalleFaenasPescaCard = forwardRef(
               onRowCollapse={onRowCollapse}
               dataKey="id"
               header={header}
+              key={`faenas-table-${Object.keys(descargasData).length}`}
             >
               <Column expander style={{ width: "5rem" }} />
               {columns.map((column) => (

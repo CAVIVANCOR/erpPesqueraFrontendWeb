@@ -730,7 +730,7 @@ export const PDF_MODULES_CONFIG = {
     },
   },
 
-  "movimiento-caja-operacion": {
+   "movimiento-caja-operacion": {
     uploadPath: "uploads/pdf-system/movimiento-caja-operacion",
     oldPaths: [],
     apiEndpoint: "/pdf/movimiento-caja-operacion",
@@ -740,6 +740,32 @@ export const PDF_MODULES_CONFIG = {
     database: {
       table: "MovimientoCaja",
       field: "urlComprobanteOperacionMovCaja",  // ✅ CORREGIDO
+    },
+  },
+
+   "descarga-faena-pesca-comprobante-wincha": {
+    uploadPath: "uploads/pdf-system/descarga-faena-pesca-comprobante-wincha",
+    oldPaths: [],
+    apiEndpoint: "/pdf/descarga-faena-pesca-comprobante-wincha",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf", "image/jpeg", "image/png"],
+    maxFiles: 20,
+    database: {
+      table: "DescargaFaenaPesca",
+      field: "urlComprobanteWincha",
+    },
+  },
+
+  "descarga-faena-consumo-comprobante-wincha": {
+    uploadPath: "uploads/pdf-system/descarga-faena-consumo-comprobante-wincha",
+    oldPaths: [],
+    apiEndpoint: "/pdf/descarga-faena-consumo-comprobante-wincha",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf", "image/jpeg", "image/png"],
+    maxFiles: 20,
+    database: {
+      table: "DescargaFaenaConsumo",
+      field: "urlComprobanteWincha",
     },
   },
   

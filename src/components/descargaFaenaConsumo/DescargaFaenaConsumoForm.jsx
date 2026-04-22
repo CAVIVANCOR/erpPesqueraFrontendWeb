@@ -42,6 +42,13 @@ import { getCalasFaenaConsumoPorFaena } from "../../api/calaFaenaConsumo";
 import { DEFAULT_MAP_ZOOM, MARKER_ICONS } from "../../config/mapConfig";
 import L from "leaflet";
 import PanelMapaGeografico from "../shared/PanelMapaGeografico";
+import PuntoGPSInput from "../shared/PuntoGPSInput";
+import { TabView, TabPanel } from "primereact/tabview";
+import { getEmbarcacionPorId } from "../../api/embarcacion";
+import { getPrecioCombustibleVigente } from "../../api/precioCombustible";
+import { consultarTipoCambioSunat } from "../../api/consultaExterna";
+import { formatearNumero } from "../../utils/utils";
+import PDFDocumentManager from "../pdf/PDFDocumentManager";
 /**
  * Formulario DescargaFaenaConsumoForm
  *
@@ -205,6 +212,24 @@ export default function DescargaFaenaConsumoForm({
   // Estados para plataformas de recepción
   const [plataformasRecepcion, setPlataformasRecepcion] = useState([]);
   const [loadingPlataformas, setLoadingPlataformas] = useState(false);
+
+  // Estados para información geográfica de PLATAFORMA
+  const [infoGeograficaPlataforma, setInfoGeograficaPlataforma] = useState(null);
+  const [loadingGeoPlataforma, setLoadingGeoPlataforma] = useState(false);
+
+  // Estados para cálculos de recorrido Retorno → Puerto
+  const [puertoSalidaDatos, setPuertoSalidaDatos] = useState(null);
+  const [distanciaRetornoPuerto, setDistanciaRetornoPuerto] = useState(null);
+  const [consumoCombustible, setConsumoCombustible] = useState(null);
+  const [costoCombustible, setCostoCombustible] = useState(null);
+  const [precioCombustibleSoles, setPrecioCombustibleSoles] = useState(0);
+  const [loadingPrecioCombustible, setLoadingPrecioCombustible] = useState(false);
+
+  // Estados para cálculos de recorrido Descarga → Fondeo
+  const [distanciaDescargaFondeo, setDistanciaDescargaFondeo] = useState(null);
+  const [consumoDescargaFondeo, setConsumoDescargaFondeo] = useState(null);
+  const [costoDescargaFondeo, setCostoDescargaFondeo] = useState(null);
+  const [embarcacionCompleta, setEmbarcacionCompleta] = useState(null);
 
   /**
    * Componente de marcador de ubicación del usuario - DESCARGA
@@ -931,6 +956,299 @@ export default function DescargaFaenaConsumoForm({
     }
   }, [latitudFondeo, longitudFondeo]);
 
+  /**
+   * useEffect para analizar coordenadas de PLATAFORMA cuando ya existe en el formulario
+   */
+  useEffect(() => {
+    const plataformaRecepcionPescaId = watch("plataformaRecepcionPescaId");
+
+    if (plataformaRecepcionPescaId && plataformasRecepcion.length > 0 && !loadingGeoPlataforma) {
+      const plataformaSeleccionada = plataformasRecepcion.find(
+        (p) => Number(p.value) === Number(plataformaRecepcionPescaId)
+      );
+
+      if (plataformaSeleccionada?.latitud && plataformaSeleccionada?.longitud) {
+        const coordenadasActuales = `${plataformaSeleccionada.latitud},${plataformaSeleccionada.longitud}`;
+        const coordenadasAnalizadas = infoGeograficaPlataforma
+          ? `${infoGeograficaPlataforma.coordenadas?.latitud},${infoGeograficaPlataforma.coordenadas?.longitud}`
+          : null;
+
+        if (coordenadasActuales !== coordenadasAnalizadas) {
+          const analizarCoordenadasPlataformaExistentes = async () => {
+            setLoadingGeoPlataforma(true);
+            try {
+              const infoGeo = await analizarCoordenadasConReferencia(
+                plataformaSeleccionada.latitud,
+                plataformaSeleccionada.longitud,
+                null
+              );
+              setInfoGeograficaPlataforma(infoGeo);
+            } catch (error) {
+              console.error("Error al analizar coordenadas de plataforma:", error);
+              setInfoGeograficaPlataforma(null);
+            } finally {
+              setLoadingGeoPlataforma(false);
+            }
+          };
+
+          analizarCoordenadasPlataformaExistentes();
+        }
+      }
+    }
+  }, [watch("plataformaRecepcionPescaId"), plataformasRecepcion]);
+
+  /**
+   * useEffect para cargar datos completos de la embarcación
+   */
+  useEffect(() => {
+    const cargarEmbarcacion = async () => {
+      if (!faenaData?.embarcacionId) {
+        setEmbarcacionCompleta(null);
+        return;
+      }
+
+      try {
+        const embarcacion = await getEmbarcacionPorId(faenaData.embarcacionId);
+        setEmbarcacionCompleta(embarcacion);
+      } catch (error) {
+        console.error("Error al cargar embarcación:", error);
+        setEmbarcacionCompleta(null);
+      }
+    };
+
+    cargarEmbarcacion();
+  }, [faenaData?.embarcacionId]);
+
+  /**
+   * useEffect para cargar datos del puerto de salida
+   */
+  useEffect(() => {
+    if (faenaData?.puertoSalidaId && puertos.length > 0) {
+      const puerto = puertos.find(
+        (p) => Number(p.id) === Number(faenaData.puertoSalidaId)
+      );
+      setPuertoSalidaDatos(puerto || null);
+    }
+  }, [faenaData?.puertoSalidaId, puertos]);
+
+  /**
+   * useEffect para cargar precio de combustible vigente
+   */
+  useEffect(() => {
+    const cargarPrecioCombustible = async () => {
+      if (!temporadaData?.empresa?.entidadComercialId) return;
+
+      try {
+        setLoadingPrecioCombustible(true);
+        const precio = await getPrecioCombustibleVigente(
+          temporadaData.empresa.entidadComercialId
+        );
+
+        if (precio) {
+          let precioSoles = Number(precio.precio);
+
+          if (precio.moneda?.codigo === "USD" && precio.tipoCambioSunat) {
+            precioSoles = precioSoles * Number(precio.tipoCambioSunat);
+          }
+
+          setPrecioCombustibleSoles(precioSoles);
+        }
+      } catch (error) {
+        console.error("Error al cargar precio de combustible:", error);
+        setPrecioCombustibleSoles(0);
+      } finally {
+        setLoadingPrecioCombustible(false);
+      }
+    };
+
+    cargarPrecioCombustible();
+  }, [temporadaData?.empresa?.entidadComercialId]);
+
+  /**
+   * useEffect para calcular distancia entre inicio retorno y puerto descarga
+   */
+  useEffect(() => {
+    const puertoDescargaId = watch("puertoDescargaId");
+    const plataformaRecepcionPescaId = watch("plataformaRecepcionPescaId");
+    const latitudRetorno = watch("latitud");
+    const longitudRetorno = watch("longitud");
+
+    if (latitudRetorno && longitudRetorno && Number(latitudRetorno) !== 0 && Number(longitudRetorno) !== 0) {
+      let latitudDestino = null;
+      let longitudDestino = null;
+
+      if (plataformaRecepcionPescaId && plataformasRecepcion.length > 0) {
+        const plataforma = plataformasRecepcion.find(
+          (p) => Number(p.value) === Number(plataformaRecepcionPescaId)
+        );
+
+        if (plataforma?.latitud && plataforma?.longitud) {
+          latitudDestino = Number(plataforma.latitud);
+          longitudDestino = Number(plataforma.longitud);
+        }
+      }
+
+      if (!latitudDestino && !longitudDestino && puertoDescargaId && puertos.length > 0) {
+        const puertoDescarga = puertos.find(
+          (p) => Number(p.id) === Number(puertoDescargaId)
+        );
+
+        if (puertoDescarga?.latitud && puertoDescarga?.longitud) {
+          latitudDestino = Number(puertoDescarga.latitud);
+          longitudDestino = Number(puertoDescarga.longitud);
+        }
+      }
+
+      if (latitudDestino && longitudDestino) {
+        const R = 3440.065;
+        const dLat = ((latitudDestino - Number(latitudRetorno)) * Math.PI) / 180;
+        const dLon = ((longitudDestino - Number(longitudRetorno)) * Math.PI) / 180;
+        const lat1Rad = (Number(latitudRetorno) * Math.PI) / 180;
+        const lat2Rad = (latitudDestino * Math.PI) / 180;
+
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1Rad) *
+          Math.cos(lat2Rad) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distancia = R * c;
+
+        setDistanciaRetornoPuerto(distancia);
+      } else {
+        setDistanciaRetornoPuerto(null);
+      }
+    } else {
+      setDistanciaRetornoPuerto(null);
+    }
+  }, [watch("puertoDescargaId"), watch("plataformaRecepcionPescaId"), watch("latitud"), watch("longitud"), puertos, plataformasRecepcion]);
+
+  /**
+   * useEffect para calcular consumo de combustible Retorno → Puerto
+   */
+  useEffect(() => {
+    if (
+      distanciaRetornoPuerto !== null &&
+      embarcacionCompleta?.millasNauticasPorGalon
+    ) {
+      const consumo =
+        distanciaRetornoPuerto /
+        Number(embarcacionCompleta.millasNauticasPorGalon);
+      setConsumoCombustible(consumo);
+    } else {
+      setConsumoCombustible(null);
+    }
+  }, [distanciaRetornoPuerto, embarcacionCompleta?.millasNauticasPorGalon]);
+
+  /**
+   * useEffect para calcular costo de combustible Retorno → Puerto
+   */
+  useEffect(() => {
+    if (consumoCombustible !== null && precioCombustibleSoles > 0) {
+      const costo = consumoCombustible * precioCombustibleSoles;
+      setCostoCombustible(costo);
+    } else {
+      setCostoCombustible(null);
+    }
+  }, [consumoCombustible, precioCombustibleSoles]);
+
+  /**
+   * useEffect para calcular distancia entre puerto descarga y fondeo
+   */
+  useEffect(() => {
+    const plataformaRecepcionPescaId = watch("plataformaRecepcionPescaId");
+    const puertoDescargaId = watch("puertoDescargaId");
+    const latitudFondeo = watch("latitudFondeo");
+    const longitudFondeo = watch("longitudFondeo");
+
+    if (latitudFondeo && longitudFondeo && Number(latitudFondeo) !== 0 && Number(longitudFondeo) !== 0) {
+      let latitudPlataforma = null;
+      let longitudPlataforma = null;
+
+      if (plataformaRecepcionPescaId && plataformasRecepcion.length > 0) {
+        const plataforma = plataformasRecepcion.find(
+          (p) => Number(p.value) === Number(plataformaRecepcionPescaId)
+        );
+
+        if (plataforma?.latitud && plataforma?.longitud) {
+          latitudPlataforma = Number(plataforma.latitud);
+          longitudPlataforma = Number(plataforma.longitud);
+        }
+      }
+
+      if (!latitudPlataforma && !longitudPlataforma && puertoDescargaId && puertos.length > 0) {
+        const puertoDescarga = puertos.find(
+          (p) => Number(p.id) === Number(puertoDescargaId)
+        );
+
+        if (puertoDescarga?.latitud && puertoDescarga?.longitud) {
+          latitudPlataforma = Number(puertoDescarga.latitud);
+          longitudPlataforma = Number(puertoDescarga.longitud);
+        }
+      }
+
+      if (latitudPlataforma && longitudPlataforma) {
+        const R = 3440.065;
+        const dLat = ((Number(latitudFondeo) - latitudPlataforma) * Math.PI) / 180;
+        const dLon = ((Number(longitudFondeo) - longitudPlataforma) * Math.PI) / 180;
+        const lat1Rad = (latitudPlataforma * Math.PI) / 180;
+        const lat2Rad = (Number(latitudFondeo) * Math.PI) / 180;
+
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1Rad) *
+          Math.cos(lat2Rad) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distancia = R * c;
+
+        setDistanciaDescargaFondeo(distancia);
+      } else {
+        setDistanciaDescargaFondeo(null);
+      }
+    } else {
+      setDistanciaDescargaFondeo(null);
+    }
+  }, [
+    watch("plataformaRecepcionPescaId"),
+    watch("puertoDescargaId"),
+    watch("latitudFondeo"),
+    watch("longitudFondeo"),
+    plataformasRecepcion,
+    puertos,
+  ]);
+
+  /**
+   * useEffect para calcular consumo de combustible Descarga → Fondeo
+   */
+  useEffect(() => {
+    if (
+      distanciaDescargaFondeo !== null &&
+      embarcacionCompleta?.millasNauticasPorGalon
+    ) {
+      const consumo =
+        distanciaDescargaFondeo /
+        Number(embarcacionCompleta.millasNauticasPorGalon);
+      setConsumoDescargaFondeo(consumo);
+    } else {
+      setConsumoDescargaFondeo(null);
+    }
+  }, [distanciaDescargaFondeo, embarcacionCompleta?.millasNauticasPorGalon]);
+
+  /**
+   * useEffect para calcular costo de combustible Descarga → Fondeo
+   */
+  useEffect(() => {
+    if (consumoDescargaFondeo !== null && precioCombustibleSoles > 0) {
+      const costo = consumoDescargaFondeo * precioCombustibleSoles;
+      setCostoDescargaFondeo(costo);
+    } else {
+      setCostoDescargaFondeo(null);
+    }
+  }, [consumoDescargaFondeo, precioCombustibleSoles]);
+
   // Cálculos automáticos al cambiar especie, toneladas, cubetas o precio
   useEffect(() => {
     const realizarCalculos = () => {
@@ -1177,15 +1495,25 @@ export default function DescargaFaenaConsumoForm({
     );
   };
 
-  /**
+    /**
    * Componente de marker draggable para el mapa de FONDEO
+   * 🟠 NARANJA - Representa el punto de FONDEO
    */
   const DraggableMarkerFondeo = () => {
     const markerRef = useRef(null);
     const nombrePuerto = watch("puertoFondeoId")
       ? puertos.find((p) => Number(p.id) === Number(watch("puertoFondeoId")))
         ?.nombre || "Puerto"
-      : "Puerto de Fondeo";
+      : "Fondeo";
+
+    const iconoNaranja = L.icon({
+      iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png",
+      shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
 
     const eventHandlers = {
       dragend() {
@@ -1205,9 +1533,10 @@ export default function DescargaFaenaConsumoForm({
         draggable={!loading}
         eventHandlers={eventHandlers}
         ref={markerRef}
+        icon={iconoNaranja}
       >
         <Popup>
-          <strong>{nombrePuerto}</strong>
+          <strong>Fondeo: {nombrePuerto}</strong>
           <br />
           Lat: {Number(latitudFondeo).toFixed(6)}
           <br />
@@ -1610,1699 +1939,951 @@ export default function DescargaFaenaConsumoForm({
     <div className="p-fluid">
       <Toast ref={toast} />
 
-      {/* Primera fila: Datos básicos */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "end",
-          gap: 10,
-          marginBottom: "0.5rem",
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="puertoDescargaId">Puerto Descarga*</label>
-          <Controller
-            name="puertoDescargaId"
-            control={control}
-            rules={{ required: "El puerto de descarga es obligatorio" }}
-            render={({ field }) => (
-              <Dropdown
-                id="puertoDescargaId"
-                {...field}
-                value={field.value}
-                options={puertosNormalizados}
-                optionLabel="label"
-                optionValue="value"
-                style={{ fontWeight: "bold" }}
-                placeholder="Seleccione puerto"
-                disabled={loading}
-                className={classNames({ "p-invalid": errors.puertoDescargaId })}
-              />
-            )}
-          />
-          {errors.puertoDescargaId && (
-            <Message severity="error" text={errors.puertoDescargaId.message} />
-          )}
-        </div>
-        <div style={{ flex: 1 }}>
-          <Button
-            type="button"
-            label="Retorno a Puerto"
-            icon="pi pi-clock"
-            className="p-button-info"
-            onClick={() => setValue("fechaHoraArriboPuerto", new Date())}
-            disabled={loading}
-            severity="info"
-            raised
-            size="small"
-            style={{ marginTop: "5px" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaHoraArriboPuerto" style={{ color: "#2c32d3" }}>
-            Retorno a Puerto*
-          </label>
-          <Controller
-            name="fechaHoraArriboPuerto"
-            control={control}
-            rules={{ required: "La fecha de arribo es obligatoria" }}
-            render={({ field }) => (
-              <Calendar
-                id="fechaHoraArriboPuerto"
-                {...field}
-                showIcon
-                showTime
-                hourFormat="24"
-                dateFormat="dd/mm/yy"
-                inputStyle={{ fontWeight: "bold", color: "#2c32d3" }}
-                disabled={loading}
-                className={classNames({
-                  "p-invalid": errors.fechaHoraArriboPuerto,
-                })}
-              />
-            )}
-          />
-          {errors.fechaHoraArriboPuerto && (
-            <Message
-              severity="error"
-              text={errors.fechaHoraArriboPuerto.message}
-            />
-          )}
-        </div>
-        <div style={{ flex: 1 }}>
-          <Button
-            type="button"
-            label="Arribo a Puerto"
-            icon="pi pi-clock"
-            className="p-button-info"
-            onClick={() => setValue("fechaHoraLlegadaPuerto", new Date())}
-            disabled={loading}
-            severity="info"
-            raised
-            size="small"
-            style={{ marginTop: "5px" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaHoraLlegadaPuerto" style={{ color: "#2c32d3" }}>
-            Arribo a Puerto*
-          </label>
-          <Controller
-            name="fechaHoraLlegadaPuerto"
-            control={control}
-            rules={{ required: "La fecha de llegada es obligatoria" }}
-            render={({ field }) => (
-              <Calendar
-                id="fechaHoraLlegadaPuerto"
-                {...field}
-                showIcon
-                showTime
-                hourFormat="24"
-                dateFormat="dd/mm/yy"
-                inputStyle={{ fontWeight: "bold", color: "#2c32d3" }}
-                disabled={loading}
-                className={classNames({
-                  "p-invalid": errors.fechaHoraLlegadaPuerto,
-                })}
-              />
-            )}
-          />
-          {errors.fechaHoraLlegadaPuerto && (
-            <Message
-              severity="error"
-              text={errors.fechaHoraLlegadaPuerto.message}
-            />
-          )}
-        </div>
-      </div>
-      {/* Cuarta fila: Coordenadas GPS */}
-      <div
-        style={{
-          border: "6px solid #0EA5E9",
-          padding: "0.5rem",
-          borderRadius: "8px",
-          marginBottom: "0.5rem",
-          display: "flex",
-          alignItems: "self-end",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <Button
-            type="button"
-            label="Capturar GPS Arribo"
-            icon="pi pi-map-marker"
-            className="p-button-info"
-            onClick={handleCapturarGPS}
-            disabled={loading}
-            size="small"
-            severity="info"
-            raised
-          />
-        </div>
-
-        {/* Tabla MEJORADA de coordenadas GPS - Optimizada para Tablet */}
-        <div style={{ flex: 6 }}>
-          <table
+      <TabView>
+        {/* TAB 1: DATOS DE DESCARGA */}
+        <TabPanel header="📋 Datos de Descarga">
+          {/* Primera fila: Datos básicos */}
+          <div
             style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              border: "3px solid #0EA5E9",
+              display: "flex",
+              alignItems: "end",
+              gap: 10,
+              marginBottom: "0.5rem",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
-            <thead>
-              <tr style={{ backgroundColor: "#0EA5E9", color: "white" }}>
-                <th
-                  style={{
-                    padding: "8px",
-                    border: "1px solid #0EA5E9",
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    width: "100px",
-                    minWidth: "100px",
-                  }}
-                >
-                  Formato
-                </th>
-                <th
-                  colSpan="4"
-                  style={{
-                    padding: "8px",
-                    border: "1px solid #0EA5E9",
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    textAlign: "center",
-                  }}
-                >
-                  Latitud (Siempre SUR en Perú)
-                </th>
-                <th
-                  colSpan="4"
-                  style={{
-                    padding: "8px",
-                    border: "1px solid #0EA5E9",
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    textAlign: "center",
-                  }}
-                >
-                  Longitud (Siempre OESTE en Perú)
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* ========== FILA DECIMAL ========== */}
-              <tr>
-                <td
-                  style={{
-                    padding: "8px",
-                    border: "1px solid #0EA5E9",
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                    backgroundColor: "#e1f1f7",
-                    width: "100px",
-                  }}
-                >
-                  Decimal
-                </td>
-                <td
-                  colSpan="4"
-                  style={{ padding: "4px", border: "1px solid #0EA5E9" }}
-                >
-                  <Controller
-                    name="latitud"
-                    control={control}
-                    render={({ field }) => (
-                      <InputNumber
-                        value={field.value}
-                        onValueChange={(e) => field.onChange(e.value)}
-                        placeholder="-12.123456"
-                        disabled={loading}
-                        mode="decimal"
-                        minFractionDigits={0}
-                        maxFractionDigits={14}
-                        min={-90}
-                        max={90}
-                        style={{
-                          width: "100%",
-                          fontSize: "20px",
-                          padding: "8px",
-                        }}
-                      />
-                    )}
+            <div style={{ flex: 1 }}>
+              <label htmlFor="puertoDescargaId">Puerto Descarga*</label>
+              <Controller
+                name="puertoDescargaId"
+                control={control}
+                rules={{ required: "El puerto de descarga es obligatorio" }}
+                render={({ field }) => (
+                  <Dropdown
+                    id="puertoDescargaId"
+                    {...field}
+                    value={field.value}
+                    options={puertosNormalizados}
+                    optionLabel="label"
+                    optionValue="value"
+                    style={{ fontWeight: "bold" }}
+                    placeholder="Seleccione puerto"
+                    disabled={loading}
+                    className={classNames({ "p-invalid": errors.puertoDescargaId })}
                   />
-                </td>
-                <td
-                  colSpan="4"
-                  style={{ padding: "4px", border: "1px solid #0EA5E9" }}
-                >
-                  <Controller
-                    name="longitud"
-                    control={control}
-                    render={({ field }) => (
-                      <InputNumber
-                        value={field.value}
-                        onValueChange={(e) => field.onChange(e.value)}
-                        placeholder="-77.123456"
-                        disabled={loading}
-                        mode="decimal"
-                        minFractionDigits={0}
-                        maxFractionDigits={14}
-                        min={-180}
-                        max={180}
-                        style={{
-                          width: "100%",
-                          fontSize: "20px",
-                          padding: "8px",
-                        }}
-                      />
-                    )}
-                  />
-                </td>
-              </tr>
-
-              {/* ========== FILA DMS (Grados, Minutos, Segundos) ========== */}
-              <tr>
-                <td
-                  style={{
-                    padding: "8px",
-                    border: "1px solid #0EA5E9",
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                    backgroundColor: "#e1f1f7",
-                  }}
-                >
-                  DMS
-                </td>
-
-                {/* ===== LATITUD DMS ===== */}
-                {/* Grados */}
-                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <input
-                      type="number"
-                      value={latGrados}
-                      onChange={(e) =>
-                        setLatGrados(Number(e.target.value) || 0)
-                      }
-                      onBlur={actualizarLatitudDesdeDMS}
-                      disabled={loading}
-                      min="0"
-                      max="90"
-                      style={{
-                        width: "140px",
-                        padding: "8px",
-                        border: "2px solid #059669",
-                        fontSize: "18px", // ← MÁS GRANDE
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                      °
-                    </span>
-                  </div>
-                </td>
-
-                {/* Minutos */}
-                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <input
-                      type="number"
-                      value={latMinutos}
-                      onChange={(e) =>
-                        setLatMinutos(Number(e.target.value) || 0)
-                      }
-                      onBlur={actualizarLatitudDesdeDMS}
-                      disabled={loading}
-                      min="0"
-                      max="59"
-                      style={{
-                        width: "140px",
-                        padding: "8px",
-                        border: "2px solid #059669",
-                        fontSize: "18px", // ← MÁS GRANDE
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                      '
-                    </span>
-                  </div>
-                </td>
-
-                {/* Segundos */}
-                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <input
-                      type="number"
-                      value={latSegundos}
-                      onChange={(e) =>
-                        setLatSegundos(parseFloat(e.target.value) || 0)
-                      }
-                      onBlur={actualizarLatitudDesdeDMS}
-                      disabled={loading}
-                      min="0"
-                      max="59.99"
-                      step="0.01"
-                      style={{
-                        width: "140px",
-                        padding: "8px",
-                        border: "2px solid #059669",
-                        fontSize: "18px", // ← MÁS GRANDE
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                      "
-                    </span>
-                  </div>
-                </td>
-
-                {/* Dirección N/S - BLOQUEADO EN "S" PARA USUARIOS NORMALES */}
-                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
-                  <select
-                    value={latDireccion}
-                    onChange={(e) => {
-                      setLatDireccion(e.target.value);
-                      actualizarLatitudDesdeDMS();
-                    }}
-                    disabled={!esSuperUsuario || loading} // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: esSuperUsuario
-                        ? "2px solid #f59e0b"
-                        : "2px solid #94a3b8",
-                      fontSize: "18px", // ← MÁS GRANDE
-                      fontWeight: "bold",
-                      textAlign: "center",
-                      borderRadius: "4px",
-                      backgroundColor: esSuperUsuario ? "#fef3c7" : "#f1f5f9",
-                      cursor: esSuperUsuario ? "pointer" : "not-allowed",
-                    }}
-                  >
-                    <option value="N">N</option>
-                    <option value="S">S</option>
-                  </select>
-                  {!esSuperUsuario && (
-                    <div
-                      style={{
-                        fontSize: "10px",
-                        color: "#64748b",
-                        textAlign: "center",
-                        marginTop: "2px",
-                      }}
-                    >
-                      🔒 Fijo
-                    </div>
-                  )}
-                </td>
-
-                {/* ===== LONGITUD DMS ===== */}
-                {/* Grados */}
-                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <input
-                      type="number"
-                      value={lonGrados}
-                      onChange={(e) =>
-                        setLonGrados(Number(e.target.value) || 0)
-                      }
-                      onBlur={actualizarLongitudDesdeDMS}
-                      disabled={loading}
-                      min="0"
-                      max="180"
-                      style={{
-                        width: "140px",
-                        padding: "8px",
-                        border: "2px solid #2563eb",
-                        fontSize: "18px", // ← MÁS GRANDE
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                      °
-                    </span>
-                  </div>
-                </td>
-
-                {/* Minutos */}
-                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <input
-                      type="number"
-                      value={lonMinutos}
-                      onChange={(e) =>
-                        setLonMinutos(Number(e.target.value) || 0)
-                      }
-                      onBlur={actualizarLongitudDesdeDMS}
-                      disabled={loading}
-                      min="0"
-                      max="59"
-                      style={{
-                        width: "140px",
-                        padding: "8px",
-                        border: "2px solid #2563eb",
-                        fontSize: "18px", // ← MÁS GRANDE
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                      '
-                    </span>
-                  </div>
-                </td>
-
-                {/* Segundos */}
-                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <input
-                      type="number"
-                      value={lonSegundos}
-                      onChange={(e) =>
-                        setLonSegundos(parseFloat(e.target.value) || 0)
-                      }
-                      onBlur={actualizarLongitudDesdeDMS}
-                      disabled={loading}
-                      min="0"
-                      max="59.99"
-                      step="0.01"
-                      style={{
-                        width: "140px",
-                        padding: "8px",
-                        border: "2px solid #2563eb",
-                        fontSize: "18px", // ← MÁS GRANDE
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                      "
-                    </span>
-                  </div>
-                </td>
-
-                {/* Dirección E/W - BLOQUEADO EN "W" PARA USUARIOS NORMALES */}
-                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
-                  <select
-                    value={lonDireccion}
-                    onChange={(e) => {
-                      setLonDireccion(e.target.value);
-                      actualizarLongitudDesdeDMS();
-                    }}
-                    disabled={!esSuperUsuario || loading} // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: esSuperUsuario
-                        ? "2px solid #f59e0b"
-                        : "2px solid #94a3b8",
-                      fontSize: "18px", // ← MÁS GRANDE
-                      fontWeight: "bold",
-                      textAlign: "center",
-                      borderRadius: "4px",
-                      backgroundColor: esSuperUsuario ? "#fef3c7" : "#f1f5f9",
-                      cursor: esSuperUsuario ? "pointer" : "not-allowed",
-                    }}
-                  >
-                    <option value="E">E</option>
-                    <option value="W">W</option>
-                  </select>
-                  {!esSuperUsuario && (
-                    <div
-                      style={{
-                        fontSize: "10px",
-                        color: "#64748b",
-                        textAlign: "center",
-                        marginTop: "2px",
-                      }}
-                    >
-                      🔒 Fijo
-                    </div>
-                  )}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <PanelMapaGeografico
-        mapPosition={mapPosition}
-        mapKey={mapKey}
-        tipoMapa={tipoMapa}
-        getTileConfig={getTileConfig}
-        toggleFullscreen={toggleFullscreen}
-        cambiarTipoMapa={cambiarTipoMapa}
-        obtenerUbicacionUsuario={obtenerUbicacionUsuario}
-        mapContainerRef={mapContainerRef}
-        mapaFullscreen={mapaFullscreen}
-        infoGeografica={infoGeografica}
-        loadingGeo={loadingGeo}
-        getClasificacionAguasColor={getClasificacionAguasColor}
-        titulo="📍 Información Geográfica - Descarga"
-        colapsadoPorDefecto={true}
-      >
-        <LineaRetornoPlataforma />
-        <MarkerPuertoDescarga />
-        <DraggableMarker />
-        <UserLocationMarker />
-        <DistanceLine />
-    </PanelMapaGeografico>
-
-      {/* Segunda fila: Fechas y horas */ }
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          marginBottom: "0.5rem",
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 2 }}>
-          <label htmlFor="clienteId">Cliente*</label>
-          <Controller
-            name="clienteId"
-            control={control}
-            rules={{ required: "El cliente es obligatorio" }}
-            render={({ field }) => (
-              <Dropdown
-                id="clienteId"
-                {...field}
-                value={field.value}
-                options={clientesNormalizados}
-                filter
-                optionLabel="label"
-                optionValue="value"
-                style={{ fontWeight: "bold" }}
-                placeholder="Seleccione cliente"
-                                disabled={loading}
-                className={classNames({ "p-invalid": errors.clienteId })}
-                onChange={(e) => handleClienteChange(e.value)}
+                )}
               />
-            )}
-          />
-          {errors.clienteId && (
-            <Message severity="error" text={errors.clienteId.message} />
-          )}
-        </div>
+              {errors.puertoDescargaId && (
+                <Message severity="error" text={errors.puertoDescargaId.message} />
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                type="button"
+                label="Retorno a Puerto"
+                icon="pi pi-clock"
+                className="p-button-info"
+                onClick={() => setValue("fechaHoraArriboPuerto", new Date())}
+                disabled={loading}
+                severity="info"
+                raised
+                size="small"
+                style={{ marginTop: "5px" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="fechaHoraArriboPuerto" style={{ color: "#2c32d3" }}>
+                Retorno a Puerto*
+              </label>
+              <Controller
+                name="fechaHoraArriboPuerto"
+                control={control}
+                rules={{ required: "La fecha de arribo es obligatoria" }}
+                render={({ field }) => (
+                  <Calendar
+                    id="fechaHoraArriboPuerto"
+                    {...field}
+                    showIcon
+                    showTime
+                    hourFormat="24"
+                    dateFormat="dd/mm/yy"
+                    inputStyle={{ fontWeight: "bold", color: "#2c32d3" }}
+                    disabled={loading}
+                    className={classNames({
+                      "p-invalid": errors.fechaHoraArriboPuerto,
+                    })}
+                  />
+                )}
+              />
+              {errors.fechaHoraArriboPuerto && (
+                <Message
+                  severity="error"
+                  text={errors.fechaHoraArriboPuerto.message}
+                />
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                type="button"
+                label="Arribo a Puerto"
+                icon="pi pi-clock"
+                className="p-button-info"
+                onClick={() => setValue("fechaHoraLlegadaPuerto", new Date())}
+                disabled={loading}
+                severity="info"
+                raised
+                size="small"
+                style={{ marginTop: "5px" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="fechaHoraLlegadaPuerto" style={{ color: "#2c32d3" }}>
+                Arribo a Puerto*
+              </label>
+              <Controller
+                name="fechaHoraLlegadaPuerto"
+                control={control}
+                rules={{ required: "La fecha de llegada es obligatoria" }}
+                render={({ field }) => (
+                  <Calendar
+                    id="fechaHoraLlegadaPuerto"
+                    {...field}
+                    showIcon
+                    showTime
+                    hourFormat="24"
+                    dateFormat="dd/mm/yy"
+                    inputStyle={{ fontWeight: "bold", color: "#2c32d3" }}
+                    disabled={loading}
+                    className={classNames({
+                      "p-invalid": errors.fechaHoraLlegadaPuerto,
+                    })}
+                  />
+                )}
+              />
+              {errors.fechaHoraLlegadaPuerto && (
+                <Message
+                  severity="error"
+                  text={errors.fechaHoraLlegadaPuerto.message}
+                />
+              )}
+            </div>
+          </div>
+          {/* Cuarta fila: Coordenadas GPS */}
+          <div
+            style={{
+              border: "6px solid #0EA5E9",
+              padding: "0.5rem",
+              borderRadius: "8px",
+              marginBottom: "0.5rem",
+              display: "flex",
+              alignItems: "self-end",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+                       <PuntoGPSInput
+              latitud={latitud}
+              longitud={longitud}
+              onLatitudChange={(valor) => setValue("latitud", valor)}
+              onLongitudChange={(valor) => setValue("longitud", valor)}
+              onCapturarGPS={async () => {
+                try {
+                  await capturarGPS(
+                    async (latitude, longitude, accuracy) => {
+                      setValue("latitud", latitude);
+                      setValue("longitud", longitude);
 
-        <div style={{ flex: 2 }}>
-          <label htmlFor="plataformaRecepcionPescaId">
-            Plataforma de Recepción
-          </label>
-          <Controller
-            name="plataformaRecepcionPescaId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="plataformaRecepcionPescaId"
-                {...field}
-                value={field.value}
-                options={plataformasRecepcion}
-                filter
-                optionLabel="label"
-                optionValue="value"
-                placeholder={
-                  loadingPlataformas
-                    ? "Cargando plataformas..."
-                    : watch("clienteId")
-                      ? "Seleccione plataforma"
-                      : "Primero seleccione un cliente"
+                      toast.current?.show({
+                        severity: "success",
+                        summary: "GPS capturado",
+                        detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m`,
+                        life: 3000,
+                      });
+
+                      setLoadingGeo(true);
+                      setErrorGeo(null);
+                      try {
+                        const puertoSalidaId = getValues("puertoDescargaId");
+                        const infoGeo = await analizarCoordenadasConReferencia(
+                          latitude,
+                          longitude,
+                          puertoSalidaId || null
+                        );
+                        setInfoGeografica(infoGeo);
+
+                        toast.current?.show({
+                          severity: "info",
+                          summary: "Información geográfica obtenida",
+                          detail: `Ubicación: ${infoGeo.ubicacion?.ciudad || "N/A"}`,
+                          life: 3000,
+                        });
+                      } catch (error) {
+                        console.error("Error al analizar coordenadas:", error);
+                        setErrorGeo("No se pudo obtener la información geográfica");
+                        toast.current?.show({
+                          severity: "warn",
+                          summary: "Advertencia",
+                          detail: "GPS capturado pero no se pudo obtener información geográfica",
+                          life: 3000,
+                        });
+                      } finally {
+                        setLoadingGeo(false);
+                      }
+                    },
+                    (errorMessage) => {
+                      toast.current?.show({
+                        severity: "error",
+                        summary: "Error GPS",
+                        detail: errorMessage,
+                        life: 3000,
+                      });
+                    }
+                  );
+                } catch (error) {
+                  console.error("Error capturando GPS:", error);
                 }
-                disabled={loading || loadingPlataformas || !watch("clienteId")}
-                style={{ fontWeight: "bold" }}
-                onChange={(e) => handlePlataformaChange(e.value)}
-                className={classNames({
-                  "p-invalid": errors.plataformaRecepcionPescaId,
-                })}
-              />
-            )}
-          />
-          {errors.plataformaRecepcionPescaId && (
-            <Message
-              severity="error"
-              text={errors.plataformaRecepcionPescaId.message}
+              }}
+              readOnly={false}
+              disabled={loading}
+              loading={loading}
+              labelBotonGPS="🔵 Capturar GPS Inicio Retorno"
+              colorBoton="info"
             />
-          )}
-        </div>
+          </div>
 
-        <div style={{ flex: 1 }}>
-          <label htmlFor="numPlataformaDescarga">Número Plataforma Descarga</label>
-          <Controller
-            name="numPlataformaDescarga"
-            control={control}
-            render={({ field }) => (
-              <InputText
-                id="numPlataformaDescarga"
-                {...field}
-                placeholder="Número plataforma"
-                disabled={loading}
-                style={{ fontWeight: "bold" }}
-                maxLength={20}
-              />
-            )}
-          />
-        </div>
+                  {/* MAPA UNIFICADO CON MODO MÚLTIPLE */}
+          <PanelMapaGeografico
+            mapPosition={mapPosition}
+            mapKey={mapKey}
+            tipoMapa={tipoMapa}
+            getTileConfig={getTileConfig}
+            toggleFullscreen={toggleFullscreen}
+            cambiarTipoMapa={cambiarTipoMapa}
+            obtenerUbicacionUsuario={obtenerUbicacionUsuario}
+            mapContainerRef={mapContainerRef}
+            mapaFullscreen={mapaFullscreen}
+            getClasificacionAguasColor={getClasificacionAguasColor}
+            titulo="📍 Información Geográfica"
+            colapsadoPorDefecto={true}
+            usarModoMultiple={true}
+            infoInicioRetorno={infoGeografica}
+            infoPlataforma={infoGeograficaPlataforma}
+            infoFondeo={infoGeograficaFondeo}
+            loadingInicioRetorno={loadingGeo}
+            loadingPlataforma={loadingGeoPlataforma}
+            loadingFondeo={loadingGeoFondeo}
+            distanciaRetornoPuerto={distanciaRetornoPuerto}
+            consumoRetornoPuerto={consumoCombustible}
+            costoRetornoPuerto={costoCombustible}
+            distanciaDescargaFondeo={distanciaDescargaFondeo}
+            consumoDescargaFondeo={consumoDescargaFondeo}
+            costoDescargaFondeo={costoDescargaFondeo}
+            loadingRetornoPuerto={false}
+            loadingDescargaFondeo={false}
+            zoom={9}
+          >
+            <LineaRetornoPlataforma />
+            <MarkerPuertoDescarga />
+            <DraggableMarker />
+            <DraggableMarkerFondeo />
+            <UserLocationMarker />
+            <DistanceLine />
+          </PanelMapaGeografico>
 
-        <div style={{ flex: 1 }}>
-          <label htmlFor="turnoPlataformaDescarga">Turno</label>
-          <Controller
-            name="turnoPlataformaDescarga"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="turnoPlataformaDescarga"
-                {...field}
-                value={field.value || "DIA"}
-                options={[
-                  { label: "DIA", value: "DIA" },
-                  { label: "NOCHE", value: "NOCHE" },
-                ]}
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Seleccione turno"
-                disabled={loading}
-                style={{ fontWeight: "bold" }}
-              />
-            )}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="combustibleAbastecidoGalones">Combustible*</label>
-          <Controller
-            name="combustibleAbastecidoGalones"
-            control={control}
-            rules={{ required: "El combustible es obligatorio" }}
-            render={({ field }) => (
-              <InputNumber
-                id="combustibleAbastecidoGalones"
-                value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                suffix=" Gal"
-                inputStyle={{ fontWeight: "bold" }}
-                disabled={loading}
-                className={classNames({
-                  "p-invalid": errors.combustibleAbastecidoGalones,
-                })}
-              />
-            )}
-          />
-          {errors.combustibleAbastecidoGalones && (
-            <Message
-              severity="error"
-              text={errors.combustibleAbastecidoGalones.message}
-            />
-          )}
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "end",
-          gap: 10,
-          marginBottom: "0.5rem",
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <Button
-            type="button"
-            label="Inicia Descarga"
-            icon="pi pi-clock"
-            className="p-button-success"
-            onClick={() => setValue("fechaHoraInicioDescarga", new Date())}
-            disabled={loading}
-            severity="success"
-            raised
-            size="small"
-            style={{ marginTop: "5px" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaHoraInicioDescarga" style={{ color: "#21962e" }}>
-            Inicio Descarga*
-          </label>
-          <Controller
-            name="fechaHoraInicioDescarga"
-            control={control}
-            rules={{ required: "La fecha de inicio es obligatoria" }}
-            render={({ field }) => (
-              <Calendar
-                id="fechaHoraInicioDescarga"
-                {...field}
-                showIcon
-                showTime
-                hourFormat="24"
-                dateFormat="dd/mm/yy"
-                inputStyle={{ fontWeight: "bold", color: "#21962e" }}
-                disabled={loading}
-                className={classNames({
-                  "p-invalid": errors.fechaHoraInicioDescarga,
-                })}
-              />
-            )}
-          />
-          {errors.fechaHoraInicioDescarga && (
-            <Message
-              severity="error"
-              text={errors.fechaHoraInicioDescarga.message}
-            />
-          )}
-        </div>
-        <div style={{ flex: 1 }}>
-          <Button
-            type="button"
-            label="Fin Descarga"
-            icon="pi pi-clock"
-            className="p-button-success"
-            onClick={() => setValue("fechaHoraFinDescarga", new Date())}
-            disabled={loading}
-            size="small"
-            severity="success"
-            raised
-            style={{ marginTop: "5px" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaHoraFinDescarga" style={{ color: "#21962e" }}>
-            Fin Descarga*
-          </label>
-          <Controller
-            name="fechaHoraFinDescarga"
-            control={control}
-            rules={{ required: "La fecha de fin es obligatoria" }}
-            render={({ field }) => (
-              <Calendar
-                id="fechaHoraFinDescarga"
-                {...field}
-                showIcon
-                showTime
-                hourFormat="24"
-                dateFormat="dd/mm/yy"
-                inputStyle={{ fontWeight: "bold", color: "#21962e" }}
-                disabled={loading}
-                className={classNames({
-                  "p-invalid": errors.fechaHoraFinDescarga,
-                })}
-              />
-            )}
-          />
-          {errors.fechaHoraFinDescarga && (
-            <Message
-              severity="error"
-              text={errors.fechaHoraFinDescarga.message}
-            />
-          )}
-        </div>
-      </div>
-
-  {/* Tercera fila: Datos numéricos */ }
-  <div
-    style={{
-      display: "flex",
-      gap: 10,
-      marginBottom: "0.5rem",
-      flexDirection: window.innerWidth < 768 ? "column" : "row",
-    }}
-  ></div>
-
-  {/* Quinta fila: Especie */ }
-  <div
-    style={{
-      display: "flex",
-      gap: 10,
-      marginBottom: "0.5rem",
-      flexDirection: window.innerWidth < 768 ? "column" : "row",
-    }}
-  >
-    <div style={{ flex: 1 }}>
-      <label htmlFor="especieId">Especie*</label>
-      <Controller
-        name="especieId"
-        control={control}
-        rules={{ required: "La especie es obligatoria" }}
-        render={({ field }) => (
-          <Dropdown
-            id="especieId"
-            {...field}
-            value={field.value}
-            options={especiesNormalizadas}
-            optionLabel="label"
-            optionValue="value"
-            filter
-            style={{ fontWeight: "bold" }}
-            placeholder="Seleccione especie"
-            disabled={loading}
-            className={classNames({ "p-invalid": errors.especieId })}
-          />
-        )}
-      />
-      {errors.especieId && (
-        <Message severity="error" text={errors.especieId.message} />
-      )}
-    </div>
-    <div style={{ flex: 0.5 }}>
-      <label htmlFor="toneladas">Kilogramos*</label>
-      <Controller
-        name="toneladas"
-        control={control}
-        rules={{ required: "Los kilogramos son obligatorios" }}
-        render={({ field }) => (
-          <InputNumber
-            id="toneladas"
-            value={field.value}
-            onValueChange={(e) => {
-              field.onChange(e.value);
-              ultimoCambioRef.current = "toneladas";
-            }}
-            mode="decimal"
-            minFractionDigits={0}
-            maxFractionDigits={3}
-            suffix=" Kg"
-            inputStyle={{ fontWeight: "bold" }}
-            disabled={loading}
-            className={classNames({ "p-invalid": errors.toneladas })}
-          />
-        )}
-      />
-      {errors.toneladas && (
-        <Message severity="error" text={errors.toneladas.message} />
-      )}
-    </div>
-    <div style={{ flex: 0.5 }}>
-      <label htmlFor="nroCubetas"># Cubetas</label>
-      <Controller
-        name="nroCubetas"
-        control={control}
-        render={({ field }) => (
-          <InputNumber
-            id="nroCubetas"
-            value={field.value}
-            onValueChange={(e) => {
-              field.onChange(e.value);
-              ultimoCambioRef.current = "cubetas";
-            }}
-            mode="decimal"
-            minFractionDigits={0}
-            maxFractionDigits={2}
-            min={0}
-            inputStyle={{ fontWeight: "bold" }}
-            disabled={loading}
-            className={classNames({ "p-invalid": errors.nroCubetas })}
-          />
-        )}
-      />
-      {errors.nroCubetas && (
-        <Message severity="error" text={errors.nroCubetas.message} />
-      )}
-    </div>
-    <div style={{ flex: 0.5 }}>
-      <label htmlFor="precioPorKgEspecie">Precio Kg</label>
-      <Controller
-        name="precioPorKgEspecie"
-        control={control}
-        render={({ field }) => (
-          <InputNumber
-            id="precioPorKgEspecie"
-            value={field.value}
-            onValueChange={(e) => field.onChange(e.value)}
-            mode="decimal"
-            minFractionDigits={2}
-            maxFractionDigits={2}
-            min={0}
-            prefix="S/ "
-            inputStyle={{ fontWeight: "bold" }}
-            disabled={loading}
-            className={classNames({
-              "p-invalid": errors.precioPorKgEspecie,
-            })}
-          />
-        )}
-      />
-      {errors.precioPorKgEspecie && (
-        <Message
-          severity="error"
-          text={errors.precioPorKgEspecie.message}
-        />
-      )}
-    </div>
-    <div style={{ flex: 1 }}>
-      <label htmlFor="precioTotal">Precio Total</label>
-      <Controller
-        name="precioTotal"
-        control={control}
-        render={({ field }) => (
-          <InputNumber
-            id="precioTotal"
-            value={field.value}
-            onValueChange={(e) => field.onChange(e.value)}
-            mode="decimal"
-            minFractionDigits={2}
-            maxFractionDigits={2}
-            min={0}
-            prefix="S/ "
-            inputStyle={{ fontWeight: "bold", backgroundColor: "#e3f2fd" }}
-            disabled={true}
-            className={classNames({ "p-invalid": errors.precioTotal })}
-          />
-        )}
-      />
-      {errors.precioTotal && (
-        <Message severity="error" text={errors.precioTotal.message} />
-      )}
-    </div>
-    <div style={{ flex: 1.5 }}>
-      <label htmlFor="katanaTripulacionId">Katana Tripulación</label>
-      <Controller
-        name="katanaTripulacionId"
-        control={control}
-        render={({ field }) => (
-          <Dropdown
-            id="katanaTripulacionId"
-            value={field.value}
-            options={katanasTripulacionNormalizadas}
-            onChange={(e) => field.onChange(e.value)}
-            placeholder="Seleccionado automáticamente"
-            filter
-            showClear
-            disabled={true}
-            style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
-            className={classNames({
-              "p-invalid": errors.katanaTripulacionId,
-            })}
-          />
-        )}
-      />
-      {errors.katanaTripulacionId && (
-        <Message
-          severity="error"
-          text={errors.katanaTripulacionId.message}
-        />
-      )}
-    </div>
-  </div>
-  {/* Fila: Katana Tripulación */ }
-  <div
-    style={{
-      display: "flex",
-      gap: 10,
-      flexDirection: window.innerWidth < 768 ? "column" : "row",
-    }}
-  ></div>
-
-  {/* Fila: Observaciones */ }
-  <div
-    style={{
-      display: "flex",
-      gap: 10,
-      flexDirection: window.innerWidth < 768 ? "column" : "row",
-    }}
-  >
-    <div style={{ flex: 2 }}>
-      <label htmlFor="observaciones">Observaciones</label>
-      <Controller
-        name="observaciones"
-        control={control}
-        render={({ field }) => (
-          <InputTextarea
-            id="observaciones"
-            {...field}
-            rows={1}
-            placeholder="Observaciones adicionales"
+          {/* Segunda fila: Fechas y horas */}
+          <div
             style={{
-              fontWeight: "bold",
-              color: "red",
-              fontStyle: "italic",
-              textTransform: "uppercase",
-            }}
-            disabled={loading}
-          />
-        )}
-      />
-    </div>
-  </div>
-  {/* Quinta fila: Coordenadas GPS Fondeo */ }
-      <div
-        style={{
-          border: "6px solid #ff9800",
-          padding: "0.5rem",
-          borderRadius: "8px",
-          marginBottom: "0.5rem",
-          display: "flex",
-          alignItems: "self-end",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <Button
-            type="button"
-            label="Fecha Hora Fondeo"
-            icon="pi pi-clock"
-            className="p-button-warning"
-            onClick={() => setValue("fechaHoraFondeo", new Date())}
-            disabled={loading}
-            size="small"
-            severity="warning"
-            raised
-            style={{ width: "100%", marginBottom: "4px" }}
-          />
-          <Controller
-            name="fechaHoraFondeo"
-            control={control}
-            render={({ field }) => (
-              <Calendar
-                id="fechaHoraFondeo"
-                {...field}
-                showIcon
-                showTime
-                hourFormat="24"
-                dateFormat="dd/mm/yy"
-                inputStyle={{ fontWeight: "bold" }}
-                disabled={loading}
-                className={classNames({ "p-invalid": errors.fechaHoraFondeo })}
-                style={{ width: "100%" }}
-              />
-            )}
-          />
-          {errors.fechaHoraFondeo && (
-            <Message severity="error" text={errors.fechaHoraFondeo.message} />
-          )}
-        </div>
-
-        <div style={{ flex: 1 }}>
-          <Button
-            type="button"
-            label="Capturar GPS"
-            icon="pi pi-map-marker"
-            className="p-button-warning"
-            onClick={handleCapturarGPSFondeo}
-            disabled={loading}
-            size="small"
-            raised
-            severity="warning"
-            style={{ width: "100%", marginBottom: "4px" }}
-          />
-          <Controller
-            name="puertoFondeoId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="puertoFondeoId"
-                {...field}
-                value={field.value}
-                options={puertosNormalizados}
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Puerto Fondeo"
-                filter
-                disabled={loading}
-                className={classNames({ "p-invalid": errors.puertoFondeoId })}
-                style={{ width: "100%" }}
-              />
-            )}
-          />
-          {errors.puertoFondeoId && (
-            <Message severity="error" text={errors.puertoFondeoId.message} />
-          )}
-        </div>
-
-        {/* Tabla MEJORADA de coordenadas GPS FONDEO - Optimizada para Tablet */}
-        <div style={{ flex: 6 }}>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              border: "3px solid #F97316",
+              display: "flex",
+              gap: 10,
+              marginBottom: "0.5rem",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
-            <thead>
-              <tr style={{ backgroundColor: "#F97316", color: "white" }}>
-                <th
-                  style={{
-                    padding: "8px",
-                    border: "1px solid #F97316",
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    width: "100px",
-                    minWidth: "100px",
-                  }}
-                >
-                  Formato
-                </th>
-                <th
-                  colSpan="4"
-                  style={{
-                    padding: "8px",
-                    border: "1px solid #F97316",
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    textAlign: "center",
-                  }}
-                >
-                  Latitud Fondeo (Siempre SUR en Perú)
-                </th>
-                <th
-                  colSpan="4"
-                  style={{
-                    padding: "8px",
-                    border: "1px solid #F97316",
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    textAlign: "center",
-                  }}
-                >
-                  Longitud Fondeo (Siempre OESTE en Perú)
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* ========== FILA DECIMAL ========== */}
-              <tr>
-                <td
-                  style={{
-                    padding: "8px",
-                    border: "1px solid #F97316",
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                    backgroundColor: "#fed7aa",
-                    width: "100px",
-                  }}
-                >
-                  Decimal
-                </td>
-                <td
-                  colSpan="4"
-                  style={{ padding: "4px", border: "1px solid #F97316" }}
-                >
-                  <Controller
-                    name="latitudFondeo"
-                    control={control}
-                    render={({ field }) => (
-                      <InputNumber
-                        value={field.value}
-                        onValueChange={(e) => field.onChange(e.value)}
-                        placeholder="-12.123456"
-                        disabled={loading}
-                        mode="decimal"
-                        minFractionDigits={0}
-                        maxFractionDigits={14}
-                        min={-90}
-                        max={90}
-                        style={{
-                          width: "100%",
-                          fontSize: "20px",
-                          padding: "8px",
-                        }}
-                      />
-                    )}
+            <div style={{ flex: 2 }}>
+              <label htmlFor="clienteId">Cliente*</label>
+              <Controller
+                name="clienteId"
+                control={control}
+                rules={{ required: "El cliente es obligatorio" }}
+                render={({ field }) => (
+                  <Dropdown
+                    id="clienteId"
+                    {...field}
+                    value={field.value}
+                    options={clientesNormalizados}
+                    filter
+                    optionLabel="label"
+                    optionValue="value"
+                    style={{ fontWeight: "bold" }}
+                    placeholder="Seleccione cliente"
+                    disabled={loading}
+                    className={classNames({ "p-invalid": errors.clienteId })}
+                    onChange={(e) => handleClienteChange(e.value)}
                   />
-                </td>
-                <td
-                  colSpan="4"
-                  style={{ padding: "4px", border: "1px solid #F97316" }}
-                >
-                  <Controller
-                    name="longitudFondeo"
-                    control={control}
-                    render={({ field }) => (
-                      <InputNumber
-                        value={field.value}
-                        onValueChange={(e) => field.onChange(e.value)}
-                        placeholder="-77.123456"
-                        disabled={loading}
-                        mode="decimal"
-                        minFractionDigits={0}
-                        maxFractionDigits={14}
-                        min={-180}
-                        max={180}
-                        style={{
-                          width: "100%",
-                          fontSize: "20px",
-                          padding: "8px",
-                        }}
-                      />
-                    )}
+                )}
+              />
+              {errors.clienteId && (
+                <Message severity="error" text={errors.clienteId.message} />
+              )}
+            </div>
+
+            <div style={{ flex: 2 }}>
+              <label htmlFor="plataformaRecepcionPescaId">
+                Plataforma de Recepción
+              </label>
+              <Controller
+                name="plataformaRecepcionPescaId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="plataformaRecepcionPescaId"
+                    {...field}
+                    value={field.value}
+                    options={plataformasRecepcion}
+                    filter
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder={
+                      loadingPlataformas
+                        ? "Cargando plataformas..."
+                        : watch("clienteId")
+                          ? "Seleccione plataforma"
+                          : "Primero seleccione un cliente"
+                    }
+                    disabled={loading || loadingPlataformas || !watch("clienteId")}
+                    style={{ fontWeight: "bold" }}
+                    onChange={(e) => handlePlataformaChange(e.value)}
+                    className={classNames({
+                      "p-invalid": errors.plataformaRecepcionPescaId,
+                    })}
                   />
-                </td>
-              </tr>
+                )}
+              />
+              {errors.plataformaRecepcionPescaId && (
+                <Message
+                  severity="error"
+                  text={errors.plataformaRecepcionPescaId.message}
+                />
+              )}
+            </div>
 
-              {/* ========== FILA DMS (Grados, Minutos, Segundos) ========== */}
-              <tr>
-                <td
-                  style={{
-                    padding: "8px",
-                    border: "1px solid #F97316",
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                    backgroundColor: "#fed7aa",
-                  }}
-                >
-                  DMS
-                </td>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="numPlataformaDescarga">Número Plataforma Descarga</label>
+              <Controller
+                name="numPlataformaDescarga"
+                control={control}
+                render={({ field }) => (
+                  <InputText
+                    id="numPlataformaDescarga"
+                    {...field}
+                    placeholder="Número plataforma"
+                    disabled={loading}
+                    style={{ fontWeight: "bold" }}
+                    maxLength={20}
+                  />
+                )}
+              />
+            </div>
 
-                {/* ===== LATITUD FONDEO DMS ===== */}
-                {/* Grados */}
-                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
+            <div style={{ flex: 1 }}>
+              <label htmlFor="turnoPlataformaDescarga">Turno</label>
+              <Controller
+                name="turnoPlataformaDescarga"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="turnoPlataformaDescarga"
+                    {...field}
+                    value={field.value || "DIA"}
+                    options={[
+                      { label: "DIA", value: "DIA" },
+                      { label: "NOCHE", value: "NOCHE" },
+                    ]}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Seleccione turno"
+                    disabled={loading}
+                    style={{ fontWeight: "bold" }}
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="combustibleAbastecidoGalones">Combustible*</label>
+              <Controller
+                name="combustibleAbastecidoGalones"
+                control={control}
+                rules={{ required: "El combustible es obligatorio" }}
+                render={({ field }) => (
+                  <InputNumber
+                    id="combustibleAbastecidoGalones"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    suffix=" Gal"
+                    inputStyle={{ fontWeight: "bold" }}
+                    disabled={loading}
+                    className={classNames({
+                      "p-invalid": errors.combustibleAbastecidoGalones,
+                    })}
+                  />
+                )}
+              />
+              {errors.combustibleAbastecidoGalones && (
+                <Message
+                  severity="error"
+                  text={errors.combustibleAbastecidoGalones.message}
+                />
+              )}
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "end",
+              gap: 10,
+              marginBottom: "0.5rem",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <Button
+                type="button"
+                label="Inicia Descarga"
+                icon="pi pi-clock"
+                className="p-button-success"
+                onClick={() => setValue("fechaHoraInicioDescarga", new Date())}
+                disabled={loading}
+                severity="success"
+                raised
+                size="small"
+                style={{ marginTop: "5px" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="fechaHoraInicioDescarga" style={{ color: "#21962e" }}>
+                Inicio Descarga*
+              </label>
+              <Controller
+                name="fechaHoraInicioDescarga"
+                control={control}
+                rules={{ required: "La fecha de inicio es obligatoria" }}
+                render={({ field }) => (
+                  <Calendar
+                    id="fechaHoraInicioDescarga"
+                    {...field}
+                    showIcon
+                    showTime
+                    hourFormat="24"
+                    dateFormat="dd/mm/yy"
+                    inputStyle={{ fontWeight: "bold", color: "#21962e" }}
+                    disabled={loading}
+                    className={classNames({
+                      "p-invalid": errors.fechaHoraInicioDescarga,
+                    })}
+                  />
+                )}
+              />
+              {errors.fechaHoraInicioDescarga && (
+                <Message
+                  severity="error"
+                  text={errors.fechaHoraInicioDescarga.message}
+                />
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                type="button"
+                label="Fin Descarga"
+                icon="pi pi-clock"
+                className="p-button-success"
+                onClick={() => setValue("fechaHoraFinDescarga", new Date())}
+                disabled={loading}
+                size="small"
+                severity="success"
+                raised
+                style={{ marginTop: "5px" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="fechaHoraFinDescarga" style={{ color: "#21962e" }}>
+                Fin Descarga*
+              </label>
+              <Controller
+                name="fechaHoraFinDescarga"
+                control={control}
+                rules={{ required: "La fecha de fin es obligatoria" }}
+                render={({ field }) => (
+                  <Calendar
+                    id="fechaHoraFinDescarga"
+                    {...field}
+                    showIcon
+                    showTime
+                    hourFormat="24"
+                    dateFormat="dd/mm/yy"
+                    inputStyle={{ fontWeight: "bold", color: "#21962e" }}
+                    disabled={loading}
+                    className={classNames({
+                      "p-invalid": errors.fechaHoraFinDescarga,
+                    })}
+                  />
+                )}
+              />
+              {errors.fechaHoraFinDescarga && (
+                <Message
+                  severity="error"
+                  text={errors.fechaHoraFinDescarga.message}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Tercera fila: Datos numéricos */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              marginBottom: "0.5rem",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          ></div>
+
+          {/* Quinta fila: Especie */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              marginBottom: "0.5rem",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="especieId">Especie*</label>
+              <Controller
+                name="especieId"
+                control={control}
+                rules={{ required: "La especie es obligatoria" }}
+                render={({ field }) => (
+                  <Dropdown
+                    id="especieId"
+                    {...field}
+                    value={field.value}
+                    options={especiesNormalizadas}
+                    optionLabel="label"
+                    optionValue="value"
+                    filter
+                    style={{ fontWeight: "bold" }}
+                    placeholder="Seleccione especie"
+                    disabled={loading}
+                    className={classNames({ "p-invalid": errors.especieId })}
+                  />
+                )}
+              />
+              {errors.especieId && (
+                <Message severity="error" text={errors.especieId.message} />
+              )}
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <label htmlFor="toneladas">Kilogramos*</label>
+              <Controller
+                name="toneladas"
+                control={control}
+                rules={{ required: "Los kilogramos son obligatorios" }}
+                render={({ field }) => (
+                  <InputNumber
+                    id="toneladas"
+                    value={field.value}
+                    onValueChange={(e) => {
+                      field.onChange(e.value);
+                      ultimoCambioRef.current = "toneladas";
                     }}
-                  >
-                    <input
-                      type="number"
-                      value={latFondeoGrados}
-                      onChange={(e) =>
-                        setLatFondeoGrados(Number(e.target.value) || 0)
-                      }
-                      onBlur={actualizarLatitudFondeoDesdeDMS}
-                      disabled={loading}
-                      min="0"
-                      max="90"
-                      style={{
-                        width: "140px",
-                        padding: "8px",
-                        border: "2px solid #059669",
-                        fontSize: "18px", // ← MÁS GRANDE
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                      °
-                    </span>
-                  </div>
-                </td>
-
-                {/* Minutos */}
-                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
+                    mode="decimal"
+                    minFractionDigits={0}
+                    maxFractionDigits={3}
+                    suffix=" Kg"
+                    inputStyle={{ fontWeight: "bold" }}
+                    disabled={loading}
+                    className={classNames({ "p-invalid": errors.toneladas })}
+                  />
+                )}
+              />
+              {errors.toneladas && (
+                <Message severity="error" text={errors.toneladas.message} />
+              )}
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <label htmlFor="nroCubetas"># Cubetas</label>
+              <Controller
+                name="nroCubetas"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="nroCubetas"
+                    value={field.value}
+                    onValueChange={(e) => {
+                      field.onChange(e.value);
+                      ultimoCambioRef.current = "cubetas";
                     }}
-                  >
-                    <input
-                      type="number"
-                      value={latFondeoMinutos}
-                      onChange={(e) =>
-                        setLatFondeoMinutos(Number(e.target.value) || 0)
-                      }
-                      onBlur={actualizarLatitudFondeoDesdeDMS}
-                      disabled={loading}
-                      min="0"
-                      max="59"
-                      style={{
-                        width: "140px",
-                        padding: "8px",
-                        border: "2px solid #059669",
-                        fontSize: "18px", // ← MÁS GRANDE
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                      '
-                    </span>
-                  </div>
-                </td>
+                    mode="decimal"
+                    minFractionDigits={0}
+                    maxFractionDigits={2}
+                    min={0}
+                    inputStyle={{ fontWeight: "bold" }}
+                    disabled={loading}
+                    className={classNames({ "p-invalid": errors.nroCubetas })}
+                  />
+                )}
+              />
+              {errors.nroCubetas && (
+                <Message severity="error" text={errors.nroCubetas.message} />
+              )}
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <label htmlFor="precioPorKgEspecie">Precio Kg</label>
+              <Controller
+                name="precioPorKgEspecie"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="precioPorKgEspecie"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    min={0}
+                    prefix="S/ "
+                    inputStyle={{ fontWeight: "bold" }}
+                    disabled={loading}
+                    className={classNames({
+                      "p-invalid": errors.precioPorKgEspecie,
+                    })}
+                  />
+                )}
+              />
+              {errors.precioPorKgEspecie && (
+                <Message
+                  severity="error"
+                  text={errors.precioPorKgEspecie.message}
+                />
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="precioTotal">Precio Total</label>
+              <Controller
+                name="precioTotal"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="precioTotal"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    min={0}
+                    prefix="S/ "
+                    inputStyle={{ fontWeight: "bold", backgroundColor: "#e3f2fd" }}
+                    disabled={true}
+                    className={classNames({ "p-invalid": errors.precioTotal })}
+                  />
+                )}
+              />
+              {errors.precioTotal && (
+                <Message severity="error" text={errors.precioTotal.message} />
+              )}
+            </div>
+            <div style={{ flex: 1.5 }}>
+              <label htmlFor="katanaTripulacionId">Katana Tripulación</label>
+              <Controller
+                name="katanaTripulacionId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="katanaTripulacionId"
+                    value={field.value}
+                    options={katanasTripulacionNormalizadas}
+                    onChange={(e) => field.onChange(e.value)}
+                    placeholder="Seleccionado automáticamente"
+                    filter
+                    showClear
+                    disabled={true}
+                    style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+                    className={classNames({
+                      "p-invalid": errors.katanaTripulacionId,
+                    })}
+                  />
+                )}
+              />
+              {errors.katanaTripulacionId && (
+                <Message
+                  severity="error"
+                  text={errors.katanaTripulacionId.message}
+                />
+              )}
+            </div>
+          </div>
+          {/* Fila: Katana Tripulación */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          ></div>
 
-                {/* Segundos */}
-                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
-                  <div
+          {/* Fila: Observaciones */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <label htmlFor="observaciones">Observaciones</label>
+              <Controller
+                name="observaciones"
+                control={control}
+                render={({ field }) => (
+                  <InputTextarea
+                    id="observaciones"
+                    {...field}
+                    rows={1}
+                    placeholder="Observaciones adicionales"
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <input
-                      type="number"
-                      value={latFondeoSegundos}
-                      onChange={(e) =>
-                        setLatFondeoSegundos(parseFloat(e.target.value) || 0)
-                      }
-                      onBlur={actualizarLatitudFondeoDesdeDMS}
-                      disabled={loading}
-                      min="0"
-                      max="59.99"
-                      step="0.01"
-                      style={{
-                        width: "140px",
-                        padding: "8px",
-                        border: "2px solid #059669",
-                        fontSize: "18px", // ← MÁS GRANDE
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                      "
-                    </span>
-                  </div>
-                </td>
-
-                {/* Dirección N/S - BLOQUEADO EN "S" PARA USUARIOS NORMALES */}
-                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
-                  <select
-                    value={latFondeoDireccion}
-                    onChange={(e) => {
-                      setLatFondeoDireccion(e.target.value);
-                      actualizarLatitudFondeoDesdeDMS();
-                    }}
-                    disabled={!esSuperUsuario || loading} // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: esSuperUsuario
-                        ? "2px solid #f59e0b"
-                        : "2px solid #94a3b8",
-                      fontSize: "18px", // ← MÁS GRANDE
                       fontWeight: "bold",
-                      textAlign: "center",
-                      borderRadius: "4px",
-                      backgroundColor: esSuperUsuario ? "#fef3c7" : "#f1f5f9",
-                      cursor: esSuperUsuario ? "pointer" : "not-allowed",
+                      color: "red",
+                      fontStyle: "italic",
+                      textTransform: "uppercase",
                     }}
-                  >
-                    <option value="N">N</option>
-                    <option value="S">S</option>
-                  </select>
-                  {!esSuperUsuario && (
-                    <div
-                      style={{
-                        fontSize: "10px",
-                        color: "#64748b",
-                        textAlign: "center",
-                        marginTop: "2px",
-                      }}
-                    >
-                      🔒 Fijo
-                    </div>
-                  )}
-                </td>
+                    disabled={loading}
+                  />
+                )}
+              />
+            </div>
+          </div>
+          {/* Quinta fila: Coordenadas GPS Fondeo */}
+          <div
+            style={{
+              border: "6px solid #ff9800",
+              padding: "0.5rem",
+              borderRadius: "8px",
+              marginBottom: "0.5rem",
+              display: "flex",
+              alignItems: "self-end",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <Button
+                type="button"
+                label="Fecha Hora Fondeo"
+                icon="pi pi-clock"
+                className="p-button-warning"
+                onClick={() => setValue("fechaHoraFondeo", new Date())}
+                disabled={loading}
+                size="small"
+                severity="warning"
+                raised
+                style={{ width: "100%", marginBottom: "4px" }}
+              />
+              <Controller
+                name="fechaHoraFondeo"
+                control={control}
+                render={({ field }) => (
+                  <Calendar
+                    id="fechaHoraFondeo"
+                    {...field}
+                    showIcon
+                    showTime
+                    hourFormat="24"
+                    dateFormat="dd/mm/yy"
+                    inputStyle={{ fontWeight: "bold" }}
+                    disabled={loading}
+                    className={classNames({ "p-invalid": errors.fechaHoraFondeo })}
+                    style={{ width: "100%" }}
+                  />
+                )}
+              />
+              {errors.fechaHoraFondeo && (
+                <Message severity="error" text={errors.fechaHoraFondeo.message} />
+              )}
+            </div>
 
-                {/* ===== LONGITUD FONDEO DMS ===== */}
-                {/* Grados */}
-                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <input
-                      type="number"
-                      value={lonFondeoGrados}
-                      onChange={(e) =>
-                        setLonFondeoGrados(Number(e.target.value) || 0)
+                       <PuntoGPSInput
+              latitud={latitudFondeo}
+              longitud={longitudFondeo}
+              onLatitudChange={(valor) => setValue("latitudFondeo", valor)}
+              onLongitudChange={(valor) => setValue("longitudFondeo", valor)}
+              onCapturarGPS={async () => {
+                try {
+                  await capturarGPS(
+                    async (latitude, longitude, accuracy) => {
+                      setValue("latitudFondeo", latitude);
+                      setValue("longitudFondeo", longitude);
+
+                      toast.current?.show({
+                        severity: "success",
+                        summary: "GPS Fondeo capturado",
+                        detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m`,
+                        life: 3000,
+                      });
+
+                      setLoadingGeoFondeo(true);
+                      setErrorGeoFondeo(null);
+                      try {
+                        const puertoFondeoId = getValues("puertoFondeoId");
+                        const infoGeo = await analizarCoordenadasConReferencia(
+                          latitude,
+                          longitude,
+                          puertoFondeoId || null
+                        );
+                        setInfoGeograficaFondeo(infoGeo);
+
+                        toast.current?.show({
+                          severity: "info",
+                          summary: "Información geográfica obtenida",
+                          detail: `Ubicación: ${infoGeo.ubicacion?.ciudad || "N/A"}`,
+                          life: 3000,
+                        });
+                      } catch (error) {
+                        console.error("Error al analizar coordenadas fondeo:", error);
+                        setErrorGeoFondeo("No se pudo obtener la información geográfica");
+                        toast.current?.show({
+                          severity: "warn",
+                          summary: "Advertencia",
+                          detail: "GPS capturado pero no se pudo obtener información geográfica",
+                          life: 3000,
+                        });
+                      } finally {
+                        setLoadingGeoFondeo(false);
                       }
-                      onBlur={actualizarLongitudFondeoDesdeDMS}
-                      disabled={loading}
-                      min="0"
-                      max="180"
-                      style={{
-                        width: "140px",
-                        padding: "8px",
-                        border: "2px solid #2563eb",
-                        fontSize: "18px", // ← MÁS GRANDE
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                      °
-                    </span>
-                  </div>
-                </td>
+                    },
+                    (errorMessage) => {
+                      toast.current?.show({
+                        severity: "error",
+                        summary: "Error GPS",
+                        detail: errorMessage,
+                        life: 3000,
+                      });
+                    }
+                  );
+                } catch (error) {
+                  console.error("Error capturando GPS Fondeo:", error);
+                }
+              }}
+              readOnly={false}
+              disabled={loading}
+              loading={loading}
+              labelBotonGPS="🟠 Capturar GPS Fondeo"
+              colorBoton="warning"
+            />
 
-                {/* Minutos */}
-                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <input
-                      type="number"
-                      value={lonFondeoMinutos}
-                      onChange={(e) =>
-                        setLonFondeoMinutos(Number(e.target.value) || 0)
-                      }
-                      onBlur={actualizarLongitudFondeoDesdeDMS}
-                      disabled={loading}
-                      min="0"
-                      max="59"
-                      style={{
-                        width: "140px",
-                        padding: "8px",
-                        border: "2px solid #2563eb",
-                        fontSize: "18px", // ← MÁS GRANDE
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                      '
-                    </span>
-                  </div>
-                </td>
+            <div style={{ flex: 1, marginTop: "0.5rem" }}>
+              <label htmlFor="puertoFondeoId">Puerto Fondeo</label>
+              <Controller
+                name="puertoFondeoId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="puertoFondeoId"
+                    {...field}
+                    value={field.value}
+                    options={puertosNormalizados}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Puerto Fondeo"
+                    filter
+                    disabled={loading}
+                  />
+                )}
+              />
+              {errors.puertoFondeoId && (
+                <Message severity="error" text={errors.puertoFondeoId.message} />
+              )}
+            </div>
+          </div>
 
-                {/* Segundos */}
-                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <input
-                      type="number"
-                      value={lonFondeoSegundos}
-                      onChange={(e) =>
-                        setLonFondeoSegundos(parseFloat(e.target.value) || 0)
-                      }
-                      onBlur={actualizarLongitudFondeoDesdeDMS}
-                      disabled={loading}
-                      min="0"
-                      max="59.99"
-                      step="0.01"
-                      style={{
-                        width: "140px",
-                        padding: "8px",
-                        border: "2px solid #2563eb",
-                        fontSize: "18px", // ← MÁS GRANDE
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                      "
-                    </span>
-                  </div>
-                </td>
+          {/* Botones de acción */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              marginTop: 18,
+            }}
+          >
+            {/* Botón Finalizar Descarga - Lado izquierdo */}
+            <Button
+              type="button"
+              label={finalizandoDescarga ? "Finalizando..." : "Finalizar Descarga"}
+              icon={
+                finalizandoDescarga ? "pi pi-spin pi-spinner" : "pi pi-check-circle"
+              }
+              severity="info"
+              onClick={handleFinalizarDescarga}
+              disabled={!detalle?.id || loading || finalizandoDescarga}
+              loading={finalizandoDescarga}
+              raised
+              size="small"
+              tooltip={
+                !detalle?.id
+                  ? "Debe guardar la descarga antes de finalizarla"
+                  : "Finalizar descarga y generar movimientos de almacén"
+              }
+              tooltipOptions={{ position: "top" }}
+            />
 
-                {/* Dirección E/W - BLOQUEADO EN "W" PARA USUARIOS NORMALES */}
-                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
-                  <select
-                    value={lonFondeoDireccion}
-                    onChange={(e) => {
-                      setLonFondeoDireccion(e.target.value);
-                      actualizarLongitudFondeoDesdeDMS();
-                    }}
-                    disabled={!esSuperUsuario || loading} // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: esSuperUsuario
-                        ? "2px solid #f59e0b"
-                        : "2px solid #94a3b8",
-                      fontSize: "18px", // ← MÁS GRANDE
-                      fontWeight: "bold",
-                      textAlign: "center",
-                      borderRadius: "4px",
-                      backgroundColor: esSuperUsuario ? "#fef3c7" : "#f1f5f9",
-                      cursor: esSuperUsuario ? "pointer" : "not-allowed",
-                    }}
-                  >
-                    <option value="E">E</option>
-                    <option value="W">W</option>
-                  </select>
-                  {!esSuperUsuario && (
-                    <div
-                      style={{
-                        fontSize: "10px",
-                        color: "#64748b",
-                        textAlign: "center",
-                        marginTop: "2px",
-                      }}
-                    >
-                      🔒 Fijo
-                    </div>
-                  )}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+            {/* Botones Cancelar y Guardar - Lado derecho */}
+            <div style={{ display: "flex", gap: 8 }}>
+              <Button
+                type="button"
+                label="Cancelar"
+                icon="pi pi-times"
+                className="p-button-warning"
+                onClick={onCancelar}
+                disabled={loading}
+                severity="warning"
+                raised
+                size="small"
+              />
+              <Button
+                onClick={handleGuardar}
+                label={detalle?.id ? "Actualizar" : "Guardar"}
+                icon="pi pi-check"
+                loading={loading}
+                className="p-button-success"
+                severity="success"
+                raised
+                size="small"
+              />
+            </div>
+          </div>
+        </TabPanel>
 
-      <PanelMapaGeografico
-        mapPosition={mapPositionFondeo}
-        mapKey={mapKeyFondeo}
-        tipoMapa={tipoMapaFondeo}
-        getTileConfig={getTileConfigFondeo}
-        toggleFullscreen={toggleFullscreenFondeo}
-        cambiarTipoMapa={cambiarTipoMapaFondeo}
-        obtenerUbicacionUsuario={obtenerUbicacionUsuarioFondeo}
-        mapContainerRef={mapContainerRefFondeo}
-        mapaFullscreen={mapaFullscreenFondeo}
-        infoGeografica={infoGeograficaFondeo}
-        loadingGeo={loadingGeoFondeo}
-        getClasificacionAguasColor={getClasificacionAguasColor}
-        titulo="📍 Información Geográfica - Fondeo"
-        colapsadoPorDefecto={true}
-      >
-        <DraggableMarkerFondeo />
-        <UserLocationMarkerFondeo />
-        <DistanceLineFondeo />
-      </PanelMapaGeografico>
-
-  {/* Botones de acción */ }
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 8,
-      marginTop: 18,
-    }}
-  >
-    {/* Botón Finalizar Descarga - Lado izquierdo */}
-    <Button
-      type="button"
-      label={finalizandoDescarga ? "Finalizando..." : "Finalizar Descarga"}
-      icon={
-        finalizandoDescarga ? "pi pi-spin pi-spinner" : "pi pi-check-circle"
-      }
-      severity="info"
-      onClick={handleFinalizarDescarga}
-      disabled={!detalle?.id || loading || finalizandoDescarga}
-      loading={finalizandoDescarga}
-      raised
-      size="small"
-      tooltip={
-        !detalle?.id
-          ? "Debe guardar la descarga antes de finalizarla"
-          : "Finalizar descarga y generar movimientos de almacén"
-      }
-      tooltipOptions={{ position: "top" }}
-    />
-
-    {/* Botones Cancelar y Guardar - Lado derecho */}
-    <div style={{ display: "flex", gap: 8 }}>
-      <Button
-        type="button"
-        label="Cancelar"
-        icon="pi pi-times"
-        className="p-button-warning"
-        onClick={onCancelar}
-        disabled={loading}
-        severity="warning"
-        raised
-        size="small"
-      />
-      <Button
-        onClick={handleGuardar}
-        label={detalle?.id ? "Actualizar" : "Guardar"}
-        icon="pi pi-check"
-        loading={loading}
-        className="p-button-success"
-        severity="success"
-        raised
-        size="small"
-      />
+        {/* TAB 2: COMPROBANTE WINCHA PDF */}
+        <TabPanel header="📄 Comprobante Wincha">
+          <PDFDocumentManager
+            pdfUrl={detalle?.urlComprobanteWincha}
+            pdfType="descargaFaenaConsumoPDF"
+            recordId={detalle?.id}
+            onUploadSuccess={(url) => {
+              toast.current?.show({
+                severity: "success",
+                summary: "PDF Cargado",
+                detail: "Comprobante de wincha actualizado correctamente",
+                life: 3000,
+              });
+            }}
+          />
+        </TabPanel>
+      </TabView>
     </div>
-  </div>
-    </div >
   );
 }

@@ -17,11 +17,13 @@ export async function generarReportePescaPDF(data) {
 
   // Calcular totales
   let totalLimiteTon = 0;
-  cuotas.forEach(cuota => {
+  cuotas.forEach((cuota) => {
     totalLimiteTon += Number(cuota.limiteToneladas || 0);
   });
 
-  const avanceTotal = descargas ? descargas.reduce((sum, d) => sum + Number(d.toneladas || 0), 0) : 0;
+  const avanceTotal = descargas
+    ? descargas.reduce((sum, d) => sum + Number(d.toneladas || 0), 0)
+    : 0;
 
   // Primera página
   let page = pdfDoc.addPage([595.28, 841.89]);
@@ -29,17 +31,30 @@ export async function generarReportePescaPDF(data) {
   let { width, height } = page.getSize();
 
   // Encabezado completo en primera página
-  let yPosition = headerHelper.dibujarEncabezadoCompleto(page, temporada, cuotas, totalLimiteTon, avanceTotal);
+  let yPosition = headerHelper.dibujarEncabezadoCompleto(
+    page,
+    temporada,
+    cuotas,
+    totalLimiteTon,
+    avanceTotal,
+  );
 
   // Función helper para dibujar headers de tabla de descarga
-  const dibujarHeadersDescarga = (pg, yPos, descargaColWidths, descargaHeaders, descargaTableWidth, descargaTableStartX) => {
-pg.drawRectangle({
-  x: descargaTableStartX,
-  y: yPos - 3,
-  width: descargaTableWidth,
-  height: 20,
-  color: rgb(0.72, 0.87, 0.97),
-});
+  const dibujarHeadersDescarga = (
+    pg,
+    yPos,
+    descargaColWidths,
+    descargaHeaders,
+    descargaTableWidth,
+    descargaTableStartX,
+  ) => {
+    pg.drawRectangle({
+      x: descargaTableStartX,
+      y: yPos - 3,
+      width: descargaTableWidth,
+      height: 20,
+      color: rgb(0.72, 0.87, 0.97),
+    });
 
     let xPos = descargaTableStartX;
     descargaHeaders.forEach((header, i) => {
@@ -73,7 +88,13 @@ pg.drawRectangle({
   if (yPosition < 180) {
     page = pdfDoc.addPage([595.28, 841.89]);
     paginas.push(page);
-    yPosition = headerHelper.dibujarEncabezadoCompleto(page, temporada, cuotas, totalLimiteTon, avanceTotal);
+    yPosition = headerHelper.dibujarEncabezadoCompleto(
+      page,
+      temporada,
+      cuotas,
+      totalLimiteTon,
+      avanceTotal,
+    );
   }
 
   const detalleTexto = "DETALLE DE DESCARGA EN TONELADAS";
@@ -101,26 +122,57 @@ pg.drawRectangle({
     const cuotaTableWidth = cuotaColWidths.reduce((a, b) => a + b, 0);
     const cuotaTableStartX = (width - cuotaTableWidth) / 2;
 
-    const descargaColWidths = [15, 50, 90, 45, 55, 100, 40, 45, 60, 55];
-    const descargaHeaders = ["N°", "Especie", "Cliente", "Puerto", "Plataforma", "Observaciones", "Reporte", "Petroleo Gal.", "Toneladas", "% Juveniles"];
+    const descargaColWidths = [15, 70, 50, 90, 65, 70, 50, 40, 40, 40, 35];
+    const descargaHeaders = [
+      "N°",
+      "Fecha I/D",
+      "Especie",
+      "Cliente",
+      "Puerto",
+      "Plataforma",
+      "Observaciones",
+      "Reporte",
+      "Petroleo/Gal",
+      "Toneladas",
+      "%Juvenil",
+    ];
     const descargaTableWidth = descargaColWidths.reduce((a, b) => a + b, 0);
     const descargaTableStartX = cuotaTableStartX;
 
     if (yPosition < 180) {
       page = pdfDoc.addPage([595.28, 841.89]);
       paginas.push(page);
-      yPosition = headerHelper.dibujarEncabezadoCompleto(page, temporada, cuotas, totalLimiteTon, avanceTotal);
+      yPosition = headerHelper.dibujarEncabezadoCompleto(
+        page,
+        temporada,
+        cuotas,
+        totalLimiteTon,
+        avanceTotal,
+      );
     }
 
     // Dibujar headers iniciales
-    yPosition = dibujarHeadersDescarga(page, yPosition, descargaColWidths, descargaHeaders, descargaTableWidth, descargaTableStartX);
+    yPosition = dibujarHeadersDescarga(
+      page,
+      yPosition,
+      descargaColWidths,
+      descargaHeaders,
+      descargaTableWidth,
+      descargaTableStartX,
+    );
 
     descargas.forEach((descarga, index) => {
       if (yPosition < 100) {
         page = pdfDoc.addPage([595.28, 841.89]);
         paginas.push(page);
         // En nueva página: encabezado completo + título sección + headers tabla descarga
-        yPosition = headerHelper.dibujarEncabezadoCompleto(page, temporada, cuotas, totalLimiteTon, avanceTotal);
+        yPosition = headerHelper.dibujarEncabezadoCompleto(
+          page,
+          temporada,
+          cuotas,
+          totalLimiteTon,
+          avanceTotal,
+        );
 
         // Redibujar título y headers de tabla descarga
         const detTxt = "DETALLE DE DESCARGA EN TN";
@@ -140,25 +192,52 @@ pg.drawRectangle({
           color: rgb(0.7, 0.7, 0.7),
         });
         yPosition -= 15;
-        yPosition = dibujarHeadersDescarga(page, yPosition, descargaColWidths, descargaHeaders, descargaTableWidth, descargaTableStartX);
+        yPosition = dibujarHeadersDescarga(
+          page,
+          yPosition,
+          descargaColWidths,
+          descargaHeaders,
+          descargaTableWidth,
+          descargaTableStartX,
+        );
       }
 
+      const fechaInicioDescarga = descarga.fechaHoraInicioDescarga
+        ? new Date(descarga.fechaHoraInicioDescarga).toLocaleString("es-PE", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+        : "-";
       const especieNombre = descarga.especie?.nombre || "-";
-      const clienteNombre = descarga.cliente?.razonSocial || descarga.cliente?.nombre || "-";
+      const clienteNombre =
+        descarga.cliente?.razonSocial || descarga.cliente?.nombre || "-";
       const puertoNombre = descarga.puertoDescarga?.nombre || "-";
       const plataforma = descarga.numPlataformaDescarga || "-";
       const observaciones = descarga.observaciones || "-";
       const reporte = descarga.numReporteRecepcion || "-";
       const combustible = descarga.combustibleAbastecidoGalones
-        ? Number(descarga.combustibleAbastecidoGalones).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        ? Number(descarga.combustibleAbastecidoGalones).toLocaleString(
+            "es-PE",
+            { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+          )
         : "-";
-      const toneladasFormateadas = Number(descarga.toneladas || 0).toLocaleString('es-PE', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+      const toneladasFormateadas = Number(
+        descarga.toneladas || 0,
+      ).toLocaleString("es-PE", {
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 3,
+      });
       const porcentajeJuveniles = descarga.porcentajeJuveniles
         ? Number(descarga.porcentajeJuveniles).toFixed(2) + "%"
         : "-";
 
       const rowData = [
         (index + 1).toString(),
+        fechaInicioDescarga,
         especieNombre,
         clienteNombre,
         puertoNombre,
@@ -167,7 +246,7 @@ pg.drawRectangle({
         reporte,
         combustible,
         toneladasFormateadas,
-        porcentajeJuveniles
+        porcentajeJuveniles,
       ];
 
       const bgColor = index % 2 === 0 ? rgb(0.95, 0.97, 0.98) : rgb(1, 1, 1);
@@ -184,15 +263,19 @@ pg.drawRectangle({
         let displayValue = value;
         const maxWidth = descargaColWidths[i] - 4;
 
-        while (fontNormal.widthOfTextAtSize(displayValue, 6.5) > maxWidth && displayValue.length > 3) {
+        while (
+          fontNormal.widthOfTextAtSize(displayValue, 6.5) > maxWidth &&
+          displayValue.length > 3
+        ) {
           displayValue = displayValue.substring(0, displayValue.length - 1);
         }
         if (displayValue !== value && displayValue.length > 3) {
-          displayValue = displayValue.substring(0, displayValue.length - 3) + "...";
+          displayValue =
+            displayValue.substring(0, displayValue.length - 3) + "...";
         }
 
         let textX;
-        if (i === 0 || i === 6 || i === 7 || i === 8 || i === 9) {
+        if (i === 0 || i === 1 || i === 7 || i === 8 || i === 9 || i === 10) {
           const textWidth = fontNormal.widthOfTextAtSize(displayValue, 6.5);
           textX = xPos + descargaColWidths[i] - textWidth - 2;
         } else {
@@ -230,49 +313,80 @@ pg.drawRectangle({
       yPosition -= 18;
     });
 
-        const totalToneladas = descargas.reduce((sum, d) => sum + Number(d.toneladas || 0), 0);
-    const totalGalones = descargas.reduce((sum, d) => sum + Number(d.combustibleAbastecidoGalones || 0), 0);
+    const totalToneladas = descargas.reduce(
+      (sum, d) => sum + Number(d.toneladas || 0),
+      0,
+    );
+    const totalGalones = descargas.reduce(
+      (sum, d) => sum + Number(d.combustibleAbastecidoGalones || 0),
+      0,
+    );
     yPosition -= 5;
 
     // Fila TOTALES con fondo celeste
-page.drawRectangle({
-  x: descargaTableStartX,
-  y: yPosition - 3,
-  width: descargaTableWidth,
-  height: 20,
-  color: rgb(0.72, 0.87, 0.97),
-});
+    page.drawRectangle({
+      x: descargaTableStartX,
+      y: yPosition - 3,
+      width: descargaTableWidth,
+      height: 20,
+      color: rgb(0.72, 0.87, 0.97),
+    });
 
-    // "TOTALES" centrado bajo columna Observaciones (índice 5)
-    const xInicioObs = descargaColWidths.slice(0, 5).reduce((a, b) => a + b, 0);
+    // "TOTALES" centrado bajo columna Observaciones (índice 6)
+    const xInicioObs = descargaColWidths.slice(0, 6).reduce((a, b) => a + b, 0);
     const totalesLabel = "TOTALES";
     const totalesLabelWidth = fontBold.widthOfTextAtSize(totalesLabel, 8);
     page.drawText(totalesLabel, {
-      x: descargaTableStartX + xInicioObs + (descargaColWidths[5] - totalesLabelWidth) / 2,
+      x:
+        descargaTableStartX +
+        xInicioObs +
+        (descargaColWidths[6] - totalesLabelWidth) / 2,
       y: yPosition,
       size: 8,
       font: fontBold,
       color: rgb(0, 0, 0),
     });
 
-    // Total galones alineado a la derecha bajo columna "Petroleo Gal." (índice 7)
-    const totalGalonesText = totalGalones.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // Total galones alineado a la derecha bajo columna "Petroleo Gal." (índice 8)
+    const totalGalonesText = totalGalones.toLocaleString("es-PE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
     const totalGalonesWidth = fontBold.widthOfTextAtSize(totalGalonesText, 8);
-    const xInicioGalones = descargaColWidths.slice(0, 7).reduce((a, b) => a + b, 0);
+    const xInicioGalones = descargaColWidths
+      .slice(0, 8)
+      .reduce((a, b) => a + b, 0);
     page.drawText(totalGalonesText, {
-      x: descargaTableStartX + xInicioGalones + descargaColWidths[7] - totalGalonesWidth - 2,
+      x:
+        descargaTableStartX +
+        xInicioGalones +
+        descargaColWidths[8] -
+        totalGalonesWidth -
+        2,
       y: yPosition,
       size: 8,
       font: fontBold,
       color: rgb(0, 0, 0),
     });
 
-    // Total toneladas alineado a la derecha bajo columna "Toneladas" (índice 8)
-    const totalToneladasText = totalToneladas.toLocaleString('es-PE', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + " Ton.";
-    const totalToneladasWidth = fontBold.widthOfTextAtSize(totalToneladasText, 8);
-    const xInicioTon = descargaColWidths.slice(0, 8).reduce((a, b) => a + b, 0);
+    // Total toneladas alineado a la derecha bajo columna "Toneladas" (índice 9)
+    const totalToneladasText =
+      totalToneladas.toLocaleString("es-PE", {
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 3,
+      }) + " Ton.";
+    const totalToneladasWidth = fontBold.widthOfTextAtSize(
+      totalToneladasText,
+      8,
+    );
+    const xInicioTon = descargaColWidths.slice(0, 9).reduce((a, b) => a + b, 0);
     page.drawText(totalToneladasText, {
-      x: descargaTableStartX + xInicioTon + descargaColWidths[8] - totalToneladasWidth - 2,
+      x:
+        descargaTableStartX +
+        xInicioTon +
+        descargaColWidths[9] -
+        totalToneladasWidth -
+        2,
       y: yPosition,
       size: 8,
       font: fontBold,
@@ -290,7 +404,6 @@ page.drawRectangle({
       });
       if (i < descargaColWidths.length) lineXTot += descargaColWidths[i];
     }
-    
   } else {
     page.drawText("No hay descargas registradas para esta temporada", {
       x: margin,
@@ -325,5 +438,5 @@ page.drawRectangle({
   });
 
   const pdfBytes = await pdfDoc.save();
-  return new Blob([pdfBytes], { type: 'application/pdf' });
+  return new Blob([pdfBytes], { type: "application/pdf" });
 }
