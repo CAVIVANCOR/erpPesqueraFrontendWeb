@@ -369,12 +369,11 @@ export async function generarReportePescaPDF(data) {
       color: rgb(0, 0, 0),
     });
 
-    // Total toneladas alineado a la derecha bajo columna "Toneladas" (índice 9)
-    const totalToneladasText =
-      totalToneladas.toLocaleString("es-PE", {
-        minimumFractionDigits: 3,
-        maximumFractionDigits: 3,
-      }) + " Ton.";
+       // Total toneladas alineado a la derecha bajo columna "Toneladas" (índice 9)
+    const totalToneladasText = totalToneladas.toLocaleString("es-PE", {
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3,
+    });
     const totalToneladasWidth = fontBold.widthOfTextAtSize(
       totalToneladasText,
       8,
