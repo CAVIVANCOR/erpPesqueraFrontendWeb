@@ -110,7 +110,7 @@ const TemporadaPescaForm = ({
     setValue,
     getValues,
     formState: { errors },
-  } = useForm({
+    } = useForm({
     defaultValues: {
       id: null,
       empresaId: null,
@@ -154,6 +154,14 @@ const TemporadaPescaForm = ({
       entidadEmpresarialAlquiladaId: null,
       entidadComercialComisionistaAlquiler: null,
       esTemporadaSoloAlquiler: editingItem?.esTemporadaSoloAlquiler || false,
+      // Campos de combustible y recorrido - Calculados
+      combustibleTotalConsumido: 0,
+      recorridoTotalMillasNauticas: 0,
+      consumoTotalPetroleo: 0,
+      // Campos de combustible y recorrido - Reales (App Móvil)
+      combustibleTotalConsumidoReal: 0,
+      recorridoTotalMillasNauticasReal: 0,
+      consumoTotalPetroleoReal: 0,
     },
   });
 

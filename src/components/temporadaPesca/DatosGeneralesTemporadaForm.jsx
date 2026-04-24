@@ -1,139 +1,86 @@
 /**
-
  * DatosGeneralesTemporadaForm.jsx
-
  *
-
  * Componente Card para gestionar los datos generales de una temporada de pesca.
-
  * Incluye campos básicos de identificación, fechas, cuotas y configuración.
-
  * Sigue el patrón profesional ERP Megui con React Hook Form.
-
  *
-
  * @author ERP Megui
-
  * @version 1.0.0
-
  */
-
 import React, { useEffect, useRef, useState } from "react";
-
 import { Card } from "primereact/card";
-
 import { InputText } from "primereact/inputtext";
-
 import { InputNumber } from "primereact/inputnumber";
-
 import { Dropdown } from "primereact/dropdown";
-
 import { Calendar } from "primereact/calendar";
-
 import { classNames } from "primereact/utils";
-
 import { Controller } from "react-hook-form";
-
 import { Message } from "primereact/message";
-
 import { getEmbarcaciones } from "../../api/embarcacion";
-
 import { getTemporadaPescaPorId } from "../../api/temporadaPesca";
-
 import { getDetallesCuotaPesca } from "../../api/detCuotaPesca";
-
 import DetalleFaenasPescaCard from "./DetalleFaenasPescaCard";
 import { Button } from "primereact/button";
+import DetalleDiasSinFaenaCard from "./DetalleDiasSinFaenaCard";
 
 export default function DatosGeneralesTemporadaForm({
   control,
-
   errors,
-
   setValue,
-
   watch,
-
   getValues,
-
   empresas = [],
-
   bahiasComerciales = [],
-
   motoristas = [],
-
   patrones = [],
-
   pangueros = [], // ⭐ AGREGAR ESTA LÍNEA
-
   estadosTemporada = [],
-
   empresaSeleccionada,
-
   defaultValues = {},
-
   onIniciarTemporada,
-
   // Nuevos props para DetalleFaenasPescaCard
-
   embarcaciones = [],
-
   boliches = [],
-
   puertos = [],
-
   unidadesNegocio = [],
-
   temporadaData = null,
-
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
-
   onFaenasChange, // Callback para notificar cambios en faenas
-
   readOnly = false,
-
   toast = null, // ← AGREGAR ESTA LÍNEA
 }) {
   const detalleFaenasRef = useRef(null);
-
   // Ref para controlar si el usuario está editando manualmente el nombre
-
   const nombreEditadoManualmente = useRef(false);
-
   // Estado para controlar actualizaciones de faenas
-
   const [faenasUpdateTrigger, setFaenasUpdateTrigger] = useState(0);
-
   const [esTemporadaSoloAlquiler, setEsTemporadaSoloAlquiler] = useState(
     defaultValues.esTemporadaSoloAlquiler ?? false,
   );
-
   const empresaWatched = watch("empresaId");
-
   const limiteMaximoCapturaTnWatched = watch("limiteMaximoCapturaTn");
-
   // Watch para generar nombre automáticamente
-
   const idWatched = watch("id");
-
   const numeroResolucionWatched = watch("numeroResolucion");
-
   const nombreWatched = watch("nombre");
-
   const zonaWatched = watch("zona");
-
   // Watch para toneladas capturadas
-
   const toneladasCapturadasTemporada = watch("toneladasCapturadasTemporada");
 
-  // Cargar datos iniciales
+  // Watch para campos de combustible y recorrido
+  const combustibleTotalConsumido = watch("combustibleTotalConsumido");
+  const recorridoTotalMillasNauticas = watch("recorridoTotalMillasNauticas");
+  const consumoTotalPetroleo = watch("consumoTotalPetroleo");
+  const combustibleTotalConsumidoReal = watch("combustibleTotalConsumidoReal");
+  const recorridoTotalMillasNauticasReal = watch("recorridoTotalMillasNauticasReal");
+  const consumoTotalPetroleoReal = watch("consumoTotalPetroleoReal");
 
+  // Cargar datos iniciales
   useEffect(() => {
     cargarDatos();
   }, []);
-
   // Autocompletar BahiaId cuando cambie la empresa
-
   useEffect(() => {
     if (empresaWatched) {
       autocompletarBahiaId(empresaWatched);
@@ -141,164 +88,106 @@ export default function DatosGeneralesTemporadaForm({
       setValue("BahiaId", null);
     }
   }, [empresaWatched, setValue, bahiasComerciales]);
-
   // Generar nombre automáticamente SOLO si no ha sido editado manualmente
-
   useEffect(() => {
     // Si hay un ID y un nombre ya cargado, marcar como editado manualmente (carga inicial)
-
     if (idWatched && nombreWatched && nombreWatched.trim() !== "") {
       nombreEditadoManualmente.current = true;
-
       return; // No regenerar
     }
-
     // Solo generar automáticamente si el usuario NO ha editado manualmente
-
     if (!nombreEditadoManualmente.current) {
       if (idWatched && numeroResolucionWatched) {
         const nombreGenerado = `Temporada Pesca - ${idWatched} - ${numeroResolucionWatched}`;
-
         setValue("nombre", nombreGenerado);
       } else if (numeroResolucionWatched && numeroResolucionWatched.trim()) {
         // Para nuevas temporadas sin ID, usar solo numeroResolucion
-
         const nombreGenerado = `Temporada Pesca - ${numeroResolucionWatched}`;
-
         setValue("nombre", nombreGenerado);
       } else if (idWatched) {
         const nombreGenerado = `Temporada Pesca - ${idWatched}`;
-
         setValue("nombre", nombreGenerado);
       }
     }
   }, [idWatched, numeroResolucionWatched, nombreWatched, setValue]);
-
   // Calcular cuotas automáticamente cuando cambien empresa, zona o límite máximo
-
   useEffect(() => {
     const calcularCuotas = async () => {
       if (!empresaWatched || !limiteMaximoCapturaTnWatched) {
         setValue("cuotaPropiaTon", null);
-
         setValue("cuotaAlquiladaTon", null);
-
         return;
       }
-
       try {
         // Obtener detalles de cuota de la empresa
-
         const detalles = await getDetallesCuotaPesca({
           empresaId: empresaWatched,
         });
-
         // Filtrar: activo + solo PESCA (esAlquiler=false)
-
         let detallesFiltrados = detalles
-
           .filter((d) => d.activo)
-
           .filter((d) => d.esAlquiler === false);
-
         // Filtrar por zona (si existe)
-
         if (zonaWatched) {
           detallesFiltrados = detallesFiltrados.filter(
             (d) => d.zona === zonaWatched,
           );
         }
-
         // VALIDACIÓN CRÍTICA: ¿Existen cuotas para esta zona?
-
         if (detallesFiltrados.length === 0) {
           setValue("cuotaPropiaTon", null);
-
           setValue("cuotaAlquiladaTon", null);
-
           // Mostrar error al usuario
-
           toast?.current?.show({
             severity: "error",
-
             summary: "Sin Cuotas de Pesca",
-
             detail: `No existen Cuotas de Pesca activas para la zona ${zonaWatched}. No se puede crear la Temporada de Pesca.`,
-
             life: 5000,
           });
-
           return;
         }
-
         // Sumar porcentajes de cuotas propias
-
         const totalPropiaPorcentaje = detallesFiltrados
-
           .filter((d) => d.cuotaPropia)
-
           .reduce((sum, d) => sum + Number(d.porcentajeCuota), 0);
-
         // Sumar porcentajes de cuotas alquiladas
-
         const totalAlquiladaPorcentaje = detallesFiltrados
-
           .filter((d) => !d.cuotaPropia)
-
           .reduce((sum, d) => sum + Number(d.porcentajeCuota), 0);
-
         // Calcular toneladas
-
         const limite = Number(limiteMaximoCapturaTnWatched);
-
         const cuotaPropia = limite * (totalPropiaPorcentaje / 100);
-
         const cuotaAlquilada = limite * (totalAlquiladaPorcentaje / 100);
-
         setValue("cuotaPropiaTon", cuotaPropia);
-
         setValue("cuotaAlquiladaTon", cuotaAlquilada);
       } catch (error) {
         console.error("Error al calcular cuotas:", error);
-
         setValue("cuotaPropiaTon", null);
-
         setValue("cuotaAlquiladaTon", null);
-
         toast?.current?.show({
           severity: "error",
-
           summary: "Error",
-
           detail: "Error al calcular las cuotas de pesca.",
-
           life: 3000,
         });
       }
     };
-
     calcularCuotas();
   }, [empresaWatched, zonaWatched, limiteMaximoCapturaTnWatched, setValue]);
-
   const cargarDatos = async () => {
     try {
       // Solo cargar embarcaciones, el personal ya viene como props
-
       const embarcacionesData = await getEmbarcaciones();
-
       // setEmbarcaciones(embarcacionesData);
     } catch (error) {
       console.error("Error al cargar datos:", error);
     }
   };
-
   const autocompletarBahiaId = async (empresaId) => {
     try {
       // Autocompletar siempre que haya solo una bahía disponible
-
       if (bahiasComerciales.length === 1) {
         const valorCalculado = Number(bahiasComerciales[0].id);
-
         setValue("BahiaId", valorCalculado);
       }
     } catch (error) {
@@ -312,25 +201,18 @@ export default function DatosGeneralesTemporadaForm({
     if (!temporadaData?.id) {
       return;
     }
-
     try {
       const temporadaActualizada = await getTemporadaPescaPorId(
         temporadaData.id,
       );
-
       const valorASetear =
         temporadaActualizada.toneladasCapturadas ||
         temporadaActualizada.toneladasCapturadasTemporada ||
         0;
-
       setValue("toneladasCapturadasTemporada", valorASetear);
-
       // Verificar si se actualizó
-
       const valorActual = getValues("toneladasCapturadasTemporada");
-
       // Notificar cambios al componente padre
-
       if (onTemporadaDataChange) {
         onTemporadaDataChange(temporadaActualizada);
       }
@@ -338,9 +220,7 @@ export default function DatosGeneralesTemporadaForm({
       console.error("❌ Error al recargar datos de temporada:", error);
     }
   };
-
   // useEffect para recargar datos cuando cambien las faenas
-
   useEffect(() => {
     if (faenasUpdateTrigger > 0) {
       recargarDatosTemporada();
@@ -351,7 +231,6 @@ export default function DatosGeneralesTemporadaForm({
 
   const empresasOptions = empresas.map((empresa) => ({
     label: empresa.razonSocial || empresa.nombre,
-
     value: Number(empresa.id),
   }));
 
@@ -359,19 +238,16 @@ export default function DatosGeneralesTemporadaForm({
 
   const bahiasComercialesOptions = bahiasComerciales.map((persona) => ({
     label: persona.nombres + " " + persona.apellidos,
-
     value: Number(persona.id),
   }));
 
   const estadosTemporadaOptions = estadosTemporada.map((estado) => ({
     label: estado.descripcion,
-
     value: Number(estado.id),
   }));
 
   const unidadesNegocioOptions = unidadesNegocio.map((unidad) => ({
     label: unidad.nombre,
-
     value: Number(unidad.id),
   }));
 
@@ -379,7 +255,6 @@ export default function DatosGeneralesTemporadaForm({
 
   const zonaPescaOptions = [
     { label: "NORTE", value: "NORTE" },
-
     { label: "SUR", value: "SUR" },
   ];
 
@@ -388,7 +263,6 @@ export default function DatosGeneralesTemporadaForm({
       className="mb-4"
       pt={{
         body: { className: "pt-0" },
-
         content: { className: "pb-0" },
       }}
     >
@@ -396,19 +270,15 @@ export default function DatosGeneralesTemporadaForm({
         <div
           style={{
             display: "flex",
-
             gap: 10,
-
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
           {/* Empresa */}
-
           <div style={{ flex: 1 }}>
             <label htmlFor="empresaId" className="font-semibold">
               Empresa *
             </label>
-
             <Controller
               name="empresaId"
               control={control}
@@ -440,14 +310,11 @@ export default function DatosGeneralesTemporadaForm({
               <Message severity="error" text={errors.empresaId.message} />
             )}
           </div>
-
           {/* Bahía */}
-
           <div style={{ flex: 1 }}>
             <label htmlFor="BahiaId" className="font-semibold">
               Bahía Comercial *
             </label>
-
             <Controller
               name="BahiaId"
               control={control}
@@ -474,19 +341,15 @@ export default function DatosGeneralesTemporadaForm({
                 />
               )}
             />
-
             {errors.BahiaId && (
               <Message severity="error" text={errors.BahiaId.message} />
             )}
           </div>
-
           {/* Número de Resolución */}
-
           <div style={{ flex: 1 }}>
             <label htmlFor="numeroResolucion" className="font-semibold">
               Número de Resolución *
             </label>
-
             <Controller
               name="numeroResolucion"
               control={control}
@@ -498,9 +361,7 @@ export default function DatosGeneralesTemporadaForm({
                   value={field.value?.toUpperCase() || ""}
                   onChange={(e) => {
                     const upperValue = e.target.value.toUpperCase();
-
                     field.onChange(upperValue);
-
                     setValue("numeroResolucion", upperValue);
                   }}
                   placeholder="Ingrese el número de resolución"
@@ -512,7 +373,6 @@ export default function DatosGeneralesTemporadaForm({
                 />
               )}
             />
-
             {errors.numeroResolucion && (
               <Message
                 severity="error"
@@ -520,14 +380,11 @@ export default function DatosGeneralesTemporadaForm({
               />
             )}
           </div>
-
           {/* Estado de Temporada */}
-
           <div style={{ flex: 1 }}>
             <label htmlFor="estadoTemporadaId" className="font-semibold">
               Estado de Temporada *
             </label>
-
             <Controller
               name="estadoTemporadaId"
               control={control}
@@ -549,7 +406,6 @@ export default function DatosGeneralesTemporadaForm({
                 />
               )}
             />
-
             {errors.estadoTemporadaId && (
               <Message
                 severity="error"
@@ -557,14 +413,11 @@ export default function DatosGeneralesTemporadaForm({
               />
             )}
           </div>
-
           {/* Unidad de Negocio */}
-
           <div style={{ flex: 1 }}>
             <label htmlFor="unidadNegocioId" className="font-semibold">
               Unidad de Negocio *
             </label>
-
             <Controller
               name="unidadNegocioId"
               control={control}
@@ -592,29 +445,23 @@ export default function DatosGeneralesTemporadaForm({
                 />
               )}
             />
-
             {errors.unidadNegocioId && (
               <Message severity="error" text={errors.unidadNegocioId.message} />
             )}
           </div>
         </div>
-
         <div
           style={{
             display: "flex",
-
             gap: 10,
-
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
           {/* Nombre de Temporada - EDITABLE */}
-
           <div style={{ flex: 1 }}>
             <label htmlFor="nombre" className="font-semibold">
               Nombre de Temporada *
             </label>
-
             <Controller
               name="nombre"
               control={control}
@@ -626,11 +473,8 @@ export default function DatosGeneralesTemporadaForm({
                   value={field.value || ""}
                   onChange={(e) => {
                     // Marcar que el usuario está editando manualmente
-
                     nombreEditadoManualmente.current = true;
-
                     field.onChange(e.target.value);
-
                     setValue("nombre", e.target.value);
                   }}
                   placeholder="Se genera automáticamente o puede editarlo"
@@ -642,19 +486,15 @@ export default function DatosGeneralesTemporadaForm({
                 />
               )}
             />
-
             {errors.nombre && (
               <Message severity="error" text={errors.nombre.message} />
             )}
           </div>
-
           {/* Zona de Pesca */}
-
           <div style={{ flex: 0.5 }}>
             <label htmlFor="zona" className="font-semibold">
               Zona
             </label>
-
             <Controller
               name="zona"
               control={control}
@@ -665,7 +505,6 @@ export default function DatosGeneralesTemporadaForm({
                   value={field.value || "NORTE"}
                   onChange={(e) => {
                     field.onChange(e.value);
-
                     setValue("zona", e.value);
                   }}
                   options={zonaPescaOptions}
@@ -678,19 +517,15 @@ export default function DatosGeneralesTemporadaForm({
                 />
               )}
             />
-
             {errors.zona && (
               <Message severity="error" text={errors.zona.message} />
             )}
           </div>
-
           {/* Tipo de Temporada */}
-
           <div style={{ flex: 0.7 }}>
             <label htmlFor="esTemporadaSoloAlquiler" className="font-semibold">
               Tipo de Temporada
             </label>
-
             <Button
               type="button"
               label={esTemporadaSoloAlquiler ? "SOLO ALQUILER" : "OPERATIVA"}
@@ -700,36 +535,28 @@ export default function DatosGeneralesTemporadaForm({
               icon={esTemporadaSoloAlquiler ? "pi pi-dollar" : "pi pi-anchor"}
               onClick={() => {
                 const nuevoValor = !esTemporadaSoloAlquiler;
-
                 setEsTemporadaSoloAlquiler(nuevoValor);
-
                 setValue("esTemporadaSoloAlquiler", nuevoValor);
               }}
               disabled={readOnly}
               style={{ width: "100%", marginTop: "0.5rem" }}
             />
           </div>
-
           {/* Fecha de Inicio */}
-
           <div style={{ flex: 0.7 }}>
             <label htmlFor="fechaInicio" className="font-semibold">
               Fecha de Inicio *
             </label>
-
             <Controller
               name="fechaInicio"
               control={control}
               rules={{
                 required: "La fecha de inicio es obligatoria",
-
                 validate: (value) => {
                   const fin = watch("fechaFin");
-
                   if (fin && value >= fin) {
                     return "La fecha de inicio debe ser anterior a la fecha de fin";
                   }
-
                   return true;
                 },
               }}
@@ -740,7 +567,6 @@ export default function DatosGeneralesTemporadaForm({
                   value={field.value}
                   onChange={(e) => {
                     field.onChange(e.value);
-
                     setValue("fechaInicio", e.value);
                   }}
                   dateFormat="dd/mm/yy"
@@ -753,32 +579,25 @@ export default function DatosGeneralesTemporadaForm({
                 />
               )}
             />
-
             {errors.fechaInicio && (
               <Message severity="error" text={errors.fechaInicio.message} />
             )}
           </div>
-
           {/* Fecha de Fin */}
-
           <div style={{ flex: 0.7 }}>
             <label htmlFor="fechaFin" className="font-semibold">
               Fecha de Fin *
             </label>
-
             <Controller
               name="fechaFin"
               control={control}
               rules={{
                 required: "La fecha de fin es obligatoria",
-
                 validate: (value) => {
                   const inicio = watch("fechaInicio");
-
                   if (inicio && value <= inicio) {
                     return "La fecha de fin debe ser posterior a la fecha de inicio";
                   }
-
                   return true;
                 },
               }}
@@ -802,19 +621,15 @@ export default function DatosGeneralesTemporadaForm({
                 />
               )}
             />
-
             {errors.fechaFin && (
               <Message severity="error" text={errors.fechaFin.message} />
             )}
           </div>
-
           {/* Límite Máximo de Captura */}
-
           <div style={{ flex: 1 }}>
             <label htmlFor="limiteMaximoCapturaTn" className="font-semibold">
               Máximo Captura*
             </label>
-
             <Controller
               name="limiteMaximoCapturaTn"
               control={control}
@@ -842,7 +657,6 @@ export default function DatosGeneralesTemporadaForm({
                 />
               )}
             />
-
             {errors.limiteMaximoCapturaTn && (
               <Message
                 severity="error"
@@ -850,14 +664,11 @@ export default function DatosGeneralesTemporadaForm({
               />
             )}
           </div>
-
           {/* Cuota Propia */}
-
           <div style={{ flex: 1 }}>
             <label htmlFor="cuotaPropiaTon" className="font-semibold">
               Cuota Propia
             </label>
-
             <Controller
               name="cuotaPropiaTon"
               control={control}
@@ -883,12 +694,10 @@ export default function DatosGeneralesTemporadaForm({
           </div>
 
           {/* Cuota Alquilada */}
-
           <div style={{ flex: 1 }}>
             <label htmlFor="cuotaAlquiladaTon" className="font-semibold">
               Cuota Alquilada
             </label>
-
             <Controller
               name="cuotaAlquiladaTon"
               control={control}
@@ -912,9 +721,7 @@ export default function DatosGeneralesTemporadaForm({
               )}
             />
           </div>
-
           {/* Toneladas Capturadas */}
-
           <div style={{ flex: 1 }}>
             <label
               htmlFor="toneladasCapturadasTemporada"
@@ -922,7 +729,6 @@ export default function DatosGeneralesTemporadaForm({
             >
               Toneladas Capturadas
             </label>
-
             <Controller
               name="toneladasCapturadasTemporada"
               control={control}
@@ -945,7 +751,6 @@ export default function DatosGeneralesTemporadaForm({
             />
           </div>
         </div>
-
         <DetalleFaenasPescaCard
           ref={detalleFaenasRef}
           temporadaPescaId={temporadaData?.id}
@@ -964,6 +769,151 @@ export default function DatosGeneralesTemporadaForm({
           readOnly={readOnly}
         />
       </div>
+      {/* Días Sin Faena */}
+      <DetalleDiasSinFaenaCard temporadaPescaId={temporadaData?.id} />
+
+                                   {/* Estadísticas de Combustible y Recorrido */}
+      {temporadaData?.id && (
+        <div className="p-fluid mt-4">
+          <h3 className="mb-3" style={{ color: '#495057', fontSize: '1.1rem', fontWeight: 'bold' }}>
+            📊 ESTADÍSTICAS DE COMBUSTIBLE Y RECORRIDO
+          </h3>
+
+          {/* DOS COLUMNAS PRINCIPALES */}
+          <div
+            style={{
+              display: "flex",
+              gap: 20,
+              flexDirection: window.innerWidth < 992 ? "column" : "row",
+            }}
+          >
+            {/* COLUMNA IZQUIERDA - Datos Calculados */}
+            <div style={{ flex: 1 }}>
+              <h4 className="mb-2" style={{ color: '#0d6efd', fontSize: '0.95rem', fontWeight: 'bold' }}>
+                🧮 Datos Calculados (Automático)
+              </h4>
+              
+              {/* 3 campos horizontales */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="combustibleTotalConsumido" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                    Combustible Consumido (Gal)
+                  </label>
+                  <InputNumber
+                    id="combustibleTotalConsumido"
+                    value={combustibleTotalConsumido || 0}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    className="w-full"
+                    style={{ backgroundColor: '#e9ecef' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="recorridoTotalMillasNauticas" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                    Recorrido (Millas Náuticas)
+                  </label>
+                  <InputNumber
+                    id="recorridoTotalMillasNauticas"
+                    value={recorridoTotalMillasNauticas || 0}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    className="w-full"
+                    style={{ backgroundColor: '#e9ecef' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="consumoTotalPetroleo" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                    Consumo Petróleo (S/.)
+                  </label>
+                  <InputNumber
+                    id="consumoTotalPetroleo"
+                    value={consumoTotalPetroleo || 0}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    className="w-full"
+                    style={{ backgroundColor: '#e9ecef' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* COLUMNA DERECHA - Datos Reales */}
+            <div style={{ flex: 1 }}>
+              <h4 className="mb-2" style={{ color: '#198754', fontSize: '0.95rem', fontWeight: 'bold' }}>
+                📱 Datos Reales (App Móvil - Futuro)
+              </h4>
+              {/* 3 campos horizontales */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="combustibleTotalConsumidoReal" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                    Combustible Consumido (Gal)
+                  </label>
+                  <InputNumber
+                    id="combustibleTotalConsumidoReal"
+                    value={combustibleTotalConsumidoReal || 0}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    className="w-full"
+                    style={{ backgroundColor: '#d1e7dd' }}
+                  />
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="recorridoTotalMillasNauticasReal" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                    Recorrido (Millas Náuticas)
+                  </label>
+                  <InputNumber
+                    id="recorridoTotalMillasNauticasReal"
+                    value={recorridoTotalMillasNauticasReal || 0}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    className="w-full"
+                    style={{ backgroundColor: '#d1e7dd' }}
+                  />
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="consumoTotalPetroleoReal" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                    Consumo Petróleo (S/)
+                  </label>
+                  <InputNumber
+                    id="consumoTotalPetroleoReal"
+                    value={consumoTotalPetroleoReal || 0}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    className="w-full"
+                    style={{ backgroundColor: '#d1e7dd' }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

@@ -57,7 +57,7 @@ export default function Dashboard() {
       descripcion:
         "Control de capturas, embarcaciones y documentación pesquera",
       icono: "pi-compass",
-      modulos: 13,
+      modulos: 14,
       color: "#2874A6",
       submenu: [
         {
@@ -105,6 +105,11 @@ export default function Dashboard() {
           icon: "pi-id-card",
         },
         { label: "Puerto de Pesca", key: "puertoPesca", icon: "pi-map-marker" },
+                {
+          label: "Motivos sin Faena",
+          key: "motivoSinFaena",
+          icon: "pi-map",
+        },
       ],
     },
     {

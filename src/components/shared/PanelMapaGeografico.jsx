@@ -71,6 +71,20 @@ export default function PanelMapaGeografico({
   loadingPlataforma,
   loadingFondeo,
 
+  // ⭐ Props genéricos para InformacionGeograficaMultiple
+  labelPunto1,
+  labelPunto2,
+  labelPunto3,
+  iconoPunto1,
+  iconoPunto2,
+  iconoPunto3,
+  colorPunto1,
+  colorPunto2,
+  colorPunto3,
+  bgColorPunto1,
+  bgColorPunto2,
+  bgColorPunto3,
+
   // Props para ResumenRecorrido (modo múltiple)
   distanciaRetornoPuerto,
   consumoRetornoPuerto,
@@ -80,6 +94,9 @@ export default function PanelMapaGeografico({
   costoDescargaFondeo,
   loadingRetornoPuerto,
   loadingDescargaFondeo,
+
+  // ⭐ Array de tramos genérico (modo recomendado)
+  tramos,
 
   // Props del panel colapsable
   titulo = "📍 Información Geográfica",
@@ -140,10 +157,25 @@ export default function PanelMapaGeografico({
               loadingInicioRetorno={loadingInicioRetorno}
               loadingPlataforma={loadingPlataforma}
               loadingFondeo={loadingFondeo}
+              labelPunto1={labelPunto1}
+              labelPunto2={labelPunto2}
+              labelPunto3={labelPunto3}
+              iconoPunto1={iconoPunto1}
+              iconoPunto2={iconoPunto2}
+              iconoPunto3={iconoPunto3}
+              colorPunto1={colorPunto1}
+              colorPunto2={colorPunto2}
+              colorPunto3={colorPunto3}
+              bgColorPunto1={bgColorPunto1}
+              bgColorPunto2={bgColorPunto2}
+              bgColorPunto3={bgColorPunto3}
             />
 
             {/* Columna 2: Resumen de Recorrido */}
             <ResumenRecorrido
+              // Modo genérico (si se pasa tramos, usa eso)
+              tramos={tramos}
+              // Modo legacy (compatibilidad hacia atrás)
               distanciaRetornoPuerto={distanciaRetornoPuerto}
               consumoRetornoPuerto={consumoRetornoPuerto}
               costoRetornoPuerto={costoRetornoPuerto}

@@ -149,15 +149,21 @@ const DetalleFaenasPescaCard = forwardRef(
         );
         setFaenas(faenasFiltradas);
 
+        // Cargar calas de todas las faenas para mostrar toneladas
+        const calasPromises = faenasFiltradas.map(async (faena) => {
+          try {
+            const calas = await getCalasPorFaena(faena.id);
+            return { faenaId: faena.id, calas };
+          } catch (error) {
+            console.error(`❌ Error cargando calas de faena ${faena.id}:`, error);
+            return { faenaId: faena.id, calas: [] };
+          }
+        });
+
         // Cargar descargas de todas las faenas para mostrar combustible total
         const descargasPromises = faenasFiltradas.map(async (faena) => {
           try {
             const descargas = await getDescargasPorFaena(faena.id);
-
-            // Verificar si tienen combustibleAbastecidoGalones
-            descargas.forEach((descarga, index) => {
-            });
-
             return { faenaId: faena.id, descargas };
           } catch (error) {
             console.error(`❌ Error cargando descargas de faena ${faena.id}:`, error);
@@ -165,17 +171,23 @@ const DetalleFaenasPescaCard = forwardRef(
           }
         });
 
-        const descargasResults = await Promise.all(descargasPromises);
+        const [calasResults, descargasResults] = await Promise.all([
+          Promise.all(calasPromises),
+          Promise.all(descargasPromises)
+        ]);
+
+        // Actualizar estado de calas
+        const newCalasData = {};
+        calasResults.forEach(({ faenaId, calas }) => {
+          newCalasData[faenaId] = calas;
+        });
+        setCalasData(newCalasData);
 
         // Actualizar estado de descargas
         const newDescargasData = {};
         descargasResults.forEach(({ faenaId, descargas }) => {
           newDescargasData[faenaId] = descargas;
-
-          // Calcular total para verificar
-          const total = descargas.reduce((sum, d) => sum + (Number(d.combustibleAbastecidoGalones) || 0), 0);
         });
-
         setDescargasData(newDescargasData);
       } catch (error) {
         console.error("Error cargando faenas:", error);
@@ -336,6 +348,10 @@ const DetalleFaenasPescaCard = forwardRef(
           bahiaId: data.bahiaId || null,
           estadoFaenaId: data.estadoFaenaId || null,
           toneladasCapturadasFaena: data.toneladasCapturadasFaena || null,
+          combustibleAbastecidoGalones: data.combustibleAbastecidoGalones || null,
+          combustibleConsumido: data.combustibleConsumido || null,
+          recorridoMillasNauticas: data.recorridoMillasNauticas || null,
+          PrecioGalonPetroleoSoles: data.PrecioGalonPetroleoSoles || null,
           urlReporteFaenaCalas: data.urlReporteFaenaCalas || "",
           urlDeclaracionDesembarqueArmador:
             data.urlDeclaracionDesembarqueArmador || "",
@@ -347,6 +363,39 @@ const DetalleFaenasPescaCard = forwardRef(
         let resultado;
         if (editingFaena) {
           resultado = await actualizarFaenaPesca(editingFaena.id, faenaData);
+
+          // ⭐ ACTUALIZAR editingFaena con los valores calculados del backend
+          setEditingFaena(resultado);
+
+          // ⭐ ACTUALIZAR la faena en la lista (tabla) inmediatamente
+          setFaenas(prevFaenas =>
+            prevFaenas.map(f =>
+              f.id === resultado.id ? resultado : f
+            )
+          );
+
+          // ⭐ RECARGAR descargas de esta faena para actualizar "Petroleo Comprado"
+          try {
+            const descargasActualizadas = await getDescargasPorFaena(resultado.id);
+            setDescargasData(prev => ({
+              ...prev,
+              [resultado.id]: descargasActualizadas
+            }));
+          } catch (error) {
+            console.error('Error recargando descargas:', error);
+          }
+
+          // ⭐ RECARGAR calas de esta faena para actualizar "Calas Tons."
+          try {
+            const calasActualizadas = await getCalasPorFaena(resultado.id);
+            setCalasData(prev => ({
+              ...prev,
+              [resultado.id]: calasActualizadas
+            }));
+          } catch (error) {
+            console.error('Error recargando calas:', error);
+          }
+
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
@@ -510,54 +559,235 @@ const DetalleFaenasPescaCard = forwardRef(
         header: "Puerto Zarpe",
         sortable: true,
         body: (rowData) => obtenerNombrePuerto(rowData.puertoSalidaId),
-      },
-      {
-        field: "fechaRetorno",
-        header: "Fecha Retorno",
-        sortable: true,
-        body: (rowData) =>
-          rowData.fechaRetorno
-            ? new Date(rowData.fechaRetorno).toLocaleDateString("es-PE")
-            : "-",
-      },
-      {
-        field: "fechaHoraFondeo",
-        header: "Fecha Fondeo",
-        sortable: true,
-        body: (rowData) =>
-          rowData.fechaHoraFondeo
-            ? new Date(rowData.fechaHoraFondeo).toLocaleDateString("es-PE")
-            : "-",
+        sortFunction: (event) => {
+          const data = [...event.data];
+          return data.sort((a, b) => {
+            const nombreA = obtenerNombrePuerto(a.puertoSalidaId) || "";
+            const nombreB = obtenerNombrePuerto(b.puertoSalidaId) || "";
+
+            return event.order === 1
+              ? nombreA.localeCompare(nombreB)
+              : nombreB.localeCompare(nombreA);
+          });
+        },
       },
       {
         field: "puertoFondeoId",
         header: "Puerto Fondeo",
         sortable: true,
         body: (rowData) => obtenerNombrePuerto(rowData.puertoFondeoId),
+        sortFunction: (event) => {
+          const data = [...event.data];
+          return data.sort((a, b) => {
+            const nombreA = obtenerNombrePuerto(a.puertoFondeoId) || "";
+            const nombreB = obtenerNombrePuerto(b.puertoFondeoId) || "";
+
+            return event.order === 1
+              ? nombreA.localeCompare(nombreB)
+              : nombreB.localeCompare(nombreA);
+          });
+        },
       },
       {
-        field: "toneladasCapturadasFaena",
-        header: "Toneladas",
+        field: "ultimaCala",
+        header: "Última Cala",
         sortable: true,
         body: (rowData) => {
-          const tons = rowData.toneladasCapturadasFaena
-            ? parseFloat(rowData.toneladasCapturadasFaena).toFixed(3)
-            : "0.000";
-          return `${tons} t`;
+          const calas = calasData[rowData.id] || [];
+          if (calas.length === 0) return "-";
+
+          // Ordenar calas por fechaHoraInicio descendente y tomar la primera
+          const calasOrdenadas = [...calas].sort((a, b) => {
+            const fechaA = a.fechaHoraInicio ? new Date(a.fechaHoraInicio) : new Date(0);
+            const fechaB = b.fechaHoraInicio ? new Date(b.fechaHoraInicio) : new Date(0);
+            return fechaB - fechaA;
+          });
+
+          const ultimaCala = calasOrdenadas[0];
+          if (!ultimaCala?.fechaHoraInicio) return "-";
+
+          const fecha = new Date(ultimaCala.fechaHoraInicio);
+          return fecha.toLocaleString("es-PE", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true
+          });
+        },
+        sortFunction: (event) => {
+          const data = [...event.data];
+          return data.sort((a, b) => {
+            const calasA = calasData[a.id] || [];
+            const calasB = calasData[b.id] || [];
+
+            // Obtener fecha de última cala de A
+            let fechaA = null;
+            if (calasA.length > 0) {
+              const calasOrdenadasA = [...calasA].sort((x, y) => {
+                const fX = x.fechaHoraInicio ? new Date(x.fechaHoraInicio) : new Date(0);
+                const fY = y.fechaHoraInicio ? new Date(y.fechaHoraInicio) : new Date(0);
+                return fY - fX;
+              });
+              fechaA = calasOrdenadasA[0]?.fechaHoraInicio ? new Date(calasOrdenadasA[0].fechaHoraInicio) : null;
+            }
+
+            // Obtener fecha de última cala de B
+            let fechaB = null;
+            if (calasB.length > 0) {
+              const calasOrdenadasB = [...calasB].sort((x, y) => {
+                const fX = x.fechaHoraInicio ? new Date(x.fechaHoraInicio) : new Date(0);
+                const fY = y.fechaHoraInicio ? new Date(y.fechaHoraInicio) : new Date(0);
+                return fY - fX;
+              });
+              fechaB = calasOrdenadasB[0]?.fechaHoraInicio ? new Date(calasOrdenadasB[0].fechaHoraInicio) : null;
+            }
+
+            // Comparar fechas
+            if (!fechaA && !fechaB) return 0;
+            if (!fechaA) return event.order === 1 ? 1 : -1;
+            if (!fechaB) return event.order === 1 ? -1 : 1;
+
+            return event.order === 1 ? fechaA - fechaB : fechaB - fechaA;
+          });
+        },
+      },
+      {
+        field: "calastoneladas",
+        header: "Calas Tons.",
+        sortable: true,
+        body: (rowData) => {
+          const calas = calasData[rowData.id] || [];
+          const tonsCalas = calas.reduce((sum, cala) => {
+            return sum + (Number(cala.toneladasCapturadas) || 0);
+          }, 0);
+          return tonsCalas > 0
+            ? tonsCalas.toFixed(3)
+            : "-";
+        },
+        sortFunction: (event) => {
+          const data = [...event.data];
+          return data.sort((a, b) => {
+            const calasA = calasData[a.id] || [];
+            const calasB = calasData[b.id] || [];
+
+            const tonsA = calasA.reduce((sum, cala) => sum + (Number(cala.toneladasCapturadas) || 0), 0);
+            const tonsB = calasB.reduce((sum, cala) => sum + (Number(cala.toneladasCapturadas) || 0), 0);
+
+            return event.order === 1 ? tonsA - tonsB : tonsB - tonsA;
+          });
+        },
+      },
+      {
+        field: "inicioDescarga",
+        header: "Última Descarga",
+        sortable: true,
+        body: (rowData) => {
+          const descargas = descargasData[rowData.id] || [];
+          if (descargas.length === 0) return "-";
+
+          const descarga = descargas[0]; // Solo hay una descarga por faena (relación 1:1)
+          if (!descarga?.fechaHoraInicioDescarga) return "-";
+
+          const fecha = new Date(descarga.fechaHoraInicioDescarga);
+          return fecha.toLocaleString("es-PE", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true
+          });
+        },
+        sortFunction: (event) => {
+          const data = [...event.data];
+          return data.sort((a, b) => {
+            const descargasA = descargasData[a.id] || [];
+            const descargasB = descargasData[b.id] || [];
+
+            const fechaA = descargasA[0]?.fechaHoraInicioDescarga ? new Date(descargasA[0].fechaHoraInicioDescarga) : null;
+            const fechaB = descargasB[0]?.fechaHoraInicioDescarga ? new Date(descargasB[0].fechaHoraInicioDescarga) : null;
+
+            if (!fechaA && !fechaB) return 0;
+            if (!fechaA) return event.order === 1 ? 1 : -1;
+            if (!fechaB) return event.order === 1 ? -1 : 1;
+
+            return event.order === 1 ? fechaA - fechaB : fechaB - fechaA;
+          });
+        },
+      },
+
+
+      {
+        field: "descargastoneladas",
+        header: "Descargas Tons.",
+        sortable: true,
+        body: (rowData) => {
+          const descargas = descargasData[rowData.id] || [];
+          const tonsDescargas = descargas.reduce((sum, descarga) => {
+            return sum + (Number(descarga.toneladas) || 0);
+          }, 0);
+          return tonsDescargas > 0
+            ? tonsDescargas.toFixed(3)
+            : "-";
+        },
+        sortFunction: (event) => {
+          const data = [...event.data];
+          return data.sort((a, b) => {
+            const descargasA = descargasData[a.id] || [];
+            const descargasB = descargasData[b.id] || [];
+
+            const tonsA = descargasA.reduce((sum, descarga) => sum + (Number(descarga.toneladas) || 0), 0);
+            const tonsB = descargasB.reduce((sum, descarga) => sum + (Number(descarga.toneladas) || 0), 0);
+
+            return event.order === 1 ? tonsA - tonsB : tonsB - tonsA;
+          });
         },
       },
       {
         field: "combustibleTotal",
-        header: "Combustible Total",
+        header: "Petroleo",
         sortable: true,
         body: (rowData) => {
           const descargas = descargasData[rowData.id] || [];
-          const combustibleTotal = descargas.reduce((sum, descarga) => {
+          const combustibleDescargas = descargas.reduce((sum, descarga) => {
             return sum + (Number(descarga.combustibleAbastecidoGalones) || 0);
           }, 0);
-          return combustibleTotal > 0
-            ? `${combustibleTotal.toFixed(2)} gal.`
-            : "-";
+          const combustibleInicial = Number(rowData.combustibleAbastecidoGalones) || 0;
+          const combustibleTotal = combustibleInicial + combustibleDescargas;
+
+          if (combustibleTotal === 0) return "-";
+
+          // Si tiene combustible inicial, mostrar en verde oscuro y negrita
+          if (combustibleInicial > 0) {
+            return (
+              <span style={{ color: '#0d5e0d', fontWeight: 'bold' }}>
+                {combustibleTotal.toFixed(2)} gal.
+              </span>
+            );
+          }
+
+          // Si solo tiene combustible de descargas, mostrar normal
+          return `${combustibleTotal.toFixed(2)} gal.`;
+        },
+        sortFunction: (event) => {
+          const data = [...event.data];
+          return data.sort((a, b) => {
+            const descargasA = descargasData[a.id] || [];
+            const descargasB = descargasData[b.id] || [];
+
+            const combustibleDescargasA = descargasA.reduce((sum, descarga) => sum + (Number(descarga.combustibleAbastecidoGalones) || 0), 0);
+            const combustibleDescargasB = descargasB.reduce((sum, descarga) => sum + (Number(descarga.combustibleAbastecidoGalones) || 0), 0);
+
+            const combustibleInicialA = Number(a.combustibleAbastecidoGalones) || 0;
+            const combustibleInicialB = Number(b.combustibleAbastecidoGalones) || 0;
+
+            const totalA = combustibleInicialA + combustibleDescargasA;
+            const totalB = combustibleInicialB + combustibleDescargasB;
+
+            return event.order === 1 ? totalA - totalB : totalB - totalA;
+          });
         },
       },
       {
@@ -579,7 +809,7 @@ const DetalleFaenasPescaCard = forwardRef(
           </div>
         ),
       },
-    ], [embarcaciones, boliches, bahiasComerciales, patrones, motoristas, puertosData, descargasData]);
+    ], [embarcaciones, boliches, bahiasComerciales, patrones, motoristas, puertosData, descargasData, calasData]);
 
     // Template para mostrar descargas de una faena
     const descargasTemplate = (faenaData) => {

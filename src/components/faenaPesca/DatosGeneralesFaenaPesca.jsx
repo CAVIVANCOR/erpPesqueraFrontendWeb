@@ -62,10 +62,18 @@ const DatosGeneralesFaenaPesca = ({
       if (faenaPescaId && calasUpdateTrigger > 0) {
         try {
           const faenaActualizada = await getFaenaPescaPorId(faenaPescaId);
-          // Actualizar solo el campo toneladasCapturadasFaena
+          // Actualizar campos calculados
           setValue(
             "toneladasCapturadasFaena",
             faenaActualizada.toneladasCapturadasFaena || 0,
+          );
+          setValue(
+            "combustibleConsumido",
+            faenaActualizada.combustibleConsumido || 0,
+          );
+          setValue(
+            "recorridoMillasNauticas",
+            faenaActualizada.recorridoMillasNauticas || 0,
           );
         } catch (error) {
           console.error("❌ Error recargando datos de faena:", error);
@@ -93,6 +101,12 @@ const DatosGeneralesFaenaPesca = ({
   const puertoFondeoId = watch("puertoFondeoId");
   const estadoFaenaId = watch("estadoFaenaId");
   const toneladasCapturadasFaena = watch("toneladasCapturadasFaena");
+
+  // Watch para campos de combustible y recorrido
+  const combustibleAbastecidoGalones = watch("combustibleAbastecidoGalones");
+  const combustibleConsumido = watch("combustibleConsumido");
+  const recorridoMillasNauticas = watch("recorridoMillasNauticas");
+  const PrecioGalonPetroleoSoles = watch("PrecioGalonPetroleoSoles");
 
   // Validar si todos los campos requeridos están completos
   const todosCamposCompletos =
@@ -407,7 +421,7 @@ const DatosGeneralesFaenaPesca = ({
             <Message severity="error" text={errors.fechaSalida.message} />
           )}
         </div>
-               <div style={{ flex: 1 }}>
+        <div style={{ flex: 1 }}>
           <label htmlFor="puertoSalidaId" style={{ color: "#2c32d3" }}>
             Puerto Zarpe*
           </label>
@@ -451,13 +465,13 @@ const DatosGeneralesFaenaPesca = ({
                 value={
                   field.value
                     ? new Date(field.value).toLocaleString("es-PE", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false,
-                      })
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    })
                     : ""
                 }
                 showTime
@@ -526,13 +540,13 @@ const DatosGeneralesFaenaPesca = ({
                 value={
                   field.value
                     ? new Date(field.value).toLocaleString("es-PE", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false,
-                      })
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    })
                     : ""
                 }
                 showTime
@@ -589,6 +603,112 @@ const DatosGeneralesFaenaPesca = ({
           )}
         </div>
       </div>
+
+      {/* Sección de Combustible y Recorrido */}
+      {faenaPescaId && (
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginTop: 15,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label htmlFor="combustibleAbastecidoGalones" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+              Compra Inicial Petroleo
+            </label>
+            <Controller
+              name="combustibleAbastecidoGalones"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  id="combustibleAbastecidoGalones"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  suffix=" Gal"
+                  disabled={loading || camposDeshabilitados}
+                  className="w-full"
+                  style={{ backgroundColor: '#fff3cd' }}
+                />
+              )}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="combustibleConsumido" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+              Combustible Consumido (Gal) - Calculado
+            </label>
+            <Controller
+              name="combustibleConsumido"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  id="combustibleConsumido"
+                  value={field.value}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  suffix=" Gal"
+                  disabled
+                  className="w-full"
+                  style={{ backgroundColor: '#e9ecef' }}
+                />
+              )}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="recorridoMillasNauticas" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+              Recorrido (Millas Náuticas) - Calculado
+            </label>
+            <Controller
+              name="recorridoMillasNauticas"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  id="recorridoMillasNauticas"
+                  value={field.value}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  suffix=" MN"
+                  disabled
+                  className="w-full"
+                  style={{ backgroundColor: '#e9ecef' }}
+                />
+              )}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="PrecioGalonPetroleoSoles" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+              Precio Galón Petróleo (S/.)
+            </label>
+            <Controller
+              name="PrecioGalonPetroleoSoles"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  id="PrecioGalonPetroleoSoles"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  mode="currency"
+                  currency="PEN"
+                  locale="es-PE"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  min={0}
+                  placeholder="S/ 0.00"
+                  disabled={loading || camposDeshabilitados}
+                  className="w-full"
+                />
+              )}
+            />
+          </div>
+        </div>
+      )}
+
       <DetalleCalasForm
         faenaPescaId={faenaPescaId}
         temporadaData={temporadaData}

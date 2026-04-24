@@ -4,12 +4,13 @@ import React, { useEffect, useState, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
-import { ButtonGroup } from "primereact/buttongroup";
 import { Toast } from "primereact/toast";
+import DatosGeneralesFaenaPesca from "./DatosGeneralesFaenaPesca";
+import { getTemporadaPescaPorId } from "../../api/temporadaPesca";
+import { getFaenaPescaPorId, actualizarFaenaPesca, crearFaenaPesca, finalizarFaenaConMovimientoAlmacen } from "../../api/faenaPesca";
 import { Tag } from "primereact/tag";
 
 // Componentes de cards
-import DatosGeneralesFaenaPesca from "./DatosGeneralesFaenaPesca";
 import DetalleAccionesPreviasForm from "./DetalleAccionesPreviasForm";
 import InformeFaenaPescaForm from "./InformeFaenaPescaForm";
 import DetalleDocTripulantesCard from "./DetalleDocTripulantesCard";
@@ -25,10 +26,6 @@ import { getDocumentacionesEmbarcacion } from "../../api/documentacionEmbarcacio
 import { getClientesPorEmpresa } from "../../api/entidadComercial";
 import { getEspeciesParaDropdown } from "../../api/especie";
 import { getPuertosActivos } from "../../api/puertoPesca";
-import {
-  getFaenaPescaPorId,
-  finalizarFaenaConMovimientoAlmacen,
-} from "../../api/faenaPesca"; // Importar función para obtener faena por ID
 import { confirmDialog } from "primereact/confirmdialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import logoEscudoPeru from "../../assets/logoEscudoPeru.png";
@@ -99,7 +96,7 @@ export default function FaenaPescaForm({
       bolicheRedId: null,
       patronId: null,
       motoristaId: null,
-      pangueroId: null, // ⭐ AGREGAR
+      pangueroId: null,
       bahiaId: null,
       fechaInicio: null,
       fechaFin: null,
@@ -112,6 +109,8 @@ export default function FaenaPescaForm({
       fechaHoraFondeo: null,
       latitudFondeo: null,
       longitudFondeo: null,
+      combustibleAbastecidoGalones: 0,
+      PrecioGalonPetroleoSoles: 0,  // ⭐ AGREGAR ESTA LÍNEA
     },
   });
 
@@ -290,10 +289,11 @@ export default function FaenaPescaForm({
     onHide();
   };
 
-  const handleFormSubmit = async (data) => {
-    try {
-      // Llamar onSubmit original y obtener la respuesta
-      const resultado = await onSubmit(data);
+const handleFormSubmit = async (data) => {
+  try {
+    const todosLosValores = getValues();
+    const dataCompleta = { ...todosLosValores, ...data };
+    const resultado = await onSubmit(dataCompleta);
       // Si es creación y se obtuvo un ID, actualizar los datos actuales
       if (!isEditMode && resultado && resultado.id) {
         // Generar descripción si el backend no la devuelve

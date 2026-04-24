@@ -131,6 +131,7 @@ import TipoRetencionPercepcion from "../../pages/TipoRetencionPercepcion";
 import FlujoCajaProyectado from "../../pages/FlujoCajaProyectado";
 import PresupuestoAnual from "../../pages/PresupuestoAnual";
 import EjecucionPresupuestal from "../../pages/EjecucionPresupuestal";
+import MotivoSinFaena from "../../pages/MotivoSinFaena";
 /**
  * BaseLayout - Layout principal con gestión de módulos
  *
@@ -482,6 +483,10 @@ export default function BaseLayout({ children, onLogout }) {
     estadoMultiFuncion: {
       label: "Estado Multi Función",
       componente: <EstadoMultiFuncion ruta="estadoMultiFuncion" />,
+    },
+    motivoSinFaena: {
+      label: "Motivos sin Faena",
+      componente: <MotivoSinFaena ruta="motivoSinFaena" />,
     },
     tipoProvieneDe: {
       label: "Tipo Proviene De",

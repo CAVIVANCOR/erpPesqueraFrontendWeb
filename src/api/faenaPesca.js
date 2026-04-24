@@ -30,6 +30,7 @@ export async function crearFaenaPesca(data) {
   return res.data;
 }
 
+
 export async function actualizarFaenaPesca(id, data) {
   const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
   return res.data;

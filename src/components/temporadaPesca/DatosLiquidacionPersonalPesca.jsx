@@ -31,6 +31,7 @@ import { getPersonal } from "../../api/personal";
 import { getAllEntregaARendir } from "../../api/entregaARendir";
 import { getAllDetMovsEntregaRendir } from "../../api/detMovsEntregaRendir";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
+import { getDetallesPorTemporada } from "../../api/detalleDiaSinFaena";
 import { formatearNumero } from "../../utils/utils";
 
 // Imports de componentes de reportes
@@ -519,11 +520,15 @@ export default function DatosLiquidacionPersonalPesca({
           return fechaA - fechaB;
         });
 
+      // Obtener días sin faena de la temporada
+      const diasSinFaena = await getDetallesPorTemporada(temporadaId);
+
       reportStates.pesca.setReportData({
         temporada: temporadaCompleta,
         cuotas: cuotasOrdenadas,
         faenas: faenasTemporada,
         descargas: descargasTemporada,
+        diasSinFaena: diasSinFaena,
       });
 
       reportStates.pesca.setShowFormatSelector(true);

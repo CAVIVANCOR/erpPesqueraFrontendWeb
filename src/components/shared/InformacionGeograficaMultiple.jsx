@@ -1,19 +1,27 @@
-// src/components/shared/InformacionGeograficaMultiple.jsx
-// Componente para mostrar información geográfica de múltiples puntos (SOLO COLUMNA DE UBICACIÓN)
-import React from "react";
-
 /**
- * Componente para mostrar información geográfica de múltiples puntos
+ * Componente GENÉRICO para mostrar información geográfica de múltiples puntos
  * Este componente renderiza SOLO la columna de "Ubicación Geográfica"
  * Las columnas de "Distancias" e "Información Marítima" se renderizan aparte
  *
  * @param {Object} props
- * @param {Object} props.infoInicioRetorno - Info geográfica del inicio de retorno
- * @param {Object} props.infoPlataforma - Info geográfica de la plataforma
- * @param {Object} props.infoFondeo - Info geográfica del fondeo (opcional)
- * @param {boolean} props.loadingInicioRetorno - Estado de carga inicio retorno
- * @param {boolean} props.loadingPlataforma - Estado de carga plataforma
- * @param {boolean} props.loadingFondeo - Estado de carga fondeo
+ * @param {Object} props.infoInicioRetorno - Info geográfica del punto 1
+ * @param {Object} props.infoPlataforma - Info geográfica del punto 2
+ * @param {Object} props.infoFondeo - Info geográfica del punto 3 (opcional)
+ * @param {boolean} props.loadingInicioRetorno - Estado de carga punto 1
+ * @param {boolean} props.loadingPlataforma - Estado de carga punto 2
+ * @param {boolean} props.loadingFondeo - Estado de carga punto 3
+ * @param {string} props.labelPunto1 - Label personalizado punto 1 (default: "INICIO DE RETORNO")
+ * @param {string} props.labelPunto2 - Label personalizado punto 2 (default: "PLATAFORMA DE DESCARGA")
+ * @param {string} props.labelPunto3 - Label personalizado punto 3 (default: "FONDEO")
+ * @param {string} props.iconoPunto1 - Icono punto 1 (default: "🔵")
+ * @param {string} props.iconoPunto2 - Icono punto 2 (default: "🔴")
+ * @param {string} props.iconoPunto3 - Icono punto 3 (default: "🟠")
+ * @param {string} props.colorPunto1 - Color punto 1 (default: "#3b82f6")
+ * @param {string} props.colorPunto2 - Color punto 2 (default: "#ef4444")
+ * @param {string} props.colorPunto3 - Color punto 3 (default: "#ff9800")
+ * @param {string} props.bgColorPunto1 - Color fondo punto 1 (default: "#eff6ff")
+ * @param {string} props.bgColorPunto2 - Color fondo punto 2 (default: "#fef2f2")
+ * @param {string} props.bgColorPunto3 - Color fondo punto 3 (default: "#fff7ed")
  */
 export default function InformacionGeograficaMultiple({
   infoInicioRetorno,
@@ -22,6 +30,19 @@ export default function InformacionGeograficaMultiple({
   loadingInicioRetorno,
   loadingPlataforma,
   loadingFondeo,
+  // Props genéricos con valores por defecto para Descarga (compatibilidad hacia atrás)
+  labelPunto1 = "INICIO DE RETORNO",
+  labelPunto2 = "PLATAFORMA DE DESCARGA",
+  labelPunto3 = "FONDEO",
+  iconoPunto1 = "🔵",
+  iconoPunto2 = "🔴",
+  iconoPunto3 = "🟠",
+  colorPunto1 = "#3b82f6",
+  colorPunto2 = "#ef4444",
+  colorPunto3 = "#ff9800",
+  bgColorPunto1 = "#eff6ff",
+  bgColorPunto2 = "#fef2f2",
+  bgColorPunto3 = "#fff7ed",
 }) {
   const renderUbicacion = (info, loading, color) => {
     if (loading) {
@@ -138,20 +159,20 @@ export default function InformacionGeograficaMultiple({
           Ubicación Geográfica
         </h4>
 
-        {/* 1. INICIO DE RETORNO */}
+        {/* 1. PUNTO 1 (Personalizable) */}
         <div
           style={{
             marginBottom: "0.25rem",
             padding: "0.75rem",
-            backgroundColor: "#eff6ff",
+            backgroundColor: bgColorPunto1,
             borderRadius: "6px",
-            border: "2px solid #3b82f6",
+            border: `2px solid ${colorPunto1}`,
           }}
         >
           <div
             style={{
               fontWeight: "700",
-              color: "#1e40af",
+              color: colorPunto1,
               marginBottom: "0.25rem",
               fontSize: "12px",
               display: "flex",
@@ -159,26 +180,26 @@ export default function InformacionGeograficaMultiple({
               gap: "0.25rem",
             }}
           >
-            <span style={{ fontSize: "16px" }}>🔵</span>
-            INICIO DE RETORNO
+            <span style={{ fontSize: "16px" }}>{iconoPunto1}</span>
+            {labelPunto1}
           </div>
-          {renderUbicacion(infoInicioRetorno, loadingInicioRetorno, "#3b82f6")}
+          {renderUbicacion(infoInicioRetorno, loadingInicioRetorno, colorPunto1)}
         </div>
 
-        {/* 2. PLATAFORMA DE DESCARGA */}
+        {/* 2. PUNTO 2 (Personalizable) */}
         <div
           style={{
             marginBottom: "0.25rem",
-            padding: "0.25rem",
-            backgroundColor: "#fef2f2",
+            padding: "0.75rem",
+            backgroundColor: bgColorPunto2,
             borderRadius: "6px",
-            border: "2px solid #ef4444",
+            border: `2px solid ${colorPunto2}`,
           }}
         >
           <div
             style={{
               fontWeight: "700",
-              color: "#991b1b",
+              color: colorPunto2,
               marginBottom: "0.5rem",
               fontSize: "12px",
               display: "flex",
@@ -186,26 +207,26 @@ export default function InformacionGeograficaMultiple({
               gap: "0.5rem",
             }}
           >
-            <span style={{ fontSize: "16px" }}>🔴</span>
-            PLATAFORMA DE DESCARGA
+            <span style={{ fontSize: "16px" }}>{iconoPunto2}</span>
+            {labelPunto2}
           </div>
-          {renderUbicacion(infoPlataforma, loadingPlataforma, "#ef4444")}
+          {renderUbicacion(infoPlataforma, loadingPlataforma, colorPunto2)}
         </div>
 
-        {/* 3. FONDEO (solo si existe) */}
+        {/* 3. PUNTO 3 (Personalizable - solo si existe) */}
         {infoFondeo && (
           <div
             style={{
-              padding: "0.25rem",
-              backgroundColor: "#fff7ed",
+              padding: "0.75rem",
+              backgroundColor: bgColorPunto3,
               borderRadius: "6px",
-              border: "2px solid #ff9800",
+              border: `2px solid ${colorPunto3}`,
             }}
           >
             <div
               style={{
                 fontWeight: "700",
-                color: "#c2410c",
+                color: colorPunto3,
                 marginBottom: "0.25rem",
                 fontSize: "12px",
                 display: "flex",
@@ -213,10 +234,10 @@ export default function InformacionGeograficaMultiple({
                 gap: "0.25rem",
               }}
             >
-              <span style={{ fontSize: "16px" }}>🟠</span>
-              FONDEO
+              <span style={{ fontSize: "16px" }}>{iconoPunto3}</span>
+              {labelPunto3}
             </div>
-            {renderUbicacion(infoFondeo, loadingFondeo, "#ff9800")}
+            {renderUbicacion(infoFondeo, loadingFondeo, colorPunto3)}
           </div>
         )}
       </div>

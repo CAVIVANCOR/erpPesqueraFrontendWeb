@@ -887,12 +887,20 @@ export default function DescargaFaenaPescaForm({
   /**
    * Maneja el guardado del formulario
    */
-  const handleGuardar = async () => {
+    const handleGuardar = async () => {
     // Obtener datos del formulario manualmente
     const data = getValues();
 
     try {
       setLoading(true);
+      
+      // ⭐ CALCULAR TOTALES DE RECORRIDO Y CONSUMO
+      // Sumar distancias: Retorno → Puerto + Puerto → Fondeo (si existe)
+      const recorridoTotal = (distanciaRetornoPuerto || 0) + (distanciaDescargaFondeo || 0);
+      
+      // Sumar consumos: Retorno → Puerto + Puerto → Fondeo (si existe)
+      const combustibleTotal = (consumoCombustible || 0) + (consumoDescargaFondeo || 0);
+      
       const payload = {
         faenaPescaId: data.faenaPescaId ? Number(data.faenaPescaId) : null,
         temporadaPescaId: data.temporadaPescaId
@@ -946,6 +954,9 @@ export default function DescargaFaenaPescaForm({
           : null,
         precioPorTonComisionFidelizacion:
           data.precioPorTonComisionFidelizacion || 0.0,
+        // ⭐ NUEVOS CAMPOS: Recorrido y consumo totales calculados
+        combustibleConsumido: combustibleTotal,
+        recorridoMillasNauticas: recorridoTotal,
       };
 
       if (detalle?.id) {

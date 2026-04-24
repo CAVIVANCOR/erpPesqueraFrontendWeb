@@ -1,8 +1,46 @@
 // src/components/temporadaPesca/reports/generarReportePescaExcel.js
 import ExcelJS from 'exceljs';
 
+/**
+ * Función helper para generar todas las fechas entre dos fechas
+ * @param {Date} fechaInicio - Fecha de inicio
+ * @param {Date} fechaFin - Fecha de fin
+ * @returns {Array<Date>} Array de fechas
+ */
+function generarRangoFechas(fechaInicio, fechaFin) {
+  const fechas = [];
+  const fechaActual = new Date(fechaInicio);
+  fechaActual.setHours(0, 0, 0, 0);
+
+  const fechaLimite = new Date(fechaFin);
+  fechaLimite.setHours(0, 0, 0, 0);
+
+  while (fechaActual <= fechaLimite) {
+    fechas.push(new Date(fechaActual));
+    fechaActual.setDate(fechaActual.getDate() + 1);
+  }
+
+  return fechas;
+}
+
+/**
+ * Función helper para comparar si dos fechas son del mismo día
+ * @param {Date|string} fecha1
+ * @param {Date|string} fecha2
+ * @returns {boolean}
+ */
+function esMismoDia(fecha1, fecha2) {
+  const f1 = new Date(fecha1);
+  const f2 = new Date(fecha2);
+  return (
+    f1.getFullYear() === f2.getFullYear() &&
+    f1.getMonth() === f2.getMonth() &&
+    f1.getDate() === f2.getDate()
+  );
+}
+
 export async function generarReportePescaExcel(data) {
-  const { temporada, cuotas, descargas } = data;
+  const { temporada, cuotas, descargas, diasSinFaena = [] } = data;
 
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Reporte Pesca');
@@ -16,7 +54,7 @@ export async function generarReportePescaExcel(data) {
   worksheet.getColumn(4).width = 30;   // Cliente
   worksheet.getColumn(5).width = 14;   // Puerto
   worksheet.getColumn(6).width = 16;   // Plataforma
-  worksheet.getColumn(7).width = 10;   // Observaciones (reducida)
+  worksheet.getColumn(7).width = 20;   // Observaciones (ampliada para días sin faena)
   worksheet.getColumn(8).width = 12;   // Reporte
   worksheet.getColumn(9).width = 14;   // Petroleo Gal.
   worksheet.getColumn(10).width = 10;  // Toneladas (reducida)
@@ -305,41 +343,213 @@ export async function generarReportePescaExcel(data) {
   worksheet.getRow(currentRow).height = 18;
   currentRow++;
 
-  // ─── FILAS DESCARGA ───────────────────────────────────────────────
+  // ⭐ NUEVA LÓGICA: Generar array agrupado por faena (carga inicial + descargas + días sin faena)
+  let registrosCompletos = [];
+
+  const { faenas } = data;
+
+  // ⭐ PASO 1: Agrupar descargas por faenaPescaId
+  const descargasPorFaena = {};
   if (descargas && descargas.length > 0) {
+    descargas.forEach((descarga) => {
+      const faenaId = descarga.faenaPescaId;
+      if (!descargasPorFaena[faenaId]) {
+        descargasPorFaena[faenaId] = [];
+      }
+      descargasPorFaena[faenaId].push(descarga);
+    });
+  }
+
+  // ⭐ PASO 2: Ordenar faenas por fechaSalida (ascendente - más antigua primero)
+  const faenasOrdenadas =
+    faenas && faenas.length > 0
+      ? [...faenas].sort((a, b) => {
+          const fechaA = a.fechaSalida ? new Date(a.fechaSalida) : new Date(0);
+          const fechaB = b.fechaSalida ? new Date(b.fechaSalida) : new Date(0);
+          return fechaA - fechaB;
+        })
+      : [];
+
+  // ⭐ PASO 3: Para cada faena, agregar carga inicial (si existe) + sus descargas
+  if (faenasOrdenadas.length > 0) {
+    faenasOrdenadas.forEach((faena) => {
+      // 3.1: Agregar carga inicial si tiene combustible > 0
+      if (
+        faena.combustibleAbastecidoGalones &&
+        Number(faena.combustibleAbastecidoGalones) > 0
+      ) {
+        registrosCompletos.push({
+          tipo: "cargaInicial",
+          fecha: faena.fechaSalida
+            ? new Date(faena.fechaSalida)
+            : new Date(temporada.fechaInicio),
+          data: faena,
+          faenaId: faena.id,
+        });
+      }
+
+      // 3.2: Agregar descargas de esta faena (ordenadas por fecha)
+      const descargasDeFaena = descargasPorFaena[faena.id] || [];
+      if (descargasDeFaena.length > 0) {
+        // Ordenar descargas por fechaHoraInicioDescarga
+        const descargasOrdenadas = [...descargasDeFaena].sort((a, b) => {
+          const fechaA = a.fechaHoraInicioDescarga
+            ? new Date(a.fechaHoraInicioDescarga)
+            : new Date(0);
+          const fechaB = b.fechaHoraInicioDescarga
+            ? new Date(b.fechaHoraInicioDescarga)
+            : new Date(0);
+          return fechaA - fechaB;
+        });
+
+        descargasOrdenadas.forEach((descarga) => {
+          registrosCompletos.push({
+            tipo: "descarga",
+            fecha: descarga.fechaHoraInicioDescarga
+              ? new Date(descarga.fechaHoraInicioDescarga)
+              : new Date(),
+            data: descarga,
+            faenaId: faena.id,
+          });
+        });
+      }
+    });
+  }
+
+  // ⭐ PASO 4: Agregar días sin faena (si existen y tienen rango de fechas)
+  if (
+    temporada.fechaInicio &&
+    temporada.fechaFin &&
+    diasSinFaena &&
+    diasSinFaena.length > 0
+  ) {
+    const todasLasFechas = generarRangoFechas(
+      new Date(temporada.fechaInicio),
+      new Date(temporada.fechaFin),
+    );
+
+    todasLasFechas.forEach((fecha) => {
+      // Buscar si hay día sin faena en esta fecha
+      const diaSinFaena = diasSinFaena.find(
+        (dsf) => dsf.fecha && esMismoDia(dsf.fecha, fecha),
+      );
+
+      if (diaSinFaena) {
+        // Verificar que no haya descarga en esta fecha
+        const hayDescargaEnFecha =
+          descargas &&
+          descargas.some(
+            (d) =>
+              d.fechaHoraInicioDescarga &&
+              esMismoDia(d.fechaHoraInicioDescarga, fecha),
+          );
+
+        if (!hayDescargaEnFecha) {
+          registrosCompletos.push({
+            tipo: "sinFaena",
+            fecha: fecha,
+            data: diaSinFaena,
+          });
+        }
+      }
+    });
+  }
+
+  // ─── FILAS DESCARGA, CARGA INICIAL Y DÍAS SIN FAENA ───────────────
+  if (registrosCompletos.length > 0) {
     let totalToneladas = 0;
     let totalGalones = 0;
 
-    descargas.forEach((descarga, index) => {
-      const fechaInicioDescarga = descarga.fechaHoraInicioDescarga
-        ? new Date(descarga.fechaHoraInicioDescarga).toLocaleString("es-PE", {
+    registrosCompletos.forEach((registro, index) => {
+      let rowData;
+      let esDiaSinFaena = registro.tipo === "sinFaena";
+      let esCargaInicial = registro.tipo === "cargaInicial";
+
+      if (registro.tipo === "descarga") {
+        const descarga = registro.data;
+        const fechaInicioDescarga = descarga.fechaHoraInicioDescarga
+          ? new Date(descarga.fechaHoraInicioDescarga).toLocaleString("es-PE", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            })
+          : "-";
+        const especieNombre = descarga.especie?.nombre || "-";
+        const clienteNombre = descarga.cliente?.razonSocial || descarga.cliente?.nombre || "-";
+        const puertoNombre = descarga.puertoDescarga?.nombre || "-";
+        const plataforma = descarga.numPlataformaDescarga || "-";
+        const observaciones = descarga.observaciones || "-";
+        const reporte = descarga.numReporteRecepcion || "-";
+        const galones = Number(descarga.combustibleAbastecidoGalones || 0);
+        const toneladas = Number(descarga.toneladas || 0);
+        const porcentajeJuveniles = descarga.porcentajeJuveniles
+          ? Number(descarga.porcentajeJuveniles) / 100
+          : null;
+
+        totalToneladas += toneladas;
+        totalGalones += galones;
+
+        rowData = [
+          index + 1, fechaInicioDescarga, especieNombre, clienteNombre, puertoNombre,
+          plataforma, observaciones, reporte, galones, toneladas, porcentajeJuveniles
+        ];
+      } else if (registro.tipo === "cargaInicial") {
+        // ⭐ NUEVA FILA: Carga inicial de petróleo
+        const faena = registro.data;
+        const fechaSalida = faena.fechaSalida
+          ? new Date(faena.fechaSalida).toLocaleDateString("es-PE", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "2-digit",
+            })
+          : "-";
+        const combustibleInicial = Number(faena.combustibleAbastecidoGalones);
+
+        totalGalones += combustibleInicial;
+
+        rowData = [
+          index + 1,
+          fechaSalida,
+          "-",
+          "-",
+          "-",
+          "-",
+          "Petroleo INI",
+          "-",
+          combustibleInicial,
+          "-",
+          "-",
+        ];
+      } else {
+        // ⭐ Día sin faena
+        const diaSinFaena = registro.data;
+        const fechaSinFaena =
+          new Date(diaSinFaena.fecha).toLocaleDateString("es-PE", {
             day: "2-digit",
             month: "2-digit",
             year: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })
-        : "-";
-      const especieNombre = descarga.especie?.nombre || "-";
-      const clienteNombre = descarga.cliente?.razonSocial || descarga.cliente?.nombre || "-";
-      const puertoNombre = descarga.puertoDescarga?.nombre || "-";
-      const plataforma = descarga.numPlataformaDescarga || "-";
-      const observaciones = descarga.observaciones || "-";
-      const reporte = descarga.numReporteRecepcion || "-";
-      const galones = Number(descarga.combustibleAbastecidoGalones || 0);
-      const toneladas = Number(descarga.toneladas || 0);
-      const porcentajeJuveniles = descarga.porcentajeJuveniles
-        ? Number(descarga.porcentajeJuveniles) / 100
-        : null;
+          }) + " -";
+        const motivoDescripcion =
+          diaSinFaena.motivoSinFaena?.descripcion || "SIN FAENA";
+        const observacionesDia = diaSinFaena.observaciones || "-";
 
-      totalToneladas += toneladas;
-      totalGalones += galones;
-
-      const rowData = [
-        index + 1, fechaInicioDescarga, especieNombre, clienteNombre, puertoNombre,
-        plataforma, observaciones, reporte, galones, toneladas, porcentajeJuveniles
-      ];
+        rowData = [
+          index + 1,
+          fechaSinFaena,
+          "-",
+          motivoDescripcion,
+          "-",
+          "-",
+          observacionesDia,
+          "-",
+          "-",
+          "-",
+          "-",
+        ];
+      }
 
       const bgColor = index % 2 === 0 ? 'FFF0F6F8' : 'FFFFFFFF';
       rowData.forEach((value, colIndex) => {
@@ -347,20 +557,38 @@ export async function generarReportePescaExcel(data) {
         cell.value = value !== null ? value : "";
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
         cell.border = borderThin;
-        cell.font = { size: 8 };
-        if (colIndex === 0 || colIndex === 1 || colIndex === 7) {
+        
+        // ⭐ Usar negrita y color específico según tipo de registro
+        if (esDiaSinFaena) {
+          cell.font = { size: 8, bold: true, color: { argb: 'FF990000' } }; // Rojo oscuro
+        } else if (esCargaInicial) {
+          cell.font = { size: 8, bold: true, color: { argb: 'FF008000' } }; // Verde oscuro
+        } else {
+          cell.font = { size: 8 };
+        }
+
+        // Alineaciones
+        if (colIndex === 0 || colIndex === 7) {
+          // N° y Reporte centrados
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        } else if (colIndex === 1) {
+          // ⭐ Fecha SIEMPRE alineada a la izquierda
+          cell.alignment = { horizontal: 'left', vertical: 'middle' };
         } else if (colIndex >= 2 && colIndex <= 6) {
+          // Especie, Cliente, Puerto, Plataforma, Observaciones a la izquierda
           cell.alignment = { horizontal: 'left', vertical: 'middle' };
         } else if (colIndex === 8) {
+          // Petroleo Gal. a la derecha
           cell.alignment = { horizontal: 'right', vertical: 'middle' };
-          cell.numFmt = '#,##0.00';
+          if (!esDiaSinFaena && value !== "-") cell.numFmt = '#,##0.00';
         } else if (colIndex === 9) {
+          // Toneladas a la derecha
           cell.alignment = { horizontal: 'right', vertical: 'middle' };
-          cell.numFmt = '#,##0.000';
+          if (!esDiaSinFaena && !esCargaInicial && value !== "-") cell.numFmt = '#,##0.000';
         } else if (colIndex === 10) {
+          // % Juveniles a la derecha
           cell.alignment = { horizontal: 'right', vertical: 'middle' };
-          cell.numFmt = '0.00%';
+          if (!esDiaSinFaena && !esCargaInicial && value !== null) cell.numFmt = '0.00%';
         }
       });
       worksheet.getRow(currentRow).height = 16;
