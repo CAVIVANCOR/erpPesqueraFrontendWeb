@@ -79,7 +79,20 @@ export default function DatosGeneralesTemporadaForm({
   // ⭐ Nuevos campos de combustible comprado
   const combustibleTotalComprado = watch("combustibleTotalComprado");
   const combustibleTotalCompradoSoles = watch("combustibleTotalCompradoSoles");
+    // ⭐ Nuevos campos de stock de combustible
+  const combustibleStockInicialTemporada = watch("combustibleStockInicialTemporada");
+  const combustibleStockFinalTemporada = watch("combustibleStockFinalTemporada");
 
+  // ⭐ Calcular Stock Final automáticamente
+  useEffect(() => {
+    const stockInicial = Number(combustibleStockInicialTemporada || 0);
+    const comprado = Number(combustibleTotalComprado || 0);
+    const consumidoReal = Number(combustibleTotalConsumidoReal || 0);
+    
+    const stockFinal = stockInicial + comprado - consumidoReal;
+    
+    setValue("combustibleStockFinalTemporada", stockFinal);
+  }, [combustibleStockInicialTemporada, combustibleTotalComprado, combustibleTotalConsumidoReal, setValue]);
   // Cargar datos iniciales
   useEffect(() => {
     cargarDatos();
@@ -800,12 +813,67 @@ export default function DatosGeneralesTemporadaForm({
       {/* Días Sin Faena */}
       <DetalleDiasSinFaenaCard temporadaPescaId={temporadaData?.id} />
 
-                                   {/* Estadísticas de Combustible y Recorrido */}
+                                       {/* Estadísticas de Combustible y Recorrido */}
       {temporadaData?.id && (
         <div className="p-fluid mt-4">
           <h3 className="mb-3" style={{ color: '#495057', fontSize: '1.1rem', fontWeight: 'bold' }}>
             📊 ESTADÍSTICAS DE COMBUSTIBLE Y RECORRIDO
           </h3>
+
+          {/* ⭐ NUEVA SECCIÓN: STOCK DE COMBUSTIBLE */}
+          <div className="mb-4">
+            <h4 className="mb-2" style={{ color: '#6c757d', fontSize: '0.95rem', fontWeight: 'bold' }}>
+              🛢️ Stock de Combustible de Temporada
+            </h4>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="combustibleStockInicialTemporada" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                  📝 Stock Inicial (Gal)
+                </label>
+                <Controller
+                  name="combustibleStockInicialTemporada"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="combustibleStockInicialTemporada"
+                      value={field.value || 0}
+                      onValueChange={(e) => field.onChange(e.value)}
+                      mode="decimal"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
+                      disabled={readOnly}
+                      className={classNames("w-full", { "p-invalid": errors.combustibleStockInicialTemporada })}
+                      style={{ backgroundColor: readOnly ? '#e9ecef' : '#ffffff' }}
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="combustibleStockFinalTemporada" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                  🔒 Stock Final (Gal) - Calculado
+                </label>
+                <InputNumber
+                  id="combustibleStockFinalTemporada"
+                  value={combustibleStockFinalTemporada || 0}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  disabled
+                  className="w-full"
+                  style={{ backgroundColor: '#d1ecf1', fontWeight: 'bold', color: '#0c5460' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                {/* Espacio vacío para mantener alineación */}
+              </div>
+            </div>
+          </div>
 
           {/* DOS COLUMNAS PRINCIPALES */}
           <div

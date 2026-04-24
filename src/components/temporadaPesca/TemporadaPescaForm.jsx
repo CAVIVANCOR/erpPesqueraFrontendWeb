@@ -474,6 +474,13 @@ const TemporadaPescaForm = ({
       precioPorTonDolaresAlternativo: data.precioPorTonDolaresAlternativo
         ? Number(data.precioPorTonDolaresAlternativo)
         : null,
+      // ⭐ NUEVOS CAMPOS: Stock de combustible
+      combustibleStockInicialTemporada: data.combustibleStockInicialTemporada
+        ? Number(data.combustibleStockInicialTemporada)
+        : 0,
+      combustibleStockFinalTemporada: data.combustibleStockFinalTemporada
+        ? Number(data.combustibleStockFinalTemporada)
+        : 0,
     };
     // Solo incluir ID si existe y no es null (para edición)
     if (data.id && editingItem?.id) {
@@ -1051,6 +1058,9 @@ const TemporadaPescaForm = ({
         // ⭐ Campos de combustible COMPRADO
         combustibleTotalComprado: editingItem.combustibleTotalComprado || 0,
         combustibleTotalCompradoSoles: editingItem.combustibleTotalCompradoSoles || 0,
+        // ⭐ Campos de STOCK de combustible
+        combustibleStockInicialTemporada: editingItem.combustibleStockInicialTemporada || 0,
+        combustibleStockFinalTemporada: editingItem.combustibleStockFinalTemporada || 0,
       });
     } else {
       reset({

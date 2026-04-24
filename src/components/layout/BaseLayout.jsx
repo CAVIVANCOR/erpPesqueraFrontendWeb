@@ -486,7 +486,7 @@ export default function BaseLayout({ children, onLogout }) {
     },
     motivoSinFaena: {
       label: "Motivos sin Faena",
-      componente: <MotivoSinFaena ruta="motivoSinFaena" />,
+      componente: <MotivoSinFaena ruta="MotivoSinFaena" />,
     },
     tipoProvieneDe: {
       label: "Tipo Proviene De",
