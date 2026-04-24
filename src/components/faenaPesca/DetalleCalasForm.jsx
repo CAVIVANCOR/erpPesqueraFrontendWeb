@@ -1160,6 +1160,23 @@ const DetalleCalasForm = ({
 
   const guardarCala = async (cerrarDialogo = true) => {
     try {
+      // ⭐ CALCULAR DISTANCIA TOTAL AL MOMENTO DE GUARDAR
+      let distanciaTotalCalculada = 0;
+      if (distanciaPuertoInicio !== null && distanciaInicioFin !== null) {
+        distanciaTotalCalculada = distanciaPuertoInicio + distanciaInicioFin;
+      } else if (distanciaPuertoInicio !== null) {
+        distanciaTotalCalculada = distanciaPuertoInicio;
+      }
+
+      // ⭐ CALCULAR CONSUMO COMBUSTIBLE AL MOMENTO DE GUARDAR
+      let combustibleConsumidoCalculado = 0;
+      if (distanciaTotalCalculada > 0 && embarcacionCompleta?.millasNauticasPorGalon) {
+        combustibleConsumidoCalculado = calcularConsumoFaena(
+          distanciaTotalCalculada,
+          Number(embarcacionCompleta.millasNauticasPorGalon)
+        );
+      }
+
       const calaData = {
         bahiaId: Number(selectedBahiaId || faenaData?.bahiaId),
         motoristaId: Number(selectedMotoristaId || faenaData?.motoristaId),
@@ -1181,9 +1198,9 @@ const DetalleCalasForm = ({
           : null,
         observaciones: observaciones || null,
         updatedAt: new Date(),
-        // ⭐ NUEVOS CAMPOS: Recorrido, consumo y lugar geográfico
-        combustibleConsumido: consumoCombustible || 0,
-        recorridoMillasNauticas: distanciaTotal || 0,
+        // ⭐ NUEVOS CAMPOS: Usar valores CALCULADOS al momento de guardar
+        combustibleConsumido: combustibleConsumidoCalculado,
+        recorridoMillasNauticas: distanciaTotalCalculada,
         lugarUbicacionGeografica: lugarUbicacionGeografica || null,
       };
 
@@ -1198,13 +1215,12 @@ const DetalleCalasForm = ({
           life: 3000,
         });
 
-        // Actualizar campos calculados con valores guardados
-        setConsumoCombustible(calaData.combustibleConsumido);
-        setDistanciaTotal(calaData.recorridoMillasNauticas);
+        // ⭐ Actualizar estados con valores CALCULADOS y guardados
+        setConsumoCombustible(combustibleConsumidoCalculado);
+        setDistanciaTotal(distanciaTotalCalculada);
         if (calaData.lugarUbicacionGeografica) {
           setLugarUbicacionGeografica(calaData.lugarUbicacionGeografica);
         }
-
         if (cerrarDialogo) {
           setCalaDialog(false);
         }
@@ -1219,13 +1235,9 @@ const DetalleCalasForm = ({
           life: 4000,
         });
 
-        // Actualizar campos calculados con valores guardados
-        if (nuevaCalaCreada.combustibleConsumido) {
-          setConsumoCombustible(Number(nuevaCalaCreada.combustibleConsumido));
-        }
-        if (nuevaCalaCreada.recorridoMillasNauticas) {
-          setDistanciaTotal(Number(nuevaCalaCreada.recorridoMillasNauticas));
-        }
+              // ⭐ Actualizar estados con valores CALCULADOS y guardados
+        setConsumoCombustible(combustibleConsumidoCalculado);
+        setDistanciaTotal(distanciaTotalCalculada);
         if (nuevaCalaCreada.lugarUbicacionGeografica) {
           setLugarUbicacionGeografica(nuevaCalaCreada.lugarUbicacionGeografica);
         }

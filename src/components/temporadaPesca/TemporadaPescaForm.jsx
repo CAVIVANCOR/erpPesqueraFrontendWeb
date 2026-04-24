@@ -41,7 +41,8 @@ import { getEmbarcaciones } from "../../api/embarcacion";
 import { getAllBolicheRed } from "../../api/bolicheRed";
 import { getPuertosActivos } from "../../api/puertoPesca";
 import { getTemporadaPescaPorId } from "../../api/temporadaPesca"; // Importar función para obtener temporada por ID
-// Importar componentes de cards
+import { recalcularTotalesTemporada } from "../../api/faenaPesca";
+// // Importar componentes de cards
 import DatosGeneralesTemporadaForm from "./DatosGeneralesTemporadaForm";
 import ResolucionPDFTemporadaForm from "./ResolucionPDFTemporadaForm";
 import EntregasARendirTemporadaCard from "./EntregasARendirTemporadaCard";
@@ -110,7 +111,7 @@ const TemporadaPescaForm = ({
     setValue,
     getValues,
     formState: { errors },
-    } = useForm({
+  } = useForm({
     defaultValues: {
       id: null,
       empresaId: null,
@@ -162,6 +163,9 @@ const TemporadaPescaForm = ({
       combustibleTotalConsumidoReal: 0,
       recorridoTotalMillasNauticasReal: 0,
       consumoTotalPetroleoReal: 0,
+      // ⭐ Campos de combustible COMPRADO
+      combustibleTotalComprado: 0,
+      combustibleTotalCompradoSoles: 0,
     },
   });
 
@@ -488,6 +492,13 @@ const TemporadaPescaForm = ({
             const valorPreservado =
               getValues("precioPorTonDolaresAlternativo") || 0;
 
+            // ⭐ Recalcular totales de combustible y recorrido
+            try {
+              await recalcularTotalesTemporada(resultado.id);
+            } catch (recalcError) {
+              console.error("Error al recalcular totales:", recalcError);
+            }
+
             // Obtener los datos actualizados de la temporada
             const temporadaActualizada = await getTemporadaPescaPorId(
               resultado.id,
@@ -500,8 +511,8 @@ const TemporadaPescaForm = ({
                 ...temporadaActualizada,
                 unidadNegocioId: Number(
                   temporadaActualizada.unidadNegocioId ||
-                    temporadaActualizada.unidadNegocio?.id ||
-                    1,
+                  temporadaActualizada.unidadNegocio?.id ||
+                  1,
                 ),
                 empresaId: Number(temporadaActualizada.empresaId),
                 BahiaId: Number(temporadaActualizada.BahiaId),
@@ -517,10 +528,10 @@ const TemporadaPescaForm = ({
                 // ⭐ PRESERVAR precioPorTonDolaresAlternativo
                 precioPorTonDolaresAlternativo:
                   temporadaActualizada.precioPorTonDolaresAlternativo !==
-                  undefined
+                    undefined
                     ? Number(
-                        temporadaActualizada.precioPorTonDolaresAlternativo,
-                      )
+                      temporadaActualizada.precioPorTonDolaresAlternativo,
+                    )
                     : valorPreservado,
               };
               reset(datosCompletos);
@@ -1029,6 +1040,17 @@ const TemporadaPescaForm = ({
           editingItem.entidadComercialComisionistaAlquiler
             ? Number(editingItem.entidadComercialComisionistaAlquiler)
             : null,
+        // ⭐ Campos de combustible y recorrido - Calculados
+        combustibleTotalConsumido: editingItem.combustibleTotalConsumido || 0,
+        recorridoTotalMillasNauticas: editingItem.recorridoTotalMillasNauticas || 0,
+        consumoTotalPetroleo: editingItem.consumoTotalPetroleo || 0,
+        // ⭐ Campos de combustible y recorrido - Reales
+        combustibleTotalConsumidoReal: editingItem.combustibleTotalConsumidoReal || 0,
+        recorridoTotalMillasNauticasReal: editingItem.recorridoTotalMillasNauticasReal || 0,
+        consumoTotalPetroleoReal: editingItem.consumoTotalPetroleoReal || 0,
+        // ⭐ Campos de combustible COMPRADO
+        combustibleTotalComprado: editingItem.combustibleTotalComprado || 0,
+        combustibleTotalCompradoSoles: editingItem.combustibleTotalCompradoSoles || 0,
       });
     } else {
       reset({

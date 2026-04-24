@@ -110,6 +110,9 @@ export default function DescargaFaenaPescaForm({
   // Estados para información geográfica FONDEO
   const [infoGeograficaFondeo, setInfoGeograficaFondeo] = useState(null);
   const [loadingGeoFondeo, setLoadingGeoFondeo] = useState(false);
+  const [lugarUbicacionGeografica, setLugarUbicacionGeografica] = useState("");
+
+  // Estados para plataformas de recepción
 
   // Estados para plataformas de recepción
   const [plataformasRecepcion, setPlataformasRecepcion] = useState([]);
@@ -119,19 +122,21 @@ export default function DescargaFaenaPescaForm({
 
   // Estados para cálculos de recorrido
   const [puertoSalidaDatos, setPuertoSalidaDatos] = useState(null);
-   const [distanciaRetornoPuerto, setDistanciaRetornoPuerto] = useState(null);
+  const [distanciaRetornoPuerto, setDistanciaRetornoPuerto] = useState(null);
   const [consumoCombustible, setConsumoCombustible] = useState(null);
   const [costoCombustible, setCostoCombustible] = useState(null);
   const [precioCombustibleSoles, setPrecioCombustibleSoles] = useState(0);
   const [loadingPrecioCombustible, setLoadingPrecioCombustible] =
     useState(false);
-  
+
   // Estados para cálculos de recorrido Descarga → Fondeo
   const [distanciaDescargaFondeo, setDistanciaDescargaFondeo] = useState(null);
   const [consumoDescargaFondeo, setConsumoDescargaFondeo] = useState(null);
   const [costoDescargaFondeo, setCostoDescargaFondeo] = useState(null);
   const [embarcacionCompleta, setEmbarcacionCompleta] = useState(null);
+  const [combustibleTotal, setCombustibleTotal] = useState(null);
 
+  // Configuración del formulario
   // Configuración del formulario
 
   const {
@@ -253,6 +258,19 @@ export default function DescargaFaenaPescaForm({
         precioPorTonComisionFidelizacion:
           detalle.precioPorTonComisionFidelizacion || 0.0,
       });
+
+      // ⭐ Cargar valores calculados guardados en DB
+      if (detalle.lugarUbicacionGeografica) {
+        setLugarUbicacionGeografica(detalle.lugarUbicacionGeografica);
+      }
+      if (detalle.combustibleConsumido) {
+        setConsumoCombustible(Number(detalle.combustibleConsumido));
+      }
+      if (detalle.recorridoMillasNauticas) {
+        const recorridoTotal = Number(detalle.recorridoMillasNauticas);
+        // Nota: distanciaRetornoPuerto y distanciaDescargaFondeo se recalcularán automáticamente
+        // por los useEffect cuando se carguen las coordenadas
+      }
     } else {
       // Resetear para nuevo registro con valores fijos de faena
       // Cargar coordenadas de última cala como inicio de retorno por defecto
@@ -887,20 +905,20 @@ export default function DescargaFaenaPescaForm({
   /**
    * Maneja el guardado del formulario
    */
-    const handleGuardar = async () => {
+  const handleGuardar = async () => {
     // Obtener datos del formulario manualmente
     const data = getValues();
 
     try {
       setLoading(true);
-      
+
       // ⭐ CALCULAR TOTALES DE RECORRIDO Y CONSUMO
       // Sumar distancias: Retorno → Puerto + Puerto → Fondeo (si existe)
       const recorridoTotal = (distanciaRetornoPuerto || 0) + (distanciaDescargaFondeo || 0);
-      
-      // Sumar consumos: Retorno → Puerto + Puerto → Fondeo (si existe)
-      const combustibleTotal = (consumoCombustible || 0) + (consumoDescargaFondeo || 0);
-      
+
+      // Usar combustibleTotal del estado (ya calculado por useEffect)
+      const combustibleConsumidoTotal = combustibleTotal || 0;
+
       const payload = {
         faenaPescaId: data.faenaPescaId ? Number(data.faenaPescaId) : null,
         temporadaPescaId: data.temporadaPescaId
@@ -954,8 +972,9 @@ export default function DescargaFaenaPescaForm({
           : null,
         precioPorTonComisionFidelizacion:
           data.precioPorTonComisionFidelizacion || 0.0,
-        // ⭐ NUEVOS CAMPOS: Recorrido y consumo totales calculados
-        combustibleConsumido: combustibleTotal,
+        // ⭐ NUEVOS CAMPOS: Recorrido, consumo y ubicación geográfica
+        lugarUbicacionGeografica: lugarUbicacionGeografica || null,
+        combustibleConsumido: combustibleConsumidoTotal,
         recorridoMillasNauticas: recorridoTotal,
       };
 
@@ -967,6 +986,12 @@ export default function DescargaFaenaPescaForm({
           detail: "Descarga actualizada correctamente",
           life: 3000,
         });
+
+        // ⭐ Actualizar estados con valores guardados
+        if (payload.lugarUbicacionGeografica) {
+          setLugarUbicacionGeografica(payload.lugarUbicacionGeografica);
+        }
+        setCombustibleTotal(payload.combustibleConsumido);
       } else {
         await crearDescargaFaenaPesca(payload);
         toast.current?.show({
@@ -975,6 +1000,12 @@ export default function DescargaFaenaPescaForm({
           detail: "Descarga creada correctamente",
           life: 3000,
         });
+
+        // ⭐ Actualizar estados con valores guardados
+        if (payload.lugarUbicacionGeografica) {
+          setLugarUbicacionGeografica(payload.lugarUbicacionGeografica);
+        }
+        setCombustibleTotal(payload.combustibleConsumido);
       }
 
       onGuardadoExitoso?.();
@@ -1259,7 +1290,7 @@ export default function DescargaFaenaPescaForm({
     } else {
       console.log("⏭️ SKIP FONDEO: Condiciones no cumplidas");
     }
-    }, [watch("latitudFondeo"), watch("longitudFondeo")]);
+  }, [watch("latitudFondeo"), watch("longitudFondeo")]);
 
   /**
    * useEffect para analizar coordenadas de PLATAFORMA cuando ya existe en el formulario
@@ -1305,6 +1336,55 @@ export default function DescargaFaenaPescaForm({
       console.log("⏭️ SKIP PLATAFORMA: Condiciones no cumplidas");
     }
   }, [watch("plataformaRecepcionPescaId"), plataformasRecepcion]);
+
+  /**
+   * ⭐ useEffect para actualizar lugarUbicacionGeografica automáticamente
+   * Prioridad: Si hay Fondeo usa Fondeo, sino usa Plataforma
+   */
+  useEffect(() => {
+    // PRIORIDAD 1: Si hay info de FONDEO, usar esa
+    if (infoGeograficaFondeo) {
+      const lugar = (infoGeograficaFondeo.ubicacion?.lugar && infoGeograficaFondeo.ubicacion.lugar !== "N/A"
+        ? infoGeograficaFondeo.ubicacion.lugar
+        : infoGeograficaFondeo.referenciaCosta?.ubicacionCosta?.lugar) || "";
+
+      const distrito = (infoGeograficaFondeo.ubicacion?.distrito && infoGeograficaFondeo.ubicacion.distrito !== "N/A"
+        ? infoGeograficaFondeo.ubicacion.distrito
+        : infoGeograficaFondeo.referenciaCosta?.ubicacionCosta?.distrito) || "";
+
+      const provincia = (infoGeograficaFondeo.ubicacion?.provincia && infoGeograficaFondeo.ubicacion.provincia !== "N/A"
+        ? infoGeograficaFondeo.ubicacion.provincia
+        : infoGeograficaFondeo.referenciaCosta?.ubicacionCosta?.provincia) || "";
+
+      const departamento = (infoGeograficaFondeo.ubicacion?.departamento && infoGeograficaFondeo.ubicacion.departamento !== "N/A"
+        ? infoGeograficaFondeo.ubicacion.departamento
+        : infoGeograficaFondeo.referenciaCosta?.ubicacionCosta?.departamento) || "";
+
+      const lugarCompleto = `${lugar}-${distrito}-${provincia}-${departamento}`;
+      setLugarUbicacionGeografica(lugarCompleto);
+    }
+    // PRIORIDAD 2: Si NO hay Fondeo pero SÍ hay Plataforma, usar Plataforma
+    else if (infoGeograficaPlataforma) {
+      const lugar = (infoGeograficaPlataforma.ubicacion?.lugar && infoGeograficaPlataforma.ubicacion.lugar !== "N/A"
+        ? infoGeograficaPlataforma.ubicacion.lugar
+        : infoGeograficaPlataforma.referenciaCosta?.ubicacionCosta?.lugar) || "";
+
+      const distrito = (infoGeograficaPlataforma.ubicacion?.distrito && infoGeograficaPlataforma.ubicacion.distrito !== "N/A"
+        ? infoGeograficaPlataforma.ubicacion.distrito
+        : infoGeograficaPlataforma.referenciaCosta?.ubicacionCosta?.distrito) || "";
+
+      const provincia = (infoGeograficaPlataforma.ubicacion?.provincia && infoGeograficaPlataforma.ubicacion.provincia !== "N/A"
+        ? infoGeograficaPlataforma.ubicacion.provincia
+        : infoGeograficaPlataforma.referenciaCosta?.ubicacionCosta?.provincia) || "";
+
+      const departamento = (infoGeograficaPlataforma.ubicacion?.departamento && infoGeograficaPlataforma.ubicacion.departamento !== "N/A"
+        ? infoGeograficaPlataforma.ubicacion.departamento
+        : infoGeograficaPlataforma.referenciaCosta?.ubicacionCosta?.departamento) || "";
+
+      const lugarCompleto = `${lugar}-${distrito}-${provincia}-${departamento}`;
+      setLugarUbicacionGeografica(lugarCompleto);
+    }
+  }, [infoGeograficaFondeo, infoGeograficaPlataforma]);
 
   /**
    * useEffect para cargar datos completos de la embarcación
@@ -1484,7 +1564,7 @@ export default function DescargaFaenaPescaForm({
     } else {
       setCostoCombustible(null);
     }
-    }, [consumoCombustible, precioCombustibleSoles]);
+  }, [consumoCombustible, precioCombustibleSoles]);
 
   /**
    * useEffect para calcular distancia entre puerto descarga y fondeo
@@ -1535,9 +1615,9 @@ export default function DescargaFaenaPescaForm({
         const a =
           Math.sin(dLat / 2) * Math.sin(dLat / 2) +
           Math.cos(lat1Rad) *
-            Math.cos(lat2Rad) *
-            Math.sin(dLon / 2) *
-            Math.sin(dLon / 2);
+          Math.cos(lat2Rad) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         const distancia = R * c;
 
@@ -1588,6 +1668,22 @@ export default function DescargaFaenaPescaForm({
     }
   }, [consumoDescargaFondeo, precioCombustibleSoles]);
 
+  /**
+   * ⭐ useEffect para calcular combustible TOTAL del recorrido completo
+   * combustibleTotal = (distanciaRetornoPuerto + distanciaDescargaFondeo) / millasNauticasPorGalon
+   */
+  useEffect(() => {
+    const recorridoTotal = (distanciaRetornoPuerto || 0) + (distanciaDescargaFondeo || 0);
+
+    if (recorridoTotal > 0 && embarcacionCompleta?.millasNauticasPorGalon) {
+      const combustible = recorridoTotal / Number(embarcacionCompleta.millasNauticasPorGalon);
+      setCombustibleTotal(combustible);
+    } else {
+      setCombustibleTotal(null);
+    }
+  }, [distanciaRetornoPuerto, distanciaDescargaFondeo, embarcacionCompleta?.millasNauticasPorGalon]);
+
+  // ============================================
   // Crear configuración de inputs de coordenadas usando utilidad genérica
   const coordenadasConfig = crearInputCoordenadas({
     latitud,
@@ -2316,6 +2412,50 @@ export default function DescargaFaenaPescaForm({
           />
         </TabPanel>
       </TabView>
+
+      {/* ⭐ Campos de solo lectura: Lugar, Combustible y Recorrido */}
+      <div
+        style={{
+          display: "flex",
+          gap: "1rem",
+          marginTop: "1rem",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label htmlFor="lugarUbicacionGeografica">📍 Lugar Ubicación Geográfica</label>
+          <InputText
+            id="lugarUbicacionGeografica"
+            value={lugarUbicacionGeografica || ""}
+            disabled
+            style={{ width: "100%", fontWeight: "bold", backgroundColor: "#f3f4f6" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="combustibleConsumido">⛽ Combustible Consumido (Gal)</label>
+          <InputNumber
+            id="combustibleConsumido"
+            value={combustibleTotal}
+            disabled
+            mode="decimal"
+            minFractionDigits={2}
+            maxFractionDigits={2}
+            style={{ width: "100%", fontWeight: "bold", backgroundColor: "#f3f4f6" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="recorridoMillasNauticas">📏 Recorrido (MN)</label>
+          <InputNumber
+            id="recorridoMillasNauticas"
+            value={(distanciaRetornoPuerto || 0) + (distanciaDescargaFondeo || 0)}
+            disabled
+            mode="decimal"
+            minFractionDigits={2}
+            maxFractionDigits={2}
+            style={{ width: "100%", fontWeight: "bold", backgroundColor: "#f3f4f6" }}
+          />
+        </div>
+      </div>
 
       {/* Botones de acción */}
       <div

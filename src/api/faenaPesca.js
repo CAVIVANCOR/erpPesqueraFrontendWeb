@@ -70,3 +70,17 @@ export async function finalizarFaenaConMovimientoAlmacen(faenaPescaId, temporada
   );
   return res.data;
 }
+
+/**
+ * Recalcula los totales de combustible y recorrido de una temporada
+ * @param {number|string} temporadaId - ID de la temporada de pesca
+ * @returns {Promise<Object>} Resultado de la operación
+ */
+export async function recalcularTotalesTemporada(temporadaId) {
+  const res = await axios.post(
+    `${API_URL}/temporada/${temporadaId}/recalcular-totales`,
+    {},
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

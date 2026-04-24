@@ -20,6 +20,7 @@ import { Message } from "primereact/message";
 import { getEmbarcaciones } from "../../api/embarcacion";
 import { getTemporadaPescaPorId } from "../../api/temporadaPesca";
 import { getDetallesCuotaPesca } from "../../api/detCuotaPesca";
+import { recalcularTotalesTemporada } from "../../api/faenaPesca";
 import DetalleFaenasPescaCard from "./DetalleFaenasPescaCard";
 import { Button } from "primereact/button";
 import DetalleDiasSinFaenaCard from "./DetalleDiasSinFaenaCard";
@@ -72,9 +73,12 @@ export default function DatosGeneralesTemporadaForm({
   const combustibleTotalConsumido = watch("combustibleTotalConsumido");
   const recorridoTotalMillasNauticas = watch("recorridoTotalMillasNauticas");
   const consumoTotalPetroleo = watch("consumoTotalPetroleo");
-  const combustibleTotalConsumidoReal = watch("combustibleTotalConsumidoReal");
+   const combustibleTotalConsumidoReal = watch("combustibleTotalConsumidoReal");
   const recorridoTotalMillasNauticasReal = watch("recorridoTotalMillasNauticasReal");
   const consumoTotalPetroleoReal = watch("consumoTotalPetroleoReal");
+  // ⭐ Nuevos campos de combustible comprado
+  const combustibleTotalComprado = watch("combustibleTotalComprado");
+  const combustibleTotalCompradoSoles = watch("combustibleTotalCompradoSoles");
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -197,7 +201,7 @@ export default function DatosGeneralesTemporadaForm({
 
   // Función para recargar datos de temporada
 
-  const recargarDatosTemporada = async () => {
+    const recargarDatosTemporada = async () => {
     if (!temporadaData?.id) {
       return;
     }
@@ -218,6 +222,30 @@ export default function DatosGeneralesTemporadaForm({
       }
     } catch (error) {
       console.error("❌ Error al recargar datos de temporada:", error);
+    }
+  };
+
+  const recalcularTotales = async () => {
+    if (!temporadaData?.id) {
+      return;
+    }
+    try {
+      await recalcularTotalesTemporada(temporadaData.id);
+      await recargarDatosTemporada();
+      toast.current?.show({
+        severity: "success",
+        summary: "Totales Recalculados",
+        detail: "Los totales de combustible y recorrido han sido actualizados",
+        life: 3000,
+      });
+    } catch (error) {
+      console.error("❌ Error al recalcular totales:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron recalcular los totales",
+        life: 3000,
+      });
     }
   };
   // useEffect para recargar datos cuando cambien las faenas
@@ -845,6 +873,50 @@ export default function DatosGeneralesTemporadaForm({
                     className="w-full"
                     style={{ backgroundColor: '#e9ecef' }}
                   />
+                               </div>
+              </div>
+
+              {/* ⭐ NUEVA FILA: Combustible Comprado */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginTop: 15,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="combustibleTotalComprado" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                    💰 Combustible COMPRADO (Gal)
+                  </label>
+                  <InputNumber
+                    id="combustibleTotalComprado"
+                    value={combustibleTotalComprado || 0}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    className="w-full"
+                    style={{ backgroundColor: '#fff3cd', fontWeight: 'bold' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="combustibleTotalCompradoSoles" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                    💵 Costo Total Combustible (S/.)
+                  </label>
+                  <InputNumber
+                    id="combustibleTotalCompradoSoles"
+                    value={combustibleTotalCompradoSoles || 0}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    className="w-full"
+                    style={{ backgroundColor: '#fff3cd', fontWeight: 'bold' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  {/* Espacio vacío para mantener alineación */}
                 </div>
               </div>
             </div>
