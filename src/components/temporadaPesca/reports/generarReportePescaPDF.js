@@ -266,7 +266,13 @@ export async function generarReportePescaPDF(data) {
       }
     });
   }
-
+  // ⭐ PASO 5: Ordenar TODOS los registros por fecha (ascendente - más antigua primero)
+  registrosCompletos.sort((a, b) => {
+    const fechaA = a.fecha ? new Date(a.fecha) : new Date(0);
+    const fechaB = b.fecha ? new Date(b.fecha) : new Date(0);
+    return fechaA - fechaB;
+  });
+  
   if (registrosCompletos.length > 0) {
     const cuotaColWidths = [25, 55, 65, 150, 60, 70, 65, 65];
     const cuotaTableWidth = cuotaColWidths.reduce((a, b) => a + b, 0);
