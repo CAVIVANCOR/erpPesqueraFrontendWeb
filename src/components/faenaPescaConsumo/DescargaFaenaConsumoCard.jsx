@@ -188,7 +188,7 @@ const DescargaFaenaConsumoCard = ({
   };
 
   // Templates para las columnas
-    const puertoTemplate = (rowData) => {
+  const puertoTemplate = (rowData) => {
     return (
       <span style={{ fontWeight: "bold" }}>
         {rowData.puertoDescarga?.nombre || "N/A"}
@@ -228,9 +228,9 @@ const DescargaFaenaConsumoCard = ({
 
   const porcentajeJuvenilesTemplate = (rowData) => {
     const templateData = createPorcentajeTemplate(rowData.porcentajeJuveniles);
-    
+
     if (!templateData) return "-";
-    
+
     return (
       <span style={templateData.estilos}>
         {templateData.valor}{templateData.sufijo}
@@ -240,12 +240,12 @@ const DescargaFaenaConsumoCard = ({
 
   const fechaHoraTemplate = (field) => (rowData) => {
     if (!rowData[field]) return "-";
-    
+
     const fecha = new Date(rowData[field]);
     const fechaStr = fecha.toLocaleDateString("es-ES");
     const horaStr = fecha.toLocaleTimeString("es-ES", { hour: '2-digit', minute: '2-digit' });
     const fontSize = getResponsiveFontSize();
-    
+
     return (
       <div style={{ textAlign: "center" }}>
         <div style={{ fontWeight: "bold", fontSize: fontSize }}>{fechaStr}</div>
@@ -255,14 +255,14 @@ const DescargaFaenaConsumoCard = ({
   };
 
   const fechaHoraFondeoTemplate = (rowData) => {
-    return rowData.fechaHoraFondeo 
+    return rowData.fechaHoraFondeo
       ? new Date(rowData.fechaHoraFondeo).toLocaleString("es-PE", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
       : "-";
   };
 
@@ -350,7 +350,7 @@ const DescargaFaenaConsumoCard = ({
         rowClassName={() => "align-top"}
       >
         <Column field="id" header="ID" sortable style={{ minWidth: "80px", verticalAlign: "top" }} />
-                <Column
+        <Column
           field="puertoDescarga"
           header="Puerto"
           body={puertoTemplate}
@@ -448,6 +448,10 @@ const DescargaFaenaConsumoCard = ({
             patronId={faenaData?.patronId ? Number(faenaData.patronId) : null}
             faenaPescaConsumoId={faenaPescaConsumoId ? Number(faenaPescaConsumoId) : null}
             novedadPescaConsumoId={novedadData?.id ? Number(novedadData.id) : null}
+            faenaData={{
+              ...faenaData,
+              embarcacionId: faenaData?.embarcacionId,
+            }}
             onGuardadoExitoso={() => {
               cargarDescargas();
               if (onDescargaChange) {

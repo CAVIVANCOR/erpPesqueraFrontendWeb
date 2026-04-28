@@ -84,6 +84,7 @@ export default function DescargaFaenaConsumoForm({
   patronId = null,
   faenaPescaConsumoId = null,
   novedadPescaConsumoId = null,
+  faenaData = null,
   onGuardadoExitoso,
   onCancelar,
 }) {
@@ -126,6 +127,8 @@ export default function DescargaFaenaConsumoForm({
       latitud: 0,
       longitud: 0,
       combustibleAbastecidoGalones: 0,
+      combustibleConsumido: 0,
+      recorridoMillasNauticas: 0,
       urlValeAbastecimiento: "",
       urlInformeDescargaProduce: "",
       movIngresoAlmacenId: null,
@@ -204,19 +207,15 @@ export default function DescargaFaenaConsumoForm({
   // Estados para el mapa
   const [mapPosition, setMapPosition] = useState([-12.0, -77.0]);
   const [mapKey, setMapKey] = useState(0);
-
   // Estados para el mapa de fondeo
   const [mapPositionFondeo, setMapPositionFondeo] = useState([-12.0, -77.0]);
   const [mapKeyFondeo, setMapKeyFondeo] = useState(0);
-
   // Estados para plataformas de recepción
   const [plataformasRecepcion, setPlataformasRecepcion] = useState([]);
   const [loadingPlataformas, setLoadingPlataformas] = useState(false);
-
   // Estados para información geográfica de PLATAFORMA
   const [infoGeograficaPlataforma, setInfoGeograficaPlataforma] = useState(null);
   const [loadingGeoPlataforma, setLoadingGeoPlataforma] = useState(false);
-
   // Estados para cálculos de recorrido Retorno → Puerto
   const [puertoSalidaDatos, setPuertoSalidaDatos] = useState(null);
   const [distanciaRetornoPuerto, setDistanciaRetornoPuerto] = useState(null);
@@ -224,13 +223,15 @@ export default function DescargaFaenaConsumoForm({
   const [costoCombustible, setCostoCombustible] = useState(null);
   const [precioCombustibleSoles, setPrecioCombustibleSoles] = useState(0);
   const [loadingPrecioCombustible, setLoadingPrecioCombustible] = useState(false);
-
   // Estados para cálculos de recorrido Descarga → Fondeo
   const [distanciaDescargaFondeo, setDistanciaDescargaFondeo] = useState(null);
   const [consumoDescargaFondeo, setConsumoDescargaFondeo] = useState(null);
   const [costoDescargaFondeo, setCostoDescargaFondeo] = useState(null);
   const [embarcacionCompleta, setEmbarcacionCompleta] = useState(null);
-
+  // Estado para lugar de ubicación geográfica
+  const [lugarUbicacionGeografica, setLugarUbicacionGeografica] = useState("");
+  // Estado para combustible total calculado
+  const [combustibleTotal, setCombustibleTotal] = useState(null);
   /**
    * Componente de marcador de ubicación del usuario - DESCARGA
    */
@@ -341,6 +342,74 @@ export default function DescargaFaenaConsumoForm({
         weight={5}
         opacity={0.8}
       />
+    );
+  };
+
+  /**
+ * Componente para mostrar línea desde plataforma/puerto hasta fondeo
+ * Color naranja (#ff9800) según estándar del sistema
+ * SOLO se muestra si hay coordenadas de fondeo
+ */
+  const LineaRetornoFondeo = () => {
+    const plataformaRecepcionPescaId = watch("plataformaRecepcionPescaId");
+    const puertoDescargaId = watch("puertoDescargaId");
+    const latitudFondeo = watch("latitudFondeo");
+    const longitudFondeo = watch("longitudFondeo");
+
+    // No mostrar si no hay coordenadas de fondeo
+    if (!latitudFondeo || !longitudFondeo || latitudFondeo === 0 || longitudFondeo === 0) {
+      return null;
+    }
+
+    let latitudPlataforma = null;
+    let longitudPlataforma = null;
+
+    // PRIORIDAD 1: Si hay plataforma seleccionada, usar sus coordenadas
+    if (plataformaRecepcionPescaId && plataformasRecepcion.length > 0) {
+      const plataforma = plataformasRecepcion.find(
+        (p) => Number(p.value) === Number(plataformaRecepcionPescaId),
+      );
+
+      if (plataforma?.latitud && plataforma?.longitud) {
+        latitudPlataforma = Number(plataforma.latitud);
+        longitudPlataforma = Number(plataforma.longitud);
+      }
+    }
+
+    // PRIORIDAD 2: Si no hay plataforma, usar coordenadas de puerto de descarga
+    if (!latitudPlataforma && !longitudPlataforma && puertoDescargaId && puertos.length > 0) {
+      const puertoDescarga = puertos.find(
+        (p) => Number(p.id) === Number(puertoDescargaId),
+      );
+
+      if (puertoDescarga?.latitud && puertoDescarga?.longitud) {
+        latitudPlataforma = Number(puertoDescarga.latitud);
+        longitudPlataforma = Number(puertoDescarga.longitud);
+      }
+    }
+
+    // No mostrar si no hay coordenadas de plataforma/puerto
+    if (!latitudPlataforma || !longitudPlataforma) {
+      return null;
+    }
+
+    return (
+      <Polyline
+        positions={[
+          [latitudPlataforma, longitudPlataforma],
+          [Number(latitudFondeo), Number(longitudFondeo)],
+        ]}
+        color="#ff9800"
+        weight={3}
+        opacity={0.7}
+        dashArray="10, 10"
+      >
+        <Popup>
+          <strong>Recorrido a Fondeo</strong>
+          <br />
+          Desde Plataforma hasta Fondeo
+        </Popup>
+      </Polyline>
     );
   };
 
@@ -642,6 +711,8 @@ export default function DescargaFaenaConsumoForm({
         latitud: detalle.latitud || 0,
         longitud: detalle.longitud || 0,
         combustibleAbastecidoGalones: detalle.combustibleAbastecidoGalones || 0,
+        combustibleConsumido: detalle.combustibleConsumido || 0,
+        recorridoMillasNauticas: detalle.recorridoMillasNauticas || 0,
         urlValeAbastecimiento: detalle.urlValeAbastecimiento || "",
         urlInformeDescargaProduce: detalle.urlInformeDescargaProduce || "",
         movIngresoAlmacenId: detalle.movIngresoAlmacenId
@@ -666,6 +737,13 @@ export default function DescargaFaenaConsumoForm({
           ? Number(detalle.katanaTripulacionId)
           : null,
       });
+      // ⭐ Cargar valores calculados guardados en DB
+      if (detalle.lugarUbicacionGeografica) {
+        setLugarUbicacionGeografica(detalle.lugarUbicacionGeografica);
+      }
+      if (detalle.combustibleConsumido) {
+        setCombustibleTotal(Number(detalle.combustibleConsumido));
+      }
     } else {
       // Resetear para nuevo registro con valores fijos de faena
       // Cargar coordenadas de última cala como inicio de retorno por defecto
@@ -1032,38 +1110,63 @@ export default function DescargaFaenaConsumoForm({
   }, [faenaData?.puertoSalidaId, puertos]);
 
   /**
-   * useEffect para cargar precio de combustible vigente
-   */
+  * useEffect para cargar precio de combustible vigente
+  * Convierte a soles si está en dólares usando tipo de cambio SUNAT
+  */
   useEffect(() => {
     const cargarPrecioCombustible = async () => {
-      if (!temporadaData?.empresa?.entidadComercialId) return;
+      if (!empresaData?.entidadComercialId) return;
 
+      setLoadingPrecioCombustible(true);
       try {
-        setLoadingPrecioCombustible(true);
-        const precio = await getPrecioCombustibleVigente(
-          temporadaData.empresa.entidadComercialId
+        const fechaReferencia = detalle?.fechaHoraArriboPuerto
+          ? new Date(detalle.fechaHoraArriboPuerto)
+          : new Date();
+
+        const precioCombustible = await getPrecioCombustibleVigente(
+          Number(empresaData.entidadComercialId),
+          fechaReferencia,
         );
 
-        if (precio) {
-          let precioSoles = Number(precio.precio);
-
-          if (precio.moneda?.codigo === "USD" && precio.tipoCambioSunat) {
-            precioSoles = precioSoles * Number(precio.tipoCambioSunat);
-          }
-
-          setPrecioCombustibleSoles(precioSoles);
+        if (!precioCombustible) {
+          console.warn(
+            "No se encontró precio de combustible vigente, usando precio por defecto",
+          );
+          return;
         }
+
+        let precioEnSoles = Number(precioCombustible.precioUnitario);
+
+        // Si está en dólares (ID = 2), convertir a soles
+        if (Number(precioCombustible.monedaId) === 2) {
+          try {
+            const fecha = new Date(fechaReferencia);
+            const tipoCambio = await consultarTipoCambioSunat({
+              date: fecha.getDate(),
+              month: fecha.getMonth() + 1,
+              year: fecha.getFullYear(),
+            });
+            if (tipoCambio?.venta) {
+              precioEnSoles = precioEnSoles * Number(tipoCambio.venta);
+            }
+          } catch (error) {
+            console.error("Error obteniendo tipo de cambio:", error);
+          }
+        }
+
+        setPrecioCombustibleSoles(precioEnSoles);
       } catch (error) {
         console.error("Error al cargar precio de combustible:", error);
-        setPrecioCombustibleSoles(0);
       } finally {
         setLoadingPrecioCombustible(false);
       }
     };
 
     cargarPrecioCombustible();
-  }, [temporadaData?.empresa?.entidadComercialId]);
-
+  }, [
+    empresaData?.entidadComercialId,
+    detalle?.fechaHoraArriboPuerto,
+  ]);
   /**
    * useEffect para calcular distancia entre inicio retorno y puerto descarga
    */
@@ -1248,6 +1351,71 @@ export default function DescargaFaenaConsumoForm({
       setCostoDescargaFondeo(null);
     }
   }, [consumoDescargaFondeo, precioCombustibleSoles]);
+
+  /**
+   * ⭐ useEffect para calcular combustible TOTAL del recorrido completo
+   * combustibleTotal = (distanciaRetornoPuerto + distanciaDescargaFondeo) / millasNauticasPorGalon
+   */
+  useEffect(() => {
+    const recorridoTotal = (distanciaRetornoPuerto || 0) + (distanciaDescargaFondeo || 0);
+
+    if (recorridoTotal > 0 && embarcacionCompleta?.millasNauticasPorGalon) {
+      const combustible = recorridoTotal / Number(embarcacionCompleta.millasNauticasPorGalon);
+      setCombustibleTotal(combustible);
+    } else {
+      setCombustibleTotal(null);
+    }
+  }, [distanciaRetornoPuerto, distanciaDescargaFondeo, embarcacionCompleta?.millasNauticasPorGalon]);
+
+  /**
+  * ⭐ useEffect para actualizar lugarUbicacionGeografica automáticamente
+  * Prioridad: Si hay Fondeo usa Fondeo, sino usa Plataforma
+  * Solo calcula cuando hay cambios reales en GPS (no sobrescribe valor cargado desde DB)
+  */
+  useEffect(() => {
+    // PRIORIDAD 1: Si hay info de FONDEO, usar esa
+    if (infoGeograficaFondeo) {
+      const lugar = (infoGeograficaFondeo.ubicacion?.lugar && infoGeograficaFondeo.ubicacion.lugar !== "N/A"
+        ? infoGeograficaFondeo.ubicacion.lugar
+        : infoGeograficaFondeo.referenciaCosta?.ubicacionCosta?.lugar) || "";
+
+      const distrito = (infoGeograficaFondeo.ubicacion?.distrito && infoGeograficaFondeo.ubicacion.distrito !== "N/A"
+        ? infoGeograficaFondeo.ubicacion.distrito
+        : infoGeograficaFondeo.referenciaCosta?.ubicacionCosta?.distrito) || "";
+
+      const provincia = (infoGeograficaFondeo.ubicacion?.provincia && infoGeograficaFondeo.ubicacion.provincia !== "N/A"
+        ? infoGeograficaFondeo.ubicacion.provincia
+        : infoGeograficaFondeo.referenciaCosta?.ubicacionCosta?.provincia) || "";
+
+      const departamento = (infoGeograficaFondeo.ubicacion?.departamento && infoGeograficaFondeo.ubicacion.departamento !== "N/A"
+        ? infoGeograficaFondeo.ubicacion.departamento
+        : infoGeograficaFondeo.referenciaCosta?.ubicacionCosta?.departamento) || "";
+
+      const lugarCompleto = `${lugar}-${distrito}-${provincia}-${departamento}`;
+      setLugarUbicacionGeografica(lugarCompleto);
+    }
+    // PRIORIDAD 2: Si NO hay Fondeo pero SÍ hay Plataforma, usar Plataforma
+    else if (infoGeograficaPlataforma) {
+      const lugar = (infoGeograficaPlataforma.ubicacion?.lugar && infoGeograficaPlataforma.ubicacion.lugar !== "N/A"
+        ? infoGeograficaPlataforma.ubicacion.lugar
+        : infoGeograficaPlataforma.referenciaCosta?.ubicacionCosta?.lugar) || "";
+
+      const distrito = (infoGeograficaPlataforma.ubicacion?.distrito && infoGeograficaPlataforma.ubicacion.distrito !== "N/A"
+        ? infoGeograficaPlataforma.ubicacion.distrito
+        : infoGeograficaPlataforma.referenciaCosta?.ubicacionCosta?.distrito) || "";
+
+      const provincia = (infoGeograficaPlataforma.ubicacion?.provincia && infoGeograficaPlataforma.ubicacion.provincia !== "N/A"
+        ? infoGeograficaPlataforma.ubicacion.provincia
+        : infoGeograficaPlataforma.referenciaCosta?.ubicacionCosta?.provincia) || "";
+
+      const departamento = (infoGeograficaPlataforma.ubicacion?.departamento && infoGeograficaPlataforma.ubicacion.departamento !== "N/A"
+        ? infoGeograficaPlataforma.ubicacion.departamento
+        : infoGeograficaPlataforma.referenciaCosta?.ubicacionCosta?.departamento) || "";
+
+      const lugarCompleto = `${lugar}-${distrito}-${provincia}-${departamento}`;
+      setLugarUbicacionGeografica(lugarCompleto);
+    }
+  }, [infoGeograficaFondeo, infoGeograficaPlataforma]);
 
   // Cálculos automáticos al cambiar especie, toneladas, cubetas o precio
   useEffect(() => {
@@ -1495,10 +1663,10 @@ export default function DescargaFaenaConsumoForm({
     );
   };
 
-    /**
-   * Componente de marker draggable para el mapa de FONDEO
-   * 🟠 NARANJA - Representa el punto de FONDEO
-   */
+  /**
+ * Componente de marker draggable para el mapa de FONDEO
+ * 🟠 NARANJA - Representa el punto de FONDEO
+ */
   const DraggableMarkerFondeo = () => {
     const markerRef = useRef(null);
     const nombrePuerto = watch("puertoFondeoId")
@@ -1649,6 +1817,9 @@ export default function DescargaFaenaConsumoForm({
         latitud: data.latitud || 0,
         longitud: data.longitud || 0,
         combustibleAbastecidoGalones: data.combustibleAbastecidoGalones || 0,
+        combustibleConsumido: combustibleTotal,
+        recorridoMillasNauticas: (distanciaRetornoPuerto || 0) + (distanciaDescargaFondeo || 0),
+        lugarUbicacionGeografica: lugarUbicacionGeografica || null,
         urlValeAbastecimiento: data.urlValeAbastecimiento?.trim() || null,
         urlInformeDescargaProduce:
           data.urlInformeDescargaProduce?.trim() || null,
@@ -1673,6 +1844,7 @@ export default function DescargaFaenaConsumoForm({
         katanaTripulacionId: data.katanaTripulacionId
           ? Number(data.katanaTripulacionId)
           : null,
+
       };
 
       // 1. Guardar la descarga
@@ -1952,31 +2124,7 @@ export default function DescargaFaenaConsumoForm({
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
-            <div style={{ flex: 1 }}>
-              <label htmlFor="puertoDescargaId">Puerto Descarga*</label>
-              <Controller
-                name="puertoDescargaId"
-                control={control}
-                rules={{ required: "El puerto de descarga es obligatorio" }}
-                render={({ field }) => (
-                  <Dropdown
-                    id="puertoDescargaId"
-                    {...field}
-                    value={field.value}
-                    options={puertosNormalizados}
-                    optionLabel="label"
-                    optionValue="value"
-                    style={{ fontWeight: "bold" }}
-                    placeholder="Seleccione puerto"
-                    disabled={loading}
-                    className={classNames({ "p-invalid": errors.puertoDescargaId })}
-                  />
-                )}
-              />
-              {errors.puertoDescargaId && (
-                <Message severity="error" text={errors.puertoDescargaId.message} />
-              )}
-            </div>
+
             <div style={{ flex: 1 }}>
               <Button
                 type="button"
@@ -2068,90 +2216,217 @@ export default function DescargaFaenaConsumoForm({
               )}
             </div>
           </div>
-          {/* Cuarta fila: Coordenadas GPS */}
+          {/* Cuarta fila: Coordenadas GPS - Inicio Retorno y Fondeo */}
           <div
             style={{
-              border: "6px solid #0EA5E9",
-              padding: "0.5rem",
-              borderRadius: "8px",
-              marginBottom: "0.5rem",
               display: "flex",
-              alignItems: "self-end",
               gap: 10,
+              marginBottom: "0.5rem",
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
-                       <PuntoGPSInput
-              latitud={latitud}
-              longitud={longitud}
-              onLatitudChange={(valor) => setValue("latitud", valor)}
-              onLongitudChange={(valor) => setValue("longitud", valor)}
-              onCapturarGPS={async () => {
-                try {
-                  await capturarGPS(
-                    async (latitude, longitude, accuracy) => {
-                      setValue("latitud", latitude);
-                      setValue("longitud", longitude);
-
-                      toast.current?.show({
-                        severity: "success",
-                        summary: "GPS capturado",
-                        detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m`,
-                        life: 3000,
-                      });
-
-                      setLoadingGeo(true);
-                      setErrorGeo(null);
-                      try {
-                        const puertoSalidaId = getValues("puertoDescargaId");
-                        const infoGeo = await analizarCoordenadasConReferencia(
-                          latitude,
-                          longitude,
-                          puertoSalidaId || null
-                        );
-                        setInfoGeografica(infoGeo);
-
-                        toast.current?.show({
-                          severity: "info",
-                          summary: "Información geográfica obtenida",
-                          detail: `Ubicación: ${infoGeo.ubicacion?.ciudad || "N/A"}`,
-                          life: 3000,
-                        });
-                      } catch (error) {
-                        console.error("Error al analizar coordenadas:", error);
-                        setErrorGeo("No se pudo obtener la información geográfica");
-                        toast.current?.show({
-                          severity: "warn",
-                          summary: "Advertencia",
-                          detail: "GPS capturado pero no se pudo obtener información geográfica",
-                          life: 3000,
-                        });
-                      } finally {
-                        setLoadingGeo(false);
-                      }
-                    },
-                    (errorMessage) => {
-                      toast.current?.show({
-                        severity: "error",
-                        summary: "Error GPS",
-                        detail: errorMessage,
-                        life: 3000,
-                      });
-                    }
-                  );
-                } catch (error) {
-                  console.error("Error capturando GPS:", error);
-                }
+            {/* Columna 1: GPS Inicio Retorno */}
+            <div
+              style={{
+                flex: 1,
+                border: "6px solid #059669",
+                padding: "0.5rem",
+                borderRadius: "8px",
               }}
-              readOnly={false}
-              disabled={loading}
-              loading={loading}
-              labelBotonGPS="🔵 Capturar GPS Inicio Retorno"
-              colorBoton="info"
-            />
+            >
+              <PuntoGPSInput
+                labelLatitud="Latitud (Inicio Retorno)"
+                labelLongitud="Longitud (Inicio Retorno)"
+                labelBotonGPS="📍 Capturar GPS Inicio Retorno"
+                fieldNameLatitud="latitud"
+                fieldNameLongitud="longitud"
+                control={control}
+                setValue={setValue}
+                watch={watch}
+                onGPSCapture={async ({ latitud, longitud, accuracy }) => {
+                  // Notificación de éxito
+                  toast.current?.show({
+                    severity: "success",
+                    summary: "GPS capturado",
+                    detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m`,
+                    life: 3000,
+                  });
+
+                  // Analizar coordenadas para obtener información geográfica
+                  setLoadingGeo(true);
+                  setErrorGeo(null);
+                  try {
+                    const puertoSalidaId = getValues("puertoDescargaId");
+                    const infoGeo = await analizarCoordenadasConReferencia(
+                      latitud,
+                      longitud,
+                      puertoSalidaId || null
+                    );
+                    setInfoGeografica(infoGeo);
+
+                    toast.current?.show({
+                      severity: "info",
+                      summary: "Información geográfica obtenida",
+                      detail: `Ubicación: ${infoGeo.ubicacion?.ciudad || "N/A"}`,
+                      life: 3000,
+                    });
+                  } catch (error) {
+                    console.error("Error al analizar coordenadas:", error);
+                    setErrorGeo("No se pudo obtener la información geográfica");
+                    toast.current?.show({
+                      severity: "warn",
+                      summary: "Advertencia",
+                      detail: "GPS capturado pero no se pudo obtener información geográfica",
+                      life: 3000,
+                    });
+                  } finally {
+                    setLoadingGeo(false);
+                  }
+                }}
+                readOnly={false}
+                disabled={loading}
+                loading={loading}
+                colorBoton="success"
+              />
+            </div>
+
+            {/* Columna 2: GPS Fondeo */}
+            <div
+              style={{
+                flex: 1,
+                border: "6px solid #ff9800",
+                padding: "0.5rem",
+                borderRadius: "8px",
+              }}
+            >
+              <PuntoGPSInput
+                labelLatitud="Latitud Fondeo"
+                labelLongitud="Longitud Fondeo"
+                labelBotonGPS="📍 Capturar GPS Fondeo"
+                fieldNameLatitud="latitudFondeo"
+                fieldNameLongitud="longitudFondeo"
+                control={control}
+                setValue={setValue}
+                watch={watch}
+                onGPSCapture={async ({ latitud, longitud, accuracy }) => {
+                  // Notificación de éxito
+                  toast.current?.show({
+                    severity: "success",
+                    summary: "GPS Fondeo capturado",
+                    detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m`,
+                    life: 3000,
+                  });
+
+                  // Analizar coordenadas para obtener información geográfica de FONDEO
+                  setLoadingGeoFondeo(true);
+                  setErrorGeoFondeo(null);
+                  try {
+                    const puertoFondeoId = getValues("puertoFondeoId");
+                    const infoGeo = await analizarCoordenadasConReferencia(
+                      latitud,
+                      longitud,
+                      puertoFondeoId || null
+                    );
+                    setInfoGeograficaFondeo(infoGeo);
+
+                    toast.current?.show({
+                      severity: "info",
+                      summary: "Información geográfica obtenida",
+                      detail: `Ubicación: ${infoGeo.ubicacion?.ciudad || "N/A"}`,
+                      life: 3000,
+                    });
+                  } catch (error) {
+                    console.error("Error al analizar coordenadas fondeo:", error);
+                    setErrorGeoFondeo("No se pudo obtener la información geográfica");
+                    toast.current?.show({
+                      severity: "warn",
+                      summary: "Advertencia",
+                      detail: "GPS capturado pero no se pudo obtener información geográfica",
+                      life: 3000,
+                    });
+                  } finally {
+                    setLoadingGeoFondeo(false);
+                  }
+                }}
+                readOnly={false}
+                disabled={loading}
+                loading={loading}
+                colorBoton="warning"
+              />
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "end",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <Button
+                    type="button"
+                    label="Fecha Hora Fondeo"
+                    icon="pi pi-clock"
+                    className="p-button-warning"
+                    onClick={() => setValue("fechaHoraFondeo", new Date())}
+                    disabled={loading}
+                    size="small"
+                    severity="warning"
+                    raised
+                    style={{ width: "100%", marginBottom: "4px" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Controller
+                    name="fechaHoraFondeo"
+                    control={control}
+                    render={({ field }) => (
+                      <Calendar
+                        id="fechaHoraFondeo"
+                        {...field}
+                        showIcon
+                        showTime
+                        hourFormat="24"
+                        dateFormat="dd/mm/yy"
+                        inputStyle={{ fontWeight: "bold" }}
+                        disabled={loading}
+                        className={classNames({ "p-invalid": errors.fechaHoraFondeo })}
+                        style={{ width: "100%" }}
+                      />
+                    )}
+                  />
+                  {errors.fechaHoraFondeo && (
+                    <Message severity="error" text={errors.fechaHoraFondeo.message} />
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="puertoFondeoId">Puerto Fondeo</label>
+                  <Controller
+                    name="puertoFondeoId"
+                    control={control}
+                    render={({ field }) => (
+                      <Dropdown
+                        id="puertoFondeoId"
+                        {...field}
+                        value={field.value}
+                        options={puertosNormalizados}
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Seleccione puerto"
+                        disabled={loading}
+                        style={{ width: "100%" }}
+                        className={classNames({ "p-invalid": errors.puertoFondeoId })}
+                      />
+                    )}
+                  />
+                  {errors.puertoFondeoId && (
+                    <Message severity="error" text={errors.puertoFondeoId.message} />
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
-                  {/* MAPA UNIFICADO CON MODO MÚLTIPLE */}
+          {/* MAPA UNIFICADO CON MODO MÚLTIPLE */}
           <PanelMapaGeografico
             mapPosition={mapPosition}
             mapKey={mapKey}
@@ -2183,6 +2458,7 @@ export default function DescargaFaenaConsumoForm({
             zoom={9}
           >
             <LineaRetornoPlataforma />
+            <LineaRetornoFondeo />
             <MarkerPuertoDescarga />
             <DraggableMarker />
             <DraggableMarkerFondeo />
@@ -2199,6 +2475,31 @@ export default function DescargaFaenaConsumoForm({
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="puertoDescargaId">Puerto Descarga*</label>
+              <Controller
+                name="puertoDescargaId"
+                control={control}
+                rules={{ required: "El puerto de descarga es obligatorio" }}
+                render={({ field }) => (
+                  <Dropdown
+                    id="puertoDescargaId"
+                    {...field}
+                    value={field.value}
+                    options={puertosNormalizados}
+                    optionLabel="label"
+                    optionValue="value"
+                    style={{ fontWeight: "bold" }}
+                    placeholder="Seleccione puerto"
+                    disabled={loading}
+                    className={classNames({ "p-invalid": errors.puertoDescargaId })}
+                  />
+                )}
+              />
+              {errors.puertoDescargaId && (
+                <Message severity="error" text={errors.puertoDescargaId.message} />
+              )}
+            </div>
             <div style={{ flex: 2 }}>
               <label htmlFor="clienteId">Cliente*</label>
               <Controller
@@ -2337,6 +2638,46 @@ export default function DescargaFaenaConsumoForm({
                   text={errors.combustibleAbastecidoGalones.message}
                 />
               )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="combustibleConsumido">Combustible Consumido (Gal)</label>
+              <Controller
+                name="combustibleConsumido"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="combustibleConsumido"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    placeholder="0.00"
+                    inputStyle={{ fontWeight: "bold" }}
+                    disabled={loading}
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="recorridoMillasNauticas">Recorrido (Millas Náuticas)</label>
+              <Controller
+                name="recorridoMillasNauticas"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="recorridoMillasNauticas"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    placeholder="0.00"
+                    inputStyle={{ fontWeight: "bold" }}
+                    disabled={loading}
+                  />
+                )}
+              />
             </div>
           </div>
 
@@ -2666,146 +3007,48 @@ export default function DescargaFaenaConsumoForm({
               />
             </div>
           </div>
-          {/* Quinta fila: Coordenadas GPS Fondeo */}
+
+          {/* ⭐ Campos de solo lectura: Lugar, Combustible y Recorrido */}
           <div
             style={{
-              border: "6px solid #ff9800",
-              padding: "0.5rem",
-              borderRadius: "8px",
-              marginBottom: "0.5rem",
               display: "flex",
-              alignItems: "self-end",
-              gap: 10,
+              gap: "1rem",
+              marginTop: "1rem",
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
             <div style={{ flex: 1 }}>
-              <Button
-                type="button"
-                label="Fecha Hora Fondeo"
-                icon="pi pi-clock"
-                className="p-button-warning"
-                onClick={() => setValue("fechaHoraFondeo", new Date())}
-                disabled={loading}
-                size="small"
-                severity="warning"
-                raised
-                style={{ width: "100%", marginBottom: "4px" }}
+              <label htmlFor="lugarUbicacionGeografica">📍 Lugar Ubicación Geográfica</label>
+              <InputText
+                id="lugarUbicacionGeografica"
+                value={lugarUbicacionGeografica || ""}
+                disabled
+                style={{ width: "100%", fontWeight: "bold", backgroundColor: "#f3f4f6" }}
               />
-              <Controller
-                name="fechaHoraFondeo"
-                control={control}
-                render={({ field }) => (
-                  <Calendar
-                    id="fechaHoraFondeo"
-                    {...field}
-                    showIcon
-                    showTime
-                    hourFormat="24"
-                    dateFormat="dd/mm/yy"
-                    inputStyle={{ fontWeight: "bold" }}
-                    disabled={loading}
-                    className={classNames({ "p-invalid": errors.fechaHoraFondeo })}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
-              {errors.fechaHoraFondeo && (
-                <Message severity="error" text={errors.fechaHoraFondeo.message} />
-              )}
             </div>
-
-                       <PuntoGPSInput
-              latitud={latitudFondeo}
-              longitud={longitudFondeo}
-              onLatitudChange={(valor) => setValue("latitudFondeo", valor)}
-              onLongitudChange={(valor) => setValue("longitudFondeo", valor)}
-              onCapturarGPS={async () => {
-                try {
-                  await capturarGPS(
-                    async (latitude, longitude, accuracy) => {
-                      setValue("latitudFondeo", latitude);
-                      setValue("longitudFondeo", longitude);
-
-                      toast.current?.show({
-                        severity: "success",
-                        summary: "GPS Fondeo capturado",
-                        detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m`,
-                        life: 3000,
-                      });
-
-                      setLoadingGeoFondeo(true);
-                      setErrorGeoFondeo(null);
-                      try {
-                        const puertoFondeoId = getValues("puertoFondeoId");
-                        const infoGeo = await analizarCoordenadasConReferencia(
-                          latitude,
-                          longitude,
-                          puertoFondeoId || null
-                        );
-                        setInfoGeograficaFondeo(infoGeo);
-
-                        toast.current?.show({
-                          severity: "info",
-                          summary: "Información geográfica obtenida",
-                          detail: `Ubicación: ${infoGeo.ubicacion?.ciudad || "N/A"}`,
-                          life: 3000,
-                        });
-                      } catch (error) {
-                        console.error("Error al analizar coordenadas fondeo:", error);
-                        setErrorGeoFondeo("No se pudo obtener la información geográfica");
-                        toast.current?.show({
-                          severity: "warn",
-                          summary: "Advertencia",
-                          detail: "GPS capturado pero no se pudo obtener información geográfica",
-                          life: 3000,
-                        });
-                      } finally {
-                        setLoadingGeoFondeo(false);
-                      }
-                    },
-                    (errorMessage) => {
-                      toast.current?.show({
-                        severity: "error",
-                        summary: "Error GPS",
-                        detail: errorMessage,
-                        life: 3000,
-                      });
-                    }
-                  );
-                } catch (error) {
-                  console.error("Error capturando GPS Fondeo:", error);
-                }
-              }}
-              readOnly={false}
-              disabled={loading}
-              loading={loading}
-              labelBotonGPS="🟠 Capturar GPS Fondeo"
-              colorBoton="warning"
-            />
-
-            <div style={{ flex: 1, marginTop: "0.5rem" }}>
-              <label htmlFor="puertoFondeoId">Puerto Fondeo</label>
-              <Controller
-                name="puertoFondeoId"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    id="puertoFondeoId"
-                    {...field}
-                    value={field.value}
-                    options={puertosNormalizados}
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Puerto Fondeo"
-                    filter
-                    disabled={loading}
-                  />
-                )}
+            <div style={{ flex: 1 }}>
+              <label htmlFor="combustibleConsumido">⛽ Combustible Consumido (Gal)</label>
+              <InputNumber
+                id="combustibleConsumido"
+                value={combustibleTotal}
+                disabled
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                style={{ width: "100%", fontWeight: "bold", backgroundColor: "#f3f4f6" }}
               />
-              {errors.puertoFondeoId && (
-                <Message severity="error" text={errors.puertoFondeoId.message} />
-              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="recorridoMillasNauticas">📏 Recorrido (MN)</label>
+              <InputNumber
+                id="recorridoMillasNauticas"
+                value={(distanciaRetornoPuerto || 0) + (distanciaDescargaFondeo || 0)}
+                disabled
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                style={{ width: "100%", fontWeight: "bold", backgroundColor: "#f3f4f6" }}
+              />
             </div>
           </div>
 
@@ -2868,19 +3111,28 @@ export default function DescargaFaenaConsumoForm({
         </TabPanel>
 
         {/* TAB 2: COMPROBANTE WINCHA PDF */}
-        <TabPanel header="📄 Comprobante Wincha">
+        <TabPanel
+          header="📄 Comprobante Wincha"
+          leftIcon="pi pi-file-pdf mr-2"
+          disabled={!detalle?.id}
+        >
           <PDFDocumentManager
-            pdfUrl={detalle?.urlComprobanteWincha}
-            pdfType="descargaFaenaConsumoPDF"
-            recordId={detalle?.id}
-            onUploadSuccess={(url) => {
-              toast.current?.show({
-                severity: "success",
-                summary: "PDF Cargado",
-                detail: "Comprobante de wincha actualizado correctamente",
-                life: 3000,
-              });
-            }}
+            moduleName="descarga-faena-consumo-comprobante-wincha"
+            fieldName="urlComprobanteWincha"
+            entityId={detalle?.id}
+            title="📄 Comprobante de Wincha (PDF)"
+            dialogTitle="Subir Comprobante de Wincha"
+            uploadButtonLabel="Capturar/Subir PDF"
+            viewButtonLabel="Abrir"
+            downloadButtonLabel="Descargar"
+            emptyMessage="No hay comprobante de wincha cargado"
+            emptyDescription='Use el botón "Capturar/Subir PDF" para agregar el comprobante de pesaje de wincha'
+            control={control}
+            errors={errors}
+            setValue={setValue}
+            watch={watch}
+            getValues={getValues}
+            readOnly={loading}
           />
         </TabPanel>
       </TabView>

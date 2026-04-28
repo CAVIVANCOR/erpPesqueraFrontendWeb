@@ -1883,7 +1883,7 @@ export default function DescargaFaenaPescaForm({
               />
             </div>
 
-            {/* Columna 2: GPS Fondeo */}
+                      {/* Columna 2: GPS Fondeo */}
             <div
               style={{
                 flex: 1,
@@ -1946,6 +1946,76 @@ export default function DescargaFaenaPescaForm({
                 disabled={loading}
                 loading={loading}
               />
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "end",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <Button
+                    type="button"
+                    label="Fecha Hora Fondeo"
+                    icon="pi pi-clock"
+                    className="p-button-warning"
+                    onClick={() => setValue("fechaHoraFondeo", new Date())}
+                    disabled={loading}
+                    size="small"
+                    severity="warning"
+                    raised
+                    style={{ width: "100%", marginBottom: "4px" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Controller
+                    name="fechaHoraFondeo"
+                    control={control}
+                    render={({ field }) => (
+                      <Calendar
+                        id="fechaHoraFondeo"
+                        {...field}
+                        showIcon
+                        showTime
+                        hourFormat="24"
+                        dateFormat="dd/mm/yy"
+                        inputStyle={{ fontWeight: "bold" }}
+                        disabled={loading}
+                        className={classNames({ "p-invalid": errors.fechaHoraFondeo })}
+                        style={{ width: "100%" }}
+                      />
+                    )}
+                  />
+                  {errors.fechaHoraFondeo && (
+                    <Message severity="error" text={errors.fechaHoraFondeo.message} />
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="puertoFondeoId">Puerto Fondeo</label>
+                  <Controller
+                    name="puertoFondeoId"
+                    control={control}
+                    render={({ field }) => (
+                      <Dropdown
+                        id="puertoFondeoId"
+                        {...field}
+                        value={field.value}
+                        options={puertos}
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Seleccione puerto"
+                        disabled={loading}
+                        style={{ width: "100%" }}
+                        className={classNames({ "p-invalid": errors.puertoFondeoId })}
+                      />
+                    )}
+                  />
+                  {errors.puertoFondeoId && (
+                    <Message severity="error" text={errors.puertoFondeoId.message} />
+                  )}
+                </div>
+              </div>
             </div>
           </div>
           <PanelMapaGeografico
