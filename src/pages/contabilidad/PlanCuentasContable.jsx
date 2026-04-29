@@ -8,6 +8,7 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { Tag } from "primereact/tag";
+import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import PlanCuentasContableForm from "../../components/contabilidad/PlanCuentasContableForm";
 import {
@@ -39,10 +40,20 @@ export default function PlanCuentasContable({ ruta }) {
     row: null,
   });
   const [globalFilter, setGlobalFilter] = useState("");
+  const [nivelFilter, setNivelFilter] = useState(null);
+  const [nivelEnumFilter, setNivelEnumFilter] = useState(null);
+  const [naturalezaFilter, setNaturalezaFilter] = useState(null);
+  const [tipoCuentaFilter, setTipoCuentaFilter] = useState(null);
+  const [itemsFiltrados, setItemsFiltrados] = useState([]);
 
   useEffect(() => {
     cargarDatos();
   }, []);
+
+  useEffect(() => {
+    filtrarItems();
+  }, [items, nivelFilter, nivelEnumFilter, naturalezaFilter, tipoCuentaFilter, globalFilter]);
+
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -58,6 +69,54 @@ export default function PlanCuentasContable({ ruta }) {
       });
     }
     setLoading(false);
+  };
+
+  const filtrarItems = () => {
+    let filtrados = [...items];
+
+    // Filtro por cantidad de dígitos
+    if (nivelFilter) {
+      filtrados = filtrados.filter((item) => {
+        const longitudCodigo = item.codigoCuenta ? item.codigoCuenta.length : 0;
+        return longitudCodigo === nivelFilter;
+      });
+    }
+
+    // Filtro por Nivel (ENUM)
+    if (nivelEnumFilter) {
+      filtrados = filtrados.filter((item) => item.nivel === nivelEnumFilter);
+    }
+
+    // Filtro por Naturaleza
+    if (naturalezaFilter) {
+      filtrados = filtrados.filter((item) => item.naturaleza === naturalezaFilter);
+    }
+
+    // Filtro por Tipo de Cuenta
+    if (tipoCuentaFilter) {
+      filtrados = filtrados.filter((item) => item.tipoCuenta === tipoCuentaFilter);
+    }
+
+    // Filtro personalizado por búsqueda
+    if (globalFilter && globalFilter.trim() !== "") {
+      const busqueda = globalFilter.trim().toLowerCase();
+      filtrados = filtrados.filter((item) => {
+        const codigo = item.codigoCuenta ? item.codigoCuenta.toLowerCase() : "";
+        const nombre = item.nombreCuenta ? item.nombreCuenta.toLowerCase() : "";
+        const descripcion = item.descripcion ? item.descripcion.toLowerCase() : "";
+
+        // codigoCuenta: buscar por PREFIJO (que empiece con)
+        const coincideCodigo = codigo.startsWith(busqueda);
+
+        // nombreCuenta y descripcion: buscar por CONTENIDO (que contenga)
+        const coincideNombre = nombre.includes(busqueda);
+        const coincideDescripcion = descripcion.includes(busqueda);
+
+        return coincideCodigo || coincideNombre || coincideDescripcion;
+      });
+    }
+
+    setItemsFiltrados(filtrados);
   };
 
   const onNew = () => {
@@ -185,6 +244,10 @@ export default function PlanCuentasContable({ ruta }) {
 
   const limpiarFiltros = () => {
     setGlobalFilter("");
+    setNivelFilter(null);
+    setNivelEnumFilter(null);
+    setNaturalezaFilter(null);
+    setTipoCuentaFilter(null);
   };
 
   const cuentaPadreNombre = (rowData) => {
@@ -283,14 +346,14 @@ export default function PlanCuentasContable({ ruta }) {
         style={{ minWidth: 400 }}
       />
       <DataTable
-        value={items}
+        value={itemsFiltrados}
         loading={loading}
         size="small"
         stripedRows
         showGridlines
         paginator
-        rows={20}
-        rowsPerPageOptions={[20, 40, 80, 160]}
+        rows={40}
+        rowsPerPageOptions={[40, 80, 160, 320]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cuentas"
         sortField="codigoCuenta"
@@ -303,8 +366,8 @@ export default function PlanCuentasContable({ ruta }) {
             ? (e) => onEdit(e.data)
             : undefined
         }
-        globalFilter={globalFilter}
-        globalFilterFields={["codigoCuenta", "nombreCuenta", "descripcion"]}
+        globalFilter={null}
+        globalFilterFields={[]}
         emptyMessage="No se encontraron registros que coincidan con la búsqueda."
         style={{
           cursor:
@@ -324,7 +387,7 @@ export default function PlanCuentasContable({ ruta }) {
               <div style={{ flex: 2 }}>
                 <h2>Plan de Cuentas Contable</h2>
                 <small style={{ color: "#666", fontWeight: "normal" }}>
-                  Total de registros: {items.length}
+                  Total de registros: {itemsFiltrados.length}
                 </small>
               </div>
               <div style={{ flex: 0.5 }}>
@@ -340,7 +403,7 @@ export default function PlanCuentasContable({ ruta }) {
                   onClick={onNew}
                 />
               </div>
-              <div style={{ flex: 0.5 }}>
+              <div style={{ flex: 0.25 }}>
                 <Button
                   icon="pi pi-refresh"
                   className="p-button-outlined p-button-info"
@@ -359,9 +422,8 @@ export default function PlanCuentasContable({ ruta }) {
                   tooltip="Actualizar todos los datos desde el servidor"
                 />
               </div>
-              <div style={{ flex: 0.5 }}>
+              <div style={{ flex: 0.25 }}>
                 <Button
-                  label="Limpiar"
                   icon="pi pi-filter-slash"
                   className="p-button-secondary"
                   size="small"
@@ -371,9 +433,86 @@ export default function PlanCuentasContable({ ruta }) {
                 />
               </div>
               <div style={{ flex: 1 }}>
+                <label htmlFor="nivelEnumFilter">Filtrar por Nivel (Tipo)</label>
+                <Dropdown
+                  id="nivelEnumFilter"
+                  value={nivelEnumFilter}
+                  options={[
+                    { label: "Todos", value: null },
+                    { label: "CLASE", value: "CLASE" },
+                    { label: "CUENTA", value: "CUENTA" },
+                    { label: "SUBCUENTA", value: "SUBCUENTA" },
+                    { label: "DIVISIONARIA", value: "DIVISIONARIA" },
+                    { label: "SUBDIVISIONARIA", value: "SUBDIVISIONARIA" },
+                  ]}
+                  onChange={(e) => setNivelEnumFilter(e.value)}
+                  placeholder="Seleccionar nivel"
+                  showClear
+                  style={{ width: "100%" }}
+                  onClear={() => setNivelEnumFilter(null)}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="naturalezaFilter">Filtrar por Naturaleza</label>
+                <Dropdown
+                  id="naturalezaFilter"
+                  value={naturalezaFilter}
+                  options={[
+                    { label: "Todas", value: null },
+                    { label: "DEUDORA", value: "DEUDORA" },
+                    { label: "ACREEDORA", value: "ACREEDORA" },
+                  ]}
+                  onChange={(e) => setNaturalezaFilter(e.value)}
+                  placeholder="Seleccionar naturaleza"
+                  showClear
+                  style={{ width: "100%" }}
+                  onClear={() => setNaturalezaFilter(null)}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="tipoCuentaFilter">Filtrar por Tipo de Cuenta</label>
+                <Dropdown
+                  id="tipoCuentaFilter"
+                  value={tipoCuentaFilter}
+                  options={[
+                    { label: "Todos", value: null },
+                    { label: "ACTIVO", value: "ACTIVO" },
+                    { label: "PASIVO", value: "PASIVO" },
+                    { label: "PATRIMONIO", value: "PATRIMONIO" },
+                    { label: "INGRESO", value: "INGRESO" },
+                    { label: "GASTO", value: "GASTO" },
+                  ]}
+                  onChange={(e) => setTipoCuentaFilter(e.value)}
+                  placeholder="Seleccionar tipo"
+                  showClear
+                  style={{ width: "100%" }}
+                  onClear={() => setTipoCuentaFilter(null)}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="nivelFilter">Filtrar por Nivel</label>
+                <Dropdown
+                  id="nivelFilter"
+                  value={nivelFilter}
+                  options={[
+                    { label: "Todos los niveles", value: null },
+                    { label: "Nivel 2 - Rubro (2 dígitos)", value: 2 },
+                    { label: "Nivel 3 - Subcuenta (3 dígitos)", value: 3 },
+                    { label: "Nivel 4 - Divisionaria (4 dígitos)", value: 4 },
+                    { label: "Nivel 5 - Subdivisionaria (5 dígitos)", value: 5 },
+                    { label: "Nivel 6 - Detalle (6 dígitos)", value: 6 },
+                    { label: "Nivel 7 - Subdetalle (7 dígitos)", value: 7 },
+                  ]}
+                  onChange={(e) => setNivelFilter(e.value)}
+                  placeholder="Seleccionar nivel"
+                  showClear
+                  style={{ width: "100%" }}
+                  onClear={() => setNivelFilter(null)}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
                 <label htmlFor="globalFilter">Buscar</label>
                 <span className="p-input-icon-left">
-                  <i className="pi pi-search" />
                   <InputText
                     id="globalFilter"
                     value={globalFilter}

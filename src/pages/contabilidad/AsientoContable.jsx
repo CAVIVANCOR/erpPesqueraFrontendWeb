@@ -203,7 +203,7 @@ export default function AsientoContable({ ruta }) {
 
   const recargarAsientoActual = async () => {
     if (!selected?.id) return;
-    
+
     try {
       const asientoActualizado = await getAsientoContableById(selected.id);
       setSelected(asientoActualizado);
@@ -609,11 +609,11 @@ export default function AsientoContable({ ruta }) {
             </div>
           </div>
 
-          <div 
-            style={{ 
-              backgroundColor: "#fff3e0", 
-              padding: 12, 
-              borderRadius: 4, 
+          <div
+            style={{
+              backgroundColor: "#fff3e0",
+              padding: 12,
+              borderRadius: 4,
               border: "1px solid #ffb74d",
               marginBottom: 15
             }}
@@ -624,11 +624,11 @@ export default function AsientoContable({ ruta }) {
             </p>
           </div>
 
-          <div 
-            style={{ 
-              backgroundColor: "#e3f2fd", 
-              padding: 12, 
-              borderRadius: 4, 
+          <div
+            style={{
+              backgroundColor: "#e3f2fd",
+              padding: 12,
+              borderRadius: 4,
               border: "1px solid #64b5f6"
             }}
           >
@@ -706,8 +706,8 @@ export default function AsientoContable({ ruta }) {
           confirmState.action === "aprobar"
             ? "Aprobar"
             : confirmState.action === "anular"
-            ? "Anular"
-            : "Eliminar"
+              ? "Anular"
+              : "Eliminar"
         }
         rejectLabel="Cancelar"
         accept={
@@ -835,6 +835,7 @@ export default function AsientoContable({ ruta }) {
                   showClear
                   filter
                   style={{ width: "100%" }}
+                  onClear={() => setEmpresaFilter(null)}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -850,6 +851,7 @@ export default function AsientoContable({ ruta }) {
                   placeholder="Seleccionar período"
                   showClear
                   style={{ width: "100%" }}
+                  onClear={() => setPeriodoFilter(null)}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -865,6 +867,7 @@ export default function AsientoContable({ ruta }) {
                   placeholder="Seleccionar estado"
                   showClear
                   style={{ width: "100%" }}
+                  onClear={() => setEstadoFilter(null)}
                 />
               </div>
             </div>
@@ -887,6 +890,7 @@ export default function AsientoContable({ ruta }) {
                   showIcon
                   showButtonBar
                   style={{ width: "100%" }}
+                  onClearButtonClick={() => setFechaInicio(null)}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -899,6 +903,7 @@ export default function AsientoContable({ ruta }) {
                   showIcon
                   showButtonBar
                   style={{ width: "100%" }}
+                  onClearButtonClick={() => setFechaFin(null)}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -919,16 +924,16 @@ export default function AsientoContable({ ruta }) {
         }
       >
         <Column field="id" header="ID" sortable />
-        <Column 
-          field="empresa.razonSocial" 
-          header="Empresa" 
-          sortable 
+        <Column
+          field="empresa.razonSocial"
+          header="Empresa"
+          sortable
           style={{ minWidth: "200px" }}
         />
-        <Column 
-          field="periodoContable.nombrePeriodo" 
-          header="Periodo" 
-          sortable 
+        <Column
+          field="periodoContable.nombrePeriodo"
+          header="Periodo"
+          sortable
           style={{ minWidth: "150px" }}
         />
         <Column field="numeroAsiento" header="Número" sortable />
