@@ -302,3 +302,21 @@ body {
 .p-toast-message {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
 }
+
+
+/* Estilos para colorear filas según moneda */
+.row-moneda-pen {
+  background-color: #fffbeb !important; /* Amarillo muy claro */
+}
+
+.row-moneda-usd {
+  background-color: #f0fdf4 !important; /* Verde muy claro */
+}
+
+.row-moneda-pen:hover {
+  background-color: #fef3c7 !important; /* Amarillo más oscuro al hover */
+}
+
+.row-moneda-usd:hover {
+  background-color: #dcfce7 !important; /* Verde más oscuro al hover */
+}
