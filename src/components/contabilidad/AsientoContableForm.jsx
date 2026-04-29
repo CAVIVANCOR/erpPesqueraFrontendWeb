@@ -151,10 +151,10 @@ export default function AsientoContableForm({
   const cargarPlanCuentas = async () => {
     try {
       const data = await getPlanCuentasContable();
-      const cuentasImputables = data.filter(
-        (c) => c.esImputable === true && c.activo === true
+      const cuentasActivas = data.filter(
+        (c) => c.activo === true
       );
-      setPlanCuentas(cuentasImputables);
+      setPlanCuentas(cuentasActivas);
     } catch (error) {
       toast.current?.show({
         severity: "error",
