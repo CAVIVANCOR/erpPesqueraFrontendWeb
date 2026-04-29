@@ -634,7 +634,7 @@ export default function AsientoContableForm({
   const esPendiente = estadoId === 76;
   const isReadOnly = readOnly || !esPendiente;
 
-  const montoBodyTemplate = (rowData, field) => {
+    const montoBodyTemplate = (rowData, field) => {
     // Siempre mostrar en PEN
     return new Intl.NumberFormat("es-PE", {
       style: "currency",
@@ -642,6 +642,91 @@ export default function AsientoContableForm({
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(rowData[field] || 0);
+  };
+
+  const totalDebeME = detalles.reduce(
+    (sum, d) => sum + Number(d.debeMonedaExtranjera || 0),
+    0,
+  );
+  const totalHaberME = detalles.reduce(
+    (sum, d) => sum + Number(d.haberMonedaExtranjera || 0),
+    0,
+  );
+  const totalNetoME = totalDebeME - totalHaberME;
+
+  const monedaExtranjeraCodigo = (() => {
+    const detalleME = detalles.find((d) => Number(d.monedaId) !== 1);
+    if (!detalleME) return null;
+
+    const moneda = monedas.find((m) => Number(m.id) === Number(detalleME.monedaId));
+    const codigoMoneda = moneda?.codigoSunat || null;
+    return codigoMoneda && codigoMoneda !== "PEN" ? codigoMoneda : null;
+  })();
+
+  const footerMonedaMontoTemplate = () => {
+    if (!monedaExtranjeraCodigo || Math.abs(Number(totalNetoME || 0)) < 0.0001) {
+      return null;
+    }
+
+    return (
+      <div
+        style={{
+          textAlign: "right",
+          fontWeight: "bold",
+          fontSize: "1.1rem",
+          color: "#059669",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {monedaExtranjeraCodigo}{" "}
+        {new Intl.NumberFormat("es-PE", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(totalNetoME)}
+      </div>
+    );
+  };
+
+  const footerDebeTemplate = () => {
+    return (
+      <div
+        style={{
+          textAlign: "right",
+          fontWeight: "bold",
+          fontSize: "1.1rem",
+          color: "#1d4ed8",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {new Intl.NumberFormat("es-PE", {
+          style: "currency",
+          currency: "PEN",
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(Number(formData.totalDebe || 0))}
+      </div>
+    );
+  };
+
+  const footerHaberTemplate = () => {
+    return (
+      <div
+        style={{
+          textAlign: "right",
+          fontWeight: "bold",
+          fontSize: "1.1rem",
+          color: "#dc2626",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {new Intl.NumberFormat("es-PE", {
+          style: "currency",
+          currency: "PEN",
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(Number(formData.totalHaber || 0))}
+      </div>
+    );
   };
 
   const monedaMontoBodyTemplate = (rowData) => {
@@ -940,7 +1025,7 @@ export default function AsientoContableForm({
             </div>
           }
         >
-          <Column field="numeroLinea" header="#" style={{ width: "5%" }} />
+                   <Column field="numeroLinea" header="#" style={{ width: "5%" }} />
           <Column
             field="codigoCuenta"
             header="Código"
@@ -955,7 +1040,27 @@ export default function AsientoContableForm({
           <Column
             header="Moneda/Monto"
             body={monedaMontoBodyTemplate}
+            footer={footerMonedaMontoTemplate}
             style={{ width: "10%", textAlign: "right" }}
+            headerStyle={{
+              whiteSpace: "nowrap",
+              paddingTop: "0.25rem",
+              paddingBottom: "0.25rem",
+              textAlign: "right",
+            }}
+            bodyStyle={{
+              whiteSpace: "nowrap",
+              paddingTop: "0.15rem",
+              paddingBottom: "0.15rem",
+              textAlign: "right",
+            }}
+            footerStyle={{
+              whiteSpace: "nowrap",
+              paddingTop: "0.25rem",
+              paddingBottom: "0.25rem",
+              textAlign: "right",
+              backgroundColor: "#ecfdf5",
+            }}
           />
           <Column
             header="T/C"
@@ -965,12 +1070,52 @@ export default function AsientoContableForm({
           <Column
             header="Debe"
             body={(rowData) => montoBodyTemplate(rowData, "debe")}
+            footer={footerDebeTemplate}
             style={{ width: "12%", textAlign: "right" }}
+            headerStyle={{
+              whiteSpace: "nowrap",
+              paddingTop: "0.25rem",
+              paddingBottom: "0.25rem",
+              textAlign: "right",
+            }}
+            bodyStyle={{
+              whiteSpace: "nowrap",
+              paddingTop: "0.15rem",
+              paddingBottom: "0.15rem",
+              textAlign: "right",
+            }}
+            footerStyle={{
+              whiteSpace: "nowrap",
+              paddingTop: "0.25rem",
+              paddingBottom: "0.25rem",
+              textAlign: "right",
+              backgroundColor: "#eff6ff",
+            }}
           />
           <Column
             header="Haber"
             body={(rowData) => montoBodyTemplate(rowData, "haber")}
+            footer={footerHaberTemplate}
             style={{ width: "12%", textAlign: "right" }}
+            headerStyle={{
+              whiteSpace: "nowrap",
+              paddingTop: "0.25rem",
+              paddingBottom: "0.25rem",
+              textAlign: "right",
+            }}
+            bodyStyle={{
+              whiteSpace: "nowrap",
+              paddingTop: "0.15rem",
+              paddingBottom: "0.15rem",
+              textAlign: "right",
+            }}
+            footerStyle={{
+              whiteSpace: "nowrap",
+              paddingTop: "0.25rem",
+              paddingBottom: "0.25rem",
+              textAlign: "right",
+              backgroundColor: "#fef2f2",
+            }}
           />
           {!isReadOnly && (
             <Column
