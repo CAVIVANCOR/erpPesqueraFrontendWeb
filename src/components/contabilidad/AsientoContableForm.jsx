@@ -83,6 +83,7 @@ export default function AsientoContableForm({
   });
   const [guardando, setGuardando] = useState(false);
   const [fechaAsientoInicial, setFechaAsientoInicial] = useState(null);
+  const [asientoId, setAsientoId] = useState(defaultValues?.id || null);
 
   useEffect(() => {
     cargarPlanCuentas();
@@ -97,6 +98,20 @@ export default function AsientoContableForm({
   useEffect(() => {
     calcularTotales();
   }, [detalles]);
+
+  // Actualizar detalles cuando cambian los defaultValues (al editar)
+  useEffect(() => {
+    if (defaultValues?.detalles) {
+      setDetalles(defaultValues.detalles);
+    }
+  }, [defaultValues?.detalles]);
+
+  // Actualizar asientoId cuando cambian los defaultValues
+  useEffect(() => {
+    if (defaultValues?.id) {
+      setAsientoId(defaultValues.id);
+    }
+  }, [defaultValues?.id]);
 
   // Guardar fecha inicial para evitar carga automática en mount
   useEffect(() => {
@@ -239,7 +254,7 @@ export default function AsientoContableForm({
     }
   };
 
-  const handleSaveDetalle = () => {
+  const handleSaveDetalle = async () => {
     if (!detalleFormData.planCuentaId) {
       toast.current?.show({
         severity: "warn",
@@ -341,13 +356,114 @@ export default function AsientoContableForm({
 
     setDetalles(nuevosDetalles);
     setShowDetalleDialog(false);
+
+    // AUTO-GUARDAR después de agregar/editar detalle
+    await autoGuardarAsiento(nuevosDetalles);
   };
 
-  const handleDeleteDetalle = (detalle) => {
+  const handleDeleteDetalle = async (detalle) => {
     const nuevosDetalles = detalles
       .filter((d) => d !== detalle)
       .map((d, index) => ({ ...d, numeroLinea: index + 1 }));
     setDetalles(nuevosDetalles);
+
+    // AUTO-GUARDAR después de eliminar detalle
+    await autoGuardarAsiento(nuevosDetalles);
+  };
+
+  const autoGuardarAsiento = async (detallesActualizados) => {
+    // Validar solo datos mínimos requeridos por el backend
+    if (!formData.empresaId || !formData.periodoContableId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Datos Incompletos",
+        detail: "Seleccione Empresa y Período antes de agregar detalles",
+        life: 3000,
+      });
+      return;
+    }
+
+    const totalDebe = detallesActualizados.reduce((sum, d) => sum + Number(d.debe || 0), 0);
+    const totalHaber = detallesActualizados.reduce((sum, d) => sum + Number(d.haber || 0), 0);
+    const diferencia = totalDebe - totalHaber;
+    const estaCuadrado = Math.abs(diferencia) < 0.01;
+
+    const dataToSend = {
+      empresaId: Number(formData.empresaId),
+      periodoContableId: Number(formData.periodoContableId),
+      fechaAsiento: formData.fechaAsiento?.toISOString(),
+      glosa: formData.glosa,
+      tipoLibro: formData.tipoLibro,
+      origenAsiento: formData.origenAsiento,
+      estadoId: Number(formData.estadoId),
+      monedaId: Number(formData.monedaId),
+      tipoCambio: formData.tipoCambio ? Number(formData.tipoCambio) : null,
+      totalDebe,
+      totalHaber,
+      diferencia,
+      estaCuadrado,
+      detalles: detallesActualizados.map((d) => ({
+        numeroLinea: d.numeroLinea,
+        planCuentaId: Number(d.planCuentaId),
+        codigoCuenta: d.codigoCuenta,
+        nombreCuenta: d.nombreCuenta,
+        glosa: d.glosa,
+        debe: Number(d.debe || 0),
+        haber: Number(d.haber || 0),
+        monedaId: Number(d.monedaId) || Number(formData.monedaId),
+        tipoCambio: d.tipoCambio || formData.tipoCambio
+          ? Number(d.tipoCambio || formData.tipoCambio)
+          : null,
+        debeMonedaExtranjera: d.debeMonedaExtranjera
+          ? Number(d.debeMonedaExtranjera)
+          : null,
+        haberMonedaExtranjera: d.haberMonedaExtranjera
+          ? Number(d.haberMonedaExtranjera)
+          : null,
+      })),
+    };
+
+    if (!asientoId) {
+      dataToSend.creadoPor = usuario?.personalId;
+    } else {
+      dataToSend.actualizadoPor = usuario?.personalId;
+    }
+
+    try {
+      let response;
+      if (asientoId) {
+        // Actualizar asiento existente
+        response = await updateAsientoContable(asientoId, dataToSend);
+      } else {
+        // Crear nuevo asiento
+        response = await createAsientoContable(dataToSend);
+        setAsientoId(response.id); // Guardar el ID para futuras actualizaciones
+      }
+
+      // Actualizar totales en el formulario
+      setFormData((prev) => ({
+        ...prev,
+        totalDebe: response.totalDebe,
+        totalHaber: response.totalHaber,
+        diferencia: response.diferencia,
+        estaCuadrado: response.estaCuadrado,
+        numeroAsiento: response.numeroAsiento || prev.numeroAsiento,
+      }));
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Guardado Automático",
+        detail: "El detalle se guardó correctamente",
+        life: 2000,
+      });
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error al Guardar",
+        detail: error.response?.data?.message || "Error al guardar el detalle",
+        life: 3000,
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -373,38 +489,22 @@ export default function AsientoContableForm({
       return;
     }
 
-    if (!formData.glosa) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Validación",
-        detail: "Debe ingresar una glosa",
-        life: 3000,
-      });
-      return;
-    }
+    // VALIDACIONES ELIMINADAS: Permitir guardar sin glosa y sin detalles
+    // El backend ya no requiere estas validaciones para asientos en proceso
 
-    if (detalles.length === 0) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Validación",
-        detail: "Debe agregar al menos una línea de detalle",
-        life: 3000,
-      });
-      return;
-    }
-
+    // Advertencia si no está cuadrado, pero NO bloquear el guardado
     if (detalles.length > 0 && !formData.estaCuadrado) {
       toast.current?.show({
-        severity: "error",
-        summary: "Asiento Descuadrado",
+        severity: "warn",
+        summary: "Advertencia: Asiento Descuadrado",
         detail: `El asiento no está balanceado. Debe: ${formData.totalDebe.toFixed(
           2
         )}, Haber: ${formData.totalHaber.toFixed(2)}, Diferencia: ${Math.abs(
           formData.diferencia
-        ).toFixed(2)}`,
-        life: 5000,
+        ).toFixed(2)}. Se guardará de todas formas.`,
+        life: 4000,
       });
-      return;
+      // NO hacer return, permitir que continúe el guardado
     }
 
     const dataToSend = {
@@ -424,28 +524,28 @@ export default function AsientoContableForm({
       detalles:
         detalles.length > 0
           ? detalles.map((d) => ({
-              numeroLinea: d.numeroLinea,
-              planCuentaId: Number(d.planCuentaId),
-              codigoCuenta: d.codigoCuenta,
-              nombreCuenta: d.nombreCuenta,
-              glosa: d.glosa,
-              debe: Number(d.debe || 0),
-              haber: Number(d.haber || 0),
-              monedaId: Number(d.monedaId) || Number(formData.monedaId),
-              tipoCambio: d.tipoCambio || formData.tipoCambio
-                ? Number(d.tipoCambio || formData.tipoCambio)
-                : null,
-              debeMonedaExtranjera: d.debeMonedaExtranjera
-                ? Number(d.debeMonedaExtranjera)
-                : null,
-              haberMonedaExtranjera: d.haberMonedaExtranjera
-                ? Number(d.haberMonedaExtranjera)
-                : null,
-            }))
+            numeroLinea: d.numeroLinea,
+            planCuentaId: Number(d.planCuentaId),
+            codigoCuenta: d.codigoCuenta,
+            nombreCuenta: d.nombreCuenta,
+            glosa: d.glosa,
+            debe: Number(d.debe || 0),
+            haber: Number(d.haber || 0),
+            monedaId: Number(d.monedaId) || Number(formData.monedaId),
+            tipoCambio: d.tipoCambio || formData.tipoCambio
+              ? Number(d.tipoCambio || formData.tipoCambio)
+              : null,
+            debeMonedaExtranjera: d.debeMonedaExtranjera
+              ? Number(d.debeMonedaExtranjera)
+              : null,
+            haberMonedaExtranjera: d.haberMonedaExtranjera
+              ? Number(d.haberMonedaExtranjera)
+              : null,
+          }))
           : [],
     };
 
-    if (!isEdit) {
+    if (!asientoId) {
       dataToSend.creadoPor = usuario?.personalId;
     } else {
       dataToSend.actualizadoPor = usuario?.personalId;
@@ -454,8 +554,8 @@ export default function AsientoContableForm({
     setGuardando(true);
     try {
       let response;
-      if (isEdit) {
-        response = await updateAsientoContable(defaultValues.id, dataToSend);
+      if (asientoId) {
+        response = await updateAsientoContable(asientoId, dataToSend);
         toast.current?.show({
           severity: "success",
           summary: "Asiento Actualizado",
@@ -464,6 +564,7 @@ export default function AsientoContableForm({
         });
       } else {
         response = await createAsientoContable(dataToSend);
+        setAsientoId(response.id);
         toast.current?.show({
           severity: "success",
           summary: "Asiento Creado",
@@ -471,10 +572,20 @@ export default function AsientoContableForm({
           life: 4000,
         });
       }
-      
-      // NO ejecutar onSubmit para no cerrar el formulario
-      // onSubmit(dataToSend);
-      
+
+      // Actualizar datos del formulario con la respuesta
+      setFormData((prev) => ({
+        ...prev,
+        numeroAsiento: response.numeroAsiento || prev.numeroAsiento,
+        totalDebe: response.totalDebe,
+        totalHaber: response.totalHaber,
+        diferencia: response.diferencia,
+        estaCuadrado: response.estaCuadrado,
+      }));
+
+      // NO ejecutar onSubmit porque cierra el diálogo
+      // El formulario permanece abierto para seguir trabajando
+
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -713,6 +824,8 @@ export default function AsientoContableForm({
                     outlined
                     onClick={openNewDetalle}
                     type="button"
+                    disabled={!asientoId}
+                    tooltip={!asientoId ? "Primero debe guardar la cabecera del asiento" : ""}
                   />
                 )}
               </div>
@@ -755,6 +868,7 @@ export default function AsientoContableForm({
             display: "flex",
             gap: 10,
             marginTop: 10,
+            alignItems:"end",
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
@@ -831,7 +945,7 @@ export default function AsientoContableForm({
           </div>
           <div style={{ flex: 1 }}>
             <Button
-              label={isEdit ? "Actualizar" : "Guardar"}
+              label={asientoId ? "Actualizar" : "Guardar"}
               icon="pi pi-check"
               type="submit"
               loading={loading || guardando}

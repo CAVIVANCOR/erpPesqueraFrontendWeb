@@ -276,10 +276,12 @@ export default function AsientoContable({ ruta }) {
     }
   };
 
-  const onCancel = () => {
+  const onCancel = async () => {
     setShowDialog(false);
     setSelected(null);
     setIsEdit(false);
+    // Recargar la lista al cerrar para reflejar los cambios guardados
+    await cargarDatos();
   };
 
   const onSubmit = async (data) => {
