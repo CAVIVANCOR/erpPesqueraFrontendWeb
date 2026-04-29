@@ -41,13 +41,13 @@ export default function AsientoContableForm({
     empresaId: defaultValues?.empresaId
       ? Number(defaultValues.empresaId)
       : empresaFija
-      ? Number(empresaFija)
-      : null,
+        ? Number(empresaFija)
+        : null,
     periodoContableId: defaultValues?.periodoContableId
       ? Number(defaultValues.periodoContableId)
       : periodoFijo
-      ? Number(periodoFijo)
-      : null,
+        ? Number(periodoFijo)
+        : null,
     numeroAsiento: defaultValues?.numeroAsiento || "",
     correlativo: defaultValues?.correlativo || null,
     fechaAsiento: defaultValues?.fechaAsiento
@@ -74,8 +74,12 @@ export default function AsientoContableForm({
     codigoCuenta: "",
     nombreCuenta: "",
     glosa: "",
+    monedaId: null,
+    tipoCambio: null,
     debe: 0,
     haber: 0,
+    debeMonedaExtranjera: null,
+    haberMonedaExtranjera: null,
   });
   const [guardando, setGuardando] = useState(false);
   const [fechaAsientoInicial, setFechaAsientoInicial] = useState(null);
@@ -106,11 +110,11 @@ export default function AsientoContableForm({
     const cargarTipoCambio = async () => {
       // No ejecutar si no hay fecha o si es la carga inicial
       if (!formData.fechaAsiento || fechaAsientoInicial === null) return;
-      
+
       // Comparar fechas por valor (ISO string) en lugar de por referencia
       const fechaActualISO = new Date(formData.fechaAsiento).toISOString();
       const fechaInicialISO = new Date(fechaAsientoInicial).toISOString();
-      
+
       // No ejecutar si la fecha no ha cambiado realmente
       if (fechaActualISO === fechaInicialISO) return;
 
@@ -121,16 +125,16 @@ export default function AsientoContableForm({
 
         // Consultar tipo de cambio SUNAT
         const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
-        
+
         // Para CONTABILIDAD usamos buy_price (tipo de cambio de compra)
         // Es el estándar contable para valorizar activos/pasivos en moneda extranjera
         if (tipoCambioData && tipoCambioData.buy_price) {
           const tipoCambioCompra = parseFloat(tipoCambioData.buy_price);
           handleChange("tipoCambio", tipoCambioCompra.toFixed(4));
-          
+
           // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
           setFechaAsientoInicial(formData.fechaAsiento);
-          
+
           toast?.current?.show({
             severity: "success",
             summary: "Tipo de Cambio Actualizado",
@@ -194,8 +198,12 @@ export default function AsientoContableForm({
       codigoCuenta: "",
       nombreCuenta: "",
       glosa: "",
+      monedaId: Number(formData.monedaId) || 1,
+      tipoCambio: formData.tipoCambio || null,
       debe: 0,
       haber: 0,
+      debeMonedaExtranjera: null,
+      haberMonedaExtranjera: null,
     });
     setShowDetalleDialog(true);
   };
@@ -207,8 +215,12 @@ export default function AsientoContableForm({
       codigoCuenta: detalle.codigoCuenta,
       nombreCuenta: detalle.nombreCuenta,
       glosa: detalle.glosa,
+      monedaId: detalle.monedaId || Number(formData.monedaId) || 1,
+      tipoCambio: detalle.tipoCambio || formData.tipoCambio || null,
       debe: detalle.debe,
       haber: detalle.haber,
+      debeMonedaExtranjera: detalle.debeMonedaExtranjera || null,
+      haberMonedaExtranjera: detalle.haberMonedaExtranjera || null,
     });
     setShowDetalleDialog(true);
   };
@@ -248,6 +260,16 @@ export default function AsientoContableForm({
       return;
     }
 
+    if (!detalleFormData.monedaId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar una moneda",
+        life: 3000,
+      });
+      return;
+    }
+
     const debe = Number(detalleFormData.debe || 0);
     const haber = Number(detalleFormData.haber || 0);
 
@@ -271,24 +293,48 @@ export default function AsientoContableForm({
       return;
     }
 
+    // Determinar si es moneda extranjera (USD = id 2)
+    const esMonedaExtranjera = Number(detalleFormData.monedaId) !== 1;
+    const tipoCambio = Number(formData.tipoCambio) || 1;
+
+    let detalleConvertido = {
+      ...detalleFormData,
+      debe: 0,
+      haber: 0,
+      debeMonedaExtranjera: null,
+      haberMonedaExtranjera: null,
+    };
+
+    if (esMonedaExtranjera) {
+      // Si la línea es en moneda extranjera
+      if (debe > 0) {
+        detalleConvertido.debeMonedaExtranjera = debe;
+        detalleConvertido.debe = debe * tipoCambio;
+      }
+      if (haber > 0) {
+        detalleConvertido.haberMonedaExtranjera = haber;
+        detalleConvertido.haber = haber * tipoCambio;
+      }
+    } else {
+      // Si la línea es en soles
+      detalleConvertido.debe = debe;
+      detalleConvertido.haber = haber;
+    }
+
     let nuevosDetalles;
     if (editingDetalle) {
       nuevosDetalles = detalles.map((d) =>
         d === editingDetalle
           ? {
-              ...detalleFormData,
-              numeroLinea: d.numeroLinea,
-              debe,
-              haber,
-            }
+            ...detalleConvertido,
+            numeroLinea: d.numeroLinea,
+          }
           : d
       );
     } else {
       const nuevoDetalle = {
-        ...detalleFormData,
+        ...detalleConvertido,
         numeroLinea: detalles.length + 1,
-        debe,
-        haber,
       };
       nuevosDetalles = [...detalles, nuevoDetalle];
     }
@@ -337,6 +383,16 @@ export default function AsientoContableForm({
       return;
     }
 
+    if (detalles.length === 0) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe agregar al menos una línea de detalle",
+        life: 3000,
+      });
+      return;
+    }
+
     if (detalles.length > 0 && !formData.estaCuadrado) {
       toast.current?.show({
         severity: "error",
@@ -375,9 +431,15 @@ export default function AsientoContableForm({
               glosa: d.glosa,
               debe: Number(d.debe || 0),
               haber: Number(d.haber || 0),
-              monedaId: Number(formData.monedaId),
-              tipoCambio: formData.tipoCambio
-                ? Number(formData.tipoCambio)
+              monedaId: Number(d.monedaId) || Number(formData.monedaId),
+              tipoCambio: d.tipoCambio || formData.tipoCambio
+                ? Number(d.tipoCambio || formData.tipoCambio)
+                : null,
+              debeMonedaExtranjera: d.debeMonedaExtranjera
+                ? Number(d.debeMonedaExtranjera)
+                : null,
+              haberMonedaExtranjera: d.haberMonedaExtranjera
+                ? Number(d.haberMonedaExtranjera)
                 : null,
             }))
           : [],
@@ -391,12 +453,28 @@ export default function AsientoContableForm({
 
     setGuardando(true);
     try {
+      let response;
       if (isEdit) {
-        await updateAsientoContable(defaultValues.id, dataToSend);
+        response = await updateAsientoContable(defaultValues.id, dataToSend);
+        toast.current?.show({
+          severity: "success",
+          summary: "Asiento Actualizado",
+          detail: "El asiento contable se actualizó correctamente",
+          life: 3000,
+        });
       } else {
-        await createAsientoContable(dataToSend);
+        response = await createAsientoContable(dataToSend);
+        toast.current?.show({
+          severity: "success",
+          summary: "Asiento Creado",
+          detail: "El asiento contable se creó correctamente. Puede seguir agregando líneas de detalle.",
+          life: 4000,
+        });
       }
-      onSubmit(dataToSend);
+      
+      // NO ejecutar onSubmit para no cerrar el formulario
+      // onSubmit(dataToSend);
+      
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -446,6 +524,11 @@ export default function AsientoContableForm({
   const cuentasOptions = planCuentas.map((c) => ({
     label: `${c.codigoCuenta} - ${c.nombreCuenta}`,
     value: Number(c.id),
+  }));
+
+  const monedasOptions = monedas.map((m) => ({
+    label: m.codigoSunat,
+    value: Number(m.id),
   }));
 
   return (
@@ -676,81 +759,91 @@ export default function AsientoContableForm({
           }}
         >
           <div style={{ flex: 1 }}>
-            <label>Total Debe</label>
+            <label style={{ fontWeight: "bold" }}>Total Debe</label>
             <InputNumber
               value={formData.totalDebe}
               mode="decimal"
               minFractionDigits={2}
               disabled
+              inputStyle={{ fontWeight: "bold" }}
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label>Total Haber</label>
+            <label style={{ fontWeight: "bold" }}>Total Haber</label>
             <InputNumber
               value={formData.totalHaber}
               mode="decimal"
               minFractionDigits={2}
               disabled
+              inputStyle={{ fontWeight: "bold" }}
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label>Diferencia</label>
+            <label style={{ fontWeight: "bold" }}>Diferencia</label>
             <InputNumber
               value={formData.diferencia}
               mode="decimal"
               minFractionDigits={2}
               disabled
+              inputStyle={{
+                fontWeight: "bold",
+                color: formData.estaCuadrado ? "#22c55e" : "#ef4444",
+                backgroundColor: formData.estaCuadrado ? "#f0fdf4" : "#fef2f2"
+              }}
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label>Estado Cuadre</label>
-            <div className="mt-2">
-              {formData.estaCuadrado ? (
-                <Tag
-                  severity="success"
-                  value="CUADRADO"
-                  icon="pi pi-check"
-                  size="small"
-                />
-              ) : (
-                <Tag
-                  severity="danger"
-                  value="DESCUADRADO"
-                  icon="pi pi-times"
-                  size="small"
-                />
-              )}
-            </div>
+            <label style={{ fontWeight: "bold" }}>Estado Cuadre</label>
+            <Button
+              label={formData.estaCuadrado ? "CUADRADO" : "DESCUADRADO"}
+              icon={formData.estaCuadrado ? "pi pi-check-circle" : "pi pi-times-circle"}
+              className={formData.estaCuadrado ? "p-button-success" : "p-button-danger"}
+              severity={formData.estaCuadrado ? "success" : "danger"}
+              style={{
+                width: "100%",
+                marginTop: "1.5rem",
+                fontWeight: "bold"
+              }}
+              disabled
+            />
           </div>
         </div>
-
-        <div className="flex justify-content-end gap-2 mt-4">
-          <Button
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-secondary"
-            severity="secondary"
-            size="small"
-            raised
-            outlined
-            onClick={onCancel}
-            type="button"
-            disabled={loading || guardando}
-          />
-          <Button
-            label={isEdit ? "Actualizar" : "Guardar"}
-            icon="pi pi-check"
-            type="submit"
-            loading={loading || guardando}
-            disabled={isReadOnly || loading || guardando}
-            className="p-button-success"
-            severity="success"
-            raised
-            size="small"
-            outlined
-          />
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              className="p-button-secondary"
+              severity="secondary"
+              size="small"
+              raised
+              outlined
+              onClick={onCancel}
+              type="button"
+              disabled={loading || guardando}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              label={isEdit ? "Actualizar" : "Guardar"}
+              icon="pi pi-check"
+              type="submit"
+              loading={loading || guardando}
+              disabled={isReadOnly || loading || guardando}
+              className="p-button-success"
+              severity="success"
+              raised
+              size="small"
+              outlined
+            />
+          </div>
         </div>
-
         <Dialog
           visible={showDetalleDialog}
           style={{ width: "600px" }}
@@ -786,6 +879,33 @@ export default function AsientoContableForm({
               display: "flex",
               gap: 10,
               flexDirection: window.innerWidth < 768 ? "column" : "row",
+              marginTop: 10,
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="monedaIdDetalle" style={{ fontWeight: "bold" }}>
+                Moneda <span style={{ color: "red" }}>*</span>
+              </label>
+              <Dropdown
+                id="monedaIdDetalle"
+                value={detalleFormData.monedaId}
+                options={monedasOptions}
+                onChange={(e) =>
+                  setDetalleFormData({
+                    ...detalleFormData,
+                    monedaId: e.value,
+                  })
+                }
+                placeholder="Seleccionar moneda"
+              />
+            </div>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+              marginTop: 10,
             }}
           >
             <div style={{ flex: 1 }}>
@@ -810,6 +930,7 @@ export default function AsientoContableForm({
               display: "flex",
               gap: 10,
               flexDirection: window.innerWidth < 768 ? "column" : "row",
+              marginTop: 10,
             }}
           >
             <div style={{ flex: 1 }}>
@@ -825,7 +946,9 @@ export default function AsientoContableForm({
                   })
                 }
                 mode="currency"
-                currency="PEN"
+                currency={
+                  Number(detalleFormData.monedaId) === 2 ? "USD" : "PEN"
+                }
                 locale="es-PE"
               />
             </div>
@@ -842,7 +965,9 @@ export default function AsientoContableForm({
                   })
                 }
                 mode="currency"
-                currency="PEN"
+                currency={
+                  Number(detalleFormData.monedaId) === 2 ? "USD" : "PEN"
+                }
                 locale="es-PE"
               />
             </div>

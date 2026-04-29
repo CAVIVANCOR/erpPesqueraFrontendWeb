@@ -475,13 +475,35 @@ export default function AsientoContable({ ruta }) {
     return <Tag value={estado} severity={severity} />;
   };
 
-  const cuadradoBodyTemplate = (rowData) => {
-    return rowData.estaCuadrado ? (
-      <Tag value="CUADRADO" severity="success" icon="pi pi-check" />
-    ) : (
-      <Tag value="DESCUADRADO" severity="danger" icon="pi pi-times" />
-    );
-  };
+const cuadradoBodyTemplate = (rowData) => {
+  const diferencia = Number(rowData.diferencia || 0);
+  const estaCuadrado = rowData.estaCuadrado;
+  
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      <Tag 
+        value={estaCuadrado ? "CUADRADO" : "DESCUADRADO"} 
+        severity={estaCuadrado ? "success" : "danger"} 
+        icon={estaCuadrado ? "pi pi-check-circle" : "pi pi-times-circle"}
+        style={{ fontWeight: "bold" }}
+      />
+      {!estaCuadrado && diferencia !== 0 && (
+        <span 
+          style={{ 
+            fontSize: "0.75rem", 
+            color: "#ef4444",
+            fontWeight: "bold"
+          }}
+        >
+          Dif: {new Intl.NumberFormat("es-PE", {
+            style: "currency",
+            currency: "PEN",
+          }).format(Math.abs(diferencia))}
+        </span>
+      )}
+    </div>
+  );
+};
 
   const montoBodyTemplate = (rowData, field) => {
     return new Intl.NumberFormat("es-PE", {
