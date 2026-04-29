@@ -44,6 +44,7 @@ export default function AsientoContable({ ruta }) {
   const [monedas, setMonedas] = useState([]);
   const [empresaFilter, setEmpresaFilter] = useState(null);
   const [periodoFilter, setPeriodoFilter] = useState(null);
+  const [periodosFiltrados, setPeriodosFiltrados] = useState([]);
   const [estadoFilter, setEstadoFilter] = useState(null);
   const [fechaInicio, setFechaInicio] = useState(null);
   const [fechaFin, setFechaFin] = useState(null);
@@ -69,6 +70,10 @@ export default function AsientoContable({ ruta }) {
   useEffect(() => {
     filtrarItems();
   }, [items, empresaFilter, periodoFilter, estadoFilter, fechaInicio, fechaFin]);
+
+  useEffect(() => {
+    filtrarPeriodosPorEmpresa();
+  }, [empresaFilter, periodos]);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -96,6 +101,17 @@ export default function AsientoContable({ ruta }) {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const filtrarPeriodosPorEmpresa = () => {
+    if (empresaFilter) {
+      const periodosDeLaEmpresa = periodos.filter(
+        (p) => Number(p.empresaId) === Number(empresaFilter)
+      );
+      setPeriodosFiltrados(periodosDeLaEmpresa);
+    } else {
+      setPeriodosFiltrados(periodos);
     }
   };
 
@@ -533,6 +549,11 @@ export default function AsientoContable({ ruta }) {
     );
   };
 
+  const handleEmpresaChange = (value) => {
+    setEmpresaFilter(value);
+    setPeriodoFilter(null);
+  };
+
   return (
     <div className="p-m-4">
       <Toast ref={toast} />
@@ -542,6 +563,7 @@ export default function AsientoContable({ ruta }) {
         header="Generar Kardex Valorizado Mensual"
         style={{ width: "550px" }}
         modal
+        className="p-fluid"
         closable={!kardexLoading}
         closeOnEscape={!kardexLoading}
       >
@@ -830,12 +852,12 @@ export default function AsientoContable({ ruta }) {
                     label: e.razonSocial,
                     value: Number(e.id),
                   }))}
-                  onChange={(e) => setEmpresaFilter(e.value)}
+                  onChange={(e) => handleEmpresaChange(e.value)}
                   placeholder="Seleccionar empresa"
                   showClear
                   filter
                   style={{ width: "100%" }}
-                  onClear={() => setEmpresaFilter(null)}
+                  onClear={() => handleEmpresaChange(null)}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -843,7 +865,7 @@ export default function AsientoContable({ ruta }) {
                 <Dropdown
                   id="periodoFilter"
                   value={periodoFilter}
-                  options={periodos.map((p) => ({
+                  options={periodosFiltrados.map((p) => ({
                     label: p.nombrePeriodo,
                     value: Number(p.id),
                   }))}
@@ -852,6 +874,7 @@ export default function AsientoContable({ ruta }) {
                   showClear
                   style={{ width: "100%" }}
                   onClear={() => setPeriodoFilter(null)}
+                  disabled={!empresaFilter}
                 />
               </div>
               <div style={{ flex: 1 }}>
