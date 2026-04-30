@@ -8,8 +8,7 @@ import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
 import DetallesTab from "./DetallesTab";
 import { getResponsiveFontSize, formatearFecha } from "../../utils/utils";
-import { Dialog } from "primereact/dialog";
-import { Toast } from "primereact/toast";
+import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
 import EntidadComercialForm from "../entidadComercial/EntidadComercialForm";
 
 export default function DatosGeneralesTab({
@@ -56,26 +55,8 @@ export default function DatosGeneralesTab({
   onCloseDialog,
   onProveedorCreado, // ✅ NUEVO: callback para recargar proveedores
 }) {
-  // ✅ NUEVO: Estado para Dialog de Entidad Comercial
-  const [showEntidadDialog, setShowEntidadDialog] = useState(false);
-  const toastLocal = useRef(null);
-
-  // ✅ NUEVO: Función para abrir Dialog de Entidad Comercial
-  const handleAbrirEntidadComercial = () => {
-    setShowEntidadDialog(true);
-  };
-
-  // ✅ NUEVO: Función para cerrar Dialog
-  const handleCerrarEntidadDialog = () => {
-    setShowEntidadDialog(false);
-  };
-
-  // ✅ MEJORADO: Callback cuando se guarda exitosamente una entidad
-  // ✅ MEJORADO: Callback cuando se guarda exitosamente una entidad
-  const handleEntidadGuardada = async (entidad) => {
-    // Cerrar el Dialog
-    setShowEntidadDialog(false);
-
+  // ✅ REFACTORIZADO: Callback cuando se crea una entidad comercial
+  const handleEntidadCreada = async (entidad) => {
     // ✅ PRIMERO: Recargar proveedores (esperar a que termine)
     if (onProveedorCreado && typeof onProveedorCreado === "function") {
       await onProveedorCreado(entidad);
@@ -94,10 +75,6 @@ export default function DatosGeneralesTab({
           onChange("formaPagoId", formaPagoIdNumber);
         }
       }, 100);
-    } else {
-      console.log(
-        "🔴 [DatosGeneralesTab] NO se puede auto-seleccionar - entidad o id faltante",
-      );
     }
 
     // Mostrar mensaje de éxito
@@ -463,18 +440,18 @@ export default function DatosGeneralesTab({
                 />
               </div>
               <div style={{ flex: 0.5 }}>
-                {/* ✅ BOTÓN PARA ABRIR DIALOG DE ENTIDAD COMERCIAL */}
-                <Button
-                  type="button"
+                {/* ✅ COMPONENTE GENÉRICO REUTILIZABLE */}
+                <CrearEntidadComercialButton
+                  empresaId={formData.empresaId}
+                  tipoEntidad="proveedor"
+                  onEntidadCreada={handleEntidadCreada}
                   label="Crear Proveedor"
                   icon="pi pi-building"
                   severity="info"
                   outlined={true}
-                  onClick={handleAbrirEntidadComercial}
-                  className="w-full mt-2"
-                  tooltip="Abrir formulario para crear un nuevo proveedor"
-                  tooltipOptions={{ position: "top" }}
                   disabled={readOnly || !puedeEditar}
+                  className="w-full mt-2"
+                  toast={toast}
                 />
               </div>
             </>
@@ -1118,29 +1095,6 @@ export default function DatosGeneralesTab({
           </div>
         </Panel>
       </div>
-      {/* ✅ DIALOG MODAL PARA CREAR ENTIDAD COMERCIAL */}
-      <Dialog
-        header="Crear Nuevo Proveedor"
-        visible={showEntidadDialog}
-        style={{ width: "95vw", maxWidth: "1400px" }}
-        onHide={handleCerrarEntidadDialog}
-        modal
-        maximizable
-        blockScroll
-      >
-        <Toast ref={toastLocal} />
-        <EntidadComercialForm
-          entidadComercial={{
-            empresaId: formData.empresaId, // ✅ Heredar empresa del RequerimientoCompra
-            agrupacionEntidadId: 1, // ✅ Default: 1 (S/A)
-            esProveedor: true, // ✅ Marcar como proveedor por defecto
-          }}
-          onGuardar={handleEntidadGuardada}
-          onCancelar={handleCerrarEntidadDialog}
-          toast={toastLocal}
-          permisos={{ puedeCrear: true, puedeEditar: true, puedeVer: true }}
-        />
-      </Dialog>
     </>
   );
 }
