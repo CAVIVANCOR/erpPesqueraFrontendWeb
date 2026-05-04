@@ -88,6 +88,11 @@ export default function OrdenCompraForm({
       ? new Date(defaultValues.fechaRecepcion)
       : null,
   );
+  const [fechaVencimiento, setFechaVencimiento] = useState(
+    defaultValues?.fechaVencimiento
+      ? new Date(defaultValues.fechaVencimiento)
+      : null,
+  );
   const [solicitanteId, setSolicitanteId] = useState(
     defaultValues?.solicitanteId || null,
   );
@@ -204,6 +209,11 @@ export default function OrdenCompraForm({
       setFechaRecepcion(
         defaultValues.fechaRecepcion
           ? new Date(defaultValues.fechaRecepcion)
+          : null,
+      );
+      setFechaVencimiento(
+        defaultValues.fechaVencimiento
+          ? new Date(defaultValues.fechaVencimiento)
           : null,
       );
       setSolicitanteId(
@@ -442,6 +452,7 @@ export default function OrdenCompraForm({
       tipoCambio: setTipoCambio,
       fechaEntrega: setFechaEntrega,
       fechaRecepcion: setFechaRecepcion,
+      fechaVencimiento: setFechaVencimiento,
       solicitanteId: setSolicitanteId,
       aprobadoPorId: setAprobadoPorId,
       estadoId: setEstadoId,
@@ -482,6 +493,7 @@ export default function OrdenCompraForm({
       tipoCambio,
       fechaEntrega,
       fechaRecepcion,
+      fechaVencimiento,
       solicitanteId: solicitanteId ? Number(solicitanteId) : null,
       aprobadoPorId: aprobadoPorId ? Number(aprobadoPorId) : null,
       estadoId: estadoId ? Number(estadoId) : null,
@@ -595,6 +607,7 @@ export default function OrdenCompraForm({
     tipoCambio,
     fechaEntrega,
     fechaRecepcion,
+    fechaVencimiento,
     solicitanteId,
     aprobadoPorId,
     estadoId,

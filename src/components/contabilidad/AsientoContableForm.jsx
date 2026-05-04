@@ -111,13 +111,16 @@ export default function AsientoContableForm({
 
   useEffect(() => {
     // Cargar submódulos con nombreModeloOrigen
+    console.log("🔍 [ASIENTO] Cargando submódulos...");
     getSubmodulos()
       .then((data) => {
+        console.log("📄 [ASIENTO] Submódulos recibidos:", data);
+
         const map = {};
         const options = data
           .filter((sub) => sub.nombreModeloOrigen)
           .map((sub) => ({
-            label: sub.nombreModeloOrigen,
+            label: `${sub.nombre} - ${sub.nombreModeloOrigen}`,
             value: Number(sub.id),
             nombreModelo: sub.nombreModeloOrigen,
           }));
@@ -128,11 +131,14 @@ export default function AsientoContableForm({
           }
         });
 
+        console.log("✅ [ASIENTO] Opciones generadas:", options);
+        console.log("✅ [ASIENTO] Map generado:", map);
+
         setSubmodulosMap(map);
         setSubmodulosOptions(options);
       })
       .catch((error) => {
-        console.error("Error cargando submódulos:", error);
+        console.error("❌ [ASIENTO] Error cargando submódulos:", error);
       });
   }, []);
 
@@ -1694,9 +1700,7 @@ export default function AsientoContableForm({
                 onChange={(e) => handleSubmoduloOrigenChange(e.value)}
                 placeholder="Seleccionar submódulo"
                 showClear
-                disabled={
-                  !detalleFormData.entidadComercialId || !formData.empresaId
-                }
+                disabled={!formData.empresaId}
                 filter
                 filterBy="label"
               />
@@ -1747,7 +1751,6 @@ export default function AsientoContableForm({
                 tooltip="Crear nueva entidad comercial"
               />
             </div>
-            
           </div>
           <div
             style={{

@@ -184,7 +184,24 @@ export default function DatosGeneralesTab({
             inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
-
+        <div style={{ flex: 0.6 }}>
+          {/* FECHA VENCIMIENTO */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="fechaVencimiento"
+          >
+            Fecha Vencimiento
+          </label>
+          <Calendar
+            id="fechaVencimiento"
+            value={formData.fechaVencimiento}
+            onChange={(e) => onChange("fechaVencimiento", e.value)}
+            dateFormat="dd/mm/yy"
+            showIcon
+            disabled={!puedeEditar || readOnly}
+            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+          />
+        </div>
         <div style={{ flex: 1 }}>
           {/* UNIDAD DE NEGOCIO */}
           <label
@@ -648,7 +665,7 @@ export default function DatosGeneralesTab({
             }}
           />
         </div>
-        <div style={{ flex: 0.50 }}>
+        <div style={{ flex: 0.5 }}>
           {/* MONEDA */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -675,7 +692,7 @@ export default function DatosGeneralesTab({
           />
         </div>
 
-        <div style={{ flex: 0.50 }}>
+        <div style={{ flex: 0.5 }}>
           {/* TIPO CAMBIO */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -694,7 +711,7 @@ export default function DatosGeneralesTab({
           />
         </div>
 
-        <div style={{ flex: 0.50 }}>
+        <div style={{ flex: 0.5 }}>
           {/* PORCENTAJE IGV */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
