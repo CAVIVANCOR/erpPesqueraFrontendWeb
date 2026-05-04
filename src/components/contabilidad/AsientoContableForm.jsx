@@ -605,6 +605,17 @@ export default function AsientoContableForm({
   };
 
   const handleSaveDetalle = async () => {
+    console.log('🔵 [SAVE] Iniciando handleSaveDetalle');
+    console.log('🔵 [SAVE] guardando:', guardando);
+    console.log('🔵 [SAVE] editingDetalle:', editingDetalle);
+    console.log('🔵 [SAVE] detalleFormData:', detalleFormData);
+    
+    // ✅ EVITAR DOBLE GUARDADO
+    if (guardando) {
+      console.log('⚠️ [SAVE] Ya está guardando, abortando');
+      return;
+    }
+
     if (!detalleFormData.planCuentaId) {
       toast.current?.show({
         severity: "warn",
@@ -671,6 +682,10 @@ export default function AsientoContableForm({
       return;
     }
 
+    // ✅ ACTIVAR FLAG DE GUARDANDO
+    console.log('🟢 [SAVE] Activando flag guardando');
+    setGuardando(true);
+
     let detalleConvertido = {
       ...detalleFormData,
       debe: 0,
@@ -705,28 +720,57 @@ export default function AsientoContableForm({
 
     let nuevosDetalles;
     if (editingDetalle) {
+      console.log('📝 [SAVE] MODO EDICIÓN - Actualizando detalle existente');
+      console.log('📝 [SAVE] editingDetalle.id:', editingDetalle.id);
+      // ✅ MODO EDICIÓN: Actualizar el detalle existente por ID
       nuevosDetalles = detalles.map((d) =>
-        d === editingDetalle
+        d.id === editingDetalle.id
           ? {
+              ...d,
               ...detalleConvertido,
               numeroLinea: d.numeroLinea,
+              id: d.id, // ✅ Preservar el ID
             }
           : d,
       );
-    } else {
+       } else {
+      console.log('➕ [SAVE] MODO NUEVO - Creando detalle');
+      // ✅ MODO NUEVO: Siempre crear nuevo detalle
+      // El backend se encargará de evitar duplicados si es necesario
       const nuevoDetalle = {
         ...detalleConvertido,
         numeroLinea: detalles.length + 1,
       };
       nuevosDetalles = [...detalles, nuevoDetalle];
+      console.log('✅ [SAVE] Detalle nuevo agregado');
     }
 
-    setDetalles(nuevosDetalles);
 
-    // AUTO-GUARDAR después de agregar/editar detalle
+    console.log('📊 [SAVE] nuevosDetalles:', nuevosDetalles);
+    console.log('💾 [SAVE] Actualizando estado detalles (NO LLAMAR setDetalles)');
+    // ❌ NO ACTUALIZAR DETALLES AQUÍ - Esperar respuesta del backend
+    // setDetalles(nuevosDetalles);
+
+       // AUTO-GUARDAR después de agregar/editar detalle
+    console.log('🚀 [SAVE] Llamando autoGuardarAsiento');
     await autoGuardarAsiento(nuevosDetalles);
 
-    // NO cerrar el diálogo - el usuario debe hacerlo con Cancelar
+       // ✅ DESACTIVAR FLAG DE GUARDANDO
+    console.log('🔴 [SAVE] Desactivando flag guardando');
+    setGuardando(false);
+
+    // ✅ CERRAR DIÁLOGO SOLO SI ES NUEVO (NO AL EDITAR)
+    if (!editingDetalle) {
+      console.log('🚪 [SAVE] Cerrando diálogo (nuevo detalle)');
+      setShowDetalleDialog(false);
+      setEditingDetalle(null);
+      setNombreUsuarioCreador("N/A");
+      setNombreUsuarioActualizador("N/A");
+    } else {
+      console.log('📝 [SAVE] Manteniendo diálogo abierto (editando detalle)');
+    }
+
+    console.log('✅ [SAVE] handleSaveDetalle completado');
   };
 
   const handleDeleteDetalle = async (detalle) => {
@@ -740,6 +784,10 @@ export default function AsientoContableForm({
   };
 
   const autoGuardarAsiento = async (detallesActualizados) => {
+    console.log('🔷 [AUTO] Iniciando autoGuardarAsiento');
+    console.log('🔷 [AUTO] detallesActualizados:', detallesActualizados);
+    console.log('🔷 [AUTO] asientoId:', asientoId);
+    
     // Validar solo datos mínimos requeridos por el backend
     if (!formData.empresaId || !formData.periodoContableId) {
       toast.current?.show({
@@ -776,7 +824,7 @@ export default function AsientoContableForm({
       totalHaber,
       diferencia,
       estaCuadrado,
-      detalles: detallesActualizados.map((d) => ({
+           detalles: detallesActualizados.map((d) => ({
         numeroLinea: d.numeroLinea,
         planCuentaId: Number(d.planCuentaId),
         codigoCuenta: d.codigoCuenta,
@@ -803,8 +851,12 @@ export default function AsientoContableForm({
           ? Number(d.tipoDocumentoOrigenId)
           : null,
         numeroDocumentoOrigen: d.numeroDocumentoOrigen || null,
-        fechaDocumentoOrigen: d.fechaDocumentoOrigen?.toISOString(),
-        fechaVenceDocumentoOrigen: d.fechaVenceDocumentoOrigen?.toISOString(),
+        fechaDocumentoOrigen: d.fechaDocumentoOrigen instanceof Date 
+          ? d.fechaDocumentoOrigen.toISOString() 
+          : d.fechaDocumentoOrigen,
+        fechaVenceDocumentoOrigen: d.fechaVenceDocumentoOrigen instanceof Date 
+          ? d.fechaVenceDocumentoOrigen.toISOString() 
+          : d.fechaVenceDocumentoOrigen,
         submoduloOrigenLineaId: d.submoduloOrigenLineaId
           ? Number(d.submoduloOrigenLineaId)
           : null,
@@ -822,36 +874,51 @@ export default function AsientoContableForm({
       dataToSend.actualizadoPor = usuario?.personalId;
     }
 
+    console.log('📤 [AUTO] Enviando al backend:', dataToSend);
+
     try {
       let response;
       if (asientoId) {
+        console.log('🔄 [AUTO] Actualizando asiento existente');
         // Actualizar asiento existente
         response = await updateAsientoContable(asientoId, dataToSend);
       } else {
+        console.log('➕ [AUTO] Creando nuevo asiento');
         // Crear nuevo asiento
         response = await createAsientoContable(dataToSend);
+        console.log('✅ [AUTO] Asiento creado con ID:', response.id);
         setAsientoId(response.id); // Guardar el ID para futuras actualizaciones
       }
 
-      // Actualizar detalles con datos del backend (incluye campos de auditoría)
+      console.log('📥 [AUTO] Respuesta del backend:', response);
+      console.log('📥 [AUTO] response.detalles:', response.detalles);
+
+      // ✅ ACTUALIZAR DETALLES CON DATOS DEL BACKEND (incluye relaciones y auditoría)
       if (response.detalles && response.detalles.length > 0) {
-        const detallesConAuditoria = response.detalles.map((d) => ({
+        console.log('🔄 [AUTO] Actualizando detalles con datos del backend');
+        const detallesConRelaciones = response.detalles.map((d) => ({
           ...d,
           fechaDocumentoOrigen: d.fechaDocumentoOrigen
             ? new Date(d.fechaDocumentoOrigen)
             : null,
+          fechaVenceDocumentoOrigen: d.fechaVenceDocumentoOrigen
+            ? new Date(d.fechaVenceDocumentoOrigen)
+            : null,
         }));
-        setDetalles(detallesConAuditoria);
+        console.log('📊 [AUTO] detallesConRelaciones:', detallesConRelaciones);
+        console.log('💾 [AUTO] Llamando setDetalles');
+        setDetalles(detallesConRelaciones);
       }
 
-      // Actualizar totales en el formulario
+      // ✅ ACTUALIZAR TOTALES EN EL FORMULARIO
+      console.log('📊 [AUTO] Actualizando totales en formData');
       setFormData((prev) => ({
         ...prev,
+        numeroAsiento: response.numeroAsiento || prev.numeroAsiento,
         totalDebe: response.totalDebe,
         totalHaber: response.totalHaber,
         diferencia: response.diferencia,
         estaCuadrado: response.estaCuadrado,
-        numeroAsiento: response.numeroAsiento || prev.numeroAsiento,
       }));
 
       toast.current?.show({
@@ -860,7 +927,10 @@ export default function AsientoContableForm({
         detail: "El detalle se guardó correctamente",
         life: 2000,
       });
+      
+      console.log('✅ [AUTO] autoGuardarAsiento completado exitosamente');
     } catch (error) {
+      console.error('❌ [AUTO] Error en autoGuardarAsiento:', error);
       toast.current?.show({
         severity: "error",
         summary: "Error al Guardar",
@@ -2102,6 +2172,7 @@ export default function AsientoContableForm({
               icon="pi pi-times"
               onClick={() => {
                 setShowDetalleDialog(false);
+                setEditingDetalle(null);
                 setNombreUsuarioCreador("N/A");
                 setNombreUsuarioActualizador("N/A");
               }}
