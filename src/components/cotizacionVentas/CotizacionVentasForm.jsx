@@ -222,7 +222,7 @@ const CotizacionVentasForm = ({
     usuarioConversionId: defaultValues?.usuarioConversionId
       ? Number(defaultValues.usuarioConversionId)
       : null,
-     destinoProductoId: defaultValues?.destinoProductoId
+    destinoProductoId: defaultValues?.destinoProductoId
       ? Number(defaultValues.destinoProductoId)
       : 1, // ✅ DEFAULT: 1 (Mercado Local)
     formaTransaccionId: defaultValues?.formaTransaccionId
@@ -263,7 +263,7 @@ const CotizacionVentasForm = ({
     }
   }, [defaultValues]);
 
-    const handleChange = (field, value) => {
+  const handleChange = (field, value) => {
     setFormData((prev) => {
       const newData = { ...prev, [field]: value };
       return newData;
@@ -818,7 +818,7 @@ const CotizacionVentasForm = ({
               contactosClienteOptions={contactosClienteOptions}
               direccionesClienteOptions={direccionesClienteOptions}
               readOnly={readOnly}
-              onClienteCreado={onClienteCreado} // ✅ AGREGAR ESTA LÍNEA
+              onClienteCreado={onClienteCreado} // ← Nombre correcto
             />
           </TabPanel>
           <TabPanel header="Costos Exportación" leftIcon="pi pi-dollar">

@@ -11,21 +11,15 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { InputNumber } from "primereact/inputnumber";
 import { InputTextarea } from "primereact/inputtextarea";
-import { Checkbox } from "primereact/checkbox";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
-import { confirmDialog } from "primereact/confirmdialog";
-import { Dialog } from "primereact/dialog";
-import { Toast } from "primereact/toast";
 import {
   getClientesPorEmpresa,
   getEntidadesComerciales,
 } from "../../api/entidadComercial";
-import { getSeriesDoc } from "../../api/cotizacionVentas";
-import { useAuthStore } from "../../shared/stores/useAuthStore";
 import DetCotizacionVentasCard from "./DetCotizacionVentasCard";
 import { Panel } from "primereact/panel";
-import EntidadComercialForm from "../entidadComercial/EntidadComercialForm";
+import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
 
 const DatosGeneralesCotizacionCard = ({
   // Props profesionales (patrón ERP Megui)
@@ -84,55 +78,43 @@ const DatosGeneralesCotizacionCard = ({
   contactosClienteOptions = [],
   direccionesClienteOptions = [],
   // ✅ NUEVO: Props para Dialog de Crear Cliente
-  onClienteCreado,
+  onClienteCreado, // ← Usar este nombre
 }) => {
   // Obtener la moneda seleccionada dinámicamente del estado
   const monedaSeleccionada = monedasOptions.find(
     (m) => m.value === formData.monedaId,
   );
   const simboloMoneda = monedaSeleccionada?.simbolo || "S/";
-  // ✅ NUEVO: Estado para Dialog de Crear Cliente
-  const [showEntidadDialog, setShowEntidadDialog] = useState(false);
+
   const toastLocal = useRef(null);
 
-  // ✅ NUEVO: Funciones para manejar Dialog de Crear Cliente
-  const handleAbrirEntidadComercial = () => {
-    setShowEntidadDialog(true);
-  };
-
-  const handleCerrarEntidadDialog = () => {
-    setShowEntidadDialog(false);
-  };
-
-   const handleEntidadGuardada = async (nuevaEntidad) => {
-    // Cerrar el dialog
-    handleCerrarEntidadDialog();
-
+  // ✅ Callback cuando se crea un cliente (siguiendo patrón de RequerimientoCompra)
+  const handleClienteCreado = async (entidad) => {
     // ✅ PRIMERO: Recargar clientes (esperar a que termine)
-    if (onClienteCreado) {
-      await onClienteCreado();
+    if (onClienteCreado && typeof onClienteCreado === "function") {
+      await onClienteCreado(entidad);
     }
 
     // ✅ SEGUNDO: Auto-seleccionar el nuevo cliente DESPUÉS de recargar
-    if (nuevaEntidad && nuevaEntidad.id) {
+    if (entidad && entidad.id) {
       // Usar setTimeout para asegurar que el dropdown se haya actualizado
       setTimeout(() => {
-        const clienteIdNumber = Number(nuevaEntidad.id);
+        const clienteIdNumber = Number(entidad.id);
         handleChange("clienteId", clienteIdNumber);
       }, 100);
-    } else {
-      console.log("🔴 [DatosGeneralesCotizacionCard] NO se puede auto-seleccionar - entidad o id faltante");
     }
 
     // Mostrar mensaje de éxito
-    toastLocal.current?.show({
-      severity: "success",
-      summary: "Éxito",
-      detail: "Cliente creado y seleccionado exitosamente",
-      life: 3000,
-    });
-
+    if (toastLocal && toastLocal.current) {
+      toastLocal.current.show({
+        severity: "success",
+        summary: "Cliente Creado",
+        detail: `Cliente "${entidad.razonSocial || entidad.nombre}" creado y seleccionado exitosamente.`,
+        life: 4000,
+      });
+    }
   };
+
   // Cargar todas las entidades comerciales (clientes Y proveedores) cuando cambie la empresa
   useEffect(() => {
     const cargarEntidadesComerciales = async () => {
@@ -454,15 +436,18 @@ const DatosGeneralesCotizacionCard = ({
               showClear
               disabled={disabled || readOnly || !formData.empresaId}
             />
-            <Button
-              type="button"
-              icon="pi pi-plus"
+            <CrearEntidadComercialButton
+              empresaId={formData.empresaId}
+              tipoEntidad="cliente"
+              onEntidadCreada={handleClienteCreado}
               label="Crear Cliente"
-              className="p-button-success"
-              onClick={handleAbrirEntidadComercial}
+              icon="pi pi-building"
+              severity="success"
+              outlined={false}
               disabled={disabled || readOnly || !formData.empresaId}
+              className="p-button-success"
+              toast={toastLocal}
               tooltip="Crear nuevo cliente"
-              tooltipOptions={{ position: "top" }}
             />
           </div>
         </div>
@@ -1159,27 +1144,6 @@ const DatosGeneralesCotizacionCard = ({
           </div>
         </div>
       </Panel>
-
-      {/* ✅ DIALOG MODAL PARA CREAR CLIENTE */}
-      <Toast ref={toastLocal} />
-      <Dialog
-        header="Crear Nuevo Cliente"
-        visible={showEntidadDialog}
-        style={{ width: "95vw", maxWidth: "1400px" }}
-        onHide={handleCerrarEntidadDialog}
-        modal
-        maximizable
-        blockScroll
-      >
-        <Toast ref={toastLocal} />
-        <EntidadComercialForm
-          entidadComercial={null}
-          onGuardar={handleEntidadGuardada}
-          onCancelar={handleCerrarEntidadDialog}
-          toast={toastLocal}
-          permisos={{ puedeCrear: true, puedeEditar: true, puedeVer: true }}
-        />
-      </Dialog>
     </div>
   );
 };

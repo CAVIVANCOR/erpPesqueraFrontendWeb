@@ -441,7 +441,7 @@ export default function DatosGeneralesTab({
               </div>
               <div style={{ flex: 0.5 }}>
                 {/* ✅ COMPONENTE GENÉRICO REUTILIZABLE */}
-                <CrearEntidadComercialButton
+               <CrearEntidadComercialButton
                   empresaId={formData.empresaId}
                   tipoEntidad="proveedor"
                   onEntidadCreada={handleEntidadCreada}
