@@ -22,9 +22,10 @@ import { getResponsiveFontSize } from "../../utils/utils";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 import { getCentrosCosto } from "../../api/centroCosto";
 import { getEntidadesComercialesPorEmpresa } from "../../api/entidadComercial";
-import { getPreFacturasPorCliente } from "../../api/preFactura";
 import { getPersonalPorId } from "../../api/personal";
 import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
+import { getDocumentosOrigenPorModelo } from "../../api/contabilidad/documentosOrigen";
+import { getSubmodulos } from "../../api/submoduloSistema";
 
 export default function AsientoContableForm({
   isEdit = false,
@@ -97,12 +98,43 @@ export default function AsientoContableForm({
     tipoDocumentoOrigenId: null,
     numeroDocumentoOrigen: "",
     fechaDocumentoOrigen: null,
-    documentoOrigenId: null,
+    fechaVenceDocumentoOrigen: null,
+    submoduloOrigenLineaId: null,
+    procesoOrigenLineaId: null,
   });
   const [guardando, setGuardando] = useState(false);
   const [fechaAsientoInicial, setFechaAsientoInicial] = useState(null);
   const [asientoId, setAsientoId] = useState(defaultValues?.id || null);
   const [tipoCambioSunat, setTipoCambioSunat] = useState(null);
+  const [submodulosMap, setSubmodulosMap] = useState({});
+  const [submodulosOptions, setSubmodulosOptions] = useState([]);
+
+  useEffect(() => {
+    // Cargar submódulos con nombreModeloOrigen
+    getSubmodulos()
+      .then((data) => {
+        const map = {};
+        const options = data
+          .filter((sub) => sub.nombreModeloOrigen)
+          .map((sub) => ({
+            label: sub.nombreModeloOrigen,
+            value: Number(sub.id),
+            nombreModelo: sub.nombreModeloOrigen,
+          }));
+
+        data.forEach((sub) => {
+          if (sub.nombreModeloOrigen) {
+            map[Number(sub.id)] = sub.nombreModeloOrigen;
+          }
+        });
+
+        setSubmodulosMap(map);
+        setSubmodulosOptions(options);
+      })
+      .catch((error) => {
+        console.error("Error cargando submódulos:", error);
+      });
+  }, []);
 
   useEffect(() => {
     cargarPlanCuentas();
@@ -248,24 +280,6 @@ export default function AsientoContableForm({
     }
   };
 
-  const cargarPreFacturasPorEntidad = async (entidadComercialId) => {
-    try {
-      if (!entidadComercialId) {
-        setPreFacturas([]);
-        return;
-      }
-      const data = await getPreFacturasPorCliente(Number(entidadComercialId));
-      // Filtrar por empresaId del asiento
-      const preFacturasFiltradas = data.filter(
-        (pf) => Number(pf.empresaId) === Number(formData.empresaId),
-      );
-      setPreFacturas(preFacturasFiltradas);
-    } catch (error) {
-      console.error("Error al cargar prefacturas:", error);
-      setPreFacturas([]);
-    }
-  };
-
   const cargarNombresUsuarios = async (creadoPor, actualizadoPor) => {
     try {
       // Si creadoPor es null, usar el usuario actual (quien está modificando)
@@ -343,25 +357,25 @@ export default function AsientoContableForm({
       tipoDocumentoOrigenId: null,
       numeroDocumentoOrigen: "",
       fechaDocumentoOrigen: null,
-      documentoOrigenId: null,
+      fechaVenceDocumentoOrigen: null,
+      submoduloOrigenLineaId: null,
+      procesoOrigenLineaId: null,
     });
     setPreFacturas([]);
     setShowDetalleDialog(true);
   };
 
   const openEditDetalle = (detalle) => {
-    setEditingDetalle(detalle);
+    setEditingDetalle(detalle); // ✅ CORRECTO - usar setEditingDetalle
     setDetalleFormData({
       planCuentaId: detalle.planCuentaId ? Number(detalle.planCuentaId) : null,
-      codigoCuenta: detalle.codigoCuenta,
-      nombreCuenta: detalle.nombreCuenta,
-      glosa: detalle.glosa,
-      monedaId: detalle.monedaId
-        ? Number(detalle.monedaId)
-        : Number(formData.monedaId) || 1,
-      tipoCambio: detalle.tipoCambio || formData.tipoCambio || null,
-      debe: detalle.debe,
-      haber: detalle.haber,
+      codigoCuenta: detalle.codigoCuenta || "",
+      nombreCuenta: detalle.nombreCuenta || "",
+      glosa: detalle.glosa || "",
+      monedaId: detalle.monedaId ? Number(detalle.monedaId) : null,
+      tipoCambio: detalle.tipoCambio || null,
+      debe: detalle.debe || 0,
+      haber: detalle.haber || 0,
       debeMonedaExtranjera: detalle.debeMonedaExtranjera || null,
       haberMonedaExtranjera: detalle.haberMonedaExtranjera || null,
       centroCostoId: detalle.centroCostoId
@@ -377,14 +391,31 @@ export default function AsientoContableForm({
       fechaDocumentoOrigen: detalle.fechaDocumentoOrigen
         ? new Date(detalle.fechaDocumentoOrigen)
         : null,
-      documentoOrigenId: detalle.documentoOrigenId
-        ? Number(detalle.documentoOrigenId)
+      fechaVenceDocumentoOrigen: detalle.fechaVenceDocumentoOrigen
+        ? new Date(detalle.fechaVenceDocumentoOrigen)
+        : null,
+      submoduloOrigenLineaId: detalle.submoduloOrigenLineaId
+        ? Number(detalle.submoduloOrigenLineaId)
+        : null,
+      procesoOrigenLineaId: detalle.procesoOrigenLineaId
+        ? Number(detalle.procesoOrigenLineaId)
         : null,
     });
 
-    // Cargar prefacturas si hay entidadComercialId
-    if (detalle.entidadComercialId) {
-      cargarPreFacturasPorEntidad(Number(detalle.entidadComercialId));
+    // Cargar documentos origen si hay submódulo, entidad y empresa
+    if (
+      detalle.submoduloOrigenLineaId &&
+      detalle.entidadComercialId &&
+      formData.empresaId
+    ) {
+      const nombreModelo = submodulosMap[detalle.submoduloOrigenLineaId];
+      if (nombreModelo) {
+        cargarRegistrosOrigen(
+          nombreModelo,
+          detalle.entidadComercialId,
+          formData.empresaId,
+        );
+      }
     } else {
       setPreFacturas([]);
     }
@@ -413,14 +444,35 @@ export default function AsientoContableForm({
     setDetalleFormData({
       ...detalleFormData,
       entidadComercialId: entidadComercialId,
-      documentoOrigenId: null,
+      procesoOrigenLineaId: null,
       numeroDocumentoOrigen: "",
       fechaDocumentoOrigen: null,
+      fechaVenceDocumentoOrigen: null,
       tipoDocumentoOrigenId: null,
     });
 
-    if (entidadComercialId) {
-      cargarPreFacturasPorEntidad(entidadComercialId);
+    // Si hay submódulo seleccionado, RECARGAR documentos filtrados por entidad
+    if (
+      entidadComercialId &&
+      detalleFormData.submoduloOrigenLineaId &&
+      formData.empresaId
+    ) {
+      const nombreModelo =
+        submodulosMap[detalleFormData.submoduloOrigenLineaId];
+      if (nombreModelo) {
+        cargarRegistrosOrigen(
+          nombreModelo,
+          entidadComercialId, // ✅ Ahora SÍ filtrar por entidad
+          formData.empresaId,
+        );
+      }
+    } else if (detalleFormData.submoduloOrigenLineaId && formData.empresaId) {
+      // Si limpia la entidad, recargar TODOS los documentos
+      const nombreModelo =
+        submodulosMap[detalleFormData.submoduloOrigenLineaId];
+      if (nombreModelo) {
+        cargarRegistrosOrigen(nombreModelo, null, formData.empresaId);
+      }
     } else {
       setPreFacturas([]);
     }
@@ -451,33 +503,101 @@ export default function AsientoContableForm({
     }
   };
 
-  const handlePreFacturaChange = (preFacturaId) => {
-    const preFacturaSeleccionada = preFacturas.find(
-      (pf) => Number(pf.id) === Number(preFacturaId),
+  const handleSubmoduloOrigenChange = (submoduloId) => {
+    setDetalleFormData({
+      ...detalleFormData,
+      submoduloOrigenLineaId: submoduloId,
+      procesoOrigenLineaId: null,
+      entidadComercialId: null, // Limpiar entidad comercial
+      numeroDocumentoOrigen: "",
+      fechaDocumentoOrigen: null,
+      fechaVenceDocumentoOrigen: null,
+      tipoDocumentoOrigenId: null,
+    });
+
+    // Cargar TODOS los documentos del modelo (sin filtrar por entidad)
+    if (submoduloId && formData.empresaId) {
+      const nombreModelo = submodulosMap[submoduloId];
+
+      if (nombreModelo) {
+        cargarRegistrosOrigen(
+          nombreModelo,
+          null, // ✅ SIN entidadComercialId - cargar todos
+          formData.empresaId,
+        );
+      } else {
+        console.warn(
+          "⚠️ [FRONTEND] No se encontró nombreModelo para submoduloId:",
+          submoduloId,
+        );
+      }
+    } else {
+      setPreFacturas([]);
+    }
+  };
+
+  const cargarRegistrosOrigen = async (
+    nombreModelo,
+    entidadComercialId,
+    empresaId,
+  ) => {
+    try {
+      const data = await getDocumentosOrigenPorModelo(
+        nombreModelo,
+        entidadComercialId,
+        empresaId,
+      );
+      setPreFacturas(data);
+    } catch (error) {
+      console.error("❌ [FRONTEND] Error cargando registros origen:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar documentos origen",
+        life: 3000,
+      });
+    }
+  };
+
+  const handlePreFacturaChange = (registroId) => {
+    const registroSeleccionado = preFacturas.find(
+      (reg) => Number(reg.id) === Number(registroId),
     );
 
-    if (preFacturaSeleccionada) {
+    if (registroSeleccionado) {
       setDetalleFormData({
         ...detalleFormData,
-        documentoOrigenId: Number(preFacturaSeleccionada.id),
-        numeroDocumentoOrigen: preFacturaSeleccionada.numeroDocumento || "",
-        fechaDocumentoOrigen: preFacturaSeleccionada.fechaDocumento
-          ? new Date(preFacturaSeleccionada.fechaDocumento)
+        procesoOrigenLineaId: Number(registroSeleccionado.id),
+        // ✅ AUTO-LLENAR ENTIDAD COMERCIAL
+        entidadComercialId: registroSeleccionado.clienteId
+          ? Number(registroSeleccionado.clienteId)
+          : registroSeleccionado.proveedorId
+            ? Number(registroSeleccionado.proveedorId)
+            : null,
+        numeroDocumentoOrigen: registroSeleccionado.numeroDocumento || "",
+        fechaDocumentoOrigen: registroSeleccionado.fechaDocumento
+          ? new Date(registroSeleccionado.fechaDocumento)
           : null,
-        tipoDocumentoOrigenId: preFacturaSeleccionada.tipoDocumentoId
-          ? Number(preFacturaSeleccionada.tipoDocumentoId)
+        fechaVenceDocumentoOrigen: registroSeleccionado.fechaVencimiento
+          ? new Date(registroSeleccionado.fechaVencimiento)
+          : null,
+        tipoDocumentoOrigenId: registroSeleccionado.tipoDocumentoId
+          ? Number(registroSeleccionado.tipoDocumentoId)
           : null,
       });
     } else {
       setDetalleFormData({
         ...detalleFormData,
-        documentoOrigenId: null,
+        procesoOrigenLineaId: null,
+        entidadComercialId: null, // ✅ Limpiar también
         numeroDocumentoOrigen: "",
         fechaDocumentoOrigen: null,
+        fechaVenceDocumentoOrigen: null,
         tipoDocumentoOrigenId: null,
       });
     }
   };
+
   const handleSaveDetalle = async () => {
     if (!detalleFormData.planCuentaId) {
       toast.current?.show({
@@ -556,7 +676,9 @@ export default function AsientoContableForm({
       tipoDocumentoOrigenId: detalleFormData.tipoDocumentoOrigenId,
       numeroDocumentoOrigen: detalleFormData.numeroDocumentoOrigen,
       fechaDocumentoOrigen: detalleFormData.fechaDocumentoOrigen,
-      documentoOrigenId: detalleFormData.documentoOrigenId,
+      fechaVenceDocumentoOrigen: detalleFormData.fechaVenceDocumentoOrigen,
+      submoduloOrigenLineaId: detalleFormData.submoduloOrigenLineaId,
+      procesoOrigenLineaId: detalleFormData.procesoOrigenLineaId,
     };
 
     if (esMonedaExtranjera) {
@@ -676,8 +798,12 @@ export default function AsientoContableForm({
           : null,
         numeroDocumentoOrigen: d.numeroDocumentoOrigen || null,
         fechaDocumentoOrigen: d.fechaDocumentoOrigen?.toISOString(),
-        documentoOrigenId: d.documentoOrigenId
-          ? Number(d.documentoOrigenId)
+        fechaVenceDocumentoOrigen: d.fechaVenceDocumentoOrigen?.toISOString(),
+        submoduloOrigenLineaId: d.submoduloOrigenLineaId
+          ? Number(d.submoduloOrigenLineaId)
+          : null,
+        procesoOrigenLineaId: d.procesoOrigenLineaId
+          ? Number(d.procesoOrigenLineaId)
           : null,
         creadoPor: d.creadoPor ? Number(d.creadoPor) : null,
         creadoEn: d.creadoEn || null, // Preservar creadoEn
@@ -1099,7 +1225,7 @@ export default function AsientoContableForm({
   }));
 
   const preFacturasOptions = preFacturas.map((pf) => ({
-    label: `${pf.numeroDocumento} - ${new Date(pf.fechaDocumento).toLocaleDateString()}`,
+    label: `${pf.numeroDocumento} - ${new Date(pf.fechaDocumento).toLocaleDateString()}${pf.estado ? ` - ${pf.estado.descripcion}` : ""}`,
     value: Number(pf.id),
     data: pf, // Para auto-llenar campos
   }));
@@ -1522,7 +1648,7 @@ export default function AsientoContableForm({
         </div>
         <Dialog
           visible={showDetalleDialog}
-          style={{ width: "1200px" }}
+          style={{ width: "1300px" }}
           header={editingDetalle ? "Editar Detalle" : "Nuevo Detalle"}
           modal
           className="p-fluid"
@@ -1553,11 +1679,46 @@ export default function AsientoContableForm({
           <div
             style={{
               display: "flex",
+              alignItems: "end",
               gap: 10,
               flexDirection: window.innerWidth < 768 ? "column" : "row",
               marginTop: 10,
             }}
           >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="submoduloOrigenLineaId">Submódulo Origen</label>
+              <Dropdown
+                id="submoduloOrigenLineaId"
+                value={detalleFormData.submoduloOrigenLineaId}
+                options={submodulosOptions}
+                onChange={(e) => handleSubmoduloOrigenChange(e.value)}
+                placeholder="Seleccionar submódulo"
+                showClear
+                disabled={
+                  !detalleFormData.entidadComercialId || !formData.empresaId
+                }
+                filter
+                filterBy="label"
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="procesoOrigenLineaId">Documento Origen</label>
+              <Dropdown
+                id="procesoOrigenLineaId"
+                value={detalleFormData.procesoOrigenLineaId}
+                options={preFacturasOptions}
+                onChange={(e) => handlePreFacturaChange(e.value)}
+                placeholder={
+                  detalleFormData.submoduloOrigenLineaId
+                    ? "Seleccionar documento"
+                    : "Primero seleccione submódulo"
+                }
+                disabled={!detalleFormData.submoduloOrigenLineaId}
+                showClear
+                filter
+                filterBy="label"
+              />
+            </div>
             <div style={{ flex: 2 }}>
               <label htmlFor="entidadComercialId">Entidad Comercial</label>
               <Dropdown
@@ -1571,8 +1732,7 @@ export default function AsientoContableForm({
                 filterBy="label"
               />
             </div>
-            <div style={{ flex: 0.5 }}>
-              <label style={{ visibility: "hidden" }}>Acción</label>
+            <div style={{ flex: 0.25 }}>
               <CrearEntidadComercialButton
                 empresaId={formData.empresaId}
                 tipoEntidad="ambos"
@@ -1587,27 +1747,16 @@ export default function AsientoContableForm({
                 tooltip="Crear nueva entidad comercial"
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="preFacturaSelect">
-                (Documento Origen)
-              </label>
-              <Dropdown
-                id="preFacturaSelect"
-                value={detalleFormData.documentoOrigenId}
-                options={preFacturasOptions}
-                onChange={(e) => handlePreFacturaChange(e.value)}
-                placeholder={
-                  detalleFormData.entidadComercialId
-                    ? "Seleccionar prefactura"
-                    : "Primero seleccione entidad comercial"
-                }
-                disabled={!detalleFormData.entidadComercialId}
-                showClear
-                filter
-                filterBy="label"
-              />
-            </div>
+            
           </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+              marginTop: 10,
+            }}
+          ></div>
 
           <div
             style={{
@@ -1634,20 +1783,23 @@ export default function AsientoContableForm({
                 }
                 placeholder="Seleccionar tipo"
                 showClear
-                disabled={!!detalleFormData.documentoOrigenId}
+                disabled={isReadOnly}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="documentoOrigenId" style={{ fontWeight: "bold" }}>
+              <label
+                htmlFor="procesoOrigenLineaId"
+                style={{ fontWeight: "bold" }}
+              >
                 ID (Doc. Origen)
               </label>
               <InputNumber
-                id="documentoOrigenId"
-                value={detalleFormData.documentoOrigenId}
+                id="procesoOrigenLineaId"
+                value={detalleFormData.procesoOrigenLineaId}
                 onValueChange={(e) =>
                   setDetalleFormData({
                     ...detalleFormData,
-                    documentoOrigenId: e.value,
+                    procesoOrigenLineaId: e.value,
                   })
                 }
                 useGrouping={false}
@@ -1670,7 +1822,7 @@ export default function AsientoContableForm({
                     numeroDocumentoOrigen: e.target.value,
                   })
                 }
-                disabled={!!detalleFormData.documentoOrigenId}
+                disabled={isReadOnly}
               />
             </div>
 
@@ -1692,7 +1844,25 @@ export default function AsientoContableForm({
                 }
                 dateFormat="dd/mm/yy"
                 showIcon
-                disabled={!!detalleFormData.documentoOrigenId}
+                disabled={isReadOnly}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="fechaVenceDocumentoOrigen">
+                Fecha Vence Doc. Origen
+              </label>
+              <Calendar
+                id="fechaVenceDocumentoOrigen"
+                value={detalleFormData.fechaVenceDocumentoOrigen}
+                onChange={(e) =>
+                  setDetalleFormData({
+                    ...detalleFormData,
+                    fechaVenceDocumentoOrigen: e.value,
+                  })
+                }
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled={isReadOnly}
               />
             </div>
           </div>
@@ -1854,15 +2024,6 @@ export default function AsientoContableForm({
                   borderRadius: 5,
                 }}
               >
-                <h4
-                  style={{
-                    margin: "0 0 10px 0",
-                    fontSize: "14px",
-                    color: "#666",
-                  }}
-                >
-                  Información de Auditoría
-                </h4>
                 <div
                   style={{
                     display: "grid",

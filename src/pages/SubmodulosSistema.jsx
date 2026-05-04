@@ -157,6 +157,7 @@ export default function SubmodulosSistemaPage({ ruta }) {
           ? Number(data.orden)
           : null,
       activo: data.activo,
+      nombreModeloOrigen: data.nombreModeloOrigen || null,
     };
     try {
       if (isEdit && selected) {

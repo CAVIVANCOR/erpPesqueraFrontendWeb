@@ -16,6 +16,7 @@ export default function SubmoduloSistemaForm({ initialValues, modulosOptions, on
       icono: initialValues?.icono || '',
       orden: initialValues?.orden || 0,
       activo: typeof initialValues?.activo === 'boolean' ? initialValues.activo : true,
+      nombreModeloOrigen: initialValues?.nombreModeloOrigen || '',
     }
   });
 
@@ -80,6 +81,16 @@ export default function SubmoduloSistemaForm({ initialValues, modulosOptions, on
             disabled={readOnly} 
           />
           <small className="p-text-secondary">Orden de aparición en el menú</small>
+        </div>
+        <div className="p-field">
+          <label htmlFor="nombreModeloOrigen">Modelo Origen (Asientos Contables)</label>
+          <InputText 
+            id="nombreModeloOrigen" 
+            {...register('nombreModeloOrigen')} 
+            placeholder="PreFactura, OrdenCompra, MovimientoCaja, etc." 
+            disabled={readOnly} 
+          />
+          <small className="p-text-secondary">Nombre del modelo Prisma que genera registros para asientos contables</small>
         </div>
         <div className="p-field-checkbox">
           <label htmlFor="activo">Activo</label>
