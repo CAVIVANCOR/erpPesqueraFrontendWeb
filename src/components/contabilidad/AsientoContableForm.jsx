@@ -108,6 +108,9 @@ export default function AsientoContableForm({
   const [tipoCambioSunat, setTipoCambioSunat] = useState(null);
   const [submodulosMap, setSubmodulosMap] = useState({});
   const [submodulosOptions, setSubmodulosOptions] = useState([]);
+  const [detallesSeleccionados, setDetallesSeleccionados] = useState([]);
+  const [showClonarDialog, setShowClonarDialog] = useState(false);
+  const [cantidadClones, setCantidadClones] = useState(1);
 
   useEffect(() => {
     // Cargar submódulos con nombreModeloOrigen
@@ -753,6 +756,65 @@ export default function AsientoContableForm({
 
     // AUTO-GUARDAR después de eliminar detalle
     await autoGuardarAsiento(nuevosDetalles);
+  };
+
+  const handleClonarDetalles = async () => {
+    if (detallesSeleccionados.length === 0) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Sin Selección",
+        detail: "Debe seleccionar al menos un detalle para clonar",
+        life: 3000,
+      });
+      return;
+    }
+
+    if (!cantidadClones || cantidadClones < 1) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Cantidad Inválida",
+        detail: "Debe ingresar una cantidad válida de clones (mínimo 1)",
+        life: 3000,
+      });
+      return;
+    }
+
+    const nuevosDetalles = [...detalles];
+
+    // Por cada detalle seleccionado, crear N clones
+    detallesSeleccionados.forEach((detalleOriginal) => {
+      for (let i = 0; i < cantidadClones; i++) {
+        const clon = {
+          ...detalleOriginal,
+          id: undefined, // Nuevo detalle sin ID (el backend asignará uno nuevo)
+          numeroLinea: nuevosDetalles.length + 1,
+          creadoEn: undefined,
+          creadoPor: undefined,
+          actualizadoEn: undefined,
+          actualizadoPor: undefined,
+        };
+        nuevosDetalles.push(clon);
+      }
+    });
+
+    // Renumerar todos los detalles
+    const detallesRenumerados = nuevosDetalles.map((d, index) => ({
+      ...d,
+      numeroLinea: index + 1,
+    }));
+
+    await autoGuardarAsiento(detallesRenumerados);
+
+    setDetallesSeleccionados([]);
+    setShowClonarDialog(false);
+    setCantidadClones(1);
+
+    toast.current?.show({
+      severity: "success",
+      summary: "Clonación Exitosa",
+      detail: `Se clonaron ${detallesSeleccionados.length} detalle(s) ${cantidadClones} ${cantidadClones === 1 ? "vez" : "veces"}`,
+      life: 3000,
+    });
   };
 
   const autoGuardarAsiento = async (detallesActualizados) => {
@@ -1408,12 +1470,20 @@ export default function AsientoContableForm({
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} detalles"
           emptyMessage="No hay detalles agregados"
-          rowClassName={rowClassName} // ← AGREGAR ESTA LÍNEA
+          rowClassName={rowClassName}
+          selection={detallesSeleccionados}
+          onSelectionChange={(e) => setDetallesSeleccionados(e.value)}
+          dataKey="id"
           style={{
             cursor: !isReadOnly ? "pointer" : "default",
             fontSize: getResponsiveFontSize(),
           }}
-          onRowClick={(e) => !isReadOnly && openEditDetalle(e.data)}
+          onRowClick={(e) => {
+            // Solo abrir edición si NO está en modo selección
+            if (!isReadOnly && detallesSeleccionados.length === 0) {
+              openEditDetalle(e.data);
+            }
+          }}
           header={
             <div
               style={{
@@ -1423,7 +1493,21 @@ export default function AsientoContableForm({
               }}
             >
               <div style={{ flex: 1 }}>
-                <h5>Detalles del Asiento</h5>
+                <h2>Detalles del Asiento</h2>
+              </div>
+              <div style={{ flex: 1 }}>
+                {!isReadOnly && detallesSeleccionados.length > 0 && (
+                  <Button
+                    label={`Clonar (${detallesSeleccionados.length})`}
+                    icon="pi pi-clone"
+                    className="p-button-info"
+                    size="small"
+                    raised
+                    outlined
+                    onClick={() => setShowClonarDialog(true)}
+                    type="button"
+                  />
+                )}
               </div>
               <div style={{ flex: 1 }}>
                 {!isReadOnly && (
@@ -1448,6 +1532,9 @@ export default function AsientoContableForm({
             </div>
           }
         >
+          {!isReadOnly && (
+            <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
+          )}
           <Column field="numeroLinea" header="#" style={{ width: "5%" }} />
           <Column
             field="codigoCuenta"
@@ -2149,6 +2236,109 @@ export default function AsientoContableForm({
               severity="success"
               raised
             />
+          </div>
+        </Dialog>
+
+        {/* DIÁLOGO: CLONAR DETALLES */}
+        <Dialog
+          header="🔄 Clonar Detalle(s)"
+          visible={showClonarDialog}
+          style={{ width: "450px" }}
+          onHide={() => {
+            setShowClonarDialog(false);
+            setCantidadClones(1);
+          }}
+          footer={
+            <div>
+              <Button
+                label="Cancelar"
+                icon="pi pi-times"
+                className="p-button-text"
+                onClick={() => {
+                  setShowClonarDialog(false);
+                  setCantidadClones(1);
+                }}
+                type="button"
+              />
+              <Button
+                label="Clonar"
+                icon="pi pi-clone"
+                onClick={handleClonarDetalles}
+                disabled={cantidadClones < 1}
+                type="button"
+              />
+            </div>
+          }
+        >
+          <div className="p-fluid">
+            <div className="field">
+              <label htmlFor="cantidadClones">
+                ¿Cuántas veces desea clonar?{" "}
+                <span style={{ color: "red" }}>*</span>
+              </label>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <Button
+                  icon="pi pi-minus"
+                  className="p-button-rounded p-button-outlined"
+                  onClick={() =>
+                    setCantidadClones((prev) => Math.max(1, prev - 1))
+                  }
+                  disabled={cantidadClones <= 1}
+                  type="button"
+                />
+                <InputText
+                  id="cantidadClones"
+                  value={cantidadClones}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 1;
+                    setCantidadClones(Math.min(100, Math.max(1, val)));
+                  }}
+                  style={{
+                    textAlign: "center",
+                    width: "80px",
+                    fontSize: "1.2rem",
+                    fontWeight: "bold",
+                  }}
+                />
+                <Button
+                  icon="pi pi-plus"
+                  className="p-button-rounded p-button-outlined"
+                  onClick={() =>
+                    setCantidadClones((prev) => Math.min(100, prev + 1))
+                  }
+                  disabled={cantidadClones >= 100}
+                  type="button"
+                />
+              </div>
+            </div>
+            <div
+              style={{
+                marginTop: 20,
+                padding: 15,
+                backgroundColor: "#f0f9ff",
+                borderRadius: 6,
+                border: "1px solid #bae6fd",
+              }}
+            >
+              <p style={{ margin: 0, fontSize: "0.9rem", color: "#0369a1" }}>
+                <i className="pi pi-info-circle" style={{ marginRight: 8 }}></i>
+                Se crearán <strong>{cantidadClones}</strong>{" "}
+                {cantidadClones === 1 ? "copia" : "copias"} de{" "}
+                <strong>{detallesSeleccionados.length}</strong>{" "}
+                {detallesSeleccionados.length === 1 ? "detalle" : "detalles"}{" "}
+                seleccionado(s).
+              </p>
+              <p
+                style={{
+                  margin: "8px 0 0 0",
+                  fontSize: "0.85rem",
+                  color: "#64748b",
+                }}
+              >
+                Total de nuevos detalles:{" "}
+                <strong>{detallesSeleccionados.length * cantidadClones}</strong>
+              </p>
+            </div>
           </div>
         </Dialog>
       </form>
