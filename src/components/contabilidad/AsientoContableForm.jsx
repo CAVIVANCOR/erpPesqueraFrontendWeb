@@ -113,7 +113,6 @@ export default function AsientoContableForm({
     // Cargar submódulos con nombreModeloOrigen
     getSubmodulos()
       .then((data) => {
-
         const map = {};
         const options = data
           .filter((sub) => sub.nombreModeloOrigen)
@@ -165,6 +164,9 @@ export default function AsientoContableForm({
       setDetalles(
         defaultValues.detalles.map((d) => ({
           ...d,
+          // SIEMPRE usar datos de la relación planCuenta (no los campos desnormalizados)
+          codigoCuenta: d.planCuenta?.codigoCuenta || d.codigoCuenta,
+          nombreCuenta: d.planCuenta?.nombreCuenta || d.nombreCuenta,
           fechaDocumentoOrigen: d.fechaDocumentoOrigen
             ? new Date(d.fechaDocumentoOrigen)
             : null,
@@ -600,7 +602,6 @@ export default function AsientoContableForm({
   };
 
   const handleSaveDetalle = async () => {
-
     // ✅ EVITAR DOBLE GUARDADO
     if (guardando) {
       return;
@@ -709,7 +710,6 @@ export default function AsientoContableForm({
 
     let nuevosDetalles;
     if (editingDetalle) {
-
       // ✅ MODO EDICIÓN: Actualizar el detalle existente por ID
       nuevosDetalles = detalles.map((d) =>
         d.id === editingDetalle.id
@@ -742,8 +742,7 @@ export default function AsientoContableForm({
       setEditingDetalle(null);
       setNombreUsuarioCreador("N/A");
       setNombreUsuarioActualizador("N/A");
-    } 
-
+    }
   };
 
   const handleDeleteDetalle = async (detalle) => {
@@ -757,8 +756,6 @@ export default function AsientoContableForm({
   };
 
   const autoGuardarAsiento = async (detallesActualizados) => {
-
-
     // Validar solo datos mínimos requeridos por el backend
     if (!formData.empresaId || !formData.periodoContableId) {
       toast.current?.show({
@@ -847,7 +844,6 @@ export default function AsientoContableForm({
       dataToSend.actualizadoPor = usuario?.personalId;
     }
 
-
     try {
       let response;
       if (asientoId) {
@@ -863,6 +859,9 @@ export default function AsientoContableForm({
       if (response.detalles && response.detalles.length > 0) {
         const detallesConRelaciones = response.detalles.map((d) => ({
           ...d,
+          // SIEMPRE usar datos de la relación planCuenta (no los campos desnormalizados)
+          codigoCuenta: d.planCuenta?.codigoCuenta || d.codigoCuenta,
+          nombreCuenta: d.planCuenta?.nombreCuenta || d.nombreCuenta,
           fechaDocumentoOrigen: d.fechaDocumentoOrigen
             ? new Date(d.fechaDocumentoOrigen)
             : null,
@@ -889,7 +888,6 @@ export default function AsientoContableForm({
         detail: "El detalle se guardó correctamente",
         life: 2000,
       });
-
     } catch (error) {
       console.error("❌ [AUTO] Error en autoGuardarAsiento:", error);
       toast.current?.show({
@@ -1768,7 +1766,7 @@ export default function AsientoContableForm({
               />
             </div>
             <div style={{ flex: 0.25 }}>
-             <CrearEntidadComercialButton
+              <CrearEntidadComercialButton
                 empresaId={formData.empresaId}
                 tipoEntidad="ambos"
                 onEntidadCreada={handleEntidadComercialCreada}
