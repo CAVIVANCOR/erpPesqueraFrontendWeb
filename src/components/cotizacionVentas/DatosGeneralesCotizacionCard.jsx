@@ -438,6 +438,7 @@ const DatosGeneralesCotizacionCard = ({
             />
             <CrearEntidadComercialButton
               empresaId={formData.empresaId}
+              entidadComercialId={formData.clienteId}
               tipoEntidad="cliente"
               onEntidadCreada={handleClienteCreado}
               label="Crear Cliente"

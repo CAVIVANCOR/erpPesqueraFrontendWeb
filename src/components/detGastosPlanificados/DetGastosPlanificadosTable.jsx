@@ -195,10 +195,10 @@ const DetGastosPlanificadosTable = ({
   /**
    * Template para el producto
    */
-  const productoTemplate = (rowData) => {
-    return (
-      rowData.producto?.descripcionArmada || rowData.producto?.nombre || "-"
-    );
+   const productoTemplate = (rowData) => {
+    const descripcion = rowData.producto?.descripcionArmada || rowData.producto?.nombre || "-";
+    const empresa = rowData.producto?.empresa?.razonSocial || "Sin empresa";
+    return `${descripcion} - ${empresa}`;
   };
 
   /**

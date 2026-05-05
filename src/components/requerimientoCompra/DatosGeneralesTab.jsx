@@ -101,11 +101,7 @@ export default function DatosGeneralesTab({
     if (proveedorSeleccionado && proveedorSeleccionado.formaPagoId) {
       const formaPagoIdNumber = Number(proveedorSeleccionado.formaPagoId);
       onChange("formaPagoId", formaPagoIdNumber);
-    } else {
-      console.log(
-        "⚠️ [DatosGeneralesTab] Proveedor sin forma de pago asignada",
-      );
-    }
+    } 
   };
 
   // Helper para obtener nombre completo del personal por ID

@@ -540,11 +540,9 @@ const EntidadComercialForm = ({
           life: 3000,
         });
 
-        console.log("📗 [FORM] Llamando onGuardar con resultado:", resultado);
         if (onGuardar) {
           onGuardar(resultado);
         }
-        console.log("📗 [FORM] onGuardar ejecutado");
       } else {
         // Crear nueva entidad
         // Agregar campos de auditoría para creación
@@ -575,15 +573,9 @@ const EntidadComercialForm = ({
         ) {
           crearDireccionFiscalAutomatica(resultado.id, data.numeroDocumento);
         }
-
-        console.log(
-          "📗 [FORM] Llamando onGuardar (CREACIÓN) con resultado:",
-          resultado,
-        );
         if (onGuardar) {
           onGuardar(resultado);
         }
-        console.log("📗 [FORM] onGuardar (CREACIÓN) ejecutado");
       }
     } catch (error) {
       console.error("Error al guardar entidad comercial:", error);
@@ -1079,7 +1071,6 @@ const EntidadComercialForm = ({
               className="p-button-warning"
               severity="warning"
               onClick={() => {
-                console.log("📕 [FORM] Botón Cancelar clickeado");
                 onCancelar();
               }}
               disabled={loading}

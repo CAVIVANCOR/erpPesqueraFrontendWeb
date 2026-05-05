@@ -47,7 +47,7 @@ const DetGastosPlanificadosForm = ({
   const [familiaSeleccionada, setFamiliaSeleccionada] = useState(6); // Default: Gastos (id=6)
   const isEdit = !!gastoPlanificado?.id;
 
-   const {
+  const {
     control,
     handleSubmit,
     reset,
@@ -82,7 +82,7 @@ const DetGastosPlanificadosForm = ({
       if (gastoPlanificado.producto && gastoPlanificado.producto.familiaId) {
         setFamiliaSeleccionada(Number(gastoPlanificado.producto.familiaId));
       }
-      } else {
+    } else {
       reset({
         productoId: null,
         monedaId: monedaIdCabecera ? Number(monedaIdCabecera) : null,
@@ -166,10 +166,9 @@ const DetGastosPlanificadosForm = ({
     : productos;
 
   const productosOptions = productosFiltrados.map((p) => ({
-    label: p.descripcionArmada || p.nombre,
+    label: `${p.descripcionArmada || p.nombre} - ${p.empresa?.razonSocial || "Sin empresa"}`,
     value: Number(p.id),
   }));
-
   // Preparar opciones de monedas
   const monedasOptions = monedas.map((m) => ({
     label: m.codigoSunat,

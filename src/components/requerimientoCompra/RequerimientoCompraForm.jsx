@@ -482,12 +482,8 @@ if (!defaultValues?.id && seriesDoc.length > 0 && !formData.serieDocId) {
           numCorreDoc: `PRÓXIMO: ${proximoCorrelativo}`,
           numeroDocumento: "Se generará al guardar",
         }));
-      } else {
-        console.log("❌ [Serie Auto] No se encontró la serie 002");
-      }
-    } else {
-      console.log("⏭️ [Serie Auto] Condiciones no cumplidas");
-    }
+      } 
+    } 
   }, [seriesDoc, isEdit]);
 
   // Cargar estados de requerimiento (tipoProvieneDeId = 11)

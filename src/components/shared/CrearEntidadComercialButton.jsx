@@ -1,22 +1,25 @@
 // src/components/shared/CrearEntidadComercialButton.jsx
 /**
- * Componente wrapper que incluye botón + dialog para crear EntidadComercial
+ * Componente wrapper que incluye botón + dialog para crear/editar EntidadComercial
  * Simplifica el uso cuando solo se necesita un botón simple
- * 
+ *
  * @author ERP Megui
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import React, { useState } from "react";
 import { Button } from "primereact/button";
+import { confirmDialog, ConfirmDialog } from "primereact/confirmdialog";
 import CrearEntidadComercialDialog from "./CrearEntidadComercialDialog";
+import { getEntidadComercialPorId } from "../../api/entidadComercial";
 
 /**
- * Botón con Dialog integrado para crear EntidadComercial
- * 
+ * Botón con Dialog integrado para crear/editar EntidadComercial
+ *
  * @param {number} empresaId - ID de la empresa
+ * @param {number} entidadComercialId - ID de la entidad seleccionada (null si no hay)
  * @param {string} tipoEntidad - 'proveedor' | 'cliente' | 'ambos'
- * @param {function} onEntidadCreada - Callback cuando se crea (entidad) => void
+ * @param {function} onEntidadCreada - Callback cuando se crea/edita (entidad) => void
  * @param {string} label - Texto del botón
  * @param {string} icon - Icono del botón (PrimeIcons)
  * @param {string} severity - Severidad del botón (info, success, warning, etc.)
@@ -33,6 +36,7 @@ import CrearEntidadComercialDialog from "./CrearEntidadComercialDialog";
  */
 export default function CrearEntidadComercialButton({
   empresaId,
+  entidadComercialId = null,
   tipoEntidad = "proveedor",
   onEntidadCreada,
   label,
@@ -50,6 +54,9 @@ export default function CrearEntidadComercialButton({
   buttonStyle,
 }) {
   const [visible, setVisible] = useState(false);
+  const [modoEdicion, setModoEdicion] = useState(false);
+  const [entidadData, setEntidadData] = useState(null);
+  const [loadingEntidad, setLoadingEntidad] = useState(false);
 
   // Determinar label por defecto según tipo
   const getDefaultLabel = () => {
@@ -79,8 +86,86 @@ export default function CrearEntidadComercialButton({
     }
   };
 
+  // ═══════════════════════════════════════════════════
+  // LÓGICA DE APERTURA: Decidir si mostrar confirmación o formulario
+  // ═══════════════════════════════════════════════════
+  const handleClick = async () => {
+    if (entidadComercialId) {
+      // ✅ HAY ENTIDAD SELECCIONADA: Cargar datos y mostrar confirmación
+      await cargarEntidadYConfirmar();
+    } else {
+      // ✅ NO HAY ENTIDAD SELECCIONADA: Abrir directamente en modo creación
+      abrirDialogCreacion();
+    }
+  };
+
+  // Cargar datos de la entidad y mostrar confirmación
+  const cargarEntidadYConfirmar = async () => {
+    setLoadingEntidad(true);
+    try {
+      const data = await getEntidadComercialPorId(entidadComercialId);
+      setEntidadData(data);
+
+      // Mostrar diálogo de confirmación
+      confirmDialog({
+        message: (
+          <div>
+            <p>Ya tiene seleccionada una entidad comercial:</p>
+            <p style={{ marginTop: "10px", marginBottom: "10px" }}>
+              <strong>{data.razonSocial || "Sin nombre"}</strong>
+            </p>
+            <p>
+              {data.tipoDocumento?.descripcion || "RUC"}:{" "}
+              {data.numeroDocumento || "N/A"}
+            </p>
+            <p style={{ marginTop: "15px" }}>¿Qué desea hacer?</p>
+          </div>
+        ),
+        header: "Entidad Comercial Seleccionada",
+        icon: "pi pi-question-circle",
+        acceptLabel: "Crear Nueva",
+        rejectLabel: "Editar Actual",
+        acceptIcon: "pi pi-plus",
+        rejectIcon: "pi pi-pencil",
+        acceptClassName: "p-button-success",
+        rejectClassName: "p-button-info",
+        accept: abrirDialogCreacion,
+        reject: abrirDialogEdicion,
+      });
+    } catch (error) {
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          error?.response?.data?.message || "Error al cargar entidad comercial",
+        life: 4000,
+      });
+    } finally {
+      setLoadingEntidad(false);
+    }
+  };
+
+  // Abrir dialog en modo creación
+  const abrirDialogCreacion = () => {
+    setModoEdicion(false);
+    setEntidadData(null);
+    setVisible(true);
+  };
+
+  // Abrir dialog en modo edición
+  const abrirDialogEdicion = () => {
+    setModoEdicion(true);
+    // entidadData ya está cargada
+    setVisible(true);
+  };
+
+  // Callback cuando se crea/edita una entidad
   const handleEntidadCreada = (entidad) => {
+    // Limpiar estados ANTES de cerrar
+    setModoEdicion(false);
+    setEntidadData(null);
     setVisible(false);
+
     if (onEntidadCreada && typeof onEntidadCreada === "function") {
       onEntidadCreada(entidad);
     }
@@ -94,19 +179,23 @@ export default function CrearEntidadComercialButton({
         icon={icon}
         severity={severity}
         outlined={outlined}
-        onClick={() => setVisible(true)}
-        disabled={disabled}
+        onClick={handleClick}
+        disabled={disabled || loadingEntidad}
         className={className}
         tooltip={tooltip || getDefaultTooltip()}
         tooltipOptions={tooltipOptions}
         style={buttonStyle}
       />
-      
+
+      <ConfirmDialog />
+
       <CrearEntidadComercialDialog
         visible={visible}
         onHide={() => setVisible(false)}
         empresaId={empresaId}
         tipoEntidad={tipoEntidad}
+        modoEdicion={modoEdicion}
+        entidadData={entidadData}
         onEntidadCreada={handleEntidadCreada}
         toast={toast}
         defaultValues={defaultValues}
