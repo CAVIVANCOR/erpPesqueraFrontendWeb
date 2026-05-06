@@ -64,3 +64,19 @@ export async function getAsientosPorMovimiento(movimientoCajaId, submoduloId = n
   });
   return res.data;
 }
+
+
+/**
+ * Une múltiples asientos contables en uno solo
+ * @param {Array<number>} asientoIds - Array de IDs de asientos a unir (el primero permanece)
+ * @param {number} usuarioId - ID del usuario que realiza la operación
+ * @returns {Promise<Object>} Asiento resultante con todos los detalles unidos
+ */
+export async function unirAsientos(asientoIds, usuarioId) {
+  const res = await axios.post(
+    `${API_URL}/unir`,
+    { asientoIds, usuarioId },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

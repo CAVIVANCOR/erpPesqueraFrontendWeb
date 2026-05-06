@@ -1243,12 +1243,8 @@ export default function DescargaFaenaPescaForm({
         };
 
         analizarCoordenadasExistentes();
-      } else {
-        console.log("⏭️ SKIP: Coordenadas ya analizadas");
-      }
-    } else {
-      console.log("⏭️ SKIP: Condiciones no cumplidas");
-    }
+      } 
+    } 
   }, [watch("latitud"), watch("longitud")]);
 
   /**
@@ -1284,12 +1280,8 @@ export default function DescargaFaenaPescaForm({
         };
 
         analizarCoordenadasFondeoExistentes();
-      } else {
-        console.log("⏭️ SKIP FONDEO: Coordenadas ya analizadas");
-      }
-    } else {
-      console.log("⏭️ SKIP FONDEO: Condiciones no cumplidas");
-    }
+      } 
+    } 
   }, [watch("latitudFondeo"), watch("longitudFondeo")]);
 
   /**
@@ -1328,12 +1320,8 @@ export default function DescargaFaenaPescaForm({
           };
 
           analizarCoordenadasPlataformaExistentes();
-        } else {
-          console.log("⏭️ SKIP PLATAFORMA: Coordenadas ya analizadas");
-        }
+        } 
       }
-    } else {
-      console.log("⏭️ SKIP PLATAFORMA: Condiciones no cumplidas");
     }
   }, [watch("plataformaRecepcionPescaId"), plataformasRecepcion]);
 

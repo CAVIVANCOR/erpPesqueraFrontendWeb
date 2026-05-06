@@ -11,13 +11,14 @@ import { Dropdown } from "primereact/dropdown";
 import { Tag } from "primereact/tag";
 import { Calendar } from "primereact/calendar";
 import { InputText } from "primereact/inputtext";
-import AsientoContableForm from "../../components/contabilidad/AsientoContableForm";
+import AsientoContableForm from "../../components/contabilidad/asientoContable/AsientoContableForm";
 import {
   getAsientoContable,
   getAsientoContableById,
   deleteAsientoContable,
   aprobarAsiento,
   anularAsiento,
+  unirAsientos,
 } from "../../api/contabilidad/asientoContable";
 import { getEmpresas } from "../../api/empresa";
 import { getPeriodosContables } from "../../api/contabilidad/periodoContable";
@@ -46,8 +47,7 @@ export default function AsientoContable({ ruta }) {
   const [periodoFilter, setPeriodoFilter] = useState(null);
   const [periodosFiltrados, setPeriodosFiltrados] = useState([]);
   const [estadoFilter, setEstadoFilter] = useState(null);
-  const [fechaInicio, setFechaInicio] = useState(null);
-  const [fechaFin, setFechaFin] = useState(null);
+  const [rangoFechas, setRangoFechas] = useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
@@ -62,14 +62,16 @@ export default function AsientoContable({ ruta }) {
   const [kardexLoading, setKardexLoading] = useState(false);
   const [kardexAnio, setKardexAnio] = useState(new Date().getFullYear());
   const [kardexMes, setKardexMes] = useState(new Date().getMonth() + 1);
-
+  const [asientosSeleccionados, setAsientosSeleccionados] = useState([]);
+  const [showUnirDialog, setShowUnirDialog] = useState(false);
+  const [validacionUnir, setValidacionUnir] = useState(null);
   useEffect(() => {
     cargarDatos();
   }, []);
 
   useEffect(() => {
     filtrarItems();
-  }, [items, empresaFilter, periodoFilter, estadoFilter, fechaInicio, fechaFin]);
+  }, [items, empresaFilter, periodoFilter, estadoFilter, rangoFechas]);
 
   useEffect(() => {
     filtrarPeriodosPorEmpresa();
@@ -78,14 +80,19 @@ export default function AsientoContable({ ruta }) {
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const [asientosData, empresasData, periodosData, estadosData, monedasData] =
-        await Promise.all([
-          getAsientoContable(),
-          getEmpresas(),
-          getPeriodosContables(),
-          getEstadosMultiFuncionPorTipoProviene(20),
-          getMonedas(),
-        ]);
+      const [
+        asientosData,
+        empresasData,
+        periodosData,
+        estadosData,
+        monedasData,
+      ] = await Promise.all([
+        getAsientoContable(),
+        getEmpresas(),
+        getPeriodosContables(),
+        getEstadosMultiFuncionPorTipoProviene(20),
+        getMonedas(),
+      ]);
 
       setItems(asientosData);
       setEmpresas(empresasData);
@@ -107,7 +114,7 @@ export default function AsientoContable({ ruta }) {
   const filtrarPeriodosPorEmpresa = () => {
     if (empresaFilter) {
       const periodosDeLaEmpresa = periodos.filter(
-        (p) => Number(p.empresaId) === Number(empresaFilter)
+        (p) => Number(p.empresaId) === Number(empresaFilter),
       );
       setPeriodosFiltrados(periodosDeLaEmpresa);
     } else {
@@ -120,40 +127,39 @@ export default function AsientoContable({ ruta }) {
 
     if (empresaFilter) {
       filtrados = filtrados.filter(
-        (item) => Number(item.empresaId) === Number(empresaFilter)
+        (item) => Number(item.empresaId) === Number(empresaFilter),
       );
     }
 
     if (periodoFilter) {
       filtrados = filtrados.filter(
-        (item) => Number(item.periodoContableId) === Number(periodoFilter)
+        (item) => Number(item.periodoContableId) === Number(periodoFilter),
       );
     }
 
     if (estadoFilter) {
       filtrados = filtrados.filter(
-        (item) => Number(item.estadoId) === Number(estadoFilter)
+        (item) => Number(item.estadoId) === Number(estadoFilter),
       );
     }
 
-    if (fechaInicio) {
+    if (rangoFechas && rangoFechas[0]) {
       filtrados = filtrados.filter((item) => {
         const fechaAsiento = new Date(item.fechaAsiento);
-        const fechaIni = new Date(fechaInicio);
+        const fechaIni = new Date(rangoFechas[0]);
         fechaIni.setHours(0, 0, 0, 0);
+
+        // Si hay fecha fin, filtrar por rango
+        if (rangoFechas[1]) {
+          const fechaFinDia = new Date(rangoFechas[1]);
+          fechaFinDia.setHours(23, 59, 59, 999);
+          return fechaAsiento >= fechaIni && fechaAsiento <= fechaFinDia;
+        }
+
+        // Si solo hay fecha inicio, filtrar desde esa fecha
         return fechaAsiento >= fechaIni;
       });
     }
-
-    if (fechaFin) {
-      filtrados = filtrados.filter((item) => {
-        const fechaAsiento = new Date(item.fechaAsiento);
-        const fechaFinDia = new Date(fechaFin);
-        fechaFinDia.setHours(23, 59, 59, 999);
-        return fechaAsiento <= fechaFinDia;
-      });
-    }
-
     setItemsFiltrados(filtrados);
   };
 
@@ -402,9 +408,122 @@ export default function AsientoContable({ ruta }) {
     setEmpresaFilter(null);
     setPeriodoFilter(null);
     setEstadoFilter(null);
-    setFechaInicio(null);
-    setFechaFin(null);
+    setRangoFechas(null);
     setGlobalFilter("");
+  };
+
+  const validarAsientosParaUnir = (asientos) => {
+    // Validación 1: Cantidad mínima
+    if (!asientos || asientos.length < 2) {
+      return {
+        valido: false,
+        errores: ["Debe seleccionar al menos 2 asientos para unir."],
+      };
+    }
+
+    const errores = [];
+    const primer = asientos[0];
+
+    // Validación 2: Estados
+    const asientosNoPendientes = asientos.filter(
+      (a) => a.estado?.descripcion !== "PENDIENTE",
+    );
+    if (asientosNoPendientes.length > 0) {
+      errores.push(
+        `Estados: ${asientosNoPendientes.map((a) => `#${a.numeroAsiento} es ${a.estado?.descripcion}`).join(", ")} (debe ser PENDIENTE)`,
+      );
+    }
+
+    // Validación 3: Empresas
+    const asientosDiferenteEmpresa = asientos.filter(
+      (a) => Number(a.empresaId) !== Number(primer.empresaId),
+    );
+    if (asientosDiferenteEmpresa.length > 0) {
+      errores.push(
+        `Empresas: ${asientosDiferenteEmpresa.map((a) => `#${a.numeroAsiento} es ${a.empresa?.razonSocial}`).join(", ")} (debe ser ${primer.empresa?.razonSocial})`,
+      );
+    }
+
+    // Validación 4: Períodos
+    const asientosDiferentePeriodo = asientos.filter(
+      (a) => Number(a.periodoContableId) !== Number(primer.periodoContableId),
+    );
+    if (asientosDiferentePeriodo.length > 0) {
+      errores.push(
+        `Períodos: ${asientosDiferentePeriodo.map((a) => `#${a.numeroAsiento} es ${a.periodoContable?.nombrePeriodo}`).join(", ")} (debe ser ${primer.periodoContable?.nombrePeriodo})`,
+      );
+    }
+
+    // Validación 5: Glosas
+    const asientosDiferenteGlosa = asientos.filter(
+      (a) => a.glosa !== primer.glosa,
+    );
+    if (asientosDiferenteGlosa.length > 0) {
+      errores.push(
+        `Glosas: ${asientosDiferenteGlosa.map((a) => `#${a.numeroAsiento} es "${a.glosa}"`).join(", ")} (debe ser "${primer.glosa}")`,
+      );
+    }
+
+    return {
+      valido: errores.length === 0,
+      errores,
+      asientoPrincipal: primer,
+      asientosAEliminar: asientos.slice(1),
+      totalDetalles: asientos.reduce(
+        (sum, a) => sum + (a.detalles?.length || 0),
+        0,
+      ),
+    };
+  };
+
+  const handleUnirAsientos = () => {
+    if (asientosSeleccionados.length < 2) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe seleccionar al menos 2 asientos para unir",
+        life: 3000,
+      });
+      return;
+    }
+
+    const validacion = validarAsientosParaUnir(asientosSeleccionados);
+    setValidacionUnir(validacion);
+    setShowUnirDialog(true);
+  };
+
+  const handleConfirmUnir = async () => {
+    if (!validacionUnir || !validacionUnir.valido) {
+      return;
+    }
+
+    setShowUnirDialog(false);
+    setLoading(true);
+
+    try {
+      const asientoIds = asientosSeleccionados.map((a) => Number(a.id));
+      await unirAsientos(asientoIds, usuario.personalId);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Asientos Unidos",
+        detail: `Se unieron ${asientosSeleccionados.length} asientos exitosamente. ${validacionUnir.totalDetalles} detalles ahora en Asiento #${validacionUnir.asientoPrincipal.numeroAsiento}`,
+        life: 5000,
+      });
+
+      setAsientosSeleccionados([]);
+      setValidacionUnir(null);
+      await cargarDatos();
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al unir asientos",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGenerarKardexValorizado = () => {
@@ -450,7 +569,9 @@ export default function AsientoContable({ ruta }) {
       await cargarDatos();
 
       if (resultado.asientoId) {
-        const asientoGenerado = await getAsientoContableById(resultado.asientoId);
+        const asientoGenerado = await getAsientoContableById(
+          resultado.asientoId,
+        );
         setSelected(asientoGenerado);
         setIsEdit(true);
         setShowDialog(true);
@@ -459,7 +580,8 @@ export default function AsientoContable({ ruta }) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.message || "Error al generar kardex valorizado",
+        detail:
+          error.response?.data?.message || "Error al generar kardex valorizado",
         life: 3000,
       });
     } finally {
@@ -477,35 +599,36 @@ export default function AsientoContable({ ruta }) {
     return <Tag value={estado} severity={severity} />;
   };
 
-const cuadradoBodyTemplate = (rowData) => {
-  const diferencia = Number(rowData.diferencia || 0);
-  const estaCuadrado = rowData.estaCuadrado;
-  
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-      <Tag 
-        value={estaCuadrado ? "CUADRADO" : "DESCUADRADO"} 
-        severity={estaCuadrado ? "success" : "danger"} 
-        icon={estaCuadrado ? "pi pi-check-circle" : "pi pi-times-circle"}
-        style={{ fontWeight: "bold" }}
-      />
-      {!estaCuadrado && diferencia !== 0 && (
-        <span 
-          style={{ 
-            fontSize: "0.75rem", 
-            color: "#ef4444",
-            fontWeight: "bold"
-          }}
-        >
-          Dif: {new Intl.NumberFormat("es-PE", {
-            style: "currency",
-            currency: "PEN",
-          }).format(Math.abs(diferencia))}
-        </span>
-      )}
-    </div>
-  );
-};
+  const cuadradoBodyTemplate = (rowData) => {
+    const diferencia = Number(rowData.diferencia || 0);
+    const estaCuadrado = rowData.estaCuadrado;
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+        <Tag
+          value={estaCuadrado ? "CUADRADO" : "DESCUADRADO"}
+          severity={estaCuadrado ? "success" : "danger"}
+          icon={estaCuadrado ? "pi pi-check-circle" : "pi pi-times-circle"}
+          style={{ fontWeight: "bold" }}
+        />
+        {!estaCuadrado && diferencia !== 0 && (
+          <span
+            style={{
+              fontSize: "0.75rem",
+              color: "#ef4444",
+              fontWeight: "bold",
+            }}
+          >
+            Dif:{" "}
+            {new Intl.NumberFormat("es-PE", {
+              style: "currency",
+              currency: "PEN",
+            }).format(Math.abs(diferencia))}
+          </span>
+        )}
+      </div>
+    );
+  };
 
   const montoBodyTemplate = (rowData, field) => {
     return new Intl.NumberFormat("es-PE", {
@@ -597,12 +720,18 @@ const cuadradoBodyTemplate = (rowData) => {
           </p>
 
           <div style={{ marginBottom: 20 }}>
-            <label htmlFor="kardexEmpresa" style={{ display: "block", marginBottom: 5, fontWeight: 600 }}>
+            <label
+              htmlFor="kardexEmpresa"
+              style={{ display: "block", marginBottom: 5, fontWeight: 600 }}
+            >
               Empresa
             </label>
             <InputText
               id="kardexEmpresa"
-              value={empresas.find((e) => Number(e.id) === empresaFilter)?.razonSocial || ""}
+              value={
+                empresas.find((e) => Number(e.id) === empresaFilter)
+                  ?.razonSocial || ""
+              }
               disabled
               style={{ width: "100%", backgroundColor: "#f5f5f5" }}
             />
@@ -610,7 +739,10 @@ const cuadradoBodyTemplate = (rowData) => {
 
           <div style={{ display: "flex", gap: 15, marginBottom: 20 }}>
             <div style={{ flex: 1 }}>
-              <label htmlFor="kardexAnio" style={{ display: "block", marginBottom: 5, fontWeight: 600 }}>
+              <label
+                htmlFor="kardexAnio"
+                style={{ display: "block", marginBottom: 5, fontWeight: 600 }}
+              >
                 Año <span style={{ color: "red" }}>*</span>
               </label>
               <Dropdown
@@ -627,7 +759,10 @@ const cuadradoBodyTemplate = (rowData) => {
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="kardexMes" style={{ display: "block", marginBottom: 5, fontWeight: 600 }}>
+              <label
+                htmlFor="kardexMes"
+                style={{ display: "block", marginBottom: 5, fontWeight: 600 }}
+              >
                 Mes <span style={{ color: "red" }}>*</span>
               </label>
               <Dropdown
@@ -661,12 +796,16 @@ const cuadradoBodyTemplate = (rowData) => {
               padding: 12,
               borderRadius: 4,
               border: "1px solid #ffb74d",
-              marginBottom: 15
+              marginBottom: 15,
             }}
           >
             <p style={{ margin: 0, color: "#e65100", fontSize: "0.95em" }}>
-              <i className="pi pi-exclamation-triangle" style={{ marginRight: 8 }}></i>
-              <b>Importante:</b> Se generarán asientos contables de valorización de inventarios para el período seleccionado.
+              <i
+                className="pi pi-exclamation-triangle"
+                style={{ marginRight: 8 }}
+              ></i>
+              <b>Importante:</b> Se generarán asientos contables de valorización
+              de inventarios para el período seleccionado.
             </p>
           </div>
 
@@ -675,17 +814,27 @@ const cuadradoBodyTemplate = (rowData) => {
               backgroundColor: "#e3f2fd",
               padding: 12,
               borderRadius: 4,
-              border: "1px solid #64b5f6"
+              border: "1px solid #64b5f6",
             }}
           >
             <p style={{ margin: 0, color: "#1565c0", fontSize: "0.9em" }}>
               <i className="pi pi-info-circle" style={{ marginRight: 8 }}></i>
-              Si ya existe un asiento de kardex valorizado para este período, se eliminará y regenerará automáticamente.
+              Si ya existe un asiento de kardex valorizado para este período, se
+              eliminará y regenerará automáticamente.
             </p>
           </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, paddingTop: 15, borderTop: "1px solid #dee2e6" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 10,
+            marginTop: 20,
+            paddingTop: 15,
+            borderTop: "1px solid #dee2e6",
+          }}
+        >
           <Button
             label="Cancelar"
             icon="pi pi-times"
@@ -703,6 +852,251 @@ const cuadradoBodyTemplate = (rowData) => {
           />
         </div>
       </Dialog>
+
+      <Dialog
+        visible={showUnirDialog}
+        onHide={() => setShowUnirDialog(false)}
+        header={
+          validacionUnir?.valido
+            ? "⚠️ Confirmar Unión de Asientos"
+            : "❌ No se pueden Unir los Asientos"
+        }
+        style={{ width: validacionUnir?.valido ? "650px" : "650px" }}
+        modal
+        className="p-fluid"
+        closable={!loading}
+        closeOnEscape={!loading}
+      >
+        {validacionUnir && !validacionUnir.valido && (
+          <div style={{ padding: "10px 0" }}>
+            <p
+              style={{ marginBottom: 15, fontSize: "1.05em", color: "#d32f2f" }}
+            >
+              Los asientos seleccionados tienen los siguientes errores:
+            </p>
+
+            <div
+              style={{
+                backgroundColor: "#ffebee",
+                padding: 15,
+                borderRadius: 6,
+                border: "1px solid #ef5350",
+                marginBottom: 15,
+              }}
+            >
+              {validacionUnir.errores.map((error, index) => (
+                <div
+                  key={index}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    marginBottom:
+                      index < validacionUnir.errores.length - 1 ? 10 : 0,
+                    fontSize: "0.95em",
+                  }}
+                >
+                  <i
+                    className="pi pi-times-circle"
+                    style={{ color: "#d32f2f", marginRight: 8, marginTop: 2 }}
+                  ></i>
+                  <span style={{ color: "#b71c1c", flex: 1 }}>{error}</span>
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                backgroundColor: "#e3f2fd",
+                padding: 12,
+                borderRadius: 4,
+                border: "1px solid #64b5f6",
+              }}
+            >
+              <p style={{ margin: 0, color: "#1565c0", fontSize: "0.9em" }}>
+                <i className="pi pi-info-circle" style={{ marginRight: 8 }}></i>
+                <b>Sugerencia:</b> Deseleccione los asientos que no cumplen con
+                los requisitos y vuelva a intentar.
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                marginTop: 20,
+                paddingTop: 15,
+                borderTop: "1px solid #dee2e6",
+              }}
+            >
+              <Button
+                label="Entendido"
+                icon="pi pi-check"
+                className="p-button-secondary"
+                onClick={() => setShowUnirDialog(false)}
+              />
+            </div>
+          </div>
+        )}
+
+        {validacionUnir && validacionUnir.valido && (
+          <div style={{ padding: "10px 0" }}>
+            <div
+              style={{
+                backgroundColor: "#e8f5e9",
+                padding: 12,
+                borderRadius: 6,
+                border: "1px solid #66bb6a",
+                marginBottom: 20,
+              }}
+            >
+              <p style={{ margin: 0, color: "#2e7d32", fontSize: "0.95em" }}>
+                <i
+                  className="pi pi-check-circle"
+                  style={{ marginRight: 8, fontWeight: "bold" }}
+                ></i>
+                <b>Validación exitosa:</b> {asientosSeleccionados.length}{" "}
+                asientos compatibles
+              </p>
+            </div>
+
+            <div style={{ marginBottom: 15 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: 8,
+                  fontWeight: 600,
+                  color: "#2e7d32",
+                }}
+              >
+                📌 Permanecerá:
+              </label>
+              <div
+                style={{
+                  backgroundColor: "#f5f5f5",
+                  padding: 12,
+                  borderRadius: 4,
+                  border: "1px solid #e0e0e0",
+                }}
+              >
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                  Asiento #{validacionUnir.asientoPrincipal?.numeroAsiento}
+                </div>
+                <div style={{ fontSize: "0.9em", color: "#666" }}>
+                  {validacionUnir.asientoPrincipal?.empresa?.razonSocial} |{" "}
+                  {
+                    validacionUnir.asientoPrincipal?.periodoContable
+                      ?.nombrePeriodo
+                  }{" "}
+                  | "{validacionUnir.asientoPrincipal?.glosa}" |{" "}
+                  {validacionUnir.asientoPrincipal?.detalles?.length || 0}{" "}
+                  detalles
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 15 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: 8,
+                  fontWeight: 600,
+                  color: "#d32f2f",
+                }}
+              >
+                ❌ Se eliminarán:
+              </label>
+              <div
+                style={{
+                  backgroundColor: "#fff3e0",
+                  padding: 12,
+                  borderRadius: 4,
+                  border: "1px solid #ffb74d",
+                  maxHeight: "120px",
+                  overflowY: "auto",
+                }}
+              >
+                {validacionUnir.asientosAEliminar?.map((asiento, index) => (
+                  <div
+                    key={asiento.id}
+                    style={{
+                      marginBottom:
+                        index < validacionUnir.asientosAEliminar.length - 1
+                          ? 8
+                          : 0,
+                      fontSize: "0.9em",
+                    }}
+                  >
+                    - Asiento #{asiento.numeroAsiento} (
+                    {asiento.detalles?.length || 0} detalles) → Transferidos a #
+                    {validacionUnir.asientoPrincipal?.numeroAsiento}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div
+              style={{
+                backgroundColor: "#e3f2fd",
+                padding: 12,
+                borderRadius: 4,
+                border: "1px solid #64b5f6",
+                marginBottom: 15,
+              }}
+            >
+              <p style={{ margin: 0, color: "#1565c0", fontSize: "0.95em" }}>
+                <i className="pi pi-info-circle" style={{ marginRight: 8 }}></i>
+                <b>Resultado:</b> Asiento #
+                {validacionUnir.asientoPrincipal?.numeroAsiento} tendrá{" "}
+                {validacionUnir.totalDetalles} detalles en total
+              </p>
+            </div>
+
+            <div
+              style={{
+                backgroundColor: "#ffebee",
+                padding: 12,
+                borderRadius: 4,
+                border: "1px solid #ef5350",
+              }}
+            >
+              <p style={{ margin: 0, color: "#b71c1c", fontSize: "0.9em" }}>
+                <i
+                  className="pi pi-exclamation-triangle"
+                  style={{ marginRight: 8 }}
+                ></i>
+                <b>Advertencia:</b> Esta acción NO se puede deshacer
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+                marginTop: 20,
+                paddingTop: 15,
+                borderTop: "1px solid #dee2e6",
+              }}
+            >
+              <Button
+                label="Cancelar"
+                icon="pi pi-times"
+                className="p-button-secondary"
+                onClick={() => setShowUnirDialog(false)}
+                disabled={loading}
+              />
+              <Button
+                label="✓ Confirmar Unión"
+                icon="pi pi-link"
+                className="p-button-warning"
+                onClick={handleConfirmUnir}
+                loading={loading}
+              />
+            </div>
+          </div>
+        )}
+      </Dialog>
+
       <ConfirmDialog
         visible={confirmState.visible}
         onHide={() => setConfirmState({ visible: false, row: null })}
@@ -756,9 +1150,7 @@ const cuadradoBodyTemplate = (rowData) => {
               : "Eliminar"
         }
         rejectLabel="Cancelar"
-        accept={
-          confirmState.action ? handleConfirmAction : handleConfirmDelete
-        }
+        accept={confirmState.action ? handleConfirmAction : handleConfirmDelete}
         reject={() => setConfirmState({ visible: false, row: null })}
         style={{ minWidth: 400 }}
       />
@@ -769,16 +1161,16 @@ const cuadradoBodyTemplate = (rowData) => {
         stripedRows
         showGridlines
         paginator
-        rows={20}
-        rowsPerPageOptions={[20, 40, 80, 160]}
+        rows={40}
+        rowsPerPageOptions={[40, 80, 160, 320]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} asientos"
         sortField="numeroAsiento"
         sortOrder={-1}
-        selectionMode="single"
-        selection={selected}
-        onSelectionChange={(e) => setSelected(e.value)}
-        onRowClick={
+        selectionMode="checkbox"
+        selection={asientosSeleccionados}
+        onSelectionChange={(e) => setAsientosSeleccionados(e.value)}
+        onRowDoubleClick={
           permisos.puedeVer || permisos.puedeEditar
             ? (e) => onEdit(e.data)
             : undefined
@@ -797,36 +1189,51 @@ const cuadradoBodyTemplate = (rowData) => {
               style={{
                 alignItems: "end",
                 display: "flex",
-                gap: 10,
+                gap: 5,
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <div style={{ flex: 2 }}>
+              <div style={{ flex: 1 }}>
                 <h2>Asientos Contables</h2>
                 <small style={{ color: "#666", fontWeight: "normal" }}>
                   Total de registros: {itemsFiltrados.length}
                 </small>
               </div>
-              <div style={{ flex: 0.5 }}>
+              <div style={{ flex: 1 }}>
                 <Button
                   label="Nuevo"
                   icon="pi pi-plus"
                   className="p-button-success"
-                  size="small"
                   raised
                   disabled={
                     !permisos.puedeCrear || !empresaFilter || !periodoFilter
                   }
                   tooltip="Nuevo Asiento Contable"
-                  outlined
                   onClick={onNew}
+                  style={{ width: "100%" }}
                 />
               </div>
-              <div style={{ flex: 0.5 }}>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Unir Asientos"
+                  icon="pi pi-link"
+                  className="p-button-warning"
+                  raised
+                  onClick={handleUnirAsientos}
+                  disabled={
+                    !permisos.puedeEditar ||
+                    asientosSeleccionados.length < 2 ||
+                    loading
+                  }
+                  tooltip={`Unir ${asientosSeleccionados.length} asientos seleccionados`}
+                  tooltipOptions={{ position: "top" }}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 0.25 }}>
                 <Button
                   icon="pi pi-refresh"
                   className="p-button-outlined p-button-info"
-                  size="small"
                   onClick={async () => {
                     await cargarDatos();
                     toast.current?.show({
@@ -839,32 +1246,71 @@ const cuadradoBodyTemplate = (rowData) => {
                   }}
                   loading={loading}
                   tooltip="Actualizar todos los datos desde el servidor"
+                  style={{ width: "100%" }}
                 />
               </div>
-              <div style={{ flex: 0.5 }}>
+              <div style={{ flex: 0.25 }}>
                 <Button
-                  label="Limpiar"
                   icon="pi pi-filter-slash"
                   className="p-button-secondary"
-                  size="small"
                   outlined
                   onClick={limpiarFiltros}
                   disabled={loading}
+                  style={{ width: "100%" }}
                 />
               </div>
-              <div style={{ flex: 0.8 }}>
+              <div style={{ flex: 1 }}>
                 <Button
-                  label="Generar Kardex Valorizado"
+                  label="Genera Asiento Kardex"
                   icon="pi pi-calculator"
                   className="p-button-info"
-                  size="small"
                   raised
-                  outlined
                   onClick={handleGenerarKardexValorizado}
-                  disabled={!empresaFilter || !periodoFilter || loading || kardexLoading}
+                  disabled={
+                    !empresaFilter || !periodoFilter || loading || kardexLoading
+                  }
                   loading={kardexLoading}
                   tooltip="Generar asientos de valorización de inventarios del período seleccionado"
-                  tooltipOptions={{ position: 'top' }}
+                  tooltipOptions={{ position: "top" }}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="globalFilter">Buscar</label>
+                <span className="p-input-icon-left">
+                  <InputText
+                    id="globalFilter"
+                    value={globalFilter}
+                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    placeholder="Buscar..."
+                    style={{ width: "100%" }}
+                  />
+                </span>
+              </div>
+            </div>
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="rangoFechas">Rango de Fechas</label>
+                <Calendar
+                  id="rangoFechas"
+                  value={rangoFechas}
+                  onChange={(e) => setRangoFechas(e.value)}
+                  selectionMode="range"
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  showButtonBar
+                  readOnlyInput
+                  placeholder="Seleccionar rango"
+                  style={{ width: "100%" }}
+                  onClearButtonClick={() => setRangoFechas(null)}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -918,58 +1364,10 @@ const cuadradoBodyTemplate = (rowData) => {
                 />
               </div>
             </div>
-            <div
-              style={{
-                alignItems: "end",
-                display: "flex",
-                gap: 10,
-                marginTop: 10,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <label htmlFor="fechaInicio">Fecha Inicio</label>
-                <Calendar
-                  id="fechaInicio"
-                  value={fechaInicio}
-                  onChange={(e) => setFechaInicio(e.value)}
-                  dateFormat="dd/mm/yy"
-                  showIcon
-                  showButtonBar
-                  style={{ width: "100%" }}
-                  onClearButtonClick={() => setFechaInicio(null)}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="fechaFin">Fecha Fin</label>
-                <Calendar
-                  id="fechaFin"
-                  value={fechaFin}
-                  onChange={(e) => setFechaFin(e.value)}
-                  dateFormat="dd/mm/yy"
-                  showIcon
-                  showButtonBar
-                  style={{ width: "100%" }}
-                  onClearButtonClick={() => setFechaFin(null)}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="globalFilter">Buscar</label>
-                <span className="p-input-icon-left">
-                  <i className="pi pi-search" />
-                  <InputText
-                    id="globalFilter"
-                    value={globalFilter}
-                    onChange={(e) => setGlobalFilter(e.target.value)}
-                    placeholder="Buscar..."
-                    style={{ width: "100%" }}
-                  />
-                </span>
-              </div>
-            </div>
           </div>
         }
       >
+        <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
         <Column field="id" header="ID" sortable />
         <Column
           field="empresa.razonSocial"
@@ -1026,12 +1424,12 @@ const cuadradoBodyTemplate = (rowData) => {
             : "Nuevo Asiento Contable"
         }
         visible={showDialog}
-        style={{ width: "95vw" }}
+        style={{ width: "1300px" }}
         modal
-        className="p-fluid"
+        maximizable
+        maximized={true}
         onHide={onCancel}
         closeOnEscape
-        dismissableMask
       >
         <AsientoContableForm
           isEdit={isEdit}
