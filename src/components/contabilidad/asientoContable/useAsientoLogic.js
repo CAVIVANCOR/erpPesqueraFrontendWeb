@@ -167,8 +167,8 @@ export default function useAsientoLogic({
       setDetalles(
         defaultValues.detalles.map((d) => ({
           ...d,
-          codigoCuenta: d.planCuenta?.codigoCuenta || d.codigoCuenta,
-          nombreCuenta: d.planCuenta?.nombreCuenta || d.nombreCuenta,
+          codigoCuenta: d.planCuenta?.codigoCuenta || "",
+          nombreCuenta: d.planCuenta?.nombreCuenta || "",
           fechaDocumentoOrigen: d.fechaDocumentoOrigen
             ? new Date(d.fechaDocumentoOrigen)
             : null,
@@ -386,8 +386,8 @@ export default function useAsientoLogic({
     setEditingDetalle(detalle);
     setDetalleFormData({
       planCuentaId: detalle.planCuentaId ? Number(detalle.planCuentaId) : null,
-      codigoCuenta: detalle.codigoCuenta || "",
-      nombreCuenta: detalle.nombreCuenta || "",
+      codigoCuenta: detalle.planCuenta?.codigoCuenta || "",
+      nombreCuenta: detalle.planCuenta?.nombreCuenta || "",
       glosa: detalle.glosa || "",
       monedaId: detalle.monedaId ? Number(detalle.monedaId) : null,
       tipoCambio: detalle.tipoCambio || null,
@@ -693,7 +693,7 @@ export default function useAsientoLogic({
     });
   };
 
-   const filtrarDetalles = () => {
+  const filtrarDetalles = () => {
     let filtrados = [...detalles];
 
     if (filtroCodigoCuenta && filtroCodigoCuenta.trim() !== "") {
@@ -775,7 +775,7 @@ export default function useAsientoLogic({
     setDetallesFiltrados(filtrados);
   };
 
-    // ✅ NUEVA FUNCIÓN: Obtener opciones dinámicas de filtros
+  // ✅ NUEVA FUNCIÓN: Obtener opciones dinámicas de filtros
   const obtenerOpcionesDinamicas = () => {
     // Aplicar filtros excluyendo Entidad Comercial y Submódulo para obtener opciones dinámicas
     let datosFiltrados = [...detalles];
@@ -848,12 +848,14 @@ export default function useAsientoLogic({
     // Obtener entidades comerciales únicas de los datos filtrados (sin filtro de entidad)
     const entidadesUnicas = new Map();
     let datosParaEntidades = [...datosFiltrados];
-    
+
     datosParaEntidades.forEach((detalle) => {
       if (detalle.entidadComercialId && detalle.entidadComercial) {
         entidadesUnicas.set(Number(detalle.entidadComercialId), {
           id: Number(detalle.entidadComercialId),
-          razonSocial: detalle.entidadComercial.razonSocial || detalle.entidadComercial.nombreComercial,
+          razonSocial:
+            detalle.entidadComercial.razonSocial ||
+            detalle.entidadComercial.nombreComercial,
         });
       }
     });
@@ -861,14 +863,17 @@ export default function useAsientoLogic({
     // Obtener submódulos únicos de los datos filtrados (sin filtro de submódulo)
     const submodulosUnicos = new Map();
     let datosParaSubmodulos = [...datosFiltrados];
-    
+
     datosParaSubmodulos.forEach((detalle) => {
       if (detalle.submoduloOrigenLineaId) {
         const submodulo = submodulosOptions.find(
-          (s) => Number(s.value) === Number(detalle.submoduloOrigenLineaId)
+          (s) => Number(s.value) === Number(detalle.submoduloOrigenLineaId),
         );
         if (submodulo) {
-          submodulosUnicos.set(Number(detalle.submoduloOrigenLineaId), submodulo);
+          submodulosUnicos.set(
+            Number(detalle.submoduloOrigenLineaId),
+            submodulo,
+          );
         }
       }
     });
@@ -879,8 +884,6 @@ export default function useAsientoLogic({
     };
   };
 
-
-  
   const limpiarFiltros = () => {
     setFiltroCodigoCuenta("");
     setFiltroEntidadComercial(null);
@@ -918,8 +921,6 @@ export default function useAsientoLogic({
       detalles: detallesActualizados.map((d) => ({
         numeroLinea: d.numeroLinea,
         planCuentaId: Number(d.planCuentaId),
-        codigoCuenta: d.codigoCuenta,
-        nombreCuenta: d.nombreCuenta,
         glosa: d.glosa,
         debe: Number(d.debe || 0),
         haber: Number(d.haber || 0),
@@ -979,8 +980,8 @@ export default function useAsientoLogic({
       if (response.detalles && response.detalles.length > 0) {
         const detallesConRelaciones = response.detalles.map((d) => ({
           ...d,
-          codigoCuenta: d.planCuenta?.codigoCuenta || d.codigoCuenta,
-          nombreCuenta: d.planCuenta?.nombreCuenta || d.nombreCuenta,
+          codigoCuenta: d.planCuenta?.codigoCuenta || "",
+          nombreCuenta: d.planCuenta?.nombreCuenta || "",
           fechaDocumentoOrigen: d.fechaDocumentoOrigen
             ? new Date(d.fechaDocumentoOrigen)
             : null,
@@ -1071,8 +1072,6 @@ export default function useAsientoLogic({
           ? detalles.map((d) => ({
               numeroLinea: d.numeroLinea,
               planCuentaId: Number(d.planCuentaId),
-              codigoCuenta: d.codigoCuenta,
-              nombreCuenta: d.nombreCuenta,
               glosa: d.glosa,
               debe: Number(d.debe || 0),
               haber: Number(d.haber || 0),
