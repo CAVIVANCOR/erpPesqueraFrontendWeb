@@ -20,6 +20,7 @@ export default function DetalleDialog({
   tiposDocumento,
   centrosCosto,
   entidadesComerciales,
+  activos,
   submodulosOptions,
   preFacturas,
   formData,
@@ -54,6 +55,11 @@ export default function DetalleDialog({
   const entidadesComercialesOptions = entidadesComerciales.map((ec) => ({
     label: ec.label || ec.razonSocial || ec.nombreComercial,
     value: Number(ec.value || ec.id),
+  }));
+
+  const activosOptions = activos.map((a) => ({
+    label: `${a.nombre}${a.descripcion ? ` - ${a.descripcion}` : ""}`,
+    value: Number(a.id),
   }));
 
   const preFacturasOptions = preFacturas.map((pf) => ({
@@ -203,7 +209,10 @@ export default function DetalleDialog({
           </div>
 
           <div style={{ flex: 1 }}>
-            <label htmlFor="procesoOrigenLineaIdDisplay" style={{ fontWeight: "bold" }}>
+            <label
+              htmlFor="procesoOrigenLineaIdDisplay"
+              style={{ fontWeight: "bold" }}
+            >
               ID (Doc. Origen)
             </label>
             <InputNumber
@@ -221,7 +230,10 @@ export default function DetalleDialog({
           </div>
 
           <div style={{ flex: 1 }}>
-            <label htmlFor="numeroDocumentoOrigen" style={{ fontWeight: "bold" }}>
+            <label
+              htmlFor="numeroDocumentoOrigen"
+              style={{ fontWeight: "bold" }}
+            >
               Número Doc. Origen
             </label>
             <InputText
@@ -238,7 +250,10 @@ export default function DetalleDialog({
           </div>
 
           <div style={{ flex: 1 }}>
-            <label htmlFor="fechaDocumentoOrigen" style={{ fontWeight: "bold" }}>
+            <label
+              htmlFor="fechaDocumentoOrigen"
+              style={{ fontWeight: "bold" }}
+            >
               Fecha Doc. Origen
             </label>
             <Calendar
@@ -257,7 +272,9 @@ export default function DetalleDialog({
           </div>
 
           <div style={{ flex: 1 }}>
-            <label htmlFor="fechaVenceDocumentoOrigen">Fecha Vence Doc. Origen</label>
+            <label htmlFor="fechaVenceDocumentoOrigen">
+              Fecha Vence Doc. Origen
+            </label>
             <Calendar
               id="fechaVenceDocumentoOrigen"
               value={detalleFormData.fechaVenceDocumentoOrigen}
@@ -399,7 +416,7 @@ export default function DetalleDialog({
           </div>
         </div>
 
-        {/* CENTRO DE COSTO */}
+               {/* CENTRO DE COSTO */}
         <div
           style={{
             display: "flex",
@@ -426,66 +443,108 @@ export default function DetalleDialog({
           </div>
         </div>
 
+        {/* ACTIVO FIJO */}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+            marginTop: 10,
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label htmlFor="activoId">Activo Fijo</label>
+            <Dropdown
+              id="activoId"
+              value={detalleFormData.activoId}
+              options={activosOptions}
+              onChange={(e) =>
+                setDetalleFormData({
+                  ...detalleFormData,
+                  activoId: e.value,
+                })
+              }
+              placeholder="Seleccionar activo fijo"
+              showClear
+              filter
+              filterBy="label"
+            />
+          </div>
+        </div>
+
         {/* AUDITORÍA */}
-        {editingDetalle && (editingDetalle.creadoEn || editingDetalle.actualizadoEn) && (
-          <div
-            style={{
-              marginTop: 20,
-              padding: 10,
-              backgroundColor: "#f5f5f5",
-              borderRadius: 5,
-            }}
-          >
+        {editingDetalle &&
+          (editingDetalle.creadoEn || editingDetalle.actualizadoEn) && (
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                gap: 10,
+                marginTop: 20,
+                padding: 10,
+                backgroundColor: "#f5f5f5",
+                borderRadius: 5,
               }}
             >
-              <div>
-                <label style={{ fontSize: "12px", color: "#666" }}>Creado</label>
-                <InputText
-                  value={
-                    editingDetalle.creadoEn
-                      ? new Date(editingDetalle.creadoEn).toLocaleString("es-PE")
-                      : "N/A"
-                  }
-                  disabled
-                  style={{ fontSize: "12px" }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: "12px", color: "#666" }}>Creado Por</label>
-                <InputText
-                  value={nombreUsuarioCreador}
-                  disabled
-                  style={{ fontSize: "12px" }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: "12px", color: "#666" }}>Actualizado</label>
-                <InputText
-                  value={
-                    editingDetalle.actualizadoEn
-                      ? new Date(editingDetalle.actualizadoEn).toLocaleString("es-PE")
-                      : "N/A"
-                  }
-                  disabled
-                  style={{ fontSize: "12px" }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: "12px", color: "#666" }}>Actualizado Por</label>
-                <InputText
-                  value={nombreUsuarioActualizador}
-                  disabled
-                  style={{ fontSize: "12px" }}
-                />
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                  gap: 10,
+                }}
+              >
+                <div>
+                  <label style={{ fontSize: "12px", color: "#666" }}>
+                    Creado
+                  </label>
+                  <InputText
+                    value={
+                      editingDetalle.creadoEn
+                        ? new Date(editingDetalle.creadoEn).toLocaleString(
+                            "es-PE",
+                          )
+                        : "N/A"
+                    }
+                    disabled
+                    style={{ fontSize: "12px" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "12px", color: "#666" }}>
+                    Creado Por
+                  </label>
+                  <InputText
+                    value={nombreUsuarioCreador}
+                    disabled
+                    style={{ fontSize: "12px" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "12px", color: "#666" }}>
+                    Actualizado
+                  </label>
+                  <InputText
+                    value={
+                      editingDetalle.actualizadoEn
+                        ? new Date(editingDetalle.actualizadoEn).toLocaleString(
+                            "es-PE",
+                          )
+                        : "N/A"
+                    }
+                    disabled
+                    style={{ fontSize: "12px" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "12px", color: "#666" }}>
+                    Actualizado Por
+                  </label>
+                  <InputText
+                    value={nombreUsuarioActualizador}
+                    disabled
+                    style={{ fontSize: "12px" }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* BOTONES */}
         <div

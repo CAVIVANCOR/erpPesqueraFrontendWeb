@@ -24,13 +24,14 @@ export default function AsientoContableForm({
   const toast = useRef(null);
 
   // ✅ USAR CUSTOM HOOK PARA TODA LA LÓGICA
-  const {
+    const {
     formData,
     detalles,
     planCuentas,
     tiposDocumento,
     centrosCosto,
     entidadesComerciales,
+    activos,
     preFacturas,
     nombreUsuarioCreador,
     nombreUsuarioActualizador,
@@ -151,7 +152,7 @@ export default function AsientoContableForm({
       />
 
       {/* ✅ DIÁLOGO DETALLE */}
-      <DetalleDialog
+            <DetalleDialog
         visible={showDetalleDialog}
         onHide={() => {
           setShowDetalleDialog(false);
@@ -167,6 +168,7 @@ export default function AsientoContableForm({
         tiposDocumento={tiposDocumento}
         centrosCosto={centrosCosto}
         entidadesComerciales={entidadesComerciales}
+        activos={activos}
         submodulosOptions={submodulosOptions}
         preFacturas={preFacturas}
         formData={formData}

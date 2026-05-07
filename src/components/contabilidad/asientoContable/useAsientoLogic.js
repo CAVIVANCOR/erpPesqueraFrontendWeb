@@ -9,6 +9,7 @@ import { getPersonalPorId } from "../../../api/personal";
 import { getDocumentosOrigenPorModelo } from "../../../api/contabilidad/documentosOrigen";
 import { getSubmodulos } from "../../../api/submoduloSistema";
 import { consultarTipoCambioSunat } from "../../../api/consultaExterna";
+import { getActivos } from "../../../api/activo";
 import {
   createAsientoContable,
   updateAsientoContable,
@@ -62,6 +63,7 @@ export default function useAsientoLogic({
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
+  const [activos, setActivos] = useState([]);
   const [preFacturas, setPreFacturas] = useState([]);
   const [nombreUsuarioCreador, setNombreUsuarioCreador] = useState("N/A");
   const [nombreUsuarioActualizador, setNombreUsuarioActualizador] =
@@ -81,6 +83,7 @@ export default function useAsientoLogic({
     haberMonedaExtranjera: null,
     centroCostoId: null,
     entidadComercialId: null,
+    activoId: null,
     tipoDocumentoOrigenId: null,
     numeroDocumentoOrigen: "",
     fechaDocumentoOrigen: null,
@@ -141,6 +144,7 @@ export default function useAsientoLogic({
     cargarPlanCuentas();
     cargarTiposDocumento();
     cargarCentrosCosto();
+    cargarActivos();
   }, []);
 
   useEffect(() => {
@@ -290,6 +294,15 @@ export default function useAsientoLogic({
     }
   };
 
+  const cargarActivos = async () => {
+    try {
+      const data = await getActivos();
+      setActivos(data);
+    } catch (error) {
+      console.error("Error al cargar activos:", error);
+    }
+  };
+
   const cargarNombresUsuarios = async (creadoPor, actualizadoPor) => {
     try {
       const idCreador = creadoPor || usuario?.personalId;
@@ -401,6 +414,7 @@ export default function useAsientoLogic({
       entidadComercialId: detalle.entidadComercialId
         ? Number(detalle.entidadComercialId)
         : null,
+      activoId: detalle.activoId ? Number(detalle.activoId) : null,
       tipoDocumentoOrigenId: detalle.tipoDocumentoOrigenId
         ? Number(detalle.tipoDocumentoOrigenId)
         : null,
@@ -939,6 +953,7 @@ export default function useAsientoLogic({
         entidadComercialId: d.entidadComercialId
           ? Number(d.entidadComercialId)
           : null,
+        activoId: d.activoId ? Number(d.activoId) : null,
         tipoDocumentoOrigenId: d.tipoDocumentoOrigenId
           ? Number(d.tipoDocumentoOrigenId)
           : null,
@@ -1021,10 +1036,10 @@ export default function useAsientoLogic({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-  // Prevenir doble submit
-  if (guardando) {
-    return;
-  }
+    // Prevenir doble submit
+    if (guardando) {
+      return;
+    }
 
     if (!formData.empresaId) {
       toast.current?.show({
@@ -1097,6 +1112,7 @@ export default function useAsientoLogic({
               entidadComercialId: d.entidadComercialId
                 ? Number(d.entidadComercialId)
                 : null,
+              activoId: d.activoId ? Number(d.activoId) : null,
               tipoDocumentoOrigenId: d.tipoDocumentoOrigenId
                 ? Number(d.tipoDocumentoOrigenId)
                 : null,
@@ -1165,6 +1181,7 @@ export default function useAsientoLogic({
     tiposDocumento,
     centrosCosto,
     entidadesComerciales,
+    activos,
     preFacturas,
     nombreUsuarioCreador,
     nombreUsuarioActualizador,

@@ -459,6 +459,11 @@ export default function AsientoDetalles({
         }
         style={{ width: "10%" }}
       />
+      <Column
+        header="Activo"
+        body={(rowData) => rowData.activo?.nombre || ""}
+        style={{ width: "10%" }}
+      />
       <Column field="glosa" header="Glosa" style={{ width: "25%" }} />
       <Column
         header="Moneda/Monto"
