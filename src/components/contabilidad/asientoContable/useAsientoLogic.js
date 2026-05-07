@@ -1021,6 +1021,11 @@ export default function useAsientoLogic({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+  // Prevenir doble submit
+  if (guardando) {
+    return;
+  }
+
     if (!formData.empresaId) {
       toast.current?.show({
         severity: "warn",
@@ -1045,10 +1050,12 @@ export default function useAsientoLogic({
       toast.current?.show({
         severity: "warn",
         summary: "Advertencia: Asiento Descuadrado",
-        detail: `El asiento no está balanceado. Debe: ${formData.totalDebe.toFixed(
+        detail: `El asiento no está balanceado. Debe: ${Number(
+          formData.totalDebe || 0,
+        ).toFixed(
           2,
-        )}, Haber: ${formData.totalHaber.toFixed(2)}, Diferencia: ${Math.abs(
-          formData.diferencia,
+        )}, Haber: ${Number(formData.totalHaber || 0).toFixed(2)}, Diferencia: ${Math.abs(
+          Number(formData.diferencia) || 0,
         ).toFixed(2)}. Se guardará de todas formas.`,
         life: 4000,
       });

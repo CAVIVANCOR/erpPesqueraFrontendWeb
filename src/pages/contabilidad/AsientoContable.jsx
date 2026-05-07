@@ -93,7 +93,6 @@ export default function AsientoContable({ ruta }) {
         getEstadosMultiFuncionPorTipoProviene(20),
         getMonedas(),
       ]);
-
       setItems(asientosData);
       setEmpresas(empresasData);
       setPeriodos(periodosData);
@@ -310,14 +309,11 @@ export default function AsientoContable({ ruta }) {
         life: 3000,
       });
 
-      if (isEdit) {
-        await recargarAsientoActual();
-      } else {
-        setShowDialog(false);
-        setSelected(null);
-        setIsEdit(false);
-        await cargarDatos();
-      }
+      // Cerrar diálogo y recargar lista tanto en creación como en edición
+      setShowDialog(false);
+      setSelected(null);
+      setIsEdit(false);
+      await cargarDatos();
     } catch (err) {
       toast.current?.show({
         severity: "error",
@@ -1165,7 +1161,7 @@ export default function AsientoContable({ ruta }) {
         rowsPerPageOptions={[40, 80, 160, 320]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} asientos"
-        sortField="numeroAsiento"
+        sortField="id"
         sortOrder={-1}
         selectionMode="checkbox"
         selection={asientosSeleccionados}
@@ -1198,120 +1194,6 @@ export default function AsientoContable({ ruta }) {
                 <small style={{ color: "#666", fontWeight: "normal" }}>
                   Total de registros: {itemsFiltrados.length}
                 </small>
-              </div>
-              <div style={{ flex: 1 }}>
-                <Button
-                  label="Nuevo"
-                  icon="pi pi-plus"
-                  className="p-button-success"
-                  raised
-                  disabled={
-                    !permisos.puedeCrear || !empresaFilter || !periodoFilter
-                  }
-                  tooltip="Nuevo Asiento Contable"
-                  onClick={onNew}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <Button
-                  label="Unir Asientos"
-                  icon="pi pi-link"
-                  className="p-button-warning"
-                  raised
-                  onClick={handleUnirAsientos}
-                  disabled={
-                    !permisos.puedeEditar ||
-                    asientosSeleccionados.length < 2 ||
-                    loading
-                  }
-                  tooltip={`Unir ${asientosSeleccionados.length} asientos seleccionados`}
-                  tooltipOptions={{ position: "top" }}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 0.25 }}>
-                <Button
-                  icon="pi pi-refresh"
-                  className="p-button-outlined p-button-info"
-                  onClick={async () => {
-                    await cargarDatos();
-                    toast.current?.show({
-                      severity: "success",
-                      summary: "Actualizado",
-                      detail:
-                        "Datos actualizados correctamente desde el servidor",
-                      life: 3000,
-                    });
-                  }}
-                  loading={loading}
-                  tooltip="Actualizar todos los datos desde el servidor"
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 0.25 }}>
-                <Button
-                  icon="pi pi-filter-slash"
-                  className="p-button-secondary"
-                  outlined
-                  onClick={limpiarFiltros}
-                  disabled={loading}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <Button
-                  label="Genera Asiento Kardex"
-                  icon="pi pi-calculator"
-                  className="p-button-info"
-                  raised
-                  onClick={handleGenerarKardexValorizado}
-                  disabled={
-                    !empresaFilter || !periodoFilter || loading || kardexLoading
-                  }
-                  loading={kardexLoading}
-                  tooltip="Generar asientos de valorización de inventarios del período seleccionado"
-                  tooltipOptions={{ position: "top" }}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="globalFilter">Buscar</label>
-                <span className="p-input-icon-left">
-                  <InputText
-                    id="globalFilter"
-                    value={globalFilter}
-                    onChange={(e) => setGlobalFilter(e.target.value)}
-                    placeholder="Buscar..."
-                    style={{ width: "100%" }}
-                  />
-                </span>
-              </div>
-            </div>
-            <div
-              style={{
-                alignItems: "end",
-                display: "flex",
-                gap: 10,
-                marginTop: 10,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <label htmlFor="rangoFechas">Rango de Fechas</label>
-                <Calendar
-                  id="rangoFechas"
-                  value={rangoFechas}
-                  onChange={(e) => setRangoFechas(e.value)}
-                  selectionMode="range"
-                  dateFormat="dd/mm/yy"
-                  showIcon
-                  showButtonBar
-                  readOnlyInput
-                  placeholder="Seleccionar rango"
-                  style={{ width: "100%" }}
-                  onClearButtonClick={() => setRangoFechas(null)}
-                />
               </div>
               <div style={{ flex: 1 }}>
                 <label htmlFor="empresaFilter">Filtrar por Empresa</label>
@@ -1348,6 +1230,81 @@ export default function AsientoContable({ ruta }) {
                 />
               </div>
               <div style={{ flex: 1 }}>
+                <Button
+                  label="Nuevo"
+                  icon="pi pi-plus"
+                  className="p-button-success"
+                  raised
+                  disabled={
+                    !permisos.puedeCrear || !empresaFilter || !periodoFilter
+                  }
+                  tooltip="Nuevo Asiento Contable"
+                  onClick={onNew}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Unir Asientos"
+                  icon="pi pi-link"
+                  className="p-button-warning"
+                  raised
+                  onClick={handleUnirAsientos}
+                  disabled={
+                    !permisos.puedeEditar ||
+                    asientosSeleccionados.length < 2 ||
+                    loading
+                  }
+                  tooltip={`Unir ${asientosSeleccionados.length} asientos seleccionados`}
+                  tooltipOptions={{ position: "top" }}
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Genera Asiento Kardex"
+                  icon="pi pi-calculator"
+                  className="p-button-info"
+                  raised
+                  onClick={handleGenerarKardexValorizado}
+                  disabled={
+                    !empresaFilter || !periodoFilter || loading || kardexLoading
+                  }
+                  loading={kardexLoading}
+                  tooltip="Generar asientos de valorización de inventarios del período seleccionado"
+                  tooltipOptions={{ position: "top" }}
+                  style={{ width: "100%" }}
+                />
+              </div>
+            </div>
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="rangoFechas">Rango de Fechas</label>
+                <Calendar
+                  id="rangoFechas"
+                  value={rangoFechas}
+                  onChange={(e) => setRangoFechas(e.value)}
+                  selectionMode="range"
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  showButtonBar
+                  readOnlyInput
+                  placeholder="Seleccionar rango"
+                  style={{ width: "100%" }}
+                  onClearButtonClick={() => setRangoFechas(null)}
+                />
+              </div>
+
+              <div style={{ flex: 1 }}>
                 <label htmlFor="estadoFilter">Filtrar por Estado</label>
                 <Dropdown
                   id="estadoFilter"
@@ -1361,6 +1318,47 @@ export default function AsientoContable({ ruta }) {
                   showClear
                   style={{ width: "100%" }}
                   onClear={() => setEstadoFilter(null)}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="globalFilter">Buscar</label>
+                <InputText
+                  id="globalFilter"
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  placeholder="Buscar..."
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 0.5 }}>
+                <Button
+                  label="Recargar BD"
+                  icon="pi pi-refresh"
+                  className="p-button-outlined p-button-info"
+                  onClick={async () => {
+                    await cargarDatos();
+                    toast.current?.show({
+                      severity: "success",
+                      summary: "Actualizado",
+                      detail:
+                        "Datos actualizados correctamente desde el servidor",
+                      life: 3000,
+                    });
+                  }}
+                  loading={loading}
+                  tooltip="Actualizar todos los datos desde el servidor"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 0.5 }}>
+                <Button
+                  label="Limpiar"
+                  icon="pi pi-filter-slash"
+                  className="p-button-secondary"
+                  outlined
+                  onClick={limpiarFiltros}
+                  disabled={loading}
+                  style={{ width: "100%" }}
                 />
               </div>
             </div>
