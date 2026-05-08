@@ -29,7 +29,7 @@ import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFunc
 import { getEnumsTesoreria } from "../../api/tesoreria/enumsTesoreria";
 import { getAllPrestamoBancario } from "../../api/tesoreria/prestamoBancarios";
 import { getLineaCreditoVigentes } from "../../api/tesoreria/lineaCredito";
-import { getResponsiveFontSize } from "../../utils/utils";
+import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 import CuotaPrestamoList from "./CuotaPrestamoList";
 import DesembolsoPrestamoCard from "./DesembolsoPrestamoCard";
 import GarantiaPrestamoCard from "./GarantiaPrestamoCard";
@@ -39,6 +39,7 @@ import { getTipoPrestamoActivos } from "../../api/tesoreria/tipoPrestamo";
 import { obtenerTipoCambio } from "../../api/tesoreria/lineaCredito";
 import { getSublineasCreditoPorLinea } from "../../api/tesoreria/sublineaCredito";
 import CardAsientoContable from "../common/CardAsientoContable";
+import { Panel } from "primereact/panel";
 
 const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   {
@@ -206,7 +207,12 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       if (fechaDesembolsoWatch && monedaIdWatch) {
         const tipoCambioActual = getValues("tipoCambioAplicado");
 
-        // Solo calcular si el TC es null o 0
+        // Solo calcular si el TC es null o 0 Y no estamos en modo edición con TC existente
+        // Si isEdit es true y defaultValues tiene tipoCambioAplicado, NO consultar
+        if (isEdit && defaultValues?.tipoCambioAplicado) {
+          return; // No consultar API si estamos editando y ya hay TC
+        }
+
         if (!tipoCambioActual || tipoCambioActual === 0) {
           try {
             const tc = await obtenerTipoCambio(fechaDesembolsoWatch);
@@ -544,27 +550,14 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       id: Number(l.id),
       bancoId: Number(l.bancoId),
       empresaId: Number(l.empresaId),
-      label: `${l.numeroLinea} - ${l.moneda?.codigoSunat || ""} ${Number(
-        l.montoDisponible,
-      ).toFixed(2)}`,
+      label: `${l.numeroLinea} - ${l.moneda?.codigoSunat || ""} ${formatearNumero(l.montoDisponible, 2)}`,
       value: Number(l.id),
     }));
   }, [lineasCredito]);
 
   const sublineasCreditoOptions = useMemo(() => {
     return sublineasCredito.map((sublinea) => ({
-      label: `${sublinea.tipoPrestamo?.descripcion || "Sin tipo"} - ${new Intl.NumberFormat(
-        "es-PE",
-        {
-          style: "currency",
-          currency: sublinea.lineaCredito?.moneda?.codigoSunat || "USD",
-        },
-      ).format(
-        parseFloat(sublinea.montoAsignado || 0),
-      )} - Disponible: ${new Intl.NumberFormat("es-PE", {
-        style: "currency",
-        currency: sublinea.lineaCredito?.moneda?.codigoSunat || "USD",
-      }).format(parseFloat(sublinea.montoDisponible || 0))}`,
+      label: `${sublinea.tipoPrestamo?.descripcion || "Sin tipo"} - ${sublinea.lineaCredito?.moneda?.codigoSunat || "USD"} ${formatearNumero(sublinea.montoAsignado || 0, 2)} - Disponible: ${sublinea.lineaCredito?.moneda?.codigoSunat || "USD"} ${formatearNumero(sublinea.montoDisponible || 0, 2)}`,
       value: Number(sublinea.id),
     }));
   }, [sublineasCredito]);
@@ -737,34 +730,6 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="cuentaCorrienteId"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Cuenta Corriente
-              </label>
-              <Controller
-                name="cuentaCorrienteId"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    id="cuentaCorrienteId"
-                    value={field.value}
-                    options={cuentasCorrientesOptions}
-                    onChange={(e) => field.onChange(e.value)}
-                    placeholder="Seleccione cuenta"
-                    filter
-                    showClear
-                    disabled={readOnly || !empresaIdWatch || !bancoIdWatch}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
-            </div>
             <div style={{ flex: 0.5 }}>
               <label
                 htmlFor="estadoId"
@@ -797,6 +762,34 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
           </div>
 
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="cuentaCorrienteId"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
+                Cuenta Corriente
+              </label>
+              <Controller
+                name="cuentaCorrienteId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="cuentaCorrienteId"
+                    value={field.value}
+                    options={cuentasCorrientesOptions}
+                    onChange={(e) => field.onChange(e.value)}
+                    placeholder="Seleccione cuenta"
+                    filter
+                    showClear
+                    disabled={readOnly || !empresaIdWatch || !bancoIdWatch}
+                    style={{ width: "100%" }}
+                  />
+                )}
+              />
+            </div>
             <div style={{ flex: 1 }}>
               <label
                 htmlFor="numeroPrestamo"
@@ -932,6 +925,9 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
               <label
                 htmlFor="fechaDesembolso"
@@ -960,7 +956,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             {/* Tipo de Cambio Aplicado */}
-            <div style={{ flex: 0.3 }}>
+            <div style={{ flex: 1 }}>
               <label
                 htmlFor="tipoCambioAplicado"
                 style={{
@@ -1015,9 +1011,6 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
               <label
                 htmlFor="montoAprobado"
@@ -1074,7 +1067,10 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
-            <div style={{ flex: 0.5 }}>
+          </div>
+
+          <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
+            <div style={{ flex: 0.6 }}>
               <label
                 htmlFor="plazoMeses"
                 style={{
@@ -1093,13 +1089,11 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                     value={field.value}
                     onValueChange={(e) => field.onChange(e.value)}
                     min={0}
-                    disabled={readOnly}
-                    style={{ width: "100%" }}
                   />
                 )}
               />
             </div>
-            <div style={{ flex: 0.5 }}>
+            <div style={{ flex: 0.6 }}>
               <label
                 htmlFor="numeroCuotas"
                 style={{
@@ -1107,7 +1101,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   fontSize: getResponsiveFontSize(),
                 }}
               >
-                Número de Cuotas *
+                Número Cuotas *
               </label>
               <Controller
                 name="numeroCuotas"
@@ -1124,7 +1118,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
-            <div style={{ flex: 0.75 }}>
+            <div style={{ flex: 1 }}>
               <label
                 htmlFor="frecuenciaPago"
                 style={{
@@ -1132,7 +1126,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   fontSize: getResponsiveFontSize(),
                 }}
               >
-                Frecuencia de Pago *
+                Frecuencia Pago *
               </label>
               <Controller
                 name="frecuenciaPago"
@@ -1158,7 +1152,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   fontSize: getResponsiveFontSize(),
                 }}
               >
-                Número de Días
+                N° Días
               </label>
               <Controller
                 name="numeroDias"
@@ -1201,10 +1195,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 0.8 }}>
               <label
                 htmlFor="tasaInteresAnual"
                 style={{
@@ -1212,7 +1203,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   fontSize: getResponsiveFontSize(),
                 }}
               >
-                Tasa de Interés Anual (%) *
+                Tasa Interés Anual (%) *
               </label>
               <Controller
                 name="tasaInteresAnual"
@@ -1232,7 +1223,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 0.8 }}>
               <label
                 htmlFor="tasaInteresEfectiva"
                 style={{
@@ -1240,7 +1231,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   fontSize: getResponsiveFontSize(),
                 }}
               >
-                Tasa de Interés Efectiva (%)
+                Tasa Interés Efectiva (%)
               </label>
               <Controller
                 name="tasaInteresEfectiva"
@@ -1260,7 +1251,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 0.6 }}>
               <label
                 htmlFor="tasaMoratoria"
                 style={{
@@ -1288,444 +1279,195 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="comisionInicial"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Comisión Inicial
-              </label>
-              <Controller
-                name="comisionInicial"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="comisionInicial"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="currency"
-                    currency={monedaSeleccionada?.codigoSunat || "PEN"}
-                    locale="es-PE"
-                    minFractionDigits={2}
-                    disabled={readOnly}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="comisionMantenimiento"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Comisión Mantenimiento
-              </label>
-              <Controller
-                name="comisionMantenimiento"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="comisionMantenimiento"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="currency"
-                    currency={monedaSeleccionada?.codigoSunat || "PEN"}
-                    locale="es-PE"
-                    minFractionDigits={2}
-                    disabled={readOnly}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="seguroDesgravamen"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Seguro Desgravamen
-              </label>
-              <Controller
-                name="seguroDesgravamen"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="seguroDesgravamen"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="currency"
-                    currency={monedaSeleccionada?.codigoSunat || "PEN"}
-                    locale="es-PE"
-                    minFractionDigits={2}
-                    disabled={readOnly}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
-            </div>
           </div>
-
-          <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="tipoGarantia"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Tipo de Garantía
-              </label>
-              <Controller
-                name="tipoGarantia"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    id="tipoGarantia"
-                    value={field.value}
-                    options={enums.tiposGarantia}
-                    onChange={(e) => field.onChange(e.value)}
-                    placeholder="Seleccione tipo"
-                    disabled={readOnly}
-                    style={{ width: "100%" }}
-                    showClear
-                  />
-                )}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="valorGarantia"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Valor de Garantía
-              </label>
-              <Controller
-                name="valorGarantia"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="valorGarantia"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="currency"
-                    currency={monedaSeleccionada?.codigoSunat || "PEN"}
-                    locale="es-PE"
-                    minFractionDigits={2}
-                    disabled={readOnly}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="beneficiario"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Beneficiario (para Garantías/Cartas)
-              </label>
-              <Controller
-                name="beneficiario"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="beneficiario"
-                    value={field.value}
-                    onChange={(e) =>
-                      field.onChange(e.target.value.toUpperCase())
-                    }
-                    disabled={readOnly}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="numeroGarantia"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Número de Garantía
-              </label>
-              <Controller
-                name="numeroGarantia"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="numeroGarantia"
-                    value={field.value}
-                    onChange={(e) =>
-                      field.onChange(e.target.value.toUpperCase())
-                    }
-                    disabled={readOnly}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="numeroCartaCredito"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Número de Carta de Crédito
-              </label>
-              <Controller
-                name="numeroCartaCredito"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="numeroCartaCredito"
-                    value={field.value}
-                    onChange={(e) =>
-                      field.onChange(e.target.value.toUpperCase())
-                    }
-                    disabled={readOnly}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="fechaEmision"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Fecha de Emisión (Garantías/Cartas)
-              </label>
-              <Controller
-                name="fechaEmision"
-                control={control}
-                render={({ field }) => (
-                  <Calendar
-                    id="fechaEmision"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    disabled={readOnly}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="fechaExpiracion"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Fecha de Expiración (Garantías/Cartas)
-              </label>
-              <Controller
-                name="fechaExpiracion"
-                control={control}
-                render={({ field }) => (
-                  <Calendar
-                    id="fechaExpiracion"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    disabled={readOnly}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "end",
-              gap: 20,
-              marginBottom: 20,
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="esRevolvente"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Línea Revolvente
-              </label>
-              <Controller
-                name="esRevolvente"
-                control={control}
-                render={({ field }) => (
-                  <Button
-                    id="esRevolvente"
-                    label={field.value ? "SÍ REVOLVENTE" : "NO REVOLVENTE"}
-                    icon={
-                      field.value ? "pi pi-check-circle" : "pi pi-times-circle"
-                    }
-                    severity={field.value ? "success" : "secondary"}
-                    onClick={() => field.onChange(!field.value)}
-                    disabled={readOnly}
-                    outlined
-                    style={{ width: "100%", fontSize: getResponsiveFontSize() }}
-                  />
-                )}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="permitePagoParcial"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Pago Parcial
-              </label>
-              <Controller
-                name="permitePagoParcial"
-                control={control}
-                render={({ field }) => (
-                  <Button
-                    id="permitePagoParcial"
-                    label={
-                      field.value ? "PERMITE PARCIAL" : "NO PERMITE PARCIAL"
-                    }
-                    icon={
-                      field.value ? "pi pi-check-circle" : "pi pi-times-circle"
-                    }
-                    severity={field.value ? "info" : "secondary"}
-                    onClick={() => field.onChange(!field.value)}
-                    disabled={readOnly}
-                    outlined
-                    style={{ width: "100%", fontSize: getResponsiveFontSize() }}
-                  />
-                )}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="esRefinanciamiento"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Refinanciamiento
-              </label>
-              <Controller
-                name="esRefinanciamiento"
-                control={control}
-                render={({ field }) => (
-                  <Button
-                    id="esRefinanciamiento"
-                    label={
-                      field.value
-                        ? "ES REFINANCIAMIENTO"
-                        : "NO ES REFINANCIAMIENTO"
-                    }
-                    icon={field.value ? "pi pi-refresh" : "pi pi-times-circle"}
-                    severity={field.value ? "warning" : "secondary"}
-                    onClick={() => field.onChange(!field.value)}
-                    disabled={readOnly}
-                    outlined
-                    style={{ width: "100%", fontSize: getResponsiveFontSize() }}
-                  />
-                )}
-              />
-            </div>
-            {watch("esRefinanciamiento") && (
-              <div style={{ flex: 2 }}>
+          <Panel header="Información Garantias" toggleable collapsed>
+            <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
+              <div style={{ flex: 1 }}>
                 <label
-                  htmlFor="prestamoRefinanciadoId"
+                  htmlFor="tipoGarantia"
                   style={{
                     fontWeight: "bold",
                     fontSize: getResponsiveFontSize(),
                   }}
                 >
-                  Préstamo Refinanciado *
+                  Tipo de Garantía
                 </label>
                 <Controller
-                  name="prestamoRefinanciadoId"
+                  name="tipoGarantia"
                   control={control}
                   render={({ field }) => (
                     <Dropdown
-                      id="prestamoRefinanciadoId"
+                      id="tipoGarantia"
                       value={field.value}
-                      options={prestamosRefinanciarOptions}
+                      options={enums.tiposGarantia}
                       onChange={(e) => field.onChange(e.value)}
-                      placeholder="Seleccione préstamo a refinanciar"
-                      disabled={readOnly || !empresaIdWatch}
-                      style={{
-                        width: "100%",
-                        fontSize: getResponsiveFontSize(),
-                      }}
-                      filter
+                      placeholder="Seleccione tipo"
+                      disabled={readOnly}
+                      style={{ width: "100%" }}
                       showClear
-                      emptyMessage="No hay préstamos vigentes o vencidos para refinanciar"
                     />
                   )}
                 />
               </div>
-            )}
-          </div>
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="valorGarantia"
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: getResponsiveFontSize(),
+                  }}
+                >
+                  Valor de Garantía
+                </label>
+                <Controller
+                  name="valorGarantia"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="valorGarantia"
+                      value={field.value}
+                      onValueChange={(e) => field.onChange(e.value)}
+                      mode="currency"
+                      currency={monedaSeleccionada?.codigoSunat || "PEN"}
+                      locale="es-PE"
+                      minFractionDigits={2}
+                      disabled={readOnly}
+                      style={{ width: "100%" }}
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="beneficiario"
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: getResponsiveFontSize(),
+                  }}
+                >
+                  Beneficiario (para Garantías/Cartas)
+                </label>
+                <Controller
+                  name="beneficiario"
+                  control={control}
+                  render={({ field }) => (
+                    <InputText
+                      id="beneficiario"
+                      value={field.value}
+                      onChange={(e) =>
+                        field.onChange(e.target.value.toUpperCase())
+                      }
+                      disabled={readOnly}
+                      style={{ width: "100%" }}
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="numeroGarantia"
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: getResponsiveFontSize(),
+                  }}
+                >
+                  Número de Garantía
+                </label>
+                <Controller
+                  name="numeroGarantia"
+                  control={control}
+                  render={({ field }) => (
+                    <InputText
+                      id="numeroGarantia"
+                      value={field.value}
+                      onChange={(e) =>
+                        field.onChange(e.target.value.toUpperCase())
+                      }
+                      disabled={readOnly}
+                      style={{ width: "100%" }}
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="numeroCartaCredito"
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: getResponsiveFontSize(),
+                  }}
+                >
+                  Número de Carta de Crédito
+                </label>
+                <Controller
+                  name="numeroCartaCredito"
+                  control={control}
+                  render={({ field }) => (
+                    <InputText
+                      id="numeroCartaCredito"
+                      value={field.value}
+                      onChange={(e) =>
+                        field.onChange(e.target.value.toUpperCase())
+                      }
+                      disabled={readOnly}
+                      style={{ width: "100%" }}
+                    />
+                  )}
+                />
+              </div>
 
-          <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="destinoFondos"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Destino de Fondos
-              </label>
-              <Controller
-                name="destinoFondos"
-                control={control}
-                render={({ field }) => (
-                  <InputTextarea
-                    id="destinoFondos"
-                    value={field.value}
-                    onChange={(e) =>
-                      field.onChange(e.target.value.toUpperCase())
-                    }
-                    placeholder="Descripción del destino de los fondos del préstamo"
-                    disabled={readOnly}
-                    rows={2}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="fechaEmision"
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: getResponsiveFontSize(),
+                  }}
+                >
+                  Fecha de Emisión (Garantías/Cartas)
+                </label>
+                <Controller
+                  name="fechaEmision"
+                  control={control}
+                  render={({ field }) => (
+                    <Calendar
+                      id="fechaEmision"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      dateFormat="dd/mm/yy"
+                      showIcon
+                      disabled={readOnly}
+                      style={{ width: "100%" }}
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="fechaExpiracion"
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: getResponsiveFontSize(),
+                  }}
+                >
+                  Fecha de Expiración (Garantías/Cartas)
+                </label>
+                <Controller
+                  name="fechaExpiracion"
+                  control={control}
+                  render={({ field }) => (
+                    <Calendar
+                      id="fechaExpiracion"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      dateFormat="dd/mm/yy"
+                      showIcon
+                      disabled={readOnly}
+                      style={{ width: "100%" }}
+                    />
+                  )}
+                />
+              </div>
             </div>
             <div style={{ flex: 1 }}>
               <label
@@ -1755,6 +1497,283 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
+          </Panel>
+          <Panel
+            header="Información Comisiones Seguros y Checks"
+            toggleable
+            collapsed
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "end",
+                gap: 20,
+                marginBottom: 20,
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="comisionInicial"
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: getResponsiveFontSize(),
+                  }}
+                >
+                  Comisión Inicial
+                </label>
+                <Controller
+                  name="comisionInicial"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="comisionInicial"
+                      value={field.value}
+                      onValueChange={(e) => field.onChange(e.value)}
+                      mode="currency"
+                      currency={monedaSeleccionada?.codigoSunat || "PEN"}
+                      locale="es-PE"
+                      minFractionDigits={2}
+                      disabled={readOnly}
+                      style={{ width: "100%", fontWeight: "bold" }}
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="comisionMantenimiento"
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: getResponsiveFontSize(),
+                  }}
+                >
+                  Comisión Mantenimiento
+                </label>
+                <Controller
+                  name="comisionMantenimiento"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="comisionMantenimiento"
+                      value={field.value}
+                      onValueChange={(e) => field.onChange(e.value)}
+                      mode="currency"
+                      currency={monedaSeleccionada?.codigoSunat || "PEN"}
+                      locale="es-PE"
+                      minFractionDigits={2}
+                      disabled={readOnly}
+                      style={{ width: "100%", fontWeight: "bold" }}
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="seguroDesgravamen"
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: getResponsiveFontSize(),
+                  }}
+                >
+                  Seguro Desgravamen
+                </label>
+                <Controller
+                  name="seguroDesgravamen"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="seguroDesgravamen"
+                      value={field.value}
+                      onValueChange={(e) => field.onChange(e.value)}
+                      mode="currency"
+                      currency={monedaSeleccionada?.codigoSunat || "PEN"}
+                      locale="es-PE"
+                      minFractionDigits={2}
+                      disabled={readOnly}
+                      style={{ width: "100%" , fontWeight: "bold"}}
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="esRevolvente"
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: getResponsiveFontSize(),
+                  }}
+                >
+                  Línea Revolvente
+                </label>
+                <Controller
+                  name="esRevolvente"
+                  control={control}
+                  render={({ field }) => (
+                    <Button
+                      id="esRevolvente"
+                      label={field.value ? "SÍ REVOLVENTE" : "NO REVOLVENTE"}
+                      icon={
+                        field.value
+                          ? "pi pi-check-circle"
+                          : "pi pi-times-circle"
+                      }
+                      severity={field.value ? "success" : "secondary"}
+                      onClick={() => field.onChange(!field.value)}
+                      disabled={readOnly}
+                      outlined
+                      style={{
+                        width: "100%",
+                        fontSize: getResponsiveFontSize(), fontWeight: "bold"
+                      }}
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="permitePagoParcial"
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: getResponsiveFontSize(),
+                  }}
+                >
+                  Pago Parcial
+                </label>
+                <Controller
+                  name="permitePagoParcial"
+                  control={control}
+                  render={({ field }) => (
+                    <Button
+                      id="permitePagoParcial"
+                      label={
+                        field.value ? "PERMITE PARCIAL" : "NO PERMITE PARCIAL"
+                      }
+                      icon={
+                        field.value
+                          ? "pi pi-check-circle"
+                          : "pi pi-times-circle"
+                      }
+                      severity={field.value ? "info" : "secondary"}
+                      onClick={() => field.onChange(!field.value)}
+                      disabled={readOnly}
+                      outlined
+                      style={{
+                        width: "100%",
+                        fontSize: getResponsiveFontSize(), fontWeight: "bold"
+                      }}
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="esRefinanciamiento"
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: getResponsiveFontSize(),
+                  }}
+                >
+                  Refinanciamiento
+                </label>
+                <Controller
+                  name="esRefinanciamiento"
+                  control={control}
+                  render={({ field }) => (
+                    <Button
+                      id="esRefinanciamiento"
+                      label={
+                        field.value
+                          ? "ES REFINANCIAMIENTO"
+                          : "NO ES REFINANCIAMIENTO"
+                      }
+                      icon={
+                        field.value ? "pi pi-refresh" : "pi pi-times-circle"
+                      }
+                      severity={field.value ? "warning" : "secondary"}
+                      onClick={() => field.onChange(!field.value)}
+                      disabled={readOnly}
+                      outlined
+                      style={{
+                        width: "100%",
+                        fontSize: getResponsiveFontSize(), fontWeight: "bold"
+                      }}
+                    />
+                  )}
+                />
+              </div>
+              {watch("esRefinanciamiento") && (
+                <div style={{ flex: 2 }}>
+                  <label
+                    htmlFor="prestamoRefinanciadoId"
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: getResponsiveFontSize(),
+                    }}
+                  >
+                    Préstamo Refinanciado *
+                  </label>
+                  <Controller
+                    name="prestamoRefinanciadoId"
+                    control={control}
+                    render={({ field }) => (
+                      <Dropdown
+                        id="prestamoRefinanciadoId"
+                        value={field.value}
+                        options={prestamosRefinanciarOptions}
+                        onChange={(e) => field.onChange(e.value)}
+                        placeholder="Seleccione préstamo a refinanciar"
+                        disabled={readOnly || !empresaIdWatch}
+                        style={{
+                          width: "100%",
+                          fontSize: getResponsiveFontSize(),
+                          fontWeight: "bold"
+                        }}
+                        filter
+                        showClear
+                        emptyMessage="No hay préstamos vigentes o vencidos para refinanciar"
+                      />
+                    )}
+                  />
+                </div>
+              )}
+            </div>
+          </Panel>
+
+          <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="destinoFondos"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
+                Destino de Fondos
+              </label>
+                            <Controller
+                name="destinoFondos"
+                control={control}
+                render={({ field }) => (
+                  <InputTextarea
+                    id="destinoFondos"
+                    value={field.value}
+                    onChange={(e) =>
+                      field.onChange(e.target.value.toUpperCase())
+                    }
+                    placeholder="Descripción del destino de los fondos del préstamo"
+                    disabled={readOnly}
+                    rows={2}
+                    style={{ 
+                      width: "100%",
+                      fontWeight: "bold",
+                      color: "#8B0000",
+                      backgroundColor: "#FFFACD"
+                    }}
+                  />
+                )}
+              />
+            </div>
+
             <div style={{ flex: 1 }}>
               <label
                 htmlFor="observaciones"
@@ -1778,7 +1797,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                     placeholder="Observaciones adicionales"
                     disabled={readOnly}
                     rows={2}
-                    style={{ width: "100%" }}
+                    style={{ width: "100%", fontWeight: "bold" }}
                   />
                 )}
               />
