@@ -427,12 +427,12 @@ export default function Dashboard() {
         },
       ],
     },
-    {
+        {
       id: "contabilidad",
       titulo: "CONTABILIDAD",
-      descripcion: "Plan Contable, Asientos y Períodos Contables",
+      descripcion: "Plan Contable, Asientos, Períodos y Activos Fijos",
       icono: "pi-calculator",
-      modulos: 4,
+      modulos: 8,
       color: "#E74C3C",
       submenu: [
         { label: "Plan Contable", key: "planCuentasContable", icon: "pi-list" },
@@ -447,6 +447,18 @@ export default function Dashboard() {
           key: "configuracionCuentaContable",
           icon: "pi-cog",
         },
+        { label: "Activos", key: "activo", icon: "pi-server" },
+        { label: "Tipos de Activo", key: "tipoActivo", icon: "pi-tag" },
+        {
+          label: "Tipos de Movimiento Activo Fijo",
+          key: "tipoMovimientoActivoFijo",
+          icon: "pi-arrows-h",
+        },
+        {
+          label: "Movimientos Activo Fijo",
+          key: "movimientoActivoFijo",
+          icon: "pi-chart-line",
+        },
       ],
     },
     {
@@ -454,7 +466,7 @@ export default function Dashboard() {
       titulo: "MAESTROS",
       descripcion: "Configuración de empresas, personal, productos y entidades",
       icono: "pi-database",
-      modulos: 33,
+      modulos: 32,
       color: "#2874A6",
       submenu: [
         { label: "Empresas", key: "empresas", icon: "pi-building" },
@@ -513,8 +525,6 @@ export default function Dashboard() {
         { label: "Departamento", key: "departamento", icon: "pi-map" },
         { label: "Provincia", key: "provincia", icon: "pi-map-marker" },
         { label: "Ubigeo", key: "ubigeo", icon: "pi-map" },
-        { label: "Activos", key: "activo", icon: "pi-server" },
-        { label: "Tipo Activo", key: "tipoActivo", icon: "pi-tag" },
         {
           label: "Detalle Permiso Activo",
           key: "detallePermisoActivo",

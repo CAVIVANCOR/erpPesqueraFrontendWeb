@@ -132,6 +132,8 @@ import FlujoCajaProyectado from "../../pages/FlujoCajaProyectado";
 import PresupuestoAnual from "../../pages/PresupuestoAnual";
 import EjecucionPresupuestal from "../../pages/EjecucionPresupuestal";
 import MotivoSinFaena from "../../pages/MotivoSinFaena";
+import TipoMovimientoActivoFijo from "../../pages/TipoMovimientoActivoFijo";
+import MovimientoActivoFijo from "../../pages/MovimientoActivoFijo";
 /**
  * BaseLayout - Layout principal con gestión de módulos
  *
@@ -570,6 +572,14 @@ export default function BaseLayout({ children, onLogout }) {
     tipoActivo: {
       label: "Tipo Activo",
       componente: <TipoActivo ruta="tipoActivo" />,
+    },
+    tipoMovimientoActivoFijo: {
+      label: "Tipos de Movimiento Activo Fijo",
+      componente: <TipoMovimientoActivoFijo ruta="tipoMovimientoActivoFijo" />,
+    },
+    movimientoActivoFijo: {
+      label: "Movimientos Activo Fijo",
+      componente: <MovimientoActivoFijo ruta="movimientoActivoFijo" />,
     },
     detallePermisoActivo: {
       label: "Detalle Permiso Activo",

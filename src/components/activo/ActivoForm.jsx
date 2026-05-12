@@ -19,6 +19,8 @@ import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { InputText } from "primereact/inputtext";
+import { InputNumber } from "primereact/inputnumber";
+import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
@@ -26,6 +28,7 @@ import { classNames } from "primereact/utils";
 import { crearActivo, actualizarActivo } from "../../api/activo";
 import { getTiposActivo } from "../../api/tipoActivo";
 import { getEmpresas } from "../../api/empresa";
+import { getMonedas } from "../../api/moneda";
 
 // Esquema de validación con Yup
 const esquemaValidacion = yup.object().shape({
@@ -49,12 +52,41 @@ const esquemaValidacion = yup.object().shape({
       return originalValue === "" ? null : value;
     }),
   cesado: yup.boolean().default(false),
+  // Campos para saldos iniciales (opcionales)
+  fechaAdquisicion: yup.date().nullable(),
+  costoOriginal: yup
+    .number()
+    .nullable()
+    .min(0, "El costo debe ser mayor o igual a 0"),
+  depreciacionAcumulada: yup
+    .number()
+    .nullable()
+    .min(0, "La depreciación debe ser mayor o igual a 0"),
+  vidaUtilAnios: yup
+    .number()
+    .nullable()
+    .integer("Debe ser un número entero")
+    .min(1, "La vida útil debe ser mayor a 0"),
+  monedaId: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
 });
 
-const ActivoForm = ({ activo, empresaIdInicial, tipoIdInicial, onGuardar, onCancelar, readOnly = false }) => {
+const ActivoForm = ({
+  activo,
+  empresaIdInicial,
+  tipoIdInicial,
+  onGuardar,
+  onCancelar,
+  readOnly = false,
+}) => {
   const [loading, setLoading] = useState(false);
   const [tiposActivo, setTiposActivo] = useState([]);
   const [empresas, setEmpresas] = useState([]);
+  const [monedas, setMonedas] = useState([]);
   const esEdicion = !!activo;
 
   // Configuración del formulario con React Hook Form
@@ -72,6 +104,11 @@ const ActivoForm = ({ activo, empresaIdInicial, tipoIdInicial, onGuardar, onCanc
       nombre: "",
       descripcion: "",
       cesado: false,
+      fechaAdquisicion: null,
+      costoOriginal: null,
+      depreciacionAcumulada: null,
+      vidaUtilAnios: null,
+      monedaId: null,
     },
   });
 
@@ -80,7 +117,7 @@ const ActivoForm = ({ activo, empresaIdInicial, tipoIdInicial, onGuardar, onCanc
     cargarCombos();
   }, []);
 
-    // Efecto para cargar datos en modo edición o nuevo con filtros
+  // Efecto para cargar datos en modo edición o nuevo con filtros
   useEffect(() => {
     if (activo) {
       // Modo edición: cargar datos del activo
@@ -89,6 +126,14 @@ const ActivoForm = ({ activo, empresaIdInicial, tipoIdInicial, onGuardar, onCanc
       setValue("nombre", activo.nombre || "");
       setValue("descripcion", activo.descripcion || "");
       setValue("cesado", activo.cesado || false);
+      setValue(
+        "fechaAdquisicion",
+        activo.fechaAdquisicion ? new Date(activo.fechaAdquisicion) : null,
+      );
+      setValue("costoOriginal", activo.costoOriginal || null);
+      setValue("depreciacionAcumulada", activo.depreciacionAcumulada || null);
+      setValue("vidaUtilAnios", activo.vidaUtilAnios || null);
+      setValue("monedaId", activo.monedaId ? Number(activo.monedaId) : null);
     } else {
       // Modo creación: usar filtros iniciales si existen
       reset({
@@ -97,6 +142,11 @@ const ActivoForm = ({ activo, empresaIdInicial, tipoIdInicial, onGuardar, onCanc
         nombre: "",
         descripcion: "",
         cesado: false,
+        fechaAdquisicion: null,
+        costoOriginal: null,
+        depreciacionAcumulada: null,
+        vidaUtilAnios: null,
+        monedaId: null,
       });
     }
   }, [activo, empresaIdInicial, tipoIdInicial, setValue, reset]);
@@ -106,18 +156,24 @@ const ActivoForm = ({ activo, empresaIdInicial, tipoIdInicial, onGuardar, onCanc
    */
   const cargarCombos = async () => {
     try {
-      const [tiposData, empresasData] = await Promise.all([
+      const [tiposData, empresasData, monedasData] = await Promise.all([
         getTiposActivo(),
         getEmpresas(),
+        getMonedas(),
       ]);
 
       setTiposActivo(tiposData);
       setEmpresas(empresasData);
+      setMonedas(monedasData);
     } catch (error) {
       console.error("Error al cargar combos:", error);
     }
   };
 
+  const monedasOptions = monedas.map((moneda) => ({
+    label: moneda.codigoSunat,
+    value: Number(moneda.id),
+  }));
   /**
    * Maneja el envío del formulario
    * @param {Object} data - Datos del formulario
@@ -133,6 +189,11 @@ const ActivoForm = ({ activo, empresaIdInicial, tipoIdInicial, onGuardar, onCanc
         nombre: data.nombre.trim().toUpperCase(),
         descripcion: data.descripcion?.trim().toUpperCase() || null,
         cesado: data.cesado,
+        fechaAdquisicion: data.fechaAdquisicion || null,
+        costoOriginal: data.costoOriginal || null,
+        depreciacionAcumulada: data.depreciacionAcumulada || null,
+        vidaUtilAnios: data.vidaUtilAnios || null,
+        monedaId: data.monedaId ? Number(data.monedaId) : null,
       };
 
       if (esEdicion) {
@@ -247,7 +308,7 @@ const ActivoForm = ({ activo, empresaIdInicial, tipoIdInicial, onGuardar, onCanc
                 {...field}
                 placeholder="Ingrese el nombre del activo"
                 className={getFieldClass("nombre")}
-                style={{ textTransform: "uppercase", fontWeight: "bold"  }}
+                style={{ textTransform: "uppercase", fontWeight: "bold" }}
                 disabled={readOnly}
               />
             )}
@@ -271,7 +332,7 @@ const ActivoForm = ({ activo, empresaIdInicial, tipoIdInicial, onGuardar, onCanc
                 {...field}
                 placeholder="Descripción del activo (opcional)"
                 className={getFieldClass("descripcion")}
-                style={{ textTransform: "uppercase", fontWeight: "bold"  }}
+                style={{ textTransform: "uppercase", fontWeight: "bold" }}
                 disabled={readOnly}
               />
             )}
@@ -307,6 +368,165 @@ const ActivoForm = ({ activo, empresaIdInicial, tipoIdInicial, onGuardar, onCanc
             <small className="p-error p-d-block">{errors.cesado.message}</small>
           )}
         </div>
+
+
+        {/* Sección de Saldos Iniciales */}
+        <div className="p-col-12">
+          <hr style={{ margin: "20px 0", borderTop: "2px solid #dee2e6" }} />
+          <h4 style={{ marginBottom: "15px", color: "#495057" }}>
+            📊 Saldos Iniciales (Opcional)
+          </h4>
+        </div>
+
+        {/* Campo Fecha de Adquisición */}
+        <div className="p-col-12 p-md-6 p-field">
+          <label htmlFor="fechaAdquisicion" className="p-d-block">
+            Fecha de Adquisición
+          </label>
+          <Controller
+            name="fechaAdquisicion"
+            control={control}
+            render={({ field }) => (
+              <Calendar
+                id="fechaAdquisicion"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                placeholder="Seleccione fecha"
+                className={getFieldClass("fechaAdquisicion")}
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled={readOnly}
+                style={{ fontWeight: "bold" }}
+              />
+            )}
+          />
+          {errors.fechaAdquisicion && (
+            <small className="p-error p-d-block">
+              {errors.fechaAdquisicion.message}
+            </small>
+          )}
+        </div>
+
+        {/* Campo Moneda */}
+        <div className="p-col-12 p-md-6 p-field">
+          <label htmlFor="monedaId" className="p-d-block">
+            Moneda
+          </label>
+          <Controller
+            name="monedaId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="monedaId"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={monedasOptions}
+                placeholder="Seleccione moneda"
+                className={getFieldClass("monedaId")}
+                filter
+                showClear
+                disabled={readOnly}
+                style={{ fontWeight: "bold" }}
+              />
+            )}
+          />
+          {errors.monedaId && (
+            <small className="p-error p-d-block">
+              {errors.monedaId.message}
+            </small>
+          )}
+        </div>
+
+        {/* Campo Costo Original */}
+        <div className="p-col-12 p-md-4 p-field">
+          <label htmlFor="costoOriginal" className="p-d-block">
+            Costo Original
+          </label>
+          <Controller
+            name="costoOriginal"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="costoOriginal"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                placeholder="0.00"
+                className={getFieldClass("costoOriginal")}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                min={0}
+                disabled={readOnly}
+                style={{ fontWeight: "bold" }}
+              />
+            )}
+          />
+          {errors.costoOriginal && (
+            <small className="p-error p-d-block">
+              {errors.costoOriginal.message}
+            </small>
+          )}
+        </div>
+
+        {/* Campo Depreciación Acumulada */}
+        <div className="p-col-12 p-md-4 p-field">
+          <label htmlFor="depreciacionAcumulada" className="p-d-block">
+            Depreciación Acumulada
+          </label>
+          <Controller
+            name="depreciacionAcumulada"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="depreciacionAcumulada"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                placeholder="0.00"
+                className={getFieldClass("depreciacionAcumulada")}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                min={0}
+                disabled={readOnly}
+                style={{ fontWeight: "bold" }}
+              />
+            )}
+          />
+          {errors.depreciacionAcumulada && (
+            <small className="p-error p-d-block">
+              {errors.depreciacionAcumulada.message}
+            </small>
+          )}
+        </div>
+
+        {/* Campo Vida Útil en Años */}
+        <div className="p-col-12 p-md-4 p-field">
+          <label htmlFor="vidaUtilAnios" className="p-d-block">
+            Vida Útil (Años)
+          </label>
+          <Controller
+            name="vidaUtilAnios"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="vidaUtilAnios"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                placeholder="0"
+                className={getFieldClass("vidaUtilAnios")}
+                min={1}
+                disabled={readOnly}
+                style={{ fontWeight: "bold" }}
+              />
+            )}
+          />
+          {errors.vidaUtilAnios && (
+            <small className="p-error p-d-block">
+              {errors.vidaUtilAnios.message}
+            </small>
+          )}
+        </div>
+
       </div>
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
