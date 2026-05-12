@@ -9,6 +9,7 @@
  * - Feedback visual con Toast para éxito y error
  * - Manejo profesional de estados de carga
  * - Soporte para múltiples relaciones (empresa, activo, tipo, moneda)
+ * - Botón para generar asiento contable desde el formulario
  *
  * @author ERP Megui
  * @version 1.0.0
@@ -96,6 +97,7 @@ const MovimientoActivoFijoForm = ({
   activoIdInicial,
   onSave,
   onCancel,
+  onGenerarAsiento,
   permisos = {},
   readOnly = false,
 }) => {
@@ -105,7 +107,7 @@ const MovimientoActivoFijoForm = ({
   const [activos, setActivos] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [monedas, setMonedas] = useState([]);
-
+  const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
   const esEdicion = !!movimiento;
 
   // Configuración del formulario con react-hook-form y Yup
@@ -183,6 +185,29 @@ const MovimientoActivoFijoForm = ({
       });
     }
   }, [movimiento, empresaIdInicial, activoIdInicial, reset]);
+  /**
+   * Efecto para detectar cambio de moneda y actualizar color de fondo
+   */
+  useEffect(() => {
+    // Si hay movimiento y monedas cargadas
+    if (movimiento?.monedaId && monedas.length > 0) {
+      // Primero intentar usar el objeto moneda completo si viene en el movimiento
+      if (movimiento.moneda) {
+        setMonedaSeleccionada(movimiento.moneda);
+      } else {
+        // Si no, buscar en el array de monedas
+        const moneda = monedas.find(
+          (m) => Number(m.id) === Number(movimiento.monedaId),
+        );
+        if (moneda) {
+          setMonedaSeleccionada(moneda);
+        }
+      }
+    } else if (!movimiento) {
+      // Si no hay movimiento (modo creación), resetear
+      setMonedaSeleccionada(null);
+    }
+  }, [movimiento, monedas]);
 
   /**
    * Cargar datos para combos
@@ -243,7 +268,7 @@ const MovimientoActivoFijoForm = ({
         // Actualizar movimiento existente
         resultado = await actualizarMovimientoActivoFijo(
           movimiento.id,
-          datosNormalizados
+          datosNormalizados,
         );
         toast.current?.show({
           severity: "success",
@@ -293,6 +318,15 @@ const MovimientoActivoFijoForm = ({
   };
 
   /**
+   * Maneja la generación de asiento contable
+   */
+  const handleGenerarAsiento = () => {
+    if (onGenerarAsiento && movimiento) {
+      onGenerarAsiento(movimiento);
+    }
+  };
+
+  /**
    * Obtiene la clase CSS para campos con errores
    */
   const getFieldClass = (fieldName) => {
@@ -322,348 +356,450 @@ const MovimientoActivoFijoForm = ({
     value: Number(moneda.id),
   }));
 
+  const getMonedaBackgroundColor = () => {
+    if (!monedaSeleccionada) return "transparent";
+    const esUSD = monedaSeleccionada.codigoSunat === "USD";
+    const esPEN = monedaSeleccionada.codigoSunat === "PEN";
+    return esUSD ? "#d4edda" : esPEN ? "#fff3cd" : "transparent";
+  };
   return (
     <div className="formgrid grid">
       <Toast ref={toast} />
       <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
-        {/* Empresa */}
-        <div className="field col-12 md:col-6">
-          <label htmlFor="empresaId" className="font-bold">
-            Empresa <span className="p-error">*</span>
-          </label>
-          <Controller
-            name="empresaId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="empresaId"
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                options={empresasOptions}
-                placeholder="Seleccione una empresa"
-                className={getFieldClass("empresaId")}
-                filter
-                showClear
-                disabled={readOnly}
-                style={{ fontWeight: "bold" }}
-              />
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            {/* Empresa */}
+            <label htmlFor="empresaId" className="font-bold">
+              Empresa <span className="p-error">*</span>
+            </label>
+            <Controller
+              name="empresaId"
+              control={control}
+              render={({ field }) => (
+                <Dropdown
+                  id="empresaId"
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.value)}
+                  options={empresasOptions}
+                  placeholder="Seleccione una empresa"
+                  className={getFieldClass("empresaId")}
+                  filter
+                  showClear
+                  disabled={readOnly}
+                  style={{ fontWeight: "bold" }}
+                />
+              )}
+            />
+            {errors.empresaId && (
+              <small className="p-error">{errors.empresaId.message}</small>
             )}
-          />
-          {errors.empresaId && (
-            <small className="p-error">{errors.empresaId.message}</small>
-          )}
+          </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            {/* Activo */}
+            <label htmlFor="activoId" className="font-bold">
+              Activo <span className="p-error">*</span>
+            </label>
+            <Controller
+              name="activoId"
+              control={control}
+              render={({ field }) => (
+                <Dropdown
+                  id="activoId"
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.value)}
+                  options={activosOptions}
+                  placeholder="Seleccione un activo"
+                  className={getFieldClass("activoId")}
+                  filter
+                  showClear
+                  disabled={readOnly}
+                  style={{ fontWeight: "bold" }}
+                />
+              )}
+            />
+            {errors.activoId && (
+              <small className="p-error">{errors.activoId.message}</small>
+            )}
+          </div>
         </div>
 
-        {/* Activo */}
-        <div className="field col-12 md:col-6">
-          <label htmlFor="activoId" className="font-bold">
-            Activo <span className="p-error">*</span>
-          </label>
-          <Controller
-            name="activoId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="activoId"
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                options={activosOptions}
-                placeholder="Seleccione un activo"
-                className={getFieldClass("activoId")}
-                filter
-                showClear
-                disabled={readOnly}
-                style={{ fontWeight: "bold" }}
-              />
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            {/* Tipo de Movimiento */}
+            <label htmlFor="tipoMovimientoId" className="font-bold">
+              Tipo de Movimiento <span className="p-error">*</span>
+            </label>
+            <Controller
+              name="tipoMovimientoId"
+              control={control}
+              render={({ field }) => (
+                <Dropdown
+                  id="tipoMovimientoId"
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.value)}
+                  options={tiposMovimientoOptions}
+                  placeholder="Seleccione tipo de movimiento"
+                  className={getFieldClass("tipoMovimientoId")}
+                  filter
+                  showClear
+                  disabled={readOnly}
+                  style={{ fontWeight: "bold" }}
+                />
+              )}
+            />
+            {errors.tipoMovimientoId && (
+              <small className="p-error">
+                {errors.tipoMovimientoId.message}
+              </small>
             )}
-          />
-          {errors.activoId && (
-            <small className="p-error">{errors.activoId.message}</small>
-          )}
+          </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            {/* Moneda */}
+            <label htmlFor="monedaId" className="font-bold">
+              Moneda <span className="p-error">*</span>
+            </label>
+            <Controller
+              name="monedaId"
+              control={control}
+              render={({ field }) => (
+                <Dropdown
+                  id="monedaId"
+                  value={field.value}
+                  onChange={(e) => {
+                    field.onChange(e.value);
+                    const moneda = monedas.find(
+                      (m) => Number(m.id) === Number(e.value),
+                    );
+                    setMonedaSeleccionada(moneda);
+                  }}
+                  options={monedasOptions}
+                  placeholder="Seleccione moneda"
+                  className={getFieldClass("monedaId")}
+                  filter
+                  showClear
+                  disabled={readOnly}
+                  style={{ fontWeight: "bold" }}
+                />
+              )}
+            />
+            {errors.monedaId && (
+              <small className="p-error">{errors.monedaId.message}</small>
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            {/* Fecha de Movimiento */}
+            <label htmlFor="fechaMovimiento" className="font-bold">
+              Fecha de Movimiento <span className="p-error">*</span>
+            </label>
+            <Controller
+              name="fechaMovimiento"
+              control={control}
+              render={({ field }) => (
+                <Calendar
+                  id="fechaMovimiento"
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.value)}
+                  placeholder="Seleccione fecha"
+                  className={getFieldClass("fechaMovimiento")}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  disabled={readOnly}
+                  style={{ fontWeight: "bold" }}
+                />
+              )}
+            />
+            {errors.fechaMovimiento && (
+              <small className="p-error">
+                {errors.fechaMovimiento.message}
+              </small>
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            {/* Fecha Contable */}
+            <label htmlFor="fechaContable" className="font-bold">
+              Fecha Contable
+            </label>
+            <Controller
+              name="fechaContable"
+              control={control}
+              render={({ field }) => (
+                <Calendar
+                  id="fechaContable"
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.value)}
+                  placeholder="Seleccione fecha contable"
+                  className={getFieldClass("fechaContable")}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  disabled={readOnly}
+                  style={{ fontWeight: "bold" }}
+                />
+              )}
+            />
+            {errors.fechaContable && (
+              <small className="p-error">{errors.fechaContable.message}</small>
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            {/* Monto */}
+            <label htmlFor="monto" className="font-bold">
+              Monto <span className="p-error">*</span>
+            </label>
+            <Controller
+              name="monto"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  id="monto"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  placeholder="0.00"
+                  className={getFieldClass("monto")}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  min={0}
+                  disabled={readOnly}
+                  inputStyle={{
+                    fontWeight: "bold",
+                    backgroundColor: getMonedaBackgroundColor(),
+                  }}
+                />
+              )}
+            />
+            {errors.monto && (
+              <small className="p-error">{errors.monto.message}</small>
+            )}
+          </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            {/* Depreciación Mensual */}
+            <label htmlFor="depreciacionMensual" className="font-bold">
+              Depreciación Mensual
+            </label>
+            <Controller
+              name="depreciacionMensual"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  id="depreciacionMensual"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  placeholder="0.00"
+                  className={getFieldClass("depreciacionMensual")}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  min={0}
+                  disabled={readOnly}
+                  inputStyle={{
+                    fontWeight: "bold",
+                    backgroundColor: getMonedaBackgroundColor(),
+                  }}
+                />
+              )}
+            />
+            {errors.depreciacionMensual && (
+              <small className="p-error">
+                {errors.depreciacionMensual.message}
+              </small>
+            )}
+          </div>
+
+          <div style={{ flex: 1 }}>
+            {/* Depreciación Acumulada */}
+            <label htmlFor="depreciacionAcumulada" className="font-bold">
+              Depreciación Acumulada
+            </label>
+            <Controller
+              name="depreciacionAcumulada"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  id="depreciacionAcumulada"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  placeholder="0.00"
+                  className={getFieldClass("depreciacionAcumulada")}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  min={0}
+                  disabled={readOnly}
+                  inputStyle={{
+                    fontWeight: "bold",
+                    backgroundColor: getMonedaBackgroundColor(),
+                  }}
+                />
+              )}
+            />
+            {errors.depreciacionAcumulada && (
+              <small className="p-error">
+                {errors.depreciacionAcumulada.message}
+              </small>
+            )}
+          </div>
+
+          <div style={{ flex: 1 }}>
+            {/* Valor Neto */}
+            <label htmlFor="valorNeto" className="font-bold">
+              Valor Neto
+            </label>
+            <Controller
+              name="valorNeto"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  id="valorNeto"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  placeholder="0.00"
+                  className={getFieldClass("valorNeto")}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  min={0}
+                  disabled={readOnly}
+                  inputStyle={{
+                    fontWeight: "bold",
+                    backgroundColor: getMonedaBackgroundColor(),
+                  }}
+                />
+              )}
+            />
+            {errors.valorNeto && (
+              <small className="p-error">{errors.valorNeto.message}</small>
+            )}
+          </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            {/* Observaciones */}
+            <label htmlFor="observaciones" className="font-bold">
+              Observaciones
+            </label>
+            <Controller
+              name="observaciones"
+              control={control}
+              render={({ field }) => (
+                <InputTextarea
+                  id="observaciones"
+                  {...field}
+                  placeholder="Observaciones del movimiento..."
+                  className={getFieldClass("observaciones")}
+                  rows={3}
+                  disabled={readOnly}
+                />
+              )}
+            />
+            {errors.observaciones && (
+              <small className="p-error">{errors.observaciones.message}</small>
+            )}
+          </div>
         </div>
 
-        {/* Tipo de Movimiento */}
-        <div className="field col-12 md:col-6">
-          <label htmlFor="tipoMovimientoId" className="font-bold">
-            Tipo de Movimiento <span className="p-error">*</span>
-          </label>
-          <Controller
-            name="tipoMovimientoId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="tipoMovimientoId"
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                options={tiposMovimientoOptions}
-                placeholder="Seleccione tipo de movimiento"
-                className={getFieldClass("tipoMovimientoId")}
-                filter
-                showClear
-                disabled={readOnly}
-                style={{ fontWeight: "bold" }}
+        <div
+          style={{ display: "flex", justifyContent: "space-between", gap: 12 }}
+        >
+          <div>
+            {esEdicion && movimiento && (
+              <Button
+                type="button"
+                label={
+                  movimiento.asientoContableId
+                    ? "Ver Asiento"
+                    : "Generar Asiento"
+                }
+                icon={
+                  movimiento.asientoContableId
+                    ? "pi pi-eye"
+                    : "pi pi-plus-circle"
+                }
+                className={
+                  movimiento.asientoContableId
+                    ? "p-button-info"
+                    : "p-button-help"
+                }
+                onClick={handleGenerarAsiento}
+                disabled={loading || !onGenerarAsiento}
+                tooltip={
+                  movimiento.asientoContableId
+                    ? "Ver asiento contable vinculado"
+                    : "Generar asiento contable para este movimiento"
+                }
               />
             )}
-          />
-          {errors.tipoMovimientoId && (
-            <small className="p-error">{errors.tipoMovimientoId.message}</small>
-          )}
-        </div>
-
-        {/* Moneda */}
-        <div className="field col-12 md:col-6">
-          <label htmlFor="monedaId" className="font-bold">
-            Moneda <span className="p-error">*</span>
-          </label>
-          <Controller
-            name="monedaId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="monedaId"
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                options={monedasOptions}
-                placeholder="Seleccione moneda"
-                className={getFieldClass("monedaId")}
-                filter
-                showClear
-                disabled={readOnly}
-                style={{ fontWeight: "bold" }}
-              />
-            )}
-          />
-          {errors.monedaId && (
-            <small className="p-error">{errors.monedaId.message}</small>
-          )}
-        </div>
-
-        {/* Fecha de Movimiento */}
-        <div className="field col-12 md:col-6">
-          <label htmlFor="fechaMovimiento" className="font-bold">
-            Fecha de Movimiento <span className="p-error">*</span>
-          </label>
-          <Controller
-            name="fechaMovimiento"
-            control={control}
-            render={({ field }) => (
-              <Calendar
-                id="fechaMovimiento"
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                placeholder="Seleccione fecha"
-                className={getFieldClass("fechaMovimiento")}
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled={readOnly}
-                style={{ fontWeight: "bold" }}
-              />
-            )}
-          />
-          {errors.fechaMovimiento && (
-            <small className="p-error">{errors.fechaMovimiento.message}</small>
-          )}
-        </div>
-
-        {/* Fecha Contable */}
-        <div className="field col-12 md:col-6">
-          <label htmlFor="fechaContable" className="font-bold">
-            Fecha Contable
-          </label>
-          <Controller
-            name="fechaContable"
-            control={control}
-            render={({ field }) => (
-              <Calendar
-                id="fechaContable"
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                placeholder="Seleccione fecha contable"
-                className={getFieldClass("fechaContable")}
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled={readOnly}
-                style={{ fontWeight: "bold" }}
-              />
-            )}
-          />
-          {errors.fechaContable && (
-            <small className="p-error">{errors.fechaContable.message}</small>
-          )}
-        </div>
-
-        {/* Monto */}
-        <div className="field col-12 md:col-4">
-          <label htmlFor="monto" className="font-bold">
-            Monto <span className="p-error">*</span>
-          </label>
-          <Controller
-            name="monto"
-            control={control}
-            render={({ field }) => (
-              <InputNumber
-                id="monto"
-                value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
-                placeholder="0.00"
-                className={getFieldClass("monto")}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                min={0}
-                disabled={readOnly}
-                style={{ fontWeight: "bold" }}
-              />
-            )}
-          />
-          {errors.monto && (
-            <small className="p-error">{errors.monto.message}</small>
-          )}
-        </div>
-
-        {/* Depreciación Mensual */}
-        <div className="field col-12 md:col-4">
-          <label htmlFor="depreciacionMensual" className="font-bold">
-            Depreciación Mensual
-          </label>
-          <Controller
-            name="depreciacionMensual"
-            control={control}
-            render={({ field }) => (
-              <InputNumber
-                id="depreciacionMensual"
-                value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
-                placeholder="0.00"
-                className={getFieldClass("depreciacionMensual")}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                min={0}
-                disabled={readOnly}
-                style={{ fontWeight: "bold" }}
-              />
-            )}
-          />
-          {errors.depreciacionMensual && (
-            <small className="p-error">
-              {errors.depreciacionMensual.message}
-            </small>
-          )}
-        </div>
-
-        {/* Depreciación Acumulada */}
-        <div className="field col-12 md:col-4">
-          <label htmlFor="depreciacionAcumulada" className="font-bold">
-            Depreciación Acumulada
-          </label>
-          <Controller
-            name="depreciacionAcumulada"
-            control={control}
-            render={({ field }) => (
-              <InputNumber
-                id="depreciacionAcumulada"
-                value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
-                placeholder="0.00"
-                className={getFieldClass("depreciacionAcumulada")}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                min={0}
-                disabled={readOnly}
-                style={{ fontWeight: "bold" }}
-              />
-            )}
-          />
-          {errors.depreciacionAcumulada && (
-            <small className="p-error">
-              {errors.depreciacionAcumulada.message}
-            </small>
-          )}
-        </div>
-
-        {/* Valor Neto */}
-        <div className="field col-12 md:col-4">
-          <label htmlFor="valorNeto" className="font-bold">
-            Valor Neto
-          </label>
-          <Controller
-            name="valorNeto"
-            control={control}
-            render={({ field }) => (
-              <InputNumber
-                id="valorNeto"
-                value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
-                placeholder="0.00"
-                className={getFieldClass("valorNeto")}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                min={0}
-                disabled={readOnly}
-                style={{ fontWeight: "bold" }}
-              />
-            )}
-          />
-          {errors.valorNeto && (
-            <small className="p-error">{errors.valorNeto.message}</small>
-          )}
-        </div>
-
-        {/* Observaciones */}
-        <div className="field col-12">
-          <label htmlFor="observaciones" className="font-bold">
-            Observaciones
-          </label>
-          <Controller
-            name="observaciones"
-            control={control}
-            render={({ field }) => (
-              <InputTextarea
-                id="observaciones"
-                {...field}
-                placeholder="Observaciones del movimiento..."
-                className={getFieldClass("observaciones")}
-                rows={3}
-                disabled={readOnly}
-              />
-            )}
-          />
-          {errors.observaciones && (
-            <small className="p-error">{errors.observaciones.message}</small>
-          )}
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
-          <Button
-            type="button"
-            label="Cancelar"
-            className="p-button-text"
-            onClick={handleCancel}
-            disabled={loading}
-          />
-          <Button
-            type="submit"
-            label={esEdicion ? "Actualizar" : "Crear"}
-            icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
-            loading={loading}
-            disabled={
-              readOnly ||
-              (esEdicion && !permisos.puedeEditar) ||
-              (!esEdicion && !permisos.puedeCrear)
-            }
-            tooltip={
-              readOnly
-                ? "Modo solo lectura"
-                : !permisos.puedeEditar && esEdicion
-                  ? "No tiene permisos para editar"
-                  : !permisos.puedeCrear && !esEdicion
-                    ? "No tiene permisos para crear"
-                    : ""
-            }
-          />
+          </div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <Button
+              type="button"
+              label="Cancelar"
+              className="p-button-text"
+              onClick={handleCancel}
+              disabled={loading}
+            />
+            <Button
+              type="submit"
+              label={esEdicion ? "Actualizar" : "Crear"}
+              icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
+              loading={loading}
+              disabled={
+                readOnly ||
+                (esEdicion && !permisos.puedeEditar) ||
+                (!esEdicion && !permisos.puedeCrear)
+              }
+              tooltip={
+                readOnly
+                  ? "Modo solo lectura"
+                  : !permisos.puedeEditar && esEdicion
+                    ? "No tiene permisos para editar"
+                    : !permisos.puedeCrear && !esEdicion
+                      ? "No tiene permisos para crear"
+                      : ""
+              }
+            />
+          </div>
         </div>
       </form>
     </div>

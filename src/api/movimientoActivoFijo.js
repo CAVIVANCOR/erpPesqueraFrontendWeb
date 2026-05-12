@@ -44,3 +44,21 @@ export async function eliminarMovimientoActivoFijo(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+export async function generarBorradorAsiento(movimientoId) {
+  const res = await axios.post(
+    `${API_URL}/${movimientoId}/generar-borrador-asiento`,
+    {},
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
+
+export async function guardarAsientoContable(movimientoId, asientoData, usuarioId) {
+  const res = await axios.post(
+    `${API_URL}/${movimientoId}/guardar-asiento`,
+    { asientoData },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

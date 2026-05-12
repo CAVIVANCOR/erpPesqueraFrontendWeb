@@ -12,10 +12,15 @@ import { Tag } from "primereact/tag";
 import { Calendar } from "primereact/calendar";
 import { InputText } from "primereact/inputtext";
 import MovimientoActivoFijoForm from "../components/movimientoActivoFijo/MovimientoActivoFijoForm";
+import AsientoContableEditor from "../components/common/AsientoContableEditor";
+import AsientoContableViewer from "../components/common/AsientoContableViewer";
 import {
   getMovimientosActivoFijo,
   eliminarMovimientoActivoFijo,
+  generarBorradorAsiento,
+  guardarAsientoContable,
 } from "../api/movimientoActivoFijo";
+import { deleteAsientoContable } from "../api/contabilidad/asientoContable";
 import { getEmpresas } from "../api/empresa";
 import { getActivos } from "../api/activo";
 import { getTiposMovimientoActivoFijo } from "../api/tipoMovimientoActivoFijo";
@@ -46,6 +51,11 @@ export default function MovimientoActivoFijo({ ruta }) {
   const [selected, setSelected] = useState(null);
   const [isEdit, setIsEdit] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [showAsientoEditor, setShowAsientoEditor] = useState(false);
+  const [borradorAsiento, setBorradorAsiento] = useState(null);
+  const [movimientoParaAsiento, setMovimientoParaAsiento] = useState(null);
+  const [showAsientoDialog, setShowAsientoDialog] = useState(false);
+  const [selectedAsientoId, setSelectedAsientoId] = useState(null);
 
   useEffect(() => {
     cargarDatos();
@@ -98,7 +108,8 @@ export default function MovimientoActivoFijo({ ruta }) {
 
     if (tipoMovimientoFilter) {
       filtrados = filtrados.filter(
-        (item) => Number(item.tipoMovimientoId) === Number(tipoMovimientoFilter),
+        (item) =>
+          Number(item.tipoMovimientoId) === Number(tipoMovimientoFilter),
       );
     }
 
@@ -211,6 +222,87 @@ export default function MovimientoActivoFijo({ ruta }) {
     setSelected(null);
   };
 
+  const handleGenerarAsiento = async (rowData) => {
+    if (showDialog) {
+      setShowDialog(false);
+    }
+
+    setLoading(true);
+    try {
+      if (rowData?.asientoContableId) {
+        toast.current?.show({
+          severity: "info",
+          summary: "Regenerando asiento",
+          detail: "Se eliminará el asiento existente y se generará uno nuevo",
+          life: 3000,
+        });
+        await deleteAsientoContable(rowData.asientoContableId);
+      }
+
+      const borrador = await generarBorradorAsiento(rowData.id);
+      setBorradorAsiento(borrador);
+      setMovimientoParaAsiento(rowData);
+      setShowAsientoEditor(true);
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.message ||
+          "Error al generar borrador de asiento",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGuardarAsiento = async (asientoEditado) => {
+    if (!movimientoParaAsiento) return;
+
+    setLoading(true);
+    try {
+      await guardarAsientoContable(
+        movimientoParaAsiento.id,
+        asientoEditado,
+        usuario?.id,
+      );
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Asiento generado",
+        detail: "El asiento contable fue generado y vinculado correctamente",
+        life: 3000,
+      });
+
+      setShowAsientoEditor(false);
+      setBorradorAsiento(null);
+      setMovimientoParaAsiento(null);
+      await cargarDatos();
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.message || "Error al guardar asiento contable",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelarAsiento = () => {
+    setShowAsientoEditor(false);
+    setBorradorAsiento(null);
+    setMovimientoParaAsiento(null);
+  };
+
+  const handleVerAsiento = (asientoId) => {
+    setSelectedAsientoId(asientoId);
+    setShowAsientoDialog(true);
+  };
+
   const limpiarFiltros = () => {
     setEmpresaFilter(null);
     setActivoFilter(null);
@@ -224,29 +316,95 @@ export default function MovimientoActivoFijo({ ruta }) {
   };
 
   const montoBodyTemplate = (rowData) => {
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: rowData.moneda?.codigo || "PEN",
-      minimumFractionDigits: 2,
-    }).format(rowData.monto || 0);
+    const esUSD = rowData.moneda?.codigoSunat === "USD";
+    const esPEN = rowData.moneda?.codigoSunat === "PEN" || !rowData.moneda?.codigoSunat;
+    const backgroundColor = esUSD ? "#d4edda" : esPEN ? "#fff3cd" : "transparent";
+    
+    return (
+      <div
+        style={{
+          backgroundColor,
+          padding: "4px 8px",
+          borderRadius: "4px",
+          fontWeight: "bold",
+        }}
+      >
+        {new Intl.NumberFormat("es-PE", {
+          style: "currency",
+          currency: rowData.moneda?.codigoSunat || "PEN",
+          minimumFractionDigits: 2,
+        }).format(rowData.monto || 0)}
+      </div>
+    );
   };
 
   const depreciacionBodyTemplate = (rowData) => {
     if (!rowData.depreciacionAcumulada) return "-";
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: rowData.moneda?.codigo || "PEN",
-      minimumFractionDigits: 2,
-    }).format(rowData.depreciacionAcumulada);
+    const esUSD = rowData.moneda?.codigoSunat === "USD";
+    const esPEN = rowData.moneda?.codigoSunat === "PEN" || !rowData.moneda?.codigoSunat;
+    const backgroundColor = esUSD ? "#d4edda" : esPEN ? "#fff3cd" : "transparent";
+    return (
+      <div
+        style={{
+          backgroundColor,
+          padding: "4px 8px",
+          borderRadius: "4px",
+          fontWeight: "bold",
+        }}
+      >
+        {new Intl.NumberFormat("es-PE", {
+          style: "currency",
+          currency: rowData.moneda?.codigoSunat || "PEN",
+          minimumFractionDigits: 2,
+        }).format(rowData.depreciacionAcumulada)}
+      </div>
+    );
   };
 
   const valorNetoBodyTemplate = (rowData) => {
     if (!rowData.valorNeto) return "-";
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: rowData.moneda?.codigo || "PEN",
-      minimumFractionDigits: 2,
-    }).format(rowData.valorNeto);
+    const esUSD = rowData.moneda?.codigoSunat === "USD";
+    const esPEN = rowData.moneda?.codigoSunat === "PEN" || !rowData.moneda?.codigoSunat;
+    const backgroundColor = esUSD ? "#d4edda" : esPEN ? "#fff3cd" : "transparent";
+    return (
+      <div
+        style={{
+          backgroundColor,
+          padding: "4px 8px",
+          borderRadius: "4px",
+          fontWeight: "bold",
+        }}
+      >
+        {new Intl.NumberFormat("es-PE", {
+          style: "currency",
+          currency: rowData.moneda?.codigoSunat || "PEN",
+          minimumFractionDigits: 2,
+        }).format(rowData.valorNeto)}
+      </div>
+    );
+  };
+
+  const asientoBodyTemplate = (rowData) => {
+    if (!rowData.asientoContableId) {
+      return (
+        <Button
+          icon="pi pi-plus-circle"
+          className="p-button-text p-button-help"
+          disabled={loading}
+          onClick={() => handleGenerarAsiento(rowData)}
+          tooltip="Generar Asiento Contable"
+        />
+      );
+    } else {
+      return (
+        <Button
+          icon="pi pi-eye"
+          className="p-button-text p-button-info"
+          onClick={() => handleVerAsiento(rowData.asientoContableId)}
+          tooltip="Ver Asiento Contable"
+        />
+      );
+    }
   };
 
   const actionBodyTemplate = (rowData) => {
@@ -443,6 +601,11 @@ export default function MovimientoActivoFijo({ ruta }) {
             style={{ minWidth: "130px" }}
           />
           <Column
+            body={asientoBodyTemplate}
+            header="Asiento"
+            style={{ minWidth: "100px" }}
+          />
+          <Column
             body={actionBodyTemplate}
             header="Acciones"
             frozen
@@ -471,9 +634,45 @@ export default function MovimientoActivoFijo({ ruta }) {
           activoIdInicial={activoFilter}
           onSave={onSave}
           onCancel={onCancel}
+          onGenerarAsiento={handleGenerarAsiento}
           permisos={permisos}
           readOnly={!!selected && !!selected.id && !permisos.puedeEditar}
         />
+      </Dialog>
+
+      <Dialog
+        header="Generar Asiento Contable"
+        visible={showAsientoEditor}
+        style={{ width: "95vw", maxWidth: "1400px" }}
+        modal
+        onHide={handleCancelarAsiento}
+        maximizable
+        dismissableMask={false}
+      >
+        {borradorAsiento && (
+          <AsientoContableEditor
+            borradorAsiento={borradorAsiento}
+            onGuardar={handleGuardarAsiento}
+            onCancelar={handleCancelarAsiento}
+            loading={loading}
+          />
+        )}
+      </Dialog>
+
+      <Dialog
+        header="Ver Asiento Contable"
+        visible={showAsientoDialog}
+        style={{ width: "95vw", maxWidth: "1400px" }}
+        modal
+        onHide={() => setShowAsientoDialog(false)}
+        maximizable
+      >
+        {selectedAsientoId && (
+          <AsientoContableViewer
+            asientoId={selectedAsientoId}
+            onClose={() => setShowAsientoDialog(false)}
+          />
+        )}
       </Dialog>
     </div>
   );
