@@ -31,11 +31,17 @@ const schema = Yup.object().shape({
   apellidos: Yup.string().required("Los apellidos son obligatorios"),
   tipoDocumentoId: Yup.number().required("El tipo de documento es obligatorio"),
   numeroDocumento: Yup.string().required(
-    "El número de documento es obligatorio"
+    "El número de documento es obligatorio",
   ),
   //fechaNacimiento: Yup.date().required("La fecha de nacimiento es obligatoria"),
   //sexo: Yup.boolean().required("El sexo es obligatorio"), // Campo obligatorio según modelo Prisma
   fechaIngreso: Yup.date(),
+  fechaCese: Yup.date().when("cesado", {
+    is: true,
+    then: (schema) =>
+      schema.required("La fecha de cese es obligatoria cuando está cesado"),
+    otherwise: (schema) => schema.nullable(),
+  }),
   telefono: Yup.string().nullable(),
   correo: Yup.string().nullable(),
   tipoContratoId: Yup.number(),
@@ -87,8 +93,14 @@ export default function PersonalForm({
       ? Number(defaultValues.enlaceEntidadComercialId)
       : null,
     sexo: typeof defaultValues.sexo === "boolean" ? defaultValues.sexo : null,
-    paraTemporadaPesca: typeof defaultValues.paraTemporadaPesca === "boolean" ? defaultValues.paraTemporadaPesca : false,
-    paraPescaConsumo: typeof defaultValues.paraPescaConsumo === "boolean" ? defaultValues.paraPescaConsumo : false,
+    paraTemporadaPesca:
+      typeof defaultValues.paraTemporadaPesca === "boolean"
+        ? defaultValues.paraTemporadaPesca
+        : false,
+    paraPescaConsumo:
+      typeof defaultValues.paraPescaConsumo === "boolean"
+        ? defaultValues.paraPescaConsumo
+        : false,
 
     // Agrega aquí cualquier otro id de combo que uses
   };
@@ -112,7 +124,7 @@ export default function PersonalForm({
       ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${
           defaultValues.urlFotoPersona
         }`
-      : null
+      : null,
   );
 
   const [uploadingFoto, setUploadingFoto] = useState(false);
@@ -186,22 +198,25 @@ export default function PersonalForm({
     try {
       // Sube la foto usando el endpoint profesional
       const res = await subirFotoPersonal(defaultValues.id, file);
-      
+
       // Actualizar el campo del formulario
-      setValue("urlFotoPersona", res.foto, { shouldValidate: true, shouldDirty: true });
-      
+      setValue("urlFotoPersona", res.foto, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+
       // Construye la URL profesional de la foto subida usando la variable general de uploads.
       const urlBackend = `${import.meta.env.VITE_UPLOADS_URL}/personal/${
         res.foto
       }`;
-      
+
       // Actualizar el preview con la URL del backend y agregar timestamp para forzar recarga
       const urlConTimestamp = `${urlBackend}?t=${new Date().getTime()}`;
       setFotoPreview(urlConTimestamp);
-      
+
       // Liberar la URL local para evitar memory leaks
       URL.revokeObjectURL(localUrl);
-      
+
       toastFoto.current?.show({
         severity: "success",
         summary: "Foto actualizada",
@@ -214,7 +229,7 @@ export default function PersonalForm({
         ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${defaultValues.urlFotoPersona}`
         : null;
       setFotoPreview(urlAnterior);
-      
+
       toastFoto.current?.show({
         severity: "error",
         summary: "Error",
@@ -352,7 +367,7 @@ export default function PersonalForm({
     if (empresaId && sedesEmpresa.length > 0) {
       const empresaIdNum = Number(empresaId);
       const filtradas = sedesEmpresa.filter(
-        (s) => Number(s.empresaId) === empresaIdNum
+        (s) => Number(s.empresaId) === empresaIdNum,
       );
       setSedesFiltradas(filtradas);
 
@@ -373,14 +388,15 @@ export default function PersonalForm({
   // Estado local para las áreas físicas filtradas según sede seleccionada
   const [areasFisicasFiltradas, setAreasFisicasFiltradas] = useState([]);
   // Estado local para las entidades comerciales filtradas según empresa seleccionada
-  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] = useState([]);
+  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] =
+    useState([]);
   useEffect(() => {
     // Solo filtra si hay sede seleccionada y áreas físicas cargadas
     const sedeId = watch("sedeEmpresaId");
     if (sedeId && areasFisicas.length > 0) {
       const sedeIdNum = Number(sedeId);
       const filtradas = areasFisicas.filter(
-        (a) => Number(a.sedeId) === sedeIdNum
+        (a) => Number(a.sedeId) === sedeIdNum,
       );
       setAreasFisicasFiltradas(filtradas);
 
@@ -403,14 +419,16 @@ export default function PersonalForm({
     if (empresaId && entidadesComerciales.length > 0) {
       const empresaIdNum = Number(empresaId);
       const filtradas = entidadesComerciales.filter(
-        (e) => Number(e.empresaId) === empresaIdNum
+        (e) => Number(e.empresaId) === empresaIdNum,
       );
       setEntidadesComercialesFiltradas(filtradas);
 
       // Si la entidad seleccionada no pertenece a la empresa, límpiala
       if (
         watch("enlaceEntidadComercialId") &&
-        !filtradas.some((e) => Number(e.id) === Number(watch("enlaceEntidadComercialId")))
+        !filtradas.some(
+          (e) => Number(e.id) === Number(watch("enlaceEntidadComercialId")),
+        )
       ) {
         setValue("enlaceEntidadComercialId", null);
       }
@@ -423,7 +441,7 @@ export default function PersonalForm({
   // --- Normalización profesional de opciones de combos para evitar errores de tipo ---
   // Se fuerza que todos los id de las opciones sean numéricos, para que coincidan con los valores del formulario (también numéricos).
   const empresasNorm = (typeof empresas !== "undefined" ? empresas : []).map(
-    (e) => ({ ...e, id: Number(e.id) })
+    (e) => ({ ...e, id: Number(e.id) }),
   );
   const tiposDocumentoNorm = (
     typeof tiposDocumento !== "undefined" ? tiposDocumento : []
@@ -463,23 +481,27 @@ export default function PersonalForm({
       fechaIngreso: data.fechaIngreso
         ? new Date(data.fechaIngreso).toISOString()
         : null,
-      fechaCese: data.fechaCese
-        ? new Date(data.fechaCese).toISOString()
-        : null,
+      fechaCese: data.fechaCese ? new Date(data.fechaCese).toISOString() : null,
       sexo: typeof data.sexo === "boolean" ? data.sexo : false,
-      tipoContratoId: data.tipoContratoId
-        ? Number(data.tipoContratoId)
-        : null,
+      tipoContratoId: data.tipoContratoId ? Number(data.tipoContratoId) : null,
       cargoId: data.cargoId ? Number(data.cargoId) : null,
       areaFisicaId: data.areaFisicaId ? Number(data.areaFisicaId) : null,
       sedeEmpresaId: data.sedeEmpresaId ? Number(data.sedeEmpresaId) : null,
-      enlaceEntidadComercialId: data.enlaceEntidadComercialId ? Number(data.enlaceEntidadComercialId) : null,
+      enlaceEntidadComercialId: data.enlaceEntidadComercialId
+        ? Number(data.enlaceEntidadComercialId)
+        : null,
       urlFotoPersona: data.urlFotoPersona || null,
       esVendedor:
         typeof data.esVendedor === "boolean" ? data.esVendedor : false,
       cesado: typeof data.cesado === "boolean" ? data.cesado : false,
-      paraTemporadaPesca: typeof data.paraTemporadaPesca === "boolean" ? data.paraTemporadaPesca : false,
-      paraPescaConsumo: typeof data.paraPescaConsumo === "boolean" ? data.paraPescaConsumo : false,
+      paraTemporadaPesca:
+        typeof data.paraTemporadaPesca === "boolean"
+          ? data.paraTemporadaPesca
+          : false,
+      paraPescaConsumo:
+        typeof data.paraPescaConsumo === "boolean"
+          ? data.paraPescaConsumo
+          : false,
     };
     // Fin construcción payload profesional
     onSubmit(payload);
@@ -699,7 +721,14 @@ export default function PersonalForm({
               <Controller
                 name="nombres"
                 control={control}
-                render={({ field }) => <InputText style={{ fontWeight: "bold" }} {...field} autoFocus disabled={readOnly || loading} />}
+                render={({ field }) => (
+                  <InputText
+                    style={{ fontWeight: "bold" }}
+                    {...field}
+                    autoFocus
+                    disabled={readOnly || loading}
+                  />
+                )}
               />
               <small className="p-error">{errors.nombres?.message}</small>
             </div>
@@ -708,7 +737,13 @@ export default function PersonalForm({
               <Controller
                 name="apellidos"
                 control={control}
-                render={({ field }) => <InputText style={{ fontWeight: "bold" }} {...field} disabled={readOnly || loading} />}
+                render={({ field }) => (
+                  <InputText
+                    style={{ fontWeight: "bold" }}
+                    {...field}
+                    disabled={readOnly || loading}
+                  />
+                )}
               />
               <small className="p-error">{errors.apellidos?.message}</small>
             </div>
@@ -752,7 +787,13 @@ export default function PersonalForm({
               <Controller
                 name="numeroDocumento"
                 control={control}
-                render={({ field }) => <InputText style={{ fontWeight: "bold" }} {...field} disabled={readOnly || loading} />}
+                render={({ field }) => (
+                  <InputText
+                    style={{ fontWeight: "bold" }}
+                    {...field}
+                    disabled={readOnly || loading}
+                  />
+                )}
               />
               <small className="p-error">
                 {errors.numeroDocumento?.message}
@@ -769,7 +810,7 @@ export default function PersonalForm({
                     showIcon
                     dateFormat="dd/mm/yy"
                     disabled={readOnly || loading}
-                    style={{ width: "100%"}}
+                    style={{ width: "100%" }}
                   />
                 )}
               />
@@ -788,7 +829,7 @@ export default function PersonalForm({
                     showIcon
                     dateFormat="dd/mm/yy"
                     disabled={readOnly || loading}
-                    style={{ width: "100%"}}
+                    style={{ width: "100%" }}
                   />
                 )}
               />
@@ -904,7 +945,9 @@ export default function PersonalForm({
                     optionLabel="label"
                     optionValue="id"
                     placeholder="Seleccione una entidad comercial"
-                    className={errors.enlaceEntidadComercialId ? "p-invalid" : ""}
+                    className={
+                      errors.enlaceEntidadComercialId ? "p-invalid" : ""
+                    }
                     style={{ fontWeight: "bold" }}
                     filter
                     showClear
@@ -913,7 +956,9 @@ export default function PersonalForm({
                   />
                 )}
               />
-              <small className="p-error">{errors.enlaceEntidadComercialId?.message}</small>
+              <small className="p-error">
+                {errors.enlaceEntidadComercialId?.message}
+              </small>
             </div>
           </div>
 
@@ -941,7 +986,11 @@ export default function PersonalForm({
                     severity={field.value ? "danger" : "primary"}
                     onClick={(e) => {
                       e.preventDefault();
-                      field.onChange(!field.value);
+                      const nuevoValor = !field.value;
+                      field.onChange(nuevoValor);
+                      if (!nuevoValor) {
+                        setValue("fechaCese", null);
+                      }
                     }}
                     disabled={readOnly || loading}
                   />
@@ -963,56 +1012,86 @@ export default function PersonalForm({
                   />
                 )}
               />
-                <Controller
-                  name="esVendedor"
-                  control={control}
-                  render={({ field }) => (
-                    <ToggleButton
-                      id="esVendedor"
-                      onLabel="Vendedor"
-                      offLabel="Vendedor"
-                      onIcon="pi pi-check"
-                      offIcon="pi pi-times"
-                      checked={field.value || false}
-                      onChange={(e) => field.onChange(e.value)}
-                      disabled={readOnly || loading}
-                    />
-                  )}
-                />
-                <Controller
-                  name="paraTemporadaPesca"
-                  control={control}
-                  render={({ field }) => (
-                    <ToggleButton
-                      id="paraTemporadaPesca"
-                      onLabel="Temporada Pesca"
-                      offLabel="Temporada Pesca"
-                      onIcon="pi pi-check"
-                      offIcon="pi pi-times"
-                      checked={field.value || false}
-                      onChange={(e) => field.onChange(e.value)}
-                      disabled={readOnly || loading}
-                    />
-                  )}
-                />
-                <Controller
-                  name="paraPescaConsumo"
-                  control={control}
-                  render={({ field }) => (
-                    <ToggleButton
-                      id="paraPescaConsumo"
-                      onLabel="Pesca Consumo"
-                      offLabel="Pesca Consumo"
-                      onIcon="pi pi-check"
-                      offIcon="pi pi-times"
-                      checked={field.value || false}
-                      onChange={(e) => field.onChange(e.value)}
-                      disabled={readOnly || loading}
-                    />
-                  )}
-                />
+              <Controller
+                name="esVendedor"
+                control={control}
+                render={({ field }) => (
+                  <ToggleButton
+                    id="esVendedor"
+                    onLabel="Vendedor"
+                    offLabel="Vendedor"
+                    onIcon="pi pi-check"
+                    offIcon="pi pi-times"
+                    checked={field.value || false}
+                    onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly || loading}
+                  />
+                )}
+              />
+              <Controller
+                name="paraTemporadaPesca"
+                control={control}
+                render={({ field }) => (
+                  <ToggleButton
+                    id="paraTemporadaPesca"
+                    onLabel="Temporada Pesca"
+                    offLabel="Temporada Pesca"
+                    onIcon="pi pi-check"
+                    offIcon="pi pi-times"
+                    checked={field.value || false}
+                    onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly || loading}
+                  />
+                )}
+              />
+              <Controller
+                name="paraPescaConsumo"
+                control={control}
+                render={({ field }) => (
+                  <ToggleButton
+                    id="paraPescaConsumo"
+                    onLabel="Pesca Consumo"
+                    offLabel="Pesca Consumo"
+                    onIcon="pi pi-check"
+                    offIcon="pi pi-times"
+                    checked={field.value || false}
+                    onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly || loading}
+                  />
+                )}
+              />
             </ButtonGroup>
           </div>
+
+          {/* Campo condicional: Fecha de Cese (solo visible cuando cesado = true) */}
+          {watch("cesado") && (
+            <div style={{ marginTop: 16 }}>
+              <label
+                htmlFor="fechaCese"
+                style={{ fontWeight: 500, color: "#d32f2f" }}
+              >
+                Fecha de Cese *
+              </label>
+              <Controller
+                name="fechaCese"
+                control={control}
+                render={({ field }) => (
+                  <Calendar
+                    {...field}
+                    id="fechaCese"
+                    showIcon
+                    dateFormat="dd/mm/yy"
+                    placeholder="Seleccione la fecha de cese"
+                    className={errors.fechaCese ? "p-invalid" : ""}
+                    disabled={readOnly || loading}
+                    style={{ width: "100%", maxWidth: 300 }}
+                  />
+                )}
+              />
+              <small className="p-error">{errors.fechaCese?.message}</small>
+            </div>
+          )}
+
           {/* Botones de acción */}
           <div
             style={{

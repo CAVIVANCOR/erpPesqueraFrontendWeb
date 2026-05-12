@@ -12,11 +12,11 @@ import { Calendar } from "primereact/calendar";
 import { Toast } from "primereact/toast";
 import { Panel } from "primereact/panel";
 import { getSeriesDoc } from "../../api/oTMantenimiento";
-import DetTareasOTCard from "./DetTareasOTCard";
 import PdfFotosAntesCard from "./PdfFotosAntesCard";
 import PdfFotosDespuesCard from "./PdfFotosDespuesCard";
 import VerImpresionOTMantenimientoPDF from "./VerImpresionOTMantenimientoPDF";
 import EntregaARendirOTMantenimientoCard from "./EntregaARendirOTMantenimientoCard";
+import DetContratistasOTCard from "./DetContratistasOTCard";
 import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 
 const OTMantenimientoForm = ({
@@ -52,6 +52,7 @@ const OTMantenimientoForm = ({
   const toast = useRef(toastProp || null);
   const [seriesDoc, setSeriesDoc] = useState([]);
   const [countEntregasRendir, setCountEntregasRendir] = useState(0);
+  const [countContratistas, setCountContratistas] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Agregar react-hook-form SOLO para campos PDF
@@ -776,41 +777,37 @@ const OTMantenimientoForm = ({
               />
             </div>
           </Panel>
+        </TabPanel>
 
-          {/* TAREAS OT */}
-          <Panel
-            header="Tareas de la Orden de Trabajo"
-            className="mb-3"
-            style={{ marginTop: "1rem" }}
-          >
-            <DetTareasOTCard
-              otMantenimientoId={formData.id}
-              estadosTarea={estadosTarea}
-              estadosInsumo={estadosInsumo}
-              personalOptions={personalOptions}
-              contratistas={contratistas}
-              productos={productos}
-              empresaId={formData.empresaId}
-              almacenId={formData.almacenId}
-              permisos={permisos}
-              disabled={!formData.id || loading || loadingProp}
-              readOnly={readOnly}
-              refreshTrigger={refreshTrigger}
-            />
-            {!formData.id && (
-              <div
-                style={{ padding: "1rem", textAlign: "center", color: "#666" }}
-              >
-                <i
-                  className="pi pi-info-circle"
-                  style={{ fontSize: "1.5rem" }}
-                ></i>
-                <p style={{ marginTop: "0.5rem" }}>
-                  Guarde primero la orden de trabajo para poder agregar tareas.
-                </p>
-              </div>
-            )}
-          </Panel>
+        {/* TAB 2: CONTRATISTAS */}
+        <TabPanel
+          header={`Contratistas ${countContratistas > 0 ? `(${countContratistas})` : ""}`}
+          leftIcon="pi pi-users"
+        >
+          <DetContratistasOTCard
+            otMantenimientoId={formData.id}
+            empresaId={formData.empresaId}
+            monedas={monedas}
+            estadosContratista={estadosDoc}
+            puedeEditar={!readOnly}
+            onCountChange={setCountContratistas}
+            readOnly={readOnly}
+            permisos={permisos}
+          />
+
+          {!formData.id && (
+            <div
+              style={{ padding: "1rem", textAlign: "center", color: "#666" }}
+            >
+              <i
+                className="pi pi-info-circle"
+                style={{ fontSize: "1.5rem" }}
+              ></i>
+              <p style={{ marginTop: "0.5rem" }}>
+                Guarde primero la orden de trabajo para poder agregar contratistas.
+              </p>
+            </div>
+          )}
         </TabPanel>
 
         {/* TAB 3: DOCUMENTOS PDF */}
@@ -843,7 +840,7 @@ const OTMantenimientoForm = ({
             <VerImpresionOTMantenimientoPDF
               otMantenimientoId={defaultValues?.id}
               datosOT={formData}
-              tareas={[]} // Se cargará dinámicamente
+              tareas={[]}
               toast={toast}
               onPdfGenerated={(url) => handleChange("urlOrdenTrabajoPdf", url)}
             />
@@ -872,7 +869,7 @@ const OTMantenimientoForm = ({
 
         {/* TAB 4: ENTREGAS A RENDIR */}
         <TabPanel
-          header={`Entrega a Rendir ${countEntregasRendir > 0 ? `(${countEntregasRendir})` : ""}`}
+          header={`Entregas a Rendir ${countEntregasRendir > 0 ? `(${countEntregasRendir})` : ""}`}
           leftIcon="pi pi-money-bill"
         >
           <EntregaARendirOTMantenimientoCard

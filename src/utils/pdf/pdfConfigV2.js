@@ -485,44 +485,6 @@ export const PDF_MODULES_CONFIG = {
     },
   },
 
-  "det-tareas-ot-fotos": {
-    uploadPath: "uploads/pdf-system/det-tareas-ot-fotos",
-    oldPaths: [],
-    apiEndpoint: "/pdf/det-tareas-ot-fotos",
-    maxFileSize: 10 * 1024 * 1024,
-    allowedTypes: ["application/pdf", "image/jpeg", "image/png"],
-    maxFiles: 20,
-    database: {
-      table: "DetTareasOT",
-      field: "urlFotosAntesPdf",
-    },
-  },
-
-  "det-tareas-ot-cotizacion-uno": {
-    uploadPath: "uploads/pdf-system/det-tareas-ot-cotizacion-uno",
-    oldPaths: [],
-    apiEndpoint: "/pdf/det-tareas-ot-cotizacion-uno",
-    maxFileSize: 10 * 1024 * 1024,
-    allowedTypes: ["application/pdf", "image/jpeg", "image/png"],
-    maxFiles: 20,
-    database: {
-      table: "DetTareasOT",
-      field: "urlCotizacionUnoPdf",
-    },
-  },
-
-  "det-tareas-ot-cotizacion-dos": {
-    uploadPath: "uploads/pdf-system/det-tareas-ot-cotizacion-dos",
-    oldPaths: [],
-    apiEndpoint: "/pdf/det-tareas-ot-cotizacion-dos",
-    maxFileSize: 10 * 1024 * 1024,
-    allowedTypes: ["application/pdf", "image/jpeg", "image/png"],
-    maxFiles: 20,
-    database: {
-      table: "DetTareasOT",
-      field: "urlCotizacionDosPdf",
-    },
-  },
   "confirmaciones-acciones-previas": {
     uploadPath: "uploads/pdf-system/confirmaciones-acciones-previas",
     oldPaths: [],
