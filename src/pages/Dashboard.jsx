@@ -105,7 +105,7 @@ export default function Dashboard() {
           icon: "pi-id-card",
         },
         { label: "Puerto de Pesca", key: "puertoPesca", icon: "pi-map-marker" },
-                {
+        {
           label: "Motivos sin Faena",
           key: "motivoSinFaena",
           icon: "pi-map",
@@ -427,7 +427,7 @@ export default function Dashboard() {
         },
       ],
     },
-        {
+    {
       id: "contabilidad",
       titulo: "CONTABILIDAD",
       descripcion: "Plan Contable, Asientos, Períodos y Activos Fijos",
@@ -451,12 +451,12 @@ export default function Dashboard() {
         { label: "Tipos de Activo", key: "tipoActivo", icon: "pi-tag" },
         {
           label: "Tipos de Movimiento Activo Fijo",
-          key: "tipoMovimientoActivoFijo",
+          key: "tipoMovActivo",
           icon: "pi-arrows-h",
         },
         {
           label: "Movimientos Activo Fijo",
-          key: "movimientoActivoFijo",
+          key: "movActivoFijo",
           icon: "pi-chart-line",
         },
       ],
