@@ -573,13 +573,13 @@ export default function BaseLayout({ children, onLogout }) {
       label: "Tipo Activo",
       componente: <TipoActivo ruta="tipoActivo" />,
     },
-    tipoMovimientoActivoFijo: {
+        tipoMovActivo: {
       label: "Tipos de Movimiento Activo Fijo",
-      componente: <TipoMovimientoActivoFijo ruta="tipoMovimientoActivoFijo" />,
+      componente: <TipoMovimientoActivoFijo ruta="tipoMovActivo" />,
     },
-    movimientoActivoFijo: {
+    movActivoFijo: {
       label: "Movimientos Activo Fijo",
-      componente: <MovimientoActivoFijo ruta="movimientoActivoFijo" />,
+      componente: <MovimientoActivoFijo ruta="movActivoFijo" />,
     },
     detallePermisoActivo: {
       label: "Detalle Permiso Activo",
