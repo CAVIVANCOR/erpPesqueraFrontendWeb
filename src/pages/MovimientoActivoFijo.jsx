@@ -204,17 +204,23 @@ export default function MovimientoActivoFijo({ ruta }) {
     }
   };
 
-  const onSave = async () => {
-    setShowDialog(false);
+  const onSave = async (resultado, cerrarDialogo = true) => {
+    // Actualizar la lista en segundo plano
     await cargarDatos();
-    toast.current?.show({
-      severity: "success",
-      summary: "Éxito",
-      detail: isEdit
-        ? "Movimiento actualizado correctamente"
-        : "Movimiento creado correctamente",
-      life: 3000,
-    });
+
+    // Solo cerrar el diálogo si se indica explícitamente
+    if (cerrarDialogo) {
+      setShowDialog(false);
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: isEdit
+          ? "Movimiento actualizado correctamente"
+          : "Movimiento creado correctamente",
+        life: 3000,
+      });
+    }
+    // Si no se cierra, el toast ya se mostró en el formulario
   };
 
   const onCancel = () => {
@@ -317,9 +323,14 @@ export default function MovimientoActivoFijo({ ruta }) {
 
   const montoBodyTemplate = (rowData) => {
     const esUSD = rowData.moneda?.codigoSunat === "USD";
-    const esPEN = rowData.moneda?.codigoSunat === "PEN" || !rowData.moneda?.codigoSunat;
-    const backgroundColor = esUSD ? "#d4edda" : esPEN ? "#fff3cd" : "transparent";
-    
+    const esPEN =
+      rowData.moneda?.codigoSunat === "PEN" || !rowData.moneda?.codigoSunat;
+    const backgroundColor = esUSD
+      ? "#d4edda"
+      : esPEN
+        ? "#fff3cd"
+        : "transparent";
+
     return (
       <div
         style={{
@@ -341,8 +352,13 @@ export default function MovimientoActivoFijo({ ruta }) {
   const depreciacionBodyTemplate = (rowData) => {
     if (!rowData.depreciacionAcumulada) return "-";
     const esUSD = rowData.moneda?.codigoSunat === "USD";
-    const esPEN = rowData.moneda?.codigoSunat === "PEN" || !rowData.moneda?.codigoSunat;
-    const backgroundColor = esUSD ? "#d4edda" : esPEN ? "#fff3cd" : "transparent";
+    const esPEN =
+      rowData.moneda?.codigoSunat === "PEN" || !rowData.moneda?.codigoSunat;
+    const backgroundColor = esUSD
+      ? "#d4edda"
+      : esPEN
+        ? "#fff3cd"
+        : "transparent";
     return (
       <div
         style={{
@@ -364,8 +380,13 @@ export default function MovimientoActivoFijo({ ruta }) {
   const valorNetoBodyTemplate = (rowData) => {
     if (!rowData.valorNeto) return "-";
     const esUSD = rowData.moneda?.codigoSunat === "USD";
-    const esPEN = rowData.moneda?.codigoSunat === "PEN" || !rowData.moneda?.codigoSunat;
-    const backgroundColor = esUSD ? "#d4edda" : esPEN ? "#fff3cd" : "transparent";
+    const esPEN =
+      rowData.moneda?.codigoSunat === "PEN" || !rowData.moneda?.codigoSunat;
+    const backgroundColor = esUSD
+      ? "#d4edda"
+      : esPEN
+        ? "#fff3cd"
+        : "transparent";
     return (
       <div
         style={{
@@ -571,6 +592,30 @@ export default function MovimientoActivoFijo({ ruta }) {
             header="Tipo Movimiento"
             sortable
             style={{ minWidth: "180px" }}
+          />
+          <Column
+            field="periodoContable.nombrePeriodo"
+            header="Período"
+            sortable
+            style={{ minWidth: "150px" }}
+          />
+          <Column
+            field="fechaContable"
+            header="Fecha Contable"
+            body={(rowData) =>
+              rowData.fechaContable
+                ? formatearFecha(rowData.fechaContable)
+                : "-"
+            }
+            sortable
+            style={{ minWidth: "130px" }}
+          />
+          <Column
+            field="centroCosto.Nombre"
+            header="Centro Costo"
+            sortable
+            style={{ minWidth: "150px" }}
+            body={(rowData) => rowData.centroCosto?.Nombre || "-"}
           />
           <Column
             field="fechaMovimiento"

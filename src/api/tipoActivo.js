@@ -20,6 +20,11 @@ export async function getTiposActivo() {
   return res.data;
 }
 
+export async function getTiposActivoActivos() {
+  const res = await axios.get(`${API_URL}/activos/lista`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function getTipoActivoPorId(id) {
   const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;

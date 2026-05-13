@@ -7,10 +7,11 @@
  * - Confirmación de borrado con ConfirmDialog visual rojo y mensajes claros
  * - Feedback visual con Toast para éxito/error
  * - Búsqueda global por código, nombre, descripción
+ * - Muestra cuentas contables configuradas (33x, 68x, 39x)
  * - Cumple regla transversal ERP Megui completa
  *
  * @author ERP Megui
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import React, { useState, useEffect, useRef } from "react";
@@ -154,6 +155,33 @@ const TipoActivo = ({ ruta }) => {
     );
   };
 
+  const cuentaActivoTemplate = (rowData) => {
+    if (!rowData.cuentaActivo) return "-";
+    return (
+      <span style={{ fontSize: "0.9em" }}>
+        {rowData.cuentaActivo.codigoCuenta} - {rowData.cuentaActivo.nombreCuenta}
+      </span>
+    );
+  };
+
+  const cuentaDepreciacionTemplate = (rowData) => {
+    if (!rowData.cuentaDepreciacion) return "-";
+    return (
+      <span style={{ fontSize: "0.9em" }}>
+        {rowData.cuentaDepreciacion.codigoCuenta} - {rowData.cuentaDepreciacion.nombreCuenta}
+      </span>
+    );
+  };
+
+  const cuentaDepreciacionAcumuladaTemplate = (rowData) => {
+    if (!rowData.cuentaDepreciacionAcumulada) return "-";
+    return (
+      <span style={{ fontSize: "0.9em" }}>
+        {rowData.cuentaDepreciacionAcumulada.codigoCuenta} - {rowData.cuentaDepreciacionAcumulada.nombreCuenta}
+      </span>
+    );
+  };
+
   const accionesTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
@@ -222,11 +250,29 @@ const TipoActivo = ({ ruta }) => {
         scrollHeight="600px"
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
-        <Column field="id" header="ID" sortable />
-        <Column field="codigo" header="Código" body={codigoTemplate} sortable />
-        <Column field="nombre" header="Nombre" body={nombreTemplate} sortable />
-        <Column field="descripcion" header="Descripción" sortable />
-        <Column header="Estado" body={cesadoTemplate} sortable />
+        <Column field="id" header="ID" sortable style={{ minWidth: "80px" }} />
+        <Column field="codigo" header="Código" body={codigoTemplate} sortable style={{ minWidth: "120px" }} />
+        <Column field="nombre" header="Nombre" body={nombreTemplate} sortable style={{ minWidth: "180px" }} />
+        <Column field="descripcion" header="Descripción" sortable style={{ minWidth: "200px" }} />
+        <Column 
+          header="Cuenta Activo (33x)" 
+          body={cuentaActivoTemplate} 
+          sortable 
+          style={{ minWidth: "250px" }}
+        />
+        <Column 
+          header="Cuenta Depreciación (68x)" 
+          body={cuentaDepreciacionTemplate} 
+          sortable 
+          style={{ minWidth: "250px" }}
+        />
+        <Column 
+          header="Cuenta Dep. Acumulada (39x)" 
+          body={cuentaDepreciacionAcumuladaTemplate} 
+          sortable 
+          style={{ minWidth: "250px" }}
+        />
+        <Column header="Estado" body={cesadoTemplate} sortable style={{ minWidth: "100px" }} />
         <Column
           body={accionesTemplate}
           header="Acciones"
@@ -242,7 +288,7 @@ const TipoActivo = ({ ruta }) => {
         }
         visible={dialogVisible}
         onHide={cerrarDialogo}
-        style={{ width: "600px" }}
+        style={{ width: "1200px" }}
         modal
       >
         <TipoActivoForm

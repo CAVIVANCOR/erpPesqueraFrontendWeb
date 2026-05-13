@@ -22,7 +22,6 @@ import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
-import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import { classNames } from "primereact/utils";
 import { crearActivo, actualizarActivo } from "../../api/activo";
@@ -235,9 +234,14 @@ const ActivoForm = ({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
-      <div className="p-grid p-formgrid">
-        {/* Campo Empresa */}
-        <div className="p-col-12 p-md-6 p-field">
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
           <label htmlFor="empresaId" className="p-d-block">
             Empresa <span className="p-error">*</span>
           </label>
@@ -265,9 +269,7 @@ const ActivoForm = ({
             </small>
           )}
         </div>
-
-        {/* Campo Tipo de Activo */}
-        <div className="p-col-12 p-md-6 p-field">
+        <div style={{ flex: 1 }}>
           <label htmlFor="tipoId" className="p-d-block">
             Tipo de Activo <span className="p-error">*</span>
           </label>
@@ -293,9 +295,40 @@ const ActivoForm = ({
             <small className="p-error p-d-block">{errors.tipoId.message}</small>
           )}
         </div>
-
-        {/* Campo Nombre */}
-        <div className="p-col-12 p-field">
+        <div style={{ flex: 1 }}>
+          {/* Campo Cesado */}
+          <Controller
+            name="cesado"
+            control={control}
+            render={({ field }) => (
+              <Button
+                type="button"
+                label={field.value ? "CESADO" : "ACTIVO"}
+                className={
+                  field.value
+                    ? "p-button-danger w-full"
+                    : "p-button-success w-full"
+                }
+                icon={field.value ? "pi pi-times-circle" : "pi pi-check-circle"}
+                onClick={() => !readOnly && field.onChange(!field.value)}
+                disabled={readOnly}
+                style={{ marginTop: "0.5rem" }}
+              />
+            )}
+          />
+          {errors.cesado && (
+            <small className="p-error p-d-block">{errors.cesado.message}</small>
+          )}
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
           <label htmlFor="nombre" className="p-d-block">
             Nombre <span className="p-error">*</span>
           </label>
@@ -317,9 +350,17 @@ const ActivoForm = ({
             <small className="p-error p-d-block">{errors.nombre.message}</small>
           )}
         </div>
+      </div>
 
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         {/* Campo Descripción */}
-        <div className="p-col-12 p-field">
+        <div style={{ flex: 1 }}>
           <label htmlFor="descripcion" className="p-d-block">
             Descripción
           </label>
@@ -343,43 +384,32 @@ const ActivoForm = ({
             </small>
           )}
         </div>
-
-        {/* Campo Cesado */}
-        <div className="p-col-12 p-field">
-          <Controller
-            name="cesado"
-            control={control}
-            render={({ field }) => (
-              <div className="p-field-checkbox">
-                <Checkbox
-                  id="cesado"
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.checked)}
-                  className={getFieldClass("cesado")}
-                  disabled={readOnly}
-                />
-                <label htmlFor="cesado" className="p-checkbox-label">
-                  Activo cesado
-                </label>
-              </div>
-            )}
-          />
-          {errors.cesado && (
-            <small className="p-error p-d-block">{errors.cesado.message}</small>
-          )}
-        </div>
-
-
+      </div>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         {/* Sección de Saldos Iniciales */}
-        <div className="p-col-12">
+        <div style={{ flex: 1 }}>
           <hr style={{ margin: "20px 0", borderTop: "2px solid #dee2e6" }} />
           <h4 style={{ marginBottom: "15px", color: "#495057" }}>
             📊 Saldos Iniciales (Opcional)
           </h4>
         </div>
+      </div>
 
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         {/* Campo Fecha de Adquisición */}
-        <div className="p-col-12 p-md-6 p-field">
+        <div style={{ flex: 1 }}>
           <label htmlFor="fechaAdquisicion" className="p-d-block">
             Fecha de Adquisición
           </label>
@@ -396,7 +426,7 @@ const ActivoForm = ({
                 dateFormat="dd/mm/yy"
                 showIcon
                 disabled={readOnly}
-                style={{ fontWeight: "bold" }}
+                inputStyle={{ fontWeight: "bold" }}
               />
             )}
           />
@@ -408,7 +438,7 @@ const ActivoForm = ({
         </div>
 
         {/* Campo Moneda */}
-        <div className="p-col-12 p-md-6 p-field">
+        <div style={{ flex: 1 }}>
           <label htmlFor="monedaId" className="p-d-block">
             Moneda
           </label>
@@ -438,7 +468,7 @@ const ActivoForm = ({
         </div>
 
         {/* Campo Costo Original */}
-        <div className="p-col-12 p-md-4 p-field">
+        <div style={{ flex: 1 }}>
           <label htmlFor="costoOriginal" className="p-d-block">
             Costo Original
           </label>
@@ -457,7 +487,7 @@ const ActivoForm = ({
                 maxFractionDigits={2}
                 min={0}
                 disabled={readOnly}
-                style={{ fontWeight: "bold" }}
+                inputStyle={{ fontWeight: "bold" }}
               />
             )}
           />
@@ -469,7 +499,7 @@ const ActivoForm = ({
         </div>
 
         {/* Campo Depreciación Acumulada */}
-        <div className="p-col-12 p-md-4 p-field">
+        <div style={{ flex: 1 }}>
           <label htmlFor="depreciacionAcumulada" className="p-d-block">
             Depreciación Acumulada
           </label>
@@ -488,7 +518,7 @@ const ActivoForm = ({
                 maxFractionDigits={2}
                 min={0}
                 disabled={readOnly}
-                style={{ fontWeight: "bold" }}
+                inputStyle={{ fontWeight: "bold" }}
               />
             )}
           />
@@ -500,7 +530,7 @@ const ActivoForm = ({
         </div>
 
         {/* Campo Vida Útil en Años */}
-        <div className="p-col-12 p-md-4 p-field">
+        <div style={{ flex: 1 }}>
           <label htmlFor="vidaUtilAnios" className="p-d-block">
             Vida Útil (Años)
           </label>
@@ -516,7 +546,7 @@ const ActivoForm = ({
                 className={getFieldClass("vidaUtilAnios")}
                 min={1}
                 disabled={readOnly}
-                style={{ fontWeight: "bold" }}
+                inputStyle={{ fontWeight: "bold" }}
               />
             )}
           />
@@ -526,9 +556,7 @@ const ActivoForm = ({
             </small>
           )}
         </div>
-
       </div>
-
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
         <Button
           type="button"

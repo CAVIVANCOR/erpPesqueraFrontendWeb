@@ -8,11 +8,11 @@
  * - Normalización de campos según regla ERP Megui
  * - Feedback visual con Toast para éxito y error
  * - Manejo profesional de estados de carga
- * - Soporte para múltiples relaciones (empresa, activo, tipo, moneda)
+ * - Soporte para múltiples relaciones (empresa, activo, tipo, moneda, período, centro costo)
  * - Botón para generar asiento contable desde el formulario
  *
  * @author ERP Megui
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import React, { useState, useEffect, useRef } from "react";
@@ -33,6 +33,9 @@ import { getEmpresas } from "../../api/empresa";
 import { getActivos } from "../../api/activo";
 import { getTiposMovimientoActivoFijo } from "../../api/tipoMovimientoActivoFijo";
 import { getMonedas } from "../../api/moneda";
+import { getPeriodosContables } from "../../api/contabilidad/periodoContable";
+import { getCentrosCosto } from "../../api/centroCosto";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 /**
  * Esquema de validación con Yup
@@ -57,6 +60,12 @@ const esquemaValidacion = yup.object().shape({
     .transform((value, originalValue) => {
       return originalValue === "" ? null : value;
     }),
+  periodoContableId: yup
+    .number()
+    .required("El período contable es obligatorio")
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
   fechaMovimiento: yup
     .date()
     .required("La fecha de movimiento es obligatoria")
@@ -72,6 +81,12 @@ const esquemaValidacion = yup.object().shape({
     .transform((value, originalValue) => {
       return originalValue === "" ? null : value;
     }),
+  centroCostoId: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
   depreciacionMensual: yup
     .number()
     .nullable()
@@ -80,10 +95,6 @@ const esquemaValidacion = yup.object().shape({
     .number()
     .nullable()
     .min(0, "La depreciación acumulada debe ser mayor o igual a 0"),
-  valorNeto: yup
-    .number()
-    .nullable()
-    .min(0, "El valor neto debe ser mayor o igual a 0"),
   observaciones: yup.string().nullable(),
 });
 
@@ -102,11 +113,14 @@ const MovimientoActivoFijoForm = ({
   readOnly = false,
 }) => {
   const toast = useRef(null);
+  const { usuario } = useAuthStore();  // ← AGREGAR ESTA LÍNEA
   const [loading, setLoading] = useState(false);
   const [empresas, setEmpresas] = useState([]);
   const [activos, setActivos] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [monedas, setMonedas] = useState([]);
+  const [periodosContables, setPeriodosContables] = useState([]);
+  const [centrosCosto, setCentrosCosto] = useState([]);
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
   const esEdicion = !!movimiento;
 
@@ -116,6 +130,7 @@ const MovimientoActivoFijoForm = ({
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(esquemaValidacion),
@@ -123,10 +138,12 @@ const MovimientoActivoFijoForm = ({
       empresaId: null,
       activoId: null,
       tipoMovimientoId: null,
+      periodoContableId: null,
       fechaMovimiento: new Date(),
       fechaContable: null,
       monto: 0,
       monedaId: null,
+      centroCostoId: null,
       depreciacionMensual: null,
       depreciacionAcumulada: null,
       valorNeto: null,
@@ -151,6 +168,7 @@ const MovimientoActivoFijoForm = ({
         empresaId: Number(movimiento.empresaId) || null,
         activoId: Number(movimiento.activoId) || null,
         tipoMovimientoId: Number(movimiento.tipoMovimientoId) || null,
+        periodoContableId: Number(movimiento.periodoContableId) || null,
         fechaMovimiento: movimiento.fechaMovimiento
           ? new Date(movimiento.fechaMovimiento)
           : new Date(),
@@ -159,6 +177,7 @@ const MovimientoActivoFijoForm = ({
           : null,
         monto: Number(movimiento.monto) || 0,
         monedaId: Number(movimiento.monedaId) || null,
+        centroCostoId: movimiento.centroCostoId ? Number(movimiento.centroCostoId) : null,
         depreciacionMensual: movimiento.depreciacionMensual
           ? Number(movimiento.depreciacionMensual)
           : null,
@@ -174,10 +193,12 @@ const MovimientoActivoFijoForm = ({
         empresaId: empresaIdInicial ? Number(empresaIdInicial) : null,
         activoId: activoIdInicial ? Number(activoIdInicial) : null,
         tipoMovimientoId: null,
+        periodoContableId: null,
         fechaMovimiento: new Date(),
         fechaContable: null,
         monto: 0,
         monedaId: null,
+        centroCostoId: null,
         depreciacionMensual: null,
         depreciacionAcumulada: null,
         valorNeto: null,
@@ -185,6 +206,7 @@ const MovimientoActivoFijoForm = ({
       });
     }
   }, [movimiento, empresaIdInicial, activoIdInicial, reset]);
+
   /**
    * Efecto para detectar cambio de moneda y actualizar color de fondo
    */
@@ -210,22 +232,42 @@ const MovimientoActivoFijoForm = ({
   }, [movimiento, monedas]);
 
   /**
+   * Efecto para calcular automáticamente el Valor Neto
+   * Valor Neto = Monto - Depreciación Acumulada
+   */
+  useEffect(() => {
+    const subscription = watch((value, { name }) => {
+      if (name === 'monto' || name === 'depreciacionAcumulada') {
+        const monto = Number(value.monto) || 0;
+        const depreciacionAcumulada = Number(value.depreciacionAcumulada) || 0;
+        const valorNeto = monto - depreciacionAcumulada;
+        setValue('valorNeto', valorNeto);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, setValue]);
+
+  /**
    * Cargar datos para combos
    */
   const cargarCombos = async () => {
     try {
-      const [empresasData, activosData, tiposData, monedasData] =
+      const [empresasData, activosData, tiposData, monedasData, periodosData, centrosData] =
         await Promise.all([
           getEmpresas(),
           getActivos(),
           getTiposMovimientoActivoFijo(),
           getMonedas(),
+          getPeriodosContables(),
+          getCentrosCosto(),
         ]);
 
       setEmpresas(empresasData);
       setActivos(activosData);
       setTiposMovimiento(tiposData);
       setMonedas(monedasData);
+      setPeriodosContables(periodosData);
+      setCentrosCosto(centrosData);
     } catch (error) {
       console.error("Error al cargar combos:", error);
       toast.current?.show({
@@ -245,22 +287,28 @@ const MovimientoActivoFijoForm = ({
       setLoading(true);
 
       // Normalización final de datos según regla ERP Megui
+      const monto = Number(data.monto);
+      const depreciacionAcumulada = data.depreciacionAcumulada ? Number(data.depreciacionAcumulada) : 0;
+      const valorNeto = monto - depreciacionAcumulada;
+
       const datosNormalizados = {
         empresaId: Number(data.empresaId),
         activoId: Number(data.activoId),
         tipoMovimientoId: Number(data.tipoMovimientoId),
+        periodoContableId: Number(data.periodoContableId),
         fechaMovimiento: data.fechaMovimiento,
         fechaContable: data.fechaContable || null,
-        monto: Number(data.monto),
+        monto: monto,
         monedaId: Number(data.monedaId),
+        centroCostoId: data.centroCostoId ? Number(data.centroCostoId) : null,
         depreciacionMensual: data.depreciacionMensual
           ? Number(data.depreciacionMensual)
           : null,
-        depreciacionAcumulada: data.depreciacionAcumulada
-          ? Number(data.depreciacionAcumulada)
-          : null,
-        valorNeto: data.valorNeto ? Number(data.valorNeto) : null,
+        depreciacionAcumulada: depreciacionAcumulada || null,
+        valorNeto: valorNeto,
         observaciones: data.observaciones?.trim() || null,
+        creadoPor: Number(usuario?.id),
+        actualizadoPor: Number(usuario?.id),
       };
 
       let resultado;
@@ -275,19 +323,54 @@ const MovimientoActivoFijoForm = ({
           summary: "Éxito",
           detail: "Movimiento actualizado correctamente",
         });
+        
+        // Actualizar los datos del formulario con la respuesta del servidor
+        reset({
+          empresaId: Number(resultado.empresaId),
+          activoId: Number(resultado.activoId),
+          tipoMovimientoId: Number(resultado.tipoMovimientoId),
+          periodoContableId: Number(resultado.periodoContableId),
+          fechaMovimiento: new Date(resultado.fechaMovimiento),
+          fechaContable: resultado.fechaContable ? new Date(resultado.fechaContable) : null,
+          monto: Number(resultado.monto),
+          monedaId: Number(resultado.monedaId),
+          centroCostoId: resultado.centroCostoId ? Number(resultado.centroCostoId) : null,
+          depreciacionMensual: resultado.depreciacionMensual ? Number(resultado.depreciacionMensual) : null,
+          depreciacionAcumulada: resultado.depreciacionAcumulada ? Number(resultado.depreciacionAcumulada) : null,
+          valorNeto: resultado.valorNeto ? Number(resultado.valorNeto) : null,
+          observaciones: resultado.observaciones || "",
+        });
       } else {
         // Crear nuevo movimiento
         resultado = await crearMovimientoActivoFijo(datosNormalizados);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
-          detail: "Movimiento creado correctamente",
+          detail: "Movimiento creado correctamente. Ahora puede continuar editando.",
+        });
+        
+        // Cargar los datos del nuevo movimiento en el formulario (cambiar a modo edición)
+        reset({
+          empresaId: Number(resultado.empresaId),
+          activoId: Number(resultado.activoId),
+          tipoMovimientoId: Number(resultado.tipoMovimientoId),
+          periodoContableId: Number(resultado.periodoContableId),
+          fechaMovimiento: new Date(resultado.fechaMovimiento),
+          fechaContable: resultado.fechaContable ? new Date(resultado.fechaContable) : null,
+          monto: Number(resultado.monto),
+          monedaId: Number(resultado.monedaId),
+          centroCostoId: resultado.centroCostoId ? Number(resultado.centroCostoId) : null,
+          depreciacionMensual: resultado.depreciacionMensual ? Number(resultado.depreciacionMensual) : null,
+          depreciacionAcumulada: resultado.depreciacionAcumulada ? Number(resultado.depreciacionAcumulada) : null,
+          valorNeto: resultado.valorNeto ? Number(resultado.valorNeto) : null,
+          observaciones: resultado.observaciones || "",
         });
       }
 
-      // Llamar callback de éxito
+      // Llamar callback de éxito SOLO para actualizar la lista en segundo plano
+      // NO para cerrar el diálogo
       if (onSave) {
-        onSave(resultado);
+        onSave(resultado, false); // false = no cerrar diálogo
       }
     } catch (error) {
       console.error("Error al guardar movimiento:", error);
@@ -356,12 +439,28 @@ const MovimientoActivoFijoForm = ({
     value: Number(moneda.id),
   }));
 
+      const periodosContablesOptions = periodosContables
+    .filter((periodo) => {
+      // Solo filtrar por estado "ABIERTO" (ID 73)
+      const estaAbierto = Number(periodo.estadoId) === 73;
+      return estaAbierto;
+    })
+    .map((periodo) => ({
+      label: `${periodo.nombrePeriodo} (${new Date(periodo.fechaInicio).toLocaleDateString()} - ${new Date(periodo.fechaFin).toLocaleDateString()})`,
+      value: Number(periodo.id),
+    }));
+  const centrosCostoOptions = centrosCosto.map((centro) => ({
+    label: `${centro.Codigo} - ${centro.Nombre}`,
+    value: Number(centro.id),
+  }));
+
   const getMonedaBackgroundColor = () => {
     if (!monedaSeleccionada) return "transparent";
     const esUSD = monedaSeleccionada.codigoSunat === "USD";
     const esPEN = monedaSeleccionada.codigoSunat === "PEN";
     return esUSD ? "#d4edda" : esPEN ? "#fff3cd" : "transparent";
   };
+
   return (
     <div className="formgrid grid">
       <Toast ref={toast} />
@@ -401,6 +500,7 @@ const MovimientoActivoFijoForm = ({
             )}
           </div>
         </div>
+
         <div
           style={{
             display: "flex",
@@ -458,7 +558,7 @@ const MovimientoActivoFijoForm = ({
                   value={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   options={tiposMovimientoOptions}
-                  placeholder="Seleccione tipo de movimiento"
+                  placeholder="Seleccione un tipo"
                   className={getFieldClass("tipoMovimientoId")}
                   filter
                   showClear
@@ -468,12 +568,11 @@ const MovimientoActivoFijoForm = ({
               )}
             />
             {errors.tipoMovimientoId && (
-              <small className="p-error">
-                {errors.tipoMovimientoId.message}
-              </small>
+              <small className="p-error">{errors.tipoMovimientoId.message}</small>
             )}
           </div>
         </div>
+
         <div
           style={{
             display: "flex",
@@ -482,27 +581,21 @@ const MovimientoActivoFijoForm = ({
           }}
         >
           <div style={{ flex: 1 }}>
-            {/* Moneda */}
-            <label htmlFor="monedaId" className="font-bold">
-              Moneda <span className="p-error">*</span>
+            {/* Período Contable */}
+            <label htmlFor="periodoContableId" className="font-bold">
+              Período Contable <span className="p-error">*</span>
             </label>
             <Controller
-              name="monedaId"
+              name="periodoContableId"
               control={control}
               render={({ field }) => (
                 <Dropdown
-                  id="monedaId"
+                  id="periodoContableId"
                   value={field.value}
-                  onChange={(e) => {
-                    field.onChange(e.value);
-                    const moneda = monedas.find(
-                      (m) => Number(m.id) === Number(e.value),
-                    );
-                    setMonedaSeleccionada(moneda);
-                  }}
-                  options={monedasOptions}
-                  placeholder="Seleccione moneda"
-                  className={getFieldClass("monedaId")}
+                  onChange={(e) => field.onChange(e.value)}
+                  options={periodosContablesOptions}
+                  placeholder="Seleccione un período"
+                  className={getFieldClass("periodoContableId")}
                   filter
                   showClear
                   disabled={readOnly}
@@ -510,10 +603,54 @@ const MovimientoActivoFijoForm = ({
                 />
               )}
             />
-            {errors.monedaId && (
-              <small className="p-error">{errors.monedaId.message}</small>
+            {errors.periodoContableId && (
+              <small className="p-error">{errors.periodoContableId.message}</small>
             )}
           </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            {/* Centro de Costo */}
+            <label htmlFor="centroCostoId" className="font-bold">
+              Centro de Costo
+            </label>
+            <Controller
+              name="centroCostoId"
+              control={control}
+              render={({ field }) => (
+                <Dropdown
+                  id="centroCostoId"
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.value)}
+                  options={centrosCostoOptions}
+                  placeholder="Seleccione un centro de costo (opcional)"
+                  className={getFieldClass("centroCostoId")}
+                  filter
+                  showClear
+                  disabled={readOnly}
+                />
+              )}
+            />
+            {errors.centroCostoId && (
+              <small className="p-error">{errors.centroCostoId.message}</small>
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
           <div style={{ flex: 1 }}>
             {/* Fecha de Movimiento */}
             <label htmlFor="fechaMovimiento" className="font-bold">
@@ -537,11 +674,48 @@ const MovimientoActivoFijoForm = ({
               )}
             />
             {errors.fechaMovimiento && (
-              <small className="p-error">
-                {errors.fechaMovimiento.message}
-              </small>
+              <small className="p-error">{errors.fechaMovimiento.message}</small>
             )}
           </div>
+          <div style={{ flex: 1 }}>
+            {/* Moneda */}
+            <label htmlFor="monedaId" className="font-bold">
+              Moneda <span className="p-error">*</span>
+            </label>
+            <Controller
+              name="monedaId"
+              control={control}
+              render={({ field }) => (
+                <Dropdown
+                  id="monedaId"
+                  value={field.value}
+                  onChange={(e) => {
+                    field.onChange(e.value);
+                    const moneda = monedas.find((m) => Number(m.id) === Number(e.value));
+                    setMonedaSeleccionada(moneda || null);
+                  }}
+                  options={monedasOptions}
+                  placeholder="Seleccione moneda"
+                  className={getFieldClass("monedaId")}
+                  showClear
+                  disabled={readOnly}
+                  style={{ fontWeight: "bold" }}
+                />
+              )}
+            />
+            {errors.monedaId && (
+              <small className="p-error">{errors.monedaId.message}</small>
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
           <div style={{ flex: 1 }}>
             {/* Fecha Contable */}
             <label htmlFor="fechaContable" className="font-bold">
@@ -600,6 +774,7 @@ const MovimientoActivoFijoForm = ({
             )}
           </div>
         </div>
+
         <div
           style={{
             display: "flex",
@@ -635,12 +810,9 @@ const MovimientoActivoFijoForm = ({
               )}
             />
             {errors.depreciacionMensual && (
-              <small className="p-error">
-                {errors.depreciacionMensual.message}
-              </small>
+              <small className="p-error">{errors.depreciacionMensual.message}</small>
             )}
           </div>
-
           <div style={{ flex: 1 }}>
             {/* Depreciación Acumulada */}
             <label htmlFor="depreciacionAcumulada" className="font-bold">
@@ -674,11 +846,19 @@ const MovimientoActivoFijoForm = ({
               </small>
             )}
           </div>
+        </div>
 
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
           <div style={{ flex: 1 }}>
-            {/* Valor Neto */}
+            {/* Valor Neto (Calculado) */}
             <label htmlFor="valorNeto" className="font-bold">
-              Valor Neto
+              Valor Neto (Calculado)
             </label>
             <Controller
               name="valorNeto"
@@ -687,26 +867,23 @@ const MovimientoActivoFijoForm = ({
                 <InputNumber
                   id="valorNeto"
                   value={field.value}
-                  onValueChange={(e) => field.onChange(e.value)}
                   placeholder="0.00"
                   className={getFieldClass("valorNeto")}
                   mode="decimal"
                   minFractionDigits={2}
                   maxFractionDigits={2}
-                  min={0}
-                  disabled={readOnly}
+                  disabled={true}
                   inputStyle={{
                     fontWeight: "bold",
-                    backgroundColor: getMonedaBackgroundColor(),
+                    backgroundColor: "#e9ecef",
+                    color: "#495057",
                   }}
                 />
               )}
             />
-            {errors.valorNeto && (
-              <small className="p-error">{errors.valorNeto.message}</small>
-            )}
           </div>
         </div>
+
         <div
           style={{
             display: "flex",
@@ -725,10 +902,11 @@ const MovimientoActivoFijoForm = ({
               render={({ field }) => (
                 <InputTextarea
                   id="observaciones"
-                  {...field}
-                  placeholder="Observaciones del movimiento..."
-                  className={getFieldClass("observaciones")}
+                  value={field.value || ""}
+                  onChange={(e) => field.onChange(e.target.value)}
+                  placeholder="Ingrese observaciones"
                   rows={3}
+                  className={getFieldClass("observaciones")}
                   disabled={readOnly}
                 />
               )}
@@ -739,67 +917,42 @@ const MovimientoActivoFijoForm = ({
           </div>
         </div>
 
+        {/* Botones de acción */}
         <div
-          style={{ display: "flex", justifyContent: "space-between", gap: 12 }}
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 10,
+            marginTop: 20,
+          }}
         >
-          <div>
-            {esEdicion && movimiento && (
-              <Button
-                type="button"
-                label={
-                  movimiento.asientoContableId
-                    ? "Ver Asiento"
-                    : "Generar Asiento"
-                }
-                icon={
-                  movimiento.asientoContableId
-                    ? "pi pi-eye"
-                    : "pi pi-plus-circle"
-                }
-                className={
-                  movimiento.asientoContableId
-                    ? "p-button-info"
-                    : "p-button-help"
-                }
-                onClick={handleGenerarAsiento}
-                disabled={loading || !onGenerarAsiento}
-                tooltip={
-                  movimiento.asientoContableId
-                    ? "Ver asiento contable vinculado"
-                    : "Generar asiento contable para este movimiento"
-                }
-              />
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 12 }}>
+          {esEdicion && onGenerarAsiento && !movimiento.asientoContableId && (
             <Button
               type="button"
-              label="Cancelar"
-              className="p-button-text"
-              onClick={handleCancel}
-              disabled={loading}
+              label="Generar Asiento"
+              icon="pi pi-book"
+              className="p-button-info"
+              onClick={handleGenerarAsiento}
+              disabled={loading || readOnly}
             />
+          )}
+          <Button
+            type="button"
+            label="Cancelar"
+            icon="pi pi-times"
+            className="p-button-secondary"
+            onClick={handleCancel}
+            disabled={loading}
+          />
+          {!readOnly && (
             <Button
               type="submit"
-              label={esEdicion ? "Actualizar" : "Crear"}
-              icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
+              label={esEdicion ? "Actualizar" : "Guardar"}
+              icon="pi pi-check"
+              className="p-button-success"
               loading={loading}
-              disabled={
-                readOnly ||
-                (esEdicion && !permisos.puedeEditar) ||
-                (!esEdicion && !permisos.puedeCrear)
-              }
-              tooltip={
-                readOnly
-                  ? "Modo solo lectura"
-                  : !permisos.puedeEditar && esEdicion
-                    ? "No tiene permisos para editar"
-                    : !permisos.puedeCrear && !esEdicion
-                      ? "No tiene permisos para crear"
-                      : ""
-              }
             />
-          </div>
+          )}
         </div>
       </form>
     </div>

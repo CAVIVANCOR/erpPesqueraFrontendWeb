@@ -228,6 +228,39 @@ const Activo = ({ ruta }) => {
       />
     );
   };
+  const fechaAdquisicionTemplate = (rowData) => {
+    return rowData.fechaAdquisicion
+      ? new Date(rowData.fechaAdquisicion).toLocaleDateString("es-PE")
+      : "-";
+  };
+
+  const costoOriginalTemplate = (rowData) => {
+    if (!rowData.costoOriginal) return "-";
+    const moneda = rowData.moneda?.codigoSunat || "PEN";
+    return new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: moneda,
+      minimumFractionDigits: 2,
+    }).format(rowData.costoOriginal);
+  };
+
+  const depreciacionAcumuladaTemplate = (rowData) => {
+    if (!rowData.depreciacionAcumulada) return "-";
+    const moneda = rowData.moneda?.codigoSunat || "PEN";
+    return new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: moneda,
+      minimumFractionDigits: 2,
+    }).format(rowData.depreciacionAcumulada);
+  };
+
+  const vidaUtilTemplate = (rowData) => {
+    return rowData.vidaUtilAnios ? `${rowData.vidaUtilAnios} años` : "-";
+  };
+
+  const monedaTemplate = (rowData) => {
+    return rowData.moneda?.codigoSunat || "-";
+  };
 
   const accionesTemplate = (rowData) => {
     return (
@@ -377,6 +410,36 @@ const Activo = ({ ruta }) => {
         <Column field="descripcion" header="Descripción" sortable />
         <Column header="Estado" body={cesadoTemplate} sortable />
         <Column
+          header="Fecha Adquisición"
+          body={fechaAdquisicionTemplate}
+          sortable
+          style={{ minWidth: "140px" }}
+        />
+        <Column
+          header="Costo Original"
+          body={costoOriginalTemplate}
+          sortable
+          style={{ minWidth: "130px" }}
+        />
+        <Column
+          header="Dep. Acumulada"
+          body={depreciacionAcumuladaTemplate}
+          sortable
+          style={{ minWidth: "130px" }}
+        />
+        <Column
+          header="Vida Útil"
+          body={vidaUtilTemplate}
+          sortable
+          style={{ minWidth: "100px" }}
+        />
+        <Column
+          header="Moneda"
+          body={monedaTemplate}
+          sortable
+          style={{ minWidth: "90px" }}
+        />
+        <Column
           body={accionesTemplate}
           header="Acciones"
           style={{ width: 130, textAlign: "center" }}
@@ -387,7 +450,7 @@ const Activo = ({ ruta }) => {
         header={activoSeleccionado ? "Editar Activo" : "Nuevo Activo"}
         visible={dialogVisible}
         onHide={cerrarDialogo}
-        style={{ width: "600px" }}
+        style={{ width: "1300px" }}
         modal
       >
         <ActivoForm
@@ -413,8 +476,7 @@ const Activo = ({ ruta }) => {
         acceptClassName="p-button-danger"
       />
 
-
-         {/* ⭐ AGREGAR ESTOS COMPONENTES */}
+      {/* ⭐ AGREGAR ESTOS COMPONENTES */}
       <ReportFormatSelector
         visible={showFormatSelector}
         onHide={() => setShowFormatSelector(false)}
@@ -436,7 +498,7 @@ const Activo = ({ ruta }) => {
         }}
         data={reportData}
         generatePDF={generarActivosPDF}
-        fileName={`activos-${new Date().toISOString().split('T')[0]}.pdf`}
+        fileName={`activos-${new Date().toISOString().split("T")[0]}.pdf`}
         title="Listado de Activos"
       />
       <TemporaryExcelViewer
@@ -447,11 +509,9 @@ const Activo = ({ ruta }) => {
         }}
         data={reportData}
         generateExcel={generarActivosExcel}
-        fileName={`activos-${new Date().toISOString().split('T')[0]}.xlsx`}
+        fileName={`activos-${new Date().toISOString().split("T")[0]}.xlsx`}
         title="Listado de Activos"
       />
-
-
     </div>
   );
 };
