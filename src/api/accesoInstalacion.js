@@ -114,6 +114,35 @@ export const buscarVehiculoPorPlaca = async (numeroPlaca) => {
 };
 
 /**
+ * Busca persona por DNI en múltiples fuentes (cascada optimizada).
+ * Prioridad: Personal → Histórico → RENIEC
+ * @param {string} dni - Número de documento a buscar
+ * @returns {Promise<Object>} Resultado con origen y datos de la persona
+ * 
+ * Respuesta:
+ * {
+ *   encontrado: true/false,
+ *   origen: "PERSONAL" | "HISTORICO" | "RENIEC",
+ *   tipoPersonaSugerido: "PERSONAL INTERNO" | "VISITANTE RECURRENTE" | "VISITANTE EXTERNO",
+ *   datos: { nombreCompleto, numeroDocumento, ... }
+ * }
+ */
+export const buscarPersonaPorDNI = async (dni) => {
+  try {
+    const res = await axios.get(`${API_URL}/buscar-dni/${dni}`, { 
+      headers: getAuthHeader() 
+    });
+    return res.data;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      return error.response.data; // Retorna { encontrado: false, mensaje: "..." }
+    }
+    console.error('Error al buscar persona por DNI:', error);
+    throw error;
+  }
+};
+
+/**
  * Obtiene los datos completos de un acceso previo por número de documento
  * Incluye datos de persona, vehículo, equipo, etc.
  * @param {string} numeroDocumento - Número de documento

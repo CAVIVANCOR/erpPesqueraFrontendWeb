@@ -7,6 +7,7 @@ import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
+import { ToggleButton } from "primereact/togglebutton";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { InputText } from "primereact/inputtext";
@@ -342,6 +343,175 @@ export default function PersonalPage({ ruta }) {
     );
   };
 
+  /**
+   * ⭐ NUEVO - Actualización rápida de campo boolean en la lista
+   * Permite editar marcaAsistencia y esAdministrativo directamente desde la tabla
+   */
+  const actualizarCampoBoolean = async (personalId, campo, nuevoValor) => {
+    try {
+      // Buscar el personal completo
+      const personalActual = personales.find(
+        (p) => Number(p.id) === Number(personalId),
+      );
+
+      if (!personalActual) {
+        toast?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se encontró el personal",
+        });
+        return;
+      }
+
+      // Construir payload completo con el campo actualizado
+      const payload = {
+        empresaId: Number(personalActual.empresaId),
+        nombres: personalActual.nombres,
+        apellidos: personalActual.apellidos,
+        tipoDocumentoId: Number(personalActual.tipoDocumentoId),
+        numeroDocumento: personalActual.numeroDocumento,
+        fechaNacimiento: personalActual.fechaNacimiento,
+        sexo:
+          typeof personalActual.sexo === "boolean"
+            ? personalActual.sexo
+            : false,
+        direccion: personalActual.direccion || null,
+        telefono: personalActual.telefono || null,
+        correo: personalActual.correo || null,
+        fechaIngreso: personalActual.fechaIngreso || null,
+        fechaCese: personalActual.fechaCese || null,
+        cesado:
+          typeof personalActual.cesado === "boolean"
+            ? personalActual.cesado
+            : false,
+        urlFotoPersona: personalActual.urlFotoPersona || null,
+        enlaceEntidadComercialId: personalActual.enlaceEntidadComercialId
+          ? Number(personalActual.enlaceEntidadComercialId)
+          : null,
+        tipoContratoId: personalActual.tipoContratoId
+          ? Number(personalActual.tipoContratoId)
+          : null,
+        cargoId: personalActual.cargoId ? Number(personalActual.cargoId) : null,
+        sedeEmpresaId: personalActual.sedeEmpresaId
+          ? Number(personalActual.sedeEmpresaId)
+          : null,
+        areaFisicaId: personalActual.areaFisicaId
+          ? Number(personalActual.areaFisicaId)
+          : null,
+        esVendedor:
+          typeof personalActual.esVendedor === "boolean"
+            ? personalActual.esVendedor
+            : false,
+        paraTemporadaPesca:
+          typeof personalActual.paraTemporadaPesca === "boolean"
+            ? personalActual.paraTemporadaPesca
+            : false,
+        paraPescaConsumo:
+          typeof personalActual.paraPescaConsumo === "boolean"
+            ? personalActual.paraPescaConsumo
+            : false,
+        // ⭐ CAMPOS NUEVOS
+        marcaAsistencia:
+          campo === "marcaAsistencia"
+            ? nuevoValor
+            : typeof personalActual.marcaAsistencia === "boolean"
+              ? personalActual.marcaAsistencia
+              : true,
+        esAdministrativo:
+          campo === "esAdministrativo"
+            ? nuevoValor
+            : typeof personalActual.esAdministrativo === "boolean"
+              ? personalActual.esAdministrativo
+              : true,
+      };
+
+      // Actualizar en backend
+      await actualizarPersonal(personalId, payload);
+
+      // Actualizar estado local
+      setPersonales((prev) =>
+        prev.map((p) =>
+          Number(p.id) === Number(personalId)
+            ? { ...p, [campo]: nuevoValor }
+            : p,
+        ),
+      );
+
+      toast?.show({
+        severity: "success",
+        summary: "Actualizado",
+        detail: `Campo ${campo} actualizado correctamente`,
+        life: 2000,
+      });
+    } catch (err) {
+      console.error("Error al actualizar campo boolean:", err);
+      toast?.show({
+        severity: "error",
+        summary: "Error",
+        detail: `No se pudo actualizar el campo ${campo}`,
+      });
+      // Recargar datos para revertir cambio visual
+      loadPersonal();
+    }
+  };
+
+  /**
+   * ⭐ NUEVO - Template para columna Marca Asistencia con ToggleButton editable
+   */
+  const marcaAsistenciaTemplate = (rowData) => {
+    return (
+      <ToggleButton
+        checked={rowData.marcaAsistencia}
+        onLabel="Sí"
+        offLabel="No"
+        onIcon="pi pi-check-circle"
+        offIcon="pi pi-times-circle"
+        onChange={(e) =>
+          actualizarCampoBoolean(rowData.id, "marcaAsistencia", e.value)
+        }
+        className={
+          rowData.marcaAsistencia ? "p-button-success" : "p-button-secondary"
+        }
+        style={{ width: "80px", fontSize: "0.75rem" }}
+        disabled={!permisos.puedeEditar}
+        tooltip={
+          rowData.marcaAsistencia
+            ? "Personal marca asistencia"
+            : "Personal NO marca asistencia"
+        }
+        tooltipOptions={{ position: "top" }}
+      />
+    );
+  };
+  /**
+   * ⭐ NUEVO - Template para columna Es Administrativo con ToggleButton editable
+   */
+  const esAdministrativoTemplate = (rowData) => {
+    return (
+      <ToggleButton
+        checked={rowData.esAdministrativo}
+        onLabel="Rígido"
+        offLabel="Flexible"
+        onIcon="pi pi-clock"
+        offIcon="pi pi-users"
+        onChange={(e) =>
+          actualizarCampoBoolean(rowData.id, "esAdministrativo", e.value)
+        }
+        className={
+          rowData.esAdministrativo ? "p-button-info" : "p-button-warning"
+        }
+        style={{ width: "90px", fontSize: "0.75rem" }}
+        disabled={!permisos.puedeEditar}
+        tooltip={
+          rowData.esAdministrativo
+            ? "Horario Rígido (Administrativo)"
+            : "Horario Flexible (Operativo)"
+        }
+        tooltipOptions={{ position: "top" }}
+      />
+    );
+  };
+
   // Lógica para alta y edición
   const onNew = () => {
     setSelected(null);
@@ -460,6 +630,13 @@ export default function PersonalPage({ ruta }) {
           typeof data.paraPescaConsumo === "boolean"
             ? data.paraPescaConsumo
             : false,
+        // ⭐ NUEVOS CAMPOS - Marca Asistencia y Es Administrativo
+        marcaAsistencia:
+          typeof data.marcaAsistencia === "boolean" ? data.marcaAsistencia : true,
+        esAdministrativo:
+          typeof data.esAdministrativo === "boolean"
+            ? data.esAdministrativo
+            : true,
       };
       if (isEdit && selected) {
         // Edición de personal existente
@@ -811,6 +988,20 @@ export default function PersonalPage({ ruta }) {
           sortable
         />
         <Column field="cesado" header="Cesado" body={cesadoTemplate} sortable />
+        <Column
+          header="Marca Asistencia"
+          body={marcaAsistenciaTemplate}
+          style={{ minWidth: "120px", textAlign: "center" }}
+          sortable
+          sortField="marcaAsistencia"
+        />
+        <Column
+          header="Tipo Horario"
+          body={esAdministrativoTemplate}
+          style={{ minWidth: "130px", textAlign: "center" }}
+          sortable
+          sortField="esAdministrativo"
+        />
         <Column body={actionBodyTemplate} header="Acciones" />
       </DataTable>
       {/*
@@ -832,6 +1023,8 @@ export default function PersonalPage({ ruta }) {
         onHide={onCancel}
         closeOnEscape
         dismissableMask
+        maximizable
+        maximized="true"
       >
         <PersonalForm
           isEdit={isEdit}

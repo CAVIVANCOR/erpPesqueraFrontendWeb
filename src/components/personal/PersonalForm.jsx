@@ -1,7 +1,6 @@
 // src/components/personal/PersonalForm.jsx
 // Formulario modular para alta y edición de personal en el ERP Megui.
 // Utiliza PrimeReact, react-hook-form y Yup. Documentado en español técnico.
-
 import React, { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { InputText } from "primereact/inputtext";
@@ -14,7 +13,6 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { Toast } from "primereact/toast";
 import { FileUpload } from "primereact/fileupload";
 import { ButtonGroup } from "primereact/buttongroup";
-
 import { getEmpresas } from "../../api/empresa"; // API profesional de empresas
 import { getTiposDocIdentidad } from "../../api/tiposDocIdentidad"; // API profesional de tipos de documento
 import { getCargosPersonal } from "../../api/cargosPersonal"; // API profesional de cargos de personal
@@ -23,7 +21,6 @@ import { getSedes } from "../../api/sedes"; // API profesional de sedes
 import { getAreasFisicas } from "../../api/areasFisicas"; // API profesional de áreas físicas
 import { subirFotoPersonal } from "../../api/personal"; // API profesional de subida de foto personal
 import { getEntidadesComerciales } from "../../api/entidadComercial"; // API profesional de entidades comerciales
-
 // Esquema de validación profesional con Yup
 const schema = Yup.object().shape({
   empresaId: Yup.number().required("La empresa es obligatoria"),
@@ -49,6 +46,9 @@ const schema = Yup.object().shape({
   areaFisicaId: Yup.number(),
   sedeEmpresaId: Yup.number(),
   enlaceEntidadComercialId: Yup.number().nullable(),
+  // ⭐ NUEVOS CAMPOS - Marca Asistencia y Es Administrativo
+  marcaAsistencia: Yup.boolean(),
+  esAdministrativo: Yup.boolean(),
 });
 
 /**
@@ -101,7 +101,15 @@ export default function PersonalForm({
       typeof defaultValues.paraPescaConsumo === "boolean"
         ? defaultValues.paraPescaConsumo
         : false,
-
+    // ⭐ NUEVOS CAMPOS - Marca Asistencia y Es Administrativo
+    marcaAsistencia:
+      typeof defaultValues.marcaAsistencia === "boolean"
+        ? defaultValues.marcaAsistencia
+        : true, // Por defecto true según schema
+    esAdministrativo:
+      typeof defaultValues.esAdministrativo === "boolean"
+        ? defaultValues.esAdministrativo
+        : true, // Por defecto true según schema
     // Agrega aquí cualquier otro id de combo que uses
   };
 
@@ -146,6 +154,14 @@ export default function PersonalForm({
     reset({
       ...defaultValues,
       sexo: typeof defaultValues.sexo === "boolean" ? defaultValues.sexo : null,
+      marcaAsistencia:
+        typeof defaultValues.marcaAsistencia === "boolean"
+          ? defaultValues.marcaAsistencia
+          : true,
+      esAdministrativo:
+        typeof defaultValues.esAdministrativo === "boolean"
+          ? defaultValues.esAdministrativo
+          : true,
     });
     // Actualiza el preview de la foto si cambia el registro
     /**
@@ -502,6 +518,13 @@ export default function PersonalForm({
         typeof data.paraPescaConsumo === "boolean"
           ? data.paraPescaConsumo
           : false,
+      // ⭐ NUEVOS CAMPOS - Marca Asistencia y Es Administrativo
+      marcaAsistencia:
+        typeof data.marcaAsistencia === "boolean" ? data.marcaAsistencia : true,
+      esAdministrativo:
+        typeof data.esAdministrativo === "boolean"
+          ? data.esAdministrativo
+          : true,
     };
     // Fin construcción payload profesional
     onSubmit(payload);
@@ -578,7 +601,7 @@ export default function PersonalForm({
                 style={{
                   flex: 1,
                   display: "flex",
-                  flexDirection: "column",
+                  flexDirection: "row",
                   gap: 8,
                 }}
               >
@@ -615,6 +638,57 @@ export default function PersonalForm({
                     Guarda primero el registro para habilitar la subida de foto.
                   </small>
                 )}
+
+
+                            {/* ⭐ NUEVO - Marca Asistencia */}
+              <Controller
+                name="marcaAsistencia"
+                control={control}
+                render={({ field }) => (
+                  <ToggleButton
+                    id="marcaAsistencia"
+                    onLabel="Marca Asistencia"
+                    offLabel="No Marca Asistencia"
+                    onIcon="pi pi-check-circle"
+                    offIcon="pi pi-times-circle"
+                    checked={field.value}
+                    onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly}
+                    className={
+                      field.value ? "p-button-success" : "p-button-secondary"
+                    }
+                    tooltip="Indica si el personal debe marcar asistencia"
+                    tooltipOptions={{ position: "top" }}
+                  />
+                )}
+              />
+              {/* ⭐ NUEVO - Es Administrativo */}
+              <Controller
+                name="esAdministrativo"
+                control={control}
+                render={({ field }) => (
+                  <ToggleButton
+                    id="esAdministrativo"
+                    onLabel="Horario Rígido (Administrativo)"
+                    offLabel="Horario Flexible (Operativo)"
+                    onIcon="pi pi-clock"
+                    offIcon="pi pi-users"
+                    checked={field.value}
+                    onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly}
+                    className={
+                      field.value ? "p-button-info" : "p-button-warning"
+                    }
+                    tooltip={
+                      field.value
+                        ? "Personal administrativo con horario rígido"
+                        : "Personal operativo con horario flexible"
+                    }
+                    tooltipOptions={{ position: "top" }}
+                  />
+                )}
+              />
+
               </div>
             </div>
           </div>
@@ -1060,6 +1134,8 @@ export default function PersonalForm({
                   />
                 )}
               />
+
+  
             </ButtonGroup>
           </div>
 

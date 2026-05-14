@@ -32,6 +32,7 @@ import { formatearFechaHora } from "../../../utils/utils";
 const DatosAccesoCard = ({
   control,
   watch,
+  setValue, // ⭐ NUEVO - Necesario para autocompletar imprimeTicketIng
   getFormErrorMessage,
   tiposDocumento,
   tiposPersona,
@@ -39,6 +40,8 @@ const DatosAccesoCard = ({
   motivosAcceso,
   personalDestino,
   areasDestino,
+  entidadesComerciales, // ⭐ NUEVO
+  contactosFiltrados, // ⭐ NUEVO
   modoEdicion,
   buscandoPersona,
   onDocumentBlur,
@@ -257,7 +260,72 @@ const DatosAccesoCard = ({
           />
           {getFormErrorMessage("motivoId")}
         </div>
+        {/* ========================================
+            ⭐ NUEVOS CAMPOS - DESTINO DE VISITA
+            ======================================== */}
+        
+        {/* Entidad Comercial (Cliente/Proveedor) */}
+        <div className="field col-12 md:col-6">
+          <label htmlFor="entidadComercialId" className="font-semibold">
+            Entidad Comercial (Cliente/Proveedor)
+          </label>
+          <Controller
+            name="entidadComercialId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="entidadComercialId"
+                value={field.value}
+                options={entidadesComerciales}
+                onChange={field.onChange}
+                placeholder="Seleccione entidad comercial"
+                className="w-full"
+                style={{ fontWeight: "bold" }}
+                showClear
+                filter
+                filterBy="label"
+                disabled={readOnly || accesoSellado}
+              />
+            )}
+          />
+          {getFormErrorMessage("entidadComercialId")}
+        </div>
 
+        {/* Contacto de Entidad */}
+        <div className="field col-12 md:col-6">
+          <label htmlFor="contactoEntidadId" className="font-semibold">
+            Contacto de Entidad
+          </label>
+          <Controller
+            name="contactoEntidadId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="contactoEntidadId"
+                value={field.value}
+                options={contactosFiltrados}
+                onChange={field.onChange}
+                placeholder={
+                  watch("entidadComercialId")
+                    ? "Seleccione contacto"
+                    : "Primero seleccione una entidad"
+                }
+                className="w-full"
+                style={{ fontWeight: "bold" }}
+                showClear
+                filter
+                filterBy="label"
+                disabled={
+                  readOnly ||
+                  accesoSellado ||
+                  !watch("entidadComercialId") ||
+                  contactosFiltrados.length === 0
+                }
+              />
+            )}
+          />
+          {getFormErrorMessage("contactoEntidadId")}
+        </div>
         {/* Persona Destino */}
         <div className="field col-12 md:col-6">
           <label

@@ -14,7 +14,6 @@ import DocumentoVisitanteCapture from "./DocumentoVisitanteCapture";
 import TicketPrinter from "./TicketPrinter";
 import { toUpperCaseSafe } from "../../utils/utils";
 
-
 // Importar los nuevos componentes Card
 import DatosAccesoCard from "./cards/DatosAccesoCard";
 import VehiculoEquiposCard from "./cards/VehiculoEquiposCard";
@@ -34,12 +33,18 @@ import { getSedes } from "../../api/sedes";
 import { getEmpresas } from "../../api/empresa";
 import { getPersonal } from "../../api/personal"; // Para personaFirmaDestinoVisitaId
 import { obtenerTiposMovimientoAcceso } from "../../api/tipoMovimientoAcceso"; // Para tipos de movimiento
-import { crearDetalleAccesoInstalacion, obtenerDetallesPorAccesoInstalacion } from "../../api/accesoInstalacionDetalle"; // Para crear y cargar movimientos
+import {
+  crearDetalleAccesoInstalacion,
+  obtenerDetallesPorAccesoInstalacion,
+} from "../../api/accesoInstalacionDetalle"; // Para crear y cargar movimientos
 import {
   buscarPersonaPorDocumento,
   buscarVehiculoPorPlaca,
+  buscarPersonaPorDNI, // ⭐ NUEVO - Búsqueda unificada
 } from "../../api/accesoInstalacion";
 import { consultarReniec } from "../../api/consultaExterna";
+import { getEntidadesComerciales } from "../../api/entidadComercial"; // ⭐ NUEVO
+import { getContactosEntidad } from "../../api/contactoEntidad"; // ⭐ NUEVO
 
 // Esquema de validación con Yup - Coincide exactamente con el modelo Prisma AccesoInstalacion
 const schema = yup.object().shape({
@@ -84,7 +89,23 @@ const schema = yup.object().shape({
     .nullable()
     .typeError("Debe seleccionar un tipo de documento"),
   numeroDocumento: yup.string().max(20, "Máximo 20 caracteres"),
-
+  // ⭐ NUEVOS CAMPOS - Persona que ingresa y destino de visita
+  personalIngresoId: yup
+    .number()
+    .nullable()
+    .typeError("Debe seleccionar un personal válido"),
+  personalDestinoId: yup
+    .number()
+    .nullable()
+    .typeError("Debe seleccionar un personal de destino válido"),
+  entidadComercialId: yup
+    .number()
+    .nullable()
+    .typeError("Debe seleccionar una entidad comercial válida"),
+  contactoEntidadId: yup
+    .number()
+    .nullable()
+    .typeError("Debe seleccionar un contacto válido"),
   // Datos de vehículo del cliente
   vehiculoNroPlaca: yup.string().max(10, "Máximo 10 caracteres"),
   vehiculoMarca: yup.string().max(50, "Máximo 50 caracteres"),
@@ -135,7 +156,9 @@ export default function AccesoInstalacionForm({
   const [tiposDocIdentidad, setTiposDocIdentidad] = useState([]);
   const [personalDestino, setPersonalDestino] = useState([]);
   const [tiposMovimientoAcceso, setTiposMovimientoAcceso] = useState([]); // Estado para tipos de movimiento
-
+  const [entidadesComerciales, setEntidadesComerciales] = useState([]); // ⭐ NUEVO
+  const [contactosEntidad, setContactosEntidad] = useState([]); // ⭐ NUEVO
+  const [contactosFiltrados, setContactosFiltrados] = useState([]); // ⭐ NUEVO - Filtrados por entidad
   // Estados para datos completos (necesarios para el ticket)
   const [empresasCompletas, setEmpresasCompletas] = useState([]);
   const [sedesCompletas, setSedesCompletas] = useState([]);
@@ -184,7 +207,7 @@ export default function AccesoInstalacionForm({
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
-          id: null,  // ⬅️ AGREGAR ESTA LÍNEA
+      id: null, // ⬅️ AGREGAR ESTA LÍNEA
 
       // Campos obligatorios
       sedeId: sedeId ? Number(sedeId) : "", // Precargar desde estado global
@@ -227,13 +250,19 @@ export default function AccesoInstalacionForm({
       imprimeTicketIng: false,
       urlImpresionTicket: "",
       urlDocumentoVisitante: "",
+      // ⭐ NUEVOS CAMPOS - Persona que ingresa y destino
+      personalIngresoId: null,
+      personalDestinoId: null,
+      entidadComercialId: null,
+      contactoEntidadId: null,
     },
   });
 
-  // ELIMINADO: watch de numeroDocumento para evitar búsqueda automática mientras se escribe
-  // La búsqueda ahora se ejecuta solo en el evento onBlur del campo
-
-  // Función para buscar persona por documento usando el endpoint implementado
+  /**
+   * Función para buscar persona por DNI usando búsqueda unificada.
+   * Prioridad: Personal → Histórico → RENIEC
+   * Autocompleta campos según el origen de los datos
+   */
   const buscarPersonaPorDoc = async (numDoc) => {
     if (!numDoc || numDoc.length < 8) return;
 
@@ -242,112 +271,162 @@ export default function AccesoInstalacionForm({
     setDatosAutocompletados(false);
 
     try {
-      // Buscar persona usando el endpoint implementado
-      const respuesta = await buscarPersonaPorDocumento(numDoc);
+      // ⭐ NUEVA BÚSQUEDA UNIFICADA
+      const resultado = await buscarPersonaPorDNI(numDoc);
 
-      if (respuesta && respuesta.encontrada && respuesta.persona) {
-        const persona = respuesta.persona;
+      if (resultado && resultado.encontrado) {
+        const { origen, tipoPersonaSugerido, datos } = resultado;
 
-        // Autocompletar ÚNICAMENTE los campos específicos del último registro:
-        // tipoPersonaId, nombrePersona, tipoDocIdentidadId, numeroDocumento
+        // ========================================
+        // AUTOCOMPLETAR SEGÚN ORIGEN
+        // ========================================
 
-        setValue("nombrePersona", persona.nombrePersona || "");
-        setValue(
-          "tipoDocIdentidadId",
-          persona.tipoDocIdentidadId ? Number(persona.tipoDocIdentidadId) : 1
-        );
-        setValue("numeroDocumento", persona.numeroDocumento || "");
+        // Campos comunes para todos los orígenes
+        setValue("nombrePersona", datos.nombreCompleto || "");
+        setValue("numeroDocumento", datos.numeroDocumento || "");
 
-        // Autocompletar tipoPersonaId si existe en el último registro
-        if (persona.tipoPersonaId) {
-          setValue("tipoPersonaId", Number(persona.tipoPersonaId));
+        // ========================================
+        // CASO 1: PERSONAL INTERNO
+        // ========================================
+        if (origen === "PERSONAL") {
+          // Autocompletar campos específicos de personal
+          setValue(
+            "personalIngresoId",
+            datos.personalIngresoId ? Number(datos.personalIngresoId) : null,
+          );
+
+          // Buscar y seleccionar automáticamente el tipo de persona "PERSONAL INTERNO"
+          const tipoPersonalInterno = tiposPersona.find(
+            (tp) => tp.label && tp.label.toUpperCase().includes("PERSONAL"),
+          );
+          if (tipoPersonalInterno) {
+            setValue("tipoPersonaId", tipoPersonalInterno.value);
+          }
+
+          // Buscar tipo de documento DNI (ID=1 generalmente)
+          setValue("tipoDocIdentidadId", 1);
+
+          setPersonaEncontrada(datos);
+          setDatosAutocompletados(true);
+
+          toast.current?.show({
+            severity: "success",
+            summary: "Personal Encontrado",
+            detail: `${datos.nombreCompleto} - ${datos.cargoDescripcion || "Personal Interno"}`,
+            life: 4000,
+          });
         }
 
-        setPersonaEncontrada(persona);
-        setDatosAutocompletados(true);
+        // ========================================
+        // CASO 2: CONTACTO ENTIDAD (Cliente/Proveedor)
+        // ========================================
+        else if (origen === "CONTACTO_ENTIDAD") {
+          // Autocompletar campos específicos de contacto
+          setValue(
+            "entidadComercialId",
+            datos.entidadComercialId ? Number(datos.entidadComercialId) : null,
+          );
+          setValue(
+            "contactoEntidadId",
+            datos.contactoEntidadId ? Number(datos.contactoEntidadId) : null,
+          );
+
+          // Buscar y seleccionar automáticamente el tipo de persona "CLIENTE" o "PROVEEDOR"
+          const tipoClienteProveedor = tiposPersona.find(
+            (tp) =>
+              tp.label &&
+              (tp.label.toUpperCase().includes("CLIENTE") ||
+                tp.label.toUpperCase().includes("PROVEEDOR")),
+          );
+          if (tipoClienteProveedor) {
+            setValue("tipoPersonaId", tipoClienteProveedor.value);
+          }
+
+          setValue("tipoDocIdentidadId", 1); // DNI
+
+          setPersonaEncontrada(datos);
+          setDatosAutocompletados(true);
+
+          toast.current?.show({
+            severity: "success",
+            summary: "Contacto Encontrado",
+            detail: `${datos.nombreCompleto} - ${datos.razonSocialEntidad}`,
+            life: 4000,
+          });
+        }
+
+        // ========================================
+        // CASO 3: HISTÓRICO (Visitante Recurrente)
+        // ========================================
+        else if (origen === "HISTORICO") {
+          // Autocompletar con datos del último acceso
+          if (datos.tipoPersonaId) {
+            setValue("tipoPersonaId", Number(datos.tipoPersonaId));
+          }
+          if (datos.tipoDocIdentidadId) {
+            setValue("tipoDocIdentidadId", Number(datos.tipoDocIdentidadId));
+          }
+
+          setPersonaEncontrada(datos);
+          setDatosAutocompletados(true);
+
+          toast.current?.show({
+            severity: "info",
+            summary: "Visitante Recurrente",
+            detail: `Datos del último acceso: ${datos.nombreCompleto}`,
+            life: 4000,
+          });
+        }
+
+        // ========================================
+        // CASO 4: RENIEC (Primera Vez)
+        // ========================================
+        else if (origen === "RENIEC") {
+          // Buscar y seleccionar automáticamente el tipo de persona "VISITANTE EXTERNO"
+          const tipoVisitante = tiposPersona.find(
+            (tp) =>
+              tp.label &&
+              (tp.label.toUpperCase().includes("VISITANTE") ||
+                tp.label.toUpperCase().includes("EXTERNO")),
+          );
+          if (tipoVisitante) {
+            setValue("tipoPersonaId", tipoVisitante.value);
+          }
+
+          setValue("tipoDocIdentidadId", 1); // DNI
+
+          setPersonaEncontrada(datos);
+          setDatosAutocompletados(true);
+
+          toast.current?.show({
+            severity: "success",
+            summary: "Datos desde RENIEC",
+            detail: `${datos.nombreCompleto} - Primera visita registrada`,
+            life: 4000,
+          });
+        }
+      } else {
+        // No encontrado en ninguna fuente
+        setPersonaEncontrada(null);
+        setDatosAutocompletados(false);
 
         toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: `Datos del último acceso encontrados para: ${persona.nombrePersona}`,
-          life: 3000,
+          severity: "warn",
+          summary: "No Encontrado",
+          detail:
+            resultado.mensaje ||
+            "DNI no encontrado. Complete los datos manualmente.",
+          life: 4000,
         });
-      } else {
-        // Si no se encuentra en la base de datos local, buscar en RENIEC
-        const numeroDoc = numDoc.trim();
-        // Solo buscar en RENIEC si es un DNI (8 dígitos numéricos)
-        if (numeroDoc.length === 8 && /^\d+$/.test(numeroDoc)) {
-          toast.current?.show({
-            severity: "info",
-            summary: "Buscando en RENIEC",
-            detail: "Persona no encontrada localmente. Consultando RENIEC...",
-            life: 2000,
-          });
-          try {
-            const respuestaReniec = await consultarReniec(numeroDoc);
-            if (respuestaReniec) {
-              // Construir nombre completo: first_name + first_last_name + second_last_name
-              const nombreCompleto = [
-                respuestaReniec.first_name,
-                respuestaReniec.first_last_name,
-                respuestaReniec.second_last_name
-              ].filter(Boolean).join(' ');
-              
-              // Autocompletar con datos de RENIEC
-              setValue("nombrePersona", nombreCompleto || "");
-              setValue("tipoDocIdentidadId", 1); // DNI por defecto
-              setValue("numeroDocumento", numeroDoc);
-              
-              setDatosAutocompletados(true);
-              
-              toast.current?.show({
-                severity: "success",
-                summary: "Datos encontrados en RENIEC",
-                detail: `Datos autocompletados para: ${nombreCompleto}`,
-                life: 3000,
-              });
-            } else {
-              // No encontrado en RENIEC tampoco
-              setPersonaEncontrada(null);
-              setDatosAutocompletados(false);
-              
-              toast.current?.show({
-                severity: "warn",
-                summary: "No encontrado",
-                detail: "Persona no encontrada en RENIEC. Complete los datos manualmente.",
-                life: 3000,
-              });
-            }
-          } catch (errorReniec) {
-            console.error("Error consultando RENIEC:", errorReniec);
-            
-            toast.current?.show({
-              severity: "error",
-              summary: "Error en RENIEC",
-              detail: "Error al consultar RENIEC. Complete los datos manualmente.",
-              life: 3000,
-            });
-          }
-        } else {
-          // No es DNI, mostrar mensaje normal
-          setPersonaEncontrada(null);
-          setDatosAutocompletados(false);
-
-          toast.current?.show({
-            severity: "info",
-            summary: "Información",
-            detail: "Persona no encontrada. Complete los datos manualmente.",
-            life: 3000,
-          });
-        }
       }
     } catch (error) {
+      console.error("Error en búsqueda por DNI:", error);
       setPersonaEncontrada(null);
       setDatosAutocompletados(false);
 
       toast.current?.show({
-        severity: "warn",
-        summary: "Advertencia",
+        severity: "error",
+        summary: "Error",
         detail: "Error en la búsqueda. Complete los datos manualmente.",
         life: 3000,
       });
@@ -355,9 +434,6 @@ export default function AccesoInstalacionForm({
       setBuscandoPersona(false);
     }
   };
-
-  // ELIMINADO: watch de vehiculoNroPlaca para evitar búsqueda automática mientras se escribe
-  // La búsqueda ahora se ejecuta solo en el evento onBlur del campo
 
   // Función para buscar vehículo por número de placa usando el endpoint implementado
   const buscarVehiculoPorPlacaFunc = async (numeroPlaca) => {
@@ -426,7 +502,7 @@ export default function AccesoInstalacionForm({
     if (item) {
       // Cargar datos del item para edición según modelo Prisma AccesoInstalacion
       const datosEdicion = {
-          id: item.id ? Number(item.id) : null,  // ⬅️ AGREGAR ESTA LÍNEA
+        id: item.id ? Number(item.id) : null, // ⬅️ AGREGAR ESTA LÍNEA
         // Campos obligatorios
         sedeId: item.sedeId ? Number(item.sedeId) : "",
         tipoAccesoId: item.tipoAccesoId ? Number(item.tipoAccesoId) : "",
@@ -472,22 +548,36 @@ export default function AccesoInstalacionForm({
           item.imprimeTicketIng !== undefined ? item.imprimeTicketIng : false,
         urlImpresionTicket: item.urlImpresionTicket || "",
         urlDocumentoVisitante: item.urlDocumentoVisitante || "",
+        // ⭐ NUEVOS CAMPOS - Persona que ingresa y destino
+        personalIngresoId: item.personalIngresoId
+          ? Number(item.personalIngresoId)
+          : null,
+        personalDestinoId: item.personalDestinoId
+          ? Number(item.personalDestinoId)
+          : null,
+        entidadComercialId: item.entidadComercialId
+          ? Number(item.entidadComercialId)
+          : null,
+        contactoEntidadId: item.contactoEntidadId
+          ? Number(item.contactoEntidadId)
+          : null,
       };
 
       // Función async para cargar movimientos existentes
       const cargarMovimientos = async () => {
         if (item.id) {
           try {
-            const movimientosExistentes = await obtenerDetallesPorAccesoInstalacion(Number(item.id));
+            const movimientosExistentes =
+              await obtenerDetallesPorAccesoInstalacion(Number(item.id));
             setMovimientos(movimientosExistentes);
           } catch (error) {
             // Inicializar con array vacío si hay error
             setMovimientos([]);
             toast.current?.show({
-              severity: 'warn',
-              summary: 'Error de Carga',
-              detail: 'No se pudieron cargar los movimientos existentes',
-              life: 3000
+              severity: "warn",
+              summary: "Error de Carga",
+              detail: "No se pudieron cargar los movimientos existentes",
+              life: 3000,
             });
           }
         } else {
@@ -527,7 +617,9 @@ export default function AccesoInstalacionForm({
         vehiculosData,
         tiposDocIdentidadData,
         personalDestinoData,
-        tiposMovimientoAccesoData, // Cargar tipos de movimiento
+        tiposMovimientoAccesoData,
+        entidadesComercialesData, // ⭐ NUEVO
+        contactosEntidadData, // ⭐ NUEVO
       ] = await Promise.all([
         getSedes(),
         getEmpresas(),
@@ -539,7 +631,9 @@ export default function AccesoInstalacionForm({
         getVehiculosEntidad(),
         getTiposDocIdentidad(),
         getPersonal(),
-        obtenerTiposMovimientoAcceso(), // Cargar tipos de movimiento
+        obtenerTiposMovimientoAcceso(),
+        getEntidadesComerciales(), // ⭐ NUEVO
+        getContactosEntidad(), // ⭐ NUEVO
       ]);
 
       // Normalizar datos según regla ERP Megui
@@ -547,78 +641,88 @@ export default function AccesoInstalacionForm({
         sedesData.map((s) => ({
           label: s.nombre || "",
           value: Number(s.id),
-        }))
+        })),
       );
 
       setEmpresas(
         empresasData.map((e) => ({
           label: e.razonSocial || "",
           value: Number(e.id),
-        }))
+        })),
       );
 
       setTiposAcceso(
         tiposAccesoData.map((t) => ({
           label: t.nombre || "",
           value: Number(t.id),
-        }))
+        })),
       );
 
       setTiposPersona(
         tiposPersonaData.map((t) => ({
           label: t.descripcion || t.nombre || "",
           value: Number(t.id),
-        }))
+        })),
       );
 
       setMotivosAcceso(
         motivosAccesoData.map((m) => ({
           label: m.descripcion || m.nombre || "",
           value: Number(m.id),
-        }))
+        })),
       );
 
       setTiposEquipo(
         tiposEquipoData.map((e) => ({
           label: e.descripcion || e.nombre || "",
           value: Number(e.id),
-        }))
+        })),
       );
 
       setAreasDestino(
         areasDestinoData.map((a) => ({
           label: a.nombre || "",
           value: Number(a.id),
-        }))
+        })),
       );
 
       setVehiculos(
         vehiculosData.map((v) => ({
           label: `${v.placa || ""} - ${v.marca || ""} ${v.modelo || ""}`.trim(),
           value: Number(v.id),
-        }))
+        })),
       );
 
       setTiposDocIdentidad(
         tiposDocIdentidadData.map((t) => ({
           label: t.codigo,
           value: Number(t.id),
-        }))
+        })),
       );
 
       setPersonalDestino(
         personalDestinoData.map((p) => ({
           label: `${p.nombres || ""} ${p.apellidos || ""}`.trim(),
           value: Number(p.id),
-        }))
+        })),
       );
 
       setTiposMovimientoAcceso(
         tiposMovimientoAccesoData.map((t) => ({
           label: t.nombre || "",
           value: Number(t.id),
-        }))
+        })),
       );
+      // ⭐ NUEVO - Normalizar entidades comerciales
+      setEntidadesComerciales(
+        entidadesComercialesData.map((ec) => ({
+          label: ec.razonSocial || "",
+          value: Number(ec.id),
+        })),
+      );
+
+      // ⭐ NUEVO - Guardar contactos completos (se filtrarán por entidad)
+      setContactosEntidad(contactosEntidadData);
 
       // Guardar datos completos de empresas y sedes
       setEmpresasCompletas(empresasData);
@@ -635,10 +739,35 @@ export default function AccesoInstalacionForm({
   };
 
   /**
+   * Efecto para filtrar contactos cuando cambia la entidad comercial seleccionada
+   */
+  useEffect(() => {
+    const entidadSeleccionada = watch("entidadComercialId");
+
+    if (entidadSeleccionada) {
+      // Filtrar contactos por entidad comercial
+      const contactosFiltrados = contactosEntidad
+        .filter(
+          (c) => Number(c.entidadComercialId) === Number(entidadSeleccionada),
+        )
+        .map((c) => ({
+          label: c.nombres || "",
+          value: Number(c.id),
+        }));
+
+      setContactosFiltrados(contactosFiltrados);
+    } else {
+      // Si no hay entidad seleccionada, limpiar contactos
+      setContactosFiltrados([]);
+      setValue("contactoEntidadId", null);
+    }
+  }, [watch("entidadComercialId"), contactosEntidad, setValue]);
+
+  /**
    * Función de envío del formulario con creación automática de detalle
    * FLUJO ESPECIAL: Al guardar, crea automáticamente el registro en AccesoInstalacionDetalle
    */
-  const onSubmit = async (data) => {    
+  const onSubmit = async (data) => {
     setLoading(true);
     try {
       // Normalizar datos antes de enviar según regla ERP Megui
@@ -650,15 +779,15 @@ export default function AccesoInstalacionForm({
             ? Number(data.sedeId)
             : ""
           : sedeId
-          ? Number(sedeId)
-          : "",
+            ? Number(sedeId)
+            : "",
         empresaId: modoEdicion
           ? data.empresaId
             ? Number(data.empresaId)
             : ""
           : empresaId
-          ? Number(empresaId)
-          : "",
+            ? Number(empresaId)
+            : "",
         tipoAccesoId: data.tipoAccesoId ? Number(data.tipoAccesoId) : "",
         fechaHora: data.fechaHora || new Date(),
 
@@ -699,6 +828,19 @@ export default function AccesoInstalacionForm({
         imprimeTicketIng: Boolean(data.imprimeTicketIng),
         urlImpresionTicket: data.urlImpresionTicket?.trim() || "",
         urlDocumentoVisitante: data.urlDocumentoVisitante?.trim() || "",
+        // ⭐ NUEVOS CAMPOS - Persona que ingresa y destino
+        personalIngresoId: data.personalIngresoId
+          ? Number(data.personalIngresoId)
+          : null,
+        personalDestinoId: data.personalDestinoId
+          ? Number(data.personalDestinoId)
+          : null,
+        entidadComercialId: data.entidadComercialId
+          ? Number(data.entidadComercialId)
+          : null,
+        contactoEntidadId: data.contactoEntidadId
+          ? Number(data.contactoEntidadId)
+          : null,
       };
       // Llamar a la función de guardado del componente padre
       await onSave(datosNormalizados);
@@ -711,8 +853,8 @@ export default function AccesoInstalacionForm({
           : "Acceso registrado correctamente. Se creó el detalle de entrada automáticamente.",
       });
     } catch (error) {
-      console.error('❌ Error al guardar:', error);
-      
+      console.error("❌ Error al guardar:", error);
+
       // Manejo detallado de errores para mostrar mensajes específicos al usuario
       let mensajeError = "Error desconocido al guardar el registro";
       let detalleError = "";
@@ -720,52 +862,68 @@ export default function AccesoInstalacionForm({
       if (error.response) {
         // Errores del backend (con respuesta HTTP)
         const { status, data } = error.response;
-        
+
         switch (status) {
           case 400:
             // Error de validación del backend
             mensajeError = "Error de Validación";
-            detalleError = data?.message || data?.error || "Los datos ingresados no son válidos. Verifique los campos requeridos.";
+            detalleError =
+              data?.message ||
+              data?.error ||
+              "Los datos ingresados no son válidos. Verifique los campos requeridos.";
             break;
-            
+
           case 404:
             mensajeError = "Recurso No Encontrado";
-            detalleError = data?.message || "El endpoint solicitado no existe en el servidor.";
+            detalleError =
+              data?.message ||
+              "El endpoint solicitado no existe en el servidor.";
             break;
-            
+
           case 409:
             // Error de conflicto (duplicados, etc.)
             mensajeError = "Conflicto de Datos";
-            detalleError = data?.message || "Ya existe un registro con estos datos.";
+            detalleError =
+              data?.message || "Ya existe un registro con estos datos.";
             break;
-            
+
           case 422:
             // Error de validación específica
             mensajeError = "Datos Inválidos";
-            detalleError = data?.message || "Los datos proporcionados no cumplen con las reglas de validación.";
+            detalleError =
+              data?.message ||
+              "Los datos proporcionados no cumplen con las reglas de validación.";
             break;
-            
+
           case 500:
             mensajeError = "Error Interno del Servidor";
-            detalleError = data?.message || "Error interno del servidor. Contacte al administrador del sistema.";
+            detalleError =
+              data?.message ||
+              "Error interno del servidor. Contacte al administrador del sistema.";
             break;
-            
+
           default:
             mensajeError = `Error HTTP ${status}`;
-            detalleError = data?.message || `Error del servidor con código ${status}.`;
+            detalleError =
+              data?.message || `Error del servidor con código ${status}.`;
         }
       } else if (error.request) {
         // Error de red (sin respuesta del servidor)
         mensajeError = "Error de Conexión";
-        detalleError = "No se pudo conectar con el servidor. Verifique su conexión a internet.";
-      } else if (error.name === 'ValidationError') {
+        detalleError =
+          "No se pudo conectar con el servidor. Verifique su conexión a internet.";
+      } else if (error.name === "ValidationError") {
         // Errores de validación del frontend (YUP/React Hook Form)
         mensajeError = "Error de Validación del Formulario";
-        detalleError = error.message || "Hay campos con errores de validación. Revise el formulario.";
+        detalleError =
+          error.message ||
+          "Hay campos con errores de validación. Revise el formulario.";
       } else {
         // Otros errores (JavaScript, lógica, etc.)
         mensajeError = "Error Inesperado";
-        detalleError = error.message || "Ha ocurrido un error inesperado. Intente nuevamente.";
+        detalleError =
+          error.message ||
+          "Ha ocurrido un error inesperado. Intente nuevamente.";
       }
 
       // Mostrar toast de error con mensaje específico
@@ -785,7 +943,12 @@ export default function AccesoInstalacionForm({
    * Se ejecuta cuando el usuario ingresa un número de documento
    */
   const handleBuscarPersona = async (numeroDoc) => {
-    if (!numeroDoc || numeroDoc.length < 8 || modoEdicion || !busquedaHabilitada) {
+    if (
+      !numeroDoc ||
+      numeroDoc.length < 8 ||
+      modoEdicion ||
+      !busquedaHabilitada
+    ) {
       return;
     }
 
@@ -793,20 +956,18 @@ export default function AccesoInstalacionForm({
     try {
       // Aquí iría la lógica de búsqueda por documento
       // Por ahora, solo mostramos que la función existe
-      
       // TODO: Implementar búsqueda real cuando esté disponible en el backend
       // const persona = await buscarPersonaPorDocumento(numeroDoc);
       // if (persona) {
       //   setValue('nombrePersona', persona.nombres);
       //   setValue('tipoDocIdentidadId', persona.tipoDocIdentidadId);
       // }
-      
     } catch (error) {
-      console.error('Error buscando persona:', error);
+      console.error("Error buscando persona:", error);
       toast.current?.show({
-        severity: 'warn',
-        summary: 'Búsqueda',
-        detail: 'No se pudo buscar la persona. Ingrese los datos manualmente.'
+        severity: "warn",
+        summary: "Búsqueda",
+        detail: "No se pudo buscar la persona. Ingrese los datos manualmente.",
       });
     } finally {
       setBuscandoPersona(false);
@@ -839,10 +1000,11 @@ export default function AccesoInstalacionForm({
       // Validar que estemos en modo edición (necesitamos el ID del acceso)
       if (!modoEdicion || !item?.id) {
         toast.current.show({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'No se puede agregar movimiento a un registro no guardado. Guarde primero el acceso.',
-          life: 3000
+          severity: "error",
+          summary: "Error",
+          detail:
+            "No se puede agregar movimiento a un registro no guardado. Guarde primero el acceso.",
+          life: 3000,
         });
         return;
       }
@@ -852,70 +1014,77 @@ export default function AccesoInstalacionForm({
         accesoInstalacionId: Number(item.id),
         fechaHora: movimiento.fechaHora,
         tipoMovimientoId: Number(movimiento.tipoMovimientoId),
-        areaDestinoVisitaId: movimiento.areaDestinoVisitaId ? Number(movimiento.areaDestinoVisitaId) : null,
-        observaciones: toUpperCaseSafe(movimiento.observaciones)
+        areaDestinoVisitaId: movimiento.areaDestinoVisitaId
+          ? Number(movimiento.areaDestinoVisitaId)
+          : null,
+        observaciones: toUpperCaseSafe(movimiento.observaciones),
       };
 
       // Llamar a la API para crear el movimiento real
-      const nuevoMovimiento = await crearDetalleAccesoInstalacion(datosMovimiento);
+      const nuevoMovimiento =
+        await crearDetalleAccesoInstalacion(datosMovimiento);
 
       // Actualizar el estado local con el movimiento creado (incluye ID generado)
       setMovimientos([...movimientos, nuevoMovimiento]);
 
       // Mostrar mensaje de éxito
       toast.current.show({
-        severity: 'success',
-        summary: 'Movimiento Creado',
-        detail: 'El movimiento se ha registrado correctamente',
-        life: 3000
+        severity: "success",
+        summary: "Movimiento Creado",
+        detail: "El movimiento se ha registrado correctamente",
+        life: 3000,
       });
     } catch (error) {
-      console.error('❌ Error al crear movimiento:', error);
+      console.error("❌ Error al crear movimiento:", error);
 
       // Manejo de errores profesional
-      let mensajeError = 'Error al crear movimiento';
-      let detalleError = '';
+      let mensajeError = "Error al crear movimiento";
+      let detalleError = "";
 
       if (error.response) {
         const { status, data } = error.response;
         switch (status) {
           case 400:
             // Error de validación del backend
-            mensajeError = 'Error de Validación';
-            detalleError = data?.message || 'Los datos del movimiento no son válidos';
+            mensajeError = "Error de Validación";
+            detalleError =
+              data?.message || "Los datos del movimiento no son válidos";
             break;
-            
+
           case 404:
-            mensajeError = 'Recurso No Encontrado';
-            detalleError = 'El acceso a instalación no existe';
+            mensajeError = "Recurso No Encontrado";
+            detalleError = "El acceso a instalación no existe";
             break;
-            
+
           case 422:
             // Error de validación específica
-            mensajeError = 'Error de Validación';
-            detalleError = data?.message || 'Datos del movimiento incorrectos';
+            mensajeError = "Error de Validación";
+            detalleError = data?.message || "Datos del movimiento incorrectos";
             break;
-            
+
           case 500:
-            mensajeError = 'Error del Servidor';
-            detalleError = 'Error interno del servidor. Contacte al administrador.';
+            mensajeError = "Error del Servidor";
+            detalleError =
+              "Error interno del servidor. Contacte al administrador.";
             break;
-            
+
           default:
             mensajeError = `Error HTTP ${status}`;
-            detalleError = data?.message || `Error del servidor con código ${status}`;
+            detalleError =
+              data?.message || `Error del servidor con código ${status}`;
         }
       } else if (error.request) {
-        mensajeError = 'Error de Conexión';
-        detalleError = 'No se pudo conectar con el servidor. Verifique su conexión a internet.';
+        mensajeError = "Error de Conexión";
+        detalleError =
+          "No se pudo conectar con el servidor. Verifique su conexión a internet.";
       }
 
       // Mostrar mensaje de error
       toast.current.show({
-        severity: 'error',
+        severity: "error",
         summary: mensajeError,
         detail: detalleError,
-        life: 5000
+        life: 5000,
       });
     }
   };
@@ -926,44 +1095,51 @@ export default function AccesoInstalacionForm({
       // Validar que estemos en modo edición (necesitamos el ID del acceso)
       if (!modoEdicion || !item?.id) {
         toast.current.show({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'No se puede procesar la salida definitiva en un registro no guardado',
-          life: 3000
+          severity: "error",
+          summary: "Error",
+          detail:
+            "No se puede procesar la salida definitiva en un registro no guardado",
+          life: 3000,
         });
         return;
       }
 
       // Validar que no haya ya una salida definitiva
-      const yaHaySalidaDefinitiva = movimientos.some(m => m.tipoMovimientoId === 4);
+      const yaHaySalidaDefinitiva = movimientos.some(
+        (m) => m.tipoMovimientoId === 4,
+      );
       if (yaHaySalidaDefinitiva) {
         toast.current.show({
-          severity: 'warn',
-          summary: 'Advertencia',
-          detail: 'Este registro ya tiene una salida definitiva registrada',
-          life: 3000
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "Este registro ya tiene una salida definitiva registrada",
+          life: 3000,
         });
         return;
       }
 
-
       // Llamar a la API para procesar salida definitiva (actualiza campos Y crea movimiento automáticamente)
-      const { procesarSalidaDefinitiva } = await import('../../api/accesoInstalacion');
+      const { procesarSalidaDefinitiva } =
+        await import("../../api/accesoInstalacion");
       const accesoActualizado = await procesarSalidaDefinitiva(Number(item.id));
 
       // Actualizar los valores del formulario con los datos actualizados
-      setValue('fechaHoraSalidaDefinitiva', accesoActualizado.fechaHoraSalidaDefinitiva);
-      setValue('accesoSellado', accesoActualizado.accesoSellado);
+      setValue(
+        "fechaHoraSalidaDefinitiva",
+        accesoActualizado.fechaHoraSalidaDefinitiva,
+      );
+      setValue("accesoSellado", accesoActualizado.accesoSellado);
 
       // Recargar movimientos desde la base de datos para incluir el nuevo movimiento de salida
       await recargarMovimientos();
 
       // Mostrar mensaje de éxito
       toast.current.show({
-        severity: 'success',
-        summary: 'Salida Procesada',
-        detail: 'Salida definitiva registrada correctamente. El acceso ha sido sellado.',
-        life: 4000
+        severity: "success",
+        summary: "Salida Procesada",
+        detail:
+          "Salida definitiva registrada correctamente. El acceso ha sido sellado.",
+        life: 4000,
       });
 
       // Cerrar el formulario automáticamente después de procesar la salida definitiva
@@ -973,16 +1149,17 @@ export default function AccesoInstalacionForm({
           onCancel(true); // Pasar true para indicar que debe recargar la lista
         }
       }, 1500); // Esperar 1.5 segundos para que el usuario vea el mensaje de éxito
-
     } catch (error) {
-      console.error('❌ Error al procesar salida definitiva:', error);
-      
+      console.error("❌ Error al procesar salida definitiva:", error);
+
       // Mostrar mensaje de error
       toast.current.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: error.response?.data?.message || 'Error al procesar la salida definitiva',
-        life: 5000
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.message ||
+          "Error al procesar la salida definitiva",
+        life: 5000,
       });
     }
   };
@@ -994,29 +1171,31 @@ export default function AccesoInstalacionForm({
     }
 
     try {
-      const movimientosActualizados = await obtenerDetallesPorAccesoInstalacion(Number(item.id));
+      const movimientosActualizados = await obtenerDetallesPorAccesoInstalacion(
+        Number(item.id),
+      );
       setMovimientos(movimientosActualizados);
-      
+
       toast.current?.show({
-        severity: 'info',
-        summary: 'Movimientos Actualizados',
-        detail: 'La lista de movimientos se ha actualizado correctamente',
-        life: 2000
+        severity: "info",
+        summary: "Movimientos Actualizados",
+        detail: "La lista de movimientos se ha actualizado correctamente",
+        life: 2000,
       });
     } catch (error) {
-      console.error('❌ Error al recargar movimientos:', error);
+      console.error("❌ Error al recargar movimientos:", error);
       toast.current?.show({
-        severity: 'warn',
-        summary: 'Error de Actualización',
-        detail: 'No se pudieron actualizar los movimientos',
-        life: 3000
+        severity: "warn",
+        summary: "Error de Actualización",
+        detail: "No se pudieron actualizar los movimientos",
+        life: 3000,
       });
     }
   };
 
   // Función para manejar el clic en el card de movimientos
   const handleMovimientosCardClick = () => {
-    setActiveCard('movimientos');
+    setActiveCard("movimientos");
     // Recargar movimientos automáticamente al hacer clic en el card
     recargarMovimientos();
   };
@@ -1035,21 +1214,27 @@ export default function AccesoInstalacionForm({
     <div>
       <Toast ref={toast} />
 
-      <form 
-        onSubmit={(e) => {          
+      <form
+        onSubmit={(e) => {
           // Llamar a handleSubmit y capturar cualquier error
           const submitHandler = handleSubmit(
             (data) => {
               onSubmit(data);
             },
             (errors) => {
-              console.error('❌ [DEBUG] Errores de validación en handleSubmit:', errors);
-              console.error('❌ [DEBUG] Errores detallados:', JSON.stringify(errors, null, 2));
-            }
+              console.error(
+                "❌ [DEBUG] Errores de validación en handleSubmit:",
+                errors,
+              );
+              console.error(
+                "❌ [DEBUG] Errores detallados:",
+                JSON.stringify(errors, null, 2),
+              );
+            },
           );
-          
+
           submitHandler(e);
-        }} 
+        }}
         className="p-fluid"
       >
         {/* Navegación elegante por secciones con Toolbar nativo */}
@@ -1060,41 +1245,61 @@ export default function AccesoInstalacionForm({
               <Button
                 icon="pi pi-user"
                 tooltip="Datos de la Persona, Tipo de Persona, Motivo, Area y Persona Destino"
-                tooltipOptions={{ position: 'bottom' }}
-                className={activeCard === 'datos' ? 'p-button-primary' : 'p-button-outlined'}
-                onClick={() => setActiveCard('datos')}
+                tooltipOptions={{ position: "bottom" }}
+                className={
+                  activeCard === "datos"
+                    ? "p-button-primary"
+                    : "p-button-outlined"
+                }
+                onClick={() => setActiveCard("datos")}
                 type="button"
               />
               <Button
                 icon="pi pi-car"
                 tooltip="Datos delVehículo y/o Equipos"
-                tooltipOptions={{ position: 'bottom' }}
-                className={activeCard === 'vehiculo' ? 'p-button-primary' : 'p-button-outlined'}
-                onClick={() => setActiveCard('vehiculo')}
+                tooltipOptions={{ position: "bottom" }}
+                className={
+                  activeCard === "vehiculo"
+                    ? "p-button-primary"
+                    : "p-button-outlined"
+                }
+                onClick={() => setActiveCard("vehiculo")}
                 type="button"
               />
               <Button
                 icon="pi pi-file-edit"
                 tooltip="Observaciones e Incidentes Resaltantes"
-                tooltipOptions={{ position: 'bottom' }}
-                className={activeCard === 'observaciones' ? 'p-button-primary' : 'p-button-outlined'}
-                onClick={() => setActiveCard('observaciones')}
+                tooltipOptions={{ position: "bottom" }}
+                className={
+                  activeCard === "observaciones"
+                    ? "p-button-primary"
+                    : "p-button-outlined"
+                }
+                onClick={() => setActiveCard("observaciones")}
                 type="button"
               />
               <Button
                 icon="pi pi-file-pdf"
                 tooltip="Documentacion del visitante"
-                tooltipOptions={{ position: 'bottom' }}
-                className={activeCard === 'documentos' ? 'p-button-primary' : 'p-button-outlined'}
-                onClick={() => setActiveCard('documentos')}
+                tooltipOptions={{ position: "bottom" }}
+                className={
+                  activeCard === "documentos"
+                    ? "p-button-primary"
+                    : "p-button-outlined"
+                }
+                onClick={() => setActiveCard("documentos")}
                 type="button"
               />
               {modoEdicion && (
                 <Button
                   icon="pi pi-chart-line"
                   tooltip="Movimientos"
-                  tooltipOptions={{ position: 'bottom' }}
-                  className={activeCard === 'movimientos' ? 'p-button-primary' : 'p-button-outlined'}
+                  tooltipOptions={{ position: "bottom" }}
+                  className={
+                    activeCard === "movimientos"
+                      ? "p-button-primary"
+                      : "p-button-outlined"
+                  }
                   onClick={handleMovimientosCardClick}
                   type="button"
                 />
@@ -1105,10 +1310,11 @@ export default function AccesoInstalacionForm({
 
         {/* Contenido de la Card activa */}
         <div className="card-content">
-          {activeCard === 'datos' && (
+          {activeCard === "datos" && (
             <DatosAccesoCard
               control={control}
               watch={watch}
+              setValue={setValue}
               getFormErrorMessage={getFormErrorMessage}
               tiposDocumento={tiposDocIdentidad}
               tiposPersona={tiposPersona}
@@ -1116,6 +1322,8 @@ export default function AccesoInstalacionForm({
               motivosAcceso={motivosAcceso}
               personalDestino={personalDestino}
               areasDestino={areasDestino}
+              entidadesComerciales={entidadesComerciales}
+              contactosFiltrados={contactosFiltrados}
               modoEdicion={modoEdicion}
               buscandoPersona={buscandoPersona}
               onDocumentBlur={buscarPersonaPorDoc}
@@ -1124,7 +1332,7 @@ export default function AccesoInstalacionForm({
             />
           )}
 
-          {activeCard === 'vehiculo' && (
+          {activeCard === "vehiculo" && (
             <VehiculoEquiposCard
               control={control}
               watch={watch}
@@ -1137,7 +1345,7 @@ export default function AccesoInstalacionForm({
             />
           )}
 
-          {activeCard === 'observaciones' && (
+          {activeCard === "observaciones" && (
             <ObservacionesIncidentesCard
               control={control}
               watch={watch}
@@ -1148,7 +1356,7 @@ export default function AccesoInstalacionForm({
             />
           )}
 
-          {activeCard === 'documentos' && (
+          {activeCard === "documentos" && (
             <DocumentosAdjuntosCard
               control={control}
               watch={watch}
@@ -1160,7 +1368,7 @@ export default function AccesoInstalacionForm({
             />
           )}
 
-          {activeCard === 'movimientos' && (
+          {activeCard === "movimientos" && (
             <MovimientosCard
               movimientos={movimientos}
               onMovimientoAgregado={handleMovimientoAgregado}
@@ -1185,7 +1393,8 @@ export default function AccesoInstalacionForm({
                     🔒 Acceso Sellado
                   </p>
                   <p className="text-xs text-yellow-600">
-                    Este acceso tiene salida definitiva y no puede ser modificado. Solo se permite imprimir ticket.
+                    Este acceso tiene salida definitiva y no puede ser
+                    modificado. Solo se permite imprimir ticket.
                   </p>
                 </div>
               </div>
@@ -1210,11 +1419,19 @@ export default function AccesoInstalacionForm({
               type="submit"
               loading={loading}
               disabled={readOnly || accesoSellado || !permisos.puedeEditar}
-              tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : accesoSellado ? "Acceso sellado" : ""}
+              tooltip={
+                readOnly
+                  ? "Modo solo lectura"
+                  : !permisos.puedeEditar
+                    ? "No tiene permisos para editar"
+                    : accesoSellado
+                      ? "Acceso sellado"
+                      : ""
+              }
               style={{ minWidth: "120px" }}
             />
           </ButtonGroup>
-          
+
           {/* Grupo de botones secundarios (solo en modo edición) */}
           {modoEdicion && (
             <ButtonGroup>
@@ -1227,7 +1444,7 @@ export default function AccesoInstalacionForm({
                 disabled={loading || accesoSellado || tieneSalidaDefinitiva}
                 style={{ minWidth: "120px" }}
               />
-              
+
               {/* Botón Ticket - Solo si imprimeTicketIng está marcado - SIEMPRE HABILITADO */}
               {(() => {
                 const imprimeTicket = watch("imprimeTicketIng");
@@ -1240,16 +1457,16 @@ export default function AccesoInstalacionForm({
                         nombrePersona: watch("nombrePersona"),
                         numeroDocumento: watch("numeroDocumento"),
                         tipoPersona: tiposPersona.find(
-                          (tp) => tp.value === watch("tipoPersonaId")
+                          (tp) => tp.value === watch("tipoPersonaId"),
                         ),
                         motivoAcceso: motivosAcceso.find(
-                          (ma) => ma.value === watch("motivoAccesoId")
+                          (ma) => ma.value === watch("motivoAccesoId"),
                         ),
                         empresa: empresasCompletas.find(
-                          (e) => Number(e.id) === Number(watch("empresaId"))
+                          (e) => Number(e.id) === Number(watch("empresaId")),
                         ),
                         sede: sedesCompletas.find(
-                          (s) => Number(s.id) === Number(watch("sedeId"))
+                          (s) => Number(s.id) === Number(watch("sedeId")),
                         ),
                         vehiculoNroPlaca: watch("vehiculoNroPlaca"),
                         vehiculoMarca: watch("vehiculoMarca"),
@@ -1260,12 +1477,12 @@ export default function AccesoInstalacionForm({
                         equipoModelo: watch("equipoModelo"),
                         equipoSerie: watch("equipoSerie"),
                         areaDestino: areasDestino.find(
-                          (af) => af.value === watch("areaDestinoVisitaId")
+                          (af) => af.value === watch("areaDestinoVisitaId"),
                         ),
                         personaDestino:
                           personalDestino.find(
                             (p) =>
-                              p.value === watch("personaFirmaDestinoVisitaId")
+                              p.value === watch("personaFirmaDestinoVisitaId"),
                           )?.label || "",
                       }}
                       toast={toast}
