@@ -6,7 +6,7 @@
  * Patrón basado exactamente en TipoEquipo.jsx para máxima consistencia.
  *
  * @author ERP Megui
- * @version 1.0.0
+ * @version 1.1.0 - Agregada búsqueda RENIEC por DNI
  */
 
 import React, {
@@ -27,6 +27,7 @@ import { Dropdown } from "primereact/dropdown";
 import { Toast } from "primereact/toast";
 import { Tag } from "primereact/tag";
 import { ConfirmDialog } from "primereact/confirmdialog";
+import { ProgressSpinner } from "primereact/progressspinner";
 import AuditInfo from "../shared/AuditInfo";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -37,6 +38,7 @@ import {
   actualizarContactoEntidad,
   eliminarContactoEntidad,
 } from "../../api/contactoEntidad";
+import { buscarPersonaPorDNI } from "../../api/accesoInstalacion";
 import { getCargosPersonal } from "../../api/cargosPersonal";
 import { toUpperCaseSafe } from "../../utils/utils";
 import { classNames } from "primereact/utils";
@@ -98,6 +100,7 @@ const DetalleContactosEntidad = forwardRef(
     const [confirmVisible, setConfirmVisible] = useState(false);
     const [contactoAEliminar, setContactoAEliminar] = useState(null);
     const [globalFilter, setGlobalFilter] = useState("");
+    const [buscandoReniec, setBuscandoReniec] = useState(false);
 
     // Referencias
     const toast = useRef(null);
@@ -139,7 +142,7 @@ const DetalleContactosEntidad = forwardRef(
 
     // Función para cargar contactos desde la API
     const cargarContactos = async () => {
-      if (!entidadComercialId) return; // ← ¡YA TIENE LA VALIDACIÓN!
+      if (!entidadComercialId) return;
       try {
         setLoading(true);
         const response = await obtenerContactosPorEntidad(entidadComercialId);
@@ -194,6 +197,61 @@ const DetalleContactosEntidad = forwardRef(
     }, []);
 
     /**
+     * Función para buscar persona por DNI en RENIEC
+     * Patrón replicado de AccesoInstalacionForm.jsx (líneas 266-339)
+     */
+    const buscarEnReniec = async () => {
+      const numDoc = getValues("numeroDocumento");
+      
+      if (!numDoc || numDoc.trim().length < 8) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "Ingrese un número de documento válido (mínimo 8 dígitos)",
+          life: 3000,
+        });
+        return;
+      }
+
+      setBuscandoReniec(true);
+
+      try {
+        const resultado = await buscarPersonaPorDNI(numDoc.trim());
+
+        if (resultado && resultado.encontrado) {
+          const { origen, datos } = resultado;
+
+          // Autocompletar campo nombres
+          setValue("nombres", datos.nombreCompleto || "");
+
+          toast.current?.show({
+            severity: "success",
+            summary: "Persona Encontrada",
+            detail: `${datos.nombreCompleto} - Origen: ${origen}`,
+            life: 4000,
+          });
+        } else {
+          toast.current?.show({
+            severity: "info",
+            summary: "No Encontrado",
+            detail: resultado.mensaje || "No se encontró información del documento",
+            life: 4000,
+          });
+        }
+      } catch (error) {
+        console.error("❌ Error al buscar en RENIEC:", error);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al consultar RENIEC. Intente nuevamente.",
+          life: 3000,
+        });
+      } finally {
+        setBuscandoReniec(false);
+      }
+    };
+
+    /**
      * Abre el diálogo para crear un nuevo contacto
      */
     const abrirDialogoNuevo = () => {
@@ -237,9 +295,9 @@ const DetalleContactosEntidad = forwardRef(
      * Recarga la lista y cierra el diálogo
      */
     const onGuardarExitoso = () => {
-      cargarContactos(); // Recargar la lista
-      cerrarDialogo(); // Cerrar el diálogo
-      reset(); // Limpiar el formulario
+      cargarContactos();
+      cerrarDialogo();
+      reset();
     };
 
     /**
@@ -325,15 +383,12 @@ const DetalleContactosEntidad = forwardRef(
 
         if (esEdicion) {
           // Actualizar contacto existente
-          // Agregar campos de auditoría para actualización
           const datosActualizacion = {
             ...contactoNormalizado,
-            // Si fechaCreacion o creadoPor son null/vacíos, asignarlos ahora
             fechaCreacion: contactoSeleccionado.fechaCreacion || new Date(),
             creadoPor:
               contactoSeleccionado.creadoPor ||
               (usuario?.personalId ? Number(usuario.personalId) : null),
-            // Siempre actualizar estos campos
             fechaActualizacion: new Date(),
             actualizadoPor: usuario?.personalId
               ? Number(usuario.personalId)
@@ -354,7 +409,6 @@ const DetalleContactosEntidad = forwardRef(
           onGuardarExitoso();
         } else {
           // Crear nuevo contacto
-          // Agregar campos de auditoría para creación
           const datosCreacion = {
             ...contactoNormalizado,
             fechaCreacion: new Date(),
@@ -470,7 +524,7 @@ const DetalleContactosEntidad = forwardRef(
           rowsPerPageOptions={[5, 10, 25, 50]}
           onRowClick={(e) => abrirDialogoEdicion(e.data)}
           selectionMode="single"
-          className="p-datatable-hover cursor-pointer"
+          className="p-datatable-hover cursor-pointer p-datatable-sm"
           emptyMessage="No se encontraron contactos"
           globalFilter={globalFilter}
           header={
@@ -542,6 +596,45 @@ const DetalleContactosEntidad = forwardRef(
         >
           <form className="p-fluid">
             <div className="formgrid grid">
+              {/* ⭐ PRIMER CAMPO: Número de Documento con botón lupa */}
+              <div className="field col-12 md:col-6">
+                <label htmlFor="numeroDocumento">DNI / Documento</label>
+                <div className="p-inputgroup">
+                  <Controller
+                    name="numeroDocumento"
+                    control={control}
+                    render={({ field }) => (
+                      <InputText
+                        id="numeroDocumento"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        placeholder="12345678"
+                        className={getFieldClass("numeroDocumento")}
+                        maxLength={20}
+                        keyfilter="int"
+                        style={{ fontWeight: "bold" }}
+                        disabled={readOnly || loading || contactoSeleccionado}
+                      />
+                    )}
+                  />
+                  <Button
+                    icon="pi pi-search"
+                    className="p-button-secondary"
+                    onClick={buscarEnReniec}
+                    type="button"
+                    disabled={readOnly || loading || buscandoReniec || contactoSeleccionado}
+                    tooltip="Buscar en RENIEC"
+                  />
+                  {buscandoReniec && (
+                    <span className="p-inputgroup-addon">
+                      <ProgressSpinner size="20px" strokeWidth="4" />
+                    </span>
+                  )}
+                </div>
+                {getFormErrorMessage("numeroDocumento")}
+              </div>
+
+              {/* ⭐ SEGUNDO CAMPO: Nombres (autocompletado por RENIEC) */}
               <div className="field col-12 md:col-6">
                 <label htmlFor="nombres">Nombres *</label>
                 <Controller
@@ -556,33 +649,13 @@ const DetalleContactosEntidad = forwardRef(
                       className={getFieldClass("nombres")}
                       maxLength={255}
                       style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                      disabled={readOnly || loading}
+                      disabled={readOnly || loading || buscandoReniec}
                     />
                   )}
                 />
                 {getFormErrorMessage("nombres")}
               </div>
-              <div className="field col-12 md:col-6">
-                <label htmlFor="numeroDocumento">DNI</label>
-                <Controller
-                  name="numeroDocumento"
-                  control={control}
-                  render={({ field }) => (
-                    <InputText
-                      id="numeroDocumento"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      placeholder="12345678"
-                      className={getFieldClass("numeroDocumento")}
-                      maxLength={8}
-                      keyfilter="int"
-                      style={{ fontWeight: "bold" }}
-                      disabled={readOnly || loading}
-                    />
-                  )}
-                />
-                {getFormErrorMessage("numeroDocumento")}
-              </div>
+
               <div
                 style={{
                   display: "flex",
@@ -869,10 +942,8 @@ const DetalleContactosEntidad = forwardRef(
                   icon={contactoSeleccionado ? "pi pi-check" : "pi pi-plus"}
                   type="button"
                   onClick={async () => {
-                    // Validar formulario manualmente
                     const isValid = await trigger();
                     if (isValid) {
-                      // Obtener datos del formulario y guardar
                       const formData = getValues();
                       await onSubmitContacto(formData);
                     }
