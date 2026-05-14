@@ -50,6 +50,10 @@ const esquemaValidacionContacto = yup.object().shape({
     .required("Los nombres son requeridos")
     .max(255, "Máximo 255 caracteres")
     .trim(),
+  numeroDocumento: yup
+    .string()
+    .nullable()
+    .trim(),
   cargoId: yup.number().nullable().integer("Debe ser un número entero"),
   telefono: yup.string().nullable().max(20, "Máximo 20 caracteres").trim(),
   correoCorportivo: yup
@@ -112,6 +116,7 @@ const DetalleContactosEntidad = forwardRef(
       resolver: yupResolver(esquemaValidacionContacto),
       defaultValues: {
         nombres: "",
+        numeroDocumento: "",
         cargoId: null,
         telefono: "",
         correoCorportivo: "",
@@ -204,6 +209,7 @@ const DetalleContactosEntidad = forwardRef(
     const abrirDialogoEdicion = (contacto) => {
       setContactoSeleccionado(contacto);
       setValue("nombres", contacto.nombres || "");
+      setValue("numeroDocumento", contacto.numeroDocumento || "");
       setValue("cargoId", contacto.cargoId ? Number(contacto.cargoId) : null);
       setValue("telefono", contacto.telefono || "");
       setValue("correoCorportivo", contacto.correoCorportivo || "");
@@ -286,10 +292,21 @@ const DetalleContactosEntidad = forwardRef(
       try {
         setLoading(true);
 
+        // Alerta informativa si el DNI no tiene 8 dígitos (posible extranjero)
+        if (data.numeroDocumento && data.numeroDocumento.trim().length !== 8) {
+          toast.current?.show({
+            severity: "warn",
+            summary: "Advertencia",
+            detail: "El documento no tiene 8 dígitos. Verifique si es correcto (puede ser documento extranjero).",
+            life: 5000,
+          });
+        }
+
         // Normalizar datos
         const contactoNormalizado = {
           entidadComercialId: Number(entidadComercialId),
           nombres: data.nombres?.trim().toUpperCase(),
+          numeroDocumento: data.numeroDocumento?.trim() || null,
           cargoId: data.cargoId || null,
           telefono: data.telefono?.trim().toUpperCase() || null,
           correoCorportivo: data.correoCorportivo?.trim().toLowerCase() || null,
@@ -544,6 +561,27 @@ const DetalleContactosEntidad = forwardRef(
                   )}
                 />
                 {getFormErrorMessage("nombres")}
+              </div>
+              <div className="field col-12 md:col-6">
+                <label htmlFor="numeroDocumento">DNI</label>
+                <Controller
+                  name="numeroDocumento"
+                  control={control}
+                  render={({ field }) => (
+                    <InputText
+                      id="numeroDocumento"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      placeholder="12345678"
+                      className={getFieldClass("numeroDocumento")}
+                      maxLength={8}
+                      keyfilter="int"
+                      style={{ fontWeight: "bold" }}
+                      disabled={readOnly || loading}
+                    />
+                  )}
+                />
+                {getFormErrorMessage("numeroDocumento")}
               </div>
               <div
                 style={{
