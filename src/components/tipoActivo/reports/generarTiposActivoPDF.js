@@ -1,15 +1,14 @@
-// src/components/activo/reports/generarActivosPDF.js
+// src/components/tipoActivo/reports/generarTiposActivoPDF.js
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 /**
- * Genera PDF del reporte de Activos ordenado por Empresa y Tipo
- * Incluye todas las columnas de saldos iniciales
+ * Genera PDF del reporte de Tipos de Activo con cuentas contables
  * Con filas de altura dinámica para textos largos
- * @param {Object} data - Datos de los activos
+ * @param {Object} data - Datos de los tipos de activo
  * @returns {Promise<Blob>} - Blob del PDF generado
  */
-export async function generarActivosPDF(data) {
-  const { activos, empresas, tiposActivo, fechaGeneracion } = data;
+export async function generarTiposActivoPDF(data) {
+  const { tiposActivo, fechaGeneracion } = data;
 
   const pdfDoc = await PDFDocument.create();
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -19,35 +18,20 @@ export async function generarActivosPDF(data) {
   const lineHeight = 8;
   const baseRowHeight = 13;
 
-  // Ordenar activos por empresa y tipo
-  const activosOrdenados = [...activos].sort((a, b) => {
-    const empresaA =
-      empresas.find((e) => Number(e.id) === Number(a.empresaId))
-        ?.razonSocial || "";
-    const empresaB =
-      empresas.find((e) => Number(e.id) === Number(b.empresaId))
-        ?.razonSocial || "";
-
-    if (empresaA !== empresaB) {
-      return empresaA.localeCompare(empresaB);
-    }
-
-    const tipoA = a.tipo?.nombre || "";
-    const tipoB = b.tipo?.nombre || "";
-    return tipoA.localeCompare(tipoB);
+  // Ordenar tipos de activo por código
+  const tiposOrdenados = [...tiposActivo].sort((a, b) => {
+    return (a.codigo || "").localeCompare(b.codigo || "");
   });
 
-  // ⭐ DEFINIR COLUMNAS DE LA TABLA (9 COLUMNAS EXACTAS)
-  const colWidths = [25, 90, 90, 290, 50, 80, 80, 35, 72];
+  // ⭐ DEFINIR COLUMNAS DE LA TABLA (7 COLUMNAS - TOTAL: 812px)
+  const colWidths = [25, 70, 120, 185, 185, 185, 42];
   const headers = [
     "N°",
-    "Empresa",
-    "Tipo",
-    "Nombre - Descripción",
-    "F.Adq",
-    "Costo Orig.",
-    "Dep.Acum.",
-    "Vida",
+    "Código",
+    "Nombre",
+    "Cuenta Activo (33x)",
+    "Cuenta Dep. (68x)",
+    "Cuenta Dep.Acum (39x)",
     "Estado",
   ];
 
@@ -75,28 +59,12 @@ export async function generarActivosPDF(data) {
     return lineas.length > 0 ? lineas : ["-"];
   }
 
-  // ⭐ FUNCIÓN PARA FORMATEAR MONEDA
-  function formatearMoneda(valor, moneda = "PEN") {
-    if (!valor) return "-";
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: moneda,
-      minimumFractionDigits: 2,
-    }).format(valor);
-  }
-
-  // ⭐ FUNCIÓN PARA FORMATEAR FECHA
-  function formatearFecha(fecha) {
-    if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-PE");
-  }
-
   // ⭐ FUNCIÓN PARA DIBUJAR ENCABEZADO COMPLETO
   function dibujarEncabezadoCompleto(pag, width, height, pageNum, totalPages) {
     let yPos = height - 30;
 
     // Título del reporte
-    const titulo = "LISTADO DE ACTIVOS";
+    const titulo = "LISTADO DE TIPOS DE ACTIVO";
     const tituloWidth = fontBold.widthOfTextAtSize(titulo, 12);
     pag.drawText(titulo, {
       x: (width - tituloWidth) / 2,
@@ -176,19 +144,55 @@ export async function generarActivosPDF(data) {
 
   // ⭐ FUNCIÓN PARA CALCULAR ALTURA DE FILA
   function calcularAlturaFila(rowData) {
-    const nombreDescripcion = rowData.descripcion
-      ? `${rowData.nombre} - ${rowData.descripcion}`
-      : rowData.nombre || "-";
-    
-    const lineasDescripcion = dividirTextoEnLineas(
-      nombreDescripcion,
-      colWidths[3] - 4,
-      fontBold,
+    let maxLineas = 1;
+
+    // Nombre
+    const nombreTexto = rowData.nombre || "-";
+    const lineasNombre = dividirTextoEnLineas(
+      nombreTexto,
+      colWidths[2] - 4,
+      fontNormal,
       6
     );
+    maxLineas = Math.max(maxLineas, lineasNombre.length);
 
-    const numLineas = Math.max(1, lineasDescripcion.length);
-    return baseRowHeight + (numLineas - 1) * lineHeight;
+    // Cuenta Activo
+    const cuentaActivoTexto = rowData.cuentaActivo
+      ? `${rowData.cuentaActivo.codigoCuenta} - ${rowData.cuentaActivo.nombreCuenta}`
+      : "-";
+    const lineasCuentaActivo = dividirTextoEnLineas(
+      cuentaActivoTexto,
+      colWidths[3] - 4,
+      fontNormal,
+      6
+    );
+    maxLineas = Math.max(maxLineas, lineasCuentaActivo.length);
+
+    // Cuenta Depreciación
+    const cuentaDepTexto = rowData.cuentaDepreciacion
+      ? `${rowData.cuentaDepreciacion.codigoCuenta} - ${rowData.cuentaDepreciacion.nombreCuenta}`
+      : "-";
+    const lineasCuentaDep = dividirTextoEnLineas(
+      cuentaDepTexto,
+      colWidths[4] - 4,
+      fontNormal,
+      6
+    );
+    maxLineas = Math.max(maxLineas, lineasCuentaDep.length);
+
+    // Cuenta Depreciación Acumulada
+    const cuentaDepAcumTexto = rowData.cuentaDepreciacionAcumulada
+      ? `${rowData.cuentaDepreciacionAcumulada.codigoCuenta} - ${rowData.cuentaDepreciacionAcumulada.nombreCuenta}`
+      : "-";
+    const lineasCuentaDepAcum = dividirTextoEnLineas(
+      cuentaDepAcumTexto,
+      colWidths[5] - 4,
+      fontNormal,
+      6
+    );
+    maxLineas = Math.max(maxLineas, lineasCuentaDepAcum.length);
+
+    return baseRowHeight + (maxLineas - 1) * lineHeight;
   }
 
   // ⭐ FUNCIÓN PARA DIBUJAR FILA DE DATOS
@@ -235,33 +239,25 @@ export async function generarActivosPDF(data) {
     });
     xPos += colWidths[0];
 
-    // Empresa
-    const empresaTexto = rowData.empresa?.razonSocial || "-";
-    const lineasEmpresa = dividirTextoEnLineas(
-      empresaTexto,
-      colWidths[1] - 4,
-      fontNormal,
-      6
-    );
-    lineasEmpresa.forEach((linea, idx) => {
-      pag.drawText(linea, {
-        x: xPos + 2,
-        y: yPos - 9 - idx * lineHeight,
-        size: 6,
-        font: fontNormal,
-      });
+    // Código
+    const codigoTexto = rowData.codigo || "-";
+    pag.drawText(codigoTexto, {
+      x: xPos + 2,
+      y: yPos - 9,
+      size: 6,
+      font: fontBold,
     });
     xPos += colWidths[1];
 
-    // Tipo
-    const tipoTexto = rowData.tipo?.nombre || "-";
-    const lineasTipo = dividirTextoEnLineas(
-      tipoTexto,
+    // Nombre (MULTILINEA)
+    const nombreTexto = rowData.nombre || "-";
+    const lineasNombre = dividirTextoEnLineas(
+      nombreTexto,
       colWidths[2] - 4,
       fontNormal,
       6
     );
-    lineasTipo.forEach((linea, idx) => {
+    lineasNombre.forEach((linea, idx) => {
       pag.drawText(linea, {
         x: xPos + 2,
         y: yPos - 9 - idx * lineHeight,
@@ -271,79 +267,65 @@ export async function generarActivosPDF(data) {
     });
     xPos += colWidths[2];
 
-    // Nombre - Descripción (MULTILINEA)
-    const nombreDescripcion = rowData.descripcion
-      ? `${rowData.nombre} - ${rowData.descripcion}`
-      : rowData.nombre || "-";
-    const lineasDescripcion = dividirTextoEnLineas(
-      nombreDescripcion,
+    // Cuenta Activo (33x) (MULTILINEA)
+    const cuentaActivoTexto = rowData.cuentaActivo
+      ? `${rowData.cuentaActivo.codigoCuenta} - ${rowData.cuentaActivo.nombreCuenta}`
+      : "-";
+    const lineasCuentaActivo = dividirTextoEnLineas(
+      cuentaActivoTexto,
       colWidths[3] - 4,
-      fontBold,
+      fontNormal,
       6
     );
-    lineasDescripcion.forEach((linea, idx) => {
+    lineasCuentaActivo.forEach((linea, idx) => {
       pag.drawText(linea, {
         x: xPos + 2,
         y: yPos - 9 - idx * lineHeight,
         size: 6,
-        font: fontBold,
+        font: fontNormal,
       });
     });
     xPos += colWidths[3];
 
-    // Fecha Adquisición
-    const fechaTexto = formatearFecha(rowData.fechaAdquisicion);
-    pag.drawText(fechaTexto, {
-      x: xPos + 2,
-      y: yPos - 9,
-      size: 6,
-      font: fontNormal,
+    // Cuenta Depreciación (68x) (MULTILINEA)
+    const cuentaDepTexto = rowData.cuentaDepreciacion
+      ? `${rowData.cuentaDepreciacion.codigoCuenta} - ${rowData.cuentaDepreciacion.nombreCuenta}`
+      : "-";
+    const lineasCuentaDep = dividirTextoEnLineas(
+      cuentaDepTexto,
+      colWidths[4] - 4,
+      fontNormal,
+      6
+    );
+    lineasCuentaDep.forEach((linea, idx) => {
+      pag.drawText(linea, {
+        x: xPos + 2,
+        y: yPos - 9 - idx * lineHeight,
+        size: 6,
+        font: fontNormal,
+      });
     });
     xPos += colWidths[4];
 
-    // Costo Original
-    const costoTexto = rowData.costoOriginal
-      ? formatearMoneda(
-          rowData.costoOriginal,
-          rowData.moneda?.codigoSunat || "PEN"
-        )
+    // Cuenta Depreciación Acumulada (39x) (MULTILINEA)
+    const cuentaDepAcumTexto = rowData.cuentaDepreciacionAcumulada
+      ? `${rowData.cuentaDepreciacionAcumulada.codigoCuenta} - ${rowData.cuentaDepreciacionAcumulada.nombreCuenta}`
       : "-";
-    pag.drawText(costoTexto, {
-      x: xPos + 2,
-      y: yPos - 9,
-      size: 6,
-      font: fontNormal,
+    const lineasCuentaDepAcum = dividirTextoEnLineas(
+      cuentaDepAcumTexto,
+      colWidths[5] - 4,
+      fontNormal,
+      6
+    );
+    lineasCuentaDepAcum.forEach((linea, idx) => {
+      pag.drawText(linea, {
+        x: xPos + 2,
+        y: yPos - 9 - idx * lineHeight,
+        size: 6,
+        font: fontNormal,
+      });
     });
     xPos += colWidths[5];
-
-    // Depreciación Acumulada
-    const depAcumTexto = rowData.depreciacionAcumulada
-      ? formatearMoneda(
-          rowData.depreciacionAcumulada,
-          rowData.moneda?.codigoSunat || "PEN"
-        )
-      : "-";
-    pag.drawText(depAcumTexto, {
-      x: xPos + 2,
-      y: yPos - 9,
-      size: 6,
-      font: fontNormal,
-    });
-    xPos += colWidths[6];
-
-    // Vida Útil
-    const vidaUtilTexto = rowData.vidaUtilAnios
-      ? `${rowData.vidaUtilAnios}a`
-      : "-";
-    pag.drawText(vidaUtilTexto, {
-      x:
-        xPos +
-        (colWidths[7] - fontNormal.widthOfTextAtSize(vidaUtilTexto, 6)) / 2,
-      y: yPos - 9,
-      size: 6,
-      font: fontNormal,
-    });
-    xPos += colWidths[7];
 
     // Estado
     const estadoTexto = rowData.cesado ? "CESADO" : "ACTIVO";
@@ -351,9 +333,9 @@ export async function generarActivosPDF(data) {
     pag.drawText(estadoTexto, {
       x:
         xPos +
-        (colWidths[8] - fontBold.widthOfTextAtSize(estadoTexto, 7)) / 2,
+        (colWidths[6] - fontBold.widthOfTextAtSize(estadoTexto, 6)) / 2,
       y: yPos - 9,
-      size: 7,
+      size: 6,
       font: fontBold,
       color: estadoColor,
     });
@@ -389,20 +371,12 @@ export async function generarActivosPDF(data) {
 
   let rowNumber = 1;
 
-  // Dibujar activos
-  for (let i = 0; i < activosOrdenados.length; i++) {
-    const activo = activosOrdenados[i];
-    const empresa = empresas.find(
-      (e) => Number(e.id) === Number(activo.empresaId)
-    );
-
-    const rowData = {
-      ...activo,
-      empresa,
-    };
+  // Dibujar tipos de activo
+  for (let i = 0; i < tiposOrdenados.length; i++) {
+    const tipo = tiposOrdenados[i];
 
     // Calcular altura necesaria para esta fila
-    const alturaFila = calcularAlturaFila(rowData);
+    const alturaFila = calcularAlturaFila(tipo);
 
     // Verificar si necesitamos nueva página
     if (yPosition - alturaFila < 50) {
@@ -422,7 +396,7 @@ export async function generarActivosPDF(data) {
     yPosition = dibujarFila(
       currentPage,
       yPosition,
-      rowData,
+      tipo,
       rowNumber,
       i % 2 === 0,
       width
@@ -446,7 +420,7 @@ export async function generarActivosPDF(data) {
   });
 
   // ⭐ PIE DE PÁGINA EN TODAS LAS PÁGINAS
-  const footerText = `Total de activos: ${activos.length} | Generado: ${fechaGeneracion.toLocaleString(
+  const footerText = `Total de tipos: ${tiposActivo.length} | Generado: ${fechaGeneracion.toLocaleString(
     "es-PE"
   )} | Sistema ERP Megui`;
   pages.forEach((pag) => {

@@ -62,3 +62,11 @@ export async function guardarAsientoContable(movimientoId, asientoData, usuarioI
   );
   return res.data;
 }
+
+export async function eliminarAsientoContableMovimiento(movimientoId) {
+  const res = await axios.delete(
+    `${API_URL}/${movimientoId}/asiento-contable`,
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

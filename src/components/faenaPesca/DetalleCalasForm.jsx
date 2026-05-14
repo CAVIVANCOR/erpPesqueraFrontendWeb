@@ -350,11 +350,14 @@ const DetalleCalasForm = ({
           const info = await analizarCoordenadasConReferencia(
             Number(puertoDatos.latitud),
             Number(puertoDatos.longitud),
-            null
+            null,
           );
           setInfoPuertoZarpe(info);
         } catch (error) {
-          console.error("Error al analizar coordenadas del Puerto Zarpe:", error);
+          console.error(
+            "Error al analizar coordenadas del Puerto Zarpe:",
+            error,
+          );
         } finally {
           setLoadingGeoPuertoZarpe(false);
         }
@@ -412,21 +415,30 @@ const DetalleCalasForm = ({
   useEffect(() => {
     if (infoGeograficaFin) {
       // Obtener datos de ubicacion o referenciaCosta (fallback)
-      const lugar = (infoGeograficaFin.ubicacion?.lugar && infoGeograficaFin.ubicacion.lugar !== "N/A"
-        ? infoGeograficaFin.ubicacion.lugar
-        : infoGeograficaFin.referenciaCosta?.ubicacionCosta?.lugar) || "";
+      const lugar =
+        (infoGeograficaFin.ubicacion?.lugar &&
+        infoGeograficaFin.ubicacion.lugar !== "N/A"
+          ? infoGeograficaFin.ubicacion.lugar
+          : infoGeograficaFin.referenciaCosta?.ubicacionCosta?.lugar) || "";
 
-      const distrito = (infoGeograficaFin.ubicacion?.distrito && infoGeograficaFin.ubicacion.distrito !== "N/A"
-        ? infoGeograficaFin.ubicacion.distrito
-        : infoGeograficaFin.referenciaCosta?.ubicacionCosta?.distrito) || "";
+      const distrito =
+        (infoGeograficaFin.ubicacion?.distrito &&
+        infoGeograficaFin.ubicacion.distrito !== "N/A"
+          ? infoGeograficaFin.ubicacion.distrito
+          : infoGeograficaFin.referenciaCosta?.ubicacionCosta?.distrito) || "";
 
-      const provincia = (infoGeograficaFin.ubicacion?.provincia && infoGeograficaFin.ubicacion.provincia !== "N/A"
-        ? infoGeograficaFin.ubicacion.provincia
-        : infoGeograficaFin.referenciaCosta?.ubicacionCosta?.provincia) || "";
+      const provincia =
+        (infoGeograficaFin.ubicacion?.provincia &&
+        infoGeograficaFin.ubicacion.provincia !== "N/A"
+          ? infoGeograficaFin.ubicacion.provincia
+          : infoGeograficaFin.referenciaCosta?.ubicacionCosta?.provincia) || "";
 
-      const departamento = (infoGeograficaFin.ubicacion?.departamento && infoGeograficaFin.ubicacion.departamento !== "N/A"
-        ? infoGeograficaFin.ubicacion.departamento
-        : infoGeograficaFin.referenciaCosta?.ubicacionCosta?.departamento) || "";
+      const departamento =
+        (infoGeograficaFin.ubicacion?.departamento &&
+        infoGeograficaFin.ubicacion.departamento !== "N/A"
+          ? infoGeograficaFin.ubicacion.departamento
+          : infoGeograficaFin.referenciaCosta?.ubicacionCosta?.departamento) ||
+        "";
 
       const lugarCompleto = `${lugar}-${distrito}-${provincia}-${departamento}`;
       setLugarUbicacionGeografica(lugarCompleto);
@@ -446,9 +458,9 @@ const DetalleCalasForm = ({
       const a =
         Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
         Math.cos(lat1) *
-        Math.cos(lat2) *
-        Math.sin(deltaLon / 2) *
-        Math.sin(deltaLon / 2);
+          Math.cos(lat2) *
+          Math.sin(deltaLon / 2) *
+          Math.sin(deltaLon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       const distancia = R * c;
 
@@ -470,9 +482,9 @@ const DetalleCalasForm = ({
       const a =
         Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
         Math.cos(lat1) *
-        Math.cos(lat2) *
-        Math.sin(deltaLon / 2) *
-        Math.sin(deltaLon / 2);
+          Math.cos(lat2) *
+          Math.sin(deltaLon / 2) *
+          Math.sin(deltaLon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       const distancia = R * c;
 
@@ -528,27 +540,6 @@ const DetalleCalasForm = ({
   }, [faenaData?.fechaSalida, fechaHoraInicio]);
 
   useEffect(() => {
-    if (fechaHoraInicio && fechaHoraFin) {
-      const tiempo = calcularDiferenciaTiempo(fechaHoraInicio, fechaHoraFin);
-      setTiempoInicioFin(tiempo);
-    } else {
-      setTiempoInicioFin(null);
-    }
-  }, [fechaHoraInicio, fechaHoraFin]);
-
-  useEffect(() => {
-    if (faenaData?.fechaSalida && fechaHoraFin) {
-      const tiempo = calcularDiferenciaTiempo(
-        faenaData.fechaSalida,
-        fechaHoraFin,
-      );
-      setTiempoTotal(tiempo);
-    } else {
-      setTiempoTotal(null);
-    }
-  }, [faenaData?.fechaSalida, fechaHoraFin]);
-
-  useEffect(() => {
     if (distanciaPuertoInicio !== null && tiempoPuertoInicio !== null) {
       const velocidad = calcularVelocidadPromedio(
         distanciaPuertoInicio,
@@ -584,7 +575,6 @@ const DetalleCalasForm = ({
   // Obtener precio de combustible dinámico
   useEffect(() => {
     const obtenerPrecioCombustible = async () => {
-
       const fechaReferencia =
         fechaHoraFin || fechaHoraInicio || faenaData?.fechaSalida;
 
@@ -737,8 +727,14 @@ const DetalleCalasForm = ({
     setObservaciones(cala.observaciones || "");
     setLugarUbicacionGeografica(cala.lugarUbicacionGeografica || "");
     // Cargar valores calculados guardados en DB
-    setConsumoCombustible(cala.combustibleConsumido ? Number(cala.combustibleConsumido) : null);
-    setDistanciaTotal(cala.recorridoMillasNauticas ? Number(cala.recorridoMillasNauticas) : null);
+    setConsumoCombustible(
+      cala.combustibleConsumido ? Number(cala.combustibleConsumido) : null,
+    );
+    setDistanciaTotal(
+      cala.recorridoMillasNauticas
+        ? Number(cala.recorridoMillasNauticas)
+        : null,
+    );
     setCreatedAt(cala.createdAt ? new Date(cala.createdAt) : null);
     setUpdatedAt(cala.updatedAt ? new Date(cala.updatedAt) : null);
 
@@ -1002,7 +998,6 @@ const DetalleCalasForm = ({
   };
 
   const LineaPuertoInicio = () => {
-
     if (
       !puertoDatos?.latitud ||
       !puertoDatos?.longitud ||
@@ -1170,10 +1165,13 @@ const DetalleCalasForm = ({
 
       // ⭐ CALCULAR CONSUMO COMBUSTIBLE AL MOMENTO DE GUARDAR
       let combustibleConsumidoCalculado = 0;
-      if (distanciaTotalCalculada > 0 && embarcacionCompleta?.millasNauticasPorGalon) {
+      if (
+        distanciaTotalCalculada > 0 &&
+        embarcacionCompleta?.millasNauticasPorGalon
+      ) {
         combustibleConsumidoCalculado = calcularConsumoFaena(
           distanciaTotalCalculada,
-          Number(embarcacionCompleta.millasNauticasPorGalon)
+          Number(embarcacionCompleta.millasNauticasPorGalon),
         );
       }
 
@@ -1208,12 +1206,6 @@ const DetalleCalasForm = ({
 
       if (editingCala) {
         await actualizarCala(editingCala.id, calaData);
-        toast.current?.show({
-          severity: "success",
-          summary: "Cala Actualizada",
-          detail: "Cala actualizada correctamente",
-          life: 3000,
-        });
 
         // ⭐ Actualizar estados con valores CALCULADOS y guardados
         setConsumoCombustible(combustibleConsumidoCalculado);
@@ -1221,6 +1213,14 @@ const DetalleCalasForm = ({
         if (calaData.lugarUbicacionGeografica) {
           setLugarUbicacionGeografica(calaData.lugarUbicacionGeografica);
         }
+
+        toast.current?.show({
+          severity: "success",
+          summary: "✅ Cala Guardada",
+          detail: "La cala se actualizó correctamente",
+          life: 3000,
+        });
+
         if (cerrarDialogo) {
           setCalaDialog(false);
         }
@@ -1228,19 +1228,20 @@ const DetalleCalasForm = ({
         nuevaCalaCreada = await crearCala(calaData);
         setEditingCala(nuevaCalaCreada);
 
-        toast.current?.show({
-          severity: "success",
-          summary: "Cala Creada",
-          detail: "Cala creada correctamente. Ahora puede agregar especies.",
-          life: 4000,
-        });
-
-              // ⭐ Actualizar estados con valores CALCULADOS y guardados
+        // ⭐ Actualizar estados con valores CALCULADOS y guardados
         setConsumoCombustible(combustibleConsumidoCalculado);
         setDistanciaTotal(distanciaTotalCalculada);
         if (nuevaCalaCreada.lugarUbicacionGeografica) {
           setLugarUbicacionGeografica(nuevaCalaCreada.lugarUbicacionGeografica);
         }
+
+        toast.current?.show({
+          severity: "success",
+          summary: "✅ Cala Guardada",
+          detail:
+            "La cala se creó correctamente. Ahora puede agregar especies.",
+          life: 4000,
+        });
       }
 
       cargarCalas();
@@ -2095,7 +2096,7 @@ const DetalleCalasForm = ({
                       const infoGeo = await analizarCoordenadasConReferencia(
                         latitud,
                         longitud,
-                        null
+                        null,
                       );
                       setInfoGeografica(infoGeo);
 
@@ -2107,11 +2108,14 @@ const DetalleCalasForm = ({
                       });
                     } catch (error) {
                       console.error("Error al analizar coordenadas:", error);
-                      setErrorGeo("No se pudo obtener la información geográfica");
+                      setErrorGeo(
+                        "No se pudo obtener la información geográfica",
+                      );
                       toast.current?.show({
                         severity: "warn",
                         summary: "Advertencia",
-                        detail: "GPS capturado pero no se pudo obtener información geográfica",
+                        detail:
+                          "GPS capturado pero no se pudo obtener información geográfica",
                         life: 3000,
                       });
                     } finally {
@@ -2121,7 +2125,10 @@ const DetalleCalasForm = ({
                     try {
                       await guardarCala(false);
                     } catch (error) {
-                      console.error("Error al guardar cala automáticamente:", error);
+                      console.error(
+                        "Error al guardar cala automáticamente:",
+                        error,
+                      );
                       toast.current?.show({
                         severity: "error",
                         summary: "Error",
@@ -2169,7 +2176,10 @@ const DetalleCalasForm = ({
                     try {
                       await guardarCala(false);
                     } catch (error) {
-                      console.error("Error al guardar cala automáticamente:", error);
+                      console.error(
+                        "Error al guardar cala automáticamente:",
+                        error,
+                      );
                       toast.current?.show({
                         severity: "error",
                         summary: "Error",
@@ -2222,30 +2232,46 @@ const DetalleCalasForm = ({
             // ⭐ MODO GENÉRICO: Array de tramos para Cala
             tramos={[
               // Tramo 1: Puerto Zarpe → Inicio Cala
-              (distanciaPuertoInicio !== null || (distanciaPuertoInicio && embarcacionCompleta?.millasNauticasPorGalon)) && {
+              (distanciaPuertoInicio !== null ||
+                (distanciaPuertoInicio &&
+                  embarcacionCompleta?.millasNauticasPorGalon)) && {
                 label: "🟣 Puerto Zarpe → 🔵 Inicio Cala",
                 distancia: distanciaPuertoInicio,
-                consumo: distanciaPuertoInicio && embarcacionCompleta?.millasNauticasPorGalon
-                  ? distanciaPuertoInicio / Number(embarcacionCompleta.millasNauticasPorGalon)
-                  : null,
-                costo: distanciaPuertoInicio && embarcacionCompleta?.millasNauticasPorGalon
-                  ? (distanciaPuertoInicio / Number(embarcacionCompleta.millasNauticasPorGalon)) * precioCombustibleSoles
-                  : null,
+                consumo:
+                  distanciaPuertoInicio &&
+                  embarcacionCompleta?.millasNauticasPorGalon
+                    ? distanciaPuertoInicio /
+                      Number(embarcacionCompleta.millasNauticasPorGalon)
+                    : null,
+                costo:
+                  distanciaPuertoInicio &&
+                  embarcacionCompleta?.millasNauticasPorGalon
+                    ? (distanciaPuertoInicio /
+                        Number(embarcacionCompleta.millasNauticasPorGalon)) *
+                      precioCombustibleSoles
+                    : null,
                 loading: false,
-                color: 'purple',
+                color: "purple",
               },
               // Tramo 2: Inicio Cala → Fin Cala
-              (distanciaInicioFin !== null) && {
+              distanciaInicioFin !== null && {
                 label: "🔵 Inicio Cala → 🔴 Fin Cala",
                 distancia: distanciaInicioFin,
-                consumo: distanciaInicioFin && embarcacionCompleta?.millasNauticasPorGalon
-                  ? distanciaInicioFin / Number(embarcacionCompleta.millasNauticasPorGalon)
-                  : null,
-                costo: distanciaInicioFin && embarcacionCompleta?.millasNauticasPorGalon
-                  ? (distanciaInicioFin / Number(embarcacionCompleta.millasNauticasPorGalon)) * precioCombustibleSoles
-                  : null,
+                consumo:
+                  distanciaInicioFin &&
+                  embarcacionCompleta?.millasNauticasPorGalon
+                    ? distanciaInicioFin /
+                      Number(embarcacionCompleta.millasNauticasPorGalon)
+                    : null,
+                costo:
+                  distanciaInicioFin &&
+                  embarcacionCompleta?.millasNauticasPorGalon
+                    ? (distanciaInicioFin /
+                        Number(embarcacionCompleta.millasNauticasPorGalon)) *
+                      precioCombustibleSoles
+                    : null,
                 loading: false,
-                color: 'blue',
+                color: "blue",
               },
             ].filter(Boolean)}
             getClasificacionAguasColor={getClasificacionAguasColor}
@@ -2364,16 +2390,24 @@ const DetalleCalasForm = ({
             }}
           >
             <div style={{ flex: 1 }}>
-              <label htmlFor="lugarUbicacionGeografica">📍 Lugar Ubicación Geográfica</label>
+              <label htmlFor="lugarUbicacionGeografica">
+                📍 Lugar Ubicación Geográfica
+              </label>
               <InputText
                 id="lugarUbicacionGeografica"
                 value={lugarUbicacionGeografica || ""}
                 disabled
-                style={{ width: "100%", fontWeight: "bold", backgroundColor: "#f3f4f6" }}
+                style={{
+                  width: "100%",
+                  fontWeight: "bold",
+                  backgroundColor: "#f3f4f6",
+                }}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="combustibleConsumido">⛽ Combustible Consumido (Gal)</label>
+              <label htmlFor="combustibleConsumido">
+                ⛽ Combustible Consumido (Gal)
+              </label>
               <InputNumber
                 id="combustibleConsumido"
                 value={consumoCombustible}
@@ -2381,7 +2415,11 @@ const DetalleCalasForm = ({
                 mode="decimal"
                 minFractionDigits={2}
                 maxFractionDigits={2}
-                style={{ width: "100%", fontWeight: "bold", backgroundColor: "#f3f4f6" }}
+                style={{
+                  width: "100%",
+                  fontWeight: "bold",
+                  backgroundColor: "#f3f4f6",
+                }}
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -2393,11 +2431,14 @@ const DetalleCalasForm = ({
                 mode="decimal"
                 minFractionDigits={2}
                 maxFractionDigits={2}
-                style={{ width: "100%", fontWeight: "bold", backgroundColor: "#f3f4f6" }}
+                style={{
+                  width: "100%",
+                  fontWeight: "bold",
+                  backgroundColor: "#f3f4f6",
+                }}
               />
             </div>
           </div>
-
         </div>
       </Dialog>
     </Card>

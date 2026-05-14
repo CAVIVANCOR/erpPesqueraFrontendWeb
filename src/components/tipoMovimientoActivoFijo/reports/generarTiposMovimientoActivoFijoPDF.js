@@ -1,15 +1,14 @@
-// src/components/activo/reports/generarActivosPDF.js
+// src/components/tipoMovimientoActivoFijo/reports/generarTiposMovimientoActivoFijoPDF.js
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 /**
- * Genera PDF del reporte de Activos ordenado por Empresa y Tipo
- * Incluye todas las columnas de saldos iniciales
- * Con filas de altura dinámica para textos largos
- * @param {Object} data - Datos de los activos
+ * Genera PDF del reporte de Tipos de Movimiento de Activo Fijo
+ * Formato vertical (portrait) con filas de altura dinámica
+ * @param {Object} data - Datos de los tipos de movimiento
  * @returns {Promise<Blob>} - Blob del PDF generado
  */
-export async function generarActivosPDF(data) {
-  const { activos, empresas, tiposActivo, fechaGeneracion } = data;
+export async function generarTiposMovimientoActivoFijoPDF(data) {
+  const { tiposMovimiento, fechaGeneracion } = data;
 
   const pdfDoc = await PDFDocument.create();
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -19,37 +18,14 @@ export async function generarActivosPDF(data) {
   const lineHeight = 8;
   const baseRowHeight = 13;
 
-  // Ordenar activos por empresa y tipo
-  const activosOrdenados = [...activos].sort((a, b) => {
-    const empresaA =
-      empresas.find((e) => Number(e.id) === Number(a.empresaId))
-        ?.razonSocial || "";
-    const empresaB =
-      empresas.find((e) => Number(e.id) === Number(b.empresaId))
-        ?.razonSocial || "";
-
-    if (empresaA !== empresaB) {
-      return empresaA.localeCompare(empresaB);
-    }
-
-    const tipoA = a.tipo?.nombre || "";
-    const tipoB = b.tipo?.nombre || "";
-    return tipoA.localeCompare(tipoB);
+  // Ordenar tipos de movimiento por nombre
+  const tiposOrdenados = [...tiposMovimiento].sort((a, b) => {
+    return (a.nombre || "").localeCompare(b.nombre || "");
   });
 
-  // ⭐ DEFINIR COLUMNAS DE LA TABLA (9 COLUMNAS EXACTAS)
-  const colWidths = [25, 90, 90, 290, 50, 80, 80, 35, 72];
-  const headers = [
-    "N°",
-    "Empresa",
-    "Tipo",
-    "Nombre - Descripción",
-    "F.Adq",
-    "Costo Orig.",
-    "Dep.Acum.",
-    "Vida",
-    "Estado",
-  ];
+  // ⭐ DEFINIR COLUMNAS DE LA TABLA (4 COLUMNAS - TOTAL: 565px para A4 vertical)
+  const colWidths = [25, 150, 330, 60];
+  const headers = ["N°", "Nombre", "Descripción", "Estado"];
 
   // ⭐ FUNCIÓN PARA DIVIDIR TEXTO EN LÍNEAS
   function dividirTextoEnLineas(texto, maxWidth, font, fontSize) {
@@ -75,28 +51,12 @@ export async function generarActivosPDF(data) {
     return lineas.length > 0 ? lineas : ["-"];
   }
 
-  // ⭐ FUNCIÓN PARA FORMATEAR MONEDA
-  function formatearMoneda(valor, moneda = "PEN") {
-    if (!valor) return "-";
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: moneda,
-      minimumFractionDigits: 2,
-    }).format(valor);
-  }
-
-  // ⭐ FUNCIÓN PARA FORMATEAR FECHA
-  function formatearFecha(fecha) {
-    if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-PE");
-  }
-
   // ⭐ FUNCIÓN PARA DIBUJAR ENCABEZADO COMPLETO
   function dibujarEncabezadoCompleto(pag, width, height, pageNum, totalPages) {
     let yPos = height - 30;
 
     // Título del reporte
-    const titulo = "LISTADO DE ACTIVOS";
+    const titulo = "LISTADO DE TIPOS DE MOVIMIENTO DE ACTIVO FIJO";
     const tituloWidth = fontBold.widthOfTextAtSize(titulo, 12);
     pag.drawText(titulo, {
       x: (width - tituloWidth) / 2,
@@ -176,19 +136,29 @@ export async function generarActivosPDF(data) {
 
   // ⭐ FUNCIÓN PARA CALCULAR ALTURA DE FILA
   function calcularAlturaFila(rowData) {
-    const nombreDescripcion = rowData.descripcion
-      ? `${rowData.nombre} - ${rowData.descripcion}`
-      : rowData.nombre || "-";
-    
-    const lineasDescripcion = dividirTextoEnLineas(
-      nombreDescripcion,
-      colWidths[3] - 4,
+    let maxLineas = 1;
+
+    // Nombre
+    const nombreTexto = rowData.nombre || "-";
+    const lineasNombre = dividirTextoEnLineas(
+      nombreTexto,
+      colWidths[1] - 4,
       fontBold,
       6
     );
+    maxLineas = Math.max(maxLineas, lineasNombre.length);
 
-    const numLineas = Math.max(1, lineasDescripcion.length);
-    return baseRowHeight + (numLineas - 1) * lineHeight;
+    // Descripción
+    const descripcionTexto = rowData.descripcion || "-";
+    const lineasDescripcion = dividirTextoEnLineas(
+      descripcionTexto,
+      colWidths[2] - 4,
+      fontNormal,
+      6
+    );
+    maxLineas = Math.max(maxLineas, lineasDescripcion.length);
+
+    return baseRowHeight + (maxLineas - 1) * lineHeight;
   }
 
   // ⭐ FUNCIÓN PARA DIBUJAR FILA DE DATOS
@@ -235,33 +205,33 @@ export async function generarActivosPDF(data) {
     });
     xPos += colWidths[0];
 
-    // Empresa
-    const empresaTexto = rowData.empresa?.razonSocial || "-";
-    const lineasEmpresa = dividirTextoEnLineas(
-      empresaTexto,
+    // Nombre (MULTILINEA)
+    const nombreTexto = rowData.nombre || "-";
+    const lineasNombre = dividirTextoEnLineas(
+      nombreTexto,
       colWidths[1] - 4,
-      fontNormal,
+      fontBold,
       6
     );
-    lineasEmpresa.forEach((linea, idx) => {
+    lineasNombre.forEach((linea, idx) => {
       pag.drawText(linea, {
         x: xPos + 2,
         y: yPos - 9 - idx * lineHeight,
         size: 6,
-        font: fontNormal,
+        font: fontBold,
       });
     });
     xPos += colWidths[1];
 
-    // Tipo
-    const tipoTexto = rowData.tipo?.nombre || "-";
-    const lineasTipo = dividirTextoEnLineas(
-      tipoTexto,
+    // Descripción (MULTILINEA)
+    const descripcionTexto = rowData.descripcion || "-";
+    const lineasDescripcion = dividirTextoEnLineas(
+      descripcionTexto,
       colWidths[2] - 4,
       fontNormal,
       6
     );
-    lineasTipo.forEach((linea, idx) => {
+    lineasDescripcion.forEach((linea, idx) => {
       pag.drawText(linea, {
         x: xPos + 2,
         y: yPos - 9 - idx * lineHeight,
@@ -271,89 +241,15 @@ export async function generarActivosPDF(data) {
     });
     xPos += colWidths[2];
 
-    // Nombre - Descripción (MULTILINEA)
-    const nombreDescripcion = rowData.descripcion
-      ? `${rowData.nombre} - ${rowData.descripcion}`
-      : rowData.nombre || "-";
-    const lineasDescripcion = dividirTextoEnLineas(
-      nombreDescripcion,
-      colWidths[3] - 4,
-      fontBold,
-      6
-    );
-    lineasDescripcion.forEach((linea, idx) => {
-      pag.drawText(linea, {
-        x: xPos + 2,
-        y: yPos - 9 - idx * lineHeight,
-        size: 6,
-        font: fontBold,
-      });
-    });
-    xPos += colWidths[3];
-
-    // Fecha Adquisición
-    const fechaTexto = formatearFecha(rowData.fechaAdquisicion);
-    pag.drawText(fechaTexto, {
-      x: xPos + 2,
-      y: yPos - 9,
-      size: 6,
-      font: fontNormal,
-    });
-    xPos += colWidths[4];
-
-    // Costo Original
-    const costoTexto = rowData.costoOriginal
-      ? formatearMoneda(
-          rowData.costoOriginal,
-          rowData.moneda?.codigoSunat || "PEN"
-        )
-      : "-";
-    pag.drawText(costoTexto, {
-      x: xPos + 2,
-      y: yPos - 9,
-      size: 6,
-      font: fontNormal,
-    });
-    xPos += colWidths[5];
-
-    // Depreciación Acumulada
-    const depAcumTexto = rowData.depreciacionAcumulada
-      ? formatearMoneda(
-          rowData.depreciacionAcumulada,
-          rowData.moneda?.codigoSunat || "PEN"
-        )
-      : "-";
-    pag.drawText(depAcumTexto, {
-      x: xPos + 2,
-      y: yPos - 9,
-      size: 6,
-      font: fontNormal,
-    });
-    xPos += colWidths[6];
-
-    // Vida Útil
-    const vidaUtilTexto = rowData.vidaUtilAnios
-      ? `${rowData.vidaUtilAnios}a`
-      : "-";
-    pag.drawText(vidaUtilTexto, {
-      x:
-        xPos +
-        (colWidths[7] - fontNormal.widthOfTextAtSize(vidaUtilTexto, 6)) / 2,
-      y: yPos - 9,
-      size: 6,
-      font: fontNormal,
-    });
-    xPos += colWidths[7];
-
     // Estado
-    const estadoTexto = rowData.cesado ? "CESADO" : "ACTIVO";
-    const estadoColor = rowData.cesado ? rgb(0.7, 0, 0) : rgb(0, 0.5, 0);
+    const estadoTexto = rowData.activo ? "ACTIVO" : "INACTIVO";
+    const estadoColor = rowData.activo ? rgb(0, 0.5, 0) : rgb(0.7, 0, 0);
     pag.drawText(estadoTexto, {
       x:
         xPos +
-        (colWidths[8] - fontBold.widthOfTextAtSize(estadoTexto, 7)) / 2,
+        (colWidths[3] - fontBold.widthOfTextAtSize(estadoTexto, 6)) / 2,
       y: yPos - 9,
-      size: 7,
+      size: 6,
       font: fontBold,
       color: estadoColor,
     });
@@ -373,9 +269,9 @@ export async function generarActivosPDF(data) {
     return yPos - rowHeight;
   }
 
-  // ⭐ GENERAR PÁGINAS
+  // ⭐ GENERAR PÁGINAS (A4 VERTICAL)
   let pages = [];
-  let currentPage = pdfDoc.addPage([842, 595]); // A4 horizontal
+  let currentPage = pdfDoc.addPage([595, 842]); // A4 vertical (portrait)
   let { width, height } = currentPage.getSize();
   let yPosition = dibujarEncabezadoCompleto(
     currentPage,
@@ -389,24 +285,16 @@ export async function generarActivosPDF(data) {
 
   let rowNumber = 1;
 
-  // Dibujar activos
-  for (let i = 0; i < activosOrdenados.length; i++) {
-    const activo = activosOrdenados[i];
-    const empresa = empresas.find(
-      (e) => Number(e.id) === Number(activo.empresaId)
-    );
-
-    const rowData = {
-      ...activo,
-      empresa,
-    };
+  // Dibujar tipos de movimiento
+  for (let i = 0; i < tiposOrdenados.length; i++) {
+    const tipo = tiposOrdenados[i];
 
     // Calcular altura necesaria para esta fila
-    const alturaFila = calcularAlturaFila(rowData);
+    const alturaFila = calcularAlturaFila(tipo);
 
     // Verificar si necesitamos nueva página
     if (yPosition - alturaFila < 50) {
-      currentPage = pdfDoc.addPage([842, 595]);
+      currentPage = pdfDoc.addPage([595, 842]); // A4 vertical
       ({ width, height } = currentPage.getSize());
       yPosition = dibujarEncabezadoCompleto(
         currentPage,
@@ -422,7 +310,7 @@ export async function generarActivosPDF(data) {
     yPosition = dibujarFila(
       currentPage,
       yPosition,
-      rowData,
+      tipo,
       rowNumber,
       i % 2 === 0,
       width
@@ -446,7 +334,7 @@ export async function generarActivosPDF(data) {
   });
 
   // ⭐ PIE DE PÁGINA EN TODAS LAS PÁGINAS
-  const footerText = `Total de activos: ${activos.length} | Generado: ${fechaGeneracion.toLocaleString(
+  const footerText = `Total de tipos: ${tiposMovimiento.length} | Generado: ${fechaGeneracion.toLocaleString(
     "es-PE"
   )} | Sistema ERP Megui`;
   pages.forEach((pag) => {

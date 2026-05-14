@@ -17,6 +17,11 @@ import {
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
+import ReportFormatSelector from "../components/reports/ReportFormatSelector";
+import TemporaryPDFViewer from "../components/reports/TemporaryPDFViewer";
+import TemporaryExcelViewer from "../components/reports/TemporaryExcelViewer";
+import { generarTiposMovimientoActivoFijoPDF } from "../components/tipoMovimientoActivoFijo/reports/generarTiposMovimientoActivoFijoPDF";
+import { generarTiposMovimientoActivoFijoExcel } from "../components/tipoMovimientoActivoFijo/reports/generarTiposMovimientoActivoFijoExcel";
 
 export default function TipoMovimientoActivoFijo({ ruta }) {
   const { usuario } = useAuthStore();
@@ -33,6 +38,10 @@ export default function TipoMovimientoActivoFijo({ ruta }) {
   const [selected, setSelected] = useState(null);
   const [isEdit, setIsEdit] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [showFormatSelector, setShowFormatSelector] = useState(false);
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [showExcelViewer, setShowExcelViewer] = useState(false);
+  const [reportData, setReportData] = useState(null);
 
   useEffect(() => {
     cargarDatos();
@@ -169,6 +178,14 @@ export default function TipoMovimientoActivoFijo({ ruta }) {
     );
   };
 
+  const handleGenerarReporte = () => {
+    setReportData({
+      tiposMovimiento: items,
+      fechaGeneracion: new Date(),
+    });
+    setShowFormatSelector(true);
+  };
+
   const actionBodyTemplate = (rowData) => {
     return (
       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
@@ -193,19 +210,18 @@ export default function TipoMovimientoActivoFijo({ ruta }) {
   };
 
   const header = (
-    <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
-      <h4 className="m-0">Tipos de Movimiento de Activo Fijo</h4>
-      <div className="flex gap-2">
-        <span className="p-input-icon-left">
-          <i className="pi pi-search" />
-          <InputText
-            type="search"
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            placeholder="Buscar..."
-            className="w-full"
-          />
-        </span>
+    <div
+      style={{
+        alignItems: "end",
+        display: "flex",
+        gap: 10,
+        flexDirection: window.innerWidth < 768 ? "column" : "row",
+      }}
+    >
+      <div style={{ flex: 1 }}>
+        <h2 className="m-0">Tipos de Movimiento de Activo Fijo</h2>
+      </div>
+      <div style={{ flex: 1 }}>
         <Button
           label="Nuevo"
           icon="pi pi-plus"
@@ -218,6 +234,27 @@ export default function TipoMovimientoActivoFijo({ ruta }) {
               : "Nuevo Tipo de Movimiento"
           }
         />
+      </div>
+      <div style={{ flex: 1 }}>
+        <Button
+          label="Reporte"
+          icon="pi pi-file-pdf"
+          className="p-button-help"
+          onClick={handleGenerarReporte}
+          disabled={!permisos.puedeVer || items.length === 0}
+          tooltip="Generar Reporte PDF/Excel"
+        />
+      </div>
+      <div style={{ flex: 1 }}>
+        <span className="p-input-icon-left">
+          <InputText
+            type="search"
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            placeholder="Buscar..."
+            className="w-full"
+          />
+        </span>
       </div>
     </div>
   );
@@ -310,6 +347,40 @@ export default function TipoMovimientoActivoFijo({ ruta }) {
           readOnly={!!selected && !!selected.id && !permisos.puedeEditar}
         />
       </Dialog>
+      <ReportFormatSelector
+        visible={showFormatSelector}
+        onHide={() => setShowFormatSelector(false)}
+        onSelectPDF={() => {
+          setShowPDFViewer(true);
+          setShowFormatSelector(false);
+        }}
+        onSelectExcel={() => {
+          setShowExcelViewer(true);
+          setShowFormatSelector(false);
+        }}
+      />
+      <TemporaryPDFViewer
+        visible={showPDFViewer}
+        onHide={() => {
+          setShowPDFViewer(false);
+          setShowFormatSelector(false);
+        }}
+        data={reportData}
+        generatePDF={generarTiposMovimientoActivoFijoPDF}
+        fileName={`tipos-movimiento-activo-${new Date().toISOString().split("T")[0]}.pdf`}
+        title="Listado de Tipos de Movimiento"
+      />
+      <TemporaryExcelViewer
+        visible={showExcelViewer}
+        onHide={() => {
+          setShowExcelViewer(false);
+          setShowFormatSelector(false);
+        }}
+        data={reportData}
+        generateExcel={generarTiposMovimientoActivoFijoExcel}
+        fileName={`tipos-movimiento-activo-${new Date().toISOString().split("T")[0]}.xlsx`}
+        title="Listado de Tipos de Movimiento"
+      />
     </div>
   );
 }

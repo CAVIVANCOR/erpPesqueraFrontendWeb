@@ -25,6 +25,7 @@ import { Calendar } from "primereact/calendar";
 import { InputNumber } from "primereact/inputnumber";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Toast } from "primereact/toast";
+import { confirmDialog } from "primereact/confirmdialog";
 import {
   crearMovimientoActivoFijo,
   actualizarMovimientoActivoFijo,
@@ -36,7 +37,7 @@ import { getMonedas } from "../../api/moneda";
 import { getPeriodosContables } from "../../api/contabilidad/periodoContable";
 import { getCentrosCosto } from "../../api/centroCosto";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
-
+import { eliminarAsientoContableMovimiento } from "../../api/movimientoActivoFijo";
 /**
  * Esquema de validación con Yup
  * Define las reglas de validación para el formulario
@@ -113,7 +114,7 @@ const MovimientoActivoFijoForm = ({
   readOnly = false,
 }) => {
   const toast = useRef(null);
-  const { usuario } = useAuthStore();  // ← AGREGAR ESTA LÍNEA
+  const { usuario } = useAuthStore(); // ← AGREGAR ESTA LÍNEA
   const [loading, setLoading] = useState(false);
   const [empresas, setEmpresas] = useState([]);
   const [activos, setActivos] = useState([]);
@@ -177,7 +178,9 @@ const MovimientoActivoFijoForm = ({
           : null,
         monto: Number(movimiento.monto) || 0,
         monedaId: Number(movimiento.monedaId) || null,
-        centroCostoId: movimiento.centroCostoId ? Number(movimiento.centroCostoId) : null,
+        centroCostoId: movimiento.centroCostoId
+          ? Number(movimiento.centroCostoId)
+          : null,
         depreciacionMensual: movimiento.depreciacionMensual
           ? Number(movimiento.depreciacionMensual)
           : null,
@@ -237,11 +240,11 @@ const MovimientoActivoFijoForm = ({
    */
   useEffect(() => {
     const subscription = watch((value, { name }) => {
-      if (name === 'monto' || name === 'depreciacionAcumulada') {
+      if (name === "monto" || name === "depreciacionAcumulada") {
         const monto = Number(value.monto) || 0;
         const depreciacionAcumulada = Number(value.depreciacionAcumulada) || 0;
         const valorNeto = monto - depreciacionAcumulada;
-        setValue('valorNeto', valorNeto);
+        setValue("valorNeto", valorNeto);
       }
     });
     return () => subscription.unsubscribe();
@@ -252,15 +255,21 @@ const MovimientoActivoFijoForm = ({
    */
   const cargarCombos = async () => {
     try {
-      const [empresasData, activosData, tiposData, monedasData, periodosData, centrosData] =
-        await Promise.all([
-          getEmpresas(),
-          getActivos(),
-          getTiposMovimientoActivoFijo(),
-          getMonedas(),
-          getPeriodosContables(),
-          getCentrosCosto(),
-        ]);
+      const [
+        empresasData,
+        activosData,
+        tiposData,
+        monedasData,
+        periodosData,
+        centrosData,
+      ] = await Promise.all([
+        getEmpresas(),
+        getActivos(),
+        getTiposMovimientoActivoFijo(),
+        getMonedas(),
+        getPeriodosContables(),
+        getCentrosCosto(),
+      ]);
 
       setEmpresas(empresasData);
       setActivos(activosData);
@@ -288,7 +297,9 @@ const MovimientoActivoFijoForm = ({
 
       // Normalización final de datos según regla ERP Megui
       const monto = Number(data.monto);
-      const depreciacionAcumulada = data.depreciacionAcumulada ? Number(data.depreciacionAcumulada) : 0;
+      const depreciacionAcumulada = data.depreciacionAcumulada
+        ? Number(data.depreciacionAcumulada)
+        : 0;
       const valorNeto = monto - depreciacionAcumulada;
 
       const datosNormalizados = {
@@ -323,7 +334,7 @@ const MovimientoActivoFijoForm = ({
           summary: "Éxito",
           detail: "Movimiento actualizado correctamente",
         });
-        
+
         // Actualizar los datos del formulario con la respuesta del servidor
         reset({
           empresaId: Number(resultado.empresaId),
@@ -331,12 +342,20 @@ const MovimientoActivoFijoForm = ({
           tipoMovimientoId: Number(resultado.tipoMovimientoId),
           periodoContableId: Number(resultado.periodoContableId),
           fechaMovimiento: new Date(resultado.fechaMovimiento),
-          fechaContable: resultado.fechaContable ? new Date(resultado.fechaContable) : null,
+          fechaContable: resultado.fechaContable
+            ? new Date(resultado.fechaContable)
+            : null,
           monto: Number(resultado.monto),
           monedaId: Number(resultado.monedaId),
-          centroCostoId: resultado.centroCostoId ? Number(resultado.centroCostoId) : null,
-          depreciacionMensual: resultado.depreciacionMensual ? Number(resultado.depreciacionMensual) : null,
-          depreciacionAcumulada: resultado.depreciacionAcumulada ? Number(resultado.depreciacionAcumulada) : null,
+          centroCostoId: resultado.centroCostoId
+            ? Number(resultado.centroCostoId)
+            : null,
+          depreciacionMensual: resultado.depreciacionMensual
+            ? Number(resultado.depreciacionMensual)
+            : null,
+          depreciacionAcumulada: resultado.depreciacionAcumulada
+            ? Number(resultado.depreciacionAcumulada)
+            : null,
           valorNeto: resultado.valorNeto ? Number(resultado.valorNeto) : null,
           observaciones: resultado.observaciones || "",
         });
@@ -346,9 +365,10 @@ const MovimientoActivoFijoForm = ({
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
-          detail: "Movimiento creado correctamente. Ahora puede continuar editando.",
+          detail:
+            "Movimiento creado correctamente. Ahora puede continuar editando.",
         });
-        
+
         // Cargar los datos del nuevo movimiento en el formulario (cambiar a modo edición)
         reset({
           empresaId: Number(resultado.empresaId),
@@ -356,12 +376,20 @@ const MovimientoActivoFijoForm = ({
           tipoMovimientoId: Number(resultado.tipoMovimientoId),
           periodoContableId: Number(resultado.periodoContableId),
           fechaMovimiento: new Date(resultado.fechaMovimiento),
-          fechaContable: resultado.fechaContable ? new Date(resultado.fechaContable) : null,
+          fechaContable: resultado.fechaContable
+            ? new Date(resultado.fechaContable)
+            : null,
           monto: Number(resultado.monto),
           monedaId: Number(resultado.monedaId),
-          centroCostoId: resultado.centroCostoId ? Number(resultado.centroCostoId) : null,
-          depreciacionMensual: resultado.depreciacionMensual ? Number(resultado.depreciacionMensual) : null,
-          depreciacionAcumulada: resultado.depreciacionAcumulada ? Number(resultado.depreciacionAcumulada) : null,
+          centroCostoId: resultado.centroCostoId
+            ? Number(resultado.centroCostoId)
+            : null,
+          depreciacionMensual: resultado.depreciacionMensual
+            ? Number(resultado.depreciacionMensual)
+            : null,
+          depreciacionAcumulada: resultado.depreciacionAcumulada
+            ? Number(resultado.depreciacionAcumulada)
+            : null,
           valorNeto: resultado.valorNeto ? Number(resultado.valorNeto) : null,
           observaciones: resultado.observaciones || "",
         });
@@ -416,6 +444,47 @@ const MovimientoActivoFijoForm = ({
     return errors[fieldName] ? "p-invalid" : "";
   };
 
+const handleEliminarAsiento = () => {
+  confirmDialog({
+    message:
+      "¿Está seguro de eliminar el asiento contable? Esta acción no se puede deshacer.",
+    header: "Confirmar Eliminación",
+    icon: "pi pi-exclamation-triangle",
+    acceptLabel: "Sí, Eliminar",
+    rejectLabel: "Cancelar",
+    acceptClassName: "p-button-danger",
+    accept: async () => {
+      setLoading(true);
+      try {
+        await eliminarAsientoContableMovimiento(movimiento.id);
+        
+        toast.current.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Asiento contable eliminado correctamente",
+          life: 3000,
+        });
+        
+        // Cerrar el formulario para que se recargue la lista
+        if (onCancel) {
+          onCancel();
+        }
+      } catch (error) {
+        console.error("Error al eliminar asiento:", error);
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail:
+            error.response?.data?.message ||
+            "Error al eliminar el asiento contable",
+          life: 3000,
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+  });
+};
   // Opciones para combos
   const empresasOptions = empresas.map((empresa) => ({
     label: empresa.razonSocial,
@@ -439,7 +508,7 @@ const MovimientoActivoFijoForm = ({
     value: Number(moneda.id),
   }));
 
-      const periodosContablesOptions = periodosContables
+  const periodosContablesOptions = periodosContables
     .filter((periodo) => {
       // Solo filtrar por estado "ABIERTO" (ID 73)
       const estaAbierto = Number(periodo.estadoId) === 73;
@@ -497,6 +566,34 @@ const MovimientoActivoFijoForm = ({
             />
             {errors.empresaId && (
               <small className="p-error">{errors.empresaId.message}</small>
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            {/* Fecha de Movimiento */}
+            <label htmlFor="fechaMovimiento" className="font-bold">
+              Fecha de Movimiento <span className="p-error">*</span>
+            </label>
+            <Controller
+              name="fechaMovimiento"
+              control={control}
+              render={({ field }) => (
+                <Calendar
+                  id="fechaMovimiento"
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.value)}
+                  placeholder="Seleccione fecha"
+                  className={getFieldClass("fechaMovimiento")}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  disabled={readOnly}
+                  style={{ fontWeight: "bold" }}
+                />
+              )}
+            />
+            {errors.fechaMovimiento && (
+              <small className="p-error">
+                {errors.fechaMovimiento.message}
+              </small>
             )}
           </div>
         </div>
@@ -568,18 +665,11 @@ const MovimientoActivoFijoForm = ({
               )}
             />
             {errors.tipoMovimientoId && (
-              <small className="p-error">{errors.tipoMovimientoId.message}</small>
+              <small className="p-error">
+                {errors.tipoMovimientoId.message}
+              </small>
             )}
           </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
           <div style={{ flex: 1 }}>
             {/* Período Contable */}
             <label htmlFor="periodoContableId" className="font-bold">
@@ -604,111 +694,12 @@ const MovimientoActivoFijoForm = ({
               )}
             />
             {errors.periodoContableId && (
-              <small className="p-error">{errors.periodoContableId.message}</small>
+              <small className="p-error">
+                {errors.periodoContableId.message}
+              </small>
             )}
           </div>
         </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            {/* Centro de Costo */}
-            <label htmlFor="centroCostoId" className="font-bold">
-              Centro de Costo
-            </label>
-            <Controller
-              name="centroCostoId"
-              control={control}
-              render={({ field }) => (
-                <Dropdown
-                  id="centroCostoId"
-                  value={field.value}
-                  onChange={(e) => field.onChange(e.value)}
-                  options={centrosCostoOptions}
-                  placeholder="Seleccione un centro de costo (opcional)"
-                  className={getFieldClass("centroCostoId")}
-                  filter
-                  showClear
-                  disabled={readOnly}
-                />
-              )}
-            />
-            {errors.centroCostoId && (
-              <small className="p-error">{errors.centroCostoId.message}</small>
-            )}
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            {/* Fecha de Movimiento */}
-            <label htmlFor="fechaMovimiento" className="font-bold">
-              Fecha de Movimiento <span className="p-error">*</span>
-            </label>
-            <Controller
-              name="fechaMovimiento"
-              control={control}
-              render={({ field }) => (
-                <Calendar
-                  id="fechaMovimiento"
-                  value={field.value}
-                  onChange={(e) => field.onChange(e.value)}
-                  placeholder="Seleccione fecha"
-                  className={getFieldClass("fechaMovimiento")}
-                  dateFormat="dd/mm/yy"
-                  showIcon
-                  disabled={readOnly}
-                  style={{ fontWeight: "bold" }}
-                />
-              )}
-            />
-            {errors.fechaMovimiento && (
-              <small className="p-error">{errors.fechaMovimiento.message}</small>
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            {/* Moneda */}
-            <label htmlFor="monedaId" className="font-bold">
-              Moneda <span className="p-error">*</span>
-            </label>
-            <Controller
-              name="monedaId"
-              control={control}
-              render={({ field }) => (
-                <Dropdown
-                  id="monedaId"
-                  value={field.value}
-                  onChange={(e) => {
-                    field.onChange(e.value);
-                    const moneda = monedas.find((m) => Number(m.id) === Number(e.value));
-                    setMonedaSeleccionada(moneda || null);
-                  }}
-                  options={monedasOptions}
-                  placeholder="Seleccione moneda"
-                  className={getFieldClass("monedaId")}
-                  showClear
-                  disabled={readOnly}
-                  style={{ fontWeight: "bold" }}
-                />
-              )}
-            />
-            {errors.monedaId && (
-              <small className="p-error">{errors.monedaId.message}</small>
-            )}
-          </div>
-        </div>
-
         <div
           style={{
             display: "flex",
@@ -740,6 +731,38 @@ const MovimientoActivoFijoForm = ({
             />
             {errors.fechaContable && (
               <small className="p-error">{errors.fechaContable.message}</small>
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            {/* Moneda */}
+            <label htmlFor="monedaId" className="font-bold">
+              Moneda <span className="p-error">*</span>
+            </label>
+            <Controller
+              name="monedaId"
+              control={control}
+              render={({ field }) => (
+                <Dropdown
+                  id="monedaId"
+                  value={field.value}
+                  onChange={(e) => {
+                    field.onChange(e.value);
+                    const moneda = monedas.find(
+                      (m) => Number(m.id) === Number(e.value),
+                    );
+                    setMonedaSeleccionada(moneda || null);
+                  }}
+                  options={monedasOptions}
+                  placeholder="Seleccione moneda"
+                  className={getFieldClass("monedaId")}
+                  showClear
+                  disabled={readOnly}
+                  style={{ fontWeight: "bold" }}
+                />
+              )}
+            />
+            {errors.monedaId && (
+              <small className="p-error">{errors.monedaId.message}</small>
             )}
           </div>
           <div style={{ flex: 1 }}>
@@ -810,7 +833,9 @@ const MovimientoActivoFijoForm = ({
               )}
             />
             {errors.depreciacionMensual && (
-              <small className="p-error">{errors.depreciacionMensual.message}</small>
+              <small className="p-error">
+                {errors.depreciacionMensual.message}
+              </small>
             )}
           </div>
           <div style={{ flex: 1 }}>
@@ -846,15 +871,6 @@ const MovimientoActivoFijoForm = ({
               </small>
             )}
           </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
           <div style={{ flex: 1 }}>
             {/* Valor Neto (Calculado) */}
             <label htmlFor="valorNeto" className="font-bold">
@@ -883,7 +899,40 @@ const MovimientoActivoFijoForm = ({
             />
           </div>
         </div>
-
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            {/* Centro de Costo */}
+            <label htmlFor="centroCostoId" className="font-bold">
+              Centro de Costo
+            </label>
+            <Controller
+              name="centroCostoId"
+              control={control}
+              render={({ field }) => (
+                <Dropdown
+                  id="centroCostoId"
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.value)}
+                  options={centrosCostoOptions}
+                  placeholder="Seleccione un centro de costo (opcional)"
+                  className={getFieldClass("centroCostoId")}
+                  filter
+                  showClear
+                  disabled={readOnly}
+                />
+              )}
+            />
+            {errors.centroCostoId && (
+              <small className="p-error">{errors.centroCostoId.message}</small>
+            )}
+          </div>
+        </div>
         <div
           style={{
             display: "flex",
@@ -926,16 +975,46 @@ const MovimientoActivoFijoForm = ({
             marginTop: 20,
           }}
         >
-          {esEdicion && onGenerarAsiento && !movimiento.asientoContableId && (
-            <Button
-              type="button"
-              label="Generar Asiento"
-              icon="pi pi-book"
-              className="p-button-info"
-              onClick={handleGenerarAsiento}
-              disabled={loading || readOnly}
-            />
-          )}
+          {esEdicion &&
+            onGenerarAsiento &&
+            movimiento.periodoContable &&
+            Number(movimiento.periodoContable.estadoId) === 73 && (
+              <>
+                <Button
+                  type="button"
+                  label={
+                    movimiento.asientoContableId
+                      ? "Regenerar Asiento"
+                      : "Generar Asiento"
+                  }
+                  icon="pi pi-book"
+                  className={
+                    movimiento.asientoContableId
+                      ? "p-button-warning"
+                      : "p-button-info"
+                  }
+                  onClick={handleGenerarAsiento}
+                  disabled={loading || readOnly}
+                  tooltip={
+                    movimiento.asientoContableId
+                      ? "Regenerar el asiento contable existente"
+                      : "Generar asiento contable para este movimiento"
+                  }
+                />
+                {movimiento.asientoContableId && (
+                  <Button
+                    type="button"
+                    label="Eliminar Asiento"
+                    icon="pi pi-trash"
+                    className="p-button-danger"
+                    onClick={handleEliminarAsiento}
+                    disabled={loading || readOnly}
+                    tooltip="Eliminar el asiento contable y permitir modificar el movimiento"
+                  />
+                )}
+              </>
+            )}
+
           <Button
             type="button"
             label="Cancelar"

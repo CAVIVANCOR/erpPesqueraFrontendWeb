@@ -1,35 +1,21 @@
-// src/components/activo/reports/generarActivosExcel.js
+// src/components/tipoActivo/reports/generarTiposActivoExcel.js
 import ExcelJS from "exceljs";
 
 /**
- * Genera Excel del reporte de Activos ordenado por Empresa y Tipo con formateo
- * Incluye todas las columnas de saldos iniciales
- * @param {Object} data - Datos de los activos
+ * Genera Excel del reporte de Tipos de Activo con cuentas contables
+ * @param {Object} data - Datos de los tipos de activo
  * @returns {Promise<Blob>} - Blob del Excel generado
  */
-export async function generarActivosExcel(data) {
-  const { activos, empresas, tiposActivo, fechaGeneracion } = data;
+export async function generarTiposActivoExcel(data) {
+  const { tiposActivo, fechaGeneracion } = data;
 
-  // Ordenar activos por empresa y tipo
-  const activosOrdenados = [...activos].sort((a, b) => {
-    const empresaA =
-      empresas.find((e) => Number(e.id) === Number(a.empresaId))
-        ?.razonSocial || "";
-    const empresaB =
-      empresas.find((e) => Number(e.id) === Number(b.empresaId))
-        ?.razonSocial || "";
-
-    if (empresaA !== empresaB) {
-      return empresaA.localeCompare(empresaB);
-    }
-
-    const tipoA = a.tipo?.nombre || "";
-    const tipoB = b.tipo?.nombre || "";
-    return tipoA.localeCompare(tipoB);
+  // Ordenar tipos de activo por código
+  const tiposOrdenados = [...tiposActivo].sort((a, b) => {
+    return (a.codigo || "").localeCompare(b.codigo || "");
   });
 
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet("Activos");
+  const worksheet = workbook.addWorksheet("Tipos de Activo");
 
   // Desactivar líneas de cuadrícula
   worksheet.views = [{ showGridLines: false }];
@@ -37,9 +23,9 @@ export async function generarActivosExcel(data) {
   let currentRow = 1;
 
   // ⭐ TÍTULO DEL REPORTE
-  worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
+  worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
   const tituloCell = worksheet.getCell(`A${currentRow}`);
-  tituloCell.value = "LISTADO DE ACTIVOS";
+  tituloCell.value = "LISTADO DE TIPOS DE ACTIVO";
   tituloCell.font = { bold: true, size: 14, color: { argb: "FF1A1A1A" } };
   tituloCell.alignment = { horizontal: "center", vertical: "middle" };
   tituloCell.fill = {
@@ -50,7 +36,7 @@ export async function generarActivosExcel(data) {
   currentRow++;
 
   // ⭐ FECHA DE GENERACIÓN
-  worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
+  worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
   const fechaCell = worksheet.getCell(`A${currentRow}`);
   fechaCell.value = `Generado: ${fechaGeneracion.toLocaleString("es-PE")}`;
   fechaCell.font = { size: 10, color: { argb: "FF666666" } };
@@ -63,15 +49,11 @@ export async function generarActivosExcel(data) {
   const headerRow = worksheet.getRow(currentRow);
   const headers = [
     "N°",
-    "Empresa",
-    "Tipo",
+    "Código",
     "Nombre",
-    "Descripción",
-    "F. Adquisición",
-    "Costo Original",
-    "Dep. Acumulada",
-    "Vida Útil",
-    "Moneda",
+    "Cuenta Activo (33x)",
+    "Cuenta Depreciación (68x)",
+    "Cuenta Dep. Acumulada (39x)",
     "Estado",
   ];
 
@@ -97,61 +79,33 @@ export async function generarActivosExcel(data) {
   // ⭐ ANCHOS DE COLUMNAS
   worksheet.columns = [
     { width: 6 }, // N°
-    { width: 35 }, // Empresa
-    { width: 25 }, // Tipo
+    { width: 15 }, // Código
     { width: 30 }, // Nombre
-    { width: 40 }, // Descripción
-    { width: 15 }, // F. Adquisición
-    { width: 15 }, // Costo Original
-    { width: 15 }, // Dep. Acumulada
-    { width: 12 }, // Vida Útil
-    { width: 10 }, // Moneda
+    { width: 40 }, // Cuenta Activo
+    { width: 40 }, // Cuenta Depreciación
+    { width: 40 }, // Cuenta Dep. Acumulada
     { width: 12 }, // Estado
   ];
 
-  // ⭐ FUNCIÓN PARA FORMATEAR MONEDA
-  function formatearMoneda(valor, moneda = "PEN") {
-    if (!valor) return "-";
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: moneda,
-      minimumFractionDigits: 2,
-    }).format(valor);
-  }
-
-  // ⭐ FUNCIÓN PARA FORMATEAR FECHA
-  function formatearFecha(fecha) {
-    if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-PE");
-  }
-
   // ⭐ DATOS DE LA TABLA
-  activosOrdenados.forEach((activo, index) => {
+  tiposOrdenados.forEach((tipo, index) => {
     const dataRow = worksheet.getRow(currentRow);
-    const empresa = empresas.find(
-      (e) => Number(e.id) === Number(activo.empresaId)
-    );
 
     // Valores de la fila
     dataRow.values = [
       index + 1,
-      empresa?.razonSocial || "N/A",
-      activo.tipo?.nombre || "N/A",
-      activo.nombre || "N/A",
-      activo.descripcion || "-",
-      formatearFecha(activo.fechaAdquisicion),
-      activo.costoOriginal
-        ? formatearMoneda(activo.costoOriginal, activo.moneda?.codigoSunat || "PEN")
+      tipo.codigo || "N/A",
+      tipo.nombre || "N/A",
+      tipo.cuentaActivo
+        ? `${tipo.cuentaActivo.codigoCuenta} - ${tipo.cuentaActivo.nombreCuenta}`
         : "-",
-      activo.depreciacionAcumulada
-        ? formatearMoneda(
-            activo.depreciacionAcumulada,
-            activo.moneda?.codigoSunat || "PEN"
-          )
+      tipo.cuentaDepreciacion
+        ? `${tipo.cuentaDepreciacion.codigoCuenta} - ${tipo.cuentaDepreciacion.nombreCuenta}`
         : "-",
-      activo.vidaUtilAnios ? `${activo.vidaUtilAnios} años` : "-",
-      activo.moneda?.codigoSunat || "-",
-      activo.cesado ? "CESADO" : "ACTIVO",
+      tipo.cuentaDepreciacionAcumulada
+        ? `${tipo.cuentaDepreciacionAcumulada.codigoCuenta} - ${tipo.cuentaDepreciacionAcumulada.nombreCuenta}`
+        : "-",
+      tipo.cesado ? "CESADO" : "ACTIVO",
     ];
 
     // Aplicar estilos a cada celda
@@ -168,37 +122,22 @@ export async function generarActivosExcel(data) {
       if (colNumber === 1) {
         // N° - centrado
         cell.alignment = { horizontal: "center", vertical: "top" };
-      } else if (colNumber === 4) {
-        // Nombre - negrita con wrap
-        cell.alignment = { horizontal: "left", vertical: "top", wrapText: true };
+      } else if (colNumber === 2) {
+        // Código - negrita
+        cell.alignment = { horizontal: "left", vertical: "top" };
         cell.font = { bold: true };
-      } else if (colNumber === 2 || colNumber === 3 || colNumber === 5) {
-        // Empresa, Tipo, Descripción - wrap text
-        cell.alignment = { horizontal: "left", vertical: "top", wrapText: true };
-      } else if (colNumber === 6) {
-        // F. Adquisición - centrado
-        cell.alignment = { horizontal: "center", vertical: "top" };
-      } else if (colNumber === 7 || colNumber === 8) {
-        // Costo Original, Dep. Acumulada - derecha
-        cell.alignment = { horizontal: "right", vertical: "top" };
-      } else if (colNumber === 9) {
-        // Vida Útil - centrado
-        cell.alignment = { horizontal: "center", vertical: "top" };
-      } else if (colNumber === 10) {
-        // Moneda - centrado
-        cell.alignment = { horizontal: "center", vertical: "top" };
-      } else if (colNumber === 11) {
+      } else if (colNumber === 7) {
         // Estado - centrado con color
         cell.alignment = { horizontal: "center", vertical: "top" };
         cell.font = { bold: true };
-        if (activo.cesado) {
+        if (tipo.cesado) {
           cell.font = { bold: true, color: { argb: "FFB20000" } }; // Rojo
         } else {
           cell.font = { bold: true, color: { argb: "FF008000" } }; // Verde
         }
       } else {
-        // Otros - izquierda
-        cell.alignment = { horizontal: "left", vertical: "top" };
+        // Otros - izquierda con wrap
+        cell.alignment = { horizontal: "left", vertical: "top", wrapText: true };
       }
 
       // Fondo alternado (filas pares)
@@ -225,9 +164,12 @@ export async function generarActivosExcel(data) {
   // Título de resumen
   worksheetResumen.mergeCells(`A${resumenRow}:B${resumenRow}`);
   const resumenTituloCell = worksheetResumen.getCell(`A${resumenRow}`);
-  resumenTituloCell.value = "RESUMEN DE ACTIVOS";
+  resumenTituloCell.value = "RESUMEN DE TIPOS DE ACTIVO";
   resumenTituloCell.font = { bold: true, size: 12 };
-  resumenTituloCell.alignment = { horizontal: "center", vertical: "middle" };
+  resumenTituloCell.alignment = {
+    horizontal: "center",
+    vertical: "middle",
+  };
   resumenTituloCell.fill = {
     type: "pattern",
     pattern: "solid",
@@ -236,34 +178,29 @@ export async function generarActivosExcel(data) {
   resumenRow++;
   resumenRow++; // Línea en blanco
 
-  // Calcular totales
-  const totalCostoOriginal = activos.reduce(
-    (sum, a) => sum + (Number(a.costoOriginal) || 0),
-    0
-  );
-  const totalDepAcum = activos.reduce(
-    (sum, a) => sum + (Number(a.depreciacionAcumulada) || 0),
-    0
-  );
-
   // Datos de resumen
   const resumenData = [
-    { Campo: "Total de Activos", Valor: activos.length },
+    { Campo: "Total de Tipos", Valor: tiposActivo.length },
     {
-      Campo: "Activos Activos",
-      Valor: activos.filter((a) => !a.cesado).length,
+      Campo: "Tipos Activos",
+      Valor: tiposActivo.filter((t) => !t.cesado).length,
     },
     {
-      Campo: "Activos Cesados",
-      Valor: activos.filter((a) => a.cesado).length,
+      Campo: "Tipos Cesados",
+      Valor: tiposActivo.filter((t) => t.cesado).length,
     },
     {
-      Campo: "Total Costo Original",
-      Valor: formatearMoneda(totalCostoOriginal, "PEN"),
+      Campo: "Con Cuenta Activo",
+      Valor: tiposActivo.filter((t) => t.cuentaActivoId).length,
     },
     {
-      Campo: "Total Dep. Acumulada",
-      Valor: formatearMoneda(totalDepAcum, "PEN"),
+      Campo: "Con Cuenta Depreciación",
+      Valor: tiposActivo.filter((t) => t.cuentaDepreciacionId).length,
+    },
+    {
+      Campo: "Con Cuenta Dep. Acumulada",
+      Valor: tiposActivo.filter((t) => t.cuentaDepreciacionAcumuladaId)
+        .length,
     },
   ];
 
@@ -273,7 +210,7 @@ export async function generarActivosExcel(data) {
 
     row.getCell(1).font = { bold: true };
     row.getCell(1).alignment = { horizontal: "left", vertical: "top" };
-    row.getCell(2).alignment = { horizontal: "right", vertical: "top" };
+    row.getCell(2).alignment = { horizontal: "center", vertical: "top" };
 
     row.eachCell((cell) => {
       cell.border = {
@@ -287,7 +224,7 @@ export async function generarActivosExcel(data) {
     resumenRow++;
   });
 
-  worksheetResumen.columns = [{ width: 30 }, { width: 25 }];
+  worksheetResumen.columns = [{ width: 30 }, { width: 20 }];
 
   // ⭐ GENERAR ARCHIVO EXCEL
   const buffer = await workbook.xlsx.writeBuffer();

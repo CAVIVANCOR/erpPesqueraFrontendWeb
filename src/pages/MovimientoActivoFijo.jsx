@@ -27,6 +27,11 @@ import { getTiposMovimientoActivoFijo } from "../api/tipoMovimientoActivoFijo";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
+import ReportFormatSelector from "../components/reports/ReportFormatSelector";
+import TemporaryPDFViewer from "../components/reports/TemporaryPDFViewer";
+import TemporaryExcelViewer from "../components/reports/TemporaryExcelViewer";
+import { generarMovimientosActivoFijoPDF } from "../components/movimientoActivoFijo/reports/generarMovimientosActivoFijoPDF";
+import { generarMovimientosActivoFijoExcel } from "../components/movimientoActivoFijo/reports/generarMovimientosActivoFijoExcel";
 
 export default function MovimientoActivoFijo({ ruta }) {
   const { usuario } = useAuthStore();
@@ -56,6 +61,10 @@ export default function MovimientoActivoFijo({ ruta }) {
   const [movimientoParaAsiento, setMovimientoParaAsiento] = useState(null);
   const [showAsientoDialog, setShowAsientoDialog] = useState(false);
   const [selectedAsientoId, setSelectedAsientoId] = useState(null);
+  const [showFormatSelector, setShowFormatSelector] = useState(false);
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [showExcelViewer, setShowExcelViewer] = useState(false);
+  const [reportData, setReportData] = useState(null);
 
   useEffect(() => {
     cargarDatos();
@@ -428,6 +437,14 @@ export default function MovimientoActivoFijo({ ruta }) {
     }
   };
 
+  const handleGenerarReporte = () => {
+    setReportData({
+      movimientos: itemsFiltrados,
+      fechaGeneracion: new Date(),
+    });
+    setShowFormatSelector(true);
+  };
+
   const actionBodyTemplate = (rowData) => {
     return (
       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
@@ -452,20 +469,19 @@ export default function MovimientoActivoFijo({ ruta }) {
   };
 
   const header = (
-    <div className="flex flex-column gap-3">
-      <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
-        <h4 className="m-0">Movimientos de Activo Fijo</h4>
-        <div className="flex gap-2">
-          <span className="p-input-icon-left">
-            <i className="pi pi-search" />
-            <InputText
-              type="search"
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              placeholder="Buscar..."
-              className="w-full"
-            />
-          </span>
+    <>
+      <div
+        style={{
+          alignItems: "end",
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <h2 className="m-0">Movimientos de Activo Fijo</h2>
+        </div>
+        <div style={{ flex: 1 }}>
           <Button
             label="Nuevo"
             icon="pi pi-plus"
@@ -479,63 +495,91 @@ export default function MovimientoActivoFijo({ ruta }) {
             }
           />
         </div>
-      </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            label="Reporte"
+            icon="pi pi-file-pdf"
+            className="p-button-help"
+            onClick={handleGenerarReporte}
+            disabled={!permisos.puedeVer || itemsFiltrados.length === 0}
+            tooltip="Generar Reporte PDF/Excel"
+          />
+        </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Dropdown
-          value={empresaFilter}
-          options={empresas.map((e) => ({
-            label: e.razonSocial,
-            value: Number(e.id),
-          }))}
-          onChange={(e) => setEmpresaFilter(e.value)}
-          placeholder="Filtrar por Empresa"
-          showClear
-          className="w-full md:w-14rem"
-        />
-        <Dropdown
-          value={activoFilter}
-          options={activos.map((a) => ({
-            label: a.nombre,
-            value: Number(a.id),
-          }))}
-          onChange={(e) => setActivoFilter(e.value)}
-          placeholder="Filtrar por Activo"
-          showClear
-          filter
-          className="w-full md:w-14rem"
-        />
-        <Dropdown
-          value={tipoMovimientoFilter}
-          options={tiposMovimiento
-            .filter((t) => t.activo)
-            .map((t) => ({
-              label: t.nombre,
-              value: Number(t.id),
+        <div style={{ flex: 1 }}>
+          <Dropdown
+            value={empresaFilter}
+            options={empresas.map((e) => ({
+              label: e.razonSocial,
+              value: Number(e.id),
             }))}
-          onChange={(e) => setTipoMovimientoFilter(e.value)}
-          placeholder="Filtrar por Tipo"
-          showClear
-          className="w-full md:w-14rem"
-        />
-        <Calendar
-          value={rangoFechas}
-          onChange={(e) => setRangoFechas(e.value)}
-          selectionMode="range"
-          readOnlyInput
-          placeholder="Rango de Fechas"
-          dateFormat="dd/mm/yy"
-          showIcon
-          className="w-full md:w-14rem"
-        />
-        <Button
-          label="Limpiar Filtros"
-          icon="pi pi-filter-slash"
-          className="p-button-outlined"
-          onClick={limpiarFiltros}
-        />
+            onChange={(e) => setEmpresaFilter(e.value)}
+            placeholder="Filtrar por Empresa"
+            showClear
+            className="w-full md:w-14rem"
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Dropdown
+            value={activoFilter}
+            options={activos.map((a) => ({
+              label: a.nombre,
+              value: Number(a.id),
+            }))}
+            onChange={(e) => setActivoFilter(e.value)}
+            placeholder="Filtrar por Activo"
+            showClear
+            filter
+            className="w-full md:w-14rem"
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Dropdown
+            value={tipoMovimientoFilter}
+            options={tiposMovimiento
+              .filter((t) => t.activo)
+              .map((t) => ({
+                label: t.nombre,
+                value: Number(t.id),
+              }))}
+            onChange={(e) => setTipoMovimientoFilter(e.value)}
+            placeholder="Filtrar por Tipo"
+            showClear
+            className="w-full md:w-14rem"
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Calendar
+            value={rangoFechas}
+            onChange={(e) => setRangoFechas(e.value)}
+            selectionMode="range"
+            readOnlyInput
+            placeholder="Rango de Fechas"
+            dateFormat="dd/mm/yy"
+            showIcon
+            className="w-full md:w-14rem"
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <span className="p-input-icon-left">
+            <InputText
+              type="search"
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              placeholder="Buscar..."
+              className="w-full"
+            />
+          </span>
+        </div>
+        <div style={{ flex: 0.25 }}>
+          <Button
+            icon="pi pi-filter-slash"
+            className="p-button-outlined"
+            onClick={limpiarFiltros}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 
   return (
@@ -662,7 +706,7 @@ export default function MovimientoActivoFijo({ ruta }) {
 
       <Dialog
         visible={showDialog}
-        style={{ width: "90vw", maxWidth: "900px" }}
+        style={{ width: "1200px" }}
         header={
           isEdit
             ? "Editar Movimiento de Activo Fijo"
@@ -719,6 +763,40 @@ export default function MovimientoActivoFijo({ ruta }) {
           />
         )}
       </Dialog>
+      <ReportFormatSelector
+        visible={showFormatSelector}
+        onHide={() => setShowFormatSelector(false)}
+        onSelectPDF={() => {
+          setShowPDFViewer(true);
+          setShowFormatSelector(false);
+        }}
+        onSelectExcel={() => {
+          setShowExcelViewer(true);
+          setShowFormatSelector(false);
+        }}
+      />
+      <TemporaryPDFViewer
+        visible={showPDFViewer}
+        onHide={() => {
+          setShowPDFViewer(false);
+          setShowFormatSelector(false);
+        }}
+        data={reportData}
+        generatePDF={generarMovimientosActivoFijoPDF}
+        fileName={`movimientos-activo-fijo-${new Date().toISOString().split("T")[0]}.pdf`}
+        title="Listado de Movimientos de Activo Fijo"
+      />
+      <TemporaryExcelViewer
+        visible={showExcelViewer}
+        onHide={() => {
+          setShowExcelViewer(false);
+          setShowFormatSelector(false);
+        }}
+        data={reportData}
+        generateExcel={generarMovimientosActivoFijoExcel}
+        fileName={`movimientos-activo-fijo-${new Date().toISOString().split("T")[0]}.xlsx`}
+        title="Listado de Movimientos de Activo Fijo"
+      />
     </div>
   );
 }

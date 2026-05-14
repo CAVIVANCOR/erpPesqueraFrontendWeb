@@ -28,6 +28,11 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import TipoActivoForm from "../components/tipoActivo/TipoActivoForm";
 import { getResponsiveFontSize } from "../utils/utils";
+import ReportFormatSelector from "../components/reports/ReportFormatSelector";
+import TemporaryPDFViewer from "../components/reports/TemporaryPDFViewer";
+import TemporaryExcelViewer from "../components/reports/TemporaryExcelViewer";
+import { generarTiposActivoPDF } from "../components/tipoActivo/reports/generarTiposActivoPDF";
+import { generarTiposActivoExcel } from "../components/tipoActivo/reports/generarTiposActivoExcel";
 
 const TipoActivo = ({ ruta }) => {
   const [tiposActivo, setTiposActivo] = useState([]);
@@ -39,6 +44,10 @@ const TipoActivo = ({ ruta }) => {
   const toast = useRef(null);
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
+  const [showFormatSelector, setShowFormatSelector] = useState(false);
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [showExcelViewer, setShowExcelViewer] = useState(false);
+  const [reportData, setReportData] = useState(null);
 
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return (
@@ -159,7 +168,8 @@ const TipoActivo = ({ ruta }) => {
     if (!rowData.cuentaActivo) return "-";
     return (
       <span style={{ fontSize: "0.9em" }}>
-        {rowData.cuentaActivo.codigoCuenta} - {rowData.cuentaActivo.nombreCuenta}
+        {rowData.cuentaActivo.codigoCuenta} -{" "}
+        {rowData.cuentaActivo.nombreCuenta}
       </span>
     );
   };
@@ -168,7 +178,8 @@ const TipoActivo = ({ ruta }) => {
     if (!rowData.cuentaDepreciacion) return "-";
     return (
       <span style={{ fontSize: "0.9em" }}>
-        {rowData.cuentaDepreciacion.codigoCuenta} - {rowData.cuentaDepreciacion.nombreCuenta}
+        {rowData.cuentaDepreciacion.codigoCuenta} -{" "}
+        {rowData.cuentaDepreciacion.nombreCuenta}
       </span>
     );
   };
@@ -177,11 +188,18 @@ const TipoActivo = ({ ruta }) => {
     if (!rowData.cuentaDepreciacionAcumulada) return "-";
     return (
       <span style={{ fontSize: "0.9em" }}>
-        {rowData.cuentaDepreciacionAcumulada.codigoCuenta} - {rowData.cuentaDepreciacionAcumulada.nombreCuenta}
+        {rowData.cuentaDepreciacionAcumulada.codigoCuenta} -{" "}
+        {rowData.cuentaDepreciacionAcumulada.nombreCuenta}
       </span>
     );
   };
-
+  const handleGenerarReporte = () => {
+    setReportData({
+      tiposActivo: tiposActivo,
+      fechaGeneracion: new Date(),
+    });
+    setShowFormatSelector(true);
+  };
   const accionesTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
@@ -223,27 +241,50 @@ const TipoActivo = ({ ruta }) => {
         globalFilter={globalFilter}
         globalFilterFields={["codigo", "nombre", "descripcion"]}
         header={
-          <div className="flex align-items-center gap-2">
-            <h2>Gestión de Tipos de Activo</h2>
-            <Button
-              label="Nuevo"
-              icon="pi pi-plus"
-              size="small"
-              raised
-              tooltip="Nuevo Tipo de Activo"
-              outlined
-              className="p-button-success"
-              onClick={abrirDialogoNuevo}
-              disabled={!permisos.puedeCrear}
-            />
-            <span className="p-input-icon-left">
-              <InputText
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Buscar tipos de activo..."
-                style={{ width: "300px" }}
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <h2>Gestión de Tipos de Activo</h2>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                size="small"
+                raised
+                tooltip="Nuevo Tipo de Activo"
+                outlined
+                className="p-button-success"
+                onClick={abrirDialogoNuevo}
+                disabled={!permisos.puedeCrear}
               />
-            </span>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Reporte"
+                icon="pi pi-file-pdf"
+                className="p-button-help"
+                onClick={handleGenerarReporte}
+                disabled={!permisos.puedeVer || tiposActivo.length === 0}
+                tooltip="Generar Reporte PDF/Excel"
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <span className="p-input-icon-left">
+                <InputText
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  placeholder="Buscar tipos de activo..."
+                  style={{ width: "300px" }}
+                />
+              </span>
+            </div>
           </div>
         }
         scrollable
@@ -251,28 +292,50 @@ const TipoActivo = ({ ruta }) => {
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
         <Column field="id" header="ID" sortable style={{ minWidth: "80px" }} />
-        <Column field="codigo" header="Código" body={codigoTemplate} sortable style={{ minWidth: "120px" }} />
-        <Column field="nombre" header="Nombre" body={nombreTemplate} sortable style={{ minWidth: "180px" }} />
-        <Column field="descripcion" header="Descripción" sortable style={{ minWidth: "200px" }} />
-        <Column 
-          header="Cuenta Activo (33x)" 
-          body={cuentaActivoTemplate} 
-          sortable 
+        <Column
+          field="codigo"
+          header="Código"
+          body={codigoTemplate}
+          sortable
+          style={{ minWidth: "120px" }}
+        />
+        <Column
+          field="nombre"
+          header="Nombre"
+          body={nombreTemplate}
+          sortable
+          style={{ minWidth: "180px" }}
+        />
+        <Column
+          field="descripcion"
+          header="Descripción"
+          sortable
+          style={{ minWidth: "200px" }}
+        />
+        <Column
+          header="Cuenta Activo (33x)"
+          body={cuentaActivoTemplate}
+          sortable
           style={{ minWidth: "250px" }}
         />
-        <Column 
-          header="Cuenta Depreciación (68x)" 
-          body={cuentaDepreciacionTemplate} 
-          sortable 
+        <Column
+          header="Cuenta Depreciación (68x)"
+          body={cuentaDepreciacionTemplate}
+          sortable
           style={{ minWidth: "250px" }}
         />
-        <Column 
-          header="Cuenta Dep. Acumulada (39x)" 
-          body={cuentaDepreciacionAcumuladaTemplate} 
-          sortable 
+        <Column
+          header="Cuenta Dep. Acumulada (39x)"
+          body={cuentaDepreciacionAcumuladaTemplate}
+          sortable
           style={{ minWidth: "250px" }}
         />
-        <Column header="Estado" body={cesadoTemplate} sortable style={{ minWidth: "100px" }} />
+        <Column
+          header="Estado"
+          body={cesadoTemplate}
+          sortable
+          style={{ minWidth: "100px" }}
+        />
         <Column
           body={accionesTemplate}
           header="Acciones"
@@ -311,6 +374,40 @@ const TipoActivo = ({ ruta }) => {
         acceptLabel="Sí, Eliminar"
         rejectLabel="Cancelar"
         acceptClassName="p-button-danger"
+      />
+      <ReportFormatSelector
+        visible={showFormatSelector}
+        onHide={() => setShowFormatSelector(false)}
+        onSelectPDF={() => {
+          setShowPDFViewer(true);
+          setShowFormatSelector(false);
+        }}
+        onSelectExcel={() => {
+          setShowExcelViewer(true);
+          setShowFormatSelector(false);
+        }}
+      />
+      <TemporaryPDFViewer
+        visible={showPDFViewer}
+        onHide={() => {
+          setShowPDFViewer(false);
+          setShowFormatSelector(false);
+        }}
+        data={reportData}
+        generatePDF={generarTiposActivoPDF}
+        fileName={`tipos-activo-${new Date().toISOString().split("T")[0]}.pdf`}
+        title="Listado de Tipos de Activo"
+      />
+      <TemporaryExcelViewer
+        visible={showExcelViewer}
+        onHide={() => {
+          setShowExcelViewer(false);
+          setShowFormatSelector(false);
+        }}
+        data={reportData}
+        generateExcel={generarTiposActivoExcel}
+        fileName={`tipos-activo-${new Date().toISOString().split("T")[0]}.xlsx`}
+        title="Listado de Tipos de Activo"
       />
     </div>
   );

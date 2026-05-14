@@ -53,6 +53,7 @@ const DetMovsEntregaRendirForm = ({
   const [modulosPescaIndustrial, setModulosPescaIndustrial] = useState(null);
   const [cardActiva, setCardActiva] = useState("datos");
   const [familiaFiltroId, setFamiliaFiltroId] = useState(null);
+  const [subfamiliaFiltroId, setSubfamiliaFiltroId] = useState(null);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(127);
   const [gastosPlanificadosAsignacion, setGastosPlanificadosAsignacion] =
     useState([]);
@@ -492,11 +493,45 @@ const DetMovsEntregaRendirForm = ({
     a.label.localeCompare(b.label),
   );
 
-  const productosFiltrados = familiaFiltroId
+  // Construir subfamilias únicas basadas en la familia seleccionada
+  const subfamiliasMap = new Map();
+  const productosParaSubfamilias = familiaFiltroId
     ? productosGastos.filter(
         (p) => Number(p.familiaId) === Number(familiaFiltroId),
       )
     : productosGastos;
+
+  productosParaSubfamilias.forEach((p) => {
+    if (p.subfamilia && p.subfamilia.id && p.subfamilia.nombre) {
+      const subfamiliaId = Number(p.subfamilia.id);
+      if (!subfamiliasMap.has(subfamiliaId)) {
+        subfamiliasMap.set(subfamiliaId, {
+          label: p.subfamilia.nombre,
+          value: subfamiliaId,
+        });
+      }
+    }
+  });
+
+  const subfamiliasUnicas = Array.from(subfamiliasMap.values()).sort((a, b) =>
+    a.label.localeCompare(b.label),
+  );
+
+  let productosFiltrados = productosGastos;
+
+  // Filtrar por familia si está seleccionada
+  if (familiaFiltroId) {
+    productosFiltrados = productosFiltrados.filter(
+      (p) => Number(p.familiaId) === Number(familiaFiltroId),
+    );
+  }
+
+  // Filtrar por subfamilia si está seleccionada
+  if (subfamiliaFiltroId) {
+    productosFiltrados = productosFiltrados.filter(
+      (p) => Number(p.subfamiliaId) === Number(subfamiliaFiltroId),
+    );
+  }
 
   const productoOptions = productosFiltrados.map((p) => ({
     label: p.descripcionArmada || p.descripcionBase || p.codigo,
@@ -995,11 +1030,35 @@ const DetMovsEntregaRendirForm = ({
                     optionLabel="label"
                     optionValue="value"
                     placeholder="Todas las familias"
-                    onChange={(e) => setFamiliaFiltroId(e.value)}
+                    onChange={(e) => {
+                      setFamiliaFiltroId(e.value);
+                      setSubfamiliaFiltroId(null); // Limpiar subfamilia al cambiar familia
+                    }}
                     showClear
                     filter
                     style={{ fontWeight: "bold" }}
                     disabled={formularioDeshabilitado}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label
+                    htmlFor="subfamiliaFiltro"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Filtrar por Subfamilia
+                  </label>
+                  <Dropdown
+                    id="subfamiliaFiltro"
+                    value={subfamiliaFiltroId}
+                    options={subfamiliasUnicas}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Todas las subfamilias"
+                    onChange={(e) => setSubfamiliaFiltroId(e.value)}
+                    showClear
+                    filter
+                    style={{ fontWeight: "bold" }}
+                    disabled={formularioDeshabilitado || !familiaFiltroId}
                   />
                 </div>
                 <div style={{ flex: 2 }}>
