@@ -3,11 +3,11 @@
  *
  * Formulario profesional para ContactoEntidad siguiendo el patrón estándar ERP Megui.
  * Utiliza React Hook Form + Yup para validaciones y está alineado EXACTAMENTE al modelo Prisma.
- * CAMPOS REALES: entidadComercialId, nombres, cargoId, telefono, correoCorportivo, correoPersonal,
+ * CAMPOS REALES: entidadComercialId, nombres, numeroDocumento, cargoId, telefono, correoCorportivo, correoPersonal,
  * compras, ventas, finanzas, logistica, representanteLegal, observaciones, activo
  *
  * @author ERP Megui
- * @version 2.0.0
+ * @version 2.1.0
  */
 
 import React, { useEffect } from "react";
@@ -31,6 +31,11 @@ const esquemaValidacionContacto = yup.object().shape({
     .string()
     .required("Los nombres son requeridos")
     .max(255, "Máximo 255 caracteres")
+    .trim(),
+  numeroDocumento: yup
+    .string()
+    .nullable()
+    .matches(/^\d{8}$/, "El DNI debe tener exactamente 8 dígitos")
     .trim(),
   cargoId: yup
     .number()
@@ -97,6 +102,7 @@ export default function ContactoEntidadForm({
     defaultValues: {
       entidadComercialId: null,
       nombres: "",
+      numeroDocumento: "",
       cargoId: null,
       telefono: "",
       correoCorportivo: "",
@@ -117,6 +123,7 @@ export default function ContactoEntidadForm({
       reset({
         entidadComercialId: defaultValues.entidadComercialId ? Number(defaultValues.entidadComercialId) : null,
         nombres: (defaultValues.nombres || "").toUpperCase(),
+        numeroDocumento: defaultValues.numeroDocumento || "",
         cargoId: defaultValues.cargoId ? Number(defaultValues.cargoId) : null,
         telefono: defaultValues.telefono || "",
         correoCorportivo: defaultValues.correoCorportivo || "",
@@ -141,6 +148,7 @@ export default function ContactoEntidadForm({
     const datosNormalizados = {
       entidadComercialId: Number(data.entidadComercialId),
       nombres: data.nombres.trim().toUpperCase(),
+      numeroDocumento: data.numeroDocumento?.trim() || null,
       cargoId: data.cargoId ? Number(data.cargoId) : null,
       telefono: data.telefono?.trim() || null,
       correoCorportivo: data.correoCorportivo?.trim() || null,
@@ -234,6 +242,28 @@ export default function ContactoEntidadForm({
               )}
             />
             {getFormErrorMessage("nombres")}
+          </div>
+        </div>
+
+        <div className="col-12 md:col-6">
+          <div className="field">
+            <label htmlFor="numeroDocumento">DNI</label>
+            <Controller
+              name="numeroDocumento"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  id="numeroDocumento"
+                  {...field}
+                  className={getFieldClass("numeroDocumento")}
+                  disabled={loading}
+                  maxLength={8}
+                  keyfilter="int"
+                  placeholder="12345678"
+                />
+              )}
+            />
+            {getFormErrorMessage("numeroDocumento")}
           </div>
         </div>
 
