@@ -51,6 +51,8 @@ export default function DetEntregaRendirPescaIndustrial({
     useState(null);
   const [filtroValidacionTesoreria, setFiltroValidacionTesoreria] =
     useState(null);
+  const [filtroAsignacionSeleccionada, setFiltroAsignacionSeleccionada] =
+    useState(null);
   // Estados para el dialog
   const [showMovimientoForm, setShowMovimientoForm] = useState(false);
   const [editingMovimiento, setEditingMovimiento] = useState(null);
@@ -194,6 +196,34 @@ export default function DetEntregaRendirPescaIndustrial({
         (mov) => mov.validadoTesoreria === filtroValidacionTesoreria,
       );
     }
+
+    // Filtro por asignación seleccionada
+    if (filtroAsignacionSeleccionada) {
+      movimientosFiltrados = movimientosFiltrados.filter((mov) => {
+        // Incluir la asignación seleccionada
+        if (Number(mov.id) === Number(filtroAsignacionSeleccionada)) {
+          return true;
+        }
+        // Incluir gastos asociados a esta asignación
+        if (
+          mov.asignacionOrigenId &&
+          Number(mov.asignacionOrigenId) === Number(filtroAsignacionSeleccionada)
+        ) {
+          return true;
+        }
+        return false;
+      });
+
+      // Ordenar: asignación primero, luego gastos por fecha
+      movimientosFiltrados.sort((a, b) => {
+        // La asignación siempre va primero
+        if (Number(a.id) === Number(filtroAsignacionSeleccionada)) return -1;
+        if (Number(b.id) === Number(filtroAsignacionSeleccionada)) return 1;
+        // Los gastos se ordenan por fecha
+        return new Date(a.fechaMovimiento) - new Date(b.fechaMovimiento);
+      });
+    }
+
     return movimientosFiltrados;
   };
 
@@ -204,6 +234,7 @@ export default function DetEntregaRendirPescaIndustrial({
     setFiltroEntregaARendir(null);
     setFiltroCategoriaMovimiento(null);
     setFiltroValidacionTesoreria(null);
+    setFiltroAsignacionSeleccionada(null);
   };
 
   const alternarFiltroEntregaARendir = () => {
@@ -226,6 +257,14 @@ export default function DetEntregaRendirPescaIndustrial({
     }
   };
 
+  const alternarFiltroGastosARendir = () => {
+    if (filtroCategoriaMovimiento === 17) {
+      setFiltroCategoriaMovimiento(null);
+    } else {
+      setFiltroCategoriaMovimiento(17);
+    }
+  };
+
   const obtenerPropiedadesFiltroEntregaARendir = () => {
     if (filtroEntregaARendir === null) {
       return { label: "Todos", severity: "info" };
@@ -244,6 +283,43 @@ export default function DetEntregaRendirPescaIndustrial({
     } else {
       return { label: "Pendientes", severity: "danger" };
     }
+  };
+
+  const obtenerPropiedadesFiltroGastosARendir = () => {
+    if (filtroCategoriaMovimiento === 17) {
+      return { label: "Gastos a Rendir", severity: "success" };
+    } else {
+      return { label: "Todos los Gastos", severity: "secondary" };
+    }
+  };
+
+  // Obtener asignaciones (categoría 17) para el dropdown
+  const obtenerAsignaciones = () => {
+    return movimientos
+      .filter((mov) => {
+        const categoriaId =
+          mov.tipoMovimiento?.categoria?.id || mov.tipoMovimiento?.categoriaId;
+        return (
+          categoriaId &&
+          Number(categoriaId) === 17 &&
+          (mov.asignacionOrigenId === null ||
+            mov.asignacionOrigenId === undefined ||
+            Number(mov.asignacionOrigenId) === 0)
+        );
+      })
+      .map((asignacion) => {
+        const moneda = monedas.find(
+          (m) => Number(m.id) === Number(asignacion.monedaId),
+        );
+        return {
+          value: Number(asignacion.id),
+          label: `ID: ${asignacion.id} | ${asignacion.descripcion || "Sin descripción"} | ${moneda?.simbolo || ""} ${formatearNumero(asignacion.monto, 2)}`,
+          id: asignacion.id,
+          descripcion: asignacion.descripcion,
+          monto: asignacion.monto,
+          moneda: moneda,
+        };
+      });
   };
 
   // Handlers internos
@@ -569,26 +645,29 @@ export default function DetEntregaRendirPescaIndustrial({
     );
     return entidad ? entidad.razonSocial : "N/A";
   };
-  
+
   const gastoPlanificadoTemplate = (rowData) => {
     // Verificar si existe la relación enlaceGastoPlanificado
     if (!rowData.enlaceGastoPlanificado) {
-      return <span style={{ color: "#999", fontStyle: "italic" }}>Sin gasto planificado</span>;
+      return (
+        <span style={{ color: "#999", fontStyle: "italic" }}>
+          Sin gasto planificado
+        </span>
+      );
     }
 
     // Mostrar descripcionArmada del producto del gasto planificado
-    const descripcion = rowData.enlaceGastoPlanificado.producto?.descripcionArmada 
-      || rowData.enlaceGastoPlanificado.producto?.nombre 
-      || "N/A";
+    const descripcion =
+      rowData.enlaceGastoPlanificado.producto?.descripcionArmada ||
+      rowData.enlaceGastoPlanificado.producto?.nombre ||
+      "N/A";
 
     return (
-      <div style={{ fontSize: "0.85rem", color: "#666" }}>
-        {descripcion}
-      </div>
+      <div style={{ fontSize: "0.85rem", color: "#666" }}>{descripcion}</div>
     );
   };
 
-    const saldoInicialTemplate = (rowData) => {
+  const saldoInicialTemplate = (rowData) => {
     // Solo mostrar para asignaciones principales
     const esAsignacionPrincipal =
       rowData.formaParteCalculoEntregaARendir === true &&
@@ -614,7 +693,7 @@ export default function DetEntregaRendirPescaIndustrial({
     );
   };
 
-    const saldoFinalTemplate = (rowData) => {
+  const saldoFinalTemplate = (rowData) => {
     // Solo mostrar para asignaciones principales
     const esAsignacionPrincipal =
       rowData.formaParteCalculoEntregaARendir === true &&
@@ -630,19 +709,19 @@ export default function DetEntregaRendirPescaIndustrial({
     // Saldo Final = Saldo Inicial + Monto Asignación - Total Gastos
     const saldoInicial = Number(rowData.saldoInicialAsignacion || 0);
     const montoAsignacion = Number(rowData.monto || 0);
-    
+
     // Buscar gastos asociados a esta asignación
     const gastosAsociados = movimientos.filter(
       (mov) =>
         mov.asignacionOrigenId &&
         Number(mov.asignacionOrigenId) === Number(rowData.id),
     );
-    
+
     // Sumar total de gastos
     const totalGastos = gastosAsociados.reduce((sum, gasto) => {
       return sum + Number(gasto.monto || 0);
     }, 0);
-    
+
     // Calcular saldo final
     const saldoFinal = saldoInicial + montoAsignacion - totalGastos;
 
@@ -658,8 +737,6 @@ export default function DetEntregaRendirPescaIndustrial({
       </div>
     );
   };
-
-
 
   const validacionTesoreriaTemplate = (rowData) => {
     return (
@@ -802,6 +879,17 @@ export default function DetEntregaRendirPescaIndustrial({
                   />
                 </div>
                 <div style={{ flex: 0.5 }}>
+                  <label htmlFor="">Gastos a Rendir</label>
+                  <Button
+                    label={obtenerPropiedadesFiltroGastosARendir().label}
+                    icon="pi pi-filter"
+                    onClick={alternarFiltroGastosARendir}
+                    severity={obtenerPropiedadesFiltroGastosARendir().severity}
+                    type="button"
+                    raised
+                  />
+                </div>
+                <div style={{ flex: 0.5 }}>
                   <label htmlFor="">Entrega a Rendir</label>
                   <Button
                     label={obtenerPropiedadesFiltroEntregaARendir().label}
@@ -873,6 +961,19 @@ export default function DetEntregaRendirPescaIndustrial({
                   flexWrap: "wrap",
                 }}
               >
+                <div style={{ flex: 1 }}>
+                  <Dropdown
+                    value={filtroAsignacionSeleccionada}
+                    options={obtenerAsignaciones()}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Seleccionar Asignación"
+                    onChange={(e) => setFiltroAsignacionSeleccionada(e.value)}
+                    className="w-full"
+                    showClear
+                    filter
+                  />
+                </div>
                 <div style={{ flex: 1 }}>
                   <Dropdown
                     value={filtroCategoriaMovimiento}
@@ -1049,6 +1150,7 @@ export default function DetEntregaRendirPescaIndustrial({
             setEditingMovimiento(null);
             onDataChange?.();
           }}
+          permisos={permisos}
         />
       </Dialog>
 

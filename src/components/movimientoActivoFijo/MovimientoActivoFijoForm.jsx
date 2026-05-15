@@ -34,7 +34,7 @@ import { getEmpresas } from "../../api/empresa";
 import { getActivos } from "../../api/activo";
 import { getTiposMovimientoActivoFijo } from "../../api/tipoMovimientoActivoFijo";
 import { getMonedas } from "../../api/moneda";
-import { getPeriodosContables } from "../../api/contabilidad/periodoContable";
+import { getPeriodosPorEmpresa } from "../../api/contabilidad/periodoContable";
 import { getCentrosCosto } from "../../api/centroCosto";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { eliminarAsientoContableMovimiento } from "../../api/movimientoActivoFijo";
@@ -114,7 +114,7 @@ const MovimientoActivoFijoForm = ({
   readOnly = false,
 }) => {
   const toast = useRef(null);
-  const { usuario } = useAuthStore(); // ← AGREGAR ESTA LÍNEA
+  const { usuario } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [empresas, setEmpresas] = useState([]);
   const [activos, setActivos] = useState([]);
@@ -152,12 +152,27 @@ const MovimientoActivoFijoForm = ({
     },
   });
 
+  // Watch empresaId para cargar períodos contables de esa empresa
+  const empresaIdSeleccionada = watch("empresaId");
+
   /**
    * Cargar datos de combos al montar
    */
   useEffect(() => {
     cargarCombos();
   }, []);
+
+  /**
+   * Efecto para cargar períodos contables cuando cambia la empresa
+   */
+  useEffect(() => {
+    if (empresaIdSeleccionada) {
+      cargarPeriodosContables(empresaIdSeleccionada);
+    } else {
+      setPeriodosContables([]);
+      setValue("periodoContableId", null);
+    }
+  }, [empresaIdSeleccionada, setValue]);
 
   /**
    * Efecto para cargar datos en modo edición o nuevo con filtros
@@ -251,7 +266,7 @@ const MovimientoActivoFijoForm = ({
   }, [watch, setValue]);
 
   /**
-   * Cargar datos para combos
+   * Cargar datos para combos (excepto períodos contables que se cargan por empresa)
    */
   const cargarCombos = async () => {
     try {
@@ -260,14 +275,12 @@ const MovimientoActivoFijoForm = ({
         activosData,
         tiposData,
         monedasData,
-        periodosData,
         centrosData,
       ] = await Promise.all([
         getEmpresas(),
         getActivos(),
         getTiposMovimientoActivoFijo(),
         getMonedas(),
-        getPeriodosContables(),
         getCentrosCosto(),
       ]);
 
@@ -275,7 +288,6 @@ const MovimientoActivoFijoForm = ({
       setActivos(activosData);
       setTiposMovimiento(tiposData);
       setMonedas(monedasData);
-      setPeriodosContables(periodosData);
       setCentrosCosto(centrosData);
     } catch (error) {
       console.error("Error al cargar combos:", error);
@@ -284,6 +296,24 @@ const MovimientoActivoFijoForm = ({
         summary: "Error",
         detail: "Error al cargar datos de los combos",
       });
+    }
+  };
+
+  /**
+   * Cargar períodos contables filtrados por empresa
+   */
+  const cargarPeriodosContables = async (empresaId) => {
+    try {
+      const periodosData = await getPeriodosPorEmpresa(empresaId);
+      setPeriodosContables(periodosData);
+    } catch (error) {
+      console.error("Error al cargar períodos contables:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar períodos contables",
+      });
+      setPeriodosContables([]);
     }
   };
 
@@ -688,7 +718,7 @@ const handleEliminarAsiento = () => {
                   className={getFieldClass("periodoContableId")}
                   filter
                   showClear
-                  disabled={readOnly}
+                  disabled={readOnly || !empresaIdSeleccionada}
                   style={{ fontWeight: "bold" }}
                 />
               )}

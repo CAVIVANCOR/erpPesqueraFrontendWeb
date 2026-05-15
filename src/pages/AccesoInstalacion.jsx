@@ -101,6 +101,11 @@ export default function AccesoInstalacion({ ruta }) {
       const empresasData = await getEmpresas();
       if (empresasData && Array.isArray(empresasData)) {
         setEmpresas(empresasData.map((e) => ({ ...e, id: Number(e.id) })));
+        
+        // ⭐ AUTOSELECCIONAR EMPRESA DEL USUARIO LOGUEADO
+        if (usuario?.empresaId) {
+          setEmpresaSeleccionada(Number(usuario.empresaId));
+        }
       }
 
       // Cargar todas las sedes

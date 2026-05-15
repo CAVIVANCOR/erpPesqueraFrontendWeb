@@ -3,6 +3,7 @@ import { Card } from "primereact/card";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { InputNumber } from "primereact/inputnumber";
 import PDFGeneratedUploader from "../pdf/PDFGeneratedUploader";
 import { generarYSubirPDFLiquidacionEntregaARendir } from "./LiquidacionEntregaARendirPDF";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
@@ -19,6 +20,7 @@ const LiquidacionEntregaARendirCard = ({
   movimientoData = {},
   onLiquidacionExitosa,
   onGuardarMovimiento,
+  permisos = {}, // ⭐ NUEVO: Recibir permisos
 }) => {
   const toast = useRef(null);
   const [pdfUrl, setPdfUrl] = useState(null);
@@ -29,6 +31,8 @@ const LiquidacionEntregaARendirCard = ({
   const estaLiquidada = getValues("entregaARendirLiquidada");
   const urlLiquidacion = getValues("urlLiquidacionEntregaARendir");
   const entregaARendirId = movimientoData?.entregaARendirId;
+  const saldoInicial = getValues("saldoInicialAsignacion") || 0;
+  const saldoFinal = getValues("saldoFinalAsignacion") || 0;
 
   useEffect(() => {
     if (urlLiquidacion) {
@@ -132,7 +136,7 @@ const LiquidacionEntregaARendirCard = ({
       acceptLabel: "Sí, Liquidar",
       rejectLabel: "Cancelar",
       acceptClassName: "p-button-danger",
-      accept: () => liquidarEntregaARendir(),
+      accept: liquidarEntregaARendir,
     });
   };
 
@@ -150,7 +154,7 @@ const LiquidacionEntregaARendirCard = ({
 
       const token = useAuthStore.getState().token;
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/entrega-a-rendir/${entregaARendirId}/liquidar`,
+        `${import.meta.env.VITE_API_URL}/entregas-a-rendir/${entregaARendirId}/liquidar`,
         {
           method: "POST",
           headers: {
@@ -159,6 +163,7 @@ const LiquidacionEntregaARendirCard = ({
           },
           body: JSON.stringify({
             urlLiquidacionPdf: pdfUrl,
+            permitirRegeneracion: estaLiquidada && permisos.puedeReactivarDocs,
           }),
         },
       );
@@ -172,10 +177,6 @@ const LiquidacionEntregaARendirCard = ({
 
       const resultado = await response.json();
 
-      setValue("entregaARendirLiquidada", true);
-      setValue("fechaLiquidacionEntregaARendir", new Date());
-      setValue("urlLiquidacionEntregaARendir", pdfUrl);
-
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
@@ -183,9 +184,9 @@ const LiquidacionEntregaARendirCard = ({
         life: 5000,
       });
 
-      // Notificar al componente padre para recargar datos
+      // ⭐ CERRAR FORMULARIO Y RECARGAR LISTA (ESTO RECARGA CON DATOS FRESCOS DE BD)
       if (onLiquidacionExitosa) {
-        onLiquidacionExitosa();
+        await onLiquidacionExitosa();
       }
     } catch (error) {
       console.error("Error al liquidar entrega a rendir:", error);
@@ -220,7 +221,6 @@ const LiquidacionEntregaARendirCard = ({
   return (
     <>
       <Toast ref={toast} />
-      <ConfirmDialog />
 
       <Card title="Liquidación de Entrega a Rendir">
         <PDFGeneratedUploader
@@ -245,18 +245,167 @@ const LiquidacionEntregaARendirCard = ({
           onGenerateComplete={(url) => setPdfUrl(url)}
           initialPdfUrl={urlLiquidacion}
           customControls={
-            !estaLiquidada &&
-            pdfUrl && (
-              <Button
-                label="Liquidar Entrega a Rendir"
-                icon="pi pi-check-circle"
-                className="p-button-primary"
-                onClick={confirmarLiquidacion}
-                loading={liquidando}
-                disabled={!pdfUrl}
-                style={{ width: "100%" }}
-              />
-            )
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "1rem",
+              }}
+            >
+              {/* SALDOS - SIEMPRE VISIBLES */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: "1rem",
+                  padding: "1rem",
+                  backgroundColor: "#f8f9fa",
+                  borderRadius: "6px",
+                  border: "1px solid #dee2e6",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontWeight: "600",
+                      marginBottom: "0.5rem",
+                      color: "#495057",
+                      fontSize: "0.875rem",
+                    }}
+                  >
+                    💰 Saldo Inicial
+                  </label>
+                  <InputNumber
+                    value={saldoInicial}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    readOnly
+                    inputStyle={{
+                      fontWeight: "bold",
+                      fontSize: "1.1rem",
+                      backgroundColor: "#e3f2fd",
+                      color: "#1976d2",
+                      textAlign: "right",
+                    }}
+                    style={{ width: "100%" }}
+                  />
+                  <small
+                    style={{
+                      display: "block",
+                      marginTop: "0.25rem",
+                      color: "#6c757d",
+                      fontStyle: "italic",
+                      fontSize: "0.75rem",
+                    }}
+                  >
+                    Saldo de la entrega anterior
+                  </small>
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontWeight: "600",
+                      marginBottom: "0.5rem",
+                      color: "#495057",
+                      fontSize: "0.875rem",
+                    }}
+                  >
+                    💵 Saldo Final
+                  </label>
+                  <InputNumber
+                    value={saldoFinal}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    readOnly
+                    inputStyle={{
+                      fontWeight: "bold",
+                      fontSize: "1.1rem",
+                      backgroundColor: saldoFinal >= 0 ? "#e8f5e9" : "#ffebee",
+                      color: saldoFinal >= 0 ? "#2e7d32" : "#c62828",
+                      textAlign: "right",
+                    }}
+                    style={{ width: "100%" }}
+                  />
+                  <small
+                    style={{
+                      display: "block",
+                      marginTop: "0.25rem",
+                      color: "#6c757d",
+                      fontStyle: "italic",
+                      fontSize: "0.75rem",
+                    }}
+                  >
+                    Se calcula al liquidar
+                  </small>
+                </div>
+              </div>
+
+              {/* BOTÓN LIQUIDAR - VISIBLE SI NO ESTÁ LIQUIDADA O SI TIENE PERMISO PARA REGENERAR */}
+              {(!estaLiquidada || permisos.puedeReactivarDocs) && pdfUrl && (
+                <Button
+                  label={
+                    estaLiquidada
+                      ? "Regenerar Liquidación"
+                      : "Liquidar Entrega a Rendir"
+                  }
+                  icon={estaLiquidada ? "pi pi-refresh" : "pi pi-check-circle"}
+                  className={
+                    estaLiquidada ? "p-button-warning" : "p-button-primary"
+                  }
+                  onClick={confirmarLiquidacion}
+                  loading={liquidando}
+                  disabled={!pdfUrl || liquidando}
+                  style={{ width: "100%" }}
+                  tooltip={
+                    estaLiquidada
+                      ? "Tiene permiso para regenerar esta liquidación"
+                      : "Liquidar y cerrar esta entrega a rendir"
+                  }
+                  tooltipOptions={{ position: "top" }}
+                />
+              )}
+
+              {/* MENSAJE SI YA ESTÁ LIQUIDADA Y NO TIENE PERMISO PARA REGENERAR */}
+              {estaLiquidada && !permisos.puedeReactivarDocs && (
+                <div
+                  style={{
+                    padding: "1rem",
+                    backgroundColor: "#d4edda",
+                    border: "1px solid #c3e6cb",
+                    borderRadius: "6px",
+                    color: "#155724",
+                    textAlign: "center",
+                    fontWeight: "600",
+                  }}
+                >
+                  ✅ Esta Entrega a Rendir ya está liquidada
+                </div>
+              )}
+
+              {/* MENSAJE SI YA ESTÁ LIQUIDADA PERO TIENE PERMISO PARA REGENERAR */}
+              {estaLiquidada && permisos.puedeReactivarDocs && pdfUrl && (
+                <div
+                  style={{
+                    padding: "1rem",
+                    backgroundColor: "#fff3cd",
+                    border: "1px solid #ffc107",
+                    borderRadius: "6px",
+                    color: "#856404",
+                    textAlign: "center",
+                    fontWeight: "600",
+                  }}
+                >
+                  ⚠️ Esta entrega ya está liquidada. Puede regenerar la
+                  liquidación si es necesario.
+                </div>
+              )}
+            </div>
           }
         />
       </Card>

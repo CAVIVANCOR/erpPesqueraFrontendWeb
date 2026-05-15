@@ -46,6 +46,7 @@ const DetMovsEntregaRendirForm = ({
   movimientosAsignacionEntregaRendir = [],
   onGuardadoExitoso,
   onCancelar,
+  permisos = {}, // ⭐ NUEVO: Recibir permisos del padre
 }) => {
   const toast = useRef(null);
   const isEditing = !!movimiento;
@@ -198,6 +199,12 @@ const DetMovsEntregaRendirForm = ({
           : null,
         enlaceGastosPlanificadosId: movimiento.enlaceGastosPlanificadosId
           ? Number(movimiento.enlaceGastosPlanificadosId)
+          : null,
+        saldoInicialAsignacion: movimiento.saldoInicialAsignacion
+          ? Number(movimiento.saldoInicialAsignacion)
+          : null,
+        saldoFinalAsignacion: movimiento.saldoFinalAsignacion
+          ? Number(movimiento.saldoFinalAsignacion)
           : null,
       });
 
@@ -919,10 +926,9 @@ const DetMovsEntregaRendirForm = ({
                             field.onChange(e.value);
                             if (e.value > 0) {
                               setGastoPlanificadoSeleccionado(null);
-                              setValue("productoId", "");
-                              setValue("monto", 0);
-                              setValue("descripcion", "");
-                              setValue("enlaceGastosPlanificadosId", null); // ← AGREGAR AQUÍ
+                              setValue("enlaceGastosPlanificadosId", null);
+                              // ⭐ NO BORRAR productoId, monto ni descripcion
+                              // El usuario puede haber ingresado datos manualmente
                             }
                           }}
                           options={asignacionOrigenOptions}
@@ -1711,8 +1717,54 @@ const DetMovsEntregaRendirForm = ({
           detMovId={movimiento?.id}
           readOnly={false}
           movimientoData={movimiento}
-          onLiquidacionExitosa={onGuardadoExitoso}
+          onLiquidacionExitosa={async () => {
+            // Recargar el movimiento desde BD para ver saldo actualizado
+            if (movimiento?.id) {
+              try {
+                const token = useAuthStore.getState().token;
+                const response = await fetch(
+                  `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir/${movimiento.id}`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                    },
+                  },
+                );
+                if (response.ok) {
+                  const movimientoActualizado = await response.json();
+                  console.log("🔍 MOVIMIENTO RECIBIDO DEL BACKEND:", {
+                    id: movimientoActualizado.id,
+                    saldoInicialAsignacion:
+                      movimientoActualizado.saldoInicialAsignacion,
+                    saldoFinalAsignacion:
+                      movimientoActualizado.saldoFinalAsignacion,
+                    todoElObjeto: movimientoActualizado,
+                  });
+                  // Actualizar formulario con datos frescos
+                  setValue(
+                    "saldoInicialAsignacion",
+                    movimientoActualizado.saldoInicialAsignacion,
+                  );
+                  setValue(
+                    "saldoFinalAsignacion",
+                    movimientoActualizado.saldoFinalAsignacion,
+                  );
+
+                  // Mostrar notificación con el resultado
+                  toast.current?.show({
+                    severity: "success",
+                    summary: "Saldo Actualizado",
+                    detail: `Saldo Final: ${movimientoActualizado.moneda?.simbolo || ""} ${Number(movimientoActualizado.saldoFinalAsignacion || 0).toFixed(2)}`,
+                    life: 5000,
+                  });
+                }
+              } catch (error) {
+                console.error("Error al recargar movimiento:", error);
+              }
+            }
+          }}
           onGuardarMovimiento={() => handleSubmit(onSubmit)()}
+          permisos={permisos} // ⭐ NUEVO
         />
       )}
       <div

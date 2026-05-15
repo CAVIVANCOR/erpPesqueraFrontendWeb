@@ -26,6 +26,8 @@ import {
  * @param {Object} [props.gastoPlanificado] - Datos del gasto planificado a editar (opcional)
  * @param {Array} props.productos - Lista de productos (gastos) disponibles
  * @param {Array} props.monedas - Lista de monedas disponibles
+ * @param {Array} props.familias - Lista de familias de productos
+ * @param {Array} props.subfamilias - Lista de subfamilias de productos
  * @param {Object} props.entregaRendirData - Datos de la entrega a rendir (contiene el tipo y ID)
  * @param {Function} props.onSave - Función a ejecutar al guardar el formulario
  * @param {Function} props.onCancel - Función a ejecutar al cancelar
@@ -36,6 +38,7 @@ const DetGastosPlanificadosForm = ({
   productos,
   monedas,
   familias = [],
+  subfamilias = [],
   monedaIdCabecera = null,
   entregaRendirData,
   onSave,
@@ -45,6 +48,7 @@ const DetGastosPlanificadosForm = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [familiaSeleccionada, setFamiliaSeleccionada] = useState(6); // Default: Gastos (id=6)
+  const [subfamiliaSeleccionada, setSubfamiliaSeleccionada] = useState(null);
   const isEdit = !!gastoPlanificado?.id;
 
   const {
@@ -78,9 +82,16 @@ const DetGastosPlanificadosForm = ({
       setValue("montoPlanificado", gastoPlanificado.montoPlanificado || 0);
       setValue("descripcion", gastoPlanificado.descripcion || "");
 
-      // Cargar familia del producto si existe
-      if (gastoPlanificado.producto && gastoPlanificado.producto.familiaId) {
-        setFamiliaSeleccionada(Number(gastoPlanificado.producto.familiaId));
+      // Cargar familia y subfamilia del producto si existe
+      if (gastoPlanificado.producto) {
+        if (gastoPlanificado.producto.familiaId) {
+          setFamiliaSeleccionada(Number(gastoPlanificado.producto.familiaId));
+        }
+        if (gastoPlanificado.producto.subfamiliaId) {
+          setSubfamiliaSeleccionada(
+            Number(gastoPlanificado.producto.subfamiliaId),
+          );
+        }
       }
     } else {
       reset({
@@ -158,10 +169,22 @@ const DetGastosPlanificadosForm = ({
     );
   };
 
-  // Preparar opciones de productos - Filtrados por familia seleccionada
-  const productosFiltrados = familiaSeleccionada
+  // Preparar opciones de subfamilias - Filtradas por familia seleccionada
+  const subfamiliasFiltradas = familiaSeleccionada
+    ? subfamilias.filter(
+        (s) => Number(s.familiaId) === Number(familiaSeleccionada),
+      )
+    : subfamilias;
+
+  const subfamiliasOptions = subfamiliasFiltradas.map((s) => ({
+    label: s.nombre,
+    value: Number(s.id),
+  }));
+
+  // Preparar opciones de productos - Filtrados por subfamilia seleccionada
+  const productosFiltrados = subfamiliaSeleccionada
     ? productos.filter(
-        (p) => Number(p.familiaId) === Number(familiaSeleccionada),
+        (p) => Number(p.subfamiliaId) === Number(subfamiliaSeleccionada),
       )
     : productos;
 
@@ -169,6 +192,7 @@ const DetGastosPlanificadosForm = ({
     label: `${p.descripcionArmada || p.nombre} - ${p.empresa?.razonSocial || "Sin empresa"}`,
     value: Number(p.id),
   }));
+
   // Preparar opciones de monedas
   const monedasOptions = monedas.map((m) => ({
     label: m.codigoSunat,
@@ -199,12 +223,41 @@ const DetGastosPlanificadosForm = ({
             value={familiaSeleccionada}
             onChange={(e) => {
               setFamiliaSeleccionada(e.value);
-              // Limpiar producto seleccionado al cambiar familia
+              // Limpiar subfamilia y producto al cambiar familia
+              setSubfamiliaSeleccionada(null);
               setValue("productoId", null);
             }}
             options={familiasOptions}
             disabled={readOnly || loading}
             placeholder="Seleccione una familia"
+            filter
+            showClear
+            style={{ fontWeight: "bold" }}
+          />
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label htmlFor="subfamiliaId" className="font-medium">
+            Subfamilia <span className="text-red-500">*</span>
+          </label>
+          <Dropdown
+            id="subfamiliaId"
+            value={subfamiliaSeleccionada}
+            onChange={(e) => {
+              setSubfamiliaSeleccionada(e.value);
+              // Limpiar producto seleccionado al cambiar subfamilia
+              setValue("productoId", null);
+            }}
+            options={subfamiliasOptions}
+            disabled={readOnly || loading || !familiaSeleccionada}
+            placeholder="Seleccione una subfamilia"
             filter
             showClear
             style={{ fontWeight: "bold" }}
@@ -240,7 +293,7 @@ const DetGastosPlanificadosForm = ({
                 onChange={(e) => field.onChange(e.value)}
                 options={productosOptions}
                 className={classNames({ "p-invalid": fieldState.error })}
-                disabled={readOnly || loading}
+                disabled={readOnly || loading || !subfamiliaSeleccionada}
                 placeholder="Seleccione un producto"
                 filter
                 showClear

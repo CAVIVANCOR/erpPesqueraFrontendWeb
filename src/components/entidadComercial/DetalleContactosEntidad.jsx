@@ -681,6 +681,7 @@ const DetalleContactosEntidad = forwardRef(
                           textTransform: "uppercase",
                         }}
                         disabled={readOnly || loading}
+                        filter
                       />
                     )}
                   />

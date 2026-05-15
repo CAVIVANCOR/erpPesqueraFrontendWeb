@@ -23,6 +23,8 @@ import { getAllMonedas } from "../../api/moneda";
 import DetGastosPlanificadosForm from "./DetGastosPlanificadosForm";
 import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 import { getFamiliasProducto } from "../../api/familiaProducto";
+import { getSubfamiliasProducto } from "../../api/subfamiliaProducto";
+
 /**
  * Componente DetGastosPlanificadosTable
  * Tabla reutilizable para gestión de gastos planificados
@@ -43,6 +45,7 @@ const DetGastosPlanificadosTable = ({
   const [productos, setProductos] = useState([]);
   const [monedas, setMonedas] = useState([]);
   const [familias, setFamilias] = useState([]);
+  const [subfamilias, setSubfamilias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogoVisible, setDialogoVisible] = useState(false);
   const [gastoSeleccionado, setGastoSeleccionado] = useState(null);
@@ -50,6 +53,7 @@ const DetGastosPlanificadosTable = ({
     visible: false,
     row: null,
   });
+
   /**
    * Carga los gastos planificados desde la API
    */
@@ -69,6 +73,7 @@ const DetGastosPlanificadosTable = ({
       setLoading(false);
     }
   };
+
   /**
    * Carga los productos desde la API
    */
@@ -110,6 +115,18 @@ const DetGastosPlanificadosTable = ({
   };
 
   /**
+   * Carga las subfamilias desde la API
+   */
+  const cargarSubfamilias = async () => {
+    try {
+      const data = await getSubfamiliasProducto();
+      setSubfamilias(data);
+    } catch (error) {
+      console.error("Error al cargar subfamilias:", error);
+    }
+  };
+
+  /**
    * Efecto para cargar datos al montar el componente
    */
   useEffect(() => {
@@ -118,6 +135,7 @@ const DetGastosPlanificadosTable = ({
       cargarProductos();
       cargarMonedas();
       cargarFamilias();
+      cargarSubfamilias();
     }
   }, [entregaRendirData]);
 
@@ -148,35 +166,34 @@ const DetGastosPlanificadosTable = ({
   /**
    * Maneja el guardado exitoso
    */
-  const onGuardar = async () => {
+  const onGuardar = () => {
     cerrarDialogo();
-    await cargarGastosPlanificados();
+    cargarGastosPlanificados();
   };
 
   /**
    * Confirma la eliminación de un gasto planificado
    */
   const confirmarEliminacion = (gasto) => {
-    setConfirmState({ visible: true, row: gasto });
+    setConfirmState({
+      visible: true,
+      row: gasto,
+    });
   };
 
   /**
-   * Maneja la confirmación de eliminación
+   * Elimina un gasto planificado
    */
-  const handleConfirmDelete = async () => {
-    if (!confirmState.row) return;
-
+  const eliminarGasto = async () => {
     try {
-      setLoading(true);
       await eliminarGastoPlanificado(confirmState.row.id);
-
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
         detail: "Gasto planificado eliminado correctamente",
       });
-
-      await cargarGastosPlanificados();
+      setConfirmState({ visible: false, row: null });
+      cargarGastosPlanificados();
     } catch (error) {
       console.error("Error al eliminar gasto planificado:", error);
       toast.current?.show({
@@ -186,66 +203,56 @@ const DetGastosPlanificadosTable = ({
           error.response?.data?.message ||
           "Error al eliminar el gasto planificado",
       });
-    } finally {
-      setLoading(false);
-      setConfirmState({ visible: false, row: null });
     }
+  };
+
+  /**
+   * Template para el monto planificado
+   */
+  const montoTemplate = (rowData) => {
+    const simbolo = rowData.moneda?.simbolo || "";
+    const monto = formatearNumero(rowData.montoPlanificado, 2);
+    return `${simbolo} ${monto}`;
   };
 
   /**
    * Template para el producto
    */
-   const productoTemplate = (rowData) => {
-    const descripcion = rowData.producto?.descripcionArmada || rowData.producto?.nombre || "-";
-    const empresa = rowData.producto?.empresa?.razonSocial || "Sin empresa";
-    return `${descripcion} - ${empresa}`;
+  const productoTemplate = (rowData) => {
+    return rowData.producto?.descripcionArmada || rowData.producto?.nombre || "";
   };
 
   /**
-   * Template para la moneda
+   * Calcula el total de montos planificados
    */
-  const monedaTemplate = (rowData) => {
-    return rowData.moneda?.simbolo || "-";
-  };
-
-  /**
-   * Template para el monto
-   */
-  const montoTemplate = (rowData) => {
-    return (
-      <div style={{ textAlign: "right" }}>
-        {rowData.moneda?.simbolo || ""}{" "}
-        {formatearNumero(rowData.montoPlanificado || 0, 2)}
-      </div>
+  const calcularTotal = () => {
+    return gastosPlanificados.reduce(
+      (sum, gasto) => sum + Number(gasto.montoPlanificado || 0),
+      0,
     );
   };
 
-  // Calcular total de montos planificados
-  const totalMontoPlanificado = gastosPlanificados.reduce(
-    (sum, gasto) => sum + Number(gasto.montoPlanificado || 0),
-    0,
-  );
-
-  // Footer con total usando ColumnGroup
+  /**
+   * Footer con totales
+   */
   const footerGroup = (
     <ColumnGroup>
       <Row>
-        <Column footer="" colSpan={2} />
         <Column
-          footer="SUBTOTAL:"
+          footer="TOTAL"
+          colSpan={2}
           footerStyle={{
             textAlign: "right",
             fontWeight: "bold",
-            fontSize: "1rem",
+            fontSize: getResponsiveFontSize(),
           }}
         />
         <Column
-          footer={formatearNumero(totalMontoPlanificado, 2)}
+          footer={`S/. ${formatearNumero(calcularTotal(), 2)}`}
           footerStyle={{
             textAlign: "right",
             fontWeight: "bold",
-            fontSize: "1rem",
-            color: "#2196F3",
+            fontSize: getResponsiveFontSize(),
           }}
         />
         <Column footer="" />
@@ -300,112 +307,82 @@ const DetGastosPlanificadosTable = ({
             </span>
           </span>
         }
-        header={<span style={{ color: "#b71c1c" }}>Confirmar eliminación</span>}
+        header="Confirmar Eliminación"
         icon="pi pi-exclamation-triangle"
-        acceptClassName="p-button-danger"
-        acceptLabel="Eliminar"
-        rejectLabel="Cancelar"
-        accept={handleConfirmDelete}
+        accept={eliminarGasto}
         reject={() => setConfirmState({ visible: false, row: null })}
-        style={{ minWidth: 400 }}
+        acceptLabel="Sí, eliminar"
+        rejectLabel="Cancelar"
+        acceptClassName="p-button-danger"
+        rejectClassName="p-button-text"
       />
 
       <div className="card">
         <div
           style={{
-            alignItems: "center",
             display: "flex",
-            gap: 10,
-            marginBottom: 10,
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 16,
           }}
         >
-          <div style={{ flex: 1 }}>
-            <h3>Gastos Planificados</h3>
-          </div>
-          <div>
+          <h3 style={{ margin: 0, fontSize: getResponsiveFontSize() }}>
+            Gastos Planificados
+          </h3>
+          {!readOnly && permisos.puedeCrear && (
             <Button
-              type="button"
-              label="Agregar Gasto"
+              label="Nuevo Gasto"
               icon="pi pi-plus"
+              onClick={abrirDialogoNuevo}
               className="p-button-success"
               size="small"
-              outlined
-              disabled={readOnly || !permisos.puedeCrear}
-              onClick={abrirDialogoNuevo}
             />
-          </div>
+          )}
         </div>
 
         <DataTable
           value={gastosPlanificados}
           loading={loading}
-          dataKey="id"
-          size="small"
-          showGridlines
-          stripedRows
-          style={{ fontSize: getResponsiveFontSize() }}
-          emptyMessage="No se encontraron gastos planificados"
-          scrollable
-          selectionMode="single"
-          onRowClick={(e) => {
-            if (!readOnly && (permisos.puedeVer || permisos.puedeEditar)) {
-              editarGasto(e.data);
-            }
-          }}
-          className="cursor-pointer"
+          emptyMessage="No hay gastos planificados registrados"
           footerColumnGroup={footerGroup}
+          responsiveLayout="scroll"
+          stripedRows
+          size="small"
         >
           <Column
-            field="id"
-            header="ID"
-            sortable
-            style={{ minWidth: "60px" }}
-          />
-          <Column
-            field="producto"
+            field="producto.descripcionArmada"
             header="Producto (Gasto)"
             body={productoTemplate}
-            sortable
-            style={{ minWidth: "200px" }}
+            style={{ fontSize: getResponsiveFontSize() }}
           />
           <Column
-            field="moneda"
-            header="Moneda"
-            body={monedaTemplate}
-            sortable
-            style={{ minWidth: "80px" }}
+            field="descripcion"
+            header="Descripción"
+            style={{ fontSize: getResponsiveFontSize() }}
           />
           <Column
             field="montoPlanificado"
             header="Monto Planificado"
             body={montoTemplate}
-            sortable
-            style={{ minWidth: "120px" }}
-          />
-          <Column
-            field="descripcion"
-            header="Descripción"
-            sortable
-            style={{ minWidth: "200px" }}
+            style={{
+              textAlign: "right",
+              fontSize: getResponsiveFontSize(),
+            }}
           />
           <Column
             body={accionesTemplate}
-            header="Acciones"
-            frozen
-            alignFrozen="right"
-            style={{ minWidth: "100px" }}
+            exportable={false}
+            style={{ width: "8rem", textAlign: "center" }}
           />
         </DataTable>
       </div>
 
       <Dialog
         visible={dialogoVisible}
-        style={{ width: "800px" }}
+        style={{ width: window.innerWidth < 768 ? "95vw" : "50vw" }}
         header={
-          gastoSeleccionado?.id
-            ? permisos.puedeEditar && !readOnly
-              ? "Editar Gasto Planificado"
-              : "Ver Gasto Planificado"
+          gastoSeleccionado
+            ? "Editar Gasto Planificado"
             : "Nuevo Gasto Planificado"
         }
         modal
@@ -417,12 +394,13 @@ const DetGastosPlanificadosTable = ({
           productos={productos}
           monedas={monedas}
           familias={familias}
+          subfamilias={subfamilias}
           monedaIdCabecera={monedaIdCabecera}
           entregaRendirData={entregaRendirData}
           onSave={onGuardar}
           onCancel={cerrarDialogo}
           toast={toast}
-          readOnly={readOnly || (gastoSeleccionado && !permisos.puedeEditar)}
+          readOnly={readOnly}
         />
       </Dialog>
     </>

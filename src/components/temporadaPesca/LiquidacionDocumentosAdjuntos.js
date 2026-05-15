@@ -3,6 +3,7 @@
  * Módulo para agregar documentos adjuntos al PDF de liquidación
  * Cada documento se agrega en UNA SOLA PÁGINA con encabezado y documento
  * SIGUE EL PATRÓN ESTÁNDAR DE CARGA DE PDFs DE MEGUI
+ * @version 2.0.0 - Verificación de existencia de archivos antes de cargar
  */
 
 import { rgb, PDFDocument } from "pdf-lib";
@@ -28,36 +29,126 @@ export async function agregarDocumentosAdjuntos(
       continue;
     }
 
-    // 1. Si tiene urlComprobanteMovimiento
+    // 1. Si tiene urlComprobanteMovimiento - VERIFICAR EXISTENCIA
     if (gasto.urlComprobanteMovimiento) {
-      await agregarPaginaDocumento(
-        pdfDoc,
-        gasto,
+      const existe = await verificarExistenciaDocumento(
         gasto.urlComprobanteMovimiento,
-        "COMPROBANTE DE MOVIMIENTO",
-        "det-movs-entrega-rendir-pesca-industrial-comprobante",
-        empresa,
-        liquidacion,
-        fonts
+        "det-movs-entrega-rendir-pesca-industrial-comprobante"
       );
+
+      if (existe) {
+        try {
+          await agregarPaginaDocumento(
+            pdfDoc,
+            gasto,
+            gasto.urlComprobanteMovimiento,
+            "COMPROBANTE DE MOVIMIENTO",
+            "det-movs-entrega-rendir-pesca-industrial-comprobante",
+            empresa,
+            liquidacion,
+            fonts
+          );
+        } catch (error) {
+          console.warn(
+            `⚠️ No se pudo agregar comprobante de movimiento del gasto ${gasto.id}:`,
+            error.message
+          );
+        }
+      } else {
+        console.warn(
+          `⚠️ Comprobante de movimiento no existe para gasto ${gasto.id}: ${gasto.urlComprobanteMovimiento}`
+        );
+      }
     }
 
-    // 2. Si tiene urlComprobanteOperacionMovCaja
+    // 2. Si tiene urlComprobanteOperacionMovCaja - VERIFICAR EXISTENCIA
     if (gasto.urlComprobanteOperacionMovCaja) {
-      await agregarPaginaDocumento(
-        pdfDoc,
-        gasto,
+      const existe = await verificarExistenciaDocumento(
         gasto.urlComprobanteOperacionMovCaja,
-        "COMPROBANTE DE OPERACIÓN DE CAJA",
-        "det-movs-entrega-rendir-pesca-industrial-operacion",
-        empresa,
-        liquidacion,
-        fonts
+        "det-movs-entrega-rendir-pesca-industrial-operacion"
       );
+
+      if (existe) {
+        try {
+          await agregarPaginaDocumento(
+            pdfDoc,
+            gasto,
+            gasto.urlComprobanteOperacionMovCaja,
+            "COMPROBANTE DE OPERACIÓN DE CAJA",
+            "det-movs-entrega-rendir-pesca-industrial-operacion",
+            empresa,
+            liquidacion,
+            fonts
+          );
+        } catch (error) {
+          console.warn(
+            `⚠️ No se pudo agregar comprobante de operación del gasto ${gasto.id}:`,
+            error.message
+          );
+        }
+      } else {
+        console.warn(
+          `⚠️ Comprobante de operación no existe para gasto ${gasto.id}: ${gasto.urlComprobanteOperacionMovCaja}`
+        );
+      }
     }
   }
 
   return pdfDoc;
+}
+
+/**
+ * ⭐ NUEVA FUNCIÓN: Verificar si un documento existe antes de intentar cargarlo
+ */
+async function verificarExistenciaDocumento(urlDocumento, moduleName) {
+  try {
+    const token = useAuthStore.getState().token;
+
+    if (!token) {
+      return false;
+    }
+
+    // CONSTRUIR URL COMPLETA
+    let urlCompleta;
+    const config = getModuleConfig(moduleName);
+
+    const normalizedPdfUrl = urlDocumento.startsWith("/")
+      ? urlDocumento.substring(1)
+      : urlDocumento;
+    const normalizedUploadPath = config.uploadPath.startsWith("/")
+      ? config.uploadPath.substring(1)
+      : config.uploadPath;
+
+    if (normalizedPdfUrl.startsWith(normalizedUploadPath)) {
+      const fileName = normalizedPdfUrl.replace(
+        normalizedUploadPath + "/",
+        ""
+      );
+      urlCompleta = `${import.meta.env.VITE_API_URL}${config.apiEndpoint}/${fileName}`;
+    } else {
+      if (urlDocumento.startsWith("/api/")) {
+        const rutaSinApi = urlDocumento.substring(4);
+        urlCompleta = `${import.meta.env.VITE_API_URL}${rutaSinApi}`;
+      } else if (urlDocumento.startsWith("/")) {
+        urlCompleta = `${import.meta.env.VITE_API_URL}${urlDocumento}`;
+      } else {
+        urlCompleta = urlDocumento;
+      }
+    }
+
+    // VERIFICAR EXISTENCIA CON HEAD REQUEST (más eficiente que GET)
+    const response = await fetch(`${urlCompleta}?t=${Date.now()}`, {
+      method: "HEAD",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.warn(`⚠️ Error al verificar documento: ${error.message}`);
+    return false;
+  }
 }
 
 async function agregarPaginaDocumento(
@@ -174,7 +265,7 @@ async function agregarPaginaDocumento(
 
   // Moneda, Monto y N° Documento
   let xPosMoneda = margin;
-  
+
   if (gasto.moneda) {
     const textoMoneda = `Moneda: ${gasto.moneda.simbolo || gasto.moneda.nombre || "N/A"}`;
     page.drawText(textoMoneda, {
@@ -191,9 +282,9 @@ async function agregarPaginaDocumento(
   // Monto
   if (gasto.monto !== null && gasto.monto !== undefined) {
     const simboloMoneda = gasto.moneda?.simbolo || "S/.";
-    const montoFormateado = Number(gasto.monto).toLocaleString('es-PE', {
+    const montoFormateado = Number(gasto.monto).toLocaleString("es-PE", {
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     });
     const textoMonto = `Monto: ${simboloMoneda} ${montoFormateado}`;
     page.drawText(textoMonto, {
@@ -219,7 +310,7 @@ async function agregarPaginaDocumento(
         numeroDocumento += "-" + gasto.numeroCorrelativoComprobante;
       }
     }
-    
+
     if (numeroDocumento) {
       const textoDoc = `N° Dcmto: ${numeroDocumento}`;
       page.drawText(textoDoc, {
@@ -245,7 +336,7 @@ async function agregarPaginaDocumento(
   // CARGAR Y DIBUJAR DOCUMENTO EN LA MISMA PÁGINA
   try {
     const token = useAuthStore.getState().token;
-    
+
     if (!token) {
       throw new Error("No se encontró token de autenticación");
     }
@@ -264,7 +355,7 @@ async function agregarPaginaDocumento(
     if (normalizedPdfUrl.startsWith(normalizedUploadPath)) {
       const fileName = normalizedPdfUrl.replace(
         normalizedUploadPath + "/",
-        "",
+        ""
       );
       urlCompleta = `${import.meta.env.VITE_API_URL}${config.apiEndpoint}/${fileName}`;
     } else {
@@ -277,8 +368,7 @@ async function agregarPaginaDocumento(
         urlCompleta = urlDocumento;
       }
     }
-    
-    
+
     const response = await fetch(`${urlCompleta}?t=${Date.now()}`, {
       method: "GET",
       headers: {
@@ -290,27 +380,25 @@ async function agregarPaginaDocumento(
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const contentType = response.headers.get('content-type') || '';
+    const contentType = response.headers.get("content-type") || "";
     const documentBytes = await response.arrayBuffer();
-    
-    
+
     // Calcular espacio disponible para el documento
     const maxWidth = width - 2 * margin;
     const maxHeight = yPosition - 50; // Dejar espacio para pie de página
 
     // Intentar cargar como PDF y convertir primera página a imagen
-    if (contentType.includes('application/pdf') || contentType.includes('pdf')) {
+    if (
+      contentType.includes("application/pdf") ||
+      contentType.includes("pdf")
+    ) {
       try {
         const externalPdf = await PDFDocument.load(documentBytes);
         const [firstPage] = await pdfDoc.embedPdf(externalPdf, [0]);
-        
+
         const { width: pdfWidth, height: pdfHeight } = firstPage;
-        
-        const scale = Math.min(
-          maxWidth / pdfWidth,
-          maxHeight / pdfHeight,
-          1
-        );
+
+        const scale = Math.min(maxWidth / pdfWidth, maxHeight / pdfHeight, 1);
 
         const finalWidth = pdfWidth * scale;
         const finalHeight = pdfHeight * scale;
@@ -322,20 +410,22 @@ async function agregarPaginaDocumento(
           width: finalWidth,
           height: finalHeight,
         });
-
       } catch (pdfError) {
         console.error("Error al cargar PDF:", pdfError);
         throw new Error(`No se pudo cargar el PDF: ${pdfError.message}`);
       }
-    } 
+    }
     // Intentar como imagen
-    else if (contentType.includes('image/')) {
+    else if (contentType.includes("image/")) {
       let image;
 
       try {
-        if (contentType.includes('png')) {
+        if (contentType.includes("png")) {
           image = await pdfDoc.embedPng(documentBytes);
-        } else if (contentType.includes('jpeg') || contentType.includes('jpg')) {
+        } else if (
+          contentType.includes("jpeg") ||
+          contentType.includes("jpg")
+        ) {
           image = await pdfDoc.embedJpg(documentBytes);
         } else {
           throw new Error(`Formato de imagen no soportado: ${contentType}`);
@@ -359,12 +449,11 @@ async function agregarPaginaDocumento(
           width: finalWidth,
           height: finalHeight,
         });
-
       } catch (imgError) {
         console.error("Error al cargar imagen:", imgError);
         throw new Error(`No se pudo cargar la imagen: ${imgError.message}`);
       }
-    } 
+    }
     // Tipo no soportado
     else {
       throw new Error(`Tipo de contenido no soportado: ${contentType}`);
