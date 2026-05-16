@@ -1,5 +1,5 @@
-// src/components/temporadaPesca/DetEntregaRendirPescaIndustrial.jsx
-// Componente autónomo para gestión de detalle de entregas a rendir en pesca industrial
+// src/pages/RendicionGastos/RendicionGastosList.jsx
+// Página principal del módulo de Rendición de Gastos
 import React, { useState, useRef, useEffect } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -9,7 +9,7 @@ import { Badge } from "primereact/badge";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { confirmDialog } from "primereact/confirmdialog";
-import DetMovsEntregaRendirForm from "./DetMovsEntregaRendirForm";
+import DetMovsRendicionGastosForm from "../../components/rendicionGastos/DetMovsRendicionGastosForm";
 import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 import {
   crearDetMovsEntregaRendir,
@@ -17,32 +17,35 @@ import {
   eliminarDetMovsEntregaRendir,
 } from "../../api/detMovsEntregaRendir";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
-import { generarYSubirPDFLiquidacionPI } from "./LiquidacionPescaIndustrialPDF";
-import { consultarTipoCambioSunat } from "../../api/consultaExterna";
+import { usePermissions } from "../../hooks/usePermissions";
+import { getAllDetMovsEntregaRendir } from "../../api/detMovsEntregaRendir";
+import { getPersonal } from "../../api/personal";
+import { getCentrosCosto } from "../../api/centroCosto";
+import { getAllTipoMovEntregaRendir } from "../../api/tipoMovEntregaRendir";
+import { getEntidadesComerciales } from "../../api/entidadComercial";
+import { getMonedas } from "../../api/moneda";
+import { getTiposDocumento } from "../../api/tipoDocumento";
+import { getProductos } from "../../api/producto";
+import { getAllCategoriaTipoMovEntregaRendir } from "../../api/categoriaTipoMovEntregaRendir";
 
-export default function DetEntregaRendirPescaIndustrial({
-  // Props de datos
-  entregaARendir,
-  temporadaPesca = null,
-  movimientos = [],
-  personal = [],
-  centrosCosto = [],
-  tiposMovimiento = [],
-  categorias = [],
-  entidadesComerciales = [],
-  monedas = [],
-  tiposDocumento = [],
-  productos = [],
-  // Props de estado
-  temporadaPescaIniciada = false,
-  loading = false,
-  selectedMovimientos = [],
-  // Props de callbacks
-  onSelectionChange,
-  onDataChange,
-  readOnly = false,
-  permisos,
-}) {
+export default function RendicionGastosList({ ruta }) {
+  const toast = useRef(null);
+  const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  // Estados de datos
+  const [loading, setLoading] = useState(false);
+  const [movimientos, setMovimientos] = useState([]);
+  const [personal, setPersonal] = useState([]);
+  const [centrosCosto, setCentrosCosto] = useState([]);
+  const [tiposMovimiento, setTiposMovimiento] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [entidadesComerciales, setEntidadesComerciales] = useState([]);
+  const [monedas, setMonedas] = useState([]);
+  const [tiposDocumento, setTiposDocumento] = useState([]);
+  const [productos, setProductos] = useState([]);
+  const [selectedMovimientos, setSelectedMovimientos] = useState([]);
+
   // Estados locales para filtros
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
   const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);
@@ -53,18 +56,71 @@ export default function DetEntregaRendirPescaIndustrial({
     useState(null);
   const [filtroAsignacionSeleccionada, setFiltroAsignacionSeleccionada] =
     useState(null);
+
   // Estados para el dialog
   const [showMovimientoForm, setShowMovimientoForm] = useState(false);
   const [editingMovimiento, setEditingMovimiento] = useState(null);
   const [saldosARendir, setSaldosARendir] = useState({});
   const [calculandoSaldos, setCalculandoSaldos] = useState(false);
-  // Calcular saldos A Rendir con conversión de moneda
-  // Calcular saldos A Rendir con conversión de moneda
+
+  // Cargar datos iniciales
   useEffect(() => {
-    const calcularSaldosConConversion = async () => {
+    cargarDatos();
+  }, []);
+
+  const cargarDatos = async () => {
+    setLoading(true);
+    try {
+      const [
+        movimientosData,
+        personalData,
+        centrosCostoData,
+        tiposMovimientoData,
+        categoriasData,
+        entidadesComercialesData,
+        monedasData,
+        tiposDocumentoData,
+        productosData,
+      ] = await Promise.all([
+        getAllDetMovsEntregaRendir(),
+        getPersonal(),
+        getCentrosCosto(),
+        getAllTipoMovEntregaRendir(),
+        getAllCategoriaTipoMovEntregaRendir(),
+        getEntidadesComerciales(),
+        getMonedas(),
+        getTiposDocumento(),
+        getProductos(),
+      ]);
+
+      setMovimientos(movimientosData || []);
+      setPersonal(personalData || []);
+      setCentrosCosto(centrosCostoData || []);
+      setTiposMovimiento(tiposMovimientoData || []);
+      setCategorias(categoriasData || []);
+      setEntidadesComerciales(entidadesComercialesData || []);
+      setMonedas(monedasData || []);
+      setTiposDocumento(tiposDocumentoData || []);
+      setProductos(productosData || []);
+    } catch (error) {
+      console.error("Error al cargar datos:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar datos del módulo",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calcular saldos A Rendir
+  useEffect(() => {
+    const calcularSaldos = () => {
       setCalculandoSaldos(true);
       const nuevosSaldos = {};
-      // Identificar asignaciones origen
+
       const asignacionesOrigen = movimientos.filter(
         (mov) =>
           mov.formaParteCalculoEntregaARendir === true &&
@@ -72,79 +128,36 @@ export default function DetEntregaRendirPescaIndustrial({
             mov.asignacionOrigenId === undefined ||
             Number(mov.asignacionOrigenId) === 0),
       );
+
       for (const asignacion of asignacionesOrigen) {
-        // Buscar gastos asociados a esta asignación
         const gastosAsociados = movimientos.filter(
           (mov) =>
             mov.asignacionOrigenId &&
             Number(mov.asignacionOrigenId) === Number(asignacion.id),
         );
-        let totalGastosConvertidos = 0;
-        // Procesar cada gasto
-        for (const gasto of gastosAsociados) {
-          let montoConvertido = Number(gasto.monto || 0);
 
-          // Si la moneda del gasto es diferente a la de la asignación, convertir
-          if (Number(gasto.monedaId) !== Number(asignacion.monedaId)) {
-            try {
-              // Obtener fecha del movimiento en formato YYYY-MM-DD
-              const fecha = new Date(gasto.fechaMovimiento);
-              const fechaISO = fecha.toISOString().split("T")[0];
+        const totalGastos = gastosAsociados.reduce(
+          (sum, gasto) => sum + Number(gasto.monto || 0),
+          0,
+        );
 
-              // Consultar tipo de cambio SUNAT
-              const tipoCambioData = await consultarTipoCambioSunat({
-                date: fechaISO,
-              });
-
-              if (tipoCambioData && tipoCambioData.sell_price) {
-                const tipoCambio = parseFloat(tipoCambioData.sell_price);
-
-                // Determinar dirección de conversión
-                // Asumiendo: monedaId=1 es PEN (Soles), monedaId=2 es USD (Dólares)
-                if (
-                  Number(asignacion.monedaId) === 1 &&
-                  Number(gasto.monedaId) === 2
-                ) {
-                  // Convertir USD a PEN: multiplicar por tipo de cambio
-                  montoConvertido = Number(gasto.monto) * tipoCambio;
-                } else if (
-                  Number(asignacion.monedaId) === 2 &&
-                  Number(gasto.monedaId) === 1
-                ) {
-                  // Convertir PEN a USD: dividir por tipo de cambio
-                  montoConvertido = Number(gasto.monto) / tipoCambio;
-                }
-              }
-            } catch (error) {
-              console.error(
-                `Error al convertir moneda para gasto ${gasto.id}:`,
-                error,
-              );
-              // Si falla la conversión, usar monto original (sin conversión)
-            }
-          }
-
-          totalGastosConvertidos += montoConvertido;
-        }
-
-        // Calcular saldo
-        const saldo = Number(asignacion.monto || 0) - totalGastosConvertidos;
+        const saldo = Number(asignacion.monto || 0) - totalGastos;
         nuevosSaldos[asignacion.id] = saldo;
       }
+
       setSaldosARendir(nuevosSaldos);
       setCalculandoSaldos(false);
     };
 
     if (movimientos && movimientos.length > 0) {
-      calcularSaldosConConversion();
+      calcularSaldos();
     } else {
       setSaldosARendir({});
       setCalculandoSaldos(false);
     }
   }, [movimientos]);
 
-  // Filtrar movimientos que son asignaciones (inicial o adicional) y forman parte del cálculo
-  // Excluir el movimiento actual si está en edición
+  // Filtrar movimientos que son asignaciones
   const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
     (mov) =>
       mov.formaParteCalculoEntregaARendir === true &&
@@ -153,8 +166,6 @@ export default function DetEntregaRendirPescaIndustrial({
         Number(mov.asignacionOrigenId) === 0) &&
       (!editingMovimiento || Number(mov.id) !== Number(editingMovimiento.id)),
   );
-  const toast = useRef(null);
-  const usuario = useAuthStore((state) => state.usuario);
 
   // Función para obtener movimientos filtrados
   const obtenerMovimientosFiltrados = () => {
@@ -180,14 +191,12 @@ export default function DetEntregaRendirPescaIndustrial({
 
     if (filtroCategoriaMovimiento) {
       movimientosFiltrados = movimientosFiltrados.filter((mov) => {
-        // Usar la relación directa: DetMovsEntregaRendir.tipoMovimiento.categoria.id
         const categoriaId =
           mov.tipoMovimiento?.categoria?.id || mov.tipoMovimiento?.categoriaId;
-        const cumpleFiltro =
+        return (
           categoriaId &&
-          Number(categoriaId) === Number(filtroCategoriaMovimiento);
-
-        return cumpleFiltro;
+          Number(categoriaId) === Number(filtroCategoriaMovimiento)
+        );
       });
     }
 
@@ -197,29 +206,24 @@ export default function DetEntregaRendirPescaIndustrial({
       );
     }
 
-    // Filtro por asignación seleccionada
     if (filtroAsignacionSeleccionada) {
       movimientosFiltrados = movimientosFiltrados.filter((mov) => {
-        // Incluir la asignación seleccionada
         if (Number(mov.id) === Number(filtroAsignacionSeleccionada)) {
           return true;
         }
-        // Incluir gastos asociados a esta asignación
         if (
           mov.asignacionOrigenId &&
-          Number(mov.asignacionOrigenId) === Number(filtroAsignacionSeleccionada)
+          Number(mov.asignacionOrigenId) ===
+            Number(filtroAsignacionSeleccionada)
         ) {
           return true;
         }
         return false;
       });
 
-      // Ordenar: asignación primero, luego gastos por fecha
       movimientosFiltrados.sort((a, b) => {
-        // La asignación siempre va primero
         if (Number(a.id) === Number(filtroAsignacionSeleccionada)) return -1;
         if (Number(b.id) === Number(filtroAsignacionSeleccionada)) return 1;
-        // Los gastos se ordenan por fecha
         return new Date(a.fechaMovimiento) - new Date(b.fechaMovimiento);
       });
     }
@@ -293,7 +297,7 @@ export default function DetEntregaRendirPescaIndustrial({
     }
   };
 
-  // Obtener asignaciones (categoría 17) para el dropdown
+  // Obtener asignaciones para el dropdown
   const obtenerAsignaciones = () => {
     return movimientos
       .filter((mov) => {
@@ -343,26 +347,20 @@ export default function DetEntregaRendirPescaIndustrial({
           detail: "Movimiento actualizado correctamente",
           life: 3000,
         });
-        // NO recargar datos para evitar que se cierre el formulario
-        return; // No cerrar el formulario
+        cargarDatos();
+        return;
       } else {
         const movimientoCreado = await crearDetMovsEntregaRendir(data);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
-          detail:
-            "Movimiento creado correctamente. Ahora puede agregar gastos planificados.",
+          detail: "Movimiento creado correctamente",
           life: 3000,
         });
-        // Cambiar a modo edición con el movimiento recién creado
         setEditingMovimiento(movimientoCreado);
-        return; // No cerrar el formulario
+        cargarDatos();
+        return;
       }
-
-      // Este código ya no se ejecuta porque ambos casos hacen return
-      setShowMovimientoForm(false);
-      setEditingMovimiento(null);
-      onDataChange?.();
     } catch (error) {
       console.error("Error al guardar movimiento:", error);
       toast.current?.show({
@@ -391,7 +389,7 @@ export default function DetEntregaRendirPescaIndustrial({
             detail: "Movimiento eliminado correctamente",
             life: 3000,
           });
-          onDataChange?.();
+          cargarDatos();
         } catch (error) {
           console.error("Error al eliminar movimiento:", error);
           toast.current?.show({
@@ -405,121 +403,8 @@ export default function DetEntregaRendirPescaIndustrial({
     });
   };
 
-  const handleProcesarLiquidacion = () => {
-    confirmDialog({
-      message:
-        "¿Está seguro de procesar la liquidación? Esta acción generará el PDF automáticamente, bloqueará todas las modificaciones futuras y no se puede deshacer.",
-      header: "Confirmar Procesamiento de Liquidación",
-      icon: "pi pi-exclamation-triangle",
-      acceptClassName: "p-button-danger",
-      accept: async () => {
-        try {
-          const fechaActual = new Date();
-
-          // 1. Actualizar todos los movimientos DetMovsEntregaRendir - SOLO campos escalares
-          const promesasActualizacion = movimientos.map((movimiento) => {
-            const movimientoActualizado = {
-              empresaId: movimiento.empresaId,
-              moduloOrigenId: movimiento.moduloOrigenId,
-              documentoOrigenId: movimiento.documentoOrigenId,
-              responsableId: movimiento.responsableId,
-              fechaMovimiento: movimiento.fechaMovimiento,
-              tipoMovimientoId: movimiento.tipoMovimientoId,
-              productoId: movimiento.productoId,
-              monto: movimiento.monto,
-              descripcion: movimiento.descripcion,
-              creadoEn: movimiento.creadoEn,
-              actualizadoEn: fechaActual,
-              centroCostoId: movimiento.centroCostoId,
-              urlComprobanteMovimiento: movimiento.urlComprobanteMovimiento,
-              validadoTesoreria: true,
-              fechaValidacionTesoreria: fechaActual,
-              operacionSinFactura: movimiento.operacionSinFactura,
-              fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja,
-              operacionMovCajaId: movimiento.operacionMovCajaId,
-              moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId,
-              entidadComercialId: movimiento.entidadComercialId,
-              monedaId: movimiento.monedaId,
-              urlComprobanteOperacionMovCaja:
-                movimiento.urlComprobanteOperacionMovCaja,
-              tipoDocumentoId: movimiento.tipoDocumentoId,
-              numeroSerieComprobante: movimiento.numeroSerieComprobante,
-              numeroCorrelativoComprobante:
-                movimiento.numeroCorrelativoComprobante,
-            };
-            return actualizarDetMovsEntregaRendir(
-              movimiento.id,
-              movimientoActualizado,
-            );
-          });
-
-          await Promise.all(promesasActualizacion);
-
-          // 2. Cargar entrega completa con relaciones para el PDF
-          const token = useAuthStore.getState().token;
-          const headers = { Authorization: `Bearer ${token}` };
-
-          const entregaResponse = await fetch(
-            `${import.meta.env.VITE_API_URL}/entregas-a-rendir/${entregaARendir.id}`,
-            { headers },
-          );
-          const entregaCompleta = await entregaResponse.json();
-
-          // 3. Cargar empresa
-          let empresa;
-          try {
-            const empresaResponse = await fetch(
-              `${import.meta.env.VITE_API_URL}/empresas/1`,
-              { headers },
-            );
-            if (empresaResponse.ok) {
-              empresa = await empresaResponse.json();
-            }
-          } catch (error) {
-            console.error("Error cargando empresa:", error);
-            empresa = {
-              razonSocial: "EMPRESA",
-              ruc: "N/A",
-              direccion: "N/A",
-            };
-          }
-
-          // 4. Generar PDF automáticamente
-          const resultadoPdf = await generarYSubirPDFLiquidacionPI(
-            {
-              ...entregaCompleta,
-              respLiquidacionId: usuario?.personalId || null,
-              entregaLiquidada: true,
-              fechaLiquidacion: fechaActual,
-            },
-            movimientos,
-            empresa,
-          );
-
-          if (!resultadoPdf.success) {
-            throw new Error(resultadoPdf.error || "Error al generar el PDF");
-          }
-
-          toast.current?.show({
-            severity: "success",
-            summary: "Liquidación Procesada",
-            detail:
-              "La entrega a rendir ha sido liquidada exitosamente y el PDF ha sido generado",
-            life: 5000,
-          });
-
-          onDataChange?.();
-        } catch (error) {
-          console.error("Error al procesar liquidación:", error);
-          toast.current?.show({
-            severity: "error",
-            summary: "Error",
-            detail: error.message || "Error al procesar la liquidación",
-            life: 5000,
-          });
-        }
-      },
-    });
+  const handleSelectionChange = (e) => {
+    setSelectedMovimientos(e.value);
   };
 
   // Templates para las columnas
@@ -533,8 +418,6 @@ export default function DetEntregaRendirPescaIndustrial({
     );
 
     const codigoMoneda = moneda?.codigoSunat || "PEN";
-    const simboloMoneda = moneda?.simbolo || "S/.";
-
     let backgroundColor = "#fff9c4";
     if (codigoMoneda === "USD") {
       backgroundColor = "#c8e6c9";
@@ -586,6 +469,7 @@ export default function DetEntregaRendirPescaIndustrial({
       </div>
     );
   };
+
   const categoriaTemplate = (rowData) => {
     const tipo = tiposMovimiento.find(
       (t) => Number(t.id) === Number(rowData.tipoMovimientoId),
@@ -598,7 +482,6 @@ export default function DetEntregaRendirPescaIndustrial({
   };
 
   const aRendirTemplate = (rowData) => {
-    // Solo mostrar para asignaciones origen
     const esAsignacionOrigen =
       rowData.formaParteCalculoEntregaARendir === true &&
       (rowData.asignacionOrigenId === null ||
@@ -609,7 +492,6 @@ export default function DetEntregaRendirPescaIndustrial({
       return "N/A";
     }
 
-    // Obtener saldo precalculado (con conversión de moneda)
     if (calculandoSaldos) {
       return (
         <div style={{ textAlign: "right", fontStyle: "italic" }}>
@@ -649,7 +531,6 @@ export default function DetEntregaRendirPescaIndustrial({
   };
 
   const gastoPlanificadoTemplate = (rowData) => {
-    // Verificar si existe la relación enlaceGastoPlanificado
     if (!rowData.enlaceGastoPlanificado) {
       return (
         <span style={{ color: "#999", fontStyle: "italic" }}>
@@ -658,7 +539,6 @@ export default function DetEntregaRendirPescaIndustrial({
       );
     }
 
-    // Mostrar descripcionArmada del producto del gasto planificado
     const descripcion =
       rowData.enlaceGastoPlanificado.producto?.descripcionArmada ||
       rowData.enlaceGastoPlanificado.producto?.nombre ||
@@ -666,77 +546,6 @@ export default function DetEntregaRendirPescaIndustrial({
 
     return (
       <div style={{ fontSize: "0.85rem", color: "#666" }}>{descripcion}</div>
-    );
-  };
-
-  const saldoInicialTemplate = (rowData) => {
-    // Solo mostrar para asignaciones principales
-    const esAsignacionPrincipal =
-      rowData.formaParteCalculoEntregaARendir === true &&
-      (rowData.asignacionOrigenId === null ||
-        rowData.asignacionOrigenId === undefined ||
-        Number(rowData.asignacionOrigenId) === 0);
-
-    if (!esAsignacionPrincipal) {
-      return "N/A";
-    }
-
-    const saldo = Number(rowData.saldoInicialAsignacion || 0);
-    return (
-      <div
-        style={{
-          textAlign: "right",
-          fontWeight: "bold",
-          color: saldo > 0 ? "green" : "#666",
-        }}
-      >
-        {rowData.moneda?.simbolo || ""} {formatearNumero(saldo, 2)}
-      </div>
-    );
-  };
-
-  const saldoFinalTemplate = (rowData) => {
-    // Solo mostrar para asignaciones principales
-    const esAsignacionPrincipal =
-      rowData.formaParteCalculoEntregaARendir === true &&
-      (rowData.asignacionOrigenId === null ||
-        rowData.asignacionOrigenId === undefined ||
-        Number(rowData.asignacionOrigenId) === 0);
-
-    if (!esAsignacionPrincipal) {
-      return "N/A";
-    }
-
-    // Calcular saldo final en tiempo real
-    // Saldo Final = Saldo Inicial + Monto Asignación - Total Gastos
-    const saldoInicial = Number(rowData.saldoInicialAsignacion || 0);
-    const montoAsignacion = Number(rowData.monto || 0);
-
-    // Buscar gastos asociados a esta asignación
-    const gastosAsociados = movimientos.filter(
-      (mov) =>
-        mov.asignacionOrigenId &&
-        Number(mov.asignacionOrigenId) === Number(rowData.id),
-    );
-
-    // Sumar total de gastos
-    const totalGastos = gastosAsociados.reduce((sum, gasto) => {
-      return sum + Number(gasto.monto || 0);
-    }, 0);
-
-    // Calcular saldo final
-    const saldoFinal = saldoInicial + montoAsignacion - totalGastos;
-
-    return (
-      <div
-        style={{
-          textAlign: "right",
-          fontWeight: "bold",
-          color: saldoFinal < 0 ? "red" : saldoFinal === 0 ? "orange" : "green",
-        }}
-      >
-        {rowData.moneda?.simbolo || ""} {formatearNumero(saldoFinal, 2)}
-      </div>
     );
   };
 
@@ -751,12 +560,6 @@ export default function DetEntregaRendirPescaIndustrial({
     );
   };
 
-  const fechaValidacionTesoreriaTemplate = (rowData) => {
-    return rowData.fechaValidacionTesoreria
-      ? new Date(rowData.fechaValidacionTesoreria).toLocaleDateString("es-PE")
-      : "N/A";
-  };
-
   const accionesTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
@@ -765,17 +568,11 @@ export default function DetEntregaRendirPescaIndustrial({
           className="p-button-text p-button-sm"
           onClick={() => handleEditarMovimiento(rowData)}
           aria-label="Editar"
-          disabled={
-            readOnly ||
-            entregaARendir?.entregaLiquidada ||
-            !permisos?.puedeEditar
-          }
+          disabled={!permisos?.puedeEditar}
           tooltip={
             !permisos?.puedeEditar
               ? "No tiene permisos para editar"
-              : readOnly || entregaARendir?.entregaLiquidada
-                ? "No se puede editar"
-                : "Editar movimiento"
+              : "Editar movimiento"
           }
           tooltipOptions={{ position: "top" }}
         />
@@ -784,17 +581,11 @@ export default function DetEntregaRendirPescaIndustrial({
           className="p-button-text p-button-danger p-button-sm"
           onClick={() => handleEliminarMovimiento(rowData)}
           aria-label="Eliminar"
-          disabled={
-            readOnly ||
-            entregaARendir?.entregaLiquidada ||
-            !permisos?.puedeEditar
-          }
+          disabled={!permisos?.puedeEditar}
           tooltip={
             !permisos?.puedeEditar
               ? "No tiene permisos para eliminar"
-              : readOnly || entregaARendir?.entregaLiquidada
-                ? "No se puede eliminar"
-                : "Eliminar movimiento"
+              : "Eliminar movimiento"
           }
           tooltipOptions={{ position: "top" }}
         />
@@ -802,22 +593,45 @@ export default function DetEntregaRendirPescaIndustrial({
     );
   };
 
-  if (!entregaARendir) {
-    return null;
-  }
-
   return (
-    <>
+    <div style={{ padding: "1rem" }}>
+      <Toast ref={toast} />
+
+      <div
+        style={{
+          backgroundColor: "#f8f9fa",
+          padding: "1.5rem",
+          borderRadius: "8px",
+          marginBottom: "1rem",
+          border: "1px solid #dee2e6",
+        }}
+      >
+        <h1
+          style={{
+            color: "#1E8449",
+            marginBottom: "0.5rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            fontSize: "1.8rem",
+          }}
+        >
+          <i className="pi pi-money-bill" style={{ fontSize: "1.8rem" }}></i>
+          Rendición de Gastos
+        </h1>
+        <p style={{ margin: 0, color: "#6c757d" }}>
+          Gestión de rendiciones de gastos y entregas a rendir
+        </p>
+      </div>
+
       <div className="mt-4">
         <DataTable
           key={`datatable-${Object.keys(saldosARendir).length}`}
           value={obtenerMovimientosFiltrados()}
           selection={selectedMovimientos}
-          onSelectionChange={onSelectionChange}
+          onSelectionChange={handleSelectionChange}
           selectionMode="single"
-          onRowClick={
-            readOnly ? undefined : (e) => handleEditarMovimiento(e.data)
-          }
+          onRowClick={(e) => handleEditarMovimiento(e.data)}
           dataKey="id"
           loading={loading}
           paginator
@@ -855,25 +669,11 @@ export default function DetEntregaRendirPescaIndustrial({
                     className="p-button-success"
                     severity="success"
                     onClick={handleNuevoMovimiento}
-                    disabled={
-                      !permisos?.puedeEditar ||
-                      readOnly ||
-                      !temporadaPescaIniciada ||
-                      !entregaARendir ||
-                      entregaARendir?.entregaLiquidada
-                    }
+                    disabled={!permisos?.puedeCrear}
                     tooltip={
-                      !permisos?.puedeEditar
+                      !permisos?.puedeCrear
                         ? "No tiene permisos para crear"
-                        : readOnly
-                          ? "Modo solo lectura"
-                          : !temporadaPescaIniciada
-                            ? "Temporada de pesca no iniciada"
-                            : !entregaARendir
-                              ? "No hay entrega a rendir"
-                              : entregaARendir?.entregaLiquidada
-                                ? "Entrega ya liquidada"
-                                : "Crear nuevo movimiento"
+                        : "Crear nuevo movimiento"
                     }
                     tooltipOptions={{ position: "top" }}
                     type="button"
@@ -925,35 +725,8 @@ export default function DetEntregaRendirPescaIndustrial({
                     raised
                   />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <Button
-                    label="Procesar Liquidación"
-                    icon="pi pi-check"
-                    className="p-button-danger"
-                    severity="danger"
-                    onClick={handleProcesarLiquidacion}
-                    type="button"
-                    disabled={
-                      !permisos?.puedeEditar ||
-                      readOnly ||
-                      entregaARendir.entregaLiquidada
-                    }
-                    tooltip={
-                      !permisos?.puedeEditar
-                        ? "No tiene permisos para procesar liquidación"
-                        : readOnly
-                          ? "Modo solo lectura"
-                          : entregaARendir.entregaLiquidada
-                            ? "Entrega ya liquidada"
-                            : "Procesar liquidación de la entrega"
-                    }
-                    tooltipOptions={{ position: "top" }}
-                    raised
-                  />
-                </div>
               </div>
 
-              {/* Sección de Filtros */}
               <div
                 style={{
                   display: "flex",
@@ -1045,7 +818,6 @@ export default function DetEntregaRendirPescaIndustrial({
             body={fechaMovimientoTemplate}
             sortable
           />
-
           <Column
             field="tipoMovimientoId"
             header="Categoría"
@@ -1085,20 +857,6 @@ export default function DetEntregaRendirPescaIndustrial({
             style={{ width: "50px", textAlign: "center" }}
           />
           <Column
-            field="saldoInicialAsignacion"
-            header="Saldo Inicial"
-            body={saldoInicialTemplate}
-            sortable
-            style={{ width: "120px", textAlign: "right" }}
-          />
-          <Column
-            field="saldoFinalAsignacion"
-            header="Saldo Final"
-            body={saldoFinalTemplate}
-            sortable
-            style={{ width: "120px", textAlign: "right" }}
-          />
-          <Column
             field="detalleGastosPlanificados"
             header="Gasto Planificado"
             body={gastoPlanificadoTemplate}
@@ -1120,7 +878,6 @@ export default function DetEntregaRendirPescaIndustrial({
         </DataTable>
       </div>
 
-      {/* Dialog para DetMovsEntregaRendir */}
       <Dialog
         visible={showMovimientoForm}
         style={{ width: "95vw" }}
@@ -1131,9 +888,9 @@ export default function DetEntregaRendirPescaIndustrial({
         maximizable
         maximized={true}
       >
-        <DetMovsEntregaRendirForm
+        <DetMovsRendicionGastosForm
           movimiento={editingMovimiento}
-          temporadaPesca={temporadaPesca}
+          rendicionGastos={null}
           personal={personal}
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
@@ -1149,13 +906,11 @@ export default function DetEntregaRendirPescaIndustrial({
           onCancelar={() => {
             setShowMovimientoForm(false);
             setEditingMovimiento(null);
-            onDataChange?.();
+            cargarDatos();
           }}
           permisos={permisos}
         />
       </Dialog>
-
-      <Toast ref={toast} />
-    </>
+    </div>
   );
 }

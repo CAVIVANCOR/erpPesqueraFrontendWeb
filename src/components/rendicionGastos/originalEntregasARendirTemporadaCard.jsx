@@ -21,14 +21,18 @@ import { TabView, TabPanel } from "primereact/tabview";
 import DetEntregaRendirPescaIndustrial from "./DetEntregaRendirPescaIndustrial";
 import VerImpresionLiquidacionPI from "./VerImpresionLiquidacionPI";
 import {
+  getAllEntregaARendir,
+  crearEntregaARendir,
+} from "../../api/entregaARendir";
+import {
   getAllDetMovsEntregaRendir,
   crearDetMovsEntregaRendir,
   actualizarDetMovsEntregaRendir,
   eliminarDetMovsEntregaRendir,
 } from "../../api/detMovsEntregaRendir";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
-import { getMonedas } from "../../api/moneda";
-import { getProductos } from "../../api/producto";
+import { getMonedas } from "../../api/moneda"; // ← AGREGAR ESTA LÍNEA
+import { getProductos } from "../../api/producto"; // Importar API de productos
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { getAllCategoriaTipoMovEntregaRendir } from "../../api/categoriaTipoMovEntregaRendir";
 
@@ -54,8 +58,8 @@ const EntregasARendirTemporadaCard = ({
   const [responsableEntrega, setResponsableEntrega] = useState(null);
   const [centroCostoEntrega, setCentroCostoEntrega] = useState(null);
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
-  const [monedas, setMonedas] = useState([]);
-  const [productos, setProductos] = useState([]);
+  const [monedas, setMonedas] = useState([]); // ← AGREGAR ESTA LÍNEA
+  const [productos, setProductos] = useState([]); // Estado para productos (gastos)
   const [categorias, setCategorias] = useState([]);
   // Estados para cálculos automáticos
   const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] =
@@ -170,16 +174,13 @@ const EntregasARendirTemporadaCard = ({
 
   // Cargar movimientos de la entrega
   const cargarMovimientos = async () => {
-    if (!temporadaPescaId) return;
+    if (!entregaARendir?.id) return;
 
     try {
       setLoadingMovimientos(true);
       const movimientosData = await getAllDetMovsEntregaRendir();
       const movimientosEntrega = movimientosData.filter(
-        (mov) =>
-          Number(mov.empresaId) === Number(empresaId) &&
-          Number(mov.moduloOrigenId) === 2 &&
-          Number(mov.documentoOrigenId) === Number(temporadaPescaId),
+        (mov) => Number(mov.entregaARendirId) === Number(entregaARendir.id),
       );
 
       setMovimientos(movimientosEntrega);
@@ -246,10 +247,10 @@ const EntregasARendirTemporadaCard = ({
   }, [empresaId]);
 
   useEffect(() => {
-    if (temporadaPescaId) {
+    if (entregaARendir) {
       cargarMovimientos();
     }
-  }, [temporadaPescaId, empresaId]);
+  }, [entregaARendir]);
 
   useEffect(() => {
     obtenerResponsableEntrega();

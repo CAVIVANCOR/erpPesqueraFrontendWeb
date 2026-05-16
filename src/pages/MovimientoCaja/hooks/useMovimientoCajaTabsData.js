@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 // APIs para tabs de procesos productivos
 import { getAllDetMovsEntregaRendir } from "../../../api/detMovsEntregaRendir";
-import { getAllEntregaARendir } from "../../../api/entregaARendir";
+// ⚠️ ELIMINADO: import { getAllEntregaARendir } from "../../../api/entregaARendir"; - API deprecada tras refactorización
 import { getAllDetMovsEntRendirPescaConsumo } from "../../../api/detMovsEntRendirPescaConsumo";
 import { getEntregasARendirPescaConsumo } from "../../../api/entregaARendirPescaConsumo";
 import { getDetMovsEntregaRendirPCompras } from "../../../api/detMovsEntregaRendirPCompras";
@@ -20,7 +20,6 @@ import { getTiposDocumento } from "../../../api/tipoDocumento";
 const useMovimientoCajaTabsData = (toast) => {
   // Estados para Pesca Industrial
   const [movimientosDetEntrega, setMovimientosDetEntrega] = useState([]);
-  const [entregasARendir, setEntregasARendir] = useState([]);
   const [selectedMovimientosDetEntrega, setSelectedMovimientosDetEntrega] = useState(null);
   const [loadingDetEntrega, setLoadingDetEntrega] = useState(false);
   const [selectedDetMovsIds, setSelectedDetMovsIds] = useState([]);
@@ -85,20 +84,6 @@ const useMovimientoCajaTabsData = (toast) => {
       });
     }
     setLoadingDetEntrega(false);
-  }, [toast]);
-
-  const cargarEntregasARendir = useCallback(async () => {
-    try {
-      const data = await getAllEntregaARendir();
-      setEntregasARendir(data);
-    } catch (err) {
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cargar las entregas a rendir.",
-        life: 3000,
-      });
-    }
   }, [toast]);
 
   // Funciones de carga - Pesca Consumo
@@ -322,7 +307,6 @@ const useMovimientoCajaTabsData = (toast) => {
       await cargarTiposDocumento();
       await Promise.all([
         cargarMovimientosDetEntrega(),
-        cargarEntregasARendir(),
         cargarMovimientosDetEntregaConsumo(),
         cargarEntregasARendirConsumo(),
         cargarMovimientosDetEntregaCompras(),
@@ -341,7 +325,6 @@ const useMovimientoCajaTabsData = (toast) => {
   }, [
     cargarTiposDocumento,
     cargarMovimientosDetEntrega,
-    cargarEntregasARendir,
     cargarMovimientosDetEntregaConsumo,
     cargarEntregasARendirConsumo,
     cargarMovimientosDetEntregaCompras,
@@ -357,14 +340,12 @@ const useMovimientoCajaTabsData = (toast) => {
 
   return {
     // Pesca Industrial
-    entregasARendir,
     movimientosDetEntrega,
     selectedMovimientosDetEntrega,
     setSelectedMovimientosDetEntrega,
     setSelectedDetMovsIds,
     loadingDetEntrega,
     cargarMovimientosDetEntrega,
-    cargarEntregasARendir,
 
     // Pesca Consumo
     entregasARendirConsumo,

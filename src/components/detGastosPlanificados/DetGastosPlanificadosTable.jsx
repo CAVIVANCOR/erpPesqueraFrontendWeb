@@ -336,6 +336,7 @@ const DetGastosPlanificadosTable = ({
               onClick={abrirDialogoNuevo}
               className="p-button-success"
               size="small"
+              type="button"
             />
           )}
         </div>
@@ -345,8 +346,8 @@ const DetGastosPlanificadosTable = ({
           loading={loading}
           emptyMessage="No hay gastos planificados registrados"
           footerColumnGroup={footerGroup}
-          responsiveLayout="scroll"
           stripedRows
+          showGridlines
           size="small"
         >
           <Column

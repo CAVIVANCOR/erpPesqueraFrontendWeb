@@ -28,7 +28,6 @@ import * as temporadaPescaService from "../../api/temporadaPesca";
 import { getFaenasPesca } from "../../api/faenaPesca";
 import { getAllDescargaFaenaPesca } from "../../api/descargaFaenaPesca";
 import { getPersonal } from "../../api/personal";
-import { getAllEntregaARendir } from "../../api/entregaARendir";
 import { getAllDetMovsEntregaRendir } from "../../api/detMovsEntregaRendir";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
 import { getDetallesPorTemporada } from "../../api/detalleDiaSinFaena";
@@ -121,7 +120,7 @@ export default function DatosLiquidacionPersonalPesca({
   const { reportStates } = useReportesTemporada();
   // Estados locales adicionales
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
-  const [temporada, setTemporada] = useState(null); // ⭐ NUEVO: Estado para temporada completa
+  const [temporada, setTemporada] = useState(null);
 
   // Cargar entidades comerciales al montar
   useEffect(() => {
@@ -147,7 +146,7 @@ export default function DatosLiquidacionPersonalPesca({
     const cargarTemporada = async () => {
       if (!temporadaId) {
         setTemporada(null);
-        calculoInicialEjecutado.current = false; // Resetear bandera
+        calculoInicialEjecutado.current = false;
         return;
       }
 
@@ -155,7 +154,7 @@ export default function DatosLiquidacionPersonalPesca({
         const temporadaCompleta =
           await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
         setTemporada(temporadaCompleta);
-        calculoInicialEjecutado.current = false; // Resetear para permitir cálculo de nueva temporada
+        calculoInicialEjecutado.current = false;
       } catch (error) {
         console.error("Error al cargar temporada completa:", error);
         setTemporada(null);
@@ -514,7 +513,6 @@ export default function DatosLiquidacionPersonalPesca({
       const descargasTemporada = todasDescargas
         .filter((d) => faenaIds.includes(Number(d.faenaPescaId)))
         .sort((a, b) => {
-          // Ordenar por fechaHoraInicioDescarga ascendente (más antigua primero)
           const fechaA = a.fechaHoraInicioDescarga ? new Date(a.fechaHoraInicioDescarga) : new Date(0);
           const fechaB = b.fechaHoraInicioDescarga ? new Date(b.fechaHoraInicioDescarga) : new Date(0);
           return fechaA - fechaB;
@@ -589,22 +587,18 @@ export default function DatosLiquidacionPersonalPesca({
         faenaIds.includes(Number(d.faenaPescaId)),
       );
 
-      const todasEntregas = await getAllEntregaARendir();
-      const entregaTemporada = todasEntregas.find(
-        (e) => Number(e.temporadaPescaId) === Number(temporadaId),
-      );
       let descuentos = [];
-      if (entregaTemporada) {
-        const todosDetMovs = await getAllDetMovsEntregaRendir();
-        descuentos = todosDetMovs.filter(
-          (d) =>
-            Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
-            d.formaParteCalculoLiquidacionTripulantes === true &&
-            d.validadoTesoreria === true &&
-            d.producto?.descripcionBase === "ADELANTO" &&
-            d.producto?.descripcionExtendida === "SUELDOS",
-        );
-      }
+      const todosDetMovs = await getAllDetMovsEntregaRendir();
+      descuentos = todosDetMovs.filter(
+        (d) =>
+          Number(d.empresaId) === Number(empresaId) &&
+          Number(d.moduloOrigenId) === 2 &&
+          Number(d.documentoOrigenId) === Number(temporadaId) &&
+          d.formaParteCalculoLiquidacionTripulantes === true &&
+          d.validadoTesoreria === true &&
+          d.producto?.descripcionBase === "ADELANTO" &&
+          d.producto?.descripcionExtendida === "SUELDOS",
+      );
 
       reportStates.liquidacionTripulantes.setReportData({
         temporada: temporadaCompleta,
@@ -678,24 +672,20 @@ export default function DatosLiquidacionPersonalPesca({
         faenaIds.includes(Number(d.faenaPescaId)),
       );
 
-      const todasEntregas = await getAllEntregaARendir();
-      const entregaTemporada = todasEntregas.find(
-        (e) => Number(e.temporadaPescaId) === Number(temporadaId),
-      );
       let adelantos = [];
-      if (entregaTemporada) {
-        const todosDetMovs = await getAllDetMovsEntregaRendir();
-        adelantos = todosDetMovs.filter(
-          (d) =>
-            Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
-            d.formaParteCalculoLiqAlquilerCuota === true &&
-            d.validadoTesoreria === true &&
-            Number(d.entidadComercialId) ===
-            Number(entidadEmpresarialAlquiladaId) &&
-            d.producto?.descripcionBase === "ADELANTO" &&
-            d.producto?.descripcionExtendida === "ALQUILERES",
-        );
-      }
+      const todosDetMovs = await getAllDetMovsEntregaRendir();
+      adelantos = todosDetMovs.filter(
+        (d) =>
+          Number(d.empresaId) === Number(empresaId) &&
+          Number(d.moduloOrigenId) === 2 &&
+          Number(d.documentoOrigenId) === Number(temporadaId) &&
+          d.formaParteCalculoLiqAlquilerCuota === true &&
+          d.validadoTesoreria === true &&
+          Number(d.entidadComercialId) ===
+          Number(entidadEmpresarialAlquiladaId) &&
+          d.producto?.descripcionBase === "ADELANTO" &&
+          d.producto?.descripcionExtendida === "ALQUILERES",
+      );
 
       reportStates.liquidacionArmadores.setReportData({
         temporada: temporadaCompleta,
@@ -769,24 +759,20 @@ export default function DatosLiquidacionPersonalPesca({
         faenaIds.includes(Number(d.faenaPescaId)),
       );
 
-      const todasEntregas = await getAllEntregaARendir();
-      const entregaTemporada = todasEntregas.find(
-        (e) => Number(e.temporadaPescaId) === Number(temporadaId),
-      );
       let movimientos = [];
-      if (entregaTemporada) {
-        const todosDetMovs = await getAllDetMovsEntregaRendir();
-        movimientos = todosDetMovs.filter(
-          (d) =>
-            Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
-            d.formaParteCalculoLiqAlquilerCuota === true &&
-            d.validadoTesoreria === true &&
-            Number(d.entidadComercialId) ===
-            Number(entidadComercialComisionistaAlquiler) &&
-            d.producto?.descripcionBase === "ADELANTO" &&
-            d.producto?.descripcionExtendida === "COMISIONES",
-        );
-      }
+      const todosDetMovs = await getAllDetMovsEntregaRendir();
+      movimientos = todosDetMovs.filter(
+        (d) =>
+          Number(d.empresaId) === Number(empresaId) &&
+          Number(d.moduloOrigenId) === 2 &&
+          Number(d.documentoOrigenId) === Number(temporadaId) &&
+          d.formaParteCalculoLiqAlquilerCuota === true &&
+          d.validadoTesoreria === true &&
+          Number(d.entidadComercialId) ===
+          Number(entidadComercialComisionistaAlquiler) &&
+          d.producto?.descripcionBase === "ADELANTO" &&
+          d.producto?.descripcionExtendida === "COMISIONES",
+      );
 
       reportStates.liquidacionComisionista.setReportData({
         temporada: temporadaCompleta,
@@ -807,6 +793,7 @@ export default function DatosLiquidacionPersonalPesca({
     }
   };
 
+  
   const handleComisionesPMM = async () => {
     if (!temporadaId) {
       toast.current?.show({
@@ -894,49 +881,48 @@ export default function DatosLiquidacionPersonalPesca({
         faenaIds.includes(Number(d.faenaPescaId)),
       );
 
-      const todasEntregas = await getAllEntregaARendir();
-      const entregaTemporada = todasEntregas.find(
-        (e) => Number(e.temporadaPescaId) === Number(temporadaId),
-      );
-
       let descuentosPatron = [];
       let descuentosMotorista = [];
       let descuentosPanguero = [];
 
-      if (entregaTemporada) {
-        const todosDetMovs = await getAllDetMovsEntregaRendir();
+      const todosDetMovs = await getAllDetMovsEntregaRendir();
 
-        descuentosPatron = todosDetMovs.filter(
-          (d) =>
-            Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
-            d.formaParteCalculoLiquidacionTripulantes === true &&
-            d.validadoTesoreria === true &&
-            Number(d.entidadComercialId) === Number(entidadComercialPatron) &&
-            d.producto?.descripcionBase === "ADELANTO" &&
-            d.producto?.descripcionExtendida === "COMISIONES",
-        );
+      descuentosPatron = todosDetMovs.filter(
+        (d) =>
+          Number(d.empresaId) === Number(empresaId) &&
+          Number(d.moduloOrigenId) === 2 &&
+          Number(d.documentoOrigenId) === Number(temporadaId) &&
+          d.formaParteCalculoLiquidacionTripulantes === true &&
+          d.validadoTesoreria === true &&
+          Number(d.entidadComercialId) === Number(entidadComercialPatron) &&
+          d.producto?.descripcionBase === "ADELANTO" &&
+          d.producto?.descripcionExtendida === "COMISIONES",
+      );
 
-        descuentosMotorista = todosDetMovs.filter(
-          (d) =>
-            Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
-            d.formaParteCalculoLiquidacionTripulantes === true &&
-            d.validadoTesoreria === true &&
-            Number(d.entidadComercialId) ===
-            Number(entidadComercialMotorista) &&
-            d.producto?.descripcionBase === "ADELANTO" &&
-            d.producto?.descripcionExtendida === "COMISIONES",
-        );
+      descuentosMotorista = todosDetMovs.filter(
+        (d) =>
+          Number(d.empresaId) === Number(empresaId) &&
+          Number(d.moduloOrigenId) === 2 &&
+          Number(d.documentoOrigenId) === Number(temporadaId) &&
+          d.formaParteCalculoLiquidacionTripulantes === true &&
+          d.validadoTesoreria === true &&
+          Number(d.entidadComercialId) ===
+          Number(entidadComercialMotorista) &&
+          d.producto?.descripcionBase === "ADELANTO" &&
+          d.producto?.descripcionExtendida === "COMISIONES",
+      );
 
-        descuentosPanguero = todosDetMovs.filter(
-          (d) =>
-            Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
-            d.formaParteCalculoLiquidacionTripulantes === true &&
-            d.validadoTesoreria === true &&
-            Number(d.entidadComercialId) === Number(entidadComercialPanguero) &&
-            d.producto?.descripcionBase === "ADELANTO" &&
-            d.producto?.descripcionExtendida === "COMISIONES",
-        );
-      }
+      descuentosPanguero = todosDetMovs.filter(
+        (d) =>
+          Number(d.empresaId) === Number(empresaId) &&
+          Number(d.moduloOrigenId) === 2 &&
+          Number(d.documentoOrigenId) === Number(temporadaId) &&
+          d.formaParteCalculoLiquidacionTripulantes === true &&
+          d.validadoTesoreria === true &&
+          Number(d.entidadComercialId) === Number(entidadComercialPanguero) &&
+          d.producto?.descripcionBase === "ADELANTO" &&
+          d.producto?.descripcionExtendida === "COMISIONES",
+      );
 
       reportStates.comisionesPMM.setReportData({
         temporada: temporadaCompleta,
@@ -969,7 +955,6 @@ export default function DatosLiquidacionPersonalPesca({
         empresaId: temporada.empresaId,
       });
 
-      // Filtrar manualmente según los criterios especificados
       const detalleFiltrado = detalles.find(
         (det) =>
           det.activo === true &&
@@ -995,7 +980,6 @@ export default function DatosLiquidacionPersonalPesca({
         empresaId: temporada.empresaId,
       });
 
-      // Filtrar manualmente según los criterios especificados
       const detalleFiltrado = detalles.find(
         (det) =>
           det.activo === true &&
@@ -1026,37 +1010,30 @@ export default function DatosLiquidacionPersonalPesca({
     }
 
     try {
-      // Obtener temporada completa con relaciones
       const temporadaCompleta =
         await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
 
-      // Obtener nombre de embarcación (primera faena activa)
       const faenas = await getFaenasPesca(temporadaId);
       const primeraFaena = faenas.find((f) => f.embarcacion?.activo);
       const nombreEmbarcacion =
         primeraFaena?.embarcacion?.nombre || "SIN EMBARCACION";
 
-      // Preparar datos para el reporte
       const datosReporte = {
         temporada: temporadaCompleta,
         descargas: descargasData,
         comisionesGeneradas: comisionesGeneradas,
         baseLiquidacionReal: watch("baseLiquidacionReal") || 0,
 
-        // ✅ Estos SÍ son campos del formulario (funcionan con watch)
         liqComisionPatronReal: watch("liqComisionPatronReal") || 0,
         liqComisionMotoristaReal: watch("liqComisionMotoristaReal") || 0,
         liqComisionPangueroReal: watch("liqComisionPangueroReal") || 0,
         liqTripulantesPescaEstimado: watch("liqTripulantesPescaEstimado") || 0,
         liqTripulantesPescaReal: watch("liqTripulantesPescaReal") || 0,
 
-        // ⭐ CALCULAR liqComisionAlquilerAdicional (NO es campo del formulario)
         liqComisionAlquilerAdicional:
           Number(temporadaCompleta.cuotaAlquiladaTon || 0) *
           Number(temporadaCompleta.precioPorTonComisionAlquilerDolares || 0),
 
-        // ⭐ CALCULAR fidelizacionPersonal (NO es campo del formulario)
-        // Fórmula: SUMA de todas las comisiones.montoPagarFidelizacionDolares
         fidelizacionPersonal: comisionesGeneradas.reduce((total, comision) => {
           return total + Number(comision.montoPagarFidelizacionDolares || 0);
         }, 0),
@@ -1068,22 +1045,18 @@ export default function DatosLiquidacionPersonalPesca({
         ingresoFidelizacion: watch("ingresoFidelizacion") || 0,
         ingresosPorAlquilerCuotaSur: watch("ingresosPorAlquilerCuotaSur") || 0,
 
-        // Agregar estos datos al objeto datosReporte:
         faenas: faenas,
         detCuotaPescaAlquilada:
           await obtenerDetCuotaPescaAlquilada(temporadaCompleta),
         detCuotaPescaPropia:
           await obtenerDetCuotaPescaPropia(temporadaCompleta),
 
-        // ⭐ CALCULAR totalIngresosCalculado (NO es campo del formulario)
-        // Fórmula: cuotaPropiaTon × precioPorTonDolares × (porcentajeBaseLiqPesca / 100)
         totalIngresosCalculado:
           Number(temporadaCompleta.cuotaPropiaTon || 0) *
           Number(temporadaCompleta.precioPorTonDolares || 0) *
           (Number(temporadaCompleta.porcentajeBaseLiqPesca || 0) / 100),
       };
 
-      // Mostrar selector de formato
       reportStates.consolidadoPesca.setShowFormatSelector(true);
       reportStates.consolidadoPesca.setReportData(datosReporte);
     } catch (error) {
@@ -1126,17 +1099,15 @@ export default function DatosLiquidacionPersonalPesca({
         }}
       >
         <div className="p-fluid">
-          {/* ⭐ COMPONENTE: Parámetros de Liquidación */}
           <ParametrosLiquidacion
             control={control}
             errors={errors}
-            onCargarParametros={cargarParametrosDesdeEmpresa} // ✅ CORRECTO
-            cargandoParametros={cargandoParametros} // ✅ CORRECTO - Es un boolean
+            onCargarParametros={cargarParametrosDesdeEmpresa}
+            cargandoParametros={cargandoParametros}
             readOnly={readOnly}
             empresaId={empresaId}
           />
 
-          {/* Campos adicionales de precios y entidades */}
           <div
             style={{
               display: "flex",
@@ -1283,7 +1254,6 @@ export default function DatosLiquidacionPersonalPesca({
           collapsed={true}
           style={{ marginTop: "1rem" }}
         >
-          {/* ⭐ CONTENEDOR: Tablas lado a lado */}
           <div
             style={{
               marginTop: "2rem",
@@ -1292,7 +1262,6 @@ export default function DatosLiquidacionPersonalPesca({
               flexDirection: window.innerWidth < 1200 ? "column" : "row",
             }}
           >
-            {/* ⭐ COMPONENTE: Tabla de Descargas */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <DescargasTable
                 keyValue={`descargas-table-${clientes.length}`}
@@ -1307,7 +1276,6 @@ export default function DatosLiquidacionPersonalPesca({
               />
             </div>
 
-            {/* ⭐ COMPONENTE: Tabla de Comisiones Generadas */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <ComisionesTable
                 comisionesGeneradas={comisionesGeneradas}
@@ -1316,7 +1284,6 @@ export default function DatosLiquidacionPersonalPesca({
             </div>
           </div>
         </Panel>
-        {/* ⭐ COMPONENTE: Resultados de Liquidación */}
         <ResultadosLiquidacion
           control={control}
           errors={errors}
@@ -1344,17 +1311,15 @@ export default function DatosLiquidacionPersonalPesca({
           }
           temporada={temporada}
           toast={toast}
-          comisionesGeneradas={comisionesGeneradas} // ⭐ NUEVO: Pasar comisiones
+          comisionesGeneradas={comisionesGeneradas}
           esTemporadaSoloAlquiler={watch("esTemporadaSoloAlquiler") || false}
           zona={watch("zona") || "NORTE"}
         />
-        {/* ⭐ COMPONENTE: Botones de Reportes */}
         <BotonesReportes
           onGenerarReporte={handleGenerarReporte}
           readOnly={readOnly}
           temporadaId={temporadaId}
         />
-        {/* Selectores y visores de reportes */}
         <ReportFormatSelector
           visible={reportStates.distribucion.showFormatSelector}
           onHide={() => reportStates.distribucion.setShowFormatSelector(false)}
@@ -1536,7 +1501,6 @@ export default function DatosLiquidacionPersonalPesca({
           fileName={`comisiones_pmm_${reportStates.comisionesPMM.reportData?.temporada?.nombre || "temporada"}.xlsx`}
         />
 
-        {/* ⭐ COMPONENTES PARA REPORTE CONSOLIDADO PESCA */}
         <ReportFormatSelector
           visible={reportStates.consolidadoPesca.showFormatSelector}
           onHide={() =>

@@ -116,13 +116,13 @@ export const obtenerTodasAsignacionesNoLiquidadas = async () => {
 /**
  * Obtiene los valores iniciales para un nuevo detalle de movimiento
  * @param {string} moduloOrigen - Módulo de origen (PESCA_INDUSTRIAL, PESCA_CONSUMO, etc.)
- * @param {number} entregaARendirId - ID de la entrega a rendir
+ * @param {number} documentoOrigenId - ID del documento origen (temporadaPescaId)
  * @returns {Promise<Object>} Valores iniciales (enlaceAOtroDetalleGastoId, embarcacionId)
  */
-export const obtenerValoresIniciales = async (moduloOrigen, entregaARendirId) => {
+export const obtenerValoresIniciales = async (moduloOrigen, documentoOrigenId) => {
   try {
     const response = await axios.get(`${API_URL}/valores-iniciales`, {
-      params: { moduloOrigen, entregaARendirId },
+      params: { moduloOrigen, documentoOrigenId },
       headers: getAuthHeaders()
     });
     return response.data;
@@ -170,14 +170,16 @@ export const liquidarAsignacion = async (asignacionId) => {
 
 /**
  * Obtiene el saldo inicial para una nueva asignación
- * @param {number} entregaARendirId - ID de la entrega a rendir
+ * @param {number} empresaId - ID de la empresa
+ * @param {number} moduloOrigenId - ID del módulo origen
+ * @param {number} documentoOrigenId - ID del documento origen (temporadaPescaId)
  * @param {string} fechaMovimiento - Fecha del movimiento (ISO string)
  * @returns {Promise<number>} Saldo inicial calculado
  */
-export const obtenerSaldoInicial = async (entregaARendirId, fechaMovimiento) => {
+export const obtenerSaldoInicial = async (empresaId, moduloOrigenId, documentoOrigenId, fechaMovimiento) => {
   try {
     const response = await axios.get(`${API_URL}/saldo-inicial`, {
-      params: { entregaARendirId, fechaMovimiento },
+      params: { empresaId, moduloOrigenId, documentoOrigenId, fechaMovimiento },
       headers: getAuthHeaders()
     });
     return response.data.saldoInicial;

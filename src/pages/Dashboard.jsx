@@ -117,9 +117,9 @@ export default function Dashboard() {
       titulo: "COMPRAS",
       descripcion: "Gestión de compras, proveedores y órdenes",
       icono: "pi-shopping-cart",
-      modulos: 7,
+      modulos: 8,
       color: "#1E8449",
-      submenu: [
+            submenu: [
         {
           label: "Requerimiento Compra",
           key: "requerimientoCompra",
@@ -129,6 +129,11 @@ export default function Dashboard() {
           label: "Orden de Compra",
           key: "ordenCompra",
           icon: "pi-shopping-cart",
+        },
+        {
+          label: "Rendición de Gastos",
+          key: "rendicionGastos",
+          icon: "pi-money-bill",
         },
         { label: "Tipo Producto", key: "tipoProducto", icon: "pi-tag" },
         {

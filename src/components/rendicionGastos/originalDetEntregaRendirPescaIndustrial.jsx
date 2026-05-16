@@ -419,9 +419,7 @@ export default function DetEntregaRendirPescaIndustrial({
           // 1. Actualizar todos los movimientos DetMovsEntregaRendir - SOLO campos escalares
           const promesasActualizacion = movimientos.map((movimiento) => {
             const movimientoActualizado = {
-              empresaId: movimiento.empresaId,
-              moduloOrigenId: movimiento.moduloOrigenId,
-              documentoOrigenId: movimiento.documentoOrigenId,
+              entregaARendirId: movimiento.entregaARendirId,
               responsableId: movimiento.responsableId,
               fechaMovimiento: movimiento.fechaMovimiento,
               tipoMovimientoId: movimiento.tipoMovimientoId,
@@ -1133,6 +1131,7 @@ export default function DetEntregaRendirPescaIndustrial({
       >
         <DetMovsEntregaRendirForm
           movimiento={editingMovimiento}
+          entregaARendirId={entregaARendir?.id}
           temporadaPesca={temporadaPesca}
           personal={personal}
           centrosCosto={centrosCosto}

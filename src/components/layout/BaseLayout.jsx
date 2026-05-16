@@ -134,6 +134,8 @@ import EjecucionPresupuestal from "../../pages/EjecucionPresupuestal";
 import MotivoSinFaena from "../../pages/MotivoSinFaena";
 import TipoMovimientoActivoFijo from "../../pages/TipoMovimientoActivoFijo";
 import MovimientoActivoFijo from "../../pages/MovimientoActivoFijo";
+import RendicionGastos from "../../pages/RendicionGastos/RendicionGastosList";
+
 /**
  * BaseLayout - Layout principal con gestión de módulos
  *
@@ -229,6 +231,10 @@ export default function BaseLayout({ children, onLogout }) {
     ordenCompra: {
       label: "Orden de Compra",
       componente: <OrdenCompra ruta="ordenCompra" />,
+    },
+    rendicionGastos: {
+      label: "Rendición de Gastos",
+      componente: <RendicionGastos ruta="rendicionGastos" />,
     },
     cuentaPorPagar: {
       label: "Cuenta Por Pagar",
@@ -573,7 +579,7 @@ export default function BaseLayout({ children, onLogout }) {
       label: "Tipo Activo",
       componente: <TipoActivo ruta="tipoActivo" />,
     },
-        tipoMovActivo: {
+    tipoMovActivo: {
       label: "Tipos de Movimiento Activo Fijo",
       componente: <TipoMovimientoActivoFijo ruta="tipoMovActivo" />,
     },
