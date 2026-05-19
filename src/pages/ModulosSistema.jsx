@@ -30,12 +30,12 @@ import { getResponsiveFontSize } from "../utils/utils";
 export default function ModulosSistemaPage({ ruta }) {
   const usuario = useAuthStore((state) => state.usuario);
   const permisos = usePermissions(ruta);
-  
+
   // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
-  
+
   const [confirmState, setConfirmState] = useState({
     visible: false,
     row: null,
@@ -114,11 +114,12 @@ export default function ModulosSistemaPage({ ruta }) {
     if (!isEdit && !permisos.puedeCrear) {
       return;
     }
-    
+
     try {
       const payload = {
         nombre: data.nombre,
         descripcion: data.descripcion,
+        modeloDocumentoOrigen: data.modeloDocumentoOrigen,
         activo: data.activo,
       };
       if (isEdit && selected) {
@@ -204,8 +205,8 @@ export default function ModulosSistemaPage({ ruta }) {
         value={modulos}
         loading={loading}
         paginator
-        rows={5}
-        rowsPerPageOptions={[5, 10, 15, 20]}
+        rows={50}
+        rowsPerPageOptions={[50, 100, 150, 200]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} módulos"
         size="small"
@@ -214,10 +215,15 @@ export default function ModulosSistemaPage({ ruta }) {
         selectionMode="single"
         selection={selected}
         onSelectionChange={(e) => setSelected(e.value)}
-        onRowClick={(permisos.puedeVer || permisos.puedeEditar) ? onRowClick : undefined}
-        style={{ 
-          cursor: (permisos.puedeVer || permisos.puedeEditar) ? 'pointer' : 'default',
-          fontSize: getResponsiveFontSize()
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
+        }
+        sortField="id"
+        sortOrder={1}
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
         }}
         header={
           <div className="flex align-items-center gap-2">
@@ -249,6 +255,7 @@ export default function ModulosSistemaPage({ ruta }) {
         <Column field="id" header="ID" sortable />
         <Column field="nombre" header="Nombre" sortable />
         <Column field="descripcion" header="Descripción" sortable />
+        <Column field="modeloDocumentoOrigen" header="Modelo Origen" sortable />
         <Column
           field="activo"
           header="Activo"
@@ -263,8 +270,10 @@ export default function ModulosSistemaPage({ ruta }) {
       </DataTable>
       <Dialog
         header={
-          isEdit 
-            ? (permisos.puedeEditar ? "Editar Módulo" : "Ver Módulo")
+          isEdit
+            ? permisos.puedeEditar
+              ? "Editar Módulo"
+              : "Ver Módulo"
             : "Nuevo Módulo"
         }
         visible={showForm}

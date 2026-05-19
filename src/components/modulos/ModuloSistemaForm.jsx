@@ -11,6 +11,7 @@ export default function ModuloSistemaForm({ initialValues, onSubmit, onCancel, l
     defaultValues: {
       nombre: initialValues?.nombre || '',
       descripcion: initialValues?.descripcion || '',
+      modeloDocumentoOrigen: initialValues?.modeloDocumentoOrigen || '',
       // Si initialValues no tiene 'activo', forzar true (alta). Si lo tiene, respetar valor (edición).
       activo: typeof initialValues?.activo === 'boolean' ? initialValues.activo : true,
     }
@@ -33,6 +34,16 @@ export default function ModuloSistemaForm({ initialValues, onSubmit, onCancel, l
         <div className="p-field">
           <label htmlFor="descripcion">Descripción</label>
           <InputText id="descripcion" {...register('descripcion')} disabled={readOnly} />
+        </div>
+        <div className="p-field">
+          <label htmlFor="modeloDocumentoOrigen">Modelo Documento Origen</label>
+          <InputText 
+            id="modeloDocumentoOrigen" 
+            {...register('modeloDocumentoOrigen')} 
+            placeholder="TemporadaPesca, OrdenCompra, OTMantenimiento, etc." 
+            disabled={readOnly} 
+          />
+          <small className="p-text-secondary">Nombre del modelo Prisma asociado para documentos origen (dejar vacío si no aplica)</small>
         </div>
         <div className="p-field-checkbox">
           <label htmlFor="activo">Activo</label>
