@@ -8,6 +8,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
+import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { InputNumber } from "primereact/inputnumber";
@@ -18,6 +19,8 @@ import { classNames } from "primereact/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { getModulos } from "../../api/moduloSistema";
 import { Card } from "primereact/card";
+import TipoMovimientoSelector from "../common/TipoMovimientoSelector";
+import ProductoSelector from "../common/ProductoSelector";
 import PdfDetMovRendicionGastosCard from "./PdfDetMovRendicionGastosCard";
 import PdfComprobanteOperacionDetMovCard from "./PdfComprobanteOperacionDetMovCard";
 import { formatearFechaHora, formatearNumero } from "../../utils/utils";
@@ -45,15 +48,13 @@ const DetMovsRendicionGastosForm = ({
   onGuardadoExitoso,
   onCancelar,
   permisos = {},
+  onEntidadComercialCreada,
 }) => {
   const toast = useRef(null);
   const isEditing = !!movimiento;
   const { usuario } = useAuthStore();
   const [modulos, setModulos] = useState([]);
   const [cardActiva, setCardActiva] = useState("datos");
-  const [familiaFiltroId, setFamiliaFiltroId] = useState(null);
-  const [subfamiliaFiltroId, setSubfamiliaFiltroId] = useState(null);
-  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(127);
   const [gastosPlanificadosAsignacion, setGastosPlanificadosAsignacion] =
     useState([]);
   const [gastoPlanificadoSeleccionado, setGastoPlanificadoSeleccionado] =
@@ -132,8 +133,12 @@ const DetMovsRendicionGastosForm = ({
     if (isEditing && movimiento) {
       reset({
         empresaId: movimiento.empresaId ? Number(movimiento.empresaId) : 1,
-        moduloOrigenId: movimiento.moduloOrigenId ? Number(movimiento.moduloOrigenId) : 2,
-        documentoOrigenId: movimiento.documentoOrigenId ? Number(movimiento.documentoOrigenId) : null,
+        moduloOrigenId: movimiento.moduloOrigenId
+          ? Number(movimiento.moduloOrigenId)
+          : 2,
+        documentoOrigenId: movimiento.documentoOrigenId
+          ? Number(movimiento.documentoOrigenId)
+          : null,
         responsableId: movimiento.responsableId
           ? Number(movimiento.responsableId)
           : null,
@@ -215,12 +220,6 @@ const DetMovsRendicionGastosForm = ({
           Number(movimiento.enlaceGastosPlanificadosId),
         );
       }
-
-      if (movimiento.tipoMovimiento?.categoria?.id) {
-        setCategoriaSeleccionada(
-          Number(movimiento.tipoMovimiento.categoria.id),
-        );
-      }
     } else {
       if (rendicionGastos) {
         setValue("empresaId", Number(rendicionGastos.empresaId) || 1);
@@ -251,37 +250,39 @@ const DetMovsRendicionGastosForm = ({
         const modulosData = await getModulos();
         setModulos(modulosData || []);
       } catch (error) {
-        console.error("Error al cargar módulos:", error);
+        console.error("❌ [useEffect 2] ERROR al cargar módulos:", error);
+        throw error;
       }
     };
     cargarModulos();
   }, []);
 
   useEffect(() => {
-    if (tipoMovimientoId === 1 || tipoMovimientoId === 2) {
-      setValue("formaParteCalculoEntregaARendir", true);
+    try {
+      if (tipoMovimientoId === 1 || tipoMovimientoId === 2) {
+        setValue("formaParteCalculoEntregaARendir", true);
+      }
+    } catch (error) {
+      console.error("❌ [useEffect 3] ERROR:", error);
+      throw error;
     }
   }, [tipoMovimientoId, setValue]);
 
   useEffect(() => {
-    if (!isEditing) {
-      setCategoriaSeleccionada(10);
-    }
-  }, [isEditing]);
-
-  useEffect(() => {
-    if (!isEditing) {
-      if (formaParteCalculoEntregaARendir === true) {
-        setCategoriaSeleccionada(17);
-        setValue("tipoMovimientoId", 127);
-        setValue("operacionSinFactura", true);
-        setValue("asignacionOrigenId", 0);
-      } else {
-        setCategoriaSeleccionada(10);
-        setValue("tipoMovimientoId", "");
-        setValue("operacionSinFactura", false);
-        setValue("asignacionOrigenId", 0);
+    try {
+      if (!isEditing) {
+        if (formaParteCalculoEntregaARendir === true) {
+          setValue("tipoMovimientoId", 127);
+          setValue("operacionSinFactura", true);
+          setValue("asignacionOrigenId", 0);
+        } else {
+          setValue("tipoMovimientoId", "");
+          setValue("operacionSinFactura", false);
+          setValue("asignacionOrigenId", 0);
+        }
       }
+    } catch (error) {
+      throw error;
     }
   }, [formaParteCalculoEntregaARendir, setValue, isEditing]);
 
@@ -294,8 +295,8 @@ const DetMovsRendicionGastosForm = ({
           });
           setGastosPlanificadosAsignacion(gastos);
         } catch (error) {
-          console.error("Error al cargar gastos planificados:", error);
           setGastosPlanificadosAsignacion([]);
+          throw error;
         }
       } else {
         setGastosPlanificadosAsignacion([]);
@@ -313,13 +314,14 @@ const DetMovsRendicionGastosForm = ({
         const asignaciones = await obtenerTodasAsignacionesNoLiquidadas();
         setAsignacionesNoLiquidadas(asignaciones);
       } catch (error) {
-        console.error("Error al cargar asignaciones no liquidadas:", error);
+        console.error("❌ [useEffect 6] ERROR al cargar asignaciones:", error);
         toast.current?.show({
           severity: "error",
           summary: "Error",
           detail: "No se pudieron cargar las asignaciones",
           life: 3000,
         });
+        throw error;
       }
     };
     cargarAsignaciones();
@@ -333,7 +335,6 @@ const DetMovsRendicionGastosForm = ({
             "RENDICION_GASTOS",
             Number(rendicionGastos.id),
           );
-
           setValue(
             "enlaceAOtroDetalleGastoId",
             valores.enlaceAOtroDetalleGastoId,
@@ -343,7 +344,7 @@ const DetMovsRendicionGastosForm = ({
             setValue("embarcacionId", valores.embarcacionId);
           }
         } catch (error) {
-          console.error("Error al cargar valores iniciales:", error);
+          throw error;
         }
       }
     };
@@ -357,28 +358,66 @@ const DetMovsRendicionGastosForm = ({
         const embarcacionesData = await getEmbarcaciones();
         setEmbarcaciones(embarcacionesData);
       } catch (error) {
-        console.error("Error al cargar embarcaciones:", error);
+        console.error("❌ [useEffect 8] ERROR al cargar embarcaciones:", error);
         toast.current?.show({
           severity: "error",
           summary: "Error",
           detail: "No se pudieron cargar las embarcaciones",
           life: 3000,
         });
+        throw error;
       }
     };
     cargarEmbarcaciones();
   }, []);
 
   useEffect(() => {
-    if (asignacionOrigenId && asignacionOrigenId > 0) {
-      const asignacionOrigen = movimientosAsignacionEntregaRendir.find(
-        (mov) => Number(mov.id) === Number(asignacionOrigenId),
-      );
-      if (asignacionOrigen && asignacionOrigen.centroCostoId) {
-        setValue("centroCostoId", Number(asignacionOrigen.centroCostoId));
+    try {
+      if (asignacionOrigenId && asignacionOrigenId > 0) {
+        const asignacionOrigen = movimientosAsignacionEntregaRendir.find(
+          (mov) => Number(mov.id) === Number(asignacionOrigenId),
+        );
+        if (asignacionOrigen && asignacionOrigen.centroCostoId) {
+          setValue("centroCostoId", Number(asignacionOrigen.centroCostoId));
+        }
       }
+    } catch (error) {
+      throw error;
     }
   }, [asignacionOrigenId, movimientosAsignacionEntregaRendir, setValue]);
+
+  const handleEntidadCreada = async (entidad) => {
+    // ✅ PRIMERO: Recargar entidades comerciales (esperar a que termine)
+    if (
+      onEntidadComercialCreada &&
+      typeof onEntidadComercialCreada === "function"
+    ) {
+      await onEntidadComercialCreada(entidad);
+    }
+
+    // ✅ SEGUNDO: Auto-seleccionar la nueva entidad DESPUÉS de recargar
+    if (entidad && entidad.id) {
+      // Usar setTimeout para asegurar que el dropdown se haya actualizado
+      setTimeout(() => {
+        const entidadIdNumber = Number(entidad.id);
+        setValue("entidadComercialId", entidadIdNumber, {
+          shouldValidate: true,
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+      }, 100);
+    }
+
+    // Mostrar mensaje de éxito
+    if (toast && toast.current) {
+      toast.current.show({
+        severity: "success",
+        summary: "Proveedor Creado",
+        detail: `Proveedor "${entidad.razonSocial || entidad.nombre}" creado y seleccionado exitosamente.`,
+        life: 3000,
+      });
+    }
+  };
 
   const personalOptions = personal.map((p) => ({
     label: p.nombreCompleto || `${p.nombres} ${p.apellidos}`,
@@ -390,32 +429,6 @@ const DetMovsRendicionGastosForm = ({
     value: Number(cc.id),
   }));
 
-  const getCategoriasDisponibles = () => {
-    return categorias.filter((c) => c.tipo === true);
-  };
-
-  const getTiposMovimientoDisponibles = () => {
-    let tiposDisponibles = [...tiposMovimiento];
-    tiposDisponibles = tiposDisponibles.filter((tm) => tm.esIngreso === false);
-    if (categoriaSeleccionada) {
-      tiposDisponibles = tiposDisponibles.filter(
-        (tm) => Number(tm.categoriaId) === Number(categoriaSeleccionada),
-      );
-    }
-    return tiposDisponibles;
-  };
-
-  const categoriaOptions = getCategoriasDisponibles()
-    .filter((cat) => !cat.cesado)
-    .map((cat) => ({
-      label: cat.nombre,
-      value: Number(cat.id),
-    }));
-
-  const tipoMovimientoOptions = getTiposMovimientoDisponibles().map((tm) => ({
-    label: tm.nombre || "N/A",
-    value: Number(tm.id),
-  }));
   const monedaOptions = (monedas || []).map((m) => ({
     label: `${m.simbolo}`,
     value: Number(m.id),
@@ -428,74 +441,6 @@ const DetMovsRendicionGastosForm = ({
         td.activo === false ? `${td.descripcion} (INACTIVO)` : td.descripcion,
       value: Number(td.id),
     }));
-
-  const familiasGastosIds = [2, 3, 4, 6, 7];
-
-  const productosGastos = (productos || []).filter((p) =>
-    familiasGastosIds.includes(Number(p.familiaId)),
-  );
-
-  const familiasMap = new Map();
-  productosGastos.forEach((p) => {
-    if (p.familia && p.familia.id && p.familia.nombre) {
-      const familiaId = Number(p.familia.id);
-      if (
-        familiasGastosIds.includes(familiaId) &&
-        !familiasMap.has(familiaId)
-      ) {
-        familiasMap.set(familiaId, {
-          label: p.familia.nombre,
-          value: familiaId,
-        });
-      }
-    }
-  });
-
-  const familiasUnicas = Array.from(familiasMap.values()).sort((a, b) =>
-    a.label.localeCompare(b.label),
-  );
-
-  const subfamiliasMap = new Map();
-  const productosParaSubfamilias = familiaFiltroId
-    ? productosGastos.filter(
-        (p) => Number(p.familiaId) === Number(familiaFiltroId),
-      )
-    : productosGastos;
-
-  productosParaSubfamilias.forEach((p) => {
-    if (p.subfamilia && p.subfamilia.id && p.subfamilia.nombre) {
-      const subfamiliaId = Number(p.subfamilia.id);
-      if (!subfamiliasMap.has(subfamiliaId)) {
-        subfamiliasMap.set(subfamiliaId, {
-          label: p.subfamilia.nombre,
-          value: subfamiliaId,
-        });
-      }
-    }
-  });
-
-  const subfamiliasUnicas = Array.from(subfamiliasMap.values()).sort((a, b) =>
-    a.label.localeCompare(b.label),
-  );
-
-  let productosFiltrados = productosGastos;
-
-  if (familiaFiltroId) {
-    productosFiltrados = productosFiltrados.filter(
-      (p) => Number(p.familiaId) === Number(familiaFiltroId),
-    );
-  }
-
-  if (subfamiliaFiltroId) {
-    productosFiltrados = productosFiltrados.filter(
-      (p) => Number(p.subfamiliaId) === Number(subfamiliaFiltroId),
-    );
-  }
-
-  const productoOptions = productosFiltrados.map((p) => ({
-    label: p.descripcionArmada || p.descripcionBase || p.codigo,
-    value: Number(p.id),
-  }));
 
   const asignacionOrigenOptions = (
     movimientosAsignacionEntregaRendir || []
@@ -599,8 +544,12 @@ const DetMovsRendicionGastosForm = ({
 
       const datosNormalizados = {
         empresaId: Number(data.empresaId) || 1,
-        moduloOrigenId: data.moduloOrigenId ? Number(data.moduloOrigenId) : null,
-        documentoOrigenId: data.documentoOrigenId ? Number(data.documentoOrigenId) : null,
+        moduloOrigenId: data.moduloOrigenId
+          ? Number(data.moduloOrigenId)
+          : null,
+        documentoOrigenId: data.documentoOrigenId
+          ? Number(data.documentoOrigenId)
+          : null,
         responsableId: data.responsableId ? Number(data.responsableId) : null,
         tipoMovimientoId: data.tipoMovimientoId
           ? Number(data.tipoMovimientoId)
@@ -677,8 +626,7 @@ const DetMovsRendicionGastosForm = ({
 
   const formularioDeshabilitado = getValues("validadoTesoreria");
 
-
-    return (
+  return (
     <div className="p-fluid">
       <Toast ref={toast} />
       {cardActiva === "datos" && (
@@ -798,63 +746,24 @@ const DetMovsRendicionGastosForm = ({
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label
-                  htmlFor="categoriaSeleccionada"
-                  className="block text-900 font-medium mb-2"
-                >
-                  Seleccione categoría
-                </label>
-                <Dropdown
-                  id="categoriaSeleccionada"
-                  value={categoriaSeleccionada}
-                  options={categoriaOptions}
-                  onChange={(e) => {
-                    setCategoriaSeleccionada(e.value);
-                    setValue("tipoMovimientoId", "");
-                  }}
-                  placeholder="Todas las categorías"
-                  showClear
-                  filter
-                  style={{ fontWeight: "bold" }}
-                  disabled={formularioDeshabilitado}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label
-                  htmlFor="tipoMovimientoId"
-                  className="block text-900 font-medium mb-2"
-                >
-                  Tipo de Movimiento *
-                </label>
                 <Controller
                   name="tipoMovimientoId"
                   control={control}
                   rules={{ required: "El tipo de movimiento es obligatorio" }}
                   render={({ field }) => (
-                    <Dropdown
-                      id="tipoMovimientoId"
-                      {...field}
+                    <TipoMovimientoSelector
+                      tiposMovimiento={tiposMovimiento}
                       value={field.value}
-                      options={tipoMovimientoOptions}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccione tipo"
-                      className={classNames({
-                        "p-invalid": errors.tipoMovimientoId,
-                      })}
-                      filter
-                      showClear
-                      style={{ fontWeight: "bold" }}
+                      onChange={field.onChange}
                       disabled={formularioDeshabilitado}
+                      required={true}
+                      error={!!errors.tipoMovimientoId}
+                      errorMessage={errors.tipoMovimientoId?.message}
+                      placeholder="Buscar tipo de movimiento..."
+                      filterFunction={(tm) => tm.esIngreso === false}
                     />
                   )}
                 />
-                {errors.tipoMovimientoId && (
-                  <Message
-                    severity="error"
-                    text={errors.tipoMovimientoId.message}
-                  />
-                )}
               </div>
             </div>
 
@@ -929,10 +838,11 @@ const DetMovsRendicionGastosForm = ({
                   display: "flex",
                   gap: 10,
                   marginBottom: "0.5rem",
+                  alignItems:"end",
                   flexDirection: window.innerWidth < 768 ? "column" : "row",
                 }}
               >
-                <div style={{ flex: 2 }}>
+                <div style={{ flex: 1 }}>
                   <label htmlFor="entidadComercialId">
                     Entidad Comercial <span className="text-red-500">*</span>
                   </label>
@@ -966,86 +876,40 @@ const DetMovsRendicionGastosForm = ({
                     />
                   )}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor="familiaFiltro"
-                    className="block text-900 font-medium mb-2"
-                  >
-                    Filtrar Gastos por Familia
-                  </label>
-                  <Dropdown
-                    id="familiaFiltro"
-                    value={familiaFiltroId}
-                    options={familiasUnicas}
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Todas las familias"
-                    onChange={(e) => {
-                      setFamiliaFiltroId(e.value);
-                      setSubfamiliaFiltroId(null);
-                    }}
-                    showClear
-                    filter
-                    style={{ fontWeight: "bold" }}
+                <div style={{ flex: 0.60 }}>
+                  <CrearEntidadComercialButton
+                    empresaId={getValues("empresaId")}
+                    tipoEntidad="proveedor"
+                    onEntidadCreada={handleEntidadCreada}
+                    label="Crear Proveedor"
+                    icon="pi pi-building"
+                    severity="info"
+                    outlined={true}
                     disabled={formularioDeshabilitado}
+                    className="w-full mt-2"
+                    toast={toast}
                   />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor="subfamiliaFiltro"
-                    className="block text-900 font-medium mb-2"
-                  >
-                    Filtrar por Subfamilia
-                  </label>
-                  <Dropdown
-                    id="subfamiliaFiltro"
-                    value={subfamiliaFiltroId}
-                    options={subfamiliasUnicas}
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Todas las subfamilias"
-                    onChange={(e) => setSubfamiliaFiltroId(e.value)}
-                    showClear
-                    filter
-                    style={{ fontWeight: "bold" }}
-                    disabled={formularioDeshabilitado || !familiaFiltroId}
-                  />
-                </div>
+
                 <div style={{ flex: 2 }}>
-                  <label
-                    htmlFor="productoId"
-                    className="block text-900 font-medium mb-2"
-                  >
-                    Gasto
-                  </label>
                   <Controller
                     name="productoId"
                     control={control}
                     render={({ field }) => (
-                      <Dropdown
-                        id="productoId"
-                        {...field}
+                      <ProductoSelector
+                        productos={productos}
                         value={field.value}
-                        options={productoOptions}
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Seleccione producto/gasto"
-                        className={classNames({
-                          "p-invalid": errors.productoId,
-                        })}
-                        filter
-                        showClear
-                        style={{ fontWeight: "bold" }}
+                        onChange={(value) => {
+                          field.onChange(value);
+                        }}
                         disabled={formularioDeshabilitado}
+                        required={false}
+                        error={!!errors.productoId}
+                        errorMessage={errors.productoId?.message}
+                        placeholder="Buscar producto (gasto)..."
                       />
                     )}
                   />
-                  {errors.productoId && (
-                    <Message
-                      severity="error"
-                      text={errors.productoId.message}
-                    />
-                  )}
                 </div>
               </div>
             )}
@@ -1294,7 +1158,7 @@ const DetMovsRendicionGastosForm = ({
                 </label>
                 <Button
                   type="button"
-                  label={operacionSinFactura ? "S/FACTURA" : "C/FACTURA"}
+                  label={operacionSinFactura ? "S/COMPROBANTE" : "C/COMPROBANTE"}
                   icon={
                     operacionSinFactura
                       ? "pi pi-exclamation-triangle"
@@ -1378,7 +1242,7 @@ const DetMovsRendicionGastosForm = ({
                     htmlFor="tipoDocumentoId"
                     className="block text-900 font-medium mb-2"
                   >
-                    Tipo Documento
+                    TipO Comprobante
                   </label>
                   <Controller
                     name="tipoDocumentoId"
@@ -1713,14 +1577,6 @@ const DetMovsRendicionGastosForm = ({
                 );
                 if (response.ok) {
                   const movimientoActualizado = await response.json();
-                  console.log("🔍 MOVIMIENTO RECIBIDO DEL BACKEND:", {
-                    id: movimientoActualizado.id,
-                    saldoInicialAsignacion:
-                      movimientoActualizado.saldoInicialAsignacion,
-                    saldoFinalAsignacion:
-                      movimientoActualizado.saldoFinalAsignacion,
-                    todoElObjeto: movimientoActualizado,
-                  });
                   setValue(
                     "saldoInicialAsignacion",
                     movimientoActualizado.saldoInicialAsignacion,

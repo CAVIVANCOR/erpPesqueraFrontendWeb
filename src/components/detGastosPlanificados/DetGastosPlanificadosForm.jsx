@@ -4,7 +4,7 @@
  * Maneja gastos planificados para diferentes tipos de entregas a rendir.
  *
  * @author ERP Megui
- * @version 1.0.0
+ * @version 1.0.1 - CON DIAGNÓSTICO
  */
 
 import React, { useState, useEffect } from "react";
@@ -14,6 +14,7 @@ import { InputNumber } from "primereact/inputnumber";
 import { InputTextarea } from "primereact/inputtextarea";
 import { classNames } from "primereact/utils";
 import { useForm, Controller } from "react-hook-form";
+import ProductoSelector from "../common/ProductoSelector";
 import {
   crearGastoPlanificado,
   actualizarGastoPlanificado,
@@ -26,8 +27,6 @@ import {
  * @param {Object} [props.gastoPlanificado] - Datos del gasto planificado a editar (opcional)
  * @param {Array} props.productos - Lista de productos (gastos) disponibles
  * @param {Array} props.monedas - Lista de monedas disponibles
- * @param {Array} props.familias - Lista de familias de productos
- * @param {Array} props.subfamilias - Lista de subfamilias de productos
  * @param {Object} props.entregaRendirData - Datos de la entrega a rendir (contiene el tipo y ID)
  * @param {Function} props.onSave - Función a ejecutar al guardar el formulario
  * @param {Function} props.onCancel - Función a ejecutar al cancelar
@@ -37,8 +36,6 @@ const DetGastosPlanificadosForm = ({
   gastoPlanificado,
   productos,
   monedas,
-  familias = [],
-  subfamilias = [],
   monedaIdCabecera = null,
   entregaRendirData,
   onSave,
@@ -47,10 +44,7 @@ const DetGastosPlanificadosForm = ({
   readOnly = false,
 }) => {
   const [loading, setLoading] = useState(false);
-  const [familiaSeleccionada, setFamiliaSeleccionada] = useState(6); // Default: Gastos (id=6)
-  const [subfamiliaSeleccionada, setSubfamiliaSeleccionada] = useState(null);
   const isEdit = !!gastoPlanificado?.id;
-
   const {
     control,
     handleSubmit,
@@ -68,45 +62,39 @@ const DetGastosPlanificadosForm = ({
 
   // Cargar datos si es edición
   useEffect(() => {
-    if (gastoPlanificado) {
-      setValue(
-        "productoId",
-        gastoPlanificado.productoId
+    if (isEdit && gastoPlanificado) {
+      // Modo edición: cargar todos los datos del gasto planificado
+      reset({
+        productoId: gastoPlanificado.productoId
           ? Number(gastoPlanificado.productoId)
           : null,
-      );
-      setValue(
-        "monedaId",
-        gastoPlanificado.monedaId ? Number(gastoPlanificado.monedaId) : null,
-      );
-      setValue("montoPlanificado", gastoPlanificado.montoPlanificado || 0);
-      setValue("descripcion", gastoPlanificado.descripcion || "");
+        monedaId: gastoPlanificado.monedaId
+          ? Number(gastoPlanificado.monedaId)
+          : monedaIdCabecera
+            ? Number(monedaIdCabecera)
+            : null,
+        montoPlanificado: Number(gastoPlanificado.montoPlanificado) || 0,
+        descripcion: gastoPlanificado.descripcion || "",
+      });
 
-      // Cargar familia y subfamilia del producto si existe
-      if (gastoPlanificado.producto) {
-        if (gastoPlanificado.producto.familiaId) {
-          setFamiliaSeleccionada(Number(gastoPlanificado.producto.familiaId));
-        }
-        if (gastoPlanificado.producto.subfamiliaId) {
-          setSubfamiliaSeleccionada(
-            Number(gastoPlanificado.producto.subfamiliaId),
-          );
-        }
-      }
     } else {
+
+      // Modo creación: valores por defecto
       reset({
         productoId: null,
         monedaId: monedaIdCabecera ? Number(monedaIdCabecera) : null,
         montoPlanificado: 0,
         descripcion: "",
       });
+
     }
-  }, [gastoPlanificado, setValue, reset]);
+  }, [gastoPlanificado, isEdit, monedaIdCabecera, reset]);
 
   /**
    * Maneja el envío del formulario
    */
   const onSubmit = async (data) => {
+
     try {
       setLoading(true);
 
@@ -119,6 +107,7 @@ const DetGastosPlanificadosForm = ({
         // Agregar el FK correspondiente según el tipo de entrega
         ...entregaRendirData,
       };
+
 
       let resultado;
       if (gastoPlanificado?.id) {
@@ -141,12 +130,12 @@ const DetGastosPlanificadosForm = ({
           detail: "Gasto planificado creado correctamente",
         });
       }
+
       // Llamar callback de éxito
       if (onSave) {
         onSave(resultado);
       }
     } catch (error) {
-      console.error("Error al guardar el gasto planificado:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -169,139 +158,51 @@ const DetGastosPlanificadosForm = ({
     );
   };
 
-  // Preparar opciones de subfamilias - Filtradas por familia seleccionada
-  const subfamiliasFiltradas = familiaSeleccionada
-    ? subfamilias.filter(
-        (s) => Number(s.familiaId) === Number(familiaSeleccionada),
-      )
-    : subfamilias;
-
-  const subfamiliasOptions = subfamiliasFiltradas.map((s) => ({
-    label: s.nombre,
-    value: Number(s.id),
-  }));
-
-  // Preparar opciones de productos - Filtrados por subfamilia seleccionada
-  const productosFiltrados = subfamiliaSeleccionada
-    ? productos.filter(
-        (p) => Number(p.subfamiliaId) === Number(subfamiliaSeleccionada),
-      )
-    : productos;
-
-  const productosOptions = productosFiltrados.map((p) => ({
-    label: `${p.descripcionArmada || p.nombre} - ${p.empresa?.razonSocial || "Sin empresa"}`,
-    value: Number(p.id),
-  }));
-
   // Preparar opciones de monedas
   const monedasOptions = monedas.map((m) => ({
     label: m.codigoSunat,
     value: Number(m.id),
   }));
 
-  // Preparar opciones de familias
-  const familiasOptions = familias.map((f) => ({
-    label: f.nombre,
-    value: Number(f.id),
-  }));
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmit(onSubmit)(e);
+      }}
+      className="p-fluid"
+    >
       <div
         style={{
           display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
+          gap: "1rem",
+          marginBottom: "1rem",
+          flexWrap: "wrap",
         }}
       >
         <div style={{ flex: 1 }}>
-          <label htmlFor="familiaId" className="font-medium">
-            Familia <span className="text-red-500">*</span>
-          </label>
-          <Dropdown
-            id="familiaId"
-            value={familiaSeleccionada}
-            onChange={(e) => {
-              setFamiliaSeleccionada(e.value);
-              // Limpiar subfamilia y producto al cambiar familia
-              setSubfamiliaSeleccionada(null);
-              setValue("productoId", null);
-            }}
-            options={familiasOptions}
-            disabled={readOnly || loading}
-            placeholder="Seleccione una familia"
-            filter
-            showClear
-            style={{ fontWeight: "bold" }}
-          />
-        </div>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="subfamiliaId" className="font-medium">
-            Subfamilia <span className="text-red-500">*</span>
-          </label>
-          <Dropdown
-            id="subfamiliaId"
-            value={subfamiliaSeleccionada}
-            onChange={(e) => {
-              setSubfamiliaSeleccionada(e.value);
-              // Limpiar producto seleccionado al cambiar subfamilia
-              setValue("productoId", null);
-            }}
-            options={subfamiliasOptions}
-            disabled={readOnly || loading || !familiaSeleccionada}
-            placeholder="Seleccione una subfamilia"
-            filter
-            showClear
-            style={{ fontWeight: "bold" }}
-          />
-        </div>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label
-            htmlFor="productoId"
-            className={classNames("font-medium", {
-              "p-error": errors.productoId,
-            })}
-          >
-            Producto (Gasto) <span className="text-red-500">*</span>
-          </label>
           <Controller
             name="productoId"
             control={control}
             rules={{
               required: "El producto es requerido",
             }}
-            render={({ field, fieldState }) => (
-              <Dropdown
-                id={field.name}
+            render={({ field }) => (
+              <ProductoSelector
+                productos={productos}
                 value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                options={productosOptions}
-                className={classNames({ "p-invalid": fieldState.error })}
-                disabled={readOnly || loading || !subfamiliaSeleccionada}
-                placeholder="Seleccione un producto"
-                filter
-                showClear
-                style={{ fontWeight: "bold" }}
+                onChange={(value) => {
+                  field.onChange(value);
+                }}
+                disabled={readOnly || loading}
+                required={true}
+                error={!!errors.productoId}
+                errorMessage={errors.productoId?.message}
+                placeholder="Buscar producto (gasto)..."
               />
             )}
           />
-          {getFormErrorMessage("productoId")}
         </div>
       </div>
       <div
@@ -330,7 +231,9 @@ const DetGastosPlanificadosForm = ({
               <Dropdown
                 id={field.name}
                 value={field.value}
-                onChange={(e) => field.onChange(e.value)}
+                onChange={(e) => {
+                  field.onChange(e.value);
+                }}
                 options={monedasOptions}
                 className={classNames({ "p-invalid": fieldState.error })}
                 disabled={readOnly || loading}
@@ -366,7 +269,9 @@ const DetGastosPlanificadosForm = ({
                 <InputNumber
                   id={field.name}
                   value={field.value}
-                  onValueChange={(e) => field.onChange(e.value)}
+                  onValueChange={(e) => {
+                    field.onChange(e.value);
+                  }}
                   className={classNames({ "p-invalid": fieldState.error })}
                   disabled={readOnly || loading}
                   mode="decimal"
@@ -382,6 +287,7 @@ const DetGastosPlanificadosForm = ({
           {getFormErrorMessage("montoPlanificado")}
         </div>
       </div>
+
       <div
         style={{
           display: "flex",
@@ -400,7 +306,9 @@ const DetGastosPlanificadosForm = ({
               <InputTextarea
                 id={field.name}
                 value={field.value || ""}
-                onChange={field.onChange}
+                onChange={(e) => {
+                  field.onChange(e);
+                }}
                 disabled={readOnly || loading}
                 rows={3}
                 placeholder="Descripción adicional del gasto planificado"
@@ -423,7 +331,11 @@ const DetGastosPlanificadosForm = ({
           type="button"
           label="Cancelar"
           icon="pi pi-times"
-          onClick={onCancel}
+          onClick={() => {
+            if (onCancel) {
+              onCancel();
+            }
+          }}
           disabled={loading}
           className="p-button-warning"
           severity="warning"
@@ -437,7 +349,10 @@ const DetGastosPlanificadosForm = ({
           icon="pi pi-check"
           loading={loading}
           disabled={loading}
-          onClick={handleSubmit(onSubmit)}
+          onClick={(e) => {
+            e.preventDefault();
+            handleSubmit(onSubmit)();
+          }}
           className="p-button-success"
           severity="success"
           raised

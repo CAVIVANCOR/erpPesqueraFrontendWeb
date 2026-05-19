@@ -1,6 +1,6 @@
 // src/pages/RendicionGastos/RendicionGastosList.jsx
 // Página principal del módulo de Rendición de Gastos
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -115,6 +115,16 @@ export default function RendicionGastosList({ ruta }) {
     }
   };
 
+  // ✅ Función para recargar entidades comerciales cuando se crea una nueva
+  const handleEntidadComercialCreada = async (entidad) => {
+    try {
+      const entidadesComercialesData = await getEntidadesComerciales();
+      setEntidadesComerciales(entidadesComercialesData || []);
+    } catch (error) {
+      console.error("Error al recargar entidades comerciales:", error);
+    }
+  };
+
   // Calcular saldos A Rendir
   useEffect(() => {
     const calcularSaldos = () => {
@@ -158,14 +168,16 @@ export default function RendicionGastosList({ ruta }) {
   }, [movimientos]);
 
   // Filtrar movimientos que son asignaciones
-  const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
-    (mov) =>
-      mov.formaParteCalculoEntregaARendir === true &&
-      (mov.asignacionOrigenId === null ||
-        mov.asignacionOrigenId === undefined ||
-        Number(mov.asignacionOrigenId) === 0) &&
-      (!editingMovimiento || Number(mov.id) !== Number(editingMovimiento.id)),
-  );
+  const movimientosAsignacionEntregaRendir = useMemo(() => {
+    return (movimientos || []).filter(
+      (mov) =>
+        mov.formaParteCalculoEntregaARendir === true &&
+        (mov.asignacionOrigenId === null ||
+          mov.asignacionOrigenId === undefined ||
+          Number(mov.asignacionOrigenId) === 0) &&
+        (!editingMovimiento || Number(mov.id) !== Number(editingMovimiento.id)),
+    );
+  }, [movimientos, editingMovimiento]);
 
   // Función para obtener movimientos filtrados
   const obtenerMovimientosFiltrados = () => {
@@ -514,13 +526,6 @@ export default function RendicionGastosList({ ruta }) {
     );
   };
 
-  const centroCostoTemplate = (rowData) => {
-    const centro = centrosCosto.find(
-      (c) => Number(c.id) === Number(rowData.centroCostoId),
-    );
-    return centro ? centro.Codigo + " - " + centro.Nombre : "N/A";
-  };
-
   const entidadComercialTemplate = (rowData) => {
     if (!rowData.entidadComercialId) return "N/A";
 
@@ -528,25 +533,6 @@ export default function RendicionGastosList({ ruta }) {
       (e) => Number(e.id) === Number(rowData.entidadComercialId),
     );
     return entidad ? entidad.razonSocial : "N/A";
-  };
-
-  const gastoPlanificadoTemplate = (rowData) => {
-    if (!rowData.enlaceGastoPlanificado) {
-      return (
-        <span style={{ color: "#999", fontStyle: "italic" }}>
-          Sin gasto planificado
-        </span>
-      );
-    }
-
-    const descripcion =
-      rowData.enlaceGastoPlanificado.producto?.descripcionArmada ||
-      rowData.enlaceGastoPlanificado.producto?.nombre ||
-      "N/A";
-
-    return (
-      <div style={{ fontSize: "0.85rem", color: "#666" }}>{descripcion}</div>
-    );
   };
 
   const validacionTesoreriaTemplate = (rowData) => {
@@ -857,9 +843,11 @@ export default function RendicionGastosList({ ruta }) {
             style={{ width: "50px", textAlign: "center" }}
           />
           <Column
-            field="detalleGastosPlanificados"
-            header="Gasto Planificado"
-            body={gastoPlanificadoTemplate}
+            field="producto.descripcionArmada"
+            header="Producto/Gasto"
+            body={(rowData) =>
+              rowData.producto?.descripcionArmada || "Sin producto"
+            }
             sortable
           />
           <Column
@@ -887,6 +875,7 @@ export default function RendicionGastosList({ ruta }) {
         closable={false}
         maximizable
         maximized={true}
+        
       >
         <DetMovsRendicionGastosForm
           movimiento={editingMovimiento}
@@ -908,6 +897,7 @@ export default function RendicionGastosList({ ruta }) {
             setEditingMovimiento(null);
             cargarDatos();
           }}
+          onEntidadComercialCreada={handleEntidadComercialCreada}
           permisos={permisos}
         />
       </Dialog>

@@ -81,8 +81,7 @@ const DatosGeneralesContratoCard = ({
   const clientesFiltrados = formData.empresaId
     ? clientes.filter(
         (c) =>
-          Number(c.empresaId) === Number(formData.empresaId) &&
-          Number(c.tipoEntidadId) === 15,
+          Number(c.empresaId) === Number(formData.empresaId)
       )
     : [];
 

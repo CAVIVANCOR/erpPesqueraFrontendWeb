@@ -2,11 +2,10 @@
  * Tabla reutilizable para gestión de Gastos Planificados
  * Componente que puede usarse tanto standalone como embebido en otros módulos
  * Implementa el patrón estándar ERP Megui con DataTable y gestión completa
- *
  * @author ERP Megui
  * @version 1.0.0
  */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { ColumnGroup } from "primereact/columngroup";
@@ -22,9 +21,12 @@ import { getProductos } from "../../api/producto";
 import { getAllMonedas } from "../../api/moneda";
 import DetGastosPlanificadosForm from "./DetGastosPlanificadosForm";
 import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
-import { getFamiliasProducto } from "../../api/familiaProducto";
-import { getSubfamiliasProducto } from "../../api/subfamiliaProducto";
-
+// Colores específicos para Familia, Subfamilia y Producto (coherencia con ProductoSelector)
+const COLORES_TEXTO = {
+  familia: "#1976D2", // 🔵 Azul
+  subfamilia: "#2E7D32", // 🟢 Verde
+  producto: "#8B0000", // 🍷 Rojo oscuro conche vino
+};
 /**
  * Componente DetGastosPlanificadosTable
  * Tabla reutilizable para gestión de gastos planificados
@@ -44,8 +46,6 @@ const DetGastosPlanificadosTable = ({
   const [gastosPlanificados, setGastosPlanificados] = useState([]);
   const [productos, setProductos] = useState([]);
   const [monedas, setMonedas] = useState([]);
-  const [familias, setFamilias] = useState([]);
-  const [subfamilias, setSubfamilias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogoVisible, setDialogoVisible] = useState(false);
   const [gastoSeleccionado, setGastoSeleccionado] = useState(null);
@@ -53,7 +53,6 @@ const DetGastosPlanificadosTable = ({
     visible: false,
     row: null,
   });
-
   /**
    * Carga los gastos planificados desde la API
    */
@@ -73,7 +72,6 @@ const DetGastosPlanificadosTable = ({
       setLoading(false);
     }
   };
-
   /**
    * Carga los productos desde la API
    */
@@ -85,7 +83,6 @@ const DetGastosPlanificadosTable = ({
       console.error("Error al cargar productos:", error);
     }
   };
-
   /**
    * Carga las monedas desde la API
    */
@@ -97,34 +94,12 @@ const DetGastosPlanificadosTable = ({
       console.error("Error al cargar monedas:", error);
     }
   };
-
   /**
-   * Carga las familias desde la API
+   * Memorizar el valor serializado de entregaRendirData para evitar loops infinitos
    */
-  const cargarFamilias = async () => {
-    try {
-      const data = await getFamiliasProducto();
-      // Filtrar: excluir Mercadería (id=1) y Servicios (id=5)
-      const familiasFiltradas = data.filter(
-        (f) => Number(f.id) !== 1 && Number(f.id) !== 5,
-      );
-      setFamilias(familiasFiltradas);
-    } catch (error) {
-      console.error("Error al cargar familias:", error);
-    }
-  };
-
-  /**
-   * Carga las subfamilias desde la API
-   */
-  const cargarSubfamilias = async () => {
-    try {
-      const data = await getSubfamiliasProducto();
-      setSubfamilias(data);
-    } catch (error) {
-      console.error("Error al cargar subfamilias:", error);
-    }
-  };
+  const entregaRendirDataKey = useMemo(() => {
+    return JSON.stringify(entregaRendirData);
+  }, [entregaRendirData]);
 
   /**
    * Efecto para cargar datos al montar el componente
@@ -134,10 +109,8 @@ const DetGastosPlanificadosTable = ({
       cargarGastosPlanificados();
       cargarProductos();
       cargarMonedas();
-      cargarFamilias();
-      cargarSubfamilias();
     }
-  }, [entregaRendirData]);
+  }, [entregaRendirDataKey]);
 
   /**
    * Abre el diálogo para crear nuevo gasto planificado
@@ -199,31 +172,86 @@ const DetGastosPlanificadosTable = ({
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail:
-          error.response?.data?.message ||
-          "Error al eliminar el gasto planificado",
+        detail: "Error al eliminar el gasto planificado",
       });
     }
   };
 
   /**
-   * Template para el monto planificado
+   * Template para mostrar el producto
+   */
+  const productoTemplate = (rowData) => {
+    return (
+      <span style={{ color: COLORES_TEXTO.producto, fontWeight: "bold" }}>
+        {rowData.producto?.descripcionBase ||
+          rowData.producto?.descripcionArmada ||
+          "N/A"}
+      </span>
+    );
+  };
+  /**
+   * Template para mostrar la familia
+   */
+  const familiaTemplate = (rowData) => {
+    return (
+      <span style={{ color: COLORES_TEXTO.familia, fontWeight: "bold" }}>
+        {rowData.producto?.familia?.nombre || "Sin familia"}
+      </span>
+    );
+  };
+
+  /**
+   * Template para mostrar la subfamilia
+   */
+  const subfamiliaTemplate = (rowData) => {
+    return (
+      <span style={{ color: COLORES_TEXTO.subfamilia, fontWeight: "bold" }}>
+        {rowData.producto?.subfamilia?.nombre || "Sin subfamilia"}
+      </span>
+    );
+  };
+  /**
+   * Template para mostrar el monto
    */
   const montoTemplate = (rowData) => {
     const simbolo = rowData.moneda?.simbolo || "";
-    const monto = formatearNumero(rowData.montoPlanificado, 2);
-    return `${simbolo} ${monto}`;
+    return `${simbolo} ${formatearNumero(rowData.montoPlanificado)}`;
   };
 
   /**
-   * Template para el producto
+   * Template para las acciones
    */
-  const productoTemplate = (rowData) => {
-    return rowData.producto?.descripcionArmada || rowData.producto?.nombre || "";
+  const accionesTemplate = (rowData) => {
+    return (
+      <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
+        {!readOnly && permisos.puedeEditar && (
+          <Button
+            icon="pi pi-pencil"
+            className="p-button-rounded p-button-warning"
+            onClick={() => editarGasto(rowData)}
+            tooltip="Editar"
+            tooltipOptions={{ position: "top" }}
+            size="small"
+            type="button"
+          />
+        )}
+        {!readOnly && permisos.puedeEliminar && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-rounded p-button-danger"
+            onClick={() => confirmarEliminacion(rowData)}
+            tooltip="Eliminar"
+            tooltipOptions={{ position: "top" }}
+            size="small"
+            type="button"
+          />
+        )}
+      </div>
+    );
   };
 
   /**
-   * Calcula el total de montos planificados
+   * Calcular el total de montos planificados
    */
   const calcularTotal = () => {
     return gastosPlanificados.reduce(
@@ -239,8 +267,8 @@ const DetGastosPlanificadosTable = ({
     <ColumnGroup>
       <Row>
         <Column
-          footer="TOTAL"
-          colSpan={2}
+          footer="Total:"
+          colSpan={4}
           footerStyle={{
             textAlign: "right",
             fontWeight: "bold",
@@ -248,7 +276,7 @@ const DetGastosPlanificadosTable = ({
           }}
         />
         <Column
-          footer={`S/. ${formatearNumero(calcularTotal(), 2)}`}
+          footer={`${monedas.find((m) => m.id === monedaIdCabecera)?.simbolo || ""} ${formatearNumero(calcularTotal())}`}
           footerStyle={{
             textAlign: "right",
             fontWeight: "bold",
@@ -260,53 +288,12 @@ const DetGastosPlanificadosTable = ({
     </ColumnGroup>
   );
 
-  /**
-   * Template para acciones
-   */
-  const accionesTemplate = (rowData) => (
-    <div onClick={(e) => e.stopPropagation()}>
-      <Button
-        icon="pi pi-pencil"
-        className="p-button-rounded p-button-text p-button-info"
-        style={{ marginRight: 8 }}
-        disabled={readOnly || (!permisos.puedeVer && !permisos.puedeEditar)}
-        onClick={() => {
-          if (!readOnly && (permisos.puedeVer || permisos.puedeEditar)) {
-            editarGasto(rowData);
-          }
-        }}
-        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
-      />
-      <Button
-        icon="pi pi-trash"
-        className="p-button-rounded p-button-text p-button-danger"
-        disabled={readOnly || !permisos.puedeEliminar}
-        onClick={() => {
-          if (!readOnly && permisos.puedeEliminar) {
-            confirmarEliminacion(rowData);
-          }
-        }}
-        tooltip="Eliminar"
-      />
-    </div>
-  );
-
   return (
     <>
       <ConfirmDialog
         visible={confirmState.visible}
         onHide={() => setConfirmState({ visible: false, row: null })}
-        message={
-          <span>
-            ¿Está seguro que desea{" "}
-            <span style={{ color: "#b71c1c" }}>eliminar</span> este gasto
-            planificado?
-            <br />
-            <span style={{ fontWeight: 400, color: "#b71c1c" }}>
-              Esta acción no se puede deshacer.
-            </span>
-          </span>
-        }
+        message="¿Está seguro de eliminar este gasto planificado?"
         header="Confirmar Eliminación"
         icon="pi pi-exclamation-triangle"
         accept={eliminarGasto}
@@ -351,10 +338,25 @@ const DetGastosPlanificadosTable = ({
           size="small"
         >
           <Column
-            field="producto.descripcionArmada"
+            field="producto.familia.nombre"
+            header="Familia"
+            body={familiaTemplate}
+            sortable
+            style={{ fontSize: getResponsiveFontSize(), minWidth: "100px" }}
+          />
+          <Column
+            field="producto.subfamilia.nombre"
+            header="Subfamilia"
+            body={subfamiliaTemplate}
+            sortable
+            style={{ fontSize: getResponsiveFontSize(), minWidth: "100px" }}
+          />
+          <Column
+            field="producto.descripcionBase"
             header="Producto (Gasto)"
             body={productoTemplate}
-            style={{ fontSize: getResponsiveFontSize() }}
+            sortable
+            style={{ fontSize: getResponsiveFontSize(), minWidth: "150px" }}
           />
           <Column
             field="descripcion"
@@ -394,8 +396,6 @@ const DetGastosPlanificadosTable = ({
           gastoPlanificado={gastoSeleccionado}
           productos={productos}
           monedas={monedas}
-          familias={familias}
-          subfamilias={subfamilias}
           monedaIdCabecera={monedaIdCabecera}
           entregaRendirData={entregaRendirData}
           onSave={onGuardar}
