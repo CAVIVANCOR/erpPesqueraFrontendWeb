@@ -259,27 +259,28 @@ const DetMovsRendicionGastosForm = ({
 
   useEffect(() => {
     try {
-      if (tipoMovimientoId === 1 || tipoMovimientoId === 2) {
+      const tipoMovSeleccionado = tiposMovimiento.find(
+        (t) => Number(t.id) === Number(tipoMovimientoId),
+      );
+
+      if (
+        tipoMovSeleccionado &&
+        Number(tipoMovSeleccionado.categoriaId) === 17
+      ) {
         setValue("formaParteCalculoEntregaARendir", true);
+        setValue("asignacionOrigenId", 0);
       }
     } catch (error) {
       console.error("❌ [useEffect 3] ERROR:", error);
       throw error;
     }
-  }, [tipoMovimientoId, setValue]);
+  }, [tipoMovimientoId, setValue, tiposMovimiento]);
 
   useEffect(() => {
     try {
-      if (!isEditing) {
-        if (formaParteCalculoEntregaARendir === true) {
-          setValue("tipoMovimientoId", 127);
-          setValue("operacionSinFactura", true);
-          setValue("asignacionOrigenId", 0);
-        } else {
-          setValue("tipoMovimientoId", "");
-          setValue("operacionSinFactura", false);
-          setValue("asignacionOrigenId", 0);
-        }
+      if (!isEditing && formaParteCalculoEntregaARendir === true) {
+        setValue("operacionSinFactura", true);
+        setValue("asignacionOrigenId", 0);
       }
     } catch (error) {
       throw error;
@@ -775,8 +776,8 @@ const DetMovsRendicionGastosForm = ({
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              {tipoMovimientoId !== 127 &&
-                formaParteCalculoEntregaARendir === true && (
+              {formaParteCalculoEntregaARendir === true &&
+                asignacionOrigenId !== 0 && (
                   <div style={{ flex: 1 }}>
                     <label>Asignación Origen</label>
                     <Controller
@@ -838,7 +839,7 @@ const DetMovsRendicionGastosForm = ({
                   display: "flex",
                   gap: 10,
                   marginBottom: "0.5rem",
-                  alignItems:"end",
+                  alignItems: "end",
                   flexDirection: window.innerWidth < 768 ? "column" : "row",
                 }}
               >
@@ -876,7 +877,7 @@ const DetMovsRendicionGastosForm = ({
                     />
                   )}
                 </div>
-                <div style={{ flex: 0.60 }}>
+                <div style={{ flex: 0.6 }}>
                   <CrearEntidadComercialButton
                     empresaId={getValues("empresaId")}
                     tipoEntidad="proveedor"
@@ -1158,7 +1159,9 @@ const DetMovsRendicionGastosForm = ({
                 </label>
                 <Button
                   type="button"
-                  label={operacionSinFactura ? "S/COMPROBANTE" : "C/COMPROBANTE"}
+                  label={
+                    operacionSinFactura ? "S/COMPROBANTE" : "C/COMPROBANTE"
+                  }
                   icon={
                     operacionSinFactura
                       ? "pi pi-exclamation-triangle"

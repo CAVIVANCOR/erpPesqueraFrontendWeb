@@ -8,7 +8,7 @@ import { Dropdown } from "primereact/dropdown";
 import { Badge } from "primereact/badge";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
-import { confirmDialog } from "primereact/confirmdialog";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import DetMovsRendicionGastosForm from "../../components/rendicionGastos/DetMovsRendicionGastosForm";
 import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 import {
@@ -578,38 +578,47 @@ export default function RendicionGastosList({ ruta }) {
       </div>
     );
   };
+  const saldoInicialAsignacionTemplate = (rowData) => {
+    if (
+      !rowData.saldoInicialAsignacion &&
+      rowData.saldoInicialAsignacion !== 0
+    ) {
+      return "";
+    }
+
+    const moneda = monedas.find(
+      (m) => Number(m.id) === Number(rowData.monedaId),
+    );
+
+    return (
+      <div style={{ textAlign: "right", fontWeight: "bold" }}>
+        {moneda?.simbolo || ""}{" "}
+        {formatearNumero(rowData.saldoInicialAsignacion, 2)}
+      </div>
+    );
+  };
+
+  const saldoFinalAsignacionTemplate = (rowData) => {
+    if (!rowData.saldoFinalAsignacion && rowData.saldoFinalAsignacion !== 0) {
+      return "";
+    }
+
+    const moneda = monedas.find(
+      (m) => Number(m.id) === Number(rowData.monedaId),
+    );
+
+    return (
+      <div style={{ textAlign: "right", fontWeight: "bold" }}>
+        {moneda?.simbolo || ""}{" "}
+        {formatearNumero(rowData.saldoFinalAsignacion, 2)}
+      </div>
+    );
+  };
 
   return (
     <div style={{ padding: "1rem" }}>
       <Toast ref={toast} />
-
-      <div
-        style={{
-          backgroundColor: "#f8f9fa",
-          padding: "1.5rem",
-          borderRadius: "8px",
-          marginBottom: "1rem",
-          border: "1px solid #dee2e6",
-        }}
-      >
-        <h1
-          style={{
-            color: "#1E8449",
-            marginBottom: "0.5rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            fontSize: "1.8rem",
-          }}
-        >
-          <i className="pi pi-money-bill" style={{ fontSize: "1.8rem" }}></i>
-          Rendición de Gastos
-        </h1>
-        <p style={{ margin: 0, color: "#6c757d" }}>
-          Gestión de rendiciones de gastos y entregas a rendir
-        </p>
-      </div>
-
+      <ConfirmDialog />
       <div className="mt-4">
         <DataTable
           key={`datatable-${Object.keys(saldosARendir).length}`}
@@ -621,8 +630,8 @@ export default function RendicionGastosList({ ruta }) {
           dataKey="id"
           loading={loading}
           paginator
-          rows={10}
-          rowsPerPageOptions={[10, 20, 40]}
+          rows={50}
+          rowsPerPageOptions={[50, 100, 200]}
           emptyMessage="No hay movimientos registrados"
           style={{ fontSize: getResponsiveFontSize(), cursor: "pointer" }}
           rowClassName={(rowData) =>
@@ -646,9 +655,9 @@ export default function RendicionGastosList({ ruta }) {
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <h3>Detalle de Gastos</h3>
+                  <h1>Rendición de Gastos</h1>
                 </div>
-                <div style={{ flex: 0.5 }}>
+                <div style={{ flex: 0.25 }}>
                   <Button
                     label="Nuevo"
                     icon="pi pi-plus"
@@ -664,6 +673,7 @@ export default function RendicionGastosList({ ruta }) {
                     tooltipOptions={{ position: "top" }}
                     type="button"
                     raised
+                    style={{ width: "100%" }}
                   />
                 </div>
                 <div style={{ flex: 0.5 }}>
@@ -675,9 +685,10 @@ export default function RendicionGastosList({ ruta }) {
                     severity={obtenerPropiedadesFiltroGastosARendir().severity}
                     type="button"
                     raised
+                    style={{ width: "100%" }}
                   />
                 </div>
-                <div style={{ flex: 0.5 }}>
+                <div style={{ flex: 0.25 }}>
                   <label htmlFor="">Entrega a Rendir</label>
                   <Button
                     label={obtenerPropiedadesFiltroEntregaARendir().label}
@@ -686,9 +697,10 @@ export default function RendicionGastosList({ ruta }) {
                     severity={obtenerPropiedadesFiltroEntregaARendir().severity}
                     type="button"
                     raised
+                    style={{ width: "100%" }}
                   />
                 </div>
-                <div style={{ flex: 0.5 }}>
+                <div style={{ flex: 0.25 }}>
                   <label htmlFor="">Validación Tesorería</label>
                   <Button
                     label={obtenerPropiedadesFiltroValidacionTesoreria().label}
@@ -699,16 +711,17 @@ export default function RendicionGastosList({ ruta }) {
                     }
                     type="button"
                     raised
+                    style={{ width: "100%" }}
                   />
                 </div>
-                <div style={{ flex: 0.5 }}>
+                <div style={{ flex: 0.25 }}>
                   <Button
-                    label="Limpiar"
                     icon="pi pi-filter-slash"
                     className="p-button-outlined"
                     onClick={limpiarFiltros}
                     type="button"
                     raised
+                    style={{ width: "100%" }}
                   />
                 </div>
               </div>
@@ -730,9 +743,9 @@ export default function RendicionGastosList({ ruta }) {
                     optionValue="value"
                     placeholder="Seleccionar Asignación"
                     onChange={(e) => setFiltroAsignacionSeleccionada(e.value)}
-                    className="w-full"
                     showClear
                     filter
+                    style={{ width: "100%" }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -755,7 +768,7 @@ export default function RendicionGastosList({ ruta }) {
                     optionValue="id"
                     placeholder="Filtrar por Categoría"
                     onChange={(e) => setFiltroCategoriaMovimiento(e.value)}
-                    className="w-full"
+                    style={{ width: "100%" }}
                     showClear
                     filter
                   />
@@ -768,7 +781,7 @@ export default function RendicionGastosList({ ruta }) {
                     optionValue="id"
                     placeholder="Filtrar por Tipo de Movimiento"
                     onChange={(e) => setFiltroTipoMovimiento(e.value)}
-                    className="w-full"
+                    style={{ width: "100%" }}
                     showClear
                     filter
                   />
@@ -784,7 +797,7 @@ export default function RendicionGastosList({ ruta }) {
                     optionValue="id"
                     placeholder="Filtrar por Centro de Costo"
                     onChange={(e) => setFiltroCentroCosto(e.value)}
-                    className="w-full"
+                    style={{ width: "100%" }}
                     showClear
                     filter
                   />
@@ -858,6 +871,20 @@ export default function RendicionGastosList({ ruta }) {
             style={{ minWidth: "200px" }}
           />
           <Column
+            field="saldoInicialAsignacion"
+            header="Saldo Inicial"
+            body={saldoInicialAsignacionTemplate}
+            sortable
+            style={{ minWidth: "120px" }}
+          />
+          <Column
+            field="saldoFinalAsignacion"
+            header="Saldo Final"
+            body={saldoFinalAsignacionTemplate}
+            sortable
+            style={{ minWidth: "120px" }}
+          />
+          <Column
             header="Acciones"
             body={accionesTemplate}
             headerStyle={{ width: "8rem", textAlign: "center" }}
@@ -875,7 +902,6 @@ export default function RendicionGastosList({ ruta }) {
         closable={false}
         maximizable
         maximized={true}
-        
       >
         <DetMovsRendicionGastosForm
           movimiento={editingMovimiento}
