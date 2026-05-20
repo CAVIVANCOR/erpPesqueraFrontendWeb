@@ -20,6 +20,7 @@ import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { getModulos } from "../../api/moduloSistema";
 import { Card } from "primereact/card";
 import TipoMovimientoSelector from "../common/TipoMovimientoSelector";
+import ModuloDocumentoSelector from "../common/ModuloDocumentoSelector";
 import ProductoSelector from "../common/ProductoSelector";
 import PdfDetMovRendicionGastosCard from "./PdfDetMovRendicionGastosCard";
 import PdfComprobanteOperacionDetMovCard from "./PdfComprobanteOperacionDetMovCard";
@@ -32,6 +33,7 @@ import {
   obtenerValoresIniciales,
 } from "../../api/detMovsEntregaRendir";
 import { getEmbarcaciones } from "../../api/embarcacion";
+import { getDocumentosPorModelo } from "../../api/documentoDinamico";
 
 const DetMovsRendicionGastosForm = ({
   movimiento = null,
@@ -61,6 +63,10 @@ const DetMovsRendicionGastosForm = ({
     useState(null);
   const [asignacionesNoLiquidadas, setAsignacionesNoLiquidadas] = useState([]);
   const [embarcaciones, setEmbarcaciones] = useState([]);
+  const [moduloDocumentoDialogVisible, setModuloDocumentoDialogVisible] =
+    useState(false);
+  const [moduloDocumentoSeleccionado, setModuloDocumentoSeleccionado] =
+    useState(null);
   const {
     control,
     handleSubmit,
@@ -129,120 +135,162 @@ const DetMovsRendicionGastosForm = ({
   const tipoMovimientoId = watch("tipoMovimientoId");
   const asignacionOrigenId = watch("asignacionOrigenId");
 
-  useEffect(() => {
-    if (isEditing && movimiento) {
-      reset({
-        empresaId: movimiento.empresaId ? Number(movimiento.empresaId) : 1,
-        moduloOrigenId: movimiento.moduloOrigenId
-          ? Number(movimiento.moduloOrigenId)
-          : 2,
-        documentoOrigenId: movimiento.documentoOrigenId
-          ? Number(movimiento.documentoOrigenId)
-          : null,
-        responsableId: movimiento.responsableId
-          ? Number(movimiento.responsableId)
-          : null,
-        fechaMovimiento: movimiento.fechaMovimiento
-          ? new Date(movimiento.fechaMovimiento)
-          : new Date(),
-        tipoMovimientoId: movimiento.tipoMovimientoId
-          ? Number(movimiento.tipoMovimientoId)
-          : null,
-        centroCostoId: movimiento.centroCostoId
-          ? Number(movimiento.centroCostoId)
-          : null,
-        monto: Number(movimiento.monto) || 0,
-        monedaId: movimiento.monedaId ? Number(movimiento.monedaId) : null,
-        descripcion: movimiento.descripcion || "",
-        entidadComercialId: movimiento.entidadComercialId
-          ? Number(movimiento.entidadComercialId)
-          : null,
-        urlComprobanteMovimiento: movimiento.urlComprobanteMovimiento || "",
-        validadoTesoreria: movimiento.validadoTesoreria ?? false,
-        fechaValidacionTesoreria: movimiento.fechaValidacionTesoreria || null,
-        operacionSinFactura: movimiento.operacionSinFactura ?? false,
-        fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja
-          ? new Date(movimiento.fechaOperacionMovCaja)
-          : null,
-        operacionMovCajaId: movimiento.operacionMovCajaId
-          ? Number(movimiento.operacionMovCajaId)
-          : null,
-        moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId
-          ? Number(movimiento.moduloOrigenMovCajaId)
-          : 3,
-        urlComprobanteOperacionMovCaja:
-          movimiento.urlComprobanteOperacionMovCaja || "",
-        tipoDocumentoId: movimiento.tipoDocumentoId
-          ? Number(movimiento.tipoDocumentoId)
-          : null,
-        numeroSerieComprobante: movimiento.numeroSerieComprobante || "",
-        numeroCorrelativoComprobante:
-          movimiento.numeroCorrelativoComprobante || "",
-        productoId: movimiento.productoId
-          ? Number(movimiento.productoId)
-          : null,
-        detalleGastosPlanificados: movimiento.detalleGastosPlanificados || "",
-        asignacionOrigenId: movimiento.asignacionOrigenId
-          ? Number(movimiento.asignacionOrigenId)
-          : movimiento.formaParteCalculoEntregaARendir === true
-            ? 0
+    useEffect(() => {
+    const cargarDatosIniciales = async () => {
+      if (isEditing && movimiento) {
+        reset({
+          empresaId: movimiento.empresaId ? Number(movimiento.empresaId) : 1,
+          moduloOrigenId: movimiento.moduloOrigenId
+            ? Number(movimiento.moduloOrigenId)
+            : 2,
+          documentoOrigenId: movimiento.documentoOrigenId
+            ? Number(movimiento.documentoOrigenId)
             : null,
-        formaParteCalculoLiquidacionTripulantes:
-          movimiento.formaParteCalculoLiquidacionTripulantes ?? false,
-        formaParteCalculoEntregaARendir:
-          movimiento.formaParteCalculoEntregaARendir ?? false,
-        formaParteCalculoLiqAlquilerCuota:
-          movimiento.formaParteCalculoLiqAlquilerCuota ?? false,
-        entregaARendirLiquidada: movimiento.entregaARendirLiquidada ?? false,
-        fechaLiquidacionEntregaARendir:
-          movimiento.fechaLiquidacionEntregaARendir || null,
-        urlLiquidacionEntregaARendir:
-          movimiento.urlLiquidacionEntregaARendir || null,
-        enlaceAOtroDetalleGastoId: movimiento.enlaceAOtroDetalleGastoId
-          ? Number(movimiento.enlaceAOtroDetalleGastoId)
-          : null,
-        embarcacionId: movimiento.embarcacionId
-          ? Number(movimiento.embarcacionId)
-          : null,
-        enlaceGastosPlanificadosId: movimiento.enlaceGastosPlanificadosId
-          ? Number(movimiento.enlaceGastosPlanificadosId)
-          : null,
-        saldoInicialAsignacion: movimiento.saldoInicialAsignacion
-          ? Number(movimiento.saldoInicialAsignacion)
-          : null,
-        saldoFinalAsignacion: movimiento.saldoFinalAsignacion
-          ? Number(movimiento.saldoFinalAsignacion)
-          : null,
-      });
+          responsableId: movimiento.responsableId
+            ? Number(movimiento.responsableId)
+            : null,
+          fechaMovimiento: movimiento.fechaMovimiento
+            ? new Date(movimiento.fechaMovimiento)
+            : new Date(),
+          tipoMovimientoId: movimiento.tipoMovimientoId
+            ? Number(movimiento.tipoMovimientoId)
+            : null,
+          centroCostoId: movimiento.centroCostoId
+            ? Number(movimiento.centroCostoId)
+            : null,
+          monto: Number(movimiento.monto) || 0,
+          monedaId: movimiento.monedaId ? Number(movimiento.monedaId) : null,
+          descripcion: movimiento.descripcion || "",
+          entidadComercialId: movimiento.entidadComercialId
+            ? Number(movimiento.entidadComercialId)
+            : null,
+          urlComprobanteMovimiento: movimiento.urlComprobanteMovimiento || "",
+          validadoTesoreria: movimiento.validadoTesoreria ?? false,
+          fechaValidacionTesoreria: movimiento.fechaValidacionTesoreria || null,
+          operacionSinFactura: movimiento.operacionSinFactura ?? false,
+          fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja
+            ? new Date(movimiento.fechaOperacionMovCaja)
+            : null,
+          operacionMovCajaId: movimiento.operacionMovCajaId
+            ? Number(movimiento.operacionMovCajaId)
+            : null,
+          moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId
+            ? Number(movimiento.moduloOrigenMovCajaId)
+            : 3,
+          urlComprobanteOperacionMovCaja:
+            movimiento.urlComprobanteOperacionMovCaja || "",
+          tipoDocumentoId: movimiento.tipoDocumentoId
+            ? Number(movimiento.tipoDocumentoId)
+            : null,
+          numeroSerieComprobante: movimiento.numeroSerieComprobante || "",
+          numeroCorrelativoComprobante:
+            movimiento.numeroCorrelativoComprobante || "",
+          productoId: movimiento.productoId
+            ? Number(movimiento.productoId)
+            : null,
+          detalleGastosPlanificados: movimiento.detalleGastosPlanificados || "",
+          asignacionOrigenId: movimiento.asignacionOrigenId
+            ? Number(movimiento.asignacionOrigenId)
+            : movimiento.formaParteCalculoEntregaARendir === true
+              ? 0
+              : null,
+          formaParteCalculoLiquidacionTripulantes:
+            movimiento.formaParteCalculoLiquidacionTripulantes ?? false,
+          formaParteCalculoEntregaARendir:
+            movimiento.formaParteCalculoEntregaARendir ?? false,
+          formaParteCalculoLiqAlquilerCuota:
+            movimiento.formaParteCalculoLiqAlquilerCuota ?? false,
+          entregaARendirLiquidada: movimiento.entregaARendirLiquidada ?? false,
+          fechaLiquidacionEntregaARendir:
+            movimiento.fechaLiquidacionEntregaARendir || null,
+          urlLiquidacionEntregaARendir:
+            movimiento.urlLiquidacionEntregaARendir || "",
+          embarcacionId: movimiento.embarcacionId
+            ? Number(movimiento.embarcacionId)
+            : null,
+        });
 
-      if (movimiento.enlaceGastosPlanificadosId) {
-        setGastoPlanificadoSeleccionado(
-          Number(movimiento.enlaceGastosPlanificadosId),
-        );
-      }
-    } else {
-      if (rendicionGastos) {
-        setValue("empresaId", Number(rendicionGastos.empresaId) || 1);
-        setValue("moduloOrigenId", 2);
-        setValue("documentoOrigenId", 37);
-      }
-      setValue("fechaMovimiento", new Date());
-      setValue("moduloOrigenMovCajaId", 3);
-      if (usuario?.personalId) {
-        setValue("responsableId", Number(usuario.personalId));
+        if (movimiento.moduloOrigenId && movimiento.documentoOrigenId && modulos.length > 0) {
+          try {
+            const modulo = modulos.find((m) => Number(m.id) === Number(movimiento.moduloOrigenId));
+            
+            if (modulo && modulo.modeloDocumentoOrigen) {
+              const response = await getDocumentosPorModelo(modulo.modeloDocumentoOrigen);
+              const { modulo: moduloInfo, config, documentos } = response;
+              
+              const documento = documentos.find((d) => Number(d.id) === Number(movimiento.documentoOrigenId));
 
-        setTimeout(() => {
-          toast.current?.show({
-            severity: "info",
-            summary: "Responsable Asignado",
-            detail:
-              "Se ha asignado automáticamente como responsable del movimiento",
-            life: 3000,
-          });
-        }, 500);
+              if (documento) {
+                const getNestedValue = (obj, path) => {
+                  if (!path) return null;
+                  return path.split(".").reduce((acc, part) => acc?.[part], obj);
+                };
+
+                setModuloDocumentoSeleccionado({
+                  moduloId: Number(movimiento.moduloOrigenId),
+                  documentoId: Number(movimiento.documentoOrigenId),
+                  moduloNombre: moduloInfo.nombre,
+                  documentoNumero: documento[config.campoNumero] || "N/A",
+                  documentoFecha: documento[config.campoFecha] || null,
+                  entidad: config.campoEntidad ? getNestedValue(documento, config.campoEntidad) : null,
+                });
+              }
+            }
+          } catch (error) {
+            console.error("Error al cargar datos del módulo/documento:", error);
+          }
+        }
+      } else {
+        if (rendicionGastos) {
+          setValue("empresaId", Number(rendicionGastos.empresaId) || 1);
+          setValue("moduloOrigenId", 2);
+          setValue("documentoOrigenId", 37);
+        }
+        
+        if (modulos.length > 0) {
+          const moduloId = 2;
+          const documentoId = 37;
+          
+          try {
+            const modulo = modulos.find((m) => Number(m.id) === Number(moduloId));
+            
+            if (modulo && modulo.modeloDocumentoOrigen) {
+              const response = await getDocumentosPorModelo(modulo.modeloDocumentoOrigen);
+              const { modulo: moduloInfo, config, documentos } = response;
+              
+              const documento = documentos.find((d) => Number(d.id) === Number(documentoId));
+
+              if (documento) {
+                const getNestedValue = (obj, path) => {
+                  if (!path) return null;
+                  return path.split(".").reduce((acc, part) => acc?.[part], obj);
+                };
+
+                setModuloDocumentoSeleccionado({
+                  moduloId: Number(moduloId),
+                  documentoId: Number(documentoId),
+                  moduloNombre: moduloInfo.nombre,
+                  documentoNumero: documento[config.campoNumero] || "N/A",
+                  documentoFecha: documento[config.campoFecha] || null,
+                  entidad: config.campoEntidad ? getNestedValue(documento, config.campoEntidad) : null,
+                });
+              }
+            }
+          } catch (error) {
+            console.error("Error al cargar datos iniciales:", error);
+          }
+        }
+        
+        setValue("fechaMovimiento", new Date());
+        setValue("moduloOrigenMovCajaId", 3);
+        if (usuario?.personalId) {
+          setValue("responsableId", Number(usuario.personalId));
+        }
       }
-    }
-  }, [movimiento, isEditing, rendicionGastos, reset, setValue, usuario]);
+    };
+
+    cargarDatosIniciales();
+  }, [movimiento, isEditing]);
 
   useEffect(() => {
     const cargarModulos = async () => {
@@ -527,6 +575,70 @@ const DetMovsRendicionGastosForm = ({
       console.error("❌ No se encontró el gasto con ID:", gastoId);
     }
   };
+  const formatearLabelModuloDocumento = () => {
+    if (!moduloDocumentoSeleccionado || !moduloDocumentoSeleccionado.moduloId) {
+      return "Seleccionar Módulo y Documento";
+    }
+
+    const {
+      moduloNombre,
+      documentoId,
+      documentoNumero,
+      documentoFecha,
+      entidad,
+    } = moduloDocumentoSeleccionado;
+
+    let label = `${moduloNombre} | ${documentoId}`;
+
+    if (documentoNumero && documentoNumero !== "N/A") {
+      label += ` - ${documentoNumero}`;
+    }
+
+    if (documentoFecha) {
+      const fecha = new Date(documentoFecha);
+      const fechaFormateada = fecha.toLocaleDateString("es-PE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      label += ` (${fechaFormateada})`;
+    }
+
+    if (entidad) {
+      label += ` - ${entidad}`;
+    }
+
+    return label;
+  };
+  const handleModuloDocumentoSelect = (
+    moduloId,
+    documentoId,
+    moduloData,
+    documentoData,
+  ) => {
+    setValue("moduloOrigenId", moduloId);
+    setValue("documentoOrigenId", documentoId);
+
+    setModuloDocumentoSeleccionado({
+      moduloId,
+      documentoId,
+      moduloNombre: moduloData?.nombre || "N/A",
+      documentoNumero:
+        documentoData?.numero ||
+        documentoData?.nombre ||
+        documentoData?.numeroDocumento ||
+        documentoData?.numeroCompleto ||
+        "N/A",
+      documentoFecha:
+        documentoData?.fecha ||
+        documentoData?.fechaInicio ||
+        documentoData?.fechaDocumento ||
+        null,
+      entidad: documentoData?.entidad || null,
+    });
+
+    setModuloDocumentoDialogVisible(false);
+  };
 
   const onSubmit = async (data, event) => {
     event?.preventDefault();
@@ -761,7 +873,6 @@ const DetMovsRendicionGastosForm = ({
                       error={!!errors.tipoMovimientoId}
                       errorMessage={errors.tipoMovimientoId?.message}
                       placeholder="Buscar tipo de movimiento..."
-                      filterFunction={(tm) => tm.esIngreso === false}
                     />
                   )}
                 />
@@ -1454,34 +1565,30 @@ const DetMovsRendicionGastosForm = ({
               </div>
               <div style={{ flex: 1 }}>
                 <label className="block text-900 font-medium mb-2">
-                  Módulo Origen *
+                  Módulo y Documento Origen *
                 </label>
-                <Controller
-                  name="moduloOrigenId"
-                  control={control}
-                  rules={{ required: "El módulo origen es obligatorio" }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="moduloOrigenId"
-                      {...field}
-                      value={field.value}
-                      options={modulos.map((m) => ({
-                        label: `${m.id} - ${m.nombre}`,
-                        value: Number(m.id),
-                      }))}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccione módulo origen"
-                      className={classNames({
-                        "p-invalid": errors.moduloOrigenId,
-                      })}
-                      filter
-                      showClear
-                      style={{ fontWeight: "bold" }}
-                      disabled={formularioDeshabilitado}
-                    />
-                  )}
-                />
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.5rem",
+                    alignItems: "center",
+                  }}
+                >
+                  <Button
+                    type="button"
+                    label={formatearLabelModuloDocumento()}
+                    icon="pi pi-search"
+                    onClick={() => setModuloDocumentoDialogVisible(true)}
+                    disabled={formularioDeshabilitado}
+                    className="w-full"
+                    style={{
+                      justifyContent: "flex-start",
+                      fontWeight: "bold",
+                    }}
+                    tooltip="Haz clic para ver detalles completos del módulo y documento"
+                    tooltipOptions={{ position: "top" }}
+                  />
+                </div>
                 {errors.moduloOrigenId && (
                   <Message
                     severity="error"
@@ -1489,25 +1596,7 @@ const DetMovsRendicionGastosForm = ({
                   />
                 )}
               </div>
-              <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">
-                  ID Documento Origen
-                </label>
-                <Controller
-                  name="documentoOrigenId"
-                  control={control}
-                  render={({ field }) => (
-                    <InputNumber
-                      id="documentoOrigenId"
-                      value={field.value || null}
-                      onValueChange={(e) => field.onChange(e.value)}
-                      placeholder="ID del documento origen"
-                      inputStyle={{ fontWeight: "bold" }}
-                      disabled={formularioDeshabilitado}
-                    />
-                  )}
-                />
-              </div>
+
               <div style={{ flex: 0.5 }}>
                 <label className="block text-900 font-medium mb-2">
                   Última Actualización
@@ -1687,6 +1776,16 @@ const DetMovsRendicionGastosForm = ({
           />
         </div>
       </div>
+      {/* Modal de Selección de Módulo y Documento */}
+      <ModuloDocumentoSelector
+        visible={moduloDocumentoDialogVisible}
+        initialModuloId={watch("moduloOrigenId") || 0}
+        initialDocumentoId={watch("documentoOrigenId") || 0}
+        onSelect={handleModuloDocumentoSelect}
+        onCancel={() => setModuloDocumentoDialogVisible(false)}
+        moduloLabel="Módulo Origen"
+        documentoLabel="Documento Origen"
+      />
     </div>
   );
 };

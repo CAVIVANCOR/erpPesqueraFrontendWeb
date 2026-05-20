@@ -4,9 +4,10 @@
  * Componente reutilizable para selección de Tipo de Movimiento con búsqueda avanzada
  * Muestra una tabla con Categoría y Tipo de Movimiento para facilitar la búsqueda
  * Incluye carrusel de filtros por categoría con colores dinámicos
+ * NUEVO: Incluye botón toggle INTERNO para filtrar por EGRESOS/INGRESOS
  * 
  * @author ERP Megui
- * @version 2.0.0
+ * @version 3.0.0
  */
 
 import React, { useState, useRef, useMemo } from "react";
@@ -81,6 +82,7 @@ const TipoMovimientoSelector = ({
   const [dialogVisible, setDialogVisible] = useState(false);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState(null);
+  const [tipo, setTipo] = useState(true); // NUEVO: Estado interno para tipo (true=EGRESOS, false=INGRESOS)
   const dt = useRef(null);
 
   // Obtener el tipo de movimiento seleccionado
@@ -88,10 +90,24 @@ const TipoMovimientoSelector = ({
     (t) => Number(t.id) === Number(value)
   );
 
+  // NUEVO: Filtrar por tipo (EGRESOS/INGRESOS)
+  const tiposFiltradosPorTipo = useMemo(() => {
+    return tiposMovimiento.filter((t) => {
+      // Si la categoría tiene el campo tipo, usarlo
+      if (t.categoria && t.categoria.tipo !== undefined) {
+        return t.categoria.tipo === tipo;
+      }
+      // Si no, usar esIngreso del tipo movimiento
+      // tipo=true (EGRESOS) → esIngreso=false
+      // tipo=false (INGRESOS) → esIngreso=true
+      return t.esIngreso === !tipo;
+    });
+  }, [tiposMovimiento, tipo]);
+
   // Aplicar filtro personalizado si existe
   const tiposConFiltroPersonalizado = filterFunction
-    ? tiposMovimiento.filter(filterFunction)
-    : tiposMovimiento;
+    ? tiposFiltradosPorTipo.filter(filterFunction)
+    : tiposFiltradosPorTipo;
 
   // Extraer categorías únicas y ordenarlas alfabéticamente
   const categoriasUnicas = useMemo(() => {
@@ -129,6 +145,18 @@ const TipoMovimientoSelector = ({
       return (a.nombre || "").localeCompare(b.nombre || "");
     });
   }, [tiposFiltradosPorCategoria]);
+
+  /**
+   * NUEVO: Maneja el cambio de tipo (EGRESOS/INGRESOS)
+   */
+  const handleTipoToggle = () => {
+    const nuevoTipo = !tipo;
+    setTipo(nuevoTipo);
+    // Limpiar selección al cambiar tipo
+    if (onChange) {
+      onChange(null);
+    }
+  };
 
   /**
    * Maneja la selección de un tipo de movimiento
@@ -251,6 +279,28 @@ const TipoMovimientoSelector = ({
         onHide={handleCloseDialog}
         footer={footer}
       >
+        {/* NUEVO: Botón toggle EGRESOS/INGRESOS (DENTRO DEL MODAL) */}
+        <div style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+          <label style={{ fontWeight: "500" }}>Tipo:</label>
+          <Button
+            type="button"
+            label={tipo ? "EGRESOS" : "INGRESOS"}
+            onClick={handleTipoToggle}
+            style={{
+              backgroundColor: tipo ? "#ef4444" : "#22c55e",
+              color: "white",
+              borderColor: tipo ? "#ef4444" : "#22c55e",
+              fontWeight: "600",
+              width: "150px",
+              padding: "0.5rem 1.5rem",
+              borderRadius: "0.5rem",
+              transition: "all 0.2s",
+              cursor: "pointer",
+            }}
+            className="hover:brightness-110 active:scale-95"
+          />
+        </div>
+
         {/* Carrusel de filtros por categoría */}
         <div style={{ marginBottom: "1rem" }}>
           <label style={{ fontWeight: "500", marginBottom: "0.5rem", display: "block" }}>

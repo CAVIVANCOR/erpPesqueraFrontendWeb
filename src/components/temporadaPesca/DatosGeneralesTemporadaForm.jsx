@@ -73,26 +73,37 @@ export default function DatosGeneralesTemporadaForm({
   const combustibleTotalConsumido = watch("combustibleTotalConsumido");
   const recorridoTotalMillasNauticas = watch("recorridoTotalMillasNauticas");
   const consumoTotalPetroleo = watch("consumoTotalPetroleo");
-   const combustibleTotalConsumidoReal = watch("combustibleTotalConsumidoReal");
-  const recorridoTotalMillasNauticasReal = watch("recorridoTotalMillasNauticasReal");
+  const combustibleTotalConsumidoReal = watch("combustibleTotalConsumidoReal");
+  const recorridoTotalMillasNauticasReal = watch(
+    "recorridoTotalMillasNauticasReal",
+  );
   const consumoTotalPetroleoReal = watch("consumoTotalPetroleoReal");
   // ⭐ Nuevos campos de combustible comprado
   const combustibleTotalComprado = watch("combustibleTotalComprado");
   const combustibleTotalCompradoSoles = watch("combustibleTotalCompradoSoles");
-    // ⭐ Nuevos campos de stock de combustible
-  const combustibleStockInicialTemporada = watch("combustibleStockInicialTemporada");
-  const combustibleStockFinalTemporada = watch("combustibleStockFinalTemporada");
+  // ⭐ Nuevos campos de stock de combustible
+  const combustibleStockInicialTemporada = watch(
+    "combustibleStockInicialTemporada",
+  );
+  const combustibleStockFinalTemporada = watch(
+    "combustibleStockFinalTemporada",
+  );
 
   // ⭐ Calcular Stock Final automáticamente
   useEffect(() => {
     const stockInicial = Number(combustibleStockInicialTemporada || 0);
     const comprado = Number(combustibleTotalComprado || 0);
     const consumidoReal = Number(combustibleTotalConsumidoReal || 0);
-    
+
     const stockFinal = stockInicial + comprado - consumidoReal;
-    
+
     setValue("combustibleStockFinalTemporada", stockFinal);
-  }, [combustibleStockInicialTemporada, combustibleTotalComprado, combustibleTotalConsumidoReal, setValue]);
+  }, [
+    combustibleStockInicialTemporada,
+    combustibleTotalComprado,
+    combustibleTotalConsumidoReal,
+    setValue,
+  ]);
   // Cargar datos iniciales
   useEffect(() => {
     cargarDatos();
@@ -214,7 +225,7 @@ export default function DatosGeneralesTemporadaForm({
 
   // Función para recargar datos de temporada
 
-    const recargarDatosTemporada = async () => {
+  const recargarDatosTemporada = async () => {
     if (!temporadaData?.id) {
       return;
     }
@@ -300,18 +311,12 @@ export default function DatosGeneralesTemporadaForm({
   ];
 
   return (
-    <Card
-      className="mb-4"
-      pt={{
-        body: { className: "pt-0" },
-        content: { className: "pb-0" },
-      }}
-    >
+    <div className="card">
       <div className="p-fluid">
         <div
           style={{
             display: "flex",
-            gap: 10,
+            gap: 5,
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
@@ -494,7 +499,8 @@ export default function DatosGeneralesTemporadaForm({
         <div
           style={{
             display: "flex",
-            gap: 10,
+            gap: 5,
+            alignItems: "end",
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
@@ -563,7 +569,7 @@ export default function DatosGeneralesTemporadaForm({
             )}
           </div>
           {/* Tipo de Temporada */}
-          <div style={{ flex: 0.7 }}>
+          <div style={{ flex: 0.5 }}>
             <label htmlFor="esTemporadaSoloAlquiler" className="font-semibold">
               Tipo de Temporada
             </label>
@@ -580,7 +586,7 @@ export default function DatosGeneralesTemporadaForm({
                 setValue("esTemporadaSoloAlquiler", nuevoValor);
               }}
               disabled={readOnly}
-              style={{ width: "100%", marginTop: "0.5rem" }}
+              style={{ width: "100%" }}
             />
           </div>
           {/* Fecha de Inicio */}
@@ -666,6 +672,15 @@ export default function DatosGeneralesTemporadaForm({
               <Message severity="error" text={errors.fechaFin.message} />
             )}
           </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "end",
+            gap: 5,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
           {/* Límite Máximo de Captura */}
           <div style={{ flex: 1 }}>
             <label htmlFor="limiteMaximoCapturaTn" className="font-semibold">
@@ -813,27 +828,39 @@ export default function DatosGeneralesTemporadaForm({
       {/* Días Sin Faena */}
       <DetalleDiasSinFaenaCard temporadaPescaId={temporadaData?.id} />
 
-                                       {/* Estadísticas de Combustible y Recorrido */}
+      {/* Estadísticas de Combustible y Recorrido */}
       {temporadaData?.id && (
-        <div className="p-fluid mt-4">
-          <h3 className="mb-3" style={{ color: '#495057', fontSize: '1.1rem', fontWeight: 'bold' }}>
+        <div className="p-fluid">
+          <h3
+            style={{ color: "#495057", fontSize: "1.1rem", fontWeight: "bold" }}
+          >
             📊 ESTADÍSTICAS DE COMBUSTIBLE Y RECORRIDO
           </h3>
 
           {/* ⭐ NUEVA SECCIÓN: STOCK DE COMBUSTIBLE */}
-          <div className="mb-4">
-            <h4 className="mb-2" style={{ color: '#6c757d', fontSize: '0.95rem', fontWeight: 'bold' }}>
+          <div>
+            <h4
+              style={{
+                color: "#6c757d",
+                fontSize: "0.95rem",
+                fontWeight: "bold",
+              }}
+            >
               🛢️ Stock de Combustible de Temporada
             </h4>
             <div
               style={{
                 display: "flex",
-                gap: 10,
+                gap: 5,
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
               <div style={{ flex: 1 }}>
-                <label htmlFor="combustibleStockInicialTemporada" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                <label
+                  htmlFor="combustibleStockInicialTemporada"
+                  className="block mb-2"
+                  style={{ fontSize: "0.9rem", fontWeight: "500" }}
+                >
                   📝 Stock Inicial (Gal)
                 </label>
                 <Controller
@@ -848,14 +875,22 @@ export default function DatosGeneralesTemporadaForm({
                       minFractionDigits={2}
                       maxFractionDigits={2}
                       disabled={readOnly}
-                      className={classNames("w-full", { "p-invalid": errors.combustibleStockInicialTemporada })}
-                      style={{ backgroundColor: readOnly ? '#e9ecef' : '#ffffff' }}
+                      className={classNames("w-full", {
+                        "p-invalid": errors.combustibleStockInicialTemporada,
+                      })}
+                      style={{
+                        backgroundColor: readOnly ? "#e9ecef" : "#ffffff",
+                      }}
                     />
                   )}
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label htmlFor="combustibleStockFinalTemporada" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                <label
+                  htmlFor="combustibleStockFinalTemporada"
+                  className="block mb-2"
+                  style={{ fontSize: "0.9rem", fontWeight: "500" }}
+                >
                   🔒 Stock Final (Gal) - Calculado
                 </label>
                 <InputNumber
@@ -866,7 +901,11 @@ export default function DatosGeneralesTemporadaForm({
                   maxFractionDigits={2}
                   disabled
                   className="w-full"
-                  style={{ backgroundColor: '#d1ecf1', fontWeight: 'bold', color: '#0c5460' }}
+                  style={{
+                    backgroundColor: "#d1ecf1",
+                    fontWeight: "bold",
+                    color: "#0c5460",
+                  }}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -879,26 +918,36 @@ export default function DatosGeneralesTemporadaForm({
           <div
             style={{
               display: "flex",
-              gap: 20,
+              gap: 10,
               flexDirection: window.innerWidth < 992 ? "column" : "row",
             }}
           >
             {/* COLUMNA IZQUIERDA - Datos Calculados */}
             <div style={{ flex: 1 }}>
-              <h4 className="mb-2" style={{ color: '#0d6efd', fontSize: '0.95rem', fontWeight: 'bold' }}>
+              <h4
+                style={{
+                  color: "#0d6efd",
+                  fontSize: "0.95rem",
+                  fontWeight: "bold",
+                }}
+              >
                 🧮 Datos Calculados (Automático)
               </h4>
-              
+
               {/* 3 campos horizontales */}
               <div
                 style={{
                   display: "flex",
-                  gap: 10,
+                  gap: 5,
                   flexDirection: window.innerWidth < 768 ? "column" : "row",
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="combustibleTotalConsumido" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                  <label
+                    htmlFor="combustibleTotalConsumido"
+                    className="block mb-2"
+                    style={{ fontSize: "0.9rem", fontWeight: "500" }}
+                  >
                     Combustible Consumido (Gal)
                   </label>
                   <InputNumber
@@ -909,11 +958,15 @@ export default function DatosGeneralesTemporadaForm({
                     maxFractionDigits={2}
                     disabled
                     className="w-full"
-                    style={{ backgroundColor: '#e9ecef' }}
+                    style={{ backgroundColor: "#e9ecef" }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="recorridoTotalMillasNauticas" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                  <label
+                    htmlFor="recorridoTotalMillasNauticas"
+                    className="block mb-2"
+                    style={{ fontSize: "0.9rem", fontWeight: "500" }}
+                  >
                     Recorrido (Millas Náuticas)
                   </label>
                   <InputNumber
@@ -924,11 +977,15 @@ export default function DatosGeneralesTemporadaForm({
                     maxFractionDigits={2}
                     disabled
                     className="w-full"
-                    style={{ backgroundColor: '#e9ecef' }}
+                    style={{ backgroundColor: "#e9ecef" }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="consumoTotalPetroleo" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                  <label
+                    htmlFor="consumoTotalPetroleo"
+                    className="block mb-2"
+                    style={{ fontSize: "0.9rem", fontWeight: "500" }}
+                  >
                     Consumo Petróleo (S/.)
                   </label>
                   <InputNumber
@@ -939,22 +996,26 @@ export default function DatosGeneralesTemporadaForm({
                     maxFractionDigits={2}
                     disabled
                     className="w-full"
-                    style={{ backgroundColor: '#e9ecef' }}
+                    style={{ backgroundColor: "#e9ecef" }}
                   />
-                               </div>
+                </div>
               </div>
 
               {/* ⭐ NUEVA FILA: Combustible Comprado */}
               <div
                 style={{
                   display: "flex",
-                  gap: 10,
-                  marginTop: 15,
+                  gap: 5,
+                  marginTop: 10,
                   flexDirection: window.innerWidth < 768 ? "column" : "row",
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="combustibleTotalComprado" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                  <label
+                    htmlFor="combustibleTotalComprado"
+                    className="block mb-2"
+                    style={{ fontSize: "0.9rem", fontWeight: "500" }}
+                  >
                     💰 Combustible COMPRADO (Gal)
                   </label>
                   <InputNumber
@@ -965,11 +1026,15 @@ export default function DatosGeneralesTemporadaForm({
                     maxFractionDigits={2}
                     disabled
                     className="w-full"
-                    style={{ backgroundColor: '#fff3cd', fontWeight: 'bold' }}
+                    style={{ backgroundColor: "#fff3cd", fontWeight: "bold" }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="combustibleTotalCompradoSoles" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                  <label
+                    htmlFor="combustibleTotalCompradoSoles"
+                    className="block mb-2"
+                    style={{ fontSize: "0.9rem", fontWeight: "500" }}
+                  >
                     💵 Costo Total Combustible (S/.)
                   </label>
                   <InputNumber
@@ -980,7 +1045,7 @@ export default function DatosGeneralesTemporadaForm({
                     maxFractionDigits={2}
                     disabled
                     className="w-full"
-                    style={{ backgroundColor: '#fff3cd', fontWeight: 'bold' }}
+                    style={{ backgroundColor: "#fff3cd", fontWeight: "bold" }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -991,19 +1056,29 @@ export default function DatosGeneralesTemporadaForm({
 
             {/* COLUMNA DERECHA - Datos Reales */}
             <div style={{ flex: 1 }}>
-              <h4 className="mb-2" style={{ color: '#198754', fontSize: '0.95rem', fontWeight: 'bold' }}>
+              <h4
+                style={{
+                  color: "#198754",
+                  fontSize: "0.95rem",
+                  fontWeight: "bold",
+                }}
+              >
                 📱 Datos Reales (App Móvil - Futuro)
               </h4>
               {/* 3 campos horizontales */}
               <div
                 style={{
                   display: "flex",
-                  gap: 10,
+                  gap: 5,
                   flexDirection: window.innerWidth < 768 ? "column" : "row",
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="combustibleTotalConsumidoReal" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                  <label
+                    htmlFor="combustibleTotalConsumidoReal"
+                    className="block mb-2"
+                    style={{ fontSize: "0.9rem", fontWeight: "500" }}
+                  >
                     Combustible Consumido (Gal)
                   </label>
                   <InputNumber
@@ -1014,12 +1089,16 @@ export default function DatosGeneralesTemporadaForm({
                     maxFractionDigits={2}
                     disabled
                     className="w-full"
-                    style={{ backgroundColor: '#d1e7dd' }}
+                    style={{ backgroundColor: "#d1e7dd" }}
                   />
                 </div>
 
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="recorridoTotalMillasNauticasReal" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                  <label
+                    htmlFor="recorridoTotalMillasNauticasReal"
+                    className="block mb-2"
+                    style={{ fontSize: "0.9rem", fontWeight: "500" }}
+                  >
                     Recorrido (Millas Náuticas)
                   </label>
                   <InputNumber
@@ -1030,12 +1109,16 @@ export default function DatosGeneralesTemporadaForm({
                     maxFractionDigits={2}
                     disabled
                     className="w-full"
-                    style={{ backgroundColor: '#d1e7dd' }}
+                    style={{ backgroundColor: "#d1e7dd" }}
                   />
                 </div>
 
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="consumoTotalPetroleoReal" className="block mb-2" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                  <label
+                    htmlFor="consumoTotalPetroleoReal"
+                    className="block mb-2"
+                    style={{ fontSize: "0.9rem", fontWeight: "500" }}
+                  >
                     Consumo Petróleo (S/)
                   </label>
                   <InputNumber
@@ -1046,7 +1129,7 @@ export default function DatosGeneralesTemporadaForm({
                     maxFractionDigits={2}
                     disabled
                     className="w-full"
-                    style={{ backgroundColor: '#d1e7dd' }}
+                    style={{ backgroundColor: "#d1e7dd" }}
                   />
                 </div>
               </div>
@@ -1054,6 +1137,6 @@ export default function DatosGeneralesTemporadaForm({
           </div>
         </div>
       )}
-    </Card>
+    </div>
   );
 }
