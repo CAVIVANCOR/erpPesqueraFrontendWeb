@@ -1,15 +1,15 @@
 /**
- * InformeFaenaPescaConsumoForm.jsx - MIGRADO a Sistema PDF V2
+ * InformeFaenaPescaConsumoForm.jsx - MIGRADO a Sistema PDF V2 con Generación
  *
- * Componente para mostrar y editar el informe de faena de pesca consumo.
- * Usa PDFDocumentManager para gestionar el informe de faena.
+ * Componente para generar y mostrar el informe de faena de pesca consumo.
+ * Usa VerImpresionInformeFaenaPDF para gestionar la generación del PDF.
  *
  * @author ERP Megui
- * @version 2.0.0 - Sistema PDF V2
+ * @version 3.0.0 - Sistema PDF V2 con Generación
  */
 
 import React from "react";
-import PDFDocumentManager from "../pdf/PDFDocumentManager";
+import VerImpresionInformeFaenaPDF from "./VerImpresionInformeFaenaPDF";
 
 const InformeFaenaPescaConsumoForm = ({
   control,
@@ -19,29 +19,25 @@ const InformeFaenaPescaConsumoForm = ({
   getValues,
   defaultValues = {},
   readOnly = false,
+  faenaData,
 }) => {
+  const faenaId = watch("id") || defaultValues.id || faenaData?.id;
+
   return (
     <div className="card">
       <div className="p-3">
         <h3 className="text-900 font-bold mb-3">Informe de Faena de Pesca Consumo</h3>
         
-        <PDFDocumentManager
-          moduleName="faena-pesca-consumo"
-          fieldName="urlInformeFaena"
-          title="Informe de Faena"
-          dialogTitle="Subir Informe de Faena"
-          uploadButtonLabel="Capturar/Subir Informe"
-          viewButtonLabel="Ver"
-          downloadButtonLabel="Descargar"
-          emptyMessage="No hay informe de faena cargado"
-          emptyDescription="Use el botón 'Capturar/Subir Informe' para agregar el informe de faena de pesca consumo. Puede subir múltiples archivos (informe + anexos) y se consolidarán automáticamente."
-          control={control}
-          errors={errors}
-          setValue={setValue}
-          watch={watch}
-          getValues={getValues}
-          defaultValues={defaultValues}
-          readOnly={readOnly}
+        <VerImpresionInformeFaenaPDF
+          faenaId={faenaId}
+          datosFaena={faenaData || defaultValues}
+          toast={{ current: null }}
+          onPdfGenerated={(url) => {
+            if (setValue) {
+              setValue("urlInformeFaena", url);
+            }
+          }}
+          onRecargarRegistro={null}
         />
       </div>
     </div>

@@ -18,6 +18,7 @@ import VerImpresionOTMantenimientoPDF from "./VerImpresionOTMantenimientoPDF";
 import EntregaARendirOTMantenimientoCard from "./EntregaARendirOTMantenimientoCard";
 import DetContratistasOTCard from "./DetContratistasOTCard";
 import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
+import ActivoSelector from "../common/ActivoSelector";
 
 const OTMantenimientoForm = ({
   isEdit,
@@ -144,11 +145,6 @@ const OTMantenimientoForm = ({
   const sedesFiltradas = sedes.filter(
     (s) =>
       !formData.empresaId || Number(s.empresaId) === Number(formData.empresaId),
-  );
-
-  const activosFiltrados = activos.filter(
-    (a) =>
-      !formData.empresaId || Number(a.empresaId) === Number(formData.empresaId),
   );
 
   const handleChange = (field, value) => {
@@ -435,21 +431,13 @@ const OTMantenimientoForm = ({
               }}
             >
               <div style={{ flex: 2 }}>
-                <label htmlFor="activoId" style={{ fontWeight: "bold" }}>
-                  Activo *
-                </label>
-                <Dropdown
-                  id="activoId"
+                <ActivoSelector
                   value={formData.activoId}
-                  options={activosFiltrados.map((a) => ({
-                    label: `${a.descripcion}`,
-                    value: Number(a.id),
-                  }))}
-                  onChange={(e) => handleChange("activoId", e.value)}
-                  placeholder="Seleccionar activo"
-                  filter
+                  onChange={(value) => handleChange("activoId", value)}
+                  empresaIdPreseleccionada={formData.empresaId}
                   disabled={disabled || !formData.empresaId}
-                  style={{ width: "100%" }}
+                  required={true}
+                  placeholder="Seleccionar activo"
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -804,7 +792,8 @@ const OTMantenimientoForm = ({
                 style={{ fontSize: "1.5rem" }}
               ></i>
               <p style={{ marginTop: "0.5rem" }}>
-                Guarde primero la orden de trabajo para poder agregar contratistas.
+                Guarde primero la orden de trabajo para poder agregar
+                contratistas.
               </p>
             </div>
           )}

@@ -3,11 +3,20 @@
  * 
  * Componente reutilizable para selección de Tipo de Movimiento con búsqueda avanzada
  * Muestra una tabla con Categoría y Tipo de Movimiento para facilitar la búsqueda
- * Incluye carrusel de filtros por categoría con colores dinámicos
+ * Incluye filtros por categoría con colores dinámicos
  * NUEVO: Incluye botón toggle INTERNO para filtrar por EGRESOS/INGRESOS
  * 
+ * CORRECCIÓN v3.1.0: Layout de 2 columnas verticales
+ * - Columna 1: Botones de categorías (vertical)
+ * - Columna 2: DataTable de tipos de movimiento
+ * 
+ * CORRECCIÓN v3.2.0: Comportamiento del toggle EGRESOS/INGRESOS
+ * - El toggle NO modifica el valor seleccionado, solo cambia el filtro
+ * - El valor solo cambia cuando el usuario selecciona explícitamente un tipo
+ * - Al abrir el diálogo, el filtro se inicializa según el tipo seleccionado
+ * 
  * @author ERP Megui
- * @version 3.0.0
+ * @version 3.2.0
  */
 
 import React, { useState, useRef, useMemo } from "react";
@@ -90,6 +99,20 @@ const TipoMovimientoSelector = ({
     (t) => Number(t.id) === Number(value)
   );
 
+  // Inicializar el filtro de tipo cuando se abre el diálogo
+  React.useEffect(() => {
+    if (dialogVisible && tipoSeleccionado) {
+      // Si hay un tipo seleccionado, inicializar el filtro según su tipo
+      if (tipoSeleccionado.categoria && tipoSeleccionado.categoria.tipo !== undefined) {
+        setTipo(tipoSeleccionado.categoria.tipo);
+      } else {
+        // tipo=true (EGRESOS) → esIngreso=false
+        // tipo=false (INGRESOS) → esIngreso=true
+        setTipo(!tipoSeleccionado.esIngreso);
+      }
+    }
+  }, [dialogVisible, tipoSeleccionado]);
+
   // NUEVO: Filtrar por tipo (EGRESOS/INGRESOS)
   const tiposFiltradosPorTipo = useMemo(() => {
     return tiposMovimiento.filter((t) => {
@@ -148,14 +171,13 @@ const TipoMovimientoSelector = ({
 
   /**
    * NUEVO: Maneja el cambio de tipo (EGRESOS/INGRESOS)
+   * NO modifica el valor seleccionado, solo cambia el filtro
    */
   const handleTipoToggle = () => {
     const nuevoTipo = !tipo;
     setTipo(nuevoTipo);
-    // Limpiar selección al cambiar tipo
-    if (onChange) {
-      onChange(null);
-    }
+    // NO limpiar selección - solo cambiar el filtro
+    // El valor solo debe cambiar cuando el usuario selecciona explícitamente un tipo
   };
 
   /**
@@ -213,15 +235,15 @@ const TipoMovimientoSelector = ({
    * Header de la tabla con búsqueda
    */
   const header = (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <h3 style={{ margin: 0 }}>Seleccionar Tipo de Movimiento</h3>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+      <h4 style={{ margin: 0 }}>Tipos de Movimiento</h4>
       <span className="p-input-icon-left">
         <i className="pi pi-search" />
         <InputText
           value={globalFilterValue}
           onChange={(e) => setGlobalFilterValue(e.target.value)}
-          placeholder="Buscar por categoría o tipo..."
-          style={{ width: "300px" }}
+          placeholder="Buscar tipo..."
+          style={{ width: "250px" }}
         />
       </span>
     </div>
@@ -273,11 +295,11 @@ const TipoMovimientoSelector = ({
       {/* Dialog con tabla de selección */}
       <Dialog
         visible={dialogVisible}
-        style={{ width: "90vw", maxWidth: "1200px", height: "700px" }}
-        header={header}
+        style={{ width: "95vw", maxWidth: "1400px" }}
+        header="Seleccionar Tipo de Movimiento"
         modal
         onHide={handleCloseDialog}
-        footer={footer}
+        maximizable
       >
         {/* NUEVO: Botón toggle EGRESOS/INGRESOS (DENTRO DEL MODAL) */}
         <div style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "1rem" }}>
@@ -301,86 +323,126 @@ const TipoMovimientoSelector = ({
           />
         </div>
 
-        {/* Carrusel de filtros por categoría */}
-        <div style={{ marginBottom: "1rem" }}>
-          <label style={{ fontWeight: "500", marginBottom: "0.5rem", display: "block" }}>
-            Filtrar por Categoría:
-          </label>
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            {/* Botón TODAS */}
-            <Button
-              type="button"
-              label="TODAS"
+        {/* Layout de 2 columnas */}
+        <div style={{ 
+          display: "grid", 
+          gridTemplateColumns: "200px 1fr", 
+          gap: "1rem",
+          height: "600px"
+        }}>
+          
+          {/* ========== COLUMNA 1: CATEGORÍAS ========== */}
+          <div style={{ 
+            display: "flex", 
+            flexDirection: "column",
+            borderRight: "1px solid #dee2e6"
+          }}>
+            <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: "600" }}>
+              Categorías
+            </h4>
+            <div style={{ 
+              display: "flex", 
+              flexDirection: "column", 
+              gap: "0.35rem",
+              overflowY: "auto",
+              paddingRight: "0.5rem"
+            }}>
+              {/* Botón TODAS */}
+              <Button
+                type="button"
+                label="TODAS"
+                size="small"
+                onClick={() => setCategoriaFiltro(null)}
+                style={{
+                  backgroundColor: !categoriaFiltro ? COLOR_TODAS.bg : "#FFFFFF",
+                  color: !categoriaFiltro ? COLOR_TODAS.text : COLOR_TODAS.bg,
+                  borderColor: COLOR_TODAS.border,
+                  fontWeight: "500",
+                  fontSize: "0.75rem",
+                  padding: "0.35rem 0.5rem",
+                  justifyContent: "flex-start",
+                  textAlign: "left",
+                }}
+                className={!categoriaFiltro ? "" : "p-button-outlined"}
+              />
+
+              {/* Botones de categorías */}
+              {categoriasUnicas.map((categoria, index) => {
+                const color = getColorCategoria(index);
+                const isActive = Number(categoriaFiltro) === Number(categoria.id);
+
+                return (
+                  <Button
+                    key={categoria.id}
+                    type="button"
+                    label={categoria.nombre}
+                    size="small"
+                    onClick={() => setCategoriaFiltro(Number(categoria.id))}
+                    style={{
+                      backgroundColor: isActive ? color.bg : "#FFFFFF",
+                      color: isActive ? color.text : color.bg,
+                      borderColor: color.border,
+                      fontWeight: "500",
+                      fontSize: "0.75rem",
+                      padding: "0.35rem 0.5rem",
+                      justifyContent: "flex-start",
+                      textAlign: "left",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                    className={isActive ? "" : "p-button-outlined"}
+                    tooltip={categoria.nombre}
+                    tooltipOptions={{ position: 'right' }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ========== COLUMNA 2: TABLA DE TIPOS DE MOVIMIENTO ========== */}
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {header}
+            
+            <DataTable
+              ref={dt}
+              value={tiposOrdenados}
+              selectionMode="single"
+              onRowSelect={(e) => handleSeleccion(e.data)}
+              dataKey="id"
+              paginator
+              rows={20}
+              rowsPerPageOptions={[20, 40, 100]}
+              globalFilter={globalFilterValue}
+              globalFilterFields={['nombre', 'categoria.nombre']}
+              emptyMessage="No se encontraron tipos de movimiento"
+              stripedRows
+              showGridlines
               size="small"
-              onClick={() => setCategoriaFiltro(null)}
-              style={{
-                backgroundColor: !categoriaFiltro ? COLOR_TODAS.bg : "#FFFFFF",
-                color: !categoriaFiltro ? COLOR_TODAS.text : COLOR_TODAS.bg,
-                borderColor: COLOR_TODAS.border,
-                fontWeight: "500",
-              }}
-              className={!categoriaFiltro ? "" : "p-button-outlined"}
-            />
+              scrollable
+              scrollHeight="500px"
+              rowClassName={rowClassName}
+            >
+              <Column
+                field="categoria.nombre"
+                header="Categoría"
+                body={categoriaTemplate}
+                sortable
+                style={{ minWidth: "200px" }}
+              />
+              <Column
+                field="nombre"
+                header="Tipo de Movimiento"
+                body={tipoMovimientoTemplate}
+                sortable
+                filterField="nombre"
+                style={{ minWidth: "400px" }}
+              />
+            </DataTable>
 
-            {/* Botones de categorías dinámicos */}
-            {categoriasUnicas.map((categoria, index) => {
-              const color = getColorCategoria(index);
-              const isActive = Number(categoriaFiltro) === Number(categoria.id);
-
-              return (
-                <Button
-                  key={categoria.id}
-                  type="button"
-                  label={categoria.nombre}
-                  size="small"
-                  onClick={() => setCategoriaFiltro(Number(categoria.id))}
-                  style={{
-                    backgroundColor: isActive ? color.bg : "#FFFFFF",
-                    color: isActive ? color.text : color.bg,
-                    borderColor: color.border,
-                    fontWeight: "500",
-                  }}
-                  className={isActive ? "" : "p-button-outlined"}
-                />
-              );
-            })}
+            {footer}
           </div>
         </div>
-
-        {/* Tabla de tipos de movimiento */}
-        <DataTable
-          ref={dt}
-          value={tiposOrdenados}
-          selectionMode="single"
-          onRowSelect={(e) => handleSeleccion(e.data)}
-          dataKey="id"
-          paginator
-          rows={40}
-          rowsPerPageOptions={[40, 80, 160]}
-          globalFilter={globalFilterValue}
-          emptyMessage="No se encontraron tipos de movimiento"
-          stripedRows
-          showGridlines
-          size="small"
-          scrollable
-          scrollHeight="450px"
-          rowClassName={rowClassName}
-        >
-          <Column
-            field="categoria.nombre"
-            header="Categoría"
-            body={categoriaTemplate}
-            sortable
-            style={{ minWidth: "300px" }}
-          />
-          <Column
-            field="nombre"
-            header="Tipo de Movimiento"
-            body={tipoMovimientoTemplate}
-            sortable
-            style={{ minWidth: "500px" }}
-          />
-        </DataTable>
 
         {/* Estilos CSS inline para la fila seleccionada */}
         <style>{`

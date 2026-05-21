@@ -9,6 +9,7 @@ import { useForm, Controller } from "react-hook-form";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
+import EntidadComercialSelector from "../common/EntidadComercialSelector";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { InputNumber } from "primereact/inputnumber";
@@ -954,41 +955,28 @@ const DetMovsRendicionGastosForm = ({
                   flexDirection: window.innerWidth < 768 ? "column" : "row",
                 }}
               >
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="entidadComercialId">
-                    Entidad Comercial <span className="text-red-500">*</span>
-                  </label>
+                <div style={{ flex: 2 }}>
                   <Controller
                     name="entidadComercialId"
                     control={control}
                     rules={{ required: "La entidad comercial es obligatoria" }}
                     render={({ field }) => (
-                      <Dropdown
-                        {...field}
-                        options={entidadesComerciales.map((entidad) => ({
-                          label: entidad.razonSocial,
-                          value: Number(entidad.id),
-                        }))}
-                        placeholder="Seleccione una entidad comercial"
-                        className={classNames({
-                          "p-invalid": errors.entidadComercialId,
-                        })}
-                        style={{ fontWeight: "bold" }}
-                        showClear
-                        filter
-                        filterBy="label"
+                      <EntidadComercialSelector
+                        empresaIdPreseleccionada={watch("empresaId")}
+                        value={field.value}
+                        onChange={(value) => {
+                          field.onChange(value);
+                        }}
                         disabled={formularioDeshabilitado}
+                        required={true}
+                        error={!!errors.entidadComercialId}
+                        errorMessage={errors.entidadComercialId?.message}
+                        placeholder="Seleccione una entidad comercial"
                       />
                     )}
                   />
-                  {errors.entidadComercialId && (
-                    <Message
-                      severity="error"
-                      text={errors.entidadComercialId.message}
-                    />
-                  )}
                 </div>
-                <div style={{ flex: 0.6 }}>
+                <div style={{ flex: 0.5 }}>
                   <CrearEntidadComercialButton
                     empresaId={getValues("empresaId")}
                     tipoEntidad="proveedor"
@@ -1009,7 +997,7 @@ const DetMovsRendicionGastosForm = ({
                     control={control}
                     render={({ field }) => (
                       <ProductoSelector
-                        productos={productos}
+                        empresaIdPreseleccionada={watch("empresaId")}
                         value={field.value}
                         onChange={(value) => {
                           field.onChange(value);
@@ -1757,7 +1745,7 @@ const DetMovsRendicionGastosForm = ({
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <Button
             type="button"
-            label="Cancelar"
+            label="Salir"
             icon="pi pi-times"
             className="p-button-warning"
             size="small"

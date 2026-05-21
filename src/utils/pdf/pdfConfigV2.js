@@ -653,6 +653,44 @@ export const PDF_MODULES_CONFIG = {
       field: "urlDeclaracionDesembarqueArmador",
     },
   },
+
+
+
+
+
+
+
+
+
+
+  "faena-pesca-consumo": {
+    uploadPath: "uploads/pdf-system/faena-pesca-consumo",
+    oldPaths: [],
+    apiEndpoint: "/pdf/faena-pesca-consumo",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf", "image/jpeg", "image/png"],
+    maxFiles: 20,
+    database: {
+      table: "FaenaPescaConsumo",
+      field: "urlInformeFaena",
+    },
+  },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     "det-movs-entrega-rendir-mov-almacen-comprobante": {
     uploadPath: "uploads/pdf-system/det-movs-entrega-rendir-mov-almacen-comprobante",
     oldPaths: [],

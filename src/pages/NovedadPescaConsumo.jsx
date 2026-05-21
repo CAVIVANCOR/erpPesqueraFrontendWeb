@@ -33,6 +33,7 @@ import { getTiposDocumento } from "../api/tipoDocumento";
 import NovedadPescaConsumoForm from "../components/novedadPescaConsumo/NovedadPescaConsumoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 import { getUnidadesNegocio } from "../api/unidadNegocio";
+import { abrirPdfEnNuevaPestana } from "../utils/pdfUtils";
 
 /**
  * Componente principal para gestión de Novedades de Pesca para Consumo
@@ -48,10 +49,11 @@ const NovedadPescaConsumo = ({ ruta }) => {
   }
   // Estados principales de la tabla
   const [novedades, setNovedades] = useState([]);
-  
+
   // Filtrado automático por Unidad de Negocio
-  const { datosFiltrados: novedadesFiltradas } = useUnidadNegocioFilter(novedades);
-  
+  const { datosFiltrados: novedadesFiltradas } =
+    useUnidadNegocioFilter(novedades);
+
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
 
@@ -684,19 +686,30 @@ const NovedadPescaConsumo = ({ ruta }) => {
   /**
    * Template para resolución PDF
    */
-  const resolucionTemplate = (rowData) => {
-    if (!rowData.urlResolucionPdf) return "-";
+  /**
+   * Template para columna PDF de Resolución
+   */
+  const resolucionPdfTemplate = (rowData) => {
+    if (!rowData.urlResolucionPdf) {
+      return <div style={{ textAlign: "center", color: "#999" }}>-</div>;
+    }
 
     return (
-      <div className="flex align-items-center gap-2">
+      <div style={{ textAlign: "center" }}>
         <Button
           icon="pi pi-file-pdf"
-          className="p-button-rounded p-button-text p-button-sm"
+          className="p-button-rounded p-button-text p-button-danger"
           onClick={(e) => {
             e.stopPropagation();
-            window.open(rowData.urlResolucionPdf, "_blank");
+            abrirPdfEnNuevaPestana(
+              rowData.urlResolucionPdf,
+              toast.current,
+              "No hay resolución PDF disponible",
+            );
           }}
-          tooltip="Ver PDF"
+          tooltip="Ver Resolución PDF"
+          tooltipOptions={{ position: "top" }}
+          style={{ color: "#dc2626" }}
         />
       </div>
     );
@@ -977,13 +990,20 @@ const NovedadPescaConsumo = ({ ruta }) => {
             style={{ minWidth: "120px" }}
             className="text-right"
           />
+
+          <Column
+            field="urlResolucionPdf"
+            header="Resolución"
+            body={resolucionPdfTemplate}
+            headerStyle={{ width: "80px", textAlign: "center" }}
+            bodyStyle={{ textAlign: "center" }}
+          />
+
           <Column
             header="Acciones"
             body={accionesTemplate}
-            style={{ width: "100px" }}
+            style={{ width: "80px" }}
             className="text-center"
-            frozen
-            alignFrozen="right"
           />
         </DataTable>
       </div>

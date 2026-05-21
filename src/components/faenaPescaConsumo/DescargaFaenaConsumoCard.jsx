@@ -7,7 +7,6 @@
  * @author ERP Megui
  * @version 1.0.0
  */
-
 import React, { useState, useEffect, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -15,10 +14,14 @@ import { Tag } from "primereact/tag";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
+import { confirmDialog, ConfirmDialog } from "primereact/confirmdialog";
 import { Toolbar } from "primereact/toolbar";
 import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
-import { getResponsiveFontSize, createPorcentajeTemplate } from "../../utils/utils";
+import {
+  getResponsiveFontSize,
+  createPorcentajeTemplate,
+} from "../../utils/utils";
 import DescargaFaenaConsumoForm from "../descargaFaenaConsumo/DescargaFaenaConsumoForm";
 import {
   getDescargaPorFaena,
@@ -90,38 +93,42 @@ const DescargaFaenaConsumoCard = ({
     setDescargaDialog(true);
   };
 
-  const eliminarDescarga = async (rowData) => {
-    try {
-      const confirmado = window.confirm(
-        "¿Está seguro de eliminar esta descarga? Esta acción no se puede deshacer."
-      );
-      if (!confirmado) return;
+  const eliminarDescarga = (rowData) => {
+    confirmDialog({
+      message:
+        "¿Está seguro de eliminar esta descarga? Esta acción no se puede deshacer.",
+      header: "Confirmar Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
+      accept: async () => {
+        try {
+          setLoadingData(true);
+          await eliminarDescargaFaenaConsumo(rowData.id);
+          toast.current?.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: "Descarga eliminada correctamente",
+            life: 3000,
+          });
 
-      setLoadingData(true);
-      await eliminarDescargaFaenaConsumo(rowData.id);
-      toast.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "Descarga eliminada correctamente",
-        life: 3000,
-      });
+          await cargarDescargas();
 
-      await cargarDescargas();
-
-      if (onDescargaChange) {
-        onDescargaChange();
-      }
-    } catch (error) {
-      console.error("Error al eliminar descarga:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo eliminar la descarga",
-        life: 4000,
-      });
-    } finally {
-      setLoadingData(false);
-    }
+          if (onDescargaChange) {
+            onDescargaChange();
+          }
+        } catch (error) {
+          console.error("Error al eliminar descarga:", error);
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "No se pudo eliminar la descarga",
+            life: 4000,
+          });
+        } finally {
+          setLoadingData(false);
+        }
+      },
+    });
   };
 
   const hideDialog = () => {
@@ -222,7 +229,7 @@ const DescargaFaenaConsumoCard = ({
 
   const toneladasTemplate = (rowData) => {
     return rowData.toneladas
-      ? `${Number(rowData.toneladas).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      ? `${Number(rowData.toneladas).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       : "-";
   };
 
@@ -233,7 +240,8 @@ const DescargaFaenaConsumoCard = ({
 
     return (
       <span style={templateData.estilos}>
-        {templateData.valor}{templateData.sufijo}
+        {templateData.valor}
+        {templateData.sufijo}
       </span>
     );
   };
@@ -243,13 +251,24 @@ const DescargaFaenaConsumoCard = ({
 
     const fecha = new Date(rowData[field]);
     const fechaStr = fecha.toLocaleDateString("es-ES");
-    const horaStr = fecha.toLocaleTimeString("es-ES", { hour: '2-digit', minute: '2-digit' });
+    const horaStr = fecha.toLocaleTimeString("es-ES", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
     const fontSize = getResponsiveFontSize();
 
     return (
       <div style={{ textAlign: "center" }}>
         <div style={{ fontWeight: "bold", fontSize: fontSize }}>{fechaStr}</div>
-        <div style={{ fontWeight: "bold", fontSize: `calc(${fontSize} * 0.9)`, color: "#666" }}>{horaStr}</div>
+        <div
+          style={{
+            fontWeight: "bold",
+            fontSize: `calc(${fontSize} * 0.9)`,
+            color: "#666",
+          }}
+        >
+          {horaStr}
+        </div>
       </div>
     );
   };
@@ -257,12 +276,12 @@ const DescargaFaenaConsumoCard = ({
   const fechaHoraFondeoTemplate = (rowData) => {
     return rowData.fechaHoraFondeo
       ? new Date(rowData.fechaHoraFondeo).toLocaleString("es-PE", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
       : "-";
   };
 
@@ -276,7 +295,7 @@ const DescargaFaenaConsumoCard = ({
       : "-";
   };
 
-  const actionBodyTemplate = (rowData) => {
+    const actionBodyTemplate = (rowData) => {
     return (
       <div style={{ display: "flex", gap: "5px", flexWrap: "nowrap" }}>
         <Button
@@ -335,8 +354,6 @@ const DescargaFaenaConsumoCard = ({
       <Toast ref={toast} />
       <DataTable
         value={descargas}
-        selection={selectedDescarga}
-        onSelectionChange={(e) => setSelectedDescarga(e.value)}
         dataKey="id"
         globalFilter={globalFilter}
         emptyMessage="No se encontraron descargas."
@@ -349,7 +366,12 @@ const DescargaFaenaConsumoCard = ({
         onRowClick={(e) => editDescarga(e.data)}
         rowClassName={() => "align-top"}
       >
-        <Column field="id" header="ID" sortable style={{ minWidth: "80px", verticalAlign: "top" }} />
+        <Column
+          field="id"
+          header="ID"
+          sortable
+          style={{ minWidth: "80px", verticalAlign: "top" }}
+        />
         <Column
           field="puertoDescarga"
           header="Puerto"
@@ -369,14 +391,22 @@ const DescargaFaenaConsumoCard = ({
           header="Inicio Descarga"
           body={fechaHoraTemplate("fechaHoraInicioDescarga")}
           sortable
-          style={{ minWidth: "60px", textAlign: "center", verticalAlign: "top" }}
+          style={{
+            minWidth: "60px",
+            textAlign: "center",
+            verticalAlign: "top",
+          }}
         />
         <Column
           field="fechaHoraFinDescarga"
           header="Fin Descarga"
           body={fechaHoraTemplate("fechaHoraFinDescarga")}
           sortable
-          style={{ minWidth: "60px", textAlign: "center", verticalAlign: "top" }}
+          style={{
+            minWidth: "60px",
+            textAlign: "center",
+            verticalAlign: "top",
+          }}
         />
         <Column
           field="puertoFondeo"
@@ -444,10 +474,16 @@ const DescargaFaenaConsumoCard = ({
             katanasTripulacion={katanasTripulacion}
             empresaData={empresaData}
             bahiaId={faenaData?.bahiaId ? Number(faenaData.bahiaId) : null}
-            motoristaId={faenaData?.motoristaId ? Number(faenaData.motoristaId) : null}
+            motoristaId={
+              faenaData?.motoristaId ? Number(faenaData.motoristaId) : null
+            }
             patronId={faenaData?.patronId ? Number(faenaData.patronId) : null}
-            faenaPescaConsumoId={faenaPescaConsumoId ? Number(faenaPescaConsumoId) : null}
-            novedadPescaConsumoId={novedadData?.id ? Number(novedadData.id) : null}
+            faenaPescaConsumoId={
+              faenaPescaConsumoId ? Number(faenaPescaConsumoId) : null
+            }
+            novedadPescaConsumoId={
+              novedadData?.id ? Number(novedadData.id) : null
+            }
             faenaData={{
               ...faenaData,
               embarcacionId: faenaData?.embarcacionId,

@@ -1,27 +1,26 @@
 /**
- * ProductoSelector.jsx
+ * EntidadComercialSelector.jsx
  * 
- * Componente reutilizable para selección de Producto con búsqueda avanzada
- * Muestra una tabla con Empresa, Familia, Subfamilia y Producto para facilitar la búsqueda
- * Incluye carrusel de filtros por empresa, familia y subfamilia con colores dinámicos
+ * Componente reutilizable para selección de Entidad Comercial con búsqueda avanzada
+ * Muestra una tabla con Empresa, Tipo de Entidad y Razón Social para facilitar la búsqueda
+ * Incluye carrusel de filtros por empresa y tipo de entidad con colores dinámicos
  * 
- * ⚠️ IMPORTANTE: Este componente excluye automáticamente la familia MERCADERÍA (ID=1)
- * porque en gastos planificados solo se usan productos de otras familias
- * (insumos, servicios, mantenimiento, etc.)
+ * PATRÓN: Replica exactamente ProductoSelector.jsx
+ * - CARGA INTERNAMENTE todas las empresas y entidades comerciales
+ * - Filtra dinámicamente por empresa y tipo
+ * - Permite preseleccionar empresa desde props
+ * - Excluye entidades inactivas automáticamente
  * 
- * PATRÓN: Replica exactamente EntidadComercialSelector.jsx
- * - CARGA INTERNAMENTE todas las empresas, familias, subfamilias y productos
- * - Filtra dinámicamente por empresa, familia y subfamilia
- * - Excluye familia MERCADERÍA automáticamente
+ * IMPORTANTE: EntidadComercial NO tiene relación 'empresa' en el schema
+ * Solo tiene empresaId, por lo que se debe buscar MANUALMENTE en el array de empresas
  * 
- * CORRECCIÓN v2.2.0: Layout de 4 columnas verticales + carga interna
+ * CORRECCIÓN v1.2.0: Layout de 3 columnas verticales
  * - Columna 1: Botones de empresas (vertical)
- * - Columna 2: Botones de familias (vertical)
- * - Columna 3: Botones de subfamilias (vertical)
- * - Columna 4: DataTable de productos con columna Empresa
+ * - Columna 2: Botones de tipos (vertical)
+ * - Columna 3: DataTable de entidades
  * 
  * @author ERP Megui
- * @version 2.2.0
+ * @version 1.2.0
  */
 
 import React, { useState, useRef, useMemo, useEffect } from "react";
@@ -31,12 +30,12 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { InputText } from "primereact/inputtext";
 import { classNames } from "primereact/utils";
-import { getResponsiveFontSize } from "../../utils/utils";
-import { getProductos } from "../../api/producto";
+import { getEntidadesComerciales } from "../../api/entidadComercial";
 import { getAllEmpresas } from "../../api/empresa";
+import { getResponsiveFontSize } from "../../utils/utils";
 
 /**
- * Paleta de colores infinita para empresas, familias y subfamilias
+ * Paleta de colores infinita para empresas y tipos de entidad
  * Se repite cíclicamente si hay más categorías que colores
  */
 const COLORES_CATEGORIAS = [
@@ -58,15 +57,14 @@ const COLORES_CATEGORIAS = [
   { bg: '#FF5722', text: '#FFFFFF', border: '#FF5722' }, // Rojo naranja
 ];
 
-// Color para el botón "TODAS"
+// Color para el botón "TODAS/TODOS"
 const COLOR_TODAS = { bg: '#2196F3', text: '#FFFFFF', border: '#2196F3' }; // Azul
 
-// Colores específicos para Empresa, Familia, Subfamilia y Producto
+// Colores específicos para Empresa, Tipo y Entidad
 const COLORES_TEXTO = {
-  empresa: '#1565C0',      // 🔵 Azul oscuro
-  familia: '#1976D2',      // 🔵 Azul
-  subfamilia: '#2E7D32',   // 🟢 Verde
-  producto: '#FF0000',     // 🔴 Rojo
+  empresa: '#1976D2',      // 🔵 Azul
+  tipo: '#2E7D32',         // 🟢 Verde
+  entidad: '#D32F2F',      // 🔴 Rojo
   separador: '#666'        // Gris para los guiones
 };
 
@@ -101,33 +99,38 @@ const getEmpresaNombre = (empresaId, empresas) => {
 };
 
 /**
- * Componente ProductoSelector
- * @param {number|string} props.value - ID del producto seleccionado
- * @param {Function} props.onChange - Callback cuando se selecciona un producto (recibe el ID)
+ * Componente EntidadComercialSelector
+ * @param {number|string} props.value - ID de la entidad seleccionada
+ * @param {Function} props.onChange - Callback cuando se selecciona una entidad (recibe el ID)
  * @param {number|string} props.empresaIdPreseleccionada - ID de empresa a preseleccionar
+ * @param {string} props.tipoEntidadFiltro - Filtro por tipo: 'CLIENTE', 'PROVEEDOR', 'AMBOS', null=todos
+ * @param {string} props.label - Etiqueta personalizada (ej: "Cliente", "Proveedor", "Contratista")
  * @param {boolean} props.disabled - Si el selector está deshabilitado
  * @param {boolean} props.required - Si el campo es obligatorio
  * @param {boolean} props.error - Si hay error de validación
  * @param {string} props.errorMessage - Mensaje de error
  * @param {string} props.placeholder - Texto placeholder
+ * @param {boolean} props.mostrarInactivas - Si se deben mostrar entidades inactivas (por defecto false)
  * @returns {JSX.Element}
  */
-const ProductoSelector = ({
+const EntidadComercialSelector = ({
   value = null,
   onChange,
   empresaIdPreseleccionada = null,
+  tipoEntidadFiltro = null,
+  label = "Entidad Comercial",
   disabled = false,
   required = false,
   error = false,
   errorMessage = "",
-  placeholder = "Seleccione producto",
+  placeholder = "Seleccione entidad comercial",
+  mostrarInactivas = false,
 }) => {
   const [dialogVisible, setDialogVisible] = useState(false);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
   const [empresaFiltro, setEmpresaFiltro] = useState(empresaIdPreseleccionada);
-  const [familiaFiltro, setFamiliaFiltro] = useState(null);
-  const [subfamiliaFiltro, setSubfamiliaFiltro] = useState(null);
-  const [productos, setProductos] = useState([]);
+  const [tipoFiltro, setTipoFiltro] = useState(null);
+  const [entidades, setEntidades] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [loading, setLoading] = useState(false);
   const dt = useRef(null);
@@ -137,19 +140,19 @@ const ProductoSelector = ({
     const cargarDatos = async () => {
       setLoading(true);
       try {
-        const [productosData, empresasData] = await Promise.all([
-          getProductos(),
+        const [entidadesData, empresasData] = await Promise.all([
+          getEntidadesComerciales(),
           getAllEmpresas()
         ]);
         
-        setProductos(productosData || []);
+        setEntidades(entidadesData || []);
         setEmpresas(empresasData || []);
         
-        console.log("📊 ProductoSelector - Empresas cargadas:", empresasData?.length || 0);
-        console.log("📊 ProductoSelector - Productos cargados:", productosData?.length || 0);
+        console.log("📊 EntidadComercialSelector - Empresas cargadas:", empresasData?.length || 0);
+        console.log("📊 EntidadComercialSelector - Entidades cargadas:", entidadesData?.length || 0);
       } catch (error) {
         console.error("❌ Error cargando datos:", error);
-        setProductos([]);
+        setEntidades([]);
         setEmpresas([]);
       } finally {
         setLoading(false);
@@ -166,151 +169,136 @@ const ProductoSelector = ({
     }
   }, [empresaIdPreseleccionada]);
 
-  // Obtener el producto seleccionado (buscar en array original completo)
-  const productoSeleccionado = useMemo(() => {
+  // Obtener la entidad seleccionada (buscar en array original completo)
+  const entidadSeleccionada = useMemo(() => {
     if (!value) {
       return null;
     }
     
-    const producto = productos.find((p) => Number(p.id) === Number(value));
-    return producto;
-  }, [productos, value]);
+    const entidad = entidades.find((e) => Number(e.id) === Number(value));
+    return entidad;
+  }, [entidades, value]);
 
-  // ⚠️ FILTRO FAMILIA MERCADERÍA
-  // Excluimos productos con familiaId=1 (MERCADERÍA) porque no se usan en gastos planificados
-  const productosConFiltroMercaderia = useMemo(() => {
-    const filtrados = productos.filter((p) => Number(p.familiaId) !== 1);
-    return filtrados;
-  }, [productos]);
+  // ⚠️ FILTRO ENTIDADES INACTIVAS
+  // Excluimos entidades con estado=false por defecto
+  const entidadesConFiltroEstado = useMemo(() => {
+    if (mostrarInactivas) {
+      return entidades;
+    }
+    const filtradas = entidades.filter((e) => e.estado === true);
+    return filtradas;
+  }, [entidades, mostrarInactivas]);
 
-  // ✅ MOSTRAR TODAS LAS EMPRESAS - No filtrar por productos
+  // ✅ MOSTRAR TODAS LAS EMPRESAS - No filtrar por entidades
   const empresasUnicas = useMemo(() => {
+    // Usar directamente el array de empresas recibido, ordenado alfabéticamente
     const empresasOrdenadas = [...empresas].sort((a, b) =>
       (a.nombre || a.razonSocial || "").localeCompare(b.nombre || b.razonSocial || "")
     );
     return empresasOrdenadas;
   }, [empresas]);
 
-  // ⚠️ FILTRO POR EMPRESA PRIMERO
-  const productosFiltradosPorEmpresa = useMemo(() => {
+  // ⚠️ FILTRO POR EMPRESA PRIMERO (antes de aplicar filtro de tipo)
+  // Esto permite que al seleccionar una empresa se muestren TODAS sus entidades
+  const entidadesFiltradosPorEmpresa = useMemo(() => {
     if (!empresaFiltro) {
-      return productosConFiltroMercaderia;
+      // Si no hay empresa seleccionada, aplicar filtro de tipo sobre todas las entidades
+      if (!tipoEntidadFiltro) {
+        return entidadesConFiltroEstado;
+      }
+
+      switch (tipoEntidadFiltro.toUpperCase()) {
+        case 'CLIENTE':
+          return entidadesConFiltroEstado.filter((e) => e.esCliente === true);
+        case 'PROVEEDOR':
+        case 'CONTRATISTA':
+          return entidadesConFiltroEstado.filter((e) => e.esProveedor === true);
+        case 'AMBOS':
+          return entidadesConFiltroEstado.filter((e) => e.esCliente === true && e.esProveedor === true);
+        default:
+          return entidadesConFiltroEstado;
+      }
     }
     
-    const filtrados = productosConFiltroMercaderia.filter(
-      (producto) => Number(producto.empresaId) === Number(empresaFiltro)
+    // Si hay empresa seleccionada, mostrar TODAS sus entidades (sin filtro de tipo)
+    const filtradas = entidadesConFiltroEstado.filter(
+      (entidad) => Number(entidad.empresaId) === Number(empresaFiltro)
     );
-    return filtrados;
-  }, [productosConFiltroMercaderia, empresaFiltro]);
+    return filtradas;
+  }, [entidadesConFiltroEstado, empresaFiltro, tipoEntidadFiltro]);
 
-  // Extraer familias únicas desde los productos filtrados por empresa y ordenarlas alfabéticamente
-  const familiasUnicas = useMemo(() => {
-    const familiasMap = new Map();
-    productosFiltradosPorEmpresa.forEach((producto) => {
-      if (producto.familia && producto.familia.id) {
-        familiasMap.set(Number(producto.familia.id), producto.familia);
+  // Verificar si la empresa seleccionada tiene entidades
+  const empresaTieneEntidades = useMemo(() => {
+    if (!empresaFiltro) return true;
+    return entidadesFiltradosPorEmpresa.length > 0;
+  }, [empresaFiltro, entidadesFiltradosPorEmpresa]);
+
+  // Extraer tipos únicos desde las entidades filtradas por empresa
+  const tiposUnicos = useMemo(() => {
+    const tiposMap = new Map();
+    entidadesFiltradosPorEmpresa.forEach((entidad) => {
+      if (entidad.tipoEntidad && entidad.tipoEntidad.id) {
+        tiposMap.set(Number(entidad.tipoEntidad.id), entidad.tipoEntidad);
       }
     });
-    const familias = Array.from(familiasMap.values()).sort((a, b) =>
+    const tipos = Array.from(tiposMap.values()).sort((a, b) =>
       (a.nombre || "").localeCompare(b.nombre || "")
     );
-    return familias;
-  }, [productosFiltradosPorEmpresa]);
+    return tipos;
+  }, [entidadesFiltradosPorEmpresa]);
 
-  // Filtrar productos por familia seleccionada
-  const productosFiltradosPorFamilia = useMemo(() => {
-    if (!familiaFiltro) {
-      return productosFiltradosPorEmpresa;
+  // Filtrar entidades por tipo seleccionado
+  const entidadesFiltradosPorTipo = useMemo(() => {
+    if (!tipoFiltro) {
+      return entidadesFiltradosPorEmpresa;
     }
-    const filtrados = productosFiltradosPorEmpresa.filter(
-      (producto) => Number(producto.familiaId) === Number(familiaFiltro)
+    const filtradas = entidadesFiltradosPorEmpresa.filter(
+      (entidad) => Number(entidad.tipoEntidadId) === Number(tipoFiltro)
     );
-    return filtrados;
-  }, [productosFiltradosPorEmpresa, familiaFiltro]);
+    return filtradas;
+  }, [entidadesFiltradosPorEmpresa, tipoFiltro]);
 
-  // Extraer subfamilias únicas desde los productos filtrados por familia
-  const subfamiliasUnicas = useMemo(() => {
-    const subfamiliasMap = new Map();
-    productosFiltradosPorFamilia.forEach((producto) => {
-      if (producto.subfamilia && producto.subfamilia.id) {
-        subfamiliasMap.set(Number(producto.subfamilia.id), producto.subfamilia);
-      }
-    });
-    const subfamilias = Array.from(subfamiliasMap.values()).sort((a, b) =>
-      (a.nombre || "").localeCompare(b.nombre || "")
-    );
-    return subfamilias;
-  }, [productosFiltradosPorFamilia]);
-
-  // Filtrar productos por subfamilia seleccionada
-  const productosFiltradosPorSubfamilia = useMemo(() => {
-    if (!subfamiliaFiltro) {
-      return productosFiltradosPorFamilia;
-    }
-    const filtrados = productosFiltradosPorFamilia.filter(
-      (producto) => Number(producto.subfamiliaId) === Number(subfamiliaFiltro)
-    );
-    return filtrados;
-  }, [productosFiltradosPorFamilia, subfamiliaFiltro]);
-
-  // Ordenar productos: primero por empresa, luego por familia, luego por subfamilia, luego por descripción
-  const productosOrdenados = useMemo(() => {
-    return [...productosFiltradosPorSubfamilia].sort((a, b) => {
+  // Ordenar entidades: primero por empresa, luego por tipo, luego por razón social
+  const entidadesOrdenadas = useMemo(() => {
+    return [...entidadesFiltradosPorTipo].sort((a, b) => {
       // Primero por empresa
       const empA = getEmpresaNombre(a.empresaId, empresas);
       const empB = getEmpresaNombre(b.empresaId, empresas);
       if (empA !== empB) {
         return empA.localeCompare(empB);
       }
-      // Luego por familia
-      const famA = a.familia?.nombre || "";
-      const famB = b.familia?.nombre || "";
-      if (famA !== famB) {
-        return famA.localeCompare(famB);
+      // Luego por tipo
+      const tipoA = a.tipoEntidad?.nombre || "";
+      const tipoB = b.tipoEntidad?.nombre || "";
+      if (tipoA !== tipoB) {
+        return tipoA.localeCompare(tipoB);
       }
-      // Luego por subfamilia
-      const subfamA = a.subfamilia?.nombre || "";
-      const subfamB = b.subfamilia?.nombre || "";
-      if (subfamA !== subfamB) {
-        return subfamA.localeCompare(subfamB);
-      }
-      // Finalmente por descripción
-      return (a.descripcionArmada || "").localeCompare(b.descripcionArmada || "");
+      // Finalmente por razón social
+      return (a.razonSocial || "").localeCompare(b.razonSocial || "");
     });
-  }, [productosFiltradosPorSubfamilia, empresas]);
+  }, [entidadesFiltradosPorTipo, empresas]);
 
   /**
    * Maneja el cambio de empresa
-   * Reset automático de familia y subfamilia al cambiar empresa
+   * Reset automático de tipo al cambiar empresa
    */
   const handleEmpresaChange = (empresaId) => {
     setEmpresaFiltro(empresaId);
-    setFamiliaFiltro(null);
-    setSubfamiliaFiltro(null);
+    setTipoFiltro(null); // Reset tipo
   };
 
   /**
-   * Maneja el cambio de familia
-   * Reset automático de subfamilia al cambiar familia
+   * Maneja la selección de una entidad
    */
-  const handleFamiliaChange = (familiaId) => {
-    setFamiliaFiltro(familiaId);
-    setSubfamiliaFiltro(null); // Reset subfamilia
-  };
-
-  /**
-   * Maneja la selección de un producto
-   */
-  const handleSeleccion = (producto) => {
+  const handleSeleccion = (entidad) => {
     if (onChange) {
-      onChange(Number(producto.id));
+      onChange(Number(entidad.id));
     }
     
     setDialogVisible(false);
     setGlobalFilterValue("");
     // No resetear empresaFiltro para mantener la preselección
-    setFamiliaFiltro(null);
-    setSubfamiliaFiltro(null);
+    setTipoFiltro(null);
   };
 
   /**
@@ -321,8 +309,7 @@ const ProductoSelector = ({
     setGlobalFilterValue("");
     // Restaurar empresa preseleccionada al cerrar
     setEmpresaFiltro(empresaIdPreseleccionada);
-    setFamiliaFiltro(null);
-    setSubfamiliaFiltro(null);
+    setTipoFiltro(null);
   };
 
   /**
@@ -338,34 +325,41 @@ const ProductoSelector = ({
   };
 
   /**
-   * Template para la familia
+   * Template para el tipo de entidad
    */
-  const familiaTemplate = (rowData) => {
+  const tipoTemplate = (rowData) => {
     return (
-      <span style={{ color: COLORES_TEXTO.familia, fontSize: "0.9rem", fontWeight: "bold" }}>
-        {rowData.familia?.nombre || "Sin familia"}
+      <span style={{ color: COLORES_TEXTO.tipo, fontSize: "0.9rem", fontWeight: "bold" }}>
+        {rowData.tipoEntidad?.nombre || "Sin tipo"}
       </span>
     );
   };
 
   /**
-   * Template para la subfamilia
+   * Template para la entidad (razón social)
    */
-  const subfamiliaTemplate = (rowData) => {
+  const entidadTemplate = (rowData) => {
     return (
-      <span style={{ color: COLORES_TEXTO.subfamilia, fontSize: "0.9rem", fontWeight: "bold" }}>
-        {rowData.subfamilia?.nombre || "Sin subfamilia"}
-      </span>
+      <div>
+        <span style={{ color: COLORES_TEXTO.entidad, fontWeight: "bold", display: "block" }}>
+          {rowData.razonSocial}
+        </span>
+      </div>
     );
   };
 
   /**
-   * Template para el producto
+   * Template para el documento
+   * Muestra: TipoDoc + Número (ej: "RUC: 20512528458")
    */
-  const productoTemplate = (rowData) => {
+  const documentoTemplate = (rowData) => {
+    const tipoDoc = rowData.tipoDocumento?.codigo || rowData.tipoDocumento?.nombre || "";
+    const numeroDoc = rowData.numeroDocumento || "N/A";
+    
     return (
-      <span style={{ color: COLORES_TEXTO.producto, fontWeight: "bold" }}>
-        {rowData.descripcionArmada}
+      <span style={{ fontSize: "0.9rem" }}>
+        {tipoDoc && <span style={{ fontWeight: "bold", color: "#666" }}>{tipoDoc}: </span>}
+        {numeroDoc}
       </span>
     );
   };
@@ -383,7 +377,7 @@ const ProductoSelector = ({
    */
   const header = (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-      <h4 style={{ margin: 0 }}>Productos</h4>
+      <h4 style={{ margin: 0 }}>Entidades</h4>
       <span className="p-input-icon-left">
         <i className="pi pi-search" />
         <InputText
@@ -391,7 +385,7 @@ const ProductoSelector = ({
           onChange={(e) => {
             setGlobalFilterValue(e.target.value);
           }}
-          placeholder="Buscar producto..."
+          placeholder="Buscar entidad..."
           style={{ width: "250px" }}
         />
       </span>
@@ -403,10 +397,15 @@ const ProductoSelector = ({
    */
   const footer = (
     <div style={{ textAlign: "left", color: "#666", fontSize: "0.9rem" }}>
-      Total: {productosOrdenados.length} producto(s)
+      Total: {entidadesOrdenadas.length} entidad(es)
       {empresas.length === 0 && (
         <span style={{ color: "red", marginLeft: "1rem" }}>
           ⚠️ No se cargaron empresas
+        </span>
+      )}
+      {!empresaTieneEntidades && empresaFiltro && (
+        <span style={{ color: "orange", marginLeft: "1rem" }}>
+          ⚠️ La empresa seleccionada no tiene entidades
         </span>
       )}
     </div>
@@ -416,7 +415,7 @@ const ProductoSelector = ({
     <div className="field">
       {/* Label */}
       <label className="block text-900 font-medium mb-2">
-        Producto (Gasto) {required && <span style={{ color: "red" }}>*</span>}
+        {label} {required && <span style={{ color: "red" }}>*</span>}
       </label>
 
       {/* Botón selector */}
@@ -439,22 +438,18 @@ const ProductoSelector = ({
       >
         {loading ? (
           <span style={{ color: "#999" }}>Cargando...</span>
-        ) : productoSeleccionado ? (
+        ) : entidadSeleccionada ? (
           <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
             <span style={{ color: COLORES_TEXTO.empresa }}>
-              {getEmpresaNombre(productoSeleccionado.empresaId, empresas)}
+              {getEmpresaNombre(entidadSeleccionada.empresaId, empresas)}
             </span>
             <span style={{ color: COLORES_TEXTO.separador }}> - </span>
-            <span style={{ color: COLORES_TEXTO.familia }}>
-              {productoSeleccionado.familia?.nombre || "Sin familia"}
+            <span style={{ color: COLORES_TEXTO.tipo }}>
+              {entidadSeleccionada.tipoEntidad?.nombre || "Sin tipo"}
             </span>
             <span style={{ color: COLORES_TEXTO.separador }}> - </span>
-            <span style={{ color: COLORES_TEXTO.subfamilia }}>
-              {productoSeleccionado.subfamilia?.nombre || "Sin subfamilia"}
-            </span>
-            <span style={{ color: COLORES_TEXTO.separador }}> - </span>
-            <span style={{ color: COLORES_TEXTO.producto, fontWeight: "bold" }}>
-              {productoSeleccionado.descripcionArmada || "Sin descripción"}
+            <span style={{ color: COLORES_TEXTO.entidad, fontWeight: "bold" }}>
+              {entidadSeleccionada.razonSocial || "Sin razón social"}
             </span>
           </span>
         ) : (
@@ -467,21 +462,21 @@ const ProductoSelector = ({
         <small className="p-error">{errorMessage}</small>
       )}
 
-      {/* Dialog con layout de 4 columnas */}
+      {/* Dialog con layout de 3 columnas */}
       <Dialog
         visible={dialogVisible}
-        style={{ width: "95vw", maxWidth: "1800px" }}
-        header="Seleccionar Producto"
+        style={{ width: "95vw", maxWidth: "1600px" }}
+        header={`Seleccionar ${label}`}
         modal
         onHide={() => {
           handleCloseDialog();
         }}
         maximizable
       >
-        {/* Layout de 4 columnas */}
+        {/* Layout de 3 columnas */}
         <div style={{ 
           display: "grid", 
-          gridTemplateColumns: "160px 160px 160px 1fr", 
+          gridTemplateColumns: "180px 180px 1fr", 
           gap: "1rem",
           height: "600px"
         }}>
@@ -556,16 +551,16 @@ const ProductoSelector = ({
             </div>
           </div>
 
-          {/* ========== COLUMNA 2: FAMILIAS ========== */}
+          {/* ========== COLUMNA 2: TIPOS DE ENTIDAD ========== */}
           <div style={{ 
             display: "flex", 
             flexDirection: "column",
             borderRight: "1px solid #dee2e6"
           }}>
             <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: "600" }}>
-              Familias
+              Tipos de Entidad
             </h4>
-            {empresaFiltro && familiasUnicas.length > 0 ? (
+            {empresaFiltro && tiposUnicos.length > 0 ? (
               <div style={{ 
                 display: "flex", 
                 flexDirection: "column", 
@@ -573,15 +568,15 @@ const ProductoSelector = ({
                 overflowY: "auto",
                 paddingRight: "0.5rem"
               }}>
-                {/* Botón TODAS */}
+                {/* Botón TODOS */}
                 <Button
                   type="button"
-                  label="TODAS"
+                  label="TODOS"
                   size="small"
-                  onClick={() => handleFamiliaChange(null)}
+                  onClick={() => setTipoFiltro(null)}
                   style={{
-                    backgroundColor: !familiaFiltro ? COLOR_TODAS.bg : "#FFFFFF",
-                    color: !familiaFiltro ? COLOR_TODAS.text : COLOR_TODAS.bg,
+                    backgroundColor: !tipoFiltro ? COLOR_TODAS.bg : "#FFFFFF",
+                    color: !tipoFiltro ? COLOR_TODAS.text : COLOR_TODAS.bg,
                     borderColor: COLOR_TODAS.border,
                     fontWeight: "500",
                     fontSize: "0.75rem",
@@ -589,21 +584,21 @@ const ProductoSelector = ({
                     justifyContent: "flex-start",
                     textAlign: "left",
                   }}
-                  className={!familiaFiltro ? "" : "p-button-outlined"}
+                  className={!tipoFiltro ? "" : "p-button-outlined"}
                 />
 
-                {/* Botones de familias */}
-                {familiasUnicas.map((familia, index) => {
+                {/* Botones de tipos */}
+                {tiposUnicos.map((tipo, index) => {
                   const color = getColorCategoria(index);
-                  const isActive = Number(familiaFiltro) === Number(familia.id);
+                  const isActive = Number(tipoFiltro) === Number(tipo.id);
 
                   return (
                     <Button
-                      key={familia.id}
+                      key={tipo.id}
                       type="button"
-                      label={familia.nombre}
+                      label={tipo.nombre}
                       size="small"
-                      onClick={() => handleFamiliaChange(Number(familia.id))}
+                      onClick={() => setTipoFiltro(Number(tipo.id))}
                       style={{
                         backgroundColor: isActive ? color.bg : "#FFFFFF",
                         color: isActive ? color.text : color.bg,
@@ -618,7 +613,7 @@ const ProductoSelector = ({
                         textOverflow: "ellipsis",
                       }}
                       className={isActive ? "" : "p-button-outlined"}
-                      tooltip={familia.nombre}
+                      tooltip={tipo.nombre}
                       tooltipOptions={{ position: 'right' }}
                     />
                   );
@@ -626,93 +621,18 @@ const ProductoSelector = ({
               </div>
             ) : (
               <div style={{ color: "#999", fontSize: "0.85rem", fontStyle: "italic" }}>
-                {empresaFiltro ? "No hay familias disponibles" : "Seleccione una empresa"}
+                {empresaFiltro ? "No hay tipos disponibles" : "Seleccione una empresa"}
               </div>
             )}
           </div>
 
-          {/* ========== COLUMNA 3: SUBFAMILIAS ========== */}
-          <div style={{ 
-            display: "flex", 
-            flexDirection: "column",
-            borderRight: "1px solid #dee2e6"
-          }}>
-            <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: "600" }}>
-              Subfamilias
-            </h4>
-            {familiaFiltro && subfamiliasUnicas.length > 0 ? (
-              <div style={{ 
-                display: "flex", 
-                flexDirection: "column", 
-                gap: "0.35rem",
-                overflowY: "auto",
-                paddingRight: "0.5rem"
-              }}>
-                {/* Botón TODAS */}
-                <Button
-                  type="button"
-                  label="TODAS"
-                  size="small"
-                  onClick={() => setSubfamiliaFiltro(null)}
-                  style={{
-                    backgroundColor: !subfamiliaFiltro ? COLOR_TODAS.bg : "#FFFFFF",
-                    color: !subfamiliaFiltro ? COLOR_TODAS.text : COLOR_TODAS.bg,
-                    borderColor: COLOR_TODAS.border,
-                    fontWeight: "500",
-                    fontSize: "0.75rem",
-                    padding: "0.35rem 0.5rem",
-                    justifyContent: "flex-start",
-                    textAlign: "left",
-                  }}
-                  className={!subfamiliaFiltro ? "" : "p-button-outlined"}
-                />
-
-                {/* Botones de subfamilias */}
-                {subfamiliasUnicas.map((subfamilia, index) => {
-                  const color = getColorCategoria(index);
-                  const isActive = Number(subfamiliaFiltro) === Number(subfamilia.id);
-
-                  return (
-                    <Button
-                      key={subfamilia.id}
-                      type="button"
-                      label={subfamilia.nombre}
-                      size="small"
-                      onClick={() => setSubfamiliaFiltro(Number(subfamilia.id))}
-                      style={{
-                        backgroundColor: isActive ? color.bg : "#FFFFFF",
-                        color: isActive ? color.text : color.bg,
-                        borderColor: color.border,
-                        fontWeight: "500",
-                        fontSize: "0.75rem",
-                        padding: "0.35rem 0.5rem",
-                        justifyContent: "flex-start",
-                        textAlign: "left",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                      className={isActive ? "" : "p-button-outlined"}
-                      tooltip={subfamilia.nombre}
-                      tooltipOptions={{ position: 'right' }}
-                    />
-                  );
-                })}
-              </div>
-            ) : (
-              <div style={{ color: "#999", fontSize: "0.85rem", fontStyle: "italic" }}>
-                {familiaFiltro ? "No hay subfamilias disponibles" : "Seleccione una familia"}
-              </div>
-            )}
-          </div>
-
-          {/* ========== COLUMNA 4: TABLA DE PRODUCTOS ========== */}
+          {/* ========== COLUMNA 3: TABLA DE ENTIDADES ========== */}
           <div style={{ display: "flex", flexDirection: "column" }}>
             {header}
             
             <DataTable
               ref={dt}
-              value={productosOrdenados}
+              value={entidadesOrdenadas}
               selectionMode="single"
               onRowSelect={(e) => {
                 handleSeleccion(e.data);
@@ -722,8 +642,8 @@ const ProductoSelector = ({
               rows={20}
               rowsPerPageOptions={[20, 40, 100]}
               globalFilter={globalFilterValue}
-              globalFilterFields={['descripcionArmada']}
-              emptyMessage="No se encontraron productos"
+              globalFilterFields={['razonSocial', 'nombreComercial', 'numeroDocumento']}
+              emptyMessage="No se encontraron entidades comerciales"
               stripedRows
               showGridlines
               size="small"
@@ -738,29 +658,30 @@ const ProductoSelector = ({
                 header="Empresa"
                 body={empresaTemplate}
                 sortable
-                style={{ minWidth: "120px" }}
+                style={{ minWidth: "200px" }}
               />
               <Column
-                field="familia.nombre"
-                header="Familia"
-                body={familiaTemplate}
+                field="tipoEntidad.nombre"
+                header="Tipo"
+                body={tipoTemplate}
                 sortable
                 style={{ minWidth: "120px" }}
               />
               <Column
-                field="subfamilia.nombre"
-                header="Subfamilia"
-                body={subfamiliaTemplate}
+                field="razonSocial"
+                header="Razón Social"
+                body={entidadTemplate}
                 sortable
-                style={{ minWidth: "120px" }}
+                filterField="razonSocial"
+                style={{ minWidth: "300px" }}
               />
               <Column
-                field="descripcionArmada"
-                header="Producto"
-                body={productoTemplate}
+                field="numeroDocumento"
+                header="Documento"
+                body={documentoTemplate}
                 sortable
-                filterField="descripcionArmada"
-                style={{ minWidth: "400px" }}
+                filterField="numeroDocumento"
+                style={{ minWidth: "150px" }}
               />
             </DataTable>
 
@@ -784,4 +705,4 @@ const ProductoSelector = ({
   );
 };
 
-export default ProductoSelector;
+export default EntidadComercialSelector;

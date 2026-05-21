@@ -653,21 +653,7 @@ const TemporadaPesca = ({ ruta }) => {
    */
   const actionTemplate = (rowData) => {
     return (
-      <div className="flex gap-2 align-items-center">
-        {rowData.urlResolucionPdf && (
-          <div style={{ display: "inline-block" }}>
-            <PDFActionButtons
-              pdfUrl={rowData.urlResolucionPdf}
-              moduleName="temporada-pesca"
-              fileName={`Resolucion_${rowData.numeroResolucion}.pdf`}
-              showViewButton={true}
-              showDownloadButton={false}
-              viewButtonLabel=""
-              className="p-0"
-              toast={toast}
-            />
-          </div>
-        )}
+      <div className="flex gap-2 align-items-center justify-content-center">
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-text p-button-danger p-button-sm"
@@ -683,7 +669,34 @@ const TemporadaPesca = ({ ruta }) => {
       </div>
     );
   };
+  /**
+   * Template para columna PDF de Resolución
+   */
+  const resolucionPdfTemplate = (rowData) => {
+    if (!rowData.urlResolucionPdf) {
+      return <div style={{ textAlign: "center", color: "#999" }}>-</div>;
+    }
 
+    return (
+      <div style={{ textAlign: "center" }}>
+        <Button
+          icon="pi pi-file-pdf"
+          className="p-button-rounded p-button-text p-button-danger"
+          onClick={(e) => {
+            e.stopPropagation();
+            abrirPdfEnNuevaPestana(
+              rowData.urlResolucionPdf,
+              toast.current,
+              "No hay resolución PDF disponible",
+            );
+          }}
+          tooltip="Ver Resolución PDF"
+          tooltipOptions={{ position: "top" }}
+          style={{ color: "#dc2626" }}
+        />
+      </div>
+    );
+  };
   /**
    * Template para cuota total (Cuota Propia + Cuota Alquilada)
    */
@@ -1036,7 +1049,6 @@ const TemporadaPesca = ({ ruta }) => {
           />
 
           <Column
-            field="porcentajeAvanzado"
             header="Porcentaje Avanzado"
             body={porcentajeAvanzadoTemplate}
             sortable
@@ -1045,10 +1057,18 @@ const TemporadaPesca = ({ ruta }) => {
           />
 
           <Column
+            field="urlResolucionPdf"
+            header="Resolución"
+            body={resolucionPdfTemplate}
+            headerStyle={{ width: "80px", textAlign: "center" }}
+            bodyStyle={{ textAlign: "center" }}
+          />
+
+          <Column
             header="Acciones"
             body={actionTemplate}
             exportable={false}
-            style={{ minWidth: "100px", maxWidth: "150px" }}
+            style={{ minWidth: "80px", maxWidth: "100px" }}
             className="text-center"
           />
         </DataTable>

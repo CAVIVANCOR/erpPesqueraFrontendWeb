@@ -27,6 +27,7 @@ import { getMonedas } from "../../api/moneda";
 import { getTiposDocumento } from "../../api/tipoDocumento";
 import { getProductos } from "../../api/producto";
 import { getAllCategoriaTipoMovEntregaRendir } from "../../api/categoriaTipoMovEntregaRendir";
+import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
 
 export default function RendicionGastosList({ ruta }) {
   const toast = useRef(null);
@@ -615,6 +616,105 @@ export default function RendicionGastosList({ ruta }) {
     );
   };
 
+    /**
+   * Template para Comprobante de Movimiento (PDF)
+   */
+  const comprobanteMovimientoTemplate = (rowData) => {
+    if (!rowData.urlComprobanteMovimiento) {
+      return (
+        <div style={{ textAlign: "center", color: "#999" }}>
+          -
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ textAlign: "center" }}>
+        <Button
+          icon="pi pi-file-pdf"
+          className="p-button-rounded p-button-text p-button-danger"
+          onClick={(e) => {
+            e.stopPropagation();
+            abrirPdfEnNuevaPestana(
+              rowData.urlComprobanteMovimiento,
+              toast.current,
+              "No hay comprobante de movimiento disponible"
+            );
+          }}
+          tooltip="Ver Comprobante de Movimiento"
+          tooltipOptions={{ position: "top" }}
+          style={{ color: "#dc2626" }}
+        />
+      </div>
+    );
+  };
+
+  /**
+   * Template para Comprobante de Operación MovCaja (PDF)
+   */
+    const comprobanteOperacionTemplate = (rowData) => {
+    if (!rowData.urlComprobanteOperacionMovCaja) {
+      return (
+        <div style={{ textAlign: "center", color: "#999" }}>
+          -
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ textAlign: "center" }}>
+        <Button
+          icon="pi pi-file-pdf"
+          className="p-button-rounded p-button-text p-button-danger"
+          onClick={(e) => {
+            e.stopPropagation();
+            abrirPdfEnNuevaPestana(
+              rowData.urlComprobanteOperacionMovCaja,  // ✅ CORRECTO
+              toast.current,
+              "No hay comprobante de operación disponible"
+            );
+          }}
+          tooltip="Ver Comprobante de Operación MovCaja"
+          tooltipOptions={{ position: "top" }}
+          style={{ color: "#dc2626" }}
+        />
+      </div>
+    );
+  };
+
+  /**
+   * Template para Liquidación de Entrega a Rendir (PDF)
+   */
+    const liquidacionEntregaTemplate = (rowData) => {
+    if (!rowData.urlLiquidacionEntregaARendir) {
+      return (
+        <div style={{ textAlign: "center", color: "#999" }}>
+          -
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ textAlign: "center" }}>
+        <Button
+          icon="pi pi-file-pdf"
+          className="p-button-rounded p-button-text p-button-danger"
+          onClick={(e) => {
+            e.stopPropagation();
+            abrirPdfEnNuevaPestana(
+              rowData.urlLiquidacionEntregaARendir,  // ✅ CORRECTO
+              toast.current,
+              "No hay liquidación de entrega a rendir disponible"
+            );
+          }}
+          tooltip="Ver Liquidación de Entrega a Rendir"
+          tooltipOptions={{ position: "top" }}
+          style={{ color: "#dc2626" }}
+        />
+      </div>
+    );
+  };
+
   return (
     <div style={{ padding: "1rem" }}>
       <Toast ref={toast} />
@@ -883,6 +983,27 @@ export default function RendicionGastosList({ ruta }) {
             body={saldoFinalAsignacionTemplate}
             sortable
             style={{ minWidth: "120px" }}
+          />
+          <Column
+            field="urlComprobanteMovimiento"
+            header="Comprob. Movim."
+            body={comprobanteMovimientoTemplate}
+            headerStyle={{ width: "80px", textAlign: "center" }}
+            bodyStyle={{ textAlign: "center" }}
+          />
+          <Column
+            field="urlComprobanteOperacionMovCaja"
+            header="Comprob. Oper."
+            body={comprobanteOperacionTemplate}
+            headerStyle={{ width: "80px", textAlign: "center" }}
+            bodyStyle={{ textAlign: "center" }}
+          />
+          <Column
+            field="urlLiquidacionEntregaARendir"
+            header="Liquid. Entrega"
+            body={liquidacionEntregaTemplate}
+            headerStyle={{ width: "80px", textAlign: "center" }}
+            bodyStyle={{ textAlign: "center" }}
           />
           <Column
             header="Acciones"

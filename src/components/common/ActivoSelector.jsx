@@ -1,27 +1,22 @@
 /**
- * ProductoSelector.jsx
+ * ActivoSelector.jsx
  * 
- * Componente reutilizable para selección de Producto con búsqueda avanzada
- * Muestra una tabla con Empresa, Familia, Subfamilia y Producto para facilitar la búsqueda
- * Incluye carrusel de filtros por empresa, familia y subfamilia con colores dinámicos
- * 
- * ⚠️ IMPORTANTE: Este componente excluye automáticamente la familia MERCADERÍA (ID=1)
- * porque en gastos planificados solo se usan productos de otras familias
- * (insumos, servicios, mantenimiento, etc.)
+ * Componente reutilizable para selección de Activo con búsqueda avanzada
+ * Muestra una tabla con Empresa, Tipo de Activo y Activo para facilitar la búsqueda
+ * Incluye carrusel de filtros por empresa y tipo de activo con colores dinámicos
  * 
  * PATRÓN: Replica exactamente EntidadComercialSelector.jsx
- * - CARGA INTERNAMENTE todas las empresas, familias, subfamilias y productos
- * - Filtra dinámicamente por empresa, familia y subfamilia
- * - Excluye familia MERCADERÍA automáticamente
+ * - CARGA INTERNAMENTE todas las empresas, tipos de activo y activos
+ * - Filtra dinámicamente por empresa y tipo
+ * - Excluye activos cesados automáticamente
  * 
- * CORRECCIÓN v2.2.0: Layout de 4 columnas verticales + carga interna
+ * CORRECCIÓN v1.2.0: Layout de 3 columnas verticales + carga interna
  * - Columna 1: Botones de empresas (vertical)
- * - Columna 2: Botones de familias (vertical)
- * - Columna 3: Botones de subfamilias (vertical)
- * - Columna 4: DataTable de productos con columna Empresa
+ * - Columna 2: Botones de tipos de activo (vertical)
+ * - Columna 3: DataTable de activos con columna Empresa
  * 
  * @author ERP Megui
- * @version 2.2.0
+ * @version 1.2.0
  */
 
 import React, { useState, useRef, useMemo, useEffect } from "react";
@@ -32,11 +27,12 @@ import { Column } from "primereact/column";
 import { InputText } from "primereact/inputtext";
 import { classNames } from "primereact/utils";
 import { getResponsiveFontSize } from "../../utils/utils";
-import { getProductos } from "../../api/producto";
+import { getActivos } from "../../api/activo";
+import { getTiposActivo } from "../../api/tipoActivo";
 import { getAllEmpresas } from "../../api/empresa";
 
 /**
- * Paleta de colores infinita para empresas, familias y subfamilias
+ * Paleta de colores infinita para empresas y tipos de activo
  * Se repite cíclicamente si hay más categorías que colores
  */
 const COLORES_CATEGORIAS = [
@@ -58,15 +54,14 @@ const COLORES_CATEGORIAS = [
   { bg: '#FF5722', text: '#FFFFFF', border: '#FF5722' }, // Rojo naranja
 ];
 
-// Color para el botón "TODAS"
+// Color para el botón "TODAS/TODOS"
 const COLOR_TODAS = { bg: '#2196F3', text: '#FFFFFF', border: '#2196F3' }; // Azul
 
-// Colores específicos para Empresa, Familia, Subfamilia y Producto
+// Colores específicos para Empresa, Tipo y Activo
 const COLORES_TEXTO = {
-  empresa: '#1565C0',      // 🔵 Azul oscuro
-  familia: '#1976D2',      // 🔵 Azul
-  subfamilia: '#2E7D32',   // 🟢 Verde
-  producto: '#FF0000',     // 🔴 Rojo
+  empresa: '#1976D2',      // 🔵 Azul
+  tipo: '#2E7D32',         // 🟢 Verde
+  activo: '#D32F2F',       // 🔴 Rojo
   separador: '#666'        // Gris para los guiones
 };
 
@@ -101,18 +96,19 @@ const getEmpresaNombre = (empresaId, empresas) => {
 };
 
 /**
- * Componente ProductoSelector
- * @param {number|string} props.value - ID del producto seleccionado
- * @param {Function} props.onChange - Callback cuando se selecciona un producto (recibe el ID)
+ * Componente ActivoSelector
+ * @param {number|string} props.value - ID del activo seleccionado
+ * @param {Function} props.onChange - Callback cuando se selecciona un activo (recibe el ID)
  * @param {number|string} props.empresaIdPreseleccionada - ID de empresa a preseleccionar
  * @param {boolean} props.disabled - Si el selector está deshabilitado
  * @param {boolean} props.required - Si el campo es obligatorio
  * @param {boolean} props.error - Si hay error de validación
  * @param {string} props.errorMessage - Mensaje de error
  * @param {string} props.placeholder - Texto placeholder
+ * @param {boolean} props.mostrarCesados - Si se deben mostrar activos cesados (por defecto false)
  * @returns {JSX.Element}
  */
-const ProductoSelector = ({
+const ActivoSelector = ({
   value = null,
   onChange,
   empresaIdPreseleccionada = null,
@@ -120,15 +116,16 @@ const ProductoSelector = ({
   required = false,
   error = false,
   errorMessage = "",
-  placeholder = "Seleccione producto",
+  placeholder = "Seleccione activo",
+  mostrarCesados = false,
 }) => {
   const [dialogVisible, setDialogVisible] = useState(false);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
   const [empresaFiltro, setEmpresaFiltro] = useState(empresaIdPreseleccionada);
-  const [familiaFiltro, setFamiliaFiltro] = useState(null);
-  const [subfamiliaFiltro, setSubfamiliaFiltro] = useState(null);
-  const [productos, setProductos] = useState([]);
+  const [tipoFiltro, setTipoFiltro] = useState(null);
+  const [activos, setActivos] = useState([]);
   const [empresas, setEmpresas] = useState([]);
+  const [tiposActivo, setTiposActivo] = useState([]);
   const [loading, setLoading] = useState(false);
   const dt = useRef(null);
 
@@ -137,20 +134,24 @@ const ProductoSelector = ({
     const cargarDatos = async () => {
       setLoading(true);
       try {
-        const [productosData, empresasData] = await Promise.all([
-          getProductos(),
-          getAllEmpresas()
+        const [activosData, empresasData, tiposData] = await Promise.all([
+          getActivos(),
+          getAllEmpresas(),
+          getTiposActivo()
         ]);
         
-        setProductos(productosData || []);
+        setActivos(activosData || []);
         setEmpresas(empresasData || []);
+        setTiposActivo(tiposData || []);
         
-        console.log("📊 ProductoSelector - Empresas cargadas:", empresasData?.length || 0);
-        console.log("📊 ProductoSelector - Productos cargados:", productosData?.length || 0);
+        console.log("📊 ActivoSelector - Empresas cargadas:", empresasData?.length || 0);
+        console.log("📊 ActivoSelector - Tipos de activo cargados:", tiposData?.length || 0);
+        console.log("📊 ActivoSelector - Activos cargados:", activosData?.length || 0);
       } catch (error) {
         console.error("❌ Error cargando datos:", error);
-        setProductos([]);
+        setActivos([]);
         setEmpresas([]);
+        setTiposActivo([]);
       } finally {
         setLoading(false);
       }
@@ -166,151 +167,113 @@ const ProductoSelector = ({
     }
   }, [empresaIdPreseleccionada]);
 
-  // Obtener el producto seleccionado (buscar en array original completo)
-  const productoSeleccionado = useMemo(() => {
+  // Obtener el activo seleccionado (buscar en array original completo)
+  const activoSeleccionado = useMemo(() => {
     if (!value) {
       return null;
     }
     
-    const producto = productos.find((p) => Number(p.id) === Number(value));
-    return producto;
-  }, [productos, value]);
+    const activo = activos.find((a) => Number(a.id) === Number(value));
+    return activo;
+  }, [activos, value]);
 
-  // ⚠️ FILTRO FAMILIA MERCADERÍA
-  // Excluimos productos con familiaId=1 (MERCADERÍA) porque no se usan en gastos planificados
-  const productosConFiltroMercaderia = useMemo(() => {
-    const filtrados = productos.filter((p) => Number(p.familiaId) !== 1);
+  // ⚠️ FILTRO ACTIVOS CESADOS
+  // Excluimos activos cesados por defecto (cesado=true)
+  const activosConFiltroCesados = useMemo(() => {
+    if (mostrarCesados) {
+      return activos;
+    }
+    const filtrados = activos.filter((a) => a.cesado === false);
     return filtrados;
-  }, [productos]);
+  }, [activos, mostrarCesados]);
 
-  // ✅ MOSTRAR TODAS LAS EMPRESAS - No filtrar por productos
+  // ✅ MOSTRAR TODAS LAS EMPRESAS - No filtrar por activos
   const empresasUnicas = useMemo(() => {
+    // Usar directamente el array de empresas recibido, ordenado alfabéticamente
     const empresasOrdenadas = [...empresas].sort((a, b) =>
       (a.nombre || a.razonSocial || "").localeCompare(b.nombre || b.razonSocial || "")
     );
     return empresasOrdenadas;
   }, [empresas]);
 
-  // ⚠️ FILTRO POR EMPRESA PRIMERO
-  const productosFiltradosPorEmpresa = useMemo(() => {
+  // ⚠️ FILTRO POR EMPRESA PRIMERO (antes de aplicar filtro de tipo)
+  const activosFiltradosPorEmpresa = useMemo(() => {
     if (!empresaFiltro) {
-      return productosConFiltroMercaderia;
+      return activosConFiltroCesados;
     }
     
-    const filtrados = productosConFiltroMercaderia.filter(
-      (producto) => Number(producto.empresaId) === Number(empresaFiltro)
+    const filtrados = activosConFiltroCesados.filter(
+      (activo) => Number(activo.empresaId) === Number(empresaFiltro)
     );
     return filtrados;
-  }, [productosConFiltroMercaderia, empresaFiltro]);
+  }, [activosConFiltroCesados, empresaFiltro]);
 
-  // Extraer familias únicas desde los productos filtrados por empresa y ordenarlas alfabéticamente
-  const familiasUnicas = useMemo(() => {
-    const familiasMap = new Map();
-    productosFiltradosPorEmpresa.forEach((producto) => {
-      if (producto.familia && producto.familia.id) {
-        familiasMap.set(Number(producto.familia.id), producto.familia);
+  // Extraer tipos únicos desde los activos filtrados por empresa
+  const tiposUnicos = useMemo(() => {
+    const tiposMap = new Map();
+    activosFiltradosPorEmpresa.forEach((activo) => {
+      if (activo.tipo && activo.tipo.id) {
+        tiposMap.set(Number(activo.tipo.id), activo.tipo);
       }
     });
-    const familias = Array.from(familiasMap.values()).sort((a, b) =>
+    const tipos = Array.from(tiposMap.values()).sort((a, b) =>
       (a.nombre || "").localeCompare(b.nombre || "")
     );
-    return familias;
-  }, [productosFiltradosPorEmpresa]);
+    return tipos;
+  }, [activosFiltradosPorEmpresa]);
 
-  // Filtrar productos por familia seleccionada
-  const productosFiltradosPorFamilia = useMemo(() => {
-    if (!familiaFiltro) {
-      return productosFiltradosPorEmpresa;
+  // Filtrar activos por tipo seleccionado
+  const activosFiltradosPorTipo = useMemo(() => {
+    if (!tipoFiltro) {
+      return activosFiltradosPorEmpresa;
     }
-    const filtrados = productosFiltradosPorEmpresa.filter(
-      (producto) => Number(producto.familiaId) === Number(familiaFiltro)
+    const filtrados = activosFiltradosPorEmpresa.filter(
+      (activo) => Number(activo.tipoId) === Number(tipoFiltro)
     );
     return filtrados;
-  }, [productosFiltradosPorEmpresa, familiaFiltro]);
+  }, [activosFiltradosPorEmpresa, tipoFiltro]);
 
-  // Extraer subfamilias únicas desde los productos filtrados por familia
-  const subfamiliasUnicas = useMemo(() => {
-    const subfamiliasMap = new Map();
-    productosFiltradosPorFamilia.forEach((producto) => {
-      if (producto.subfamilia && producto.subfamilia.id) {
-        subfamiliasMap.set(Number(producto.subfamilia.id), producto.subfamilia);
-      }
-    });
-    const subfamilias = Array.from(subfamiliasMap.values()).sort((a, b) =>
-      (a.nombre || "").localeCompare(b.nombre || "")
-    );
-    return subfamilias;
-  }, [productosFiltradosPorFamilia]);
-
-  // Filtrar productos por subfamilia seleccionada
-  const productosFiltradosPorSubfamilia = useMemo(() => {
-    if (!subfamiliaFiltro) {
-      return productosFiltradosPorFamilia;
-    }
-    const filtrados = productosFiltradosPorFamilia.filter(
-      (producto) => Number(producto.subfamiliaId) === Number(subfamiliaFiltro)
-    );
-    return filtrados;
-  }, [productosFiltradosPorFamilia, subfamiliaFiltro]);
-
-  // Ordenar productos: primero por empresa, luego por familia, luego por subfamilia, luego por descripción
-  const productosOrdenados = useMemo(() => {
-    return [...productosFiltradosPorSubfamilia].sort((a, b) => {
+  // Ordenar activos: primero por empresa, luego por tipo, luego por nombre
+  const activosOrdenados = useMemo(() => {
+    return [...activosFiltradosPorTipo].sort((a, b) => {
       // Primero por empresa
       const empA = getEmpresaNombre(a.empresaId, empresas);
       const empB = getEmpresaNombre(b.empresaId, empresas);
       if (empA !== empB) {
         return empA.localeCompare(empB);
       }
-      // Luego por familia
-      const famA = a.familia?.nombre || "";
-      const famB = b.familia?.nombre || "";
-      if (famA !== famB) {
-        return famA.localeCompare(famB);
+      // Luego por tipo
+      const tipoA = a.tipo?.nombre || "";
+      const tipoB = b.tipo?.nombre || "";
+      if (tipoA !== tipoB) {
+        return tipoA.localeCompare(tipoB);
       }
-      // Luego por subfamilia
-      const subfamA = a.subfamilia?.nombre || "";
-      const subfamB = b.subfamilia?.nombre || "";
-      if (subfamA !== subfamB) {
-        return subfamA.localeCompare(subfamB);
-      }
-      // Finalmente por descripción
-      return (a.descripcionArmada || "").localeCompare(b.descripcionArmada || "");
+      // Finalmente por nombre
+      return (a.nombre || "").localeCompare(b.nombre || "");
     });
-  }, [productosFiltradosPorSubfamilia, empresas]);
+  }, [activosFiltradosPorTipo, empresas]);
 
   /**
    * Maneja el cambio de empresa
-   * Reset automático de familia y subfamilia al cambiar empresa
+   * Reset automático de tipo al cambiar empresa
    */
   const handleEmpresaChange = (empresaId) => {
     setEmpresaFiltro(empresaId);
-    setFamiliaFiltro(null);
-    setSubfamiliaFiltro(null);
+    setTipoFiltro(null); // Reset tipo
   };
 
   /**
-   * Maneja el cambio de familia
-   * Reset automático de subfamilia al cambiar familia
+   * Maneja la selección de un activo
    */
-  const handleFamiliaChange = (familiaId) => {
-    setFamiliaFiltro(familiaId);
-    setSubfamiliaFiltro(null); // Reset subfamilia
-  };
-
-  /**
-   * Maneja la selección de un producto
-   */
-  const handleSeleccion = (producto) => {
+  const handleSeleccion = (activo) => {
     if (onChange) {
-      onChange(Number(producto.id));
+      onChange(Number(activo.id));
     }
     
     setDialogVisible(false);
     setGlobalFilterValue("");
     // No resetear empresaFiltro para mantener la preselección
-    setFamiliaFiltro(null);
-    setSubfamiliaFiltro(null);
+    setTipoFiltro(null);
   };
 
   /**
@@ -321,8 +284,7 @@ const ProductoSelector = ({
     setGlobalFilterValue("");
     // Restaurar empresa preseleccionada al cerrar
     setEmpresaFiltro(empresaIdPreseleccionada);
-    setFamiliaFiltro(null);
-    setSubfamiliaFiltro(null);
+    setTipoFiltro(null);
   };
 
   /**
@@ -338,34 +300,34 @@ const ProductoSelector = ({
   };
 
   /**
-   * Template para la familia
+   * Template para el tipo de activo
    */
-  const familiaTemplate = (rowData) => {
+  const tipoTemplate = (rowData) => {
     return (
-      <span style={{ color: COLORES_TEXTO.familia, fontSize: "0.9rem", fontWeight: "bold" }}>
-        {rowData.familia?.nombre || "Sin familia"}
+      <span style={{ color: COLORES_TEXTO.tipo, fontSize: "0.9rem", fontWeight: "bold" }}>
+        {rowData.tipo?.nombre || "Sin tipo"}
       </span>
     );
   };
 
   /**
-   * Template para la subfamilia
+   * Template para el activo
    */
-  const subfamiliaTemplate = (rowData) => {
+  const activoTemplate = (rowData) => {
     return (
-      <span style={{ color: COLORES_TEXTO.subfamilia, fontSize: "0.9rem", fontWeight: "bold" }}>
-        {rowData.subfamilia?.nombre || "Sin subfamilia"}
+      <span style={{ color: COLORES_TEXTO.activo, fontWeight: "bold" }}>
+        {rowData.nombre}
       </span>
     );
   };
 
   /**
-   * Template para el producto
+   * Template para la descripción
    */
-  const productoTemplate = (rowData) => {
+  const descripcionTemplate = (rowData) => {
     return (
-      <span style={{ color: COLORES_TEXTO.producto, fontWeight: "bold" }}>
-        {rowData.descripcionArmada}
+      <span style={{ fontSize: "0.9rem", color: "#555" }}>
+        {rowData.descripcion || "Sin descripción"}
       </span>
     );
   };
@@ -383,7 +345,7 @@ const ProductoSelector = ({
    */
   const header = (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-      <h4 style={{ margin: 0 }}>Productos</h4>
+      <h4 style={{ margin: 0 }}>Activos</h4>
       <span className="p-input-icon-left">
         <i className="pi pi-search" />
         <InputText
@@ -391,7 +353,7 @@ const ProductoSelector = ({
           onChange={(e) => {
             setGlobalFilterValue(e.target.value);
           }}
-          placeholder="Buscar producto..."
+          placeholder="Buscar activo..."
           style={{ width: "250px" }}
         />
       </span>
@@ -403,7 +365,7 @@ const ProductoSelector = ({
    */
   const footer = (
     <div style={{ textAlign: "left", color: "#666", fontSize: "0.9rem" }}>
-      Total: {productosOrdenados.length} producto(s)
+      Total: {activosOrdenados.length} activo(s)
       {empresas.length === 0 && (
         <span style={{ color: "red", marginLeft: "1rem" }}>
           ⚠️ No se cargaron empresas
@@ -416,7 +378,7 @@ const ProductoSelector = ({
     <div className="field">
       {/* Label */}
       <label className="block text-900 font-medium mb-2">
-        Producto (Gasto) {required && <span style={{ color: "red" }}>*</span>}
+        Activo {required && <span style={{ color: "red" }}>*</span>}
       </label>
 
       {/* Botón selector */}
@@ -439,22 +401,18 @@ const ProductoSelector = ({
       >
         {loading ? (
           <span style={{ color: "#999" }}>Cargando...</span>
-        ) : productoSeleccionado ? (
+        ) : activoSeleccionado ? (
           <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
             <span style={{ color: COLORES_TEXTO.empresa }}>
-              {getEmpresaNombre(productoSeleccionado.empresaId, empresas)}
+              {getEmpresaNombre(activoSeleccionado.empresaId, empresas)}
             </span>
             <span style={{ color: COLORES_TEXTO.separador }}> - </span>
-            <span style={{ color: COLORES_TEXTO.familia }}>
-              {productoSeleccionado.familia?.nombre || "Sin familia"}
+            <span style={{ color: COLORES_TEXTO.tipo }}>
+              {activoSeleccionado.tipo?.nombre || "Sin tipo"}
             </span>
             <span style={{ color: COLORES_TEXTO.separador }}> - </span>
-            <span style={{ color: COLORES_TEXTO.subfamilia }}>
-              {productoSeleccionado.subfamilia?.nombre || "Sin subfamilia"}
-            </span>
-            <span style={{ color: COLORES_TEXTO.separador }}> - </span>
-            <span style={{ color: COLORES_TEXTO.producto, fontWeight: "bold" }}>
-              {productoSeleccionado.descripcionArmada || "Sin descripción"}
+            <span style={{ color: COLORES_TEXTO.activo, fontWeight: "bold" }}>
+              {activoSeleccionado.nombre || "Sin nombre"}
             </span>
           </span>
         ) : (
@@ -467,21 +425,21 @@ const ProductoSelector = ({
         <small className="p-error">{errorMessage}</small>
       )}
 
-      {/* Dialog con layout de 4 columnas */}
+      {/* Dialog con layout de 3 columnas */}
       <Dialog
         visible={dialogVisible}
-        style={{ width: "95vw", maxWidth: "1800px" }}
-        header="Seleccionar Producto"
+        style={{ width: "95vw", maxWidth: "1600px" }}
+        header="Seleccionar Activo"
         modal
         onHide={() => {
           handleCloseDialog();
         }}
         maximizable
       >
-        {/* Layout de 4 columnas */}
+        {/* Layout de 3 columnas */}
         <div style={{ 
           display: "grid", 
-          gridTemplateColumns: "160px 160px 160px 1fr", 
+          gridTemplateColumns: "180px 180px 1fr", 
           gap: "1rem",
           height: "600px"
         }}>
@@ -556,16 +514,16 @@ const ProductoSelector = ({
             </div>
           </div>
 
-          {/* ========== COLUMNA 2: FAMILIAS ========== */}
+          {/* ========== COLUMNA 2: TIPOS DE ACTIVO ========== */}
           <div style={{ 
             display: "flex", 
             flexDirection: "column",
             borderRight: "1px solid #dee2e6"
           }}>
             <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: "600" }}>
-              Familias
+              Tipos de Activo
             </h4>
-            {empresaFiltro && familiasUnicas.length > 0 ? (
+            {empresaFiltro && tiposUnicos.length > 0 ? (
               <div style={{ 
                 display: "flex", 
                 flexDirection: "column", 
@@ -573,15 +531,15 @@ const ProductoSelector = ({
                 overflowY: "auto",
                 paddingRight: "0.5rem"
               }}>
-                {/* Botón TODAS */}
+                {/* Botón TODOS */}
                 <Button
                   type="button"
-                  label="TODAS"
+                  label="TODOS"
                   size="small"
-                  onClick={() => handleFamiliaChange(null)}
+                  onClick={() => setTipoFiltro(null)}
                   style={{
-                    backgroundColor: !familiaFiltro ? COLOR_TODAS.bg : "#FFFFFF",
-                    color: !familiaFiltro ? COLOR_TODAS.text : COLOR_TODAS.bg,
+                    backgroundColor: !tipoFiltro ? COLOR_TODAS.bg : "#FFFFFF",
+                    color: !tipoFiltro ? COLOR_TODAS.text : COLOR_TODAS.bg,
                     borderColor: COLOR_TODAS.border,
                     fontWeight: "500",
                     fontSize: "0.75rem",
@@ -589,21 +547,21 @@ const ProductoSelector = ({
                     justifyContent: "flex-start",
                     textAlign: "left",
                   }}
-                  className={!familiaFiltro ? "" : "p-button-outlined"}
+                  className={!tipoFiltro ? "" : "p-button-outlined"}
                 />
 
-                {/* Botones de familias */}
-                {familiasUnicas.map((familia, index) => {
+                {/* Botones de tipos */}
+                {tiposUnicos.map((tipo, index) => {
                   const color = getColorCategoria(index);
-                  const isActive = Number(familiaFiltro) === Number(familia.id);
+                  const isActive = Number(tipoFiltro) === Number(tipo.id);
 
                   return (
                     <Button
-                      key={familia.id}
+                      key={tipo.id}
                       type="button"
-                      label={familia.nombre}
+                      label={tipo.nombre}
                       size="small"
-                      onClick={() => handleFamiliaChange(Number(familia.id))}
+                      onClick={() => setTipoFiltro(Number(tipo.id))}
                       style={{
                         backgroundColor: isActive ? color.bg : "#FFFFFF",
                         color: isActive ? color.text : color.bg,
@@ -618,7 +576,7 @@ const ProductoSelector = ({
                         textOverflow: "ellipsis",
                       }}
                       className={isActive ? "" : "p-button-outlined"}
-                      tooltip={familia.nombre}
+                      tooltip={tipo.nombre}
                       tooltipOptions={{ position: 'right' }}
                     />
                   );
@@ -626,93 +584,18 @@ const ProductoSelector = ({
               </div>
             ) : (
               <div style={{ color: "#999", fontSize: "0.85rem", fontStyle: "italic" }}>
-                {empresaFiltro ? "No hay familias disponibles" : "Seleccione una empresa"}
+                {empresaFiltro ? "No hay tipos disponibles" : "Seleccione una empresa"}
               </div>
             )}
           </div>
 
-          {/* ========== COLUMNA 3: SUBFAMILIAS ========== */}
-          <div style={{ 
-            display: "flex", 
-            flexDirection: "column",
-            borderRight: "1px solid #dee2e6"
-          }}>
-            <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: "600" }}>
-              Subfamilias
-            </h4>
-            {familiaFiltro && subfamiliasUnicas.length > 0 ? (
-              <div style={{ 
-                display: "flex", 
-                flexDirection: "column", 
-                gap: "0.35rem",
-                overflowY: "auto",
-                paddingRight: "0.5rem"
-              }}>
-                {/* Botón TODAS */}
-                <Button
-                  type="button"
-                  label="TODAS"
-                  size="small"
-                  onClick={() => setSubfamiliaFiltro(null)}
-                  style={{
-                    backgroundColor: !subfamiliaFiltro ? COLOR_TODAS.bg : "#FFFFFF",
-                    color: !subfamiliaFiltro ? COLOR_TODAS.text : COLOR_TODAS.bg,
-                    borderColor: COLOR_TODAS.border,
-                    fontWeight: "500",
-                    fontSize: "0.75rem",
-                    padding: "0.35rem 0.5rem",
-                    justifyContent: "flex-start",
-                    textAlign: "left",
-                  }}
-                  className={!subfamiliaFiltro ? "" : "p-button-outlined"}
-                />
-
-                {/* Botones de subfamilias */}
-                {subfamiliasUnicas.map((subfamilia, index) => {
-                  const color = getColorCategoria(index);
-                  const isActive = Number(subfamiliaFiltro) === Number(subfamilia.id);
-
-                  return (
-                    <Button
-                      key={subfamilia.id}
-                      type="button"
-                      label={subfamilia.nombre}
-                      size="small"
-                      onClick={() => setSubfamiliaFiltro(Number(subfamilia.id))}
-                      style={{
-                        backgroundColor: isActive ? color.bg : "#FFFFFF",
-                        color: isActive ? color.text : color.bg,
-                        borderColor: color.border,
-                        fontWeight: "500",
-                        fontSize: "0.75rem",
-                        padding: "0.35rem 0.5rem",
-                        justifyContent: "flex-start",
-                        textAlign: "left",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                      className={isActive ? "" : "p-button-outlined"}
-                      tooltip={subfamilia.nombre}
-                      tooltipOptions={{ position: 'right' }}
-                    />
-                  );
-                })}
-              </div>
-            ) : (
-              <div style={{ color: "#999", fontSize: "0.85rem", fontStyle: "italic" }}>
-                {familiaFiltro ? "No hay subfamilias disponibles" : "Seleccione una familia"}
-              </div>
-            )}
-          </div>
-
-          {/* ========== COLUMNA 4: TABLA DE PRODUCTOS ========== */}
+          {/* ========== COLUMNA 3: TABLA DE ACTIVOS ========== */}
           <div style={{ display: "flex", flexDirection: "column" }}>
             {header}
             
             <DataTable
               ref={dt}
-              value={productosOrdenados}
+              value={activosOrdenados}
               selectionMode="single"
               onRowSelect={(e) => {
                 handleSeleccion(e.data);
@@ -722,8 +605,8 @@ const ProductoSelector = ({
               rows={20}
               rowsPerPageOptions={[20, 40, 100]}
               globalFilter={globalFilterValue}
-              globalFilterFields={['descripcionArmada']}
-              emptyMessage="No se encontraron productos"
+              globalFilterFields={['nombre', 'descripcion']}
+              emptyMessage="No se encontraron activos"
               stripedRows
               showGridlines
               size="small"
@@ -738,29 +621,30 @@ const ProductoSelector = ({
                 header="Empresa"
                 body={empresaTemplate}
                 sortable
-                style={{ minWidth: "120px" }}
+                style={{ minWidth: "150px" }}
               />
               <Column
-                field="familia.nombre"
-                header="Familia"
-                body={familiaTemplate}
+                field="tipo.nombre"
+                header="Tipo de Activo"
+                body={tipoTemplate}
                 sortable
-                style={{ minWidth: "120px" }}
+                style={{ minWidth: "150px" }}
               />
               <Column
-                field="subfamilia.nombre"
-                header="Subfamilia"
-                body={subfamiliaTemplate}
+                field="nombre"
+                header="Activo"
+                body={activoTemplate}
                 sortable
-                style={{ minWidth: "120px" }}
+                filterField="nombre"
+                style={{ minWidth: "250px" }}
               />
               <Column
-                field="descripcionArmada"
-                header="Producto"
-                body={productoTemplate}
+                field="descripcion"
+                header="Descripción"
+                body={descripcionTemplate}
                 sortable
-                filterField="descripcionArmada"
-                style={{ minWidth: "400px" }}
+                filterField="descripcion"
+                style={{ minWidth: "300px" }}
               />
             </DataTable>
 
@@ -784,4 +668,4 @@ const ProductoSelector = ({
   );
 };
 
-export default ProductoSelector;
+export default ActivoSelector;

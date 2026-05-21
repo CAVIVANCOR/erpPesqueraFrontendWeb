@@ -33,6 +33,44 @@ export const abrirPdfEnNuevaPestana = async (
       urlCompleta = `${
         import.meta.env.VITE_API_URL
       }/temporada-pesca-resolucion/archivo/${rutaArchivo}`;
+
+
+
+    } else if (urlPdf.startsWith("/uploads/pdf-system/temporada-pesca/")) {
+      // ✅ Soporte para resoluciones de Temporada Pesca (Sistema PDF V2)
+      const rutaArchivo = urlPdf.replace(
+        "/uploads/pdf-system/temporada-pesca/",
+        ""
+      );
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/pdf/temporada-pesca/${rutaArchivo}`;
+
+
+    } else if (urlPdf.startsWith("/uploads/pdf-system/novedad-pesca-consumo/")) {
+      // ✅ Soporte para resoluciones de Novedad Pesca Consumo (Sistema PDF V2)
+      const rutaArchivo = urlPdf.replace(
+        "/uploads/pdf-system/novedad-pesca-consumo/",
+        ""
+      );
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/pdf/novedad-pesca-consumo/${rutaArchivo}`;
+
+
+    } else if (urlPdf.startsWith("/uploads/pdf-system/faena-pesca-consumo/")) {
+      // ✅ Soporte para informes de Faena Pesca Consumo (Sistema PDF V2)
+      const rutaArchivo = urlPdf.replace(
+        "/uploads/pdf-system/faena-pesca-consumo/",
+        ""
+      );
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/pdf/faena-pesca-consumo/${rutaArchivo}`;
+
+
+
+
     } else if (urlPdf.startsWith("/uploads/resoluciones-novedad/")) {
       // Soporte para resoluciones de Novedad Pesca Consumo
       const rutaArchivo = urlPdf.replace("/uploads/resoluciones-novedad/", "");
@@ -84,6 +122,47 @@ export const abrirPdfEnNuevaPestana = async (
       urlCompleta = `${
         import.meta.env.VITE_API_URL
       }/det-movs-entrega-rendir/archivo/${rutaArchivo}`;
+
+
+
+
+    } else if (
+      urlPdf.startsWith("/uploads/pdf-system/det-movs-entrega-rendir-pesca-industrial-comprobante/")
+    ) {
+      // ✅ Soporte para comprobantes de movimiento de Rendición de Gastos (Sistema PDF V2)
+      const rutaArchivo = urlPdf.replace(
+        "/uploads/pdf-system/det-movs-entrega-rendir-pesca-industrial-comprobante/",
+        ""
+      );
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/pdf/det-movs-entrega-rendir-pesca-industrial-comprobante/${rutaArchivo}`;
+    } else if (
+      urlPdf.startsWith("/uploads/pdf-system/det-movs-entrega-rendir-pesca-industrial-operacion/")
+    ) {
+      // ✅ Soporte para comprobantes de operación MovCaja de Rendición de Gastos (Sistema PDF V2)
+      const rutaArchivo = urlPdf.replace(
+        "/uploads/pdf-system/det-movs-entrega-rendir-pesca-industrial-operacion/",
+        ""
+      );
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/pdf/det-movs-entrega-rendir-pesca-industrial-operacion/${rutaArchivo}`;
+    } else if (
+      urlPdf.startsWith("/uploads/pdf-system/liquidacion-entrega-rendir-pesca-industrial/")
+    ) {
+      // ✅ Soporte para liquidaciones de Rendición de Gastos (Sistema PDF V2)
+      const rutaArchivo = urlPdf.replace(
+        "/uploads/pdf-system/liquidacion-entrega-rendir-pesca-industrial/",
+        ""
+      );
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/pdf/liquidacion-entrega-rendir-pesca-industrial/${rutaArchivo}`;
+
+
+
+
     } else if (
       urlPdf.startsWith("/uploads/comprobantes-det-movs-pesca-consumo/")
     ) {
@@ -430,6 +509,35 @@ export const descargarPdf = async (
       urlCompleta = `${
         import.meta.env.VITE_API_URL
       }/temporada-pesca-resolucion/archivo/${rutaArchivo}`;
+
+
+
+    } else if (urlPdf.startsWith("/uploads/pdf-system/temporada-pesca/")) {
+      // ✅ Soporte para resoluciones de Temporada Pesca (Sistema PDF V2)
+      const rutaArchivo = urlPdf.replace(
+        "/uploads/pdf-system/temporada-pesca/",
+        ""
+      );
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/pdf/temporada-pesca/${rutaArchivo}`;
+
+    } else if (urlPdf.startsWith("/uploads/pdf-system/novedad-pesca-consumo/")) {
+      // ✅ Soporte para resoluciones de Novedad Pesca Consumo (Sistema PDF V2)
+      const rutaArchivo = urlPdf.replace(
+        "/uploads/pdf-system/novedad-pesca-consumo/",
+        ""
+      );
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/pdf/novedad-pesca-consumo/${rutaArchivo}`;
+
+
+
+
+
+      
+
     } else if (urlPdf.startsWith("/uploads/resoluciones-novedad/")) {
       // Soporte para resoluciones de Novedad Pesca Consumo
       const rutaArchivo = urlPdf.replace("/uploads/resoluciones-novedad/", "");
@@ -533,6 +641,45 @@ export const descargarPdf = async (
       urlCompleta = `${
         import.meta.env.VITE_API_URL
       }/entregas-a-rendir/archivo/${rutaArchivo}`;
+
+
+
+
+    } else if (
+      urlPdf.startsWith("/uploads/pdf-system/det-movs-entrega-rendir-pesca-industrial-comprobante/")
+    ) {
+      const rutaArchivo = urlPdf.replace(
+        "/uploads/pdf-system/det-movs-entrega-rendir-pesca-industrial-comprobante/",
+        ""
+      );
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/pdf/det-movs-entrega-rendir-pesca-industrial-comprobante/${rutaArchivo}`;
+    } else if (
+      urlPdf.startsWith("/uploads/pdf-system/det-movs-entrega-rendir-pesca-industrial-operacion/")
+    ) {
+      const rutaArchivo = urlPdf.replace(
+        "/uploads/pdf-system/det-movs-entrega-rendir-pesca-industrial-operacion/",
+        ""
+      );
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/pdf/det-movs-entrega-rendir-pesca-industrial-operacion/${rutaArchivo}`;
+    } else if (
+      urlPdf.startsWith("/uploads/pdf-system/liquidacion-entrega-rendir-pesca-industrial/")
+    ) {
+      const rutaArchivo = urlPdf.replace(
+        "/uploads/pdf-system/liquidacion-entrega-rendir-pesca-industrial/",
+        ""
+      );
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/pdf/liquidacion-entrega-rendir-pesca-industrial/${rutaArchivo}`;
+
+
+
+
+
     } else if (urlPdf.startsWith("/uploads/contratos-servicio/")) {
       // ✅ NUEVO: Soporte para PDFs de contratos de servicio
       const rutaArchivo = urlPdf.replace("/uploads/contratos-servicio/", "");
