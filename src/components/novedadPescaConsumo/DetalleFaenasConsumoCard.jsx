@@ -1268,6 +1268,8 @@ const DetalleFaenasConsumoCard = forwardRef(
             onRowExpand={onRowExpand}
             onRowCollapse={onRowCollapse}
             dataKey="id"
+            sortField="id"
+            sortOrder={-1}
           >
             <Column expander style={{ width: "5rem" }} />
             {columns.map((column) => (
