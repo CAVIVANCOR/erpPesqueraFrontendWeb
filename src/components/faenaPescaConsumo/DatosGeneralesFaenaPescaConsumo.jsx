@@ -106,7 +106,9 @@ export default function DatosGeneralesFaenaPescaConsumo({
   }, [calasUpdateTrigger, faenaData?.id, setValue]);
 
   const handleCalasChange = () => {
-    setCalasUpdateTrigger((prev) => prev + 1);
+    setCalasUpdateTrigger((prev) => {
+      return prev + 1;
+    });
   };
 
   const estadosFaenaOptions =

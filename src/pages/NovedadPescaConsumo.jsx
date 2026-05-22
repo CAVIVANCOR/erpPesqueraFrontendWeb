@@ -26,6 +26,7 @@ import {
   deleteNovedadPescaConsumo,
   crearNovedadPescaConsumo,
   actualizarNovedadPescaConsumo,
+  getNovedadPescaConsumoPorId,
 } from "../api/novedadPescaConsumo";
 import { getEmpresas } from "../api/empresa";
 import { getEstadosMultiFuncionParaNovedadPescaConsumo } from "../api/estadoMultiFuncion";
@@ -246,11 +247,36 @@ const NovedadPescaConsumo = ({ ruta }) => {
   };
   /**
    * Abrir formulario para editar novedad
+   * ⚠️ CRÍTICO: Obtiene datos FRESCOS de la BD para garantizar integridad de datos
    */
-  const openEdit = (novedad) => {
-    setEditingItem(novedad);
-    setIsEdit(true);
-    setShowForm(true);
+  const openEdit = async (novedad) => {
+    try {
+      setLoading(true);
+      // Obtener datos 100% REALES Y ACTUALIZADOS de la base de datos
+      const novedadActualizada = await getNovedadPescaConsumoPorId(novedad.id);
+      if (novedadActualizada) {
+        setEditingItem(novedadActualizada);
+        setIsEdit(true);
+        setShowForm(true);
+      } else {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudo cargar la novedad desde la base de datos",
+          life: 3000,
+        });
+      }
+    } catch (error) {
+      console.error("❌ [PADRE] Error al cargar novedad desde BD:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al obtener datos actualizados de la base de datos",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   /**
@@ -265,8 +291,10 @@ const NovedadPescaConsumo = ({ ruta }) => {
   /**
    * Actualizar datos del item en edición
    */
-  const actualizarEditingItem = (nuevosDatos) => {
-    setEditingItem((prev) => ({ ...prev, ...nuevosDatos }));
+     const actualizarEditingItem = async (novedadActualizada) => {
+    if (novedadActualizada && editingItem?.id === novedadActualizada.id) {
+      setEditingItem(novedadActualizada);
+    } 
   };
 
   /**
@@ -593,102 +621,6 @@ const NovedadPescaConsumo = ({ ruta }) => {
     );
   };
 
-  /**
-   * Template para cuotas en toneladas
-   */
-  const cuotaTemplate = (rowData, field) => {
-    const valor = rowData[field];
-
-    if (!valor) return "-";
-
-    return (
-      <div className="text-right">
-        <Badge value={`${Number(valor).toFixed(2)} Ton`} severity="info" />
-      </div>
-    );
-  };
-
-  /**
-   * Template para cuota total (suma de cuota propia + alquilada)
-   */
-  const cuotaTotalTemplate = (rowData) => {
-    const cuotaPropia = Number(rowData.cuotaPropiaTon) || 0;
-    const cuotaAlquilada = Number(rowData.cuotaAlquiladaTon) || 0;
-    const total = cuotaPropia + cuotaAlquilada;
-
-    return (
-      <div className="text-right">
-        <Badge
-          value={`${total.toFixed(2)} Ton`}
-          severity={total > 0 ? "info" : "secondary"}
-        />
-      </div>
-    );
-  };
-
-  /**
-   * Template para toneladas pendientes
-   */
-  const toneladasPendientesTemplate = (rowData) => {
-    const cuotaPropia = Number(rowData.cuotaPropiaTon) || 0;
-    const cuotaAlquilada = Number(rowData.cuotaAlquiladaTon) || 0;
-    const cuotaTotal = cuotaPropia + cuotaAlquilada;
-    const capturadas = Number(rowData.toneladasCapturadas) || 0;
-    const pendientes = Math.max(0, cuotaTotal - capturadas);
-
-    return (
-      <div className="text-right">
-        <Badge
-          value={`${pendientes.toFixed(2)} Ton`}
-          severity={pendientes > 0 ? "warning" : "success"}
-        />
-      </div>
-    );
-  };
-
-  /**
-   * Template para porcentaje avanzado
-   */
-  const porcentajeAvanzadoTemplate = (rowData) => {
-    const cuotaPropia = Number(rowData.cuotaPropiaTon) || 0;
-    const cuotaAlquilada = Number(rowData.cuotaAlquiladaTon) || 0;
-    const cuotaTotal = cuotaPropia + cuotaAlquilada;
-    const capturadas = Number(rowData.toneladasCapturadas) || 0;
-
-    if (cuotaTotal === 0) {
-      return (
-        <div className="text-center">
-          <Badge value="0%" severity="secondary" />
-        </div>
-      );
-    }
-
-    const porcentaje = (capturadas / cuotaTotal) * 100;
-    let severity = "secondary";
-
-    if (porcentaje >= 100) {
-      severity = "success";
-    } else if (porcentaje >= 75) {
-      severity = "info";
-    } else if (porcentaje >= 50) {
-      severity = "warning";
-    } else {
-      severity = "danger";
-    }
-
-    return (
-      <div className="text-center">
-        <Badge value={`${porcentaje.toFixed(1)}%`} severity={severity} />
-      </div>
-    );
-  };
-
-  /**
-   * Template para resolución PDF
-   */
-  /**
-   * Template para columna PDF de Resolución
-   */
   const resolucionPdfTemplate = (rowData) => {
     if (!rowData.urlResolucionPdf) {
       return <div style={{ textAlign: "center", color: "#999" }}>-</div>;
@@ -961,36 +893,12 @@ const NovedadPescaConsumo = ({ ruta }) => {
             className="text-center"
           />
           <Column
-            field="cuotaTotal"
-            header="Cuota Total"
-            body={cuotaTotalTemplate}
-            sortable
-            style={{ minWidth: "130px" }}
-            className="text-right"
-          />
-          <Column
+            field="toneladasCapturadas"
             header="Toneladas Capturadas"
             body={toneladasTemplate}
             style={{ minWidth: "130px" }}
             className="text-right"
           />
-          <Column
-            field="toneladasPendientes"
-            header="Toneladas Pendientes"
-            body={toneladasPendientesTemplate}
-            sortable
-            style={{ minWidth: "130px" }}
-            className="text-right"
-          />
-          <Column
-            field="porcentajeAvanzado"
-            header="Porcentaje Avanzado"
-            body={porcentajeAvanzadoTemplate}
-            sortable
-            style={{ minWidth: "120px" }}
-            className="text-right"
-          />
-
           <Column
             field="urlResolucionPdf"
             header="Resolución"

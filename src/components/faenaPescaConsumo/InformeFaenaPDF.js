@@ -25,23 +25,12 @@ export async function generarYSubirPDFInformeFaena(
   novedad,
 ) {
     try {
-    // DEBUG: Ver qué datos están llegando
-    console.log("🔍 [DEBUG] faena:", faena);
-    console.log("🔍 [DEBUG] calas:", calas);
-    console.log("🔍 [DEBUG] embarcacion:", embarcacion);
-    console.log("🔍 [DEBUG] novedad:", novedad);
-
     // Extraer detCalas de la primera cala (según schema: 1 FaenaPescaConsumo → 1 CalaFaenaConsumo)
     const cala = calas && calas.length > 0 ? calas[0] : null;
-    console.log("🔍 [DEBUG] cala:", cala);
-    
     const detCalas = cala?.especiesPescadas || [];
-    console.log("🔍 [DEBUG] detCalas:", detCalas);
-
     if (detCalas.length === 0) {
       throw new Error("No hay especies capturadas para generar el PDF");
     }
-
     // 1. Generar el PDF con múltiples páginas
     const pdfBytes = await generarPDFInformeFaena(
       faena,
@@ -50,10 +39,8 @@ export async function generarYSubirPDFInformeFaena(
       embarcacion,
       novedad,
     );
-
     // 2. Crear un blob del PDF
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
-
     // 3. Crear FormData - El backend generará el nombre automáticamente
     const formData = new FormData();
     formData.append("files", blob, "temp.pdf");

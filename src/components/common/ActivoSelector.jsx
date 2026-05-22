@@ -139,16 +139,10 @@ const ActivoSelector = ({
           getAllEmpresas(),
           getTiposActivo()
         ]);
-        
         setActivos(activosData || []);
         setEmpresas(empresasData || []);
         setTiposActivo(tiposData || []);
-        
-        console.log("📊 ActivoSelector - Empresas cargadas:", empresasData?.length || 0);
-        console.log("📊 ActivoSelector - Tipos de activo cargados:", tiposData?.length || 0);
-        console.log("📊 ActivoSelector - Activos cargados:", activosData?.length || 0);
       } catch (error) {
-        console.error("❌ Error cargando datos:", error);
         setActivos([]);
         setEmpresas([]);
         setTiposActivo([]);

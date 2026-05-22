@@ -9,7 +9,7 @@
  * @version 2.0.0
  */
 
-import React, { useState, useEffect, useRef, forwardRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef, useMemo } from "react";
 import { Card } from "primereact/card";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -24,7 +24,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import FaenaPescaConsumoForm from "../faenaPescaConsumo/FaenaPescaConsumoForm";
 import ResumenCreacionFaenaConsumoDialog from "../faenaPescaConsumo/ResumenCreacionFaenaConsumoDialog";
-
+import { getDescargaPorFaena } from "../../api/descargaFaenaConsumo";
 // APIs
 import {
   getFaenasPescaConsumo,
@@ -80,29 +80,31 @@ const DetalleFaenasConsumoCard = forwardRef(
       onDataChange,
       updateTrigger,
     },
-    ref
+    ref,
   ) => {
     // Estados principales
     const [faenas, setFaenas] = useState([]);
     const [loading, setLoading] = useState(false);
     const [dialogVisible, setDialogVisible] = useState(false);
     const [editingFaena, setEditingFaena] = useState(null);
-    const [faenaCreatedSuccessfully, setFaenaCreatedSuccessfully] = useState(false);
+    const [faenaCreatedSuccessfully, setFaenaCreatedSuccessfully] =
+      useState(false);
     const [confirmVisible, setConfirmVisible] = useState(false);
     const [faenaToDelete, setFaenaToDelete] = useState(null);
     const [puertosData, setPuertosData] = useState([]);
-    
+
     // Estados para modal de resumen de creación
     const [showResumenCreacion, setShowResumenCreacion] = useState(false);
     const [resumenCreacionData, setResumenCreacionData] = useState(null);
     const [creandoFaenaCompleta, setCreandoFaenaCompleta] = useState(false);
-    
+
     // Estados para expansión de 3 niveles
     const [expandedRows, setExpandedRows] = useState({});
     const [calasData, setCalasData] = useState({}); // Calas por faena
     const [expandedCalasRows, setExpandedCalasRows] = useState({}); // Expansión de calas
     const [detallesEspecieData, setDetallesEspecieData] = useState({}); // Especies por cala
-
+    const [descargasData, setDescargasData] = useState({}); // Descargas por faena
+    const [dataVersion, setDataVersion] = useState(0); // Versión para forzar re-render
     // Refs
     const toast = useRef(null);
 
@@ -135,9 +137,64 @@ const DetalleFaenasConsumoCard = forwardRef(
         const data = await getFaenasPescaConsumo();
         // Filtrar por novedad
         const faenasFiltradas = data.filter(
-          (f) => Number(f.novedadPescaConsumoId) === Number(novedadPescaConsumo.id)
+          (f) =>
+            Number(f.novedadPescaConsumoId) === Number(novedadPescaConsumo.id),
         );
         setFaenas(faenasFiltradas);
+
+        // Cargar calas de todas las faenas para mostrar toneladas
+        const calasPromises = faenasFiltradas.map(async (faena) => {
+          try {
+            const calas = await getCalasFaenaConsumoPorFaena(faena.id);
+            return { faenaId: faena.id, calas };
+          } catch (error) {
+            console.error(
+              `❌ Error cargando calas de faena ${faena.id}:`,
+              error,
+            );
+            return { faenaId: faena.id, calas: [] };
+          }
+        });
+
+        // Cargar descargas de todas las faenas para mostrar columnas calculadas
+        const descargasPromises = faenasFiltradas.map(async (faena) => {
+          try {
+            const descargas = await getDescargaPorFaena(faena.id);
+            // getDescargaPorFaena retorna array, pero la relación es 1:1, así que envolvemos en array si es objeto
+            return {
+              faenaId: faena.id,
+              descargas: Array.isArray(descargas)
+                ? descargas
+                : [descargas].filter(Boolean),
+            };
+          } catch (error) {
+            console.error(
+              `❌ Error cargando descargas de faena ${faena.id}:`,
+              error,
+            );
+            return { faenaId: faena.id, descargas: [] };
+          }
+        });
+
+        const [calasResults, descargasResults] = await Promise.all([
+          Promise.all(calasPromises),
+          Promise.all(descargasPromises),
+        ]);
+
+        // Actualizar estado de calas
+        const newCalasData = {};
+        calasResults.forEach(({ faenaId, calas }) => {
+          newCalasData[faenaId] = calas;
+        });
+        setCalasData(newCalasData);
+        // Actualizar estado de descargas
+        const newDescargasData = {};
+        descargasResults.forEach(({ faenaId, descargas }) => {
+          newDescargasData[faenaId] = descargas;
+        });
+        setDescargasData(newDescargasData);
+        // Forzar re-render de columnas
+        setDataVersion((prev) => prev + 1);
       } catch (error) {
         console.error("Error cargando faenas:", error);
         toast.current?.show({
@@ -211,26 +268,28 @@ const DetalleFaenasConsumoCard = forwardRef(
 
       try {
         setCreandoFaenaCompleta(true);
-        
-        const resultado = await crearFaenaConsumoCompleta(novedadPescaConsumo.id);
-        
+
+        const resultado = await crearFaenaConsumoCompleta(
+          novedadPescaConsumo.id,
+        );
+
         // Mostrar modal de resumen
         setResumenCreacionData(resultado.resumen);
         setShowResumenCreacion(true);
-        
+
         // Recargar faenas
         await cargarFaenas();
-        
+
         // Notificar cambios
         onDataChange?.();
-        
+
         // Disparar evento para refrescar otros componentes
         window.dispatchEvent(
           new CustomEvent("refreshFaenasConsumo", {
             detail: { novedadId: novedadPescaConsumo.id },
-          })
+          }),
         );
-        
+
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -242,7 +301,9 @@ const DetalleFaenasConsumoCard = forwardRef(
         toast.current?.show({
           severity: "error",
           summary: "Error",
-          detail: error.response?.data?.error || "Error al crear la faena de pesca consumo",
+          detail:
+            error.response?.data?.error ||
+            "Error al crear la faena de pesca consumo",
           life: 5000,
         });
       } finally {
@@ -271,8 +332,12 @@ const DetalleFaenasConsumoCard = forwardRef(
           novedadPescaConsumoId: Number(novedadPescaConsumo.id),
           descripcion: data.descripcion || "",
           fechaSalida: data.fechaSalida ? data.fechaSalida.toISOString() : null,
-          fechaHoraFondeo: data.fechaHoraFondeo ? data.fechaHoraFondeo.toISOString() : null,
-          fechaDescarga: data.fechaDescarga ? data.fechaDescarga.toISOString() : null,
+          fechaHoraFondeo: data.fechaHoraFondeo
+            ? data.fechaHoraFondeo.toISOString()
+            : null,
+          fechaDescarga: data.fechaDescarga
+            ? data.fechaDescarga.toISOString()
+            : null,
           embarcacionId: data.embarcacionId || null,
           bolicheRedId: data.bolicheRedId || null,
           patronId: data.patronId || null,
@@ -289,7 +354,10 @@ const DetalleFaenasConsumoCard = forwardRef(
 
         let resultado;
         if (editingFaena) {
-          resultado = await actualizarFaenaPescaConsumo(editingFaena.id, faenaData);
+          resultado = await actualizarFaenaPescaConsumo(
+            editingFaena.id,
+            faenaData,
+          );
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
@@ -630,7 +698,10 @@ const DetalleFaenasConsumoCard = forwardRef(
               const calas = await getCalasFaenaConsumoPorFaena(faena.id);
               return { faenaId: faena.id, calas };
             } catch (error) {
-              console.error(`Error cargando calas para faena ${faena.id}:`, error);
+              console.error(
+                `Error cargando calas para faena ${faena.id}:`,
+                error,
+              );
               return { faenaId: faena.id, calas: [] };
             }
           }
@@ -659,9 +730,12 @@ const DetalleFaenasConsumoCard = forwardRef(
                 getDetCalaPescaConsumoPorCala(cala.id)
                   .then((especies) => ({ calaId: cala.id, especies }))
                   .catch((error) => {
-                    console.error(`Error cargando especies para cala ${cala.id}:`, error);
+                    console.error(
+                      `Error cargando especies para cala ${cala.id}:`,
+                      error,
+                    );
                     return { calaId: cala.id, especies: [] };
-                  })
+                  }),
               );
             }
           });
@@ -716,7 +790,7 @@ const DetalleFaenasConsumoCard = forwardRef(
       const templateData = createPorcentajeTemplate(
         rowData.porcentajeJuveniles,
         null,
-        null
+        null,
       );
       return templateData;
     };
@@ -739,7 +813,11 @@ const DetalleFaenasConsumoCard = forwardRef(
             label={creandoFaenaCompleta ? "Creando..." : "Nueva Faena"}
             icon={creandoFaenaCompleta ? "pi pi-spin pi-spinner" : "pi pi-plus"}
             onClick={handleNuevaFaena}
-            disabled={!novedadPescaConsumo?.id || !novedadPescaConsumoIniciada || creandoFaenaCompleta}
+            disabled={
+              !novedadPescaConsumo?.id ||
+              !novedadPescaConsumoIniciada ||
+              creandoFaenaCompleta
+            }
             loading={creandoFaenaCompleta}
             raised
             outlined
@@ -748,10 +826,10 @@ const DetalleFaenasConsumoCard = forwardRef(
               !novedadPescaConsumo?.id
                 ? "Guarde la novedad para crear faenas"
                 : !novedadPescaConsumoIniciada
-                ? "Debe iniciar la novedad antes de crear faenas"
-                : creandoFaenaCompleta
-                ? "Creando faena con todos sus registros..."
-                : "Crear nueva faena con todos sus registros asociados"
+                  ? "Debe iniciar la novedad antes de crear faenas"
+                  : creandoFaenaCompleta
+                    ? "Creando faena con todos sus registros..."
+                    : "Crear nueva faena con todos sus registros asociados"
             }
             tooltipOptions={{ position: "bottom" }}
             className="p-button-success"
@@ -789,142 +867,364 @@ const DetalleFaenasConsumoCard = forwardRef(
     );
 
     // Configuración de columnas
-    const columns = [
-      {
-        field: "id",
-        header: "ID Faena",
-        sortable: true,
-      },
-      {
-        field: "embarcacionId",
-        header: "Embarcación",
-        sortable: true,
-        body: (rowData) => {
-          if (!rowData.embarcacionId) return "N/A";
-          const embarcacion = embarcaciones.find(
-            (e) => Number(e.value) === Number(rowData.embarcacionId)
-          );
-          return embarcacion ? embarcacion.label : `ID: ${rowData.embarcacionId}`;
+    const columns = useMemo(() => {
+      return [
+        {
+          field: "id",
+          header: "ID Faena",
+          sortable: true,
         },
-      },
-      {
-        field: "bolicheRedId",
-        header: "Boliche",
-        sortable: true,
-        body: (rowData) => {
-          if (!rowData.bolicheRedId) return "N/A";
-          const boliche = boliches.find(
-            (b) => Number(b.value) === Number(rowData.bolicheRedId)
-          );
-          return boliche ? boliche.label : `ID: ${rowData.bolicheRedId}`;
+        {
+          field: "embarcacionId",
+          header: "Embarcación",
+          sortable: true,
+          body: (rowData) => {
+            if (!rowData.embarcacionId) return "N/A";
+            const embarcacion = embarcaciones.find(
+              (e) => Number(e.value) === Number(rowData.embarcacionId),
+            );
+            return embarcacion
+              ? embarcacion.label
+              : `ID: ${rowData.embarcacionId}`;
+          },
         },
-      },
-      {
-        field: "bahiaId",
-        header: "Bahía",
-        sortable: true,
-        body: (rowData) => {
-          if (!rowData.bahiaId) return "N/A";
-          const bahia = bahiasComerciales.find(
-            (b) => Number(b.value) === Number(rowData.bahiaId)
-          );
-          return bahia ? bahia.label : `ID: ${rowData.bahiaId}`;
+        {
+          field: "bolicheRedId",
+          header: "Boliche",
+          sortable: true,
+          body: (rowData) => {
+            if (!rowData.bolicheRedId) return "N/A";
+            const boliche = boliches.find(
+              (b) => Number(b.value) === Number(rowData.bolicheRedId),
+            );
+            return boliche ? boliche.label : `ID: ${rowData.bolicheRedId}`;
+          },
         },
-      },
-      {
-        field: "patronId",
-        header: "Patrón",
-        sortable: true,
-        body: (rowData) => {
-          if (!rowData.patronId) return "N/A";
-          const patron = patrones.find(
-            (p) => Number(p.value) === Number(rowData.patronId)
-          );
-          return patron ? patron.label : `ID: ${rowData.patronId}`;
+        {
+          field: "bahiaId",
+          header: "Bahía",
+          sortable: true,
+          body: (rowData) => {
+            if (!rowData.bahiaId) return "N/A";
+            const bahia = bahiasComerciales.find(
+              (b) => Number(b.value) === Number(rowData.bahiaId),
+            );
+            return bahia ? bahia.label : `ID: ${rowData.bahiaId}`;
+          },
         },
-      },
-      {
-        field: "motoristaId",
-        header: "Motorista",
-        sortable: true,
-        body: (rowData) => {
-          if (!rowData.motoristaId) return "N/A";
-          const motorista = motoristas.find(
-            (m) => Number(m.value) === Number(rowData.motoristaId)
-          );
-          return motorista ? motorista.label : `ID: ${rowData.motoristaId}`;
+        {
+          field: "patronId",
+          header: "Patrón",
+          sortable: true,
+          body: (rowData) => {
+            if (!rowData.patronId) return "N/A";
+            const patron = patrones.find(
+              (p) => Number(p.value) === Number(rowData.patronId),
+            );
+            return patron ? patron.label : `ID: ${rowData.patronId}`;
+          },
         },
-      },
-      {
-        field: "fechaSalida",
-        header: "Fecha Zarpe",
-        sortable: true,
-        body: (rowData) =>
-          rowData.fechaSalida
-            ? new Date(rowData.fechaSalida).toLocaleDateString('es-PE')
-            : "-",
-      },
-      {
-        field: "puertoSalidaId",
-        header: "Puerto Zarpe",
-        sortable: true,
-        body: (rowData) => obtenerNombrePuerto(rowData.puertoSalidaId),
-      },
-      {
-        field: "fechaRetorno",
-        header: "Fecha Retorno",
-        sortable: true,
-        body: (rowData) =>
-          rowData.fechaRetorno
-            ? new Date(rowData.fechaRetorno).toLocaleDateString('es-PE')
-            : "-",
-      },
-      {
-        field: "fechaHoraFondeo",
-        header: "Fecha Fondeo",
-        sortable: true,
-        body: (rowData) =>
-          rowData.fechaHoraFondeo
-            ? new Date(rowData.fechaHoraFondeo).toLocaleDateString('es-PE')
-            : "-",
-      },
-      {
-        field: "puertoFondeoId",
-        header: "Puerto Fondeo",
-        sortable: true,
-        body: (rowData) => obtenerNombrePuerto(rowData.puertoFondeoId),
-      },
-      {
-        field: "toneladasCapturadasFaena",
-        header: "Toneladas",
-        sortable: true,
-        body: (rowData) => {
-          const tons = rowData.toneladasCapturadasFaena
-            ? parseFloat(rowData.toneladasCapturadasFaena).toFixed(3)
-            : "0.000";
-          return `${tons} t`;
+        {
+          field: "motoristaId",
+          header: "Motorista",
+          sortable: true,
+          body: (rowData) => {
+            if (!rowData.motoristaId) return "N/A";
+            const motorista = motoristas.find(
+              (m) => Number(m.value) === Number(rowData.motoristaId),
+            );
+            return motorista ? motorista.label : `ID: ${rowData.motoristaId}`;
+          },
         },
-      },
-      {
-        header: "Acciones",
-        body: (rowData) => (
-          <div className="flex gap-2">
-            <Button
-              icon="pi pi-pencil"
-              className="p-button-rounded p-button-success p-button-text"
-              onClick={(e) => handleEditarFaena(rowData, e)}
-              tooltip="Editar faena"
-            />
-            <Button
-              icon="pi pi-trash"
-              className="p-button-rounded p-button-danger p-button-text"
-              onClick={() => handleEliminarFaena(rowData)}
-              tooltip="Eliminar faena"
-            />
-          </div>
-        ),
-      },
-    ];
+        {
+          field: "fechaSalida",
+          header: "Fecha Zarpe",
+          sortable: true,
+          body: (rowData) =>
+            rowData.fechaSalida
+              ? new Date(rowData.fechaSalida).toLocaleDateString("es-PE")
+              : "-",
+        },
+        {
+          field: "puertoSalidaId",
+          header: "Puerto Zarpe",
+          sortable: true,
+          body: (rowData) => obtenerNombrePuerto(rowData.puertoSalidaId),
+        },
+        {
+          field: "puertoFondeoId",
+          header: "Puerto Fondeo",
+          sortable: true,
+          body: (rowData) => obtenerNombrePuerto(rowData.puertoFondeoId),
+        },
+        {
+          field: "ultimaCala",
+          header: "Última Cala",
+          sortable: true,
+          body: (rowData) => {
+            const calas = calasData[rowData.id] || [];
+            if (calas.length === 0) return "-";
+            // Ordenar calas por fechaHoraInicio descendente y tomar la primera
+            const calasOrdenadas = [...calas].sort((a, b) => {
+              const fechaA = a.fechaHoraInicio
+                ? new Date(a.fechaHoraInicio)
+                : new Date(0);
+              const fechaB = b.fechaHoraInicio
+                ? new Date(b.fechaHoraInicio)
+                : new Date(0);
+              return fechaB - fechaA;
+            });
+            const ultimaCala = calasOrdenadas[0];
+            if (!ultimaCala?.fechaHoraInicio) return "-";
+
+            const fecha = new Date(ultimaCala.fechaHoraInicio);
+            return fecha.toLocaleString("es-PE", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            });
+          },
+          sortFunction: (event) => {
+            const data = [...event.data];
+            return data.sort((a, b) => {
+              const calasA = calasData[a.id] || [];
+              const calasB = calasData[b.id] || [];
+
+              // Obtener fecha de última cala de A
+              let fechaA = null;
+              if (calasA.length > 0) {
+                const calasOrdenadasA = [...calasA].sort((x, y) => {
+                  const fX = x.fechaHoraInicio
+                    ? new Date(x.fechaHoraInicio)
+                    : new Date(0);
+                  const fY = y.fechaHoraInicio
+                    ? new Date(y.fechaHoraInicio)
+                    : new Date(0);
+                  return fY - fX;
+                });
+                fechaA = calasOrdenadasA[0]?.fechaHoraInicio
+                  ? new Date(calasOrdenadasA[0].fechaHoraInicio)
+                  : null;
+              }
+
+              // Obtener fecha de última cala de B
+              let fechaB = null;
+              if (calasB.length > 0) {
+                const calasOrdenadasB = [...calasB].sort((x, y) => {
+                  const fX = x.fechaHoraInicio
+                    ? new Date(x.fechaHoraInicio)
+                    : new Date(0);
+                  const fY = y.fechaHoraInicio
+                    ? new Date(y.fechaHoraInicio)
+                    : new Date(0);
+                  return fY - fX;
+                });
+                fechaB = calasOrdenadasB[0]?.fechaHoraInicio
+                  ? new Date(calasOrdenadasB[0].fechaHoraInicio)
+                  : null;
+              }
+
+              // Comparar fechas
+              if (!fechaA && !fechaB) return 0;
+              if (!fechaA) return event.order === 1 ? 1 : -1;
+              if (!fechaB) return event.order === 1 ? -1 : 1;
+
+              return event.order === 1 ? fechaA - fechaB : fechaB - fechaA;
+            });
+          },
+        },
+        {
+          field: "calastoneladas",
+          header: "Calas Tons.",
+          sortable: true,
+          body: (rowData) => {
+            const calas = calasData[rowData.id] || [];
+            const tonsCalas = calas.reduce((sum, cala) => {
+              return sum + (Number(cala.toneladasCapturadas) || 0);
+            }, 0);
+            return tonsCalas > 0 ? tonsCalas.toFixed(3) : "-";
+          },
+          sortFunction: (event) => {
+            const data = [...event.data];
+            return data.sort((a, b) => {
+              const calasA = calasData[a.id] || [];
+              const calasB = calasData[b.id] || [];
+
+              const tonsA = calasA.reduce(
+                (sum, cala) => sum + (Number(cala.toneladasCapturadas) || 0),
+                0,
+              );
+              const tonsB = calasB.reduce(
+                (sum, cala) => sum + (Number(cala.toneladasCapturadas) || 0),
+                0,
+              );
+
+              return event.order === 1 ? tonsA - tonsB : tonsB - tonsA;
+            });
+          },
+        },
+        {
+          field: "inicioDescarga",
+          header: "Última Descarga",
+          sortable: true,
+          body: (rowData) => {
+            const descargas = descargasData[rowData.id] || [];
+            if (descargas.length === 0) return "-";
+
+            const descarga = descargas[0]; // Solo hay una descarga por faena (relación 1:1)
+            if (!descarga?.fechaHoraInicioDescarga) return "-";
+
+            const fecha = new Date(descarga.fechaHoraInicioDescarga);
+            return fecha.toLocaleString("es-PE", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            });
+          },
+          sortFunction: (event) => {
+            const data = [...event.data];
+            return data.sort((a, b) => {
+              const descargasA = descargasData[a.id] || [];
+              const descargasB = descargasData[b.id] || [];
+
+              const fechaA = descargasA[0]?.fechaHoraInicioDescarga
+                ? new Date(descargasA[0].fechaHoraInicioDescarga)
+                : null;
+              const fechaB = descargasB[0]?.fechaHoraInicioDescarga
+                ? new Date(descargasB[0].fechaHoraInicioDescarga)
+                : null;
+
+              if (!fechaA && !fechaB) return 0;
+              if (!fechaA) return event.order === 1 ? 1 : -1;
+              if (!fechaB) return event.order === 1 ? -1 : 1;
+
+              return event.order === 1 ? fechaA - fechaB : fechaB - fechaA;
+            });
+          },
+        },
+        {
+          field: "descargastoneladas",
+          header: "Descargas Tons.",
+          sortable: true,
+          body: (rowData) => {
+            const descargas = descargasData[rowData.id] || [];
+            const tonsDescargas = descargas.reduce((sum, descarga) => {
+              return sum + (Number(descarga.toneladas) || 0);
+            }, 0);
+            return tonsDescargas > 0 ? tonsDescargas.toFixed(3) : "-";
+          },
+          sortFunction: (event) => {
+            const data = [...event.data];
+            return data.sort((a, b) => {
+              const descargasA = descargasData[a.id] || [];
+              const descargasB = descargasData[b.id] || [];
+
+              const tonsA = descargasA.reduce(
+                (sum, descarga) => sum + (Number(descarga.toneladas) || 0),
+                0,
+              );
+              const tonsB = descargasB.reduce(
+                (sum, descarga) => sum + (Number(descarga.toneladas) || 0),
+                0,
+              );
+
+              return event.order === 1 ? tonsA - tonsB : tonsB - tonsA;
+            });
+          },
+        },
+        {
+          field: "combustibleTotal",
+          header: "Petroleo",
+          sortable: true,
+          body: (rowData) => {
+            const descargas = descargasData[rowData.id] || [];
+            const combustibleDescargas = descargas.reduce((sum, descarga) => {
+              return sum + (Number(descarga.combustibleAbastecidoGalones) || 0);
+            }, 0);
+            const combustibleInicial =
+              Number(rowData.combustibleAbastecidoGalones) || 0;
+            const combustibleTotal = combustibleInicial + combustibleDescargas;
+
+            if (combustibleTotal === 0) return "-";
+
+            // Si tiene combustible inicial, mostrar en verde oscuro y negrita
+            if (combustibleInicial > 0) {
+              return (
+                <span style={{ color: "#0d5e0d", fontWeight: "bold" }}>
+                  {combustibleTotal.toFixed(2)} gal.
+                </span>
+              );
+            }
+
+            // Si solo tiene combustible de descargas, mostrar normal
+            return `${combustibleTotal.toFixed(2)} gal.`;
+          },
+          sortFunction: (event) => {
+            const data = [...event.data];
+            return data.sort((a, b) => {
+              const descargasA = descargasData[a.id] || [];
+              const descargasB = descargasData[b.id] || [];
+
+              const combustibleDescargasA = descargasA.reduce(
+                (sum, descarga) =>
+                  sum + (Number(descarga.combustibleAbastecidoGalones) || 0),
+                0,
+              );
+              const combustibleDescargasB = descargasB.reduce(
+                (sum, descarga) =>
+                  sum + (Number(descarga.combustibleAbastecidoGalones) || 0),
+                0,
+              );
+
+              const combustibleInicialA =
+                Number(a.combustibleAbastecidoGalones) || 0;
+              const combustibleInicialB =
+                Number(b.combustibleAbastecidoGalones) || 0;
+
+              const totalA = combustibleInicialA + combustibleDescargasA;
+              const totalB = combustibleInicialB + combustibleDescargasB;
+
+              return event.order === 1 ? totalA - totalB : totalB - totalA;
+            });
+          },
+        },
+        {
+          header: "Acciones",
+          body: (rowData) => (
+            <div className="flex gap-2">
+              <Button
+                icon="pi pi-pencil"
+                className="p-button-rounded p-button-success p-button-text"
+                onClick={(e) => handleEditarFaena(rowData, e)}
+                tooltip="Editar faena"
+              />
+              <Button
+                icon="pi pi-trash"
+                className="p-button-rounded p-button-danger p-button-text"
+                onClick={() => handleEliminarFaena(rowData)}
+                tooltip="Eliminar faena"
+              />
+            </div>
+          ),
+        },
+      ];
+    }, [
+      embarcaciones,
+      boliches,
+      bahiasComerciales,
+      patrones,
+      motoristas,
+      puertosData,
+      descargasData,
+      calasData,
+      dataVersion,
+    ]);
 
     // Si la novedad no está iniciada, mostrar mensaje
     if (!novedadPescaConsumoIniciada) {
@@ -936,7 +1236,8 @@ const DetalleFaenasConsumoCard = forwardRef(
               style={{ fontSize: "3rem" }}
             ></i>
             <p className="text-600 mb-0">
-              La novedad debe estar iniciada para gestionar faenas de pesca consumo
+              La novedad debe estar iniciada para gestionar faenas de pesca
+              consumo
             </p>
           </div>
         </Card>
@@ -946,7 +1247,8 @@ const DetalleFaenasConsumoCard = forwardRef(
     return (
       <>
         <Card className="mb-4">
-        <DataTable
+          <DataTable
+            key={dataVersion}
             value={faenas}
             loading={loading}
             paginator
@@ -968,29 +1270,29 @@ const DetalleFaenasConsumoCard = forwardRef(
             dataKey="id"
           >
             <Column expander style={{ width: "5rem" }} />
-              {columns.map((column) => (
-                <Column key={column.field} {...column} />
-              ))}
+            {columns.map((column) => (
+              <Column key={column.field} {...column} />
+            ))}
           </DataTable>
         </Card>
 
-          <FaenaPescaConsumoForm
-            visible={dialogVisible}
-            onHide={() => setDialogVisible(false)}
-            isEdit={!!editingFaena}
-            defaultValues={editingFaena || {}}
-            novedadData={novedadPescaConsumo}
-            embarcacionesOptions={embarcaciones}
-            bolichesOptions={boliches}
-            bahiasComercialesOptions={bahiasComerciales}
-            motoristasOptions={motoristas}
-            patronesOptions={patrones}
-            puertosOptions={puertosData}
-            onSubmit={handleSubmitFaena}
-            onDataChange={cargarFaenas}
-            faenaCreatedSuccessfully={faenaCreatedSuccessfully}
-            setFaenaCreatedSuccessfully={setFaenaCreatedSuccessfully}
-          />
+        <FaenaPescaConsumoForm
+          visible={dialogVisible}
+          onHide={() => setDialogVisible(false)}
+          isEdit={!!editingFaena}
+          defaultValues={editingFaena || {}}
+          novedadData={novedadPescaConsumo}
+          embarcacionesOptions={embarcaciones}
+          bolichesOptions={boliches}
+          bahiasComercialesOptions={bahiasComerciales}
+          motoristasOptions={motoristas}
+          patronesOptions={patrones}
+          puertosOptions={puertosData}
+          onSubmit={handleSubmitFaena}
+          onDataChange={cargarFaenas}
+          faenaCreatedSuccessfully={faenaCreatedSuccessfully}
+          setFaenaCreatedSuccessfully={setFaenaCreatedSuccessfully}
+        />
 
         {/* Dialog de confirmación */}
         <ConfirmDialog
@@ -1016,7 +1318,7 @@ const DetalleFaenasConsumoCard = forwardRef(
         <Toast ref={toast} />
       </>
     );
-  }
+  },
 );
 
 DetalleFaenasConsumoCard.displayName = "DetalleFaenasConsumoCard";

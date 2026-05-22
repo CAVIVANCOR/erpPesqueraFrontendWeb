@@ -117,7 +117,7 @@ export default function DatosGeneralesNovedadForm({
       setValue("toneladasCapturadas", valorASetear);
       // Verificar si se actualizó
       const valorActual = getValues("toneladasCapturadas");
-      // Notificar al componente padre sobre los cambios
+      // Notificar cambios al componente padre
       if (onNovedadDataChange) {
         onNovedadDataChange(novedadActualizada);
       }
@@ -125,6 +125,7 @@ export default function DatosGeneralesNovedadForm({
       console.error("Error al recargar datos de novedad:", error);
     }
   };
+
   // Escuchar evento personalizado para recargar datos
   useEffect(() => {
     const handleRefreshFaenas = () => {
@@ -135,6 +136,14 @@ export default function DatosGeneralesNovedadForm({
       window.removeEventListener("refreshFaenas", handleRefreshFaenas);
     };
   }, [novedadData?.id]);
+
+  // useEffect para recargar datos cuando cambien las faenas
+  useEffect(() => {
+    if (faenasUpdateTrigger > 0) {
+      recargarDatosNovedad();
+    }
+  }, [faenasUpdateTrigger]);
+
   // Función para formatear opciones de empresa
   const formatearOpcionesEmpresa = (empresas) => {
     return empresas.map((empresa) => ({
@@ -447,43 +456,6 @@ export default function DatosGeneralesNovedadForm({
             )}
           </div>
 
-          {/* Cuota Propia */}
-          <div style={{ flex: 1 }}>
-            <label
-              htmlFor="cuotaPropiaTon"
-              className="block text-900 font-medium mb-2"
-            >
-              Cuota Propia
-            </label>
-            <Controller
-              name="cuotaPropiaTon"
-              control={control}
-              rules={{
-                min: { value: 0, message: "La cuota no puede ser negativa" },
-              }}
-              render={({ field }) => (
-                <InputNumber
-                  id="cuotaPropiaTon"
-                  value={field.value}
-                  onValueChange={(e) => field.onChange(e.value)}
-                  placeholder="0.00"
-                  mode="decimal"
-                  minFractionDigits={0}
-                  maxFractionDigits={2}
-                  inputStyle={{ fontWeight: "bold" }}
-                  min={0}
-                  suffix=" Ton"
-                  className={classNames({
-                    "p-invalid": errors.cuotaPropiaTon,
-                  })}
-                />
-              )}
-            />
-            {errors.cuotaPropiaTon && (
-              <small className="p-error">{errors.cuotaPropiaTon.message}</small>
-            )}
-          </div>
-
           {/* Toneladas Capturadas */}
           <div style={{ flex: 1 }}>
             <label
@@ -530,7 +502,11 @@ export default function DatosGeneralesNovedadForm({
               motoristas={motoristas}
               patrones={patrones}
               bahiasComerciales={bahiasComerciales}
-              onDataChange={onNovedadDataChange}
+              onDataChange={() => {
+                setTimeout(() => {
+                  setFaenasUpdateTrigger((prev) => prev + 1);
+                }, 500);
+              }}
               updateTrigger={faenasUpdateTrigger}
               faenasUpdateTrigger={faenasUpdateTrigger}
               setFaenasUpdateTrigger={setFaenasUpdateTrigger}

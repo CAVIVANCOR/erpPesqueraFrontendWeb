@@ -141,12 +141,8 @@ const ProductoSelector = ({
           getProductos(),
           getAllEmpresas()
         ]);
-        
         setProductos(productosData || []);
         setEmpresas(empresasData || []);
-        
-        console.log("📊 ProductoSelector - Empresas cargadas:", empresasData?.length || 0);
-        console.log("📊 ProductoSelector - Productos cargados:", productosData?.length || 0);
       } catch (error) {
         console.error("❌ Error cargando datos:", error);
         setProductos([]);
@@ -155,7 +151,6 @@ const ProductoSelector = ({
         setLoading(false);
       }
     };
-
     cargarDatos();
   }, []);
 

@@ -381,10 +381,8 @@ export default function FaenaPescaConsumoForm({
         setTimeout(() => {
           setForceUpdate((prev) => prev + 1);
         }, 100);
-
         // Actualizar la prop faenaCreatedSuccessfully
         setFaenaCreatedSuccessfully?.(true);
-
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -393,26 +391,42 @@ export default function FaenaPescaConsumoForm({
           life: 4000,
         });
       } else if (isEditMode) {
-        // La descripción ya se envió en dataConDescripcion
-        const descripcionGenerada = dataConDescripcion.descripcion;
-
-        const faenaActualizada = {
-          ...data,
-          id: currentFaenaData?.id,
-          descripcion: descripcionGenerada,
-        };
-        setCurrentFaenaData(faenaActualizada);
-
-        // Actualizar el formulario con la nueva descripción
-        reset({
-          ...data,
-          id: currentFaenaData?.id,
-          descripcion: descripcionGenerada,
-        });
-
-        // Forzar actualización del Tag
-        setForceUpdate((prev) => prev + 1);
-
+        // ⭐ MODO EDICIÓN: Recargar datos actualizados desde el backend
+        
+        // Esperar a que el backend termine de calcular las toneladas
+        setTimeout(async () => {
+          try {
+            // Recargar la faena completa desde el backend
+            const faenaActualizada = await getFaenaPescaConsumoPorId(currentFaenaData.id);           
+            // Actualizar el estado del componente
+            setCurrentFaenaData(faenaActualizada);
+            
+            // Actualizar el formulario con los valores recargados
+            reset({
+              ...faenaActualizada,
+              // Convertir fechas de string a Date para los calendarios
+              fechaSalida: faenaActualizada.fechaSalida 
+                ? new Date(faenaActualizada.fechaSalida) 
+                : null,
+              fechaDescarga: faenaActualizada.fechaDescarga 
+                ? new Date(faenaActualizada.fechaDescarga) 
+                : null,
+              fechaHoraFondeo: faenaActualizada.fechaHoraFondeo 
+                ? new Date(faenaActualizada.fechaHoraFondeo) 
+                : null,
+            });
+            // Forzar actualización del Tag
+            setForceUpdate((prev) => prev + 1);
+          } catch (error) {
+            console.error("❌ [FORM] Error recargando faena:", error);
+            toast.current?.show({
+              severity: "warn",
+              summary: "Advertencia",
+              detail: "Faena guardada pero no se pudieron recargar los datos calculados",
+              life: 3000,
+            });
+          }
+        }, 500); // Esperar 500ms para que el backend termine los cálculos
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -483,6 +497,7 @@ export default function FaenaPescaConsumoForm({
     watch,
     faenaData: currentFaenaData,
     novedadData: novedad,
+    onDataChange: handleFaenaDataChange, // ← AGREGADO: Para notificar cambios en calas
     onFaenaDataChange: handleFaenaDataChange,
     onNovedadDataChange,
     estadosFaena,

@@ -144,12 +144,8 @@ const EntidadComercialSelector = ({
           getEntidadesComerciales(),
           getAllEmpresas()
         ]);
-        
         setEntidades(entidadesData || []);
         setEmpresas(empresasData || []);
-        
-        console.log("📊 EntidadComercialSelector - Empresas cargadas:", empresasData?.length || 0);
-        console.log("📊 EntidadComercialSelector - Entidades cargadas:", entidadesData?.length || 0);
       } catch (error) {
         console.error("❌ Error cargando datos:", error);
         setEntidades([]);
@@ -158,10 +154,9 @@ const EntidadComercialSelector = ({
         setLoading(false);
       }
     };
-
     cargarDatos();
   }, []);
-
+  
   // Actualizar empresaFiltro si cambia la preselección
   useEffect(() => {
     if (empresaIdPreseleccionada) {

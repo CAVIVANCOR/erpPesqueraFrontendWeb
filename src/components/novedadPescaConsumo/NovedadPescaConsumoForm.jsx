@@ -251,7 +251,7 @@ const NovedadPescaConsumoForm = ({
   };
 
   // Manejar envío del formulario
-  const handleFormSubmit = async (data) => {
+    const handleFormSubmit = async (data) => {
     try {
       const normalizedData = {
         ...data,
@@ -271,8 +271,45 @@ const NovedadPescaConsumoForm = ({
         // Asegurar que referenciaExtra se incluya si existe
         referenciaExtra: data.referenciaExtra || null,
       };
-
-      await onSave(normalizedData);
+      const resultado = await onSave(normalizedData);
+      // ⭐ RECARGAR DATOS ACTUALIZADOS DESDE EL BACKEND
+      if (resultado && resultado.id) {
+        // Esperar un momento para que el backend termine el recálculo
+        setTimeout(async () => {
+          try {
+            // Obtener los datos actualizados de la novedad
+            const novedadActualizada = await getNovedadPescaConsumoPorId(
+              resultado.id,
+            );
+            // Actualizar el formulario con los datos recalculados
+            if (novedadActualizada) {
+              // Convertir el objeto de BD al formato que espera el formulario
+              const datosCompletos = {
+                ...novedadActualizada,
+                unidadNegocioId: Number(
+                  novedadActualizada.unidadNegocioId || 2,
+                ),
+                empresaId: Number(novedadActualizada.empresaId),
+                BahiaId: Number(novedadActualizada.BahiaId),
+                estadoNovedadPescaConsumoId: Number(
+                  novedadActualizada.estadoNovedadPescaConsumoId,
+                ),
+                fechaInicio: novedadActualizada.fechaInicio
+                  ? new Date(novedadActualizada.fechaInicio)
+                  : null,
+                fechaFin: novedadActualizada.fechaFin
+                  ? new Date(novedadActualizada.fechaFin)
+                  : null,
+              };
+              reset(datosCompletos);
+            }
+            // Verificar novedad iniciada
+            await verificarNovedadIniciada(resultado.id);
+          } catch (reloadError) {
+            console.error("Error al recargar datos actualizados:", reloadError);
+          }
+        }, 500); // Esperar 500ms para que el backend complete el recálculo
+      }
     } catch (error) {
       console.error("Error guardando novedad:", error);
       toast.current?.show({
@@ -283,7 +320,6 @@ const NovedadPescaConsumoForm = ({
       });
     }
   };
-
   /**
    * Manejar inicio de novedad
    * Sistema profesional con loading state para evitar doble clic
@@ -643,7 +679,7 @@ const NovedadPescaConsumoForm = ({
 
   useEffect(() => {
     if (editingItem) {
-      reset({
+      const datosParaReset = {
         id: Number(editingItem.id) || null,
         empresaId: Number(editingItem.empresaId) || null,
         BahiaId: Number(editingItem.BahiaId) || null,
@@ -665,7 +701,8 @@ const NovedadPescaConsumoForm = ({
           editingItem.novedadPescaConsumoIniciada || false,
         urlResolucionPdf: editingItem.urlResolucionPdf || "",
         referenciaExtra: editingItem.referenciaExtra || "",
-      });
+      };
+      reset(datosParaReset);
     } else {
       reset({
         id: null,

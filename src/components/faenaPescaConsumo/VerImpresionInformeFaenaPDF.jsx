@@ -32,22 +32,11 @@ const VerImpresionInformeFaenaPDF = ({
     if (!datosFaena?.id) {
       throw new Error("Debe guardar la faena antes de generar el PDF");
     }
-
     // IMPORTANTE: Cargar datos completos desde el backend con todas las relaciones
     const faenaCompleta = await getFaenaPescaConsumoPorId(datosFaena.id);
-    
     const embarcacion = faenaCompleta.embarcacion;
     const novedadPescaConsumo = faenaCompleta.novedadPescaConsumo;
     const calas = faenaCompleta.calas || [];
-
-    console.log("✅ [VERIFICACIÓN] Datos cargados desde backend:", {
-      faenaId: faenaCompleta.id,
-      tieneEmbarcacion: !!embarcacion,
-      tieneNovedad: !!novedadPescaConsumo,
-      cantidadCalas: calas.length,
-      calaConEspecies: calas[0]?.especiesPescadas?.length || 0
-    });
-
     // Generar el PDF
     const resultado = await generarYSubirPDFInformeFaena(
       faenaCompleta,
@@ -55,7 +44,6 @@ const VerImpresionInformeFaenaPDF = ({
       embarcacion,
       novedadPescaConsumo,
     );
-
     if (resultado.success && resultado.urlPdf) {
       try {
         // Guardar automáticamente SOLO el campo urlInformeFaena
