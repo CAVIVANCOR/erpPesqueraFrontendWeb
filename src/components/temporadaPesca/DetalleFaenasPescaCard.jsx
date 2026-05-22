@@ -155,7 +155,10 @@ const DetalleFaenasPescaCard = forwardRef(
             const calas = await getCalasPorFaena(faena.id);
             return { faenaId: faena.id, calas };
           } catch (error) {
-            console.error(`❌ Error cargando calas de faena ${faena.id}:`, error);
+            console.error(
+              `❌ Error cargando calas de faena ${faena.id}:`,
+              error,
+            );
             return { faenaId: faena.id, calas: [] };
           }
         });
@@ -166,14 +169,17 @@ const DetalleFaenasPescaCard = forwardRef(
             const descargas = await getDescargasPorFaena(faena.id);
             return { faenaId: faena.id, descargas };
           } catch (error) {
-            console.error(`❌ Error cargando descargas de faena ${faena.id}:`, error);
+            console.error(
+              `❌ Error cargando descargas de faena ${faena.id}:`,
+              error,
+            );
             return { faenaId: faena.id, descargas: [] };
           }
         });
 
         const [calasResults, descargasResults] = await Promise.all([
           Promise.all(calasPromises),
-          Promise.all(descargasPromises)
+          Promise.all(descargasPromises),
         ]);
 
         // Actualizar estado de calas
@@ -348,7 +354,8 @@ const DetalleFaenasPescaCard = forwardRef(
           bahiaId: data.bahiaId || null,
           estadoFaenaId: data.estadoFaenaId || null,
           toneladasCapturadasFaena: data.toneladasCapturadasFaena || null,
-          combustibleAbastecidoGalones: data.combustibleAbastecidoGalones || null,
+          combustibleAbastecidoGalones:
+            data.combustibleAbastecidoGalones || null,
           combustibleConsumido: data.combustibleConsumido || null,
           recorridoMillasNauticas: data.recorridoMillasNauticas || null,
           PrecioGalonPetroleoSoles: data.PrecioGalonPetroleoSoles || null,
@@ -368,32 +375,32 @@ const DetalleFaenasPescaCard = forwardRef(
           setEditingFaena(resultado);
 
           // ⭐ ACTUALIZAR la faena en la lista (tabla) inmediatamente
-          setFaenas(prevFaenas =>
-            prevFaenas.map(f =>
-              f.id === resultado.id ? resultado : f
-            )
+          setFaenas((prevFaenas) =>
+            prevFaenas.map((f) => (f.id === resultado.id ? resultado : f)),
           );
 
           // ⭐ RECARGAR descargas de esta faena para actualizar "Petroleo Comprado"
           try {
-            const descargasActualizadas = await getDescargasPorFaena(resultado.id);
-            setDescargasData(prev => ({
+            const descargasActualizadas = await getDescargasPorFaena(
+              resultado.id,
+            );
+            setDescargasData((prev) => ({
               ...prev,
-              [resultado.id]: descargasActualizadas
+              [resultado.id]: descargasActualizadas,
             }));
           } catch (error) {
-            console.error('Error recargando descargas:', error);
+            console.error("Error recargando descargas:", error);
           }
 
           // ⭐ RECARGAR calas de esta faena para actualizar "Calas Tons."
           try {
             const calasActualizadas = await getCalasPorFaena(resultado.id);
-            setCalasData(prev => ({
+            setCalasData((prev) => ({
               ...prev,
-              [resultado.id]: calasActualizadas
+              [resultado.id]: calasActualizadas,
             }));
           } catch (error) {
-            console.error('Error recargando calas:', error);
+            console.error("Error recargando calas:", error);
           }
 
           toast.current?.show({
@@ -480,336 +487,386 @@ const DetalleFaenasPescaCard = forwardRef(
     };
 
     // Configuración de columnas - Memoizada con dependencias reactivas
-    const columns = useMemo(() => [
-      {
-        field: "id",
-        header: "ID Faena",
-        sortable: true,
-      },
-      {
-        field: "embarcacionId",
-        header: "Embarcación",
-        sortable: true,
-        body: (rowData) => {
-          const embarcacion = embarcaciones.find(
-            (e) => Number(e.id) === Number(rowData.embarcacionId),
-          );
-          return embarcacion
-            ? embarcacion.activo?.nombre || embarcacion.nombre || "Sin nombre"
-            : "N/A";
+    const columns = useMemo(
+      () => [
+        {
+          field: "id",
+          header: "ID Faena",
+          sortable: true,
         },
-      },
-      {
-        field: "bolicheRedId",
-        header: "Boliche",
-        sortable: true,
-        body: (rowData) => {
-          const boliche = boliches.find(
-            (b) => Number(b.id) === Number(rowData.bolicheRedId),
-          );
-          return boliche ? boliche.descripcion : "N/A";
-        },
-      },
-      {
-        field: "bahiaId",
-        header: "Bahía",
-        sortable: true,
-        body: (rowData) => {
-          const bahia = bahiasComerciales.find(
-            (b) => Number(b.id) === Number(rowData.bahiaId),
-          );
-          return bahia ? `${bahia.nombres} ${bahia.apellidos}` : "N/A";
-        },
-      },
-      {
-        field: "patronId",
-        header: "Patrón",
-        sortable: true,
-        body: (rowData) => {
-          const patron = patrones.find(
-            (p) => Number(p.id) === Number(rowData.patronId),
-          );
-          return patron ? `${patron.nombres} ${patron.apellidos}` : "N/A";
-        },
-      },
-      {
-        field: "motoristaId",
-        header: "Motorista",
-        sortable: true,
-        body: (rowData) => {
-          const motorista = motoristas.find(
-            (m) => Number(m.id) === Number(rowData.motoristaId),
-          );
-          return motorista
-            ? `${motorista.nombres} ${motorista.apellidos}`
-            : "N/A";
-        },
-      },
-      {
-        field: "fechaSalida",
-        header: "Fecha Zarpe",
-        sortable: true,
-        body: (rowData) =>
-          rowData.fechaSalida
-            ? new Date(rowData.fechaSalida).toLocaleDateString("es-PE")
-            : "-",
-      },
-      {
-        field: "puertoSalidaId",
-        header: "Puerto Zarpe",
-        sortable: true,
-        body: (rowData) => obtenerNombrePuerto(rowData.puertoSalidaId),
-        sortFunction: (event) => {
-          const data = [...event.data];
-          return data.sort((a, b) => {
-            const nombreA = obtenerNombrePuerto(a.puertoSalidaId) || "";
-            const nombreB = obtenerNombrePuerto(b.puertoSalidaId) || "";
-
-            return event.order === 1
-              ? nombreA.localeCompare(nombreB)
-              : nombreB.localeCompare(nombreA);
-          });
-        },
-      },
-      {
-        field: "puertoFondeoId",
-        header: "Puerto Fondeo",
-        sortable: true,
-        body: (rowData) => obtenerNombrePuerto(rowData.puertoFondeoId),
-        sortFunction: (event) => {
-          const data = [...event.data];
-          return data.sort((a, b) => {
-            const nombreA = obtenerNombrePuerto(a.puertoFondeoId) || "";
-            const nombreB = obtenerNombrePuerto(b.puertoFondeoId) || "";
-
-            return event.order === 1
-              ? nombreA.localeCompare(nombreB)
-              : nombreB.localeCompare(nombreA);
-          });
-        },
-      },
-      {
-        field: "ultimaCala",
-        header: "Última Cala",
-        sortable: true,
-        body: (rowData) => {
-          const calas = calasData[rowData.id] || [];
-          if (calas.length === 0) return "-";
-
-          // Ordenar calas por fechaHoraInicio descendente y tomar la primera
-          const calasOrdenadas = [...calas].sort((a, b) => {
-            const fechaA = a.fechaHoraInicio ? new Date(a.fechaHoraInicio) : new Date(0);
-            const fechaB = b.fechaHoraInicio ? new Date(b.fechaHoraInicio) : new Date(0);
-            return fechaB - fechaA;
-          });
-
-          const ultimaCala = calasOrdenadas[0];
-          if (!ultimaCala?.fechaHoraInicio) return "-";
-
-          const fecha = new Date(ultimaCala.fechaHoraInicio);
-          return fecha.toLocaleString("es-PE", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true
-          });
-        },
-        sortFunction: (event) => {
-          const data = [...event.data];
-          return data.sort((a, b) => {
-            const calasA = calasData[a.id] || [];
-            const calasB = calasData[b.id] || [];
-
-            // Obtener fecha de última cala de A
-            let fechaA = null;
-            if (calasA.length > 0) {
-              const calasOrdenadasA = [...calasA].sort((x, y) => {
-                const fX = x.fechaHoraInicio ? new Date(x.fechaHoraInicio) : new Date(0);
-                const fY = y.fechaHoraInicio ? new Date(y.fechaHoraInicio) : new Date(0);
-                return fY - fX;
-              });
-              fechaA = calasOrdenadasA[0]?.fechaHoraInicio ? new Date(calasOrdenadasA[0].fechaHoraInicio) : null;
-            }
-
-            // Obtener fecha de última cala de B
-            let fechaB = null;
-            if (calasB.length > 0) {
-              const calasOrdenadasB = [...calasB].sort((x, y) => {
-                const fX = x.fechaHoraInicio ? new Date(x.fechaHoraInicio) : new Date(0);
-                const fY = y.fechaHoraInicio ? new Date(y.fechaHoraInicio) : new Date(0);
-                return fY - fX;
-              });
-              fechaB = calasOrdenadasB[0]?.fechaHoraInicio ? new Date(calasOrdenadasB[0].fechaHoraInicio) : null;
-            }
-
-            // Comparar fechas
-            if (!fechaA && !fechaB) return 0;
-            if (!fechaA) return event.order === 1 ? 1 : -1;
-            if (!fechaB) return event.order === 1 ? -1 : 1;
-
-            return event.order === 1 ? fechaA - fechaB : fechaB - fechaA;
-          });
-        },
-      },
-      {
-        field: "calastoneladas",
-        header: "Calas Tons.",
-        sortable: true,
-        body: (rowData) => {
-          const calas = calasData[rowData.id] || [];
-          const tonsCalas = calas.reduce((sum, cala) => {
-            return sum + (Number(cala.toneladasCapturadas) || 0);
-          }, 0);
-          return tonsCalas > 0
-            ? tonsCalas.toFixed(3)
-            : "-";
-        },
-        sortFunction: (event) => {
-          const data = [...event.data];
-          return data.sort((a, b) => {
-            const calasA = calasData[a.id] || [];
-            const calasB = calasData[b.id] || [];
-
-            const tonsA = calasA.reduce((sum, cala) => sum + (Number(cala.toneladasCapturadas) || 0), 0);
-            const tonsB = calasB.reduce((sum, cala) => sum + (Number(cala.toneladasCapturadas) || 0), 0);
-
-            return event.order === 1 ? tonsA - tonsB : tonsB - tonsA;
-          });
-        },
-      },
-      {
-        field: "inicioDescarga",
-        header: "Última Descarga",
-        sortable: true,
-        body: (rowData) => {
-          const descargas = descargasData[rowData.id] || [];
-          if (descargas.length === 0) return "-";
-
-          const descarga = descargas[0]; // Solo hay una descarga por faena (relación 1:1)
-          if (!descarga?.fechaHoraInicioDescarga) return "-";
-
-          const fecha = new Date(descarga.fechaHoraInicioDescarga);
-          return fecha.toLocaleString("es-PE", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true
-          });
-        },
-        sortFunction: (event) => {
-          const data = [...event.data];
-          return data.sort((a, b) => {
-            const descargasA = descargasData[a.id] || [];
-            const descargasB = descargasData[b.id] || [];
-
-            const fechaA = descargasA[0]?.fechaHoraInicioDescarga ? new Date(descargasA[0].fechaHoraInicioDescarga) : null;
-            const fechaB = descargasB[0]?.fechaHoraInicioDescarga ? new Date(descargasB[0].fechaHoraInicioDescarga) : null;
-
-            if (!fechaA && !fechaB) return 0;
-            if (!fechaA) return event.order === 1 ? 1 : -1;
-            if (!fechaB) return event.order === 1 ? -1 : 1;
-
-            return event.order === 1 ? fechaA - fechaB : fechaB - fechaA;
-          });
-        },
-      },
-
-
-      {
-        field: "descargastoneladas",
-        header: "Descargas Tons.",
-        sortable: true,
-        body: (rowData) => {
-          const descargas = descargasData[rowData.id] || [];
-          const tonsDescargas = descargas.reduce((sum, descarga) => {
-            return sum + (Number(descarga.toneladas) || 0);
-          }, 0);
-          return tonsDescargas > 0
-            ? tonsDescargas.toFixed(3)
-            : "-";
-        },
-        sortFunction: (event) => {
-          const data = [...event.data];
-          return data.sort((a, b) => {
-            const descargasA = descargasData[a.id] || [];
-            const descargasB = descargasData[b.id] || [];
-
-            const tonsA = descargasA.reduce((sum, descarga) => sum + (Number(descarga.toneladas) || 0), 0);
-            const tonsB = descargasB.reduce((sum, descarga) => sum + (Number(descarga.toneladas) || 0), 0);
-
-            return event.order === 1 ? tonsA - tonsB : tonsB - tonsA;
-          });
-        },
-      },
-      {
-        field: "combustibleTotal",
-        header: "Petroleo",
-        sortable: true,
-        body: (rowData) => {
-          const descargas = descargasData[rowData.id] || [];
-          const combustibleDescargas = descargas.reduce((sum, descarga) => {
-            return sum + (Number(descarga.combustibleAbastecidoGalones) || 0);
-          }, 0);
-          const combustibleInicial = Number(rowData.combustibleAbastecidoGalones) || 0;
-          const combustibleTotal = combustibleInicial + combustibleDescargas;
-
-          if (combustibleTotal === 0) return "-";
-
-          // Si tiene combustible inicial, mostrar en verde oscuro y negrita
-          if (combustibleInicial > 0) {
-            return (
-              <span style={{ color: '#0d5e0d', fontWeight: 'bold' }}>
-                {combustibleTotal.toFixed(2)} gal.
-              </span>
+        {
+          field: "embarcacionId",
+          header: "Embarcación",
+          sortable: true,
+          body: (rowData) => {
+            const embarcacion = embarcaciones.find(
+              (e) => Number(e.id) === Number(rowData.embarcacionId),
             );
-          }
-
-          // Si solo tiene combustible de descargas, mostrar normal
-          return `${combustibleTotal.toFixed(2)} gal.`;
+            return embarcacion
+              ? embarcacion.activo?.nombre || embarcacion.nombre || "Sin nombre"
+              : "N/A";
+          },
         },
-        sortFunction: (event) => {
-          const data = [...event.data];
-          return data.sort((a, b) => {
-            const descargasA = descargasData[a.id] || [];
-            const descargasB = descargasData[b.id] || [];
-
-            const combustibleDescargasA = descargasA.reduce((sum, descarga) => sum + (Number(descarga.combustibleAbastecidoGalones) || 0), 0);
-            const combustibleDescargasB = descargasB.reduce((sum, descarga) => sum + (Number(descarga.combustibleAbastecidoGalones) || 0), 0);
-
-            const combustibleInicialA = Number(a.combustibleAbastecidoGalones) || 0;
-            const combustibleInicialB = Number(b.combustibleAbastecidoGalones) || 0;
-
-            const totalA = combustibleInicialA + combustibleDescargasA;
-            const totalB = combustibleInicialB + combustibleDescargasB;
-
-            return event.order === 1 ? totalA - totalB : totalB - totalA;
-          });
+        {
+          field: "bolicheRedId",
+          header: "Boliche",
+          sortable: true,
+          body: (rowData) => {
+            const boliche = boliches.find(
+              (b) => Number(b.id) === Number(rowData.bolicheRedId),
+            );
+            return boliche ? boliche.descripcion : "N/A";
+          },
         },
-      },
-      {
-        header: "Acciones",
-        body: (rowData) => (
-          <div className="flex gap-2">
-            <Button
-              icon="pi pi-pencil"
-              className="p-button-rounded p-button-success p-button-text"
-              onClick={(e) => handleEditarFaena(rowData, e)}
-              tooltip="Editar faena"
-            />
-            <Button
-              icon="pi pi-trash"
-              className="p-button-rounded p-button-danger p-button-text"
-              onClick={() => handleEliminarFaena(rowData)}
-              tooltip="Eliminar faena"
-            />
-          </div>
-        ),
-      },
-    ], [embarcaciones, boliches, bahiasComerciales, patrones, motoristas, puertosData, descargasData, calasData]);
+        {
+          field: "bahiaId",
+          header: "Bahía",
+          sortable: true,
+          body: (rowData) => {
+            const bahia = bahiasComerciales.find(
+              (b) => Number(b.id) === Number(rowData.bahiaId),
+            );
+            return bahia ? `${bahia.nombres} ${bahia.apellidos}` : "N/A";
+          },
+        },
+        {
+          field: "patronId",
+          header: "Patrón",
+          sortable: true,
+          body: (rowData) => {
+            const patron = patrones.find(
+              (p) => Number(p.id) === Number(rowData.patronId),
+            );
+            return patron ? `${patron.nombres} ${patron.apellidos}` : "N/A";
+          },
+        },
+        {
+          field: "motoristaId",
+          header: "Motorista",
+          sortable: true,
+          body: (rowData) => {
+            const motorista = motoristas.find(
+              (m) => Number(m.id) === Number(rowData.motoristaId),
+            );
+            return motorista
+              ? `${motorista.nombres} ${motorista.apellidos}`
+              : "N/A";
+          },
+        },
+        {
+          field: "fechaSalida",
+          header: "Fecha Zarpe",
+          sortable: true,
+          body: (rowData) =>
+            rowData.fechaSalida
+              ? new Date(rowData.fechaSalida).toLocaleDateString("es-PE")
+              : "-",
+        },
+        {
+          field: "puertoSalidaId",
+          header: "Puerto Zarpe",
+          sortable: true,
+          body: (rowData) => obtenerNombrePuerto(rowData.puertoSalidaId),
+          sortFunction: (event) => {
+            const data = [...event.data];
+            return data.sort((a, b) => {
+              const nombreA = obtenerNombrePuerto(a.puertoSalidaId) || "";
+              const nombreB = obtenerNombrePuerto(b.puertoSalidaId) || "";
+
+              return event.order === 1
+                ? nombreA.localeCompare(nombreB)
+                : nombreB.localeCompare(nombreA);
+            });
+          },
+        },
+        {
+          field: "puertoFondeoId",
+          header: "Puerto Fondeo",
+          sortable: true,
+          body: (rowData) => obtenerNombrePuerto(rowData.puertoFondeoId),
+          sortFunction: (event) => {
+            const data = [...event.data];
+            return data.sort((a, b) => {
+              const nombreA = obtenerNombrePuerto(a.puertoFondeoId) || "";
+              const nombreB = obtenerNombrePuerto(b.puertoFondeoId) || "";
+
+              return event.order === 1
+                ? nombreA.localeCompare(nombreB)
+                : nombreB.localeCompare(nombreA);
+            });
+          },
+        },
+        {
+          field: "ultimaCala",
+          header: "Última Cala",
+          sortable: true,
+          body: (rowData) => {
+            const calas = calasData[rowData.id] || [];
+            if (calas.length === 0) return "-";
+
+            // Ordenar calas por fechaHoraInicio descendente y tomar la primera
+            const calasOrdenadas = [...calas].sort((a, b) => {
+              const fechaA = a.fechaHoraInicio
+                ? new Date(a.fechaHoraInicio)
+                : new Date(0);
+              const fechaB = b.fechaHoraInicio
+                ? new Date(b.fechaHoraInicio)
+                : new Date(0);
+              return fechaB - fechaA;
+            });
+
+            const ultimaCala = calasOrdenadas[0];
+            if (!ultimaCala?.fechaHoraInicio) return "-";
+
+            const fecha = new Date(ultimaCala.fechaHoraInicio);
+            return fecha.toLocaleString("es-PE", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            });
+          },
+          sortFunction: (event) => {
+            const data = [...event.data];
+            return data.sort((a, b) => {
+              const calasA = calasData[a.id] || [];
+              const calasB = calasData[b.id] || [];
+
+              // Obtener fecha de última cala de A
+              let fechaA = null;
+              if (calasA.length > 0) {
+                const calasOrdenadasA = [...calasA].sort((x, y) => {
+                  const fX = x.fechaHoraInicio
+                    ? new Date(x.fechaHoraInicio)
+                    : new Date(0);
+                  const fY = y.fechaHoraInicio
+                    ? new Date(y.fechaHoraInicio)
+                    : new Date(0);
+                  return fY - fX;
+                });
+                fechaA = calasOrdenadasA[0]?.fechaHoraInicio
+                  ? new Date(calasOrdenadasA[0].fechaHoraInicio)
+                  : null;
+              }
+
+              // Obtener fecha de última cala de B
+              let fechaB = null;
+              if (calasB.length > 0) {
+                const calasOrdenadasB = [...calasB].sort((x, y) => {
+                  const fX = x.fechaHoraInicio
+                    ? new Date(x.fechaHoraInicio)
+                    : new Date(0);
+                  const fY = y.fechaHoraInicio
+                    ? new Date(y.fechaHoraInicio)
+                    : new Date(0);
+                  return fY - fX;
+                });
+                fechaB = calasOrdenadasB[0]?.fechaHoraInicio
+                  ? new Date(calasOrdenadasB[0].fechaHoraInicio)
+                  : null;
+              }
+
+              // Comparar fechas
+              if (!fechaA && !fechaB) return 0;
+              if (!fechaA) return event.order === 1 ? 1 : -1;
+              if (!fechaB) return event.order === 1 ? -1 : 1;
+
+              return event.order === 1 ? fechaA - fechaB : fechaB - fechaA;
+            });
+          },
+        },
+        {
+          field: "calastoneladas",
+          header: "Calas Tons.",
+          sortable: true,
+          body: (rowData) => {
+            const calas = calasData[rowData.id] || [];
+            const tonsCalas = calas.reduce((sum, cala) => {
+              return sum + (Number(cala.toneladasCapturadas) || 0);
+            }, 0);
+            return tonsCalas > 0 ? tonsCalas.toFixed(3) : "-";
+          },
+          sortFunction: (event) => {
+            const data = [...event.data];
+            return data.sort((a, b) => {
+              const calasA = calasData[a.id] || [];
+              const calasB = calasData[b.id] || [];
+
+              const tonsA = calasA.reduce(
+                (sum, cala) => sum + (Number(cala.toneladasCapturadas) || 0),
+                0,
+              );
+              const tonsB = calasB.reduce(
+                (sum, cala) => sum + (Number(cala.toneladasCapturadas) || 0),
+                0,
+              );
+
+              return event.order === 1 ? tonsA - tonsB : tonsB - tonsA;
+            });
+          },
+        },
+        {
+          field: "inicioDescarga",
+          header: "Última Descarga",
+          sortable: true,
+          body: (rowData) => {
+            const descargas = descargasData[rowData.id] || [];
+            if (descargas.length === 0) return "-";
+
+            const descarga = descargas[0]; // Solo hay una descarga por faena (relación 1:1)
+            if (!descarga?.fechaHoraInicioDescarga) return "-";
+
+            const fecha = new Date(descarga.fechaHoraInicioDescarga);
+            return fecha.toLocaleString("es-PE", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            });
+          },
+          sortFunction: (event) => {
+            const data = [...event.data];
+            return data.sort((a, b) => {
+              const descargasA = descargasData[a.id] || [];
+              const descargasB = descargasData[b.id] || [];
+
+              const fechaA = descargasA[0]?.fechaHoraInicioDescarga
+                ? new Date(descargasA[0].fechaHoraInicioDescarga)
+                : null;
+              const fechaB = descargasB[0]?.fechaHoraInicioDescarga
+                ? new Date(descargasB[0].fechaHoraInicioDescarga)
+                : null;
+
+              if (!fechaA && !fechaB) return 0;
+              if (!fechaA) return event.order === 1 ? 1 : -1;
+              if (!fechaB) return event.order === 1 ? -1 : 1;
+
+              return event.order === 1 ? fechaA - fechaB : fechaB - fechaA;
+            });
+          },
+        },
+
+        {
+          field: "descargastoneladas",
+          header: "Descargas Tons.",
+          sortable: true,
+          body: (rowData) => {
+            const descargas = descargasData[rowData.id] || [];
+            const tonsDescargas = descargas.reduce((sum, descarga) => {
+              return sum + (Number(descarga.toneladas) || 0);
+            }, 0);
+            return tonsDescargas > 0 ? tonsDescargas.toFixed(3) : "-";
+          },
+          sortFunction: (event) => {
+            const data = [...event.data];
+            return data.sort((a, b) => {
+              const descargasA = descargasData[a.id] || [];
+              const descargasB = descargasData[b.id] || [];
+
+              const tonsA = descargasA.reduce(
+                (sum, descarga) => sum + (Number(descarga.toneladas) || 0),
+                0,
+              );
+              const tonsB = descargasB.reduce(
+                (sum, descarga) => sum + (Number(descarga.toneladas) || 0),
+                0,
+              );
+
+              return event.order === 1 ? tonsA - tonsB : tonsB - tonsA;
+            });
+          },
+        },
+        {
+          field: "combustibleTotal",
+          header: "Petroleo",
+          sortable: true,
+          body: (rowData) => {
+            const descargas = descargasData[rowData.id] || [];
+            const combustibleDescargas = descargas.reduce((sum, descarga) => {
+              return sum + (Number(descarga.combustibleAbastecidoGalones) || 0);
+            }, 0);
+            const combustibleInicial =
+              Number(rowData.combustibleAbastecidoGalones) || 0;
+            const combustibleTotal = combustibleInicial + combustibleDescargas;
+
+            if (combustibleTotal === 0) return "-";
+
+            // Si tiene combustible inicial, mostrar en verde oscuro y negrita
+            if (combustibleInicial > 0) {
+              return (
+                <span style={{ color: "#0d5e0d", fontWeight: "bold" }}>
+                  {combustibleTotal.toFixed(2)} gal.
+                </span>
+              );
+            }
+
+            // Si solo tiene combustible de descargas, mostrar normal
+            return `${combustibleTotal.toFixed(2)} gal.`;
+          },
+          sortFunction: (event) => {
+            const data = [...event.data];
+            return data.sort((a, b) => {
+              const descargasA = descargasData[a.id] || [];
+              const descargasB = descargasData[b.id] || [];
+
+              const combustibleDescargasA = descargasA.reduce(
+                (sum, descarga) =>
+                  sum + (Number(descarga.combustibleAbastecidoGalones) || 0),
+                0,
+              );
+              const combustibleDescargasB = descargasB.reduce(
+                (sum, descarga) =>
+                  sum + (Number(descarga.combustibleAbastecidoGalones) || 0),
+                0,
+              );
+
+              const combustibleInicialA =
+                Number(a.combustibleAbastecidoGalones) || 0;
+              const combustibleInicialB =
+                Number(b.combustibleAbastecidoGalones) || 0;
+
+              const totalA = combustibleInicialA + combustibleDescargasA;
+              const totalB = combustibleInicialB + combustibleDescargasB;
+
+              return event.order === 1 ? totalA - totalB : totalB - totalA;
+            });
+          },
+        },
+        {
+          header: "Acciones",
+          body: (rowData) => (
+            <div className="flex gap-2">
+              <Button
+                icon="pi pi-pencil"
+                className="p-button-rounded p-button-success p-button-text"
+                onClick={(e) => handleEditarFaena(rowData, e)}
+                tooltip="Editar faena"
+              />
+              <Button
+                icon="pi pi-trash"
+                className="p-button-rounded p-button-danger p-button-text"
+                onClick={() => handleEliminarFaena(rowData)}
+                tooltip="Eliminar faena"
+              />
+            </div>
+          ),
+        },
+      ],
+      [
+        embarcaciones,
+        boliches,
+        bahiasComerciales,
+        patrones,
+        motoristas,
+        puertosData,
+        descargasData,
+        calasData,
+      ],
+    );
 
     // Template para mostrar descargas de una faena
     const descargasTemplate = (faenaData) => {
@@ -1501,13 +1558,16 @@ const DetalleFaenasPescaCard = forwardRef(
               value={faenas}
               loading={loading}
               paginator
-              rows={10}
+              rows={50}
+              rowsPerPageOptions={[50, 100, 250, 500]}
+              className="datatable-responsive"
+              paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+              currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
               showGridlines
               stripedRows
               sortField="id"
               sortOrder={-1}
               emptyMessage="No hay faenas registradas para esta temporada"
-              className="p-datatable-sm"
               onRowClick={(e) => handleEditarFaena(e.data, e.originalEvent)}
               style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
               rowExpansionTemplate={rowExpansionTemplate}

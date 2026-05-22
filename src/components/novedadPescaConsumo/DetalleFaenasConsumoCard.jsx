@@ -1252,8 +1252,8 @@ const DetalleFaenasConsumoCard = forwardRef(
             value={faenas}
             loading={loading}
             paginator
-            rows={10}
-            rowsPerPageOptions={[5, 10, 25, 50]}
+            rows={50}
+            rowsPerPageOptions={[50, 100, 250, 500]}
             className="datatable-responsive"
             paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
             currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
