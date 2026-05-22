@@ -786,13 +786,22 @@ const DetalleFaenasConsumoCard = forwardRef(
     };
 
     // Función para mostrar porcentaje de juveniles con colores
+       // Función para mostrar porcentaje de juveniles con colores
     const porcentajeJuvenilesTemplate = (rowData) => {
       const templateData = createPorcentajeTemplate(
         rowData.porcentajeJuveniles,
         null,
-        null,
+        { decimales: 2 },
       );
-      return templateData;
+
+      if (!templateData) return "-";
+
+      return (
+        <span style={templateData.estilos}>
+          {templateData.valor}
+          {templateData.sufijo}
+        </span>
+      );
     };
 
     // Header con botones de expansión
