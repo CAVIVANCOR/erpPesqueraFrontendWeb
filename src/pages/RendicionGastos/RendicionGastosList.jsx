@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
+import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { Badge } from "primereact/badge";
 import { Dialog } from "primereact/dialog";
@@ -23,6 +24,7 @@ import { getPersonal } from "../../api/personal";
 import { getCentrosCosto } from "../../api/centroCosto";
 import { getAllTipoMovEntregaRendir } from "../../api/tipoMovEntregaRendir";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
+import { getEmpresas } from "../../api/empresa";
 import { getMonedas } from "../../api/moneda";
 import { getTiposDocumento } from "../../api/tipoDocumento";
 import { getProductos } from "../../api/producto";
@@ -42,6 +44,7 @@ export default function RendicionGastosList({ ruta }) {
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
   const [monedas, setMonedas] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [productos, setProductos] = useState([]);
@@ -57,6 +60,10 @@ export default function RendicionGastosList({ ruta }) {
     useState(null);
   const [filtroAsignacionSeleccionada, setFiltroAsignacionSeleccionada] =
     useState(null);
+  const [filtroEntidadComercial, setFiltroEntidadComercial] = useState(null);
+  const [filtroEmpresa, setFiltroEmpresa] = useState(null);
+  const [filtroResponsable, setFiltroResponsable] = useState(null);
+  const [filtroRangoFechas, setFiltroRangoFechas] = useState(null);
 
   // Estados para el dialog
   const [showMovimientoForm, setShowMovimientoForm] = useState(false);
@@ -82,6 +89,7 @@ export default function RendicionGastosList({ ruta }) {
         monedasData,
         tiposDocumentoData,
         productosData,
+        empresasData,
       ] = await Promise.all([
         getAllDetMovsEntregaRendir(),
         getPersonal(),
@@ -92,14 +100,20 @@ export default function RendicionGastosList({ ruta }) {
         getMonedas(),
         getTiposDocumento(),
         getProductos(),
+        getEmpresas(),
       ]);
-
       setMovimientos(movimientosData || []);
-      setPersonal(personalData || []);
+      setPersonal(
+        (personalData || []).map((p) => ({
+          ...p,
+          nombreCompleto: `${p.nombres} ${p.apellidos}`.trim(),
+        })),
+      );
       setCentrosCosto(centrosCostoData || []);
       setTiposMovimiento(tiposMovimientoData || []);
       setCategorias(categoriasData || []);
       setEntidadesComerciales(entidadesComercialesData || []);
+      setEmpresas(empresasData || []);
       setMonedas(monedasData || []);
       setTiposDocumento(tiposDocumentoData || []);
       setProductos(productosData || []);
@@ -115,6 +129,24 @@ export default function RendicionGastosList({ ruta }) {
       setLoading(false);
     }
   };
+
+  // Auto-seleccionar responsable del usuario logueado
+  useEffect(() => {
+    if (
+      !loading &&
+      personal.length > 0 &&
+      !filtroResponsable &&
+      usuario?.personalId
+    ) {
+      const personalIdNumber = Number(usuario.personalId);
+      const personalExiste = personal.some(
+        (p) => Number(p.id) === personalIdNumber,
+      );
+      if (personalExiste) {
+        setFiltroResponsable(personalIdNumber);
+      }
+    }
+  }, [loading, personal.length, usuario?.personalId]);
 
   // ✅ Función para recargar entidades comerciales cuando se crea una nueva
   const handleEntidadComercialCreada = async (entidad) => {
@@ -180,29 +212,29 @@ export default function RendicionGastosList({ ruta }) {
     );
   }, [movimientos, editingMovimiento]);
 
-  // Función para obtener movimientos filtrados
-  const obtenerMovimientosFiltrados = () => {
+  // 🔄 FUNCIÓN BASE PARA FILTROS DINÁMICOS
+  const obtenerMovimientosBase = (excluirFiltro) => {
     let movimientosFiltrados = [...movimientos];
 
-    if (filtroTipoMovimiento) {
+    if (excluirFiltro !== "tipoMovimiento" && filtroTipoMovimiento) {
       movimientosFiltrados = movimientosFiltrados.filter(
         (mov) => Number(mov.tipoMovimientoId) === Number(filtroTipoMovimiento),
       );
     }
 
-    if (filtroCentroCosto) {
+    if (excluirFiltro !== "centroCosto" && filtroCentroCosto) {
       movimientosFiltrados = movimientosFiltrados.filter(
         (mov) => Number(mov.centroCostoId) === Number(filtroCentroCosto),
       );
     }
 
-    if (filtroEntregaARendir !== null) {
+    if (excluirFiltro !== "entregaARendir" && filtroEntregaARendir !== null) {
       movimientosFiltrados = movimientosFiltrados.filter(
         (mov) => mov.formaParteCalculoEntregaARendir === filtroEntregaARendir,
       );
     }
 
-    if (filtroCategoriaMovimiento) {
+    if (excluirFiltro !== "categoriaMovimiento" && filtroCategoriaMovimiento) {
       movimientosFiltrados = movimientosFiltrados.filter((mov) => {
         const categoriaId =
           mov.tipoMovimiento?.categoria?.id || mov.tipoMovimiento?.categoriaId;
@@ -213,13 +245,19 @@ export default function RendicionGastosList({ ruta }) {
       });
     }
 
-    if (filtroValidacionTesoreria !== null) {
+    if (
+      excluirFiltro !== "validacionTesoreria" &&
+      filtroValidacionTesoreria !== null
+    ) {
       movimientosFiltrados = movimientosFiltrados.filter(
         (mov) => mov.validadoTesoreria === filtroValidacionTesoreria,
       );
     }
 
-    if (filtroAsignacionSeleccionada) {
+    if (
+      excluirFiltro !== "asignacionSeleccionada" &&
+      filtroAsignacionSeleccionada
+    ) {
       movimientosFiltrados = movimientosFiltrados.filter((mov) => {
         if (Number(mov.id) === Number(filtroAsignacionSeleccionada)) {
           return true;
@@ -233,15 +271,384 @@ export default function RendicionGastosList({ ruta }) {
         }
         return false;
       });
+    }
 
-      movimientosFiltrados.sort((a, b) => {
-        if (Number(a.id) === Number(filtroAsignacionSeleccionada)) return -1;
-        if (Number(b.id) === Number(filtroAsignacionSeleccionada)) return 1;
-        return new Date(a.fechaMovimiento) - new Date(b.fechaMovimiento);
+    if (excluirFiltro !== "entidadComercial" && filtroEntidadComercial) {
+      movimientosFiltrados = movimientosFiltrados.filter(
+        (mov) =>
+          Number(mov.entidadComercialId) === Number(filtroEntidadComercial),
+      );
+    }
+
+    if (excluirFiltro !== "empresa" && filtroEmpresa) {
+      movimientosFiltrados = movimientosFiltrados.filter(
+        (mov) => Number(mov.empresaId) === Number(filtroEmpresa),
+      );
+    }
+
+    if (excluirFiltro !== "responsable" && filtroResponsable) {
+      movimientosFiltrados = movimientosFiltrados.filter(
+        (mov) => Number(mov.responsableId) === Number(filtroResponsable),
+      );
+    }
+
+    if (
+      excluirFiltro !== "rangoFechas" &&
+      filtroRangoFechas &&
+      filtroRangoFechas[0]
+    ) {
+      const fechaInicio = new Date(filtroRangoFechas[0]);
+      fechaInicio.setHours(0, 0, 0, 0);
+
+      const fechaFin = filtroRangoFechas[1]
+        ? new Date(filtroRangoFechas[1])
+        : new Date(filtroRangoFechas[0]);
+      fechaFin.setHours(23, 59, 59, 999);
+
+      movimientosFiltrados = movimientosFiltrados.filter((mov) => {
+        const fechaMov = new Date(mov.fechaMovimiento);
+        return fechaMov >= fechaInicio && fechaMov <= fechaFin;
       });
     }
 
     return movimientosFiltrados;
+  };
+
+  // 🔄 OPCIONES DINÁMICAS PARA ENTIDADES COMERCIALES
+  const obtenerOpcionesEntidadesDisponibles = useMemo(() => {
+    const movimientosBase = obtenerMovimientosBase("entidadComercial");
+    const entidadesConMovimientos = [
+      ...new Set(
+        movimientosBase
+          .filter((m) => m.entidadComercialId)
+          .map((m) => Number(m.entidadComercialId)),
+      ),
+    ];
+
+    return entidadesComerciales
+      .filter((e) => entidadesConMovimientos.includes(Number(e.id)))
+      .map((entidad) => ({
+        label: entidad.razonSocial,
+        value: Number(entidad.id),
+      }));
+  }, [
+    movimientos,
+    entidadesComerciales,
+    filtroTipoMovimiento,
+    filtroCentroCosto,
+    filtroEntregaARendir,
+    filtroCategoriaMovimiento,
+    filtroValidacionTesoreria,
+    filtroAsignacionSeleccionada,
+    filtroEmpresa,
+    filtroResponsable,
+    filtroRangoFechas,
+  ]);
+
+  // 🔄 OPCIONES DINÁMICAS PARA EMPRESAS
+  const obtenerOpcionesEmpresasDisponibles = useMemo(() => {
+    const movimientosBase = obtenerMovimientosBase("empresa");
+    const empresasConMovimientos = [
+      ...new Set(
+        movimientosBase
+          .filter((m) => m.empresaId)
+          .map((m) => Number(m.empresaId)),
+      ),
+    ];
+
+    return empresas
+      .filter((e) => empresasConMovimientos.includes(Number(e.id)))
+      .map((empresa) => ({
+        label: empresa.razonSocial,
+        value: Number(empresa.id),
+      }));
+  }, [
+    movimientos,
+    empresas,
+    filtroTipoMovimiento,
+    filtroCentroCosto,
+    filtroEntregaARendir,
+    filtroCategoriaMovimiento,
+    filtroValidacionTesoreria,
+    filtroAsignacionSeleccionada,
+    filtroEntidadComercial,
+    filtroResponsable,
+    filtroRangoFechas,
+  ]);
+
+  // 🔄 OPCIONES DINÁMICAS PARA RESPONSABLES
+  const obtenerOpcionesResponsablesDisponibles = useMemo(() => {
+    const movimientosBase = obtenerMovimientosBase("responsable");
+    const responsablesConMovimientos = [
+      ...new Set(
+        movimientosBase
+          .filter((m) => m.responsableId)
+          .map((m) => Number(m.responsableId)),
+      ),
+    ];
+
+    return personal
+      .filter((p) => responsablesConMovimientos.includes(Number(p.id)))
+      .map((p) => ({
+        label: p.nombreCompleto,
+        value: Number(p.id),
+        urlFoto: p.urlFotoPersona || null,
+      }));
+  }, [
+    movimientos,
+    personal,
+    filtroTipoMovimiento,
+    filtroCentroCosto,
+    filtroEntregaARendir,
+    filtroCategoriaMovimiento,
+    filtroValidacionTesoreria,
+    filtroAsignacionSeleccionada,
+    filtroEntidadComercial,
+    filtroEmpresa,
+    filtroRangoFechas,
+  ]);
+
+  // Opciones completas de responsables (sin filtrar por movimientos)
+  const opcionesResponsables = useMemo(() => {
+    return personal.map((p) => ({
+      label: p.nombreCompleto,
+      value: Number(p.id),
+      urlFoto: p.urlFotoPersona || null,
+    }));
+  }, [personal]);
+
+  // 🔄 OPCIONES DINÁMICAS PARA CATEGORÍAS
+  const obtenerOpcionesCategoriasDisponibles = useMemo(() => {
+    const movimientosBase = obtenerMovimientosBase("categoriaMovimiento");
+    const categoriasConMovimientos = [
+      ...new Set(
+        movimientosBase
+          .filter(
+            (m) =>
+              m.tipoMovimiento?.categoria?.id || m.tipoMovimiento?.categoriaId,
+          )
+          .map((m) => {
+            const categoriaId =
+              m.tipoMovimiento?.categoria?.id || m.tipoMovimiento?.categoriaId;
+            return Number(categoriaId);
+          }),
+      ),
+    ];
+
+    const categoriasUnicas = tiposMovimiento
+      .filter((t) => t.categoria && t.categoria.tipo === true)
+      .map((t) => t.categoria)
+      .filter(
+        (cat, index, self) =>
+          index === self.findIndex((c) => String(c.id) === String(cat.id)),
+      );
+
+    return categoriasUnicas.filter((cat) =>
+      categoriasConMovimientos.includes(Number(cat.id)),
+    );
+  }, [
+    movimientos,
+    tiposMovimiento,
+    filtroTipoMovimiento,
+    filtroCentroCosto,
+    filtroEntregaARendir,
+    filtroValidacionTesoreria,
+    filtroAsignacionSeleccionada,
+    filtroEntidadComercial,
+    filtroEmpresa,
+    filtroResponsable,
+    filtroRangoFechas,
+  ]);
+
+  // 🔄 OPCIONES DINÁMICAS PARA TIPOS DE MOVIMIENTO
+  const obtenerOpcionesTiposMovimientoDisponibles = useMemo(() => {
+    const movimientosBase = obtenerMovimientosBase("tipoMovimiento");
+    const tiposConMovimientos = [
+      ...new Set(
+        movimientosBase
+          .filter((m) => m.tipoMovimientoId)
+          .map((m) => Number(m.tipoMovimientoId)),
+      ),
+    ];
+
+    return tiposMovimiento.filter((t) =>
+      tiposConMovimientos.includes(Number(t.id)),
+    );
+  }, [
+    movimientos,
+    tiposMovimiento,
+    filtroCentroCosto,
+    filtroEntregaARendir,
+    filtroCategoriaMovimiento,
+    filtroValidacionTesoreria,
+    filtroAsignacionSeleccionada,
+    filtroEntidadComercial,
+    filtroEmpresa,
+    filtroResponsable,
+    filtroRangoFechas,
+  ]);
+
+  // 🔄 OPCIONES DINÁMICAS PARA CENTROS DE COSTO
+  const obtenerOpcionesCentrosCostoDisponibles = useMemo(() => {
+    const movimientosBase = obtenerMovimientosBase("centroCosto");
+    const centrosConMovimientos = [
+      ...new Set(
+        movimientosBase
+          .filter((m) => m.centroCostoId)
+          .map((m) => Number(m.centroCostoId)),
+      ),
+    ];
+
+    return centrosCosto
+      .filter((c) => centrosConMovimientos.includes(Number(c.id)))
+      .map((centro) => ({
+        ...centro,
+        displayLabel: centro.Codigo + " - " + centro.Nombre,
+      }));
+  }, [
+    movimientos,
+    centrosCosto,
+    filtroTipoMovimiento,
+    filtroEntregaARendir,
+    filtroCategoriaMovimiento,
+    filtroValidacionTesoreria,
+    filtroAsignacionSeleccionada,
+    filtroEntidadComercial,
+    filtroEmpresa,
+    filtroResponsable,
+    filtroRangoFechas,
+  ]);
+
+  // 🔄 OPCIONES DINÁMICAS PARA ASIGNACIONES
+  const obtenerAsignacionesDisponibles = useMemo(() => {
+    const movimientosBase = obtenerMovimientosBase("asignacionSeleccionada");
+
+    return movimientosBase
+      .filter((mov) => {
+        const categoriaId =
+          mov.tipoMovimiento?.categoria?.id || mov.tipoMovimiento?.categoriaId;
+        return (
+          categoriaId &&
+          Number(categoriaId) === 17 &&
+          (mov.asignacionOrigenId === null ||
+            mov.asignacionOrigenId === undefined ||
+            Number(mov.asignacionOrigenId) === 0)
+        );
+      })
+      .map((asignacion) => {
+        const moneda = monedas.find(
+          (m) => Number(m.id) === Number(asignacion.monedaId),
+        );
+        return {
+          value: Number(asignacion.id),
+          id: asignacion.id,
+          descripcion: asignacion.descripcion,
+          monto: asignacion.monto,
+          moneda: moneda,
+          fechaMovimiento: asignacion.fechaMovimiento,
+        };
+      });
+  }, [
+    movimientos,
+    monedas,
+    tiposMovimiento,
+    filtroTipoMovimiento,
+    filtroCentroCosto,
+    filtroEntregaARendir,
+    filtroCategoriaMovimiento,
+    filtroValidacionTesoreria,
+    filtroEntidadComercial,
+    filtroEmpresa,
+    filtroResponsable,
+    filtroRangoFechas,
+  ]);
+
+  // 🎨 TEMPLATE PARA ITEMS DEL DROPDOWN DE ASIGNACIONES
+  const asignacionItemTemplate = (option) => {
+    if (!option) return null;
+
+    const montoFormateado = new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: option.moneda?.codigoSunat || "PEN",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(option.monto);
+
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "4px 0",
+        }}
+      >
+        <Badge
+          value={`ID: ${option.id}`}
+          severity="info"
+          style={{ minWidth: "60px" }}
+        />
+        <span
+          style={{
+            flex: 1,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {option.descripcion || "Sin descripción"}
+        </span>
+        <Badge
+          value={montoFormateado}
+          severity="success"
+          style={{ minWidth: "100px", fontWeight: "bold" }}
+        />
+      </div>
+    );
+  };
+
+  // 🎨 TEMPLATE PARA EL VALOR SELECCIONADO DEL DROPDOWN
+  const asignacionValueTemplate = (option) => {
+    if (!option) return "Seleccionar Asignación";
+
+    const asignacion = obtenerAsignacionesDisponibles.find(
+      (a) => a.value === option,
+    );
+
+    if (!asignacion) return "Seleccionar Asignación";
+
+    const montoFormateado = new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: asignacion.moneda?.codigoSunat || "PEN",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(asignacion.monto);
+
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <Badge value={`ID: ${asignacion.id}`} severity="info" />
+        <span
+          style={{
+            flex: 1,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {asignacion.descripcion || "Sin descripción"}
+        </span>
+        <Badge
+          value={montoFormateado}
+          severity="success"
+          style={{ fontWeight: "bold" }}
+        />
+      </div>
+    );
+  };
+
+  // Función para obtener movimientos filtrados
+  const obtenerMovimientosFiltrados = () => {
+    return obtenerMovimientosBase(null);
   };
 
   // Funciones para filtros
@@ -252,6 +659,10 @@ export default function RendicionGastosList({ ruta }) {
     setFiltroCategoriaMovimiento(null);
     setFiltroValidacionTesoreria(null);
     setFiltroAsignacionSeleccionada(null);
+    setFiltroEntidadComercial(null);
+    setFiltroEmpresa(null);
+    setFiltroResponsable(null);
+    setFiltroRangoFechas(null);
   };
 
   const alternarFiltroEntregaARendir = () => {
@@ -308,35 +719,6 @@ export default function RendicionGastosList({ ruta }) {
     } else {
       return { label: "Todos los Gastos", severity: "secondary" };
     }
-  };
-
-  // Obtener asignaciones para el dropdown
-  const obtenerAsignaciones = () => {
-    return movimientos
-      .filter((mov) => {
-        const categoriaId =
-          mov.tipoMovimiento?.categoria?.id || mov.tipoMovimiento?.categoriaId;
-        return (
-          categoriaId &&
-          Number(categoriaId) === 17 &&
-          (mov.asignacionOrigenId === null ||
-            mov.asignacionOrigenId === undefined ||
-            Number(mov.asignacionOrigenId) === 0)
-        );
-      })
-      .map((asignacion) => {
-        const moneda = monedas.find(
-          (m) => Number(m.id) === Number(asignacion.monedaId),
-        );
-        return {
-          value: Number(asignacion.id),
-          label: `ID: ${asignacion.id} | ${asignacion.descripcion || "Sin descripción"} | ${moneda?.simbolo || ""} ${formatearNumero(asignacion.monto, 2)}`,
-          id: asignacion.id,
-          descripcion: asignacion.descripcion,
-          monto: asignacion.monto,
-          moneda: moneda,
-        };
-      });
   };
 
   // Handlers internos
@@ -536,6 +918,22 @@ export default function RendicionGastosList({ ruta }) {
     return entidad ? entidad.razonSocial : "N/A";
   };
 
+  const empresaEntidadTemplate = (rowData) => {
+    if (!rowData.entidadComercialId) return "N/A";
+
+    const entidad = entidadesComerciales.find(
+      (e) => Number(e.id) === Number(rowData.entidadComercialId),
+    );
+
+    if (!entidad || !entidad.empresaId) return "N/A";
+
+    const empresa = empresas.find(
+      (emp) => Number(emp.id) === Number(entidad.empresaId),
+    );
+
+    return empresa ? empresa.razonSocial : "N/A";
+  };
+
   const validacionTesoreriaTemplate = (rowData) => {
     return (
       <div className="text-center">
@@ -616,16 +1014,12 @@ export default function RendicionGastosList({ ruta }) {
     );
   };
 
-    /**
+  /**
    * Template para Comprobante de Movimiento (PDF)
    */
   const comprobanteMovimientoTemplate = (rowData) => {
     if (!rowData.urlComprobanteMovimiento) {
-      return (
-        <div style={{ textAlign: "center", color: "#999" }}>
-          -
-        </div>
-      );
+      return <div style={{ textAlign: "center", color: "#999" }}>-</div>;
     }
 
     return (
@@ -638,7 +1032,7 @@ export default function RendicionGastosList({ ruta }) {
             abrirPdfEnNuevaPestana(
               rowData.urlComprobanteMovimiento,
               toast.current,
-              "No hay comprobante de movimiento disponible"
+              "No hay comprobante de movimiento disponible",
             );
           }}
           tooltip="Ver Comprobante de Movimiento"
@@ -652,13 +1046,9 @@ export default function RendicionGastosList({ ruta }) {
   /**
    * Template para Comprobante de Operación MovCaja (PDF)
    */
-    const comprobanteOperacionTemplate = (rowData) => {
+  const comprobanteOperacionTemplate = (rowData) => {
     if (!rowData.urlComprobanteOperacionMovCaja) {
-      return (
-        <div style={{ textAlign: "center", color: "#999" }}>
-          -
-        </div>
-      );
+      return <div style={{ textAlign: "center", color: "#999" }}>-</div>;
     }
 
     return (
@@ -669,9 +1059,9 @@ export default function RendicionGastosList({ ruta }) {
           onClick={(e) => {
             e.stopPropagation();
             abrirPdfEnNuevaPestana(
-              rowData.urlComprobanteOperacionMovCaja,  // ✅ CORRECTO
+              rowData.urlComprobanteOperacionMovCaja,
               toast.current,
-              "No hay comprobante de operación disponible"
+              "No hay comprobante de operación disponible",
             );
           }}
           tooltip="Ver Comprobante de Operación MovCaja"
@@ -685,13 +1075,9 @@ export default function RendicionGastosList({ ruta }) {
   /**
    * Template para Liquidación de Entrega a Rendir (PDF)
    */
-    const liquidacionEntregaTemplate = (rowData) => {
+  const liquidacionEntregaTemplate = (rowData) => {
     if (!rowData.urlLiquidacionEntregaARendir) {
-      return (
-        <div style={{ textAlign: "center", color: "#999" }}>
-          -
-        </div>
-      );
+      return <div style={{ textAlign: "center", color: "#999" }}>-</div>;
     }
 
     return (
@@ -702,9 +1088,9 @@ export default function RendicionGastosList({ ruta }) {
           onClick={(e) => {
             e.stopPropagation();
             abrirPdfEnNuevaPestana(
-              rowData.urlLiquidacionEntregaARendir,  // ✅ CORRECTO
+              rowData.urlLiquidacionEntregaARendir,
               toast.current,
-              "No hay liquidación de entrega a rendir disponible"
+              "No hay liquidación de entrega a rendir disponible",
             );
           }}
           tooltip="Ver Liquidación de Entrega a Rendir"
@@ -838,32 +1224,22 @@ export default function RendicionGastosList({ ruta }) {
                 <div style={{ flex: 1 }}>
                   <Dropdown
                     value={filtroAsignacionSeleccionada}
-                    options={obtenerAsignaciones()}
-                    optionLabel="label"
+                    options={obtenerAsignacionesDisponibles}
                     optionValue="value"
                     placeholder="Seleccionar Asignación"
                     onChange={(e) => setFiltroAsignacionSeleccionada(e.value)}
+                    itemTemplate={asignacionItemTemplate}
+                    valueTemplate={asignacionValueTemplate}
                     showClear
                     filter
+                    filterBy="descripcion,id"
                     style={{ width: "100%" }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
                   <Dropdown
                     value={filtroCategoriaMovimiento}
-                    options={(() => {
-                      const categoriasUnicas = tiposMovimiento
-                        .filter((t) => t.categoria && t.categoria.tipo === true)
-                        .map((t) => t.categoria)
-                        .filter(
-                          (cat, index, self) =>
-                            index ===
-                            self.findIndex(
-                              (c) => String(c.id) === String(cat.id),
-                            ),
-                        );
-                      return categoriasUnicas;
-                    })()}
+                    options={obtenerOpcionesCategoriasDisponibles}
                     optionLabel="nombre"
                     optionValue="id"
                     placeholder="Filtrar por Categoría"
@@ -876,7 +1252,7 @@ export default function RendicionGastosList({ ruta }) {
                 <div style={{ flex: 1 }}>
                   <Dropdown
                     value={filtroTipoMovimiento}
-                    options={tiposMovimiento}
+                    options={obtenerOpcionesTiposMovimientoDisponibles}
                     optionLabel="nombre"
                     optionValue="id"
                     placeholder="Filtrar por Tipo de Movimiento"
@@ -889,10 +1265,7 @@ export default function RendicionGastosList({ ruta }) {
                 <div style={{ flex: 1 }}>
                   <Dropdown
                     value={filtroCentroCosto}
-                    options={centrosCosto.map((centro) => ({
-                      ...centro,
-                      displayLabel: centro.Codigo + " - " + centro.Nombre,
-                    }))}
+                    options={obtenerOpcionesCentrosCostoDisponibles}
                     optionLabel="displayLabel"
                     optionValue="id"
                     placeholder="Filtrar por Centro de Costo"
@@ -900,6 +1273,104 @@ export default function RendicionGastosList({ ruta }) {
                     style={{ width: "100%" }}
                     showClear
                     filter
+                  />
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  marginTop: 10,
+                  marginBottom: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <Dropdown
+                    value={filtroEntidadComercial}
+                    options={obtenerOpcionesEntidadesDisponibles}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Filtrar por Entidad Comercial"
+                    onChange={(e) => setFiltroEntidadComercial(e.value)}
+                    showClear
+                    filter
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Dropdown
+                    value={filtroEmpresa}
+                    options={obtenerOpcionesEmpresasDisponibles}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Filtrar por Empresa"
+                    onChange={(e) => setFiltroEmpresa(e.value)}
+                    showClear
+                    filter
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                  }}
+                >
+                  <Dropdown
+                    value={filtroResponsable}
+                    options={opcionesResponsables}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Filtrar por Responsable"
+                    onChange={(e) => setFiltroResponsable(e.value)}
+                    showClear
+                    filter
+                    style={{ flex: 1 }}
+                  />
+                  {filtroResponsable &&
+                    (() => {
+                      const selectedPersonal = personal.find(
+                        (p) => Number(p.id) === Number(filtroResponsable),
+                      );
+                      const urlFoto = selectedPersonal?.urlFotoPersona
+                        ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${selectedPersonal.urlFotoPersona}`
+                        : "/default-avatar.png";
+
+                      return (
+                        <img
+                          src={urlFoto}
+                          alt="Responsable"
+                          onError={(e) => {
+                            e.target.src = "/default-avatar.png";
+                          }}
+                          style={{
+                            width: "55px",
+                            height: "55px",
+                            borderRadius: "50%",
+                            objectFit: "cover",
+                            border: "2px solid #dee2e6",
+                          }}
+                        />
+                      );
+                    })()}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Calendar
+                    id="rangoFechas"
+                    value={filtroRangoFechas}
+                    onChange={(e) => setFiltroRangoFechas(e.value)}
+                    selectionMode="range"
+                    readOnlyInput
+                    showIcon
+                    dateFormat="dd/mm/yy"
+                    placeholder="Seleccionar rango de fechas"
+                    showButtonBar
+                    locale="es"
+                    style={{ width: "100%" }}
                   />
                 </div>
               </div>
@@ -964,12 +1435,20 @@ export default function RendicionGastosList({ ruta }) {
             sortable
           />
           <Column
+            field="entidadComercial.empresaId"
+            header="Empresa Entidad"
+            body={empresaEntidadTemplate}
+            sortable
+            style={{ minWidth: "200px" }}
+          />
+          <Column
             field="entidadComercialId"
             header="Entidad Comercial"
             body={entidadComercialTemplate}
             sortable
             style={{ minWidth: "200px" }}
           />
+
           <Column
             field="saldoInicialAsignacion"
             header="Saldo Inicial"
@@ -1035,6 +1514,7 @@ export default function RendicionGastosList({ ruta }) {
           monedas={monedas}
           tiposDocumento={tiposDocumento}
           productos={productos}
+          empresas={empresas}
           movimientosAsignacionEntregaRendir={
             movimientosAsignacionEntregaRendir
           }

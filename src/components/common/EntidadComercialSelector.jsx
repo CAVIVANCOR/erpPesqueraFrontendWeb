@@ -110,9 +110,10 @@ const getEmpresaNombre = (empresaId, empresas) => {
  * @param {boolean} props.error - Si hay error de validación
  * @param {string} props.errorMessage - Mensaje de error
  * @param {string} props.placeholder - Texto placeholder
- * @param {boolean} props.mostrarInactivas - Si se deben mostrar entidades inactivas (por defecto false)
- * @returns {JSX.Element}
- */
+* @param {boolean} props.mostrarInactivas - Si se deben mostrar entidades inactivas (por defecto false)
+* @param {number} props.refreshTrigger - Timestamp para forzar recarga de datos
+* @returns {JSX.Element}
+*/
 const EntidadComercialSelector = ({
   value = null,
   onChange,
@@ -125,6 +126,7 @@ const EntidadComercialSelector = ({
   errorMessage = "",
   placeholder = "Seleccione entidad comercial",
   mostrarInactivas = false,
+  refreshTrigger = null,
 }) => {
   const [dialogVisible, setDialogVisible] = useState(false);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
@@ -156,6 +158,36 @@ const EntidadComercialSelector = ({
     };
     cargarDatos();
   }, []);
+
+  // 🔄 RECARGAR DATOS CUANDO SE ABRE EL DIÁLOGO
+  useEffect(() => {
+    if (dialogVisible) {
+      const recargarDatos = async () => {
+        try {
+          const entidadesData = await getEntidadesComerciales();
+          setEntidades(entidadesData || []);
+        } catch (error) {
+          console.error("❌ Error recargando entidades:", error);
+        }
+      };
+      recargarDatos();
+    }
+  }, [dialogVisible]);
+
+  // 🔄 RECARGAR DATOS CUANDO CAMBIA refreshTrigger
+  useEffect(() => {
+    if (refreshTrigger) {
+      const recargarDatos = async () => {
+        try {
+          const entidadesData = await getEntidadesComerciales();
+          setEntidades(entidadesData || []);
+        } catch (error) {
+          console.error("❌ Error recargando entidades:", error);
+        }
+      };
+      recargarDatos();
+    }
+  }, [refreshTrigger]);
   
   // Actualizar empresaFiltro si cambia la preselección
   useEffect(() => {
