@@ -25,17 +25,15 @@ export async function generarYSubirPDFInformeFaena(
   novedad,
 ) {
     try {
-    // Extraer detCalas de la primera cala (según schema: 1 FaenaPescaConsumo → 1 CalaFaenaConsumo)
-    const cala = calas && calas.length > 0 ? calas[0] : null;
-    const detCalas = cala?.especiesPescadas || [];
-    if (detCalas.length === 0) {
-      throw new Error("No hay especies capturadas para generar el PDF");
+    // Validar que haya calas
+    if (!calas || calas.length === 0) {
+      throw new Error("No hay calas registradas para generar el PDF");
     }
-    // 1. Generar el PDF con múltiples páginas
+    
+    // 1. Generar el PDF (UNA SOLA PÁGINA por FaenaPescaConsumo)
     const pdfBytes = await generarPDFInformeFaena(
       faena,
-      cala,
-      detCalas,
+      calas,
       embarcacion,
       novedad,
     );
@@ -75,16 +73,15 @@ export async function generarYSubirPDFInformeFaena(
 
 /**
  * Genera el PDF del Informe de Faena con formato oficial PRODUCE
- * GENERA UNA PÁGINA POR CADA DetCalaPescaConsumo (especie capturada)
+ * GENERA UNA SOLA PÁGINA por FaenaPescaConsumo
  * 
  * @param {Object} faena - Datos de la faena
- * @param {Object} cala - Cala de la faena
- * @param {Array} detCalas - DetCalaPescaConsumo[] - Especies capturadas
+ * @param {Array} calas - Array de CalaFaenaConsumo (con especiesPescadas)
  * @param {Object} embarcacion - Datos de la embarcación
  * @param {Object} novedad - Datos de la novedad (incluye numeroResolucion)
  * @returns {Promise<Uint8Array>} - Bytes del PDF generado
  */
-async function generarPDFInformeFaena(faena, cala, detCalas, embarcacion, novedad) {
+async function generarPDFInformeFaena(faena, calas, embarcacion, novedad) {
   // Crear nuevo documento PDF
   const pdfDoc = await PDFDocument.create();
 
@@ -92,26 +89,16 @@ async function generarPDFInformeFaena(faena, cala, detCalas, embarcacion, noveda
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontNormal = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-  const totalPaginas = detCalas.length;
-
-  // GENERAR UNA PÁGINA POR CADA ESPECIE
-  for (let i = 0; i < detCalas.length; i++) {
-    const detCala = detCalas[i];
-    const paginaActual = i + 1;
-
-    await generarPaginaPorEspecie(
-      pdfDoc,
-      fontBold,
-      fontNormal,
-      faena,
-      cala,
-      detCala,
-      embarcacion,
-      novedad,
-      paginaActual,
-      totalPaginas
-    );
-  }
+  // GENERAR UNA SOLA PÁGINA POR FAENA
+  await generarPaginaFaena(
+    pdfDoc,
+    fontBold,
+    fontNormal,
+    faena,
+    calas,
+    embarcacion,
+    novedad
+  );
 
   // Serializar el PDF
   const pdfBytes = await pdfDoc.save();
@@ -119,19 +106,36 @@ async function generarPDFInformeFaena(faena, cala, detCalas, embarcacion, noveda
 }
 
 /**
- * Genera una página del PDF para una especie específica
+ * Formatea una fecha en componentes separados para el PDF
+ * @param {Date|string} fecha - Fecha a formatear
+ * @returns {Object} - {dia, mes, anio, hora, minutos}
  */
-async function generarPaginaPorEspecie(
+function formatearFechaHora(fecha) {
+  if (!fecha) {
+    return { dia: "", mes: "", anio: "", hora: "", minutos: "" };
+  }
+  
+  const fechaObj = new Date(fecha);
+  return {
+    dia: fechaObj.getDate().toString().padStart(2, '0'),
+    mes: (fechaObj.getMonth() + 1).toString().padStart(2, '0'),
+    anio: fechaObj.getFullYear().toString(),
+    hora: fechaObj.getHours().toString().padStart(2, '0'),
+    minutos: fechaObj.getMinutes().toString().padStart(2, '0')
+  };
+}
+
+/**
+ * Genera la página del PDF para una FaenaPescaConsumo completa
+ */
+async function generarPaginaFaena(
   pdfDoc,
   fontBold,
   fontNormal,
   faena,
-  cala,
-  detCala,
+  calas,
   embarcacion,
-  novedad,
-  paginaActual,
-  totalPaginas
+  novedad
 ) {
   const page = pdfDoc.addPage([595.28, 841.89]); // A4 vertical
   const { width, height } = page.getSize();
@@ -150,13 +154,41 @@ async function generarPaginaPorEspecie(
   });
   yPosition -= 25;
 
-  // SUBTÍTULO DINÁMICO CON ESPECIE - Texto justificado
-  const nombreEspecie = detCala.especie?.nombre || "Especie no especificada";
-  const nombreCientifico = detCala.especie?.nombreCientifico || "";
-  const numeroResolucion = novedad?.numeroResolucion || "00000-0000-PRODUCE";
+  // OBTENER TODAS LAS ESPECIES ÚNICAS DE TODAS LAS CALAS
+  const especiesUnicas = new Map();
+  calas.forEach(cala => {
+    cala.especiesPescadas?.forEach(detCala => {
+      if (detCala.especie && !especiesUnicas.has(detCala.especieId)) {
+        especiesUnicas.set(detCala.especieId, {
+          nombre: detCala.especie.nombre,
+          nombreCientifico: detCala.especie.nombreCientifico || ""
+        });
+      }
+    });
+  });
 
-  // Armar el texto completo del subtítulo
-  const textoSubtitulo = `Formato de Reporte de Calas y Desembarque del recurso ${nombreEspecie.toUpperCase()} (${nombreCientifico.toUpperCase()}) en concordancia con la Resolución Ministerial N°${numeroResolucion}`;
+  // CONSTRUIR TEXTO DE ESPECIES PARA EL SUBTÍTULO
+  const arrayEspecies = Array.from(especiesUnicas.values());
+  let textoEspecies = "";
+  
+  if (arrayEspecies.length === 0) {
+    textoEspecies = "recursos no especificados";
+  } else if (arrayEspecies.length === 1) {
+    const esp = arrayEspecies[0];
+    textoEspecies = `recurso ${esp.nombre.toUpperCase()} (${esp.nombreCientifico.toUpperCase()})`;
+  } else {
+    const nombresEspecies = arrayEspecies.map((esp, idx) => {
+      const texto = `${esp.nombre.toUpperCase()} (${esp.nombreCientifico.toUpperCase()})`;
+      if (idx === arrayEspecies.length - 1) {
+        return `y ${texto}`;
+      }
+      return texto;
+    });
+    textoEspecies = `recursos ${nombresEspecies.join(", ")}`;
+  }
+
+  const numeroResolucion = novedad?.numeroResolucion || "00000-0000-PRODUCE";
+  const textoSubtitulo = `Formato de Reporte de Calas y Desembarque de los ${textoEspecies} en concordancia con la Resolución Ministerial N°${numeroResolucion}`;
 
   // Dividir el texto en líneas que quepan en el ancho disponible
   const maxWidth = width - 2 * margin - 20;
@@ -254,7 +286,11 @@ async function generarPaginaPorEspecie(
 
   yPosition -= rowHeight;
 
-  // Fila 2: Datos vacíos
+  // Fila 2: Datos de la embarcación
+  const nombreEmbarcacion = embarcacion?.activo?.nombre || "";
+  const matricula = embarcacion?.matricula || "";
+  const capacidadBodega = embarcacion?.capacidadBodegaTon ? String(embarcacion.capacidadBodegaTon) : "";
+
   page.drawRectangle({
     x: margin,
     y: yPosition - rowHeight,
@@ -262,6 +298,13 @@ async function generarPaginaPorEspecie(
     height: rowHeight,
     borderColor: rgb(0, 0, 0),
     borderWidth: 1,
+  });
+  page.drawText(nombreEmbarcacion, {
+    x: margin + 5,
+    y: yPosition - 15,
+    size: 8,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
   });
 
   page.drawRectangle({
@@ -272,6 +315,13 @@ async function generarPaginaPorEspecie(
     borderColor: rgb(0, 0, 0),
     borderWidth: 1,
   });
+  page.drawText(matricula, {
+    x: margin + col1Width + 5,
+    y: yPosition - 15,
+    size: 8,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
+  });
 
   page.drawRectangle({
     x: margin + col1Width + col2Width,
@@ -280,6 +330,13 @@ async function generarPaginaPorEspecie(
     height: rowHeight,
     borderColor: rgb(0, 0, 0),
     borderWidth: 1,
+  });
+  page.drawText(capacidadBodega, {
+    x: margin + col1Width + col2Width + 5,
+    y: yPosition - 15,
+    size: 8,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
   });
 
   yPosition -= rowHeight + 10;
@@ -322,6 +379,10 @@ async function generarPaginaPorEspecie(
 
   yPosition -= 15;
 
+  // Datos de Puerto de Zarpe
+  const puertoZarpe = faena?.puertoSalida?.nombre || "";
+  const fechaSalida = formatearFechaHora(faena?.fechaSalida);
+
   // Recuadro Puerto de zarpe
   page.drawRectangle({
     x: margin,
@@ -330,6 +391,13 @@ async function generarPaginaPorEspecie(
     height: 18,
     borderColor: rgb(0, 0, 0),
     borderWidth: 1,
+  });
+  page.drawText(puertoZarpe, {
+    x: margin + 3,
+    y: yPosition - 12,
+    size: 7,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
   });
 
   // Recuadro Fecha con divisiones
@@ -344,6 +412,7 @@ async function generarPaginaPorEspecie(
     borderWidth: 1,
   });
   
+  // Líneas divisorias de fecha
   page.drawLine({
     start: { x: fechaX + 30, y: yPosition - 18 },
     end: { x: fechaX + 30, y: yPosition },
@@ -357,6 +426,32 @@ async function generarPaginaPorEspecie(
     color: rgb(0, 0, 0),
   });
   
+  // Día
+  page.drawText(fechaSalida.dia, {
+    x: fechaX + 8,
+    y: yPosition - 12,
+    size: 8,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
+  });
+  
+  // Mes
+  page.drawText(fechaSalida.mes, {
+    x: fechaX + 38,
+    y: yPosition - 12,
+    size: 8,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
+  });
+  
+  // Año
+  page.drawText(fechaSalida.anio, {
+    x: fechaX + 65,
+    y: yPosition - 12,
+    size: 8,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
+  });
 
   // Recuadro Hora con divisiones
   const horaX = margin + 230;
@@ -377,9 +472,26 @@ async function generarPaginaPorEspecie(
     color: rgb(0, 0, 0),
   });
   
+  // Hora
+  page.drawText(fechaSalida.hora, {
+    x: horaX + 10,
+    y: yPosition - 12,
+    size: 8,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
+  });
+  
+  // Minutos
+  page.drawText(fechaSalida.minutos, {
+    x: horaX + 45,
+    y: yPosition - 12,
+    size: 8,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
+  });
 
   // Checkboxes Tipo de Arte
-  const checkX1 = margin + 400;
+  const checkX1 = margin + 320;
   page.drawRectangle({
     x: checkX1,
     y: yPosition - 8,
@@ -387,6 +499,14 @@ async function generarPaginaPorEspecie(
     height: boxSize,
     borderColor: rgb(0, 0, 0),
     borderWidth: 1,
+  });
+  // Marcar checkbox Cerco con X
+  page.drawText("X", {
+    x: checkX1 + 2,
+    y: yPosition - 6,
+    size: 10,
+    font: fontBold,
+    color: rgb(0, 0, 0),
   });
   page.drawText("Cerco", {
     x: checkX1 + 15,
@@ -459,6 +579,10 @@ async function generarPaginaPorEspecie(
 
   yPosition -= 15;
 
+  // Datos de Puerto de Arribo
+  const puertoArribo = faena?.puertoDescarga?.nombre || "";
+  const fechaDescarga = formatearFechaHora(faena?.fechaDescarga);
+
   // Recuadro Puerto de Arribo
   page.drawRectangle({
     x: margin,
@@ -467,6 +591,13 @@ async function generarPaginaPorEspecie(
     height: 18,
     borderColor: rgb(0, 0, 0),
     borderWidth: 1,
+  });
+  page.drawText(puertoArribo, {
+    x: margin + 3,
+    y: yPosition - 12,
+    size: 7,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
   });
 
   // Recuadro Fecha Puerto de Arribo
@@ -492,6 +623,32 @@ async function generarPaginaPorEspecie(
     color: rgb(0, 0, 0),
   });
   
+  // Día
+  page.drawText(fechaDescarga.dia, {
+    x: fechaX + 8,
+    y: yPosition - 12,
+    size: 8,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
+  });
+  
+  // Mes
+  page.drawText(fechaDescarga.mes, {
+    x: fechaX + 38,
+    y: yPosition - 12,
+    size: 8,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
+  });
+  
+  // Año
+  page.drawText(fechaDescarga.anio, {
+    x: fechaX + 65,
+    y: yPosition - 12,
+    size: 8,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
+  });
 
   // Recuadro Hora Puerto de Arribo
   page.drawRectangle({
@@ -510,6 +667,24 @@ async function generarPaginaPorEspecie(
     color: rgb(0, 0, 0),
   });
   
+  // Hora
+  page.drawText(fechaDescarga.hora, {
+    x: horaX + 10,
+    y: yPosition - 12,
+    size: 8,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
+  });
+  
+  // Minutos
+  page.drawText(fechaDescarga.minutos, {
+    x: horaX + 45,
+    y: yPosition - 12,
+    size: 8,
+    font: fontNormal,
+    color: rgb(0, 0, 0),
+  });
+  
   // Largo de la red
   page.drawText("Largo de la red (Brazas):", {
     x: margin + 320,
@@ -518,10 +693,11 @@ async function generarPaginaPorEspecie(
     font: fontNormal,
     color: rgb(0, 0, 0),
   });
-  page.drawLine({
-    start: { x: margin + 430, y: yPosition - 8 },
-    end: { x: width - margin, y: yPosition - 8 },
-    thickness: 0.5,
+  page.drawText("380 BRAZAS", {
+    x: margin + 435,
+    y: yPosition - 5,
+    size: 7,
+    font: fontBold,
     color: rgb(0, 0, 0),
   });
 
@@ -535,10 +711,11 @@ async function generarPaginaPorEspecie(
     font: fontNormal,
     color: rgb(0, 0, 0),
   });
-  page.drawLine({
-    start: { x: margin + 410, y: yPosition - 3 },
-    end: { x: width - margin, y: yPosition - 3 },
-    thickness: 0.5,
+  page.drawText("38 BRAZAS", {
+    x: margin + 415,
+    y: yPosition,
+    size: 7,
+    font: fontBold,
     color: rgb(0, 0, 0),
   });
 
@@ -552,10 +729,11 @@ async function generarPaginaPorEspecie(
     font: fontNormal,
     color: rgb(0, 0, 0),
   });
-  page.drawLine({
-    start: { x: margin + 410, y: yPosition - 3 },
-    end: { x: width - margin, y: yPosition - 3 },
-    thickness: 0.5,
+  page.drawText('1 1/2"', {
+    x: margin + 415,
+    y: yPosition,
+    size: 7,
+    font: fontBold,
     color: rgb(0, 0, 0),
   });
 
@@ -580,19 +758,62 @@ async function generarPaginaPorEspecie(
 
   // ==================== CAPTURA ESTIMADA Y ELECCIÓN DE ZONA ====================
 
+  // AGRUPAR Y SUMAR TONELADAS POR ESPECIE
+  const capturasPorEspecie = new Map();
+  let totalGeneralToneladas = 0;
+  
+  calas.forEach(cala => {
+    cala.especiesPescadas?.forEach(detCala => {
+      const especieId = detCala.especieId;
+      const nombreEsp = detCala.especie?.nombre || "Desconocida";
+      const tons = parseFloat(detCala.toneladas || 0);
+      
+      if (!capturasPorEspecie.has(especieId)) {
+        capturasPorEspecie.set(especieId, {
+          nombre: nombreEsp,
+          toneladas: 0
+        });
+      }
+      
+      capturasPorEspecie.get(especieId).toneladas += tons;
+      totalGeneralToneladas += tons;
+    });
+  });
+  
+  // Dibujar título
   page.drawText("Captura estimada total (ton):", {
     x: margin,
     y: yPosition,
     size: 8,
-    font: fontNormal,
+    font: fontBold,
     color: rgb(0, 0, 0),
   });
-  page.drawLine({
-    start: { x: margin + 145, y: yPosition - 3 },
-    end: { x: margin + 260, y: yPosition - 3 },
-    thickness: 0.5,
+  
+  yPosition -= 12;
+  
+  // Dibujar cada especie
+  Array.from(capturasPorEspecie.values()).forEach(captura => {
+    const textoCaptura = `• ${captura.nombre}: ${captura.toneladas.toFixed(2)} Ton`;
+    page.drawText(textoCaptura, {
+      x: margin + 10,
+      y: yPosition,
+      size: 7,
+      font: fontNormal,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 10;
+  });
+  
+  // Dibujar total general
+  page.drawText(`TOTAL: ${totalGeneralToneladas.toFixed(2)} Ton`, {
+    x: margin + 10,
+    y: yPosition,
+    size: 8,
+    font: fontBold,
     color: rgb(0, 0, 0),
   });
+  
+  yPosition -= 5;
 
   page.drawText("ELECCIÓN DE LA ZONA DE PESCA", {
     x: margin + 320,
@@ -664,6 +885,14 @@ async function generarPaginaPorEspecie(
     height: boxSize,
     borderColor: rgb(0, 0, 0),
     borderWidth: 1,
+  });
+  // Marcar checkbox Cajas con Hielo con X
+  page.drawText("X", {
+    x: margin + 122,
+    y: yPosition - 6,
+    size: 10,
+    font: fontBold,
+    color: rgb(0, 0, 0),
   });
   page.drawText("Cajas con Hielo", {
     x: margin + 135,
@@ -761,6 +990,14 @@ async function generarPaginaPorEspecie(
     borderColor: rgb(0, 0, 0),
     borderWidth: 1,
   });
+  // Marcar checkbox Sonar con X
+  page.drawText("X", {
+    x: margin + 402,
+    y: yPosition - 6,
+    size: 10,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
   page.drawText("Sonar", {
     x: margin + 415,
     y: yPosition - 3,
@@ -788,7 +1025,7 @@ async function generarPaginaPorEspecie(
 
   yPosition -= 15;
 
-  // Checkboxes Modalidad - Mixto
+  // Checkboxes Modalidad - Manual
   page.drawRectangle({
     x: margin,
     y: yPosition - 8,
@@ -797,24 +1034,8 @@ async function generarPaginaPorEspecie(
     borderColor: rgb(0, 0, 0),
     borderWidth: 1,
   });
-  page.drawText("Mixto", {
-    x: margin + 15,
-    y: yPosition - 3,
-    size: 7,
-    font: fontNormal,
-    color: rgb(0, 0, 0),
-  });
-
-  page.drawRectangle({
-    x: margin + 120,
-    y: yPosition - 8,
-    width: boxSize,
-    height: boxSize,
-    borderColor: rgb(0, 0, 0),
-    borderWidth: 1,
-  });
   page.drawText("Manual", {
-    x: margin + 135,
+    x: margin + 15,
     y: yPosition - 3,
     size: 7,
     font: fontNormal,
@@ -848,6 +1069,14 @@ async function generarPaginaPorEspecie(
     height: boxSize,
     borderColor: rgb(0, 0, 0),
     borderWidth: 1,
+  });
+  // Marcar checkbox Macaco con X
+  page.drawText("X", {
+    x: margin + 2,
+    y: yPosition - 6,
+    size: 10,
+    font: fontBold,
+    color: rgb(0, 0, 0),
   });
   page.drawText("Macaco", {
     x: margin + 15,
@@ -1048,22 +1277,29 @@ async function generarPaginaPorEspecie(
 
   yPosition -= 15;
 
-  // Filas de datos (8 calas)
-  for (let i = 1; i <= 8; i++) {
+  // ITERAR SOBRE TODAS LAS CALAS REALES
+  calas.forEach((cala, calaIndex) => {
+    const numeroCala = calaIndex + 1;
+    const especiesDeLaCala = cala.especiesPescadas || [];
+    
+    // Calcular altura de la fila según cantidad de especies
+    const numEspecies = Math.max(especiesDeLaCala.length, 1);
+    const alturaFilaCala = calasRowHeight * 2; // Siempre 2 subfilas (Inicio/Final)
+    
     currentX = margin;
 
     // Número de cala
     page.drawRectangle({
       x: currentX,
-      y: yPosition - calasRowHeight * 2,
+      y: yPosition - alturaFilaCala,
       width: calaColWidth,
-      height: calasRowHeight * 2,
+      height: alturaFilaCala,
       borderColor: rgb(0, 0, 0),
       borderWidth: 0.5,
     });
-    page.drawText(String(i), {
+    page.drawText(String(numeroCala), {
       x: currentX + 10,
-      y: yPosition - 20,
+      y: yPosition - alturaFilaCala / 2 - 3,
       size: 8,
       font: fontBold,
       color: rgb(0, 0, 0),
@@ -1090,7 +1326,7 @@ async function generarPaginaPorEspecie(
     // Fecha y hora - Final
     page.drawRectangle({
       x: currentX,
-      y: yPosition - calasRowHeight * 2,
+      y: yPosition - alturaFilaCala,
       width: fechaHoraColWidth,
       height: calasRowHeight,
       borderColor: rgb(0, 0, 0),
@@ -1098,68 +1334,148 @@ async function generarPaginaPorEspecie(
     });
     page.drawText("Final", {
       x: currentX + 5,
-      y: yPosition - 30,
+      y: yPosition - alturaFilaCala + 6,
       size: 6,
       font: fontNormal,
       color: rgb(0, 0, 0),
     });
     currentX += fechaHoraColWidth;
 
-    // Latitud
+    // Latitud - Dividida en dos subfilas
     page.drawRectangle({
       x: currentX,
-      y: yPosition - calasRowHeight * 2,
+      y: yPosition - alturaFilaCala,
       width: posicionColWidth / 2,
-      height: calasRowHeight * 2,
+      height: alturaFilaCala,
       borderColor: rgb(0, 0, 0),
       borderWidth: 0.5,
     });
+    
+    const latitudInicio = cala?.latitud ? String(cala.latitud) : "";
+    const latitudFin = cala?.latitudFin ? String(cala.latitudFin) : "";
+    
+    // Latitud Inicio (subfila superior)
+    page.drawText(latitudInicio, {
+      x: currentX + 3,
+      y: yPosition - 12,
+      size: 6,
+      font: fontNormal,
+      color: rgb(0, 0, 0),
+    });
+    
+    // Latitud Fin (subfila inferior)
+    page.drawText(latitudFin, {
+      x: currentX + 3,
+      y: yPosition - alturaFilaCala + 6,
+      size: 6,
+      font: fontNormal,
+      color: rgb(0, 0, 0),
+    });
 
-    // Longitud
+    // Longitud - Dividida en dos subfilas
     page.drawRectangle({
       x: currentX + posicionColWidth / 2,
-      y: yPosition - calasRowHeight * 2,
+      y: yPosition - alturaFilaCala,
       width: posicionColWidth / 2,
-      height: calasRowHeight * 2,
+      height: alturaFilaCala,
       borderColor: rgb(0, 0, 0),
       borderWidth: 0.5,
     });
+    
+    const longitudInicio = cala?.longitud ? String(cala.longitud) : "";
+    const longitudFin = cala?.longitudFin ? String(cala.longitudFin) : "";
+    
+    // Longitud Inicio (subfila superior)
+    page.drawText(longitudInicio, {
+      x: currentX + posicionColWidth / 2 + 3,
+      y: yPosition - 12,
+      size: 6,
+      font: fontNormal,
+      color: rgb(0, 0, 0),
+    });
+    
+    // Longitud Fin (subfila inferior)
+    page.drawText(longitudFin, {
+      x: currentX + posicionColWidth / 2 + 3,
+      y: yPosition - alturaFilaCala + 6,
+      size: 6,
+      font: fontNormal,
+      color: rgb(0, 0, 0),
+    });
+    
     currentX += posicionColWidth;
 
-    // Especies
+    // Columnas de Especies - Mostrar TODAS las especies de esta cala
     page.drawRectangle({
       x: currentX,
-      y: yPosition - calasRowHeight * 2,
+      y: yPosition - alturaFilaCala,
       width: especiesWidth,
-      height: calasRowHeight * 2,
+      height: alturaFilaCala,
       borderColor: rgb(0, 0, 0),
       borderWidth: 0.5,
+    });
+    
+    // Dibujar cada especie
+    especiesDeLaCala.forEach((detCala, especieIdx) => {
+      const nombreEspecieCala = detCala?.especie?.nombre || "";
+      const yEspecie = yPosition - 12 - (especieIdx * 10);
+      page.drawText(nombreEspecieCala, {
+        x: currentX + 3,
+        y: yEspecie,
+        size: 6,
+        font: fontNormal,
+        color: rgb(0, 0, 0),
+      });
     });
 
     // Peso
     page.drawRectangle({
       x: currentX + especiesWidth,
-      y: yPosition - calasRowHeight * 2,
+      y: yPosition - alturaFilaCala,
       width: pesoWidth,
-      height: calasRowHeight * 2,
+      height: alturaFilaCala,
       borderColor: rgb(0, 0, 0),
       borderWidth: 0.5,
+    });
+    
+    especiesDeLaCala.forEach((detCala, especieIdx) => {
+      const toneladasCala = detCala?.toneladas ? String(detCala.toneladas) : "";
+      const yEspecie = yPosition - 12 - (especieIdx * 10);
+      page.drawText(toneladasCala, {
+        x: currentX + especiesWidth + 3,
+        y: yEspecie,
+        size: 6,
+        font: fontNormal,
+        color: rgb(0, 0, 0),
+      });
     });
 
     // Talla Media
     page.drawRectangle({
       x: currentX + especiesWidth + pesoWidth,
-      y: yPosition - calasRowHeight * 2,
+      y: yPosition - alturaFilaCala,
       width: tallaWidth,
-      height: calasRowHeight * 2,
+      height: alturaFilaCala,
       borderColor: rgb(0, 0, 0),
       borderWidth: 0.5,
     });
+    
+    especiesDeLaCala.forEach((detCala, especieIdx) => {
+      const observacionesCala = detCala?.observaciones || "";
+      const yEspecie = yPosition - 12 - (especieIdx * 10);
+      page.drawText(observacionesCala, {
+        x: currentX + especiesWidth + pesoWidth + 3,
+        y: yEspecie,
+        size: 6,
+        font: fontNormal,
+        color: rgb(0, 0, 0),
+      });
+    });
 
-    yPosition -= calasRowHeight * 2;
-  }
+    yPosition -= alturaFilaCala;
+  });
 
-  yPosition -= 20;
+  yPosition -= 40;
 
   // ==================== FIRMA ====================
 
@@ -1172,6 +1488,12 @@ async function generarPaginaPorEspecie(
   });
   yPosition -= 12;
 
+  // Datos del responsable (bahía)
+  const nombresBahia = faena?.bahia?.nombres || "";
+  const apellidosBahia = faena?.bahia?.apellidos || "";
+  const nombreCompleto = `${nombresBahia} ${apellidosBahia}`.trim();
+  const dniResponsable = faena?.bahia?.numeroDocumento || "";
+  
   page.drawText("Nombres y Apellidos:", {
     x: margin,
     y: yPosition,
@@ -1179,6 +1501,18 @@ async function generarPaginaPorEspecie(
     font: fontNormal,
     color: rgb(0, 0, 0),
   });
+  
+  // Dibujar nombre completo del responsable
+  if (nombreCompleto) {
+    page.drawText(nombreCompleto, {
+      x: margin + 120,
+      y: yPosition,
+      size: 8,
+      font: fontNormal,
+      color: rgb(0, 0, 0),
+    });
+  }
+  
   yPosition -= 12;
 
   page.drawText("DNI:", {
@@ -1188,18 +1522,19 @@ async function generarPaginaPorEspecie(
     font: fontNormal,
     color: rgb(0, 0, 0),
   });
-
-  // ==================== NÚMERO DE PÁGINA ====================
   
-  const numeroPagina = `${paginaActual} de ${totalPaginas} Pag.`;
-  const anchoPagina = fontNormal.widthOfTextAtSize(numeroPagina, 8);
-  page.drawText(numeroPagina, {
-    x: width - margin - anchoPagina,
-    y: 100,
-    size: 8,
-    font: fontNormal,
-    color: rgb(0, 0, 0),
-  });
+  // Dibujar DNI del responsable
+  if (dniResponsable) {
+    page.drawText(dniResponsable, {
+      x: margin + 120,
+      y: yPosition,
+      size: 8,
+      font: fontNormal,
+      color: rgb(0, 0, 0),
+    });
+  }
+  
+  yPosition -= 30;
 
   // ==================== PIE DE PÁGINA ====================
 
@@ -1213,58 +1548,65 @@ async function generarPaginaPorEspecie(
 
   page.drawText(footerText1, {
     x: margin,
-    y: 80,
+    y: yPosition,
     size: 6,
     font: fontNormal,
     color: rgb(0, 0, 0),
   });
+  yPosition -= 8;
 
   page.drawText(footerText2, {
     x: margin,
-    y: 72,
+    y: yPosition,
     size: 6,
     font: fontNormal,
     color: rgb(0, 0, 0),
   });
+  yPosition -= 8;
 
   page.drawText(footerText3, {
     x: margin,
-    y: 64,
+    y: yPosition,
     size: 6,
     font: fontNormal,
     color: rgb(0, 0, 0),
   });
+  yPosition -= 8;
 
   page.drawText(footerText4, {
     x: margin,
-    y: 56,
+    y: yPosition,
     size: 6,
     font: fontBold,
     color: rgb(0, 0, 0),
   });
+  yPosition -= 15;
 
+  // Dirección, teléfono y web en la parte inferior
   page.drawText(
     "Calle Uno Oeste N° 060 - Urbanización Corpac - San Isidro - Lima",
     {
       x: margin,
-      y: 40,
+      y: yPosition,
       size: 6,
       font: fontNormal,
       color: rgb(0, 0, 0),
     },
   );
+  yPosition -= 8;
 
   page.drawText("T. (511) 616 2222", {
     x: margin,
-    y: 32,
+    y: yPosition,
     size: 6,
     font: fontNormal,
     color: rgb(0, 0, 0),
   });
+  yPosition -= 8;
 
   page.drawText("www.gob.pe/produce", {
     x: margin,
-    y: 24,
+    y: yPosition,
     size: 6,
     font: fontNormal,
     color: rgb(0, 0, 0),
