@@ -56,6 +56,36 @@ export const subirFotoPersonal = async (id, archivoFoto) => {
 };
 
 /**
+ * Sube la firma de una persona al backend y actualiza el campo urlFirma.
+ * @param {number|string} id - ID del personal
+ * @param {File} archivoFirma - Archivo de imagen (JPG o PNG, máx 2MB)
+ * @returns {Promise<Object>} Respuesta del backend con nombre de archivo y URL pública
+ *
+ * Esta función utiliza autenticación JWT obtenida desde useAuthStore (Zustand),
+ * cumpliendo la regla de seguridad y centralización de sesión del ERP Megui.
+ * Replica el patrón de subirFotoPersonal.
+ *
+ * Ejemplo de uso:
+ *   await subirFirmaPersonal(5, archivo);
+ */
+export const subirFirmaPersonal = async (id, archivoFirma) => {
+  const formData = new FormData();
+  formData.append('firma', archivoFirma);
+  const token = useAuthStore.getState().token;
+  const res = await axios.post(
+    `${import.meta.env.VITE_API_URL}/personal-firma/${id}/firma`,
+    formData,
+    {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return res.data;
+};
+
+/**
  * Actualiza un registro de personal existente en el sistema.
  * @param {number|string} id - ID del personal a actualizar
  * @param {Object} data - Datos a actualizar (solo campos válidos para el backend)

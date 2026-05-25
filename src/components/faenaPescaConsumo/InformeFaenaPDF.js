@@ -1534,7 +1534,58 @@ async function generarPaginaFaena(
     });
   }
   
-  yPosition -= 30;
+  yPosition -= 20;
+
+  // ==================== FIRMA DIGITAL ====================
+  
+  // Intentar cargar y mostrar la firma digital del responsable
+  const urlFirma = faena?.bahia?.urlFirma;
+  if (urlFirma) {
+    try {
+      // Construir URL completa de la firma
+      const firmaUrl = urlFirma.startsWith('http') 
+        ? urlFirma 
+        : `${import.meta.env.VITE_UPLOADS_URL}/personal-firmas/${urlFirma}`;
+      
+      // Descargar la imagen de la firma
+      const firmaResponse = await fetch(firmaUrl);
+      if (firmaResponse.ok) {
+        const firmaBytes = await firmaResponse.arrayBuffer();
+        
+        // Detectar tipo de imagen y embeber en el PDF
+        let firmaImage;
+        if (urlFirma.toLowerCase().endsWith('.png')) {
+          firmaImage = await pdfDoc.embedPng(firmaBytes);
+        } else {
+          firmaImage = await pdfDoc.embedJpg(firmaBytes);
+        }
+        
+        // Calcular dimensiones proporcionales (máximo 150x60)
+        const firmaWidth = 150;
+        const firmaHeight = (firmaImage.height / firmaImage.width) * firmaWidth;
+        const maxHeight = 60;
+        const finalHeight = Math.min(firmaHeight, maxHeight);
+        const finalWidth = (firmaImage.width / firmaImage.height) * finalHeight;
+        
+        // Dibujar la firma
+        page.drawImage(firmaImage, {
+          x: margin + 120,
+          y: yPosition - finalHeight,
+          width: finalWidth,
+          height: finalHeight,
+        });
+        
+        yPosition -= finalHeight + 10;
+      }
+    } catch (error) {
+      console.warn('No se pudo cargar la firma digital:', error);
+      // Continuar sin firma si hay error
+      yPosition -= 10;
+    }
+  } else {
+    // Si no hay firma, solo agregar espacio
+    yPosition -= 10;
+  }
 
   // ==================== PIE DE PÁGINA ====================
 

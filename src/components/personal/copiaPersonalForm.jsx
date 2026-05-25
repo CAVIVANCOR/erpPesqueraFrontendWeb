@@ -19,7 +19,7 @@ import { getCargosPersonal } from "../../api/cargosPersonal"; // API profesional
 import { getTiposContrato } from "../../api/tiposContrato"; // API profesional de tipos de contrato
 import { getSedes } from "../../api/sedes"; // API profesional de sedes
 import { getAreasFisicas } from "../../api/areasFisicas"; // API profesional de áreas físicas
-import { subirFotoPersonal, subirFirmaPersonal } from "../../api/personal"; // API profesional de subida de foto personal
+import { subirFotoPersonal } from "../../api/personal"; // API profesional de subida de foto personal
 import { getEntidadesComerciales } from "../../api/entidadComercial"; // API profesional de entidades comerciales
 // Esquema de validación profesional con Yup
 const schema = Yup.object().shape({
@@ -129,24 +129,14 @@ export default function PersonalForm({
 
   const [fotoPreview, setFotoPreview] = useState(
     defaultValues.urlFotoPersona
-      ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${defaultValues.urlFotoPersona}`
+      ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${
+          defaultValues.urlFotoPersona
+        }`
       : null,
   );
-  // ⭐ AGREGAR ESTADO PARA FIRMA
-  const [firmaPreview, setFirmaPreview] = useState(() => {
-    if (!defaultValues.urlFirma) return null;
-    // Si ya es una URL completa, usarla directamente
-    if (defaultValues.urlFirma.startsWith('http')) {
-      return defaultValues.urlFirma;
-    }
-    // Si es solo el nombre del archivo, construir la URL
-    return `${import.meta.env.VITE_UPLOADS_URL}/personal-firmas/${defaultValues.urlFirma}`;
-  });
+
   const [uploadingFoto, setUploadingFoto] = useState(false);
-  const [uploadingFirma, setUploadingFirma] = useState(false);
   const toastFoto = React.useRef(null);
-  const fileUploadFotoRef = React.useRef(null);
-  const fileUploadFirmaRef = React.useRef(null);
   // --- Fin gestión foto de persona ---
 
   // Estados locales para combos dinámicos
@@ -185,15 +175,6 @@ export default function PersonalForm({
           }`
       : null;
     setFotoPreview(urlFoto);
-    // ⭐ AGREGAR ACTUALIZACIÓN DE FIRMA
-    const urlFirma = defaultValues.urlFirma
-      ? defaultValues.urlFirma.startsWith("http")
-        ? defaultValues.urlFirma
-        : `${import.meta.env.VITE_UPLOADS_URL}/personal-firmas/${
-            defaultValues.urlFirma
-          }`
-      : null;
-    setFirmaPreview(urlFirma);
   }, [defaultValues, isEdit, reset]);
 
   /**
@@ -234,6 +215,12 @@ export default function PersonalForm({
       // Sube la foto usando el endpoint profesional
       const res = await subirFotoPersonal(defaultValues.id, file);
 
+      // Actualizar el campo del formulario
+      setValue("urlFotoPersona", res.foto, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+
       // Construye la URL profesional de la foto subida usando la variable general de uploads.
       const urlBackend = `${import.meta.env.VITE_UPLOADS_URL}/personal/${
         res.foto
@@ -242,12 +229,6 @@ export default function PersonalForm({
       // Actualizar el preview con la URL del backend y agregar timestamp para forzar recarga
       const urlConTimestamp = `${urlBackend}?t=${new Date().getTime()}`;
       setFotoPreview(urlConTimestamp);
-
-      // Actualizar el campo del formulario con la ruta completa
-      setValue("urlFotoPersona", urlBackend, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
 
       // Liberar la URL local para evitar memory leaks
       URL.revokeObjectURL(localUrl);
@@ -273,199 +254,6 @@ export default function PersonalForm({
       });
     } finally {
       setUploadingFoto(false);
-    }
-  };
-  /**
-   * Maneja la subida de foto desde input file normal (no FileUpload).
-   * Valida tipo/tamaño, sube vía API, actualiza preview y campo urlFotoPersona.
-   */
-  const handleSubirFoto = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validación profesional de tipo y tamaño
-    if (!["image/jpeg", "image/png"].includes(file.type)) {
-      toastFoto.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Solo se permiten archivos JPG o PNG.",
-        life: 3000,
-      });
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      toastFoto.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "El archivo no debe superar 2MB.",
-        life: 3000,
-      });
-      return;
-    }
-
-    // Mostrar preview inmediato usando URL.createObjectURL
-    const previewUrl = URL.createObjectURL(file);
-    setFotoPreview(previewUrl);
-
-    try {
-      setUploadingFoto(true);
-      const res = await subirFotoPersonal(defaultValues.id, file);
-
-      // Actualizar el campo del formulario con el NOMBRE del archivo
-      setValue("urlFotoPersona", res.foto, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
-
-      // Construye la URL profesional de la foto subida usando la variable general de uploads.
-      const urlBackend = `${import.meta.env.VITE_UPLOADS_URL}/personal/${res.foto}`;
-
-      // Actualizar el preview con la URL del backend y agregar timestamp para forzar recarga
-      const urlConTimestamp = `${urlBackend}?t=${new Date().getTime()}`;
-      setFotoPreview(urlConTimestamp);
-
-      // Liberar el objeto URL temporal
-      URL.revokeObjectURL(previewUrl);
-
-      toastFoto.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "Foto subida correctamente.",
-        life: 3000,
-      });
-    } catch (err) {
-      // Restaurar el preview anterior en caso de error
-      const urlAnterior = defaultValues.urlFotoPersona
-        ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${defaultValues.urlFotoPersona}`
-        : null;
-      setFotoPreview(urlAnterior);
-
-      // Liberar el objeto URL temporal
-      URL.revokeObjectURL(previewUrl);
-
-      toastFoto.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: err.response?.data?.error || "Error al subir foto.",
-        life: 3000,
-      });
-    } finally {
-      setUploadingFoto(false);
-    }
-  };
-
-  /**
-   * Adaptador para FileUpload de PrimeReact - Foto
-   * Convierte el formato de FileUpload ({ files }) al formato de handleSubirFoto
-   */
-  const handleFotoUploadAdapter = async ({ files }) => {
-    if (!files || files.length === 0) return;
-    const file = files[0];
-    // Simular evento para reutilizar la lógica existente
-    const fakeEvent = { target: { files: [file] } };
-    await handleSubirFoto(fakeEvent);
-    // Limpiar el FileUpload para permitir seleccionar otro archivo
-    if (fileUploadFotoRef.current) {
-      fileUploadFotoRef.current.clear();
-    }
-  };
-
-  /**
-   * Maneja la subida profesional de la firma de persona.
-   * Valida tipo/tamaño, sube vía API, actualiza preview y campo urlFirma.
-   * Muestra mensajes de éxito/error profesional.
-   * Replica el patrón de handleSubirFoto.
-   */
-  const handleSubirFirma = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validación profesional de tipo y tamaño
-    if (!["image/jpeg", "image/png"].includes(file.type)) {
-      toastFoto.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Solo se permiten archivos JPG o PNG.",
-        life: 3000,
-      });
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      toastFoto.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "El archivo no debe superar 2MB.",
-        life: 3000,
-      });
-      return;
-    }
-
-    // Mostrar preview inmediato usando URL.createObjectURL
-    const previewUrl = URL.createObjectURL(file);
-    setFirmaPreview(previewUrl);
-
-    try {
-      setUploadingFirma(true);
-      const res = await subirFirmaPersonal(defaultValues.id, file);
-
-      // Actualizar el campo del formulario con el NOMBRE del archivo
-      setValue("urlFirma", res.firma, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
-
-      // Construye la URL profesional de la firma subida usando la variable general de uploads.
-      const urlBackend = `${import.meta.env.VITE_UPLOADS_URL}/personal-firmas/${res.firma}`;
-
-      // Actualizar el preview con la URL del backend y agregar timestamp para forzar recarga
-      const urlConTimestamp = `${urlBackend}?t=${new Date().getTime()}`;
-      setFirmaPreview(urlConTimestamp);
-
-      // Liberar el objeto URL temporal
-      URL.revokeObjectURL(previewUrl);
-
-      toastFoto.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "Firma subida correctamente.",
-        life: 3000,
-      });
-    } catch (err) {
-      // Restaurar el preview anterior en caso de error
-      const urlAnterior = defaultValues.urlFirma
-        ? `${import.meta.env.VITE_UPLOADS_URL}/personal-firmas/${defaultValues.urlFirma}`
-        : null;
-      setFirmaPreview(urlAnterior);
-
-      // Liberar el objeto URL temporal
-      URL.revokeObjectURL(previewUrl);
-
-      toastFoto.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: err.response?.data?.error || "Error al subir firma.",
-        life: 3000,
-      });
-    } finally {
-      setUploadingFirma(false);
-    }
-  };
-
-  /**
-   * Adaptador para FileUpload de PrimeReact - Firma
-   * Convierte el formato de FileUpload ({ files }) al formato de handleSubirFirma
-   */
-  const handleFirmaUploadAdapter = async ({ files }) => {
-    if (!files || files.length === 0) return;
-    const file = files[0];
-    // Simular evento para reutilizar la lógica existente
-    const fakeEvent = { target: { files: [file] } };
-    await handleSubirFirma(fakeEvent);
-    // Limpiar el FileUpload para permitir seleccionar otro archivo
-    if (fileUploadFirmaRef.current) {
-      fileUploadFirmaRef.current.clear();
     }
   };
 
@@ -719,7 +507,6 @@ export default function PersonalForm({
         ? Number(data.enlaceEntidadComercialId)
         : null,
       urlFotoPersona: data.urlFotoPersona || null,
-      urlFirma: data.urlFirma || null, // ⭐ AGREGAR ESTA LÍNEA
       esVendedor:
         typeof data.esVendedor === "boolean" ? data.esVendedor : false,
       cesado: typeof data.cesado === "boolean" ? data.cesado : false,
@@ -740,11 +527,6 @@ export default function PersonalForm({
           : true,
     };
     // Fin construcción payload profesional
-    console.log('📅 DEBUG - Fecha Cese:', {
-      raw: data.fechaCese,
-      formatted: payload.fechaCese,
-      cesado: payload.cesado
-    });
     onSubmit(payload);
   };
 
@@ -754,207 +536,161 @@ export default function PersonalForm({
       <Toast ref={toastFoto} position="top-right" />
       <form onSubmit={handleSubmit(onSubmitWithLog)}>
         <div className="p-fluid">
-          {/* ==================== SECCIÓN FOTO Y FIRMA - LAYOUT COMPACTO RESPONSIVE ==================== */}
-          <div className="p-field" style={{ marginBottom: 24 }}>
-            {/* Contenedor principal: 2 columnas en desktop, 1 columna en mobile */}
+          {/* Gestión profesional de foto de persona */}
+          <div className="p-field">
+            {/* Layout profesional: imagen a la izquierda, controles a la derecha */}
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: window.innerWidth >= 768 ? "1fr 1fr" : "1fr",
+                display: "flex",
+                alignItems: "center",
                 gap: 24,
+                marginTop: 8,
               }}
             >
-              {/* ========== COLUMNA 1: FOTO ========== */}
+              {/* Bloque izquierdo: título y preview de la foto */}
               <div
                 style={{
+                  minWidth: 180,
+                  minHeight: 120,
                   display: "flex",
-                  gap: 12,
-                  padding: 12,
-                  border: "1px solid #e0e0e0",
-                  borderRadius: 8,
-                  background: "#fafafa",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "flex-start",
                 }}
               >
-                {/* Sub-columna A: Imagen */}
-                <div style={{ flexShrink: 0 }}>
-                  {fotoPreview ? (
-                    <img
-                      src={fotoPreview}
-                      alt="Foto"
-                      style={{
-                        width: 120,
-                        height: 120,
-                        objectFit: "cover",
-                        borderRadius: 6,
-                        border: "2px solid #4caf50",
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: 120,
-                        height: 120,
-                        borderRadius: 6,
-                        border: "2px dashed #ccc",
-                        background: "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#999",
-                        fontSize: 12,
-                        textAlign: "center",
-                      }}
-                    >
-                      Sin foto
-                    </div>
-                  )}
-                </div>
-
-                {/* Sub-columna B: Controles (URL + Botón) */}
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-                  <label style={{ fontWeight: "bold", fontSize: 13, color: "#4caf50" }}>
-                    FOTO DE LA PERSONA
-                  </label>
-                  
-                  {/* Fila 1: Input URL */}
-                  <InputText
-                    {...register("urlFotoPersona")}
-                    className={errors.urlFotoPersona ? "p-invalid" : ""}
-                    placeholder="URL de la foto"
-                    disabled={readOnly || loading}
-                    style={{ fontSize: 12 }}
+                {/* Título pegado a la imagen */}
+                <label
+                  htmlFor="foto"
+                  style={{ marginBottom: 6, fontWeight: 500 }}
+                >
+                  Foto de la persona
+                </label>
+                {fotoPreview ? (
+                  <img
+                    src={fotoPreview}
+                    alt="Foto actual"
+                    style={{
+                      maxWidth: 180,
+                      maxHeight: 120,
+                      borderRadius: 6,
+                      border: "1px solid #ccc",
+                      background: "#fff",
+                    }}
                   />
-                  {errors.urlFotoPersona && (
-                    <small className="p-error" style={{ fontSize: 11 }}>
-                      {errors.urlFotoPersona.message}
-                    </small>
-                  )}
-
-                  {/* Fila 2: Botón FileUpload */}
-                  {!defaultValues.id ? (
-                    <small style={{ color: "#d32f2f", fontSize: 11 }}>
-                      Guarde el registro primero
-                    </small>
-                  ) : (
-                    <FileUpload
-                      ref={fileUploadFotoRef}
-                      name="foto"
-                      accept="image/jpeg,image/png"
-                      maxFileSize={2 * 1024 * 1024}
-                      chooseLabel="Elegir foto"
-                      customUpload
-                      uploadHandler={handleFotoUploadAdapter}
-                      disabled={readOnly || loading || uploadingFoto}
-                      auto
-                      mode="basic"
-                      chooseOptions={{
-                        icon: "pi pi-image",
-                        className: "p-button-success p-button-sm",
-                      }}
-                    />
-                  )}
-                </div>
+                ) : (
+                  <div
+                    style={{
+                      width: 180,
+                      height: 120,
+                      borderRadius: 6,
+                      border: "1px solid #ccc",
+                      background: "#f8f9fa",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#bbb",
+                      fontSize: 14,
+                    }}
+                  >
+                    Sin foto
+                  </div>
+                )}
               </div>
-
-              {/* ========== COLUMNA 2: FIRMA ========== */}
+              {/* Controles de carga y mensaje */}
               <div
                 style={{
+                  flex: 1,
                   display: "flex",
-                  gap: 12,
-                  padding: 12,
-                  border: "1px solid #e0e0e0",
-                  borderRadius: 8,
-                  background: "#fafafa",
+                  flexDirection: "row",
+                  gap: 8,
                 }}
               >
-                {/* Sub-columna A: Imagen */}
-                <div style={{ flexShrink: 0 }}>
-                  {firmaPreview ? (
-                    <img
-                      src={firmaPreview}
-                      alt="Firma"
-                      style={{
-                        width: 120,
-                        height: 120,
-                        objectFit: "contain",
-                        borderRadius: 6,
-                        border: "2px solid #2196f3",
-                        background: "#fff",
-                        padding: 4,
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: 120,
-                        height: 120,
-                        borderRadius: 6,
-                        border: "2px dashed #ccc",
-                        background: "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#999",
-                        fontSize: 12,
-                        textAlign: "center",
-                      }}
-                    >
-                      Sin firma
-                    </div>
-                  )}
-                </div>
+                <FileUpload
+                  name="foto"
+                  accept="image/*"
+                  maxFileSize={2 * 1024 * 1024}
+                  chooseLabel="Elegir foto"
+                  uploadLabel="Subir"
+                  cancelLabel="Cancelar"
+                  customUpload
+                  uploadHandler={handleFotoUpload}
+                  disabled={readOnly || !defaultValues.id || uploadingFoto}
+                  auto
+                  mode="basic"
+                  className="p-mb-2"
+                />
+                <small className="p-d-block" style={{ color: "#888" }}>
+                  Solo PNG/JPG. Máx 2MB.
+                </small>
+                {/* Input profesional para URL de la foto (solo input text, editable/deshabilitado según lógica) */}
+                <InputText
+                  {...register("urlFotoPersona")}
+                  className={errors.urlFotoPersona ? "p-invalid" : ""}
+                  placeholder="URL de la foto (opcional)"
+                  disabled={readOnly || loading}
+                />
+                <small className="p-error">
+                  {errors.urlFotoPersona?.message}
+                </small>
+                {/* Mensaje profesional si no hay id disponible */}
+                {!defaultValues.id && (
+                  <small className="p-error p-d-block">
+                    Guarda primero el registro para habilitar la subida de foto.
+                  </small>
+                )}
 
-                {/* Sub-columna B: Controles (URL + Botón) */}
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-                  <label style={{ fontWeight: "bold", fontSize: 13, color: "#2196f3" }}>
-                    FIRMA DIGITAL
-                  </label>
-                  
-                  {/* Fila 1: Input URL */}
-                  <InputText
-                    {...register("urlFirma")}
-                    className={errors.urlFirma ? "p-invalid" : ""}
-                    placeholder="URL de la firma"
-                    disabled={readOnly || loading}
-                    style={{ fontSize: 12 }}
+
+                            {/* ⭐ NUEVO - Marca Asistencia */}
+              <Controller
+                name="marcaAsistencia"
+                control={control}
+                render={({ field }) => (
+                  <ToggleButton
+                    id="marcaAsistencia"
+                    onLabel="Marca Asistencia"
+                    offLabel="No Marca Asistencia"
+                    onIcon="pi pi-check-circle"
+                    offIcon="pi pi-times-circle"
+                    checked={field.value}
+                    onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly}
+                    className={
+                      field.value ? "p-button-success" : "p-button-secondary"
+                    }
+                    tooltip="Indica si el personal debe marcar asistencia"
+                    tooltipOptions={{ position: "top" }}
                   />
-                  {errors.urlFirma && (
-                    <small className="p-error" style={{ fontSize: 11 }}>
-                      {errors.urlFirma.message}
-                    </small>
-                  )}
+                )}
+              />
+              {/* ⭐ NUEVO - Es Administrativo */}
+              <Controller
+                name="esAdministrativo"
+                control={control}
+                render={({ field }) => (
+                  <ToggleButton
+                    id="esAdministrativo"
+                    onLabel="Horario Rígido (Administrativo)"
+                    offLabel="Horario Flexible (Operativo)"
+                    onIcon="pi pi-clock"
+                    offIcon="pi pi-users"
+                    checked={field.value}
+                    onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly}
+                    className={
+                      field.value ? "p-button-info" : "p-button-warning"
+                    }
+                    tooltip={
+                      field.value
+                        ? "Personal administrativo con horario rígido"
+                        : "Personal operativo con horario flexible"
+                    }
+                    tooltipOptions={{ position: "top" }}
+                  />
+                )}
+              />
 
-                  {/* Fila 2: Botón FileUpload */}
-                  {!defaultValues.id ? (
-                    <small style={{ color: "#d32f2f", fontSize: 11 }}>
-                      Guarde el registro primero
-                    </small>
-                  ) : (
-                    <FileUpload
-                      ref={fileUploadFirmaRef}
-                      name="firma"
-                      accept="image/jpeg,image/png"
-                      maxFileSize={2 * 1024 * 1024}
-                      chooseLabel="Elegir firma"
-                      customUpload
-                      uploadHandler={handleFirmaUploadAdapter}
-                      disabled={readOnly || loading || uploadingFirma}
-                      auto
-                      mode="basic"
-                      chooseOptions={{
-                        icon: "pi pi-file-edit",
-                        className: "p-button-info p-button-sm",
-                      }}
-                    />
-                  )}
-                </div>
               </div>
             </div>
-          </div>
-
-          {/* ==================== MARCA ASISTENCIA Y TIPO PERSONAL ==================== */}
-          <div className="p-field">
-            
           </div>
           {/* Empresa */}
           <div
@@ -1173,34 +909,6 @@ export default function PersonalForm({
               />
               <small className="p-error">{errors.fechaIngreso?.message}</small>
             </div>
-                      {/* Campo condicional: Fecha de Cese (solo visible cuando cesado = true) */}
-          {watch("cesado") && (
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="fechaCese"
-                style={{ fontWeight: 500, color: "#d32f2f" }}
-              >
-                Fecha Cese *
-              </label>
-              <Controller
-                name="fechaCese"
-                control={control}
-                render={({ field }) => (
-                  <Calendar
-                    {...field}
-                    id="fechaCese"
-                    showIcon
-                    dateFormat="dd/mm/yy"
-                    placeholder="Seleccione la fecha de cese"
-                    className={errors.fechaCese ? "p-invalid" : ""}
-                    disabled={readOnly || loading}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
-              <small className="p-error">{errors.fechaCese?.message}</small>
-            </div>
-          )}
           </div>
 
           {/* Teléfono yCorreo Electronico en una sola línea, con proporción 1:2 */}
@@ -1332,7 +1040,7 @@ export default function PersonalForm({
           <div
             style={{
               display: "flex",
-              alignItems: "end",
+              alignItems: "center",
               justifyContent: "center",
               marginTop: 10,
               gap: 5,
@@ -1426,64 +1134,39 @@ export default function PersonalForm({
                   />
                 )}
               />
+
+  
             </ButtonGroup>
-            <div
-              style={{
-                display: "flex",
-                gap: 5,
-                marginLeft: "1rem"
-              }}
-            >
-              {/* ⭐ NUEVO - Marca Asistencia */}
-                <Controller
-                  name="marcaAsistencia"
-                  control={control}
-                  render={({ field }) => (
-                    <ToggleButton
-                      id="marcaAsistencia"
-                      onLabel="Marca Asistencia"
-                      offLabel="No Marca Asistencia"
-                      onIcon="pi pi-check-circle"
-                      offIcon="pi pi-times-circle"
-                      checked={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      disabled={readOnly}
-                      className={
-                        field.value ? "p-button-success" : "p-button-secondary"
-                      }
-                      tooltip="Indica si el personal debe marcar asistencia"
-                      tooltipOptions={{ position: "top" }}
-                    />
-                  )}
-                />
-                {/* ⭐ NUEVO - Es Administrativo */}
-                <Controller
-                  name="esAdministrativo"
-                  control={control}
-                  render={({ field }) => (
-                    <ToggleButton
-                      id="esAdministrativo"
-                      onLabel="Horario Rígido (Administrativo)"
-                      offLabel="Horario Flexible (Operativo)"
-                      onIcon="pi pi-clock"
-                      offIcon="pi pi-users"
-                      checked={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      disabled={readOnly}
-                      className={
-                        field.value ? "p-button-info" : "p-button-warning"
-                      }
-                      tooltip={
-                        field.value
-                          ? "Personal administrativo con horario rígido"
-                          : "Personal operativo con horario flexible"
-                      }
-                      tooltipOptions={{ position: "top" }}
-                    />
-                  )}
-                />
-              </div>
           </div>
+
+          {/* Campo condicional: Fecha de Cese (solo visible cuando cesado = true) */}
+          {watch("cesado") && (
+            <div style={{ marginTop: 16 }}>
+              <label
+                htmlFor="fechaCese"
+                style={{ fontWeight: 500, color: "#d32f2f" }}
+              >
+                Fecha de Cese *
+              </label>
+              <Controller
+                name="fechaCese"
+                control={control}
+                render={({ field }) => (
+                  <Calendar
+                    {...field}
+                    id="fechaCese"
+                    showIcon
+                    dateFormat="dd/mm/yy"
+                    placeholder="Seleccione la fecha de cese"
+                    className={errors.fechaCese ? "p-invalid" : ""}
+                    disabled={readOnly || loading}
+                    style={{ width: "100%", maxWidth: 300 }}
+                  />
+                )}
+              />
+              <small className="p-error">{errors.fechaCese?.message}</small>
+            </div>
+          )}
 
           {/* Botones de acción */}
           <div
