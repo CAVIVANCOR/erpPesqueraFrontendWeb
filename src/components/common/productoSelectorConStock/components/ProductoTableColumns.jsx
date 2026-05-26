@@ -1,7 +1,11 @@
 // src/components/movimientoAlmacen/productoSelector/components/ProductoTableColumns.jsx
 import React from "react";
 import { Button } from "primereact/button";
-import { getProductoFromRow, formatNumber, formatDate } from "../utils/productoSelectorHelpers";
+import {
+  getProductoFromRow,
+  formatNumber,
+  formatDate,
+} from "../utils/productoSelectorHelpers";
 
 /**
  * Templates de columnas para la tabla de productos
@@ -14,7 +18,11 @@ export const productoTemplate = (rowData, esIngreso) => {
 
 export const unidadMedidaTemplate = (rowData, esIngreso) => {
   const prod = getProductoFromRow(rowData, esIngreso);
-  return prod?.unidadMedida?.nombre || "-";
+  return (
+    <div style={{ fontSize: "1em", fontWeight: "800", color: "#1976d2" }}>
+      {prod?.unidadMedida?.nombre || "-"}
+    </div>
+  );
 };
 
 export const saldoTemplate = (rowData, esIngreso) => {
@@ -62,19 +70,16 @@ export const fechasTemplate = (rowData, esIngreso) => {
 };
 
 export const stockTemplate = (rowData, esIngreso) => {
-  // Mostrar stock en TODOS los modos según estándares ERP:
-  // - INGRESO: Stock actual como referencia
-  // - EGRESO/TRANSFERENCIA: Stock disponible como restricción
-  const stockValue = esIngreso 
-    ? (rowData.stockDisponible || 0) 
-    : (rowData.saldoCantidad || 0);
-  const pesoValue = esIngreso 
-    ? (rowData.pesoDisponible || 0) 
-    : (rowData.saldoPeso || 0);
+  const stockValue = esIngreso
+    ? rowData.stockDisponible || 0
+    : rowData.saldoCantidad || 0;
+  const pesoValue = esIngreso
+    ? rowData.pesoDisponible || 0
+    : rowData.saldoPeso || 0;
 
   return (
-    <div style={{ textAlign: "right" }}>
-      <div style={{ fontWeight: "bold", color: "#1976d2" }}>
+    <div style={{ textAlign: "right", fontSize: "0.9em" }}>
+      <div style={{ fontSize: "1.25em", fontWeight: "800", color: "#1976d2" }}>
         {formatNumber(stockValue)}
       </div>
       {pesoValue > 0 && (
@@ -90,9 +95,13 @@ export const accionesTemplate = (rowData, handleSelect) => {
   return (
     <Button
       icon="pi pi-check"
-      label="Seleccionar"
-      className="p-button-sm p-button-success"
+      rounded
+      text
+      severity="success"
       onClick={() => handleSelect(rowData)}
+      tooltip="Seleccionar"
+      tooltipOptions={{ position: "left" }}
+      style={{ width: "2rem", height: "2rem" }}
     />
   );
 };

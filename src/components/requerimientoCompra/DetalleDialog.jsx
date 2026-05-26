@@ -8,7 +8,7 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
 import { Panel } from "primereact/panel";
 import { Divider } from "primereact/divider";
-import ProductoSelectorDialog from "../movimientoAlmacen/ProductoSelectorDialog";
+import ProductoSelectorDialog from "../common/productoSelectorConStock/components/ProductoSelectorDialog";
 import {
   crearDetalleReqCompra,
   actualizarDetalleReqCompra,
@@ -309,7 +309,7 @@ export default function DetalleDialog({
           onSelect={handleProductoSelect}
           modo="ingreso"
           empresaId={empresaId}
-          clienteId={entidadComercialId}
+          propietarioStockId={entidadComercialId}
           esCustodia={false}
           familiaProductoId={familiaProductoId}
         />

@@ -47,6 +47,7 @@ export default function DatosGeneralesTab({
   preFacturaId,
   productos,
   empresaId,
+  empresas, // ⭐ AGREGAR
   toast,
   onCountChange,
   // Totales calculados
@@ -68,7 +69,7 @@ export default function DatosGeneralesTab({
     (m) => m.value === formData.monedaId,
   );
   const simboloMoneda =
-    monedaSeleccionada?.simbolo || monedaPreFactura?.simbolo || "S/";
+    monedaSeleccionada?.codigoSunat || "";
 
   return (
     <div className="fluid">
@@ -132,6 +133,23 @@ export default function DatosGeneralesTab({
               id="fechaVencimiento"
               value={formData.fechaVencimiento}
               onChange={(e) => onChange("fechaVencimiento", e.value)}
+              dateFormat="dd/mm/yy"
+              showIcon
+              disabled={!puedeEditar || readOnly}
+              inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+            />
+          </div>
+          <div style={{ flex: 0.7 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="fechaContable"
+            >
+              Fecha Contable*
+            </label>
+            <Calendar
+              id="fechaContable"
+              value={formData.fechaContable}
+              onChange={(e) => onChange("fechaContable", e.value)}
               dateFormat="dd/mm/yy"
               showIcon
               disabled={!puedeEditar || readOnly}
@@ -906,6 +924,7 @@ export default function DatosGeneralesTab({
           preFacturaId={preFacturaId}
           productos={productos}
           empresaId={empresaId}
+          empresas={empresas}
           puedeEditar={puedeEditarDetalles}
           toast={toast}
           onCountChange={onCountChange}

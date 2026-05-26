@@ -86,7 +86,9 @@ export default function PreFacturaForm({
     fechaFacturacion: defaultValues?.fechaFacturacion
       ? new Date(defaultValues.fechaFacturacion)
       : null,
-
+    fechaContable: defaultValues?.fechaContable
+      ? new Date(defaultValues.fechaContable)
+      : new Date(),
     // Cliente y direcciones - CONVERTIDOS A NUMBER PARA DROPDOWNS
     clienteId: defaultValues?.clienteId
       ? Number(defaultValues.clienteId)
@@ -271,7 +273,9 @@ export default function PreFacturaForm({
         fechaFacturacion: defaultValues?.fechaFacturacion
           ? new Date(defaultValues.fechaFacturacion)
           : null,
-
+        fechaContable: defaultValues?.fechaContable
+          ? new Date(defaultValues.fechaContable)
+          : new Date(),
         // Cliente y direcciones - CONVERTIDOS A NUMBER
         clienteId: defaultValues?.clienteId
           ? Number(defaultValues.clienteId)
@@ -696,6 +700,33 @@ export default function PreFacturaForm({
     calcularTotales();
   }, [detallesCount, porcentajeIgv, exoneradoIgv, isEdit, defaultValues?.id]);
 
+  // Calcular automáticamente porcentajeAdelanto cuando cambia montoAdelantadoCliente
+  useEffect(() => {
+    if (formData.montoAdelantadoCliente && totales.total > 0) {
+      const porcentaje =
+        (Number(formData.montoAdelantadoCliente) / totales.total) * 100;
+      setFormData((prev) => ({
+        ...prev,
+        porcentajeAdelanto: Number(porcentaje.toFixed(2)),
+      }));
+    } else if (!formData.montoAdelantadoCliente) {
+      setFormData((prev) => ({ ...prev, porcentajeAdelanto: 0 }));
+    }
+  }, [formData.montoAdelantadoCliente, totales.total]);
+
+  // Calcular automáticamente montoAdelantadoCliente cuando cambia porcentajeAdelanto
+  useEffect(() => {
+    if (formData.porcentajeAdelanto && totales.total > 0) {
+      const monto = (totales.total * Number(formData.porcentajeAdelanto)) / 100;
+      setFormData((prev) => ({
+        ...prev,
+        montoAdelantadoCliente: Number(monto.toFixed(2)),
+      }));
+    } else if (!formData.porcentajeAdelanto) {
+      setFormData((prev) => ({ ...prev, montoAdelantadoCliente: 0 }));
+    }
+  }, [formData.porcentajeAdelanto, totales.total]);
+
   const handleSubmit = () => {
     const data = {
       empresaId: formData.empresaId ? Number(formData.empresaId) : null,
@@ -708,6 +739,7 @@ export default function PreFacturaForm({
       numeroDocumento: formData.numeroDocumento,
       fechaDocumento: formData.fechaDocumento,
       fechaVencimiento: formData.fechaVencimiento,
+      fechaContable: formData.fechaContable,
       clienteId: formData.clienteId ? Number(formData.clienteId) : null,
       contactoClienteId: formData.contactoClienteId
         ? Number(formData.contactoClienteId)
@@ -778,6 +810,9 @@ export default function PreFacturaForm({
       centroCostoId: formData.centroCostoId
         ? Number(formData.centroCostoId)
         : null,
+      unidadNegocioId: formData.unidadNegocioId
+        ? Number(formData.unidadNegocioId)
+        : null,
       contratoServicioId: formData.contratoServicioId
         ? Number(formData.contratoServicioId)
         : null,
@@ -791,6 +826,12 @@ export default function PreFacturaForm({
         : null,
       nroLiquidacionFacturacion:
         formData.nroLiquidacionFacturacion?.trim() || null,
+      montoAdelantadoCliente: formData.montoAdelantadoCliente
+        ? Number(formData.montoAdelantadoCliente)
+        : null,
+      porcentajeAdelanto: formData.porcentajeAdelanto
+        ? Number(formData.porcentajeAdelanto)
+        : null,
     };
 
     // Validaciones
@@ -812,7 +853,40 @@ export default function PreFacturaForm({
       });
       return;
     }
+    if (!data.respVentasId) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar un responsable de ventas",
+      });
+      return;
+    }
 
+    if (!data.tipoProductoId) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar un tipo de producto",
+      });
+      return;
+    }
+    if (!data.formaPagoId) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar una forma de pago",
+      });
+      return;
+    }
+
+    if (!data.monedaId) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar una moneda",
+      });
+      return;
+    }
     onSubmit(data);
   };
 
@@ -1144,6 +1218,7 @@ export default function PreFacturaForm({
             preFacturaId={defaultValues?.id}
             productos={productos}
             empresaId={empresaId}
+            empresas={empresas}
             toast={toast}
             onCountChange={setDetallesCount}
             subtotal={totales.subtotal}

@@ -11,7 +11,7 @@ import { Toast } from "primereact/toast";
 import { Panel } from "primereact/panel";
 import { Tag } from "primereact/tag";
 import { Divider } from "primereact/divider";
-import ProductoSelectorDialog from "./ProductoSelectorDialog";
+import ProductoSelectorDialog from "../common/productoSelectorConStock/components/ProductoSelectorDialog";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import {
   crearDetalleMovimiento,
@@ -865,7 +865,7 @@ export default function DetalleMovimientoForm({
         modo={modo}
         esCustodia={esCustodia}
         empresaId={movimientoAlmacen?.empresaId}
-        clienteId={
+        propietarioStockId={
           esCustodia
             ? movimientoAlmacen?.entidadComercialId
             : movimientoAlmacen?.empresa?.entidadComercialId

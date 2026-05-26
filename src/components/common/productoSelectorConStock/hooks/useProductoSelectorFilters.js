@@ -52,79 +52,7 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
     catalogos.especies,
   ]);
 
-  const calcularOpcionesDinamicas = useCallback(() => {
-    if (items.length === 0) {
-      setOpcionesDinamicas({
-        familias: [],
-        subfamilias: [],
-        marcas: [],
-        procedencias: [],
-        tiposAlmacenamiento: [],
-        tiposMaterial: [],
-        unidadesMedida: [],
-        especies: [],
-        almacenes: [],
-      });
-      return;
-    }
-
-    const idsUnicos = {
-      familias: new Set(),
-      subfamilias: new Set(),
-      marcas: new Set(),
-      procedencias: new Set(),
-      tiposAlmacenamiento: new Set(),
-      tiposMaterial: new Set(),
-      unidadesMedida: new Set(),
-      especies: new Set(),
-      almacenes: new Set(),
-    };
-
-    items.forEach((item) => {
-      const prod = getProductoFromRow(item, esIngreso);
-      if (prod) {
-        if (prod.familiaId) idsUnicos.familias.add(Number(prod.familiaId));
-        if (prod.subfamiliaId) idsUnicos.subfamilias.add(Number(prod.subfamiliaId));
-        if (prod.marcaId) idsUnicos.marcas.add(Number(prod.marcaId));
-        if (prod.procedenciaId) idsUnicos.procedencias.add(Number(prod.procedenciaId));
-        if (prod.tipoAlmacenamientoId) idsUnicos.tiposAlmacenamiento.add(Number(prod.tipoAlmacenamientoId));
-        if (prod.tipoMaterialId) idsUnicos.tiposMaterial.add(Number(prod.tipoMaterialId));
-        if (prod.unidadMedidaId) idsUnicos.unidadesMedida.add(Number(prod.unidadMedidaId));
-        if (prod.especieId) idsUnicos.especies.add(Number(prod.especieId));
-      }
-      // Capturar almacenId del saldo (tanto para ingresos como egresos)
-      if (item.almacenId) {
-        idsUnicos.almacenes.add(Number(item.almacenId));
-      }
-    });
-
-    // Construir opciones de almacenes desde los items
-    const almacenesUnicos = [];
-    items.forEach((item) => {
-      if (item.almacenId && item.almacen?.descripcion) {
-        const existe = almacenesUnicos.find(a => Number(a.id) === Number(item.almacenId));
-        if (!existe) {
-          almacenesUnicos.push({
-            id: item.almacenId,
-            descripcion: item.almacen.descripcion
-          });
-        }
-      }
-    });
-
-    setOpcionesDinamicas({
-      familias: catalogosEstables.familias.filter((f) => idsUnicos.familias.has(Number(f.id))),
-      subfamilias: catalogosEstables.subfamilias.filter((s) => idsUnicos.subfamilias.has(Number(s.id))),
-      marcas: catalogosEstables.marcas.filter((m) => idsUnicos.marcas.has(Number(m.id))),
-      procedencias: catalogosEstables.paises.filter((p) => idsUnicos.procedencias.has(Number(p.id))),
-      tiposAlmacenamiento: catalogosEstables.tiposAlmacenamiento.filter((t) => idsUnicos.tiposAlmacenamiento.has(Number(t.id))),
-      tiposMaterial: catalogosEstables.tiposMaterial.filter((t) => idsUnicos.tiposMaterial.has(Number(t.id))),
-      unidadesMedida: catalogosEstables.unidadesMedida.filter((u) => idsUnicos.unidadesMedida.has(Number(u.id))),
-      especies: catalogosEstables.especies.filter((e) => idsUnicos.especies.has(Number(e.id))),
-      almacenes: almacenesUnicos.sort((a, b) => a.descripcion.localeCompare(b.descripcion)),
-    });
-  }, [items, esIngreso, catalogosEstables]);
-
+  // Aplicar filtros primero
   const aplicarFiltros = useCallback(() => {
     let filtered = [...items];
 
@@ -206,6 +134,7 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
     }
 
     setFilteredItems(filtered);
+    return filtered;
   }, [
     items,
     familiaId,
@@ -221,15 +150,111 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
     esIngreso,
   ]);
 
-  // Calcular opciones dinámicas cuando cambian items o catálogos
-  useEffect(() => {
-    calcularOpcionesDinamicas();
-  }, [calcularOpcionesDinamicas]);
+  // Calcular opciones dinámicas basadas en items FILTRADOS
+  const calcularOpcionesDinamicas = useCallback((itemsBase) => {
+    if (itemsBase.length === 0) {
+      setOpcionesDinamicas({
+        familias: [],
+        subfamilias: [],
+        marcas: [],
+        procedencias: [],
+        tiposAlmacenamiento: [],
+        tiposMaterial: [],
+        unidadesMedida: [],
+        especies: [],
+        almacenes: [],
+      });
+      return;
+    }
+
+    const idsUnicos = {
+      familias: new Set(),
+      subfamilias: new Set(),
+      marcas: new Set(),
+      procedencias: new Set(),
+      tiposAlmacenamiento: new Set(),
+      tiposMaterial: new Set(),
+      unidadesMedida: new Set(),
+      especies: new Set(),
+      almacenes: new Set(),
+    };
+
+    itemsBase.forEach((item) => {
+      const prod = getProductoFromRow(item, esIngreso);
+      if (prod) {
+        if (prod.familiaId) idsUnicos.familias.add(Number(prod.familiaId));
+        if (prod.subfamiliaId) idsUnicos.subfamilias.add(Number(prod.subfamiliaId));
+        if (prod.marcaId) idsUnicos.marcas.add(Number(prod.marcaId));
+        if (prod.procedenciaId) idsUnicos.procedencias.add(Number(prod.procedenciaId));
+        if (prod.tipoAlmacenamientoId) idsUnicos.tiposAlmacenamiento.add(Number(prod.tipoAlmacenamientoId));
+        if (prod.tipoMaterialId) idsUnicos.tiposMaterial.add(Number(prod.tipoMaterialId));
+        if (prod.unidadMedidaId) idsUnicos.unidadesMedida.add(Number(prod.unidadMedidaId));
+        if (prod.especieId) idsUnicos.especies.add(Number(prod.especieId));
+      }
+      if (item.almacenId) {
+        idsUnicos.almacenes.add(Number(item.almacenId));
+      }
+    });
+
+    // Construir opciones de almacenes desde los items
+    const almacenesUnicos = [];
+    itemsBase.forEach((item) => {
+      if (item.almacenId && item.almacen?.nombre) {
+        const existe = almacenesUnicos.find(a => Number(a.id) === Number(item.almacenId));
+        if (!existe) {
+          almacenesUnicos.push({
+            id: item.almacenId,
+            descripcion: item.almacen.nombre
+          });
+        }
+      }
+    });
+
+    const familiasDisponibles = catalogosEstables.familias.filter((f) => idsUnicos.familias.has(Number(f.id)));
+    
+    const opcionesCalculadas = {
+      familias: familiasDisponibles,
+      subfamilias: catalogosEstables.subfamilias.filter((s) => idsUnicos.subfamilias.has(Number(s.id))),
+      marcas: catalogosEstables.marcas.filter((m) => idsUnicos.marcas.has(Number(m.id))),
+      procedencias: catalogosEstables.paises.filter((p) => idsUnicos.procedencias.has(Number(p.id))),
+      tiposAlmacenamiento: catalogosEstables.tiposAlmacenamiento.filter((t) => idsUnicos.tiposAlmacenamiento.has(Number(t.id))),
+      tiposMaterial: catalogosEstables.tiposMaterial.filter((t) => idsUnicos.tiposMaterial.has(Number(t.id))),
+      unidadesMedida: catalogosEstables.unidadesMedida.filter((u) => idsUnicos.unidadesMedida.has(Number(u.id))),
+      especies: catalogosEstables.especies.filter((e) => idsUnicos.especies.has(Number(e.id))),
+      almacenes: almacenesUnicos.sort((a, b) => a.descripcion.localeCompare(b.descripcion)),
+    };
+    
+    setOpcionesDinamicas(opcionesCalculadas);
+
+    // PRESELECCIONAR MERCADERIA INMEDIATAMENTE solo si no hay filtro
+    if (!familiaId && familiasDisponibles.length > 0) {
+      const mercaderia = familiasDisponibles.find(f => 
+        f.nombre?.toUpperCase().includes('MERCADERIA') || 
+        f.nombre?.toUpperCase().includes('MERCADERÍA')
+      );
+      if (mercaderia) {
+        setFamiliaId(Number(mercaderia.id));
+      }
+    }
+  }, [esIngreso, catalogosEstables, familiaId]);
 
   // Aplicar filtros cuando cambian
   useEffect(() => {
-    aplicarFiltros();
-  }, [aplicarFiltros]);
+    const filtered = aplicarFiltros();
+    
+    // Calcular opciones dinámicas basadas en:
+    // - Si hay filtro de familia: items filtrados por familia (para cascada)
+    // - Si no hay filtro: todos los items
+    let itemsParaOpciones = items;
+    if (familiaId) {
+      itemsParaOpciones = items.filter((item) => {
+        const prod = getProductoFromRow(item, esIngreso);
+        return Number(prod?.familiaId) === Number(familiaId);
+      });
+    }
+    
+    calcularOpcionesDinamicas(itemsParaOpciones);
+  }, [items, familiaId, subfamiliaId, marcaId, procedenciaId, tipoAlmacenamientoId, tipoMaterialId, unidadMedidaId, especieId, almacenId, busqueda, esIngreso, aplicarFiltros, calcularOpcionesDinamicas]);
 
   const limpiarFiltros = () => {
     setFamiliaId(null);

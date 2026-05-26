@@ -67,6 +67,11 @@ export default function OrdenCompraForm({
       ? new Date(defaultValues.fechaDocumento)
       : new Date(),
   );
+  const [fechaContable, setFechaContable] = useState(
+    defaultValues?.fechaContable
+      ? new Date(defaultValues.fechaContable)
+      : new Date(),
+  );
   const [requerimientoCompraId, setRequerimientoCompraId] = useState(
     defaultValues?.requerimientoCompraId || null,
   );
@@ -445,6 +450,7 @@ export default function OrdenCompraForm({
       numCorreDoc: setNumCorreDoc,
       numeroDocumento: setNumeroDocumento,
       fechaDocumento: setFechaDocumento,
+      fechaContable: setFechaContable, // ← AGREGAR ESTA LÍNEA
       requerimientoCompraId: setRequerimientoCompraId,
       proveedorId: setProveedorId,
       formaPagoId: setFormaPagoId,
@@ -484,6 +490,7 @@ export default function OrdenCompraForm({
       numCorreDoc,
       numeroDocumento,
       fechaDocumento,
+      fechaContable,
       requerimientoCompraId: requerimientoCompraId
         ? Number(requerimientoCompraId)
         : null,
@@ -520,11 +527,29 @@ export default function OrdenCompraForm({
       esParticionada: esParticionada || false,
     };
 
-    if (!data.empresaId || !data.proveedorId) {
+    if (!data.empresaId) {
       toast.current.show({
         severity: "warn",
         summary: "Validación",
-        detail: "Complete los campos obligatorios (Empresa, Proveedor)",
+        detail: "Debe seleccionar una empresa",
+      });
+      return;
+    }
+
+    if (!data.proveedorId) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar un proveedor",
+      });
+      return;
+    }
+
+    if (!data.tipoDocumentoId) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar un tipo de documento",
       });
       return;
     }
@@ -600,6 +625,7 @@ export default function OrdenCompraForm({
     numCorreDoc,
     numeroDocumento,
     fechaDocumento,
+    fechaContable, // ← AGREGAR ESTA LÍNEA
     requerimientoCompraId,
     proveedorId,
     formaPagoId,

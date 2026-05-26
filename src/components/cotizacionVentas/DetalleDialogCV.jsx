@@ -19,7 +19,7 @@ import { Panel } from "primereact/panel";
 import { Divider } from "primereact/divider";
 import { Badge } from "primereact/badge";
 import { Message } from "primereact/message";
-import ProductoSelectorDialog from "../movimientoAlmacen/ProductoSelectorDialog";
+import ProductoSelectorDialog from "../common/productoSelectorConStock/components/ProductoSelectorDialog";
 import {
   crearDetalleCotizacionVentas,
   actualizarDetalleCotizacionVentas,
@@ -1064,9 +1064,9 @@ export default function DetalleDialogCV({
           onSelect={handleProductoSelect}
           modo="egreso"
           empresaId={empresaId}
-          clienteId={entidadComercialId}
+          propietarioStockId={entidadComercialId}
           esCustodia={false}
-          familiaProductoId={familiaProductoId} // ✅ AGREGAR ESTA LÍNEA
+          familiaProductoId={familiaProductoId}
         />
 
         {/* SECCIÓN: CANTIDADES Y PESOS */}

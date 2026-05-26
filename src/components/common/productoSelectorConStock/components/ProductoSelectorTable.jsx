@@ -28,6 +28,8 @@ export const ProductoSelectorTable = ({
     <DataTable
       value={items}
       loading={loading}
+      stripedRows
+      showGridlines
       paginator
       rows={10}
       rowsPerPageOptions={[10, 25, 50]}
@@ -41,28 +43,28 @@ export const ProductoSelectorTable = ({
       <Column
         field="id"
         header="ID"
-        style={{ width: "80px" }}
+        style={{ width: "80px", verticalAlign: "top" }}
         body={(rowData) => (esIngreso ? rowData.id : rowData.productoId)}
       />
       <Column
         header="Producto"
         body={(rowData) => productoTemplate(rowData, esIngreso)}
-        style={{ minWidth: "300px" }}
-      />
-      <Column
-        header="Unidad"
-        body={(rowData) => unidadMedidaTemplate(rowData, esIngreso)}
-        style={{ width: "120px" }}
+        style={{ minWidth: "300px", verticalAlign: "top" }}
       />
       <Column
         header={esIngreso ? "Stock Disponible" : "Stock"}
         body={(rowData) => stockTemplate(rowData, esIngreso)}
-        style={{ width: "150px" }}
+        style={{ width: "150px", verticalAlign: "top" }}
+      />
+      <Column
+        header="Unidad"
+        body={(rowData) => unidadMedidaTemplate(rowData, esIngreso)}
+        style={{ width: "200px", verticalAlign: "top" }}
       />
       <Column
         header="Acciones"
         body={(rowData) => accionesTemplate(rowData, onSelect)}
-        style={{ width: "150px", textAlign: "center" }}
+        style={{ width: "150px", textAlign: "center", verticalAlign: "top" }}
       />
     </DataTable>
   );

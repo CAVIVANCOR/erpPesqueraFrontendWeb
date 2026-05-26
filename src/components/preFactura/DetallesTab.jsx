@@ -7,6 +7,7 @@ import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import { InputNumber } from "primereact/inputnumber";
 import { confirmDialog } from "primereact/confirmdialog";
+import ProductoSelectorDialog from "../common/productoSelectorConStock/components/ProductoSelectorDialog";
 import {
   getDetallesPreFactura,
   crearDetallePreFactura,
@@ -18,6 +19,7 @@ export default function DetallesTab({
   preFacturaId,
   productos,
   empresaId,
+  empresas,
   puedeEditar,
   toast,
   onCountChange,
@@ -29,10 +31,16 @@ export default function DetallesTab({
   monedaId = null,
   monedas = [],
 }) {
+  // Obtener entidadComercialId de la empresa seleccionada
+  const empresaSeleccionada = empresas?.find(
+    (e) => Number(e.id) === Number(empresaId),
+  );
+  const clienteId = empresaSeleccionada?.entidadComercialId || null;
   const [detalles, setDetalles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [editando, setEditando] = useState(false);
+  const [showProductoSelector, setShowProductoSelector] = useState(false); // ⭐ NUEVO
   const [detalleActual, setDetalleActual] = useState({
     productoId: null,
     cantidad: 1,
@@ -108,6 +116,16 @@ export default function DetallesTab({
       cantidad: 1,
       precioUnitario: 0,
     });
+  };
+
+  const handleProductoSeleccionado = (productoData) => {
+    // productoData viene de ProductoSelectorDialog
+    setDetalleActual({
+      ...detalleActual,
+      productoId: Number(productoData.productoId),
+      precioUnitario: Number(productoData.precioUnitario || 0),
+    });
+    setShowProductoSelector(false);
   };
 
   const handleGuardar = async () => {
@@ -221,7 +239,7 @@ export default function DetallesTab({
 
   // Filtrar productos por empresaId
   const productosFiltrados = productos.filter(
-    (p) => Number(p.empresaId) === Number(empresaId)
+    (p) => Number(p.empresaId) === Number(empresaId),
   );
 
   const productosOptions = productosFiltrados.map((p) => ({
@@ -234,7 +252,10 @@ export default function DetallesTab({
     return (
       <div>
         <div style={{ fontWeight: "500" }}>
-          {rowData.producto?.descripcionArmada || rowData.producto?.descripcion || rowData.producto?.nombre || "N/A"}
+          {rowData.producto?.descripcionArmada ||
+            rowData.producto?.descripcion ||
+            rowData.producto?.nombre ||
+            "N/A"}
         </div>
         <div style={{ fontSize: "0.85rem", color: "#666" }}>
           Código: {rowData.producto?.codigo || "N/A"}
@@ -358,8 +379,8 @@ export default function DetallesTab({
               !preFacturaId
                 ? "Debe guardar la pre-factura primero"
                 : readOnly
-                ? "Modo solo lectura"
-                : ""
+                  ? "Modo solo lectura"
+                  : ""
             }
           />
         </div>
@@ -400,9 +421,7 @@ export default function DetallesTab({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={{ fontWeight: "bold", color: "#2196F3" }}>
-            TOTAL
-          </label>
+          <label style={{ fontWeight: "bold", color: "#2196F3" }}>TOTAL</label>
           <InputNumber
             value={total || 0}
             mode="currency"
@@ -475,17 +494,24 @@ export default function DetallesTab({
         <div className="p-fluid">
           <div style={{ marginBottom: "1rem" }}>
             <label htmlFor="productoId">Producto *</label>
-            <Dropdown
-              id="productoId"
-              value={detalleActual.productoId}
-              options={productosOptions}
-              onChange={(e) =>
-                setDetalleActual({ ...detalleActual, productoId: e.value })
+            <Button
+              label={
+                detalleActual.productoId
+                  ? productos.find(
+                      (p) => Number(p.id) === Number(detalleActual.productoId),
+                    )?.nombre || "Seleccionar Producto"
+                  : "Seleccionar Producto"
               }
-              placeholder="Seleccionar producto"
-              filter
+              icon="pi pi-search"
+              onClick={() => setShowProductoSelector(true)}
               disabled={loading || !empresaId}
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
+              style={{
+                width: "100%",
+                justifyContent: "flex-start",
+                backgroundColor: "#2196F3",
+                borderColor: "#2196F3",
+                fontWeight: "bold",
+              }}
             />
           </div>
 
@@ -551,7 +577,7 @@ export default function DetallesTab({
                     maximumFractionDigits: 2,
                   }).format(
                     Number(detalleActual.cantidad) *
-                      Number(detalleActual.precioUnitario)
+                      Number(detalleActual.precioUnitario),
                   )}
                 </span>
               </div>
@@ -559,6 +585,17 @@ export default function DetallesTab({
           )}
         </div>
       </Dialog>
+      {/* Selector de Productos Avanzado */}
+      <ProductoSelectorDialog
+        visible={showProductoSelector}
+        onHide={() => setShowProductoSelector(false)}
+        modo="egreso"
+        esCustodia={false}
+        empresaId={empresaId}
+        propietarioStockId={clienteId}
+        almacenId={null}
+        onSelect={handleProductoSeleccionado}
+      />
     </div>
   );
 }

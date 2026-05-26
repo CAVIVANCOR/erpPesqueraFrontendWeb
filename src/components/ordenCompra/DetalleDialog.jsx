@@ -7,7 +7,7 @@ import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Panel } from "primereact/panel";
 import { Divider } from "primereact/divider";
-import ProductoSelectorDialog from "../movimientoAlmacen/ProductoSelectorDialog";
+import ProductoSelectorDialog from "../common/productoSelectorConStock/components/ProductoSelectorDialog";
 import {
   crearDetalleOrdenCompra,
   actualizarDetalleOrdenCompra,
@@ -240,7 +240,7 @@ export default function DetalleDialog({
           onSelect={handleProductoSelect}
           modo="ingreso"
           empresaId={empresaId}
-          clienteId={entidadComercialId}
+          propietarioStockId={entidadComercialId}
           esCustodia={false}
         />
         {/* Primera fila: Cantidad y Unidad */}

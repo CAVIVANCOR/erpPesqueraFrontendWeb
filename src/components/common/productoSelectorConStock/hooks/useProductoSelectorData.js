@@ -11,11 +11,12 @@ import { getSaldosProductoClienteConFiltros } from "../../../../api/saldosProduc
 export const useProductoSelectorData = ({
   visible,
   empresaId,
-  clienteId,
+  propietarioStockId,
   almacenId,
   modo,
   esCustodia,
-  familiaProductoId = null, // ✅ CAMBIAR: Recibir familiaId en lugar de tipoProductoId
+  familiaProductoId = null,
+  soloConSaldo = true,
   toast,
 }) => {
   const [items, setItems] = useState([]);
@@ -23,10 +24,19 @@ export const useProductoSelectorData = ({
   const esIngreso = modo === "ingreso";
 
   useEffect(() => {
-    if (visible && empresaId && clienteId) {
+    if (visible && empresaId && propietarioStockId) {
       cargarDatos();
     }
-  }, [visible, empresaId, clienteId, almacenId, modo, esCustodia, familiaProductoId]);
+  }, [
+    visible,
+    empresaId,
+    propietarioStockId,
+    almacenId,
+    modo,
+    esCustodia,
+    familiaProductoId,
+    soloConSaldo,
+  ]);
 
   /**
    * Carga datos con sistema de 3 niveles profesional:
@@ -35,19 +45,22 @@ export const useProductoSelectorData = ({
    * Nivel 3: Stock con variables (al hacer clic en almacén)
    */
   const cargarDatos = async () => {
-    if (!empresaId || !clienteId) {
+    
+    if (!empresaId || !propietarioStockId) {
+      console.log("❌ [cargarDatos] Faltan parámetros requeridos");
       return;
     }
 
     setLoading(true);
     try {
-      if (esIngreso) {
+      // ⭐ NUEVO: Si es ingreso O si es egreso sin filtro de saldo, cargar todos los productos
+      if (esIngreso || !soloConSaldo) {
         await cargarProductosConStockConsolidado();
       } else {
+        // Solo cargar productos con saldo cuando soloConSaldo=true
         await cargarProductosConStock();
       }
     } catch (error) {
-      console.error("Error al cargar datos:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -60,38 +73,38 @@ export const useProductoSelectorData = ({
 
   /**
    * NIVEL 1: Carga productos con stock consolidado de todos los almacenes
-   * Para mercadería propia: Producto.clienteId = Empresa.entidadComercialId
-   * Para mercadería en custodia: Producto.clienteId = clienteId
+   * Para mercadería propia: Producto.propietarioStockId = Empresa.entidadComercialId
+   * Para mercadería en custodia: Producto.propietarioStockId = propietarioStockId
    */
-  const cargarProductosConStockConsolidado = async () => {    
+  const cargarProductosConStockConsolidado = async () => {
+    
     // 1. Cargar productos activos de la empresa
     const filtrosProductos = {
       empresaId,
-      clienteId,
+      clienteId: propietarioStockId,
       cesado: false,
     };
     const productosData = await getProductos(filtrosProductos);
 
-       // 1.1. Filtrar productos según configuración
+    // 1.1. Filtrar productos según configuración
     let productosFiltrados = productosData;
 
     if (familiaProductoId) {
-      
       // MODO INGRESO: Mostrar TODOS los productos de la familia (sin filtro de kardex)
       // El filtro de kardex solo aplica en EGRESO
       productosFiltrados = productosData.filter(
-        (producto) => Number(producto.subfamilia?.familiaId) === Number(familiaProductoId),
+        (producto) =>
+          Number(producto.subfamilia?.familiaId) === Number(familiaProductoId),
       );
     } else {
       // Sin familia especificada: mostrar todos los productos
       productosFiltrados = productosData;
     }
-    
 
     // 2. Cargar saldos generales desde SaldosProductoCliente (consolidado por producto)
     const filtrosSaldos = {
       empresaId,
-      clienteId,
+      clienteId: propietarioStockId,
       custodia: esCustodia,
     };
     const saldosData = await getSaldosProductoClienteConFiltros(filtrosSaldos);
@@ -121,11 +134,14 @@ export const useProductoSelectorData = ({
           : 0;
 
       return {
-        ...producto,
-        stockDisponible: stockTotal,
-        pesoDisponible: pesoTotal,
+        producto: producto,
+        productoId: producto.id,
+        saldoCantidad: stockTotal,
+        saldoPeso: pesoTotal,
         costoUnitarioPromedio: costoPromedio,
         cantidadAlmacenes: saldosProducto.length,
+        stockDisponible: stockTotal,
+        pesoDisponible: pesoTotal,
       };
     });
 
@@ -139,20 +155,18 @@ export const useProductoSelectorData = ({
     
     // CASO 1: Si es familia SERVICIOS (5), cargar desde catálogo de productos
     if (familiaProductoId && Number(familiaProductoId) === 5) {
-      
       const filtrosProductos = {
         empresaId,
-        clienteId,
+        clienteId: propietarioStockId,
         cesado: false,
       };
       const productosData = await getProductos(filtrosProductos);
-      
+
       // Filtrar solo productos de familia SERVICIOS
       const servicios = productosData.filter(
-        (producto) => Number(producto.subfamilia?.familiaId) === 5
+        (producto) => Number(producto.subfamilia?.familiaId) === 5,
       );
-      
-      
+
       // Convertir a formato compatible con saldos (sin stock)
       const serviciosFormateados = servicios.map((producto) => ({
         producto: producto,
@@ -162,25 +176,26 @@ export const useProductoSelectorData = ({
         costoUnitarioPromedio: 0,
         // Campos necesarios para compatibilidad
         empresaId,
-        clienteId,
+        clienteId: propietarioStockId,
         almacenId,
       }));
-      
+
       setItems(serviciosFormateados);
       return;
     }
-    
+
     // CASO 2: Productos físicos con saldo (comportamiento normal)
-    
+
     const filtros = {
       empresaId,
       almacenId,
-      clienteId,
+      clienteId: propietarioStockId,
       custodia: esCustodia,
       soloConSaldo: true,
     };
-    
+
     let saldosData = await getSaldosProductoClienteConFiltros(filtros);
+    
     // CASO 3: Si hay filtro de familia (que NO sea SERVICIOS), aplicar filtro
     if (familiaProductoId && Number(familiaProductoId) !== 5) {
       saldosData = saldosData.filter((saldo) => {
@@ -188,6 +203,7 @@ export const useProductoSelectorData = ({
         return Number(familiaId) === Number(familiaProductoId);
       });
     }
+    
     setItems(saldosData);
   };
 

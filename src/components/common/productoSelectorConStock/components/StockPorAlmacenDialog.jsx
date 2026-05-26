@@ -8,8 +8,8 @@ import { ColumnGroup } from "primereact/columngroup";
 import { Row } from "primereact/row";
 import { Toast } from "primereact/toast";
 import { Tag } from "primereact/tag";
-import { getSaldosProductoClienteConFiltros } from "../../api/saldosProductoCliente";
-import StockDetalladoDialog from "./StockDetalladoDialog";
+import { getSaldosProductoClienteConFiltros } from "../../../../api/saldosProductoCliente";
+import StockDetalladoDialog from "../../../movimientoAlmacen/StockDetalladoDialog";
 
 /**
  * Componente para mostrar stock de un producto por almacén
@@ -17,7 +17,7 @@ import StockDetalladoDialog from "./StockDetalladoDialog";
  * @param {function} onHide - Callback al cerrar
  * @param {Object} producto - Producto seleccionado
  * @param {number} empresaId - ID de la empresa
- * @param {number} clienteId - ID del cliente
+ * @param {number} propietarioStockId - ID del propietario del stock
  * @param {boolean} esCustodia - Si es mercadería en custodia
  */
 export default function StockPorAlmacenDialog({
@@ -25,7 +25,7 @@ export default function StockPorAlmacenDialog({
   onHide,
   producto,
   empresaId,
-  clienteId,
+  propietarioStockId,
   esCustodia,
 }) {
   const toast = useRef(null);
@@ -40,20 +40,20 @@ export default function StockPorAlmacenDialog({
     if (visible && producto) {
       cargarStockPorAlmacen();
     }
-  }, [visible, producto, empresaId, clienteId, esCustodia]);
+  }, [visible, producto, empresaId, propietarioStockId, esCustodia]);
 
   /**
    * Carga stock del producto agrupado por almacén
    */
   const cargarStockPorAlmacen = async () => {
-    if (!empresaId || !clienteId || !producto?.id) return;
+    if (!empresaId || !propietarioStockId || !producto?.id) return;
 
     setLoading(true);
     try {
       const filtros = {
         empresaId,
         productoId: producto.id,
-        clienteId,
+        clienteId: propietarioStockId,
         custodia: esCustodia,
         soloConSaldo: true, // Solo almacenes con stock
       };
@@ -329,7 +329,7 @@ export default function StockPorAlmacenDialog({
           almacen={almacenSeleccionado?.almacen}
           empresaId={empresaId}
           almacenId={almacenSeleccionado?.almacenId}
-          clienteId={clienteId}
+          clienteId={propietarioStockId}
           esCustodia={esCustodia}
         />
       )}

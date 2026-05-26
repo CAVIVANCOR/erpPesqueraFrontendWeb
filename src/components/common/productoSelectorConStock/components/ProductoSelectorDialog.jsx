@@ -2,25 +2,25 @@
 import React, { useState, useRef } from "react";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
-import { crearProducto } from "../../api/producto";
-import { getEmpresas } from "../../api/empresa";
-import { getEntidadesComerciales } from "../../api/entidadComercial";
-import { getColores } from "../../api/color";
-import { getEstadosMultiFuncion } from "../../api/estadoMultiFuncion";
-import { getUnidadesMedida } from "../../api/unidadMedida";
+import { crearProducto } from "../../../../api/producto";
+import { getEmpresas } from "../../../../api/empresa";
+import { getEntidadesComerciales } from "../../../../api/entidadComercial";
+import { getColores } from "../../../../api/color";
+import { getEstadosMultiFuncion } from "../../../../api/estadoMultiFuncion";
+import { getUnidadesMedida } from "../../../../api/unidadMedida";
 import StockPorAlmacenDialog from "./StockPorAlmacenDialog";
-import ProductoForm from "../producto/ProductoForm";
+import ProductoForm from "../../../producto/ProductoForm";
 
 // Hooks personalizados
-import { useCatalogos } from "./productoSelector/hooks/useCatalogos";
-import { useProductoSelectorData } from "./productoSelector/hooks/useProductoSelectorData";
-import { useProductoSelectorFilters } from "./productoSelector/hooks/useProductoSelectorFilters";
-import { usePermissions } from "../../hooks/usePermissions";
+import { useCatalogos } from "../hooks/useCatalogos";
+import { useProductoSelectorData } from "../hooks/useProductoSelectorData";
+import { useProductoSelectorFilters } from "../hooks/useProductoSelectorFilters";
+import { usePermissions } from "../../../../hooks/usePermissions";
 
 // Componentes modularizados
-import { ProductoSelectorHeader } from "./productoSelector/components/ProductoSelectorHeader";
-import { ProductoSelectorFilters } from "./productoSelector/components/ProductoSelectorFilters";
-import { ProductoSelectorTable } from "./productoSelector/components/ProductoSelectorTable";
+import { ProductoSelectorHeader } from "./ProductoSelectorHeader";
+import { ProductoSelectorCarouselFilters } from "./ProductoSelectorCarouselFilters";
+import { ProductoSelectorTable } from "./ProductoSelectorTable";
 
 /**
  * Componente para selección de productos o saldos
@@ -29,10 +29,12 @@ import { ProductoSelectorTable } from "./productoSelector/components/ProductoSel
  * @param {string} modo - "ingreso" | "egreso" | "transferencia"
  * @param {boolean} esCustodia - Si es mercadería en custodia
  * @param {number} empresaId - ID de la empresa
- * @param {number} clienteId - ID del cliente (empresa.entidadComercialId o entidadComercialId)
+ * @param {number} propietarioStockId - ID del propietario del stock (empresa.entidadComercialId o entidadComercialId)
  * @param {number} almacenId - ID del almacén (para egresos/transferencias)
  * @param {number} estadoMercaderiaDefault - Estado de mercadería por defecto (6 = LIBERADO)
  * @param {number} estadoCalidadDefault - Estado de calidad por defecto (10 = CALIDAD A)
+ * @param {number|number[]|null} familiaProductoId - Familia(s) de producto fija(s) o null para permitir selección
+ * @param {number|null} filtroFamiliaInicial - Familia inicial seleccionada cuando familiaProductoId es null
  * @param {function} onSelect - Callback al seleccionar (data) => void
  */
 export default function ProductoSelectorDialog({
@@ -41,25 +43,29 @@ export default function ProductoSelectorDialog({
   modo = "ingreso",
   esCustodia = false,
   empresaId,
-  clienteId,
+  propietarioStockId,
   almacenId,
   estadoMercaderiaDefault = 6,
   estadoCalidadDefault = 10,
-  familiaProductoId = null, // ✅ CAMBIAR: Recibir familiaId
+  familiaProductoId = null,
+  filtroFamiliaInicial = null,
   onSelect,
 }) {
   const toast = useRef(null);
   const esIngreso = modo === "ingreso";
+  const [soloConSaldo, setSoloConSaldo] = useState(modo !== "ingreso");
+  
   // Custom Hooks
   const catalogos = useCatalogos(visible, toast);
   const { items, loading, cargarDatos } = useProductoSelectorData({
     visible,
     empresaId,
-    clienteId,
+    propietarioStockId,
     almacenId,
     modo,
     esCustodia,
-    familiaProductoId, // ✅ PASAR familiaId
+    familiaProductoId,
+    soloConSaldo,
     toast,
   });
 
@@ -78,10 +84,10 @@ export default function ProductoSelectorDialog({
     filteredItems,
     opcionesDinamicas,
     limpiarFiltros,
-  } = useProductoSelectorFilters(items, catalogos, modo);
+  } = useProductoSelectorFilters(items, catalogos, modo, filtroFamiliaInicial);
 
   // Permisos para crear productos
-  const permisosProducto = usePermissions('productos');
+  const permisosProducto = usePermissions("productos");
 
   // Estados locales
   const [showProductoForm, setShowProductoForm] = useState(false);
@@ -205,12 +211,14 @@ export default function ProductoSelectorDialog({
         (e) => Number(e.tipoProvieneDeId) === 2 && !e.cesado,
       );
       setEstadosIniciales(estadosProducto);
-      
+
       // Buscar unidad métrica por defecto (MILIMETROS o la primera disponible)
-      const unidadMetricaDefault = unidadesMetricasData.find(
-        (u) => u.simbolo === "MM" || u.nombre?.toUpperCase().includes("MILIMETRO")
-      ) || unidadesMetricasData[0];
-      
+      const unidadMetricaDefault =
+        unidadesMetricasData.find(
+          (u) =>
+            u.simbolo === "MM" || u.nombre?.toUpperCase().includes("MILIMETRO"),
+        ) || unidadesMetricasData[0];
+
       setUnidadesMetricas(unidadesMetricasData);
       setShowProductoForm(true);
     } catch (error) {
@@ -227,27 +235,35 @@ export default function ProductoSelectorDialog({
    * Maneja creación de producto
    */
   const handleProductoCreado = async (nuevoProducto) => {
-    
     try {
       const resultado = await crearProducto(nuevoProducto);
-      
+
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
         detail: "Producto creado correctamente",
         life: 3000,
       });
-      
+
       setShowProductoForm(false);
       await cargarDatos();
     } catch (error) {
-      console.error("❌ [handleProductoCreado] Error al crear producto:", error);
-      console.error("❌ [handleProductoCreado] Detalles del error:", error.response?.data);
-      
+      console.error(
+        "❌ [handleProductoCreado] Error al crear producto:",
+        error,
+      );
+      console.error(
+        "❌ [handleProductoCreado] Detalles del error:",
+        error.response?.data,
+      );
+
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.message || error.message || "Error al crear producto",
+        detail:
+          error.response?.data?.message ||
+          error.message ||
+          "Error al crear producto",
         life: 5000,
       });
     }
@@ -261,14 +277,18 @@ export default function ProductoSelectorDialog({
         esCustodia={esCustodia}
         filteredItemsCount={filteredItems.length}
         esIngreso={esIngreso}
+        soloConSaldo={soloConSaldo}
+        onToggleSaldo={() => {
+          setSoloConSaldo(!soloConSaldo);
+        }}
       />
-      <ProductoSelectorFilters
+      <ProductoSelectorCarouselFilters
         filtros={filtros}
         opcionesDinamicas={opcionesDinamicas}
         onFiltroChange={handleFiltroChange}
         onLimpiar={limpiarFiltros}
-        onNuevoProducto={handleNuevoProducto}
-        esIngreso={esIngreso}
+        familiaProductoId={familiaProductoId}
+        filtroFamiliaInicial={filtroFamiliaInicial}
       />
     </div>
   );
@@ -305,7 +325,7 @@ export default function ProductoSelectorDialog({
           maximizable
         >
           <ProductoForm
-            producto={{ empresaId, clienteId }}
+            producto={{ empresaId, propietarioStockId }}
             familias={catalogos.familias}
             subfamilias={catalogos.subfamilias}
             unidadesMedida={catalogos.unidadesMedida}
@@ -338,7 +358,7 @@ export default function ProductoSelectorDialog({
           onHide={() => setShowStockPorAlmacen(false)}
           producto={productoSeleccionado}
           empresaId={empresaId}
-          clienteId={clienteId}
+          propietarioStockId={propietarioStockId}
           esCustodia={esCustodia}
           estadoMercaderiaDefault={estadoMercaderiaDefault}
           estadoCalidadDefault={estadoCalidadDefault}

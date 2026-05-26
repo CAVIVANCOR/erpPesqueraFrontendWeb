@@ -38,10 +38,10 @@ export const formatDate = (date) => {
  * @param {Object} params - Parámetros
  * @returns {Object} Filtros construidos
  */
-export const buildFiltrosProductos = ({ empresaId, clienteId }) => {
+export const buildFiltrosProductos = ({ empresaId, propietarioStockId }) => {
   return {
     empresaId,
-    clienteId,
+    clienteId: propietarioStockId,
     cesado: false,
   };
 };
@@ -51,10 +51,10 @@ export const buildFiltrosProductos = ({ empresaId, clienteId }) => {
  * @param {Object} params - Parámetros
  * @returns {Object} Filtros construidos
  */
-export const buildFiltrosSaldos = ({ empresaId, clienteId, almacenId, esCustodia, soloConSaldo = false }) => {
+export const buildFiltrosSaldos = ({ empresaId, propietarioStockId, almacenId, esCustodia, soloConSaldo = false }) => {
   const filtros = {
     empresaId,
-    clienteId,
+    clienteId: propietarioStockId,
     custodia: esCustodia,
   };
 

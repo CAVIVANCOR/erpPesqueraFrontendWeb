@@ -93,7 +93,8 @@ const PreFactura = ({ ruta }) => {
   const [selectedPreFactura, setSelectedPreFactura] = useState(null);
 
   // Filtrado automático por Unidad de Negocio
-  const { datosFiltrados: preFacturasFiltradas } = useUnidadNegocioFilter(preFacturas);
+  const { datosFiltrados: preFacturasFiltradas } =
+    useUnidadNegocioFilter(preFacturas);
   const [isEditing, setIsEditing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showCotizacionDialog, setShowCotizacionDialog] = useState(false); // ⬅️ AGREGAR
@@ -172,13 +173,35 @@ const PreFactura = ({ ruta }) => {
       );
       setEstadosDoc(estadosDocFiltrados);
 
-      // Normalizar pre-facturas agregando estadoDoc manualmente
-      const preFacturasNormalizadas = preFacturasData.map((pf) => ({
-        ...pf,
-        estadoDoc: estadosDocFiltrados.find(
-          (e) => Number(e.id) === Number(pf.estadoId),
-        ),
+      // Normalizar IDs a números en unidadesNegocioData y tiposDocData
+      const unidadesNegocioNormalizadas = unidadesNegocioData.map((un) => ({
+        ...un,
+        id: Number(un.id),
       }));
+
+      const tiposDocNormalizados = tiposDocData.map((td) => ({
+        ...td,
+        id: Number(td.id),
+      }));
+
+      const preFacturasNormalizadas = preFacturasData.map((pf) => {
+        const unidadNegocio = unidadesNegocioNormalizadas.find(
+          (un) => un.id === Number(pf.unidadNegocioId),
+        );
+        const tipoDocumento = tiposDocNormalizados.find(
+          (td) => td.id === Number(pf.tipoDocumentoId),
+        );
+
+        return {
+          ...pf,
+          estadoDoc: estadosDocFiltrados.find(
+            (e) => Number(e.id) === Number(pf.estadoId),
+          ),
+          unidadNegocio,
+          tipoDocumento,
+        };
+      });
+
       setItems(preFacturasNormalizadas);
       setPreFacturas(preFacturasNormalizadas);
       setCentrosCosto(centrosCostoData);
@@ -271,7 +294,7 @@ const PreFactura = ({ ruta }) => {
   const handleIrAPreFacturaOrigen = async (preFacturaOrigenId) => {
     // Guardar la PreFactura actual en el stack antes de navegar
     if (selectedPreFactura) {
-      setNavigationStack(prev => [...prev, selectedPreFactura]);
+      setNavigationStack((prev) => [...prev, selectedPreFactura]);
     }
 
     // Primero buscar en el array local
@@ -497,7 +520,7 @@ const PreFactura = ({ ruta }) => {
     // Si hay una PreFactura en el stack de navegación, volver a ella
     if (navigationStack.length > 0) {
       const previousPreFactura = navigationStack[navigationStack.length - 1];
-      setNavigationStack(prev => prev.slice(0, -1)); // Remover del stack
+      setNavigationStack((prev) => prev.slice(0, -1)); // Remover del stack
       setSelectedPreFactura(previousPreFactura);
       setDialogVisible(true);
       setIsEditing(true);
@@ -709,7 +732,17 @@ const PreFactura = ({ ruta }) => {
         })
       : "";
   };
+  const tipoDocumentoTemplate = (rowData) => {
+    return rowData.tipoDocumento?.descripcion || "N/A";
+  };
 
+  const fechaContableTemplate = (rowData) => {
+    return formatearFecha(rowData.fechaContable, "");
+  };
+
+  const unidadNegocioTemplate = (rowData) => {
+    return rowData.unidadNegocio?.nombre || "N/A";
+  };
   const igvTemplate = (rowData) => {
     return rowData.esExoneradoAlIGV ? (
       <Tag value="EXONERADO" severity="danger" />
@@ -1007,45 +1040,72 @@ const PreFactura = ({ ruta }) => {
             </div>
           }
         >
-          <Column field="id" header="ID" style={{ width: 80 }} sortable />
-          <Column field="empresaId" header="Empresa" body={empresaTemplate} />
+          <Column
+            field="id"
+            header="ID"
+            style={{ width: 80, verticalAlign: "top" }}
+            sortable
+          />
+          <Column
+            field="empresaId"
+            header="Empresa"
+            body={empresaTemplate}
+            style={{ verticalAlign: "top" }}
+          />
+          <Column
+            field="unidadNegocioId"
+            header="Unidad Negocio"
+            body={unidadNegocioTemplate}
+            style={{ width: 150, textAlign: "center", verticalAlign: "top" }}
+            sortable
+          />
+          <Column
+            field="tipoDocumentoId"
+            header="Tipo Documento"
+            body={tipoDocumentoTemplate}
+            style={{ width: 150, textAlign: "center", verticalAlign: "top" }}
+            sortable
+          />
           <Column
             field="numeroDocumento"
             header="N° Documento"
-            style={{ width: 140, textAlign: "center" }}
+            style={{ width: 140, textAlign: "center", verticalAlign: "top" }}
             sortable
           />
+
           <Column
             field="fechaDocumento"
             header="Fecha Documento"
             body={fechaDocumentoTemplate}
-            style={{ width: 110, textAlign: "center" }}
+            style={{ width: 120, textAlign: "center", verticalAlign: "top" }}
             sortable
           />
+
           <Column
             field="clienteId"
             header="Cliente"
             body={clienteTemplate}
+            style={{ verticalAlign: "top" }}
             sortable
           />
           <Column
             field="monedaId"
             header="Moneda"
             body={monedaTemplate}
-            style={{ width: 80, textAlign: "center" }}
+            style={{ width: 80, textAlign: "center", verticalAlign: "top" }}
             sortable
           />
           <Column
-            header="Montos"
+            header="Monto"
             body={montosTemplate}
-            style={{ width: 120, textAlign: "right" }}
+            style={{ width: 180, textAlign: "right", verticalAlign: "top" }}
             bodyStyle={{ textAlign: "right" }}
           />
           <Column
             field="tipoCambio"
             header="T/C"
             body={tipoCambioTemplate}
-            style={{ width: 90, textAlign: "right" }}
+            style={{ width: 90, textAlign: "right", verticalAlign: "top" }}
             bodyStyle={{ textAlign: "right" }}
             sortable
           />
@@ -1053,7 +1113,7 @@ const PreFactura = ({ ruta }) => {
             field="estadoId"
             header="Estado"
             body={estadoTemplate}
-            style={{ width: 150, textAlign: "center" }}
+            style={{ width: 150, textAlign: "center", verticalAlign: "top" }}
             sortable
           />
           <Column
@@ -1078,19 +1138,26 @@ const PreFactura = ({ ruta }) => {
               }
               return null;
             }}
-            style={{ width: 120, textAlign: "center" }}
+            style={{ width: 120, textAlign: "center", verticalAlign: "top" }}
           />
           <Column
             field="esExoneradoAlIGV"
             header="IGV"
             body={igvTemplate}
-            style={{ width: 110, textAlign: "center" }}
+            style={{ width: 110, textAlign: "center", verticalAlign: "top" }}
+            sortable
+          />
+          <Column
+            field="fechaContable"
+            header="Fecha Contable"
+            body={fechaContableTemplate}
+            style={{ width: 120, textAlign: "center", verticalAlign: "top" }}
             sortable
           />
           <Column
             body={accionesTemplate}
             header="Acciones"
-            style={{ width: 120, textAlign: "center" }}
+            style={{ width: 120, textAlign: "center", verticalAlign: "top" }}
           />
         </DataTable>
       </div>

@@ -122,6 +122,24 @@ export default function DatosGeneralesTab({
             inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
+        <div style={{ flex: 0.6 }}>
+          {/* FECHA CONTABLE */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="fechaContable"
+          >
+            Fecha Contable*
+          </label>
+          <Calendar
+            id="fechaContable"
+            value={formData.fechaContable}
+            onChange={(e) => onChange("fechaContable", e.value)}
+            dateFormat="dd/mm/yy"
+            showIcon
+            disabled={!puedeEditar || readOnly}
+            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+          />
+        </div>
         <div style={{ flex: 0.75 }}>
           {/* TIPO DOCUMENTO - Siempre ID 17: ORDEN DE COMPRA */}
           <label
