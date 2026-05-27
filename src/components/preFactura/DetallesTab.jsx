@@ -30,12 +30,21 @@ export default function DetallesTab({
   porcentajeIGV = 0,
   monedaId = null,
   monedas = [],
+  pagosPreviosSI = 0,
+  tipoDocumentoId = null,
+  tiposDocumentoOptions = [],
+  onChange = () => {},
 }) {
   // Obtener entidadComercialId de la empresa seleccionada
   const empresaSeleccionada = empresas?.find(
     (e) => Number(e.id) === Number(empresaId),
   );
   const clienteId = empresaSeleccionada?.entidadComercialId || null;
+  // Detectar si es Saldo Inicial
+  const tipoDocSeleccionado = tiposDocumentoOptions.find(
+    (t) => Number(t.value) === Number(tipoDocumentoId),
+  );
+  const esSaldoInicial = tipoDocSeleccionado?.label?.includes("SI-");
   const [detalles, setDetalles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -349,7 +358,11 @@ export default function DetallesTab({
     const moneda = monedas.find((m) => Number(m.id) === Number(monedaId));
     return moneda?.codigoSunat || "PEN";
   };
-
+  // Calcular totales restando pagos previos SI
+  const subtotalMostrado = esSaldoInicial
+    ? subtotal - (pagosPreviosSI || 0)
+    : subtotal;
+  const totalMostrado = esSaldoInicial ? total - (pagosPreviosSI || 0) : total;
   return (
     <div>
       {/* FILA: BOTÓN AGREGAR Y TOTALES */}
@@ -384,10 +397,32 @@ export default function DetallesTab({
             }
           />
         </div>
+        {/* PAGOS PREVIOS SI - Solo para Saldos Iniciales */}
+        {esSaldoInicial && (
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold" }}>Pagos Previos</label>
+            <InputNumber
+              value={pagosPreviosSI || 0}
+              onValueChange={(e) => onChange("pagosPreviosSI", e.value)}
+              mode="currency"
+              currency={getCodigoMoneda()}
+              locale="es-PE"
+              minFractionDigits={2}
+              min={0}
+              disabled={!puedeEditar || readOnly}
+              inputStyle={{
+                fontWeight: "bold",
+                fontSize: "1.1rem",
+                backgroundColor: "#fff3cd",
+                textAlign: "right",
+              }}
+            />
+          </div>
+        )}
         <div style={{ flex: 1 }}>
           <label style={{ fontWeight: "bold" }}>Subtotal</label>
           <InputNumber
-            value={subtotal || 0}
+            value={subtotalMostrado || 0}
             mode="currency"
             currency={getCodigoMoneda()}
             locale="es-PE"
@@ -423,7 +458,7 @@ export default function DetallesTab({
         <div style={{ flex: 1 }}>
           <label style={{ fontWeight: "bold", color: "#2196F3" }}>TOTAL</label>
           <InputNumber
-            value={total || 0}
+            value={totalMostrado || 0}
             mode="currency"
             currency={getCodigoMoneda()}
             locale="es-PE"

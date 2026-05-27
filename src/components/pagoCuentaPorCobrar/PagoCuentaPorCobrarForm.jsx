@@ -22,6 +22,7 @@ export default function PagoCuentaPorCobrarForm({
   onCancel,
   loading,
   readOnly = false,
+  hideCuentaField = false, // ⭐ Nueva prop
 }) {
   const [cuentaPorCobrarId, setCuentaPorCobrarId] = useState(
     defaultValues?.cuentaPorCobrarId || null
@@ -174,22 +175,24 @@ export default function PagoCuentaPorCobrarForm({
     <div className="formgrid grid">
       <Panel header="Información del Cobro" className="col-12 mb-3">
         <div className="formgrid grid">
-          <div className="field col-12 md:col-6">
-            <label htmlFor="cuentaPorCobrarId">
-              Cuenta por Cobrar <span style={{ color: "red" }}>*</span>
-            </label>
-            <Dropdown
-              id="cuentaPorCobrarId"
-              value={cuentaPorCobrarId}
-              options={cuentasPorCobrarOptions}
-              onChange={(e) => setCuentaPorCobrarId(e.value)}
-              placeholder="Seleccione cuenta por cobrar"
-              filter
-              showClear
-              disabled={readOnly || isEdit}
-              style={{ width: "100%" }}
-            />
-          </div>
+          {!hideCuentaField && (
+            <div className="field col-12 md:col-6">
+              <label htmlFor="cuentaPorCobrarId">
+                Cuenta por Cobrar <span style={{ color: "red" }}>*</span>
+              </label>
+              <Dropdown
+                id="cuentaPorCobrarId"
+                value={cuentaPorCobrarId}
+                options={cuentasPorCobrarOptions}
+                onChange={(e) => setCuentaPorCobrarId(e.value)}
+                placeholder="Seleccione cuenta por cobrar"
+                filter
+                showClear
+                disabled={readOnly || isEdit}
+                style={{ fontWeight: "bold", textTransform: "uppercase" }}
+              />
+            </div>
+          )}
 
           <div className="field col-12 md:col-6">
             <label htmlFor="fechaPago">

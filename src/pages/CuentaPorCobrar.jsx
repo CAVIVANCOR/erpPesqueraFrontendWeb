@@ -10,8 +10,6 @@ import { InputText } from "primereact/inputtext";
 import { Toolbar } from "primereact/toolbar";
 import { Tag } from "primereact/tag";
 import CuentaPorCobrarForm from "../components/cuentaPorCobrar/CuentaPorCobrarForm";
-import { TabView, TabPanel } from "primereact/tabview";
-import PagosTab from "../components/cuentaPorCobrar/PagosTab";
 import { getMediosPago } from "../api/medioPago";
 import { getBancos } from "../api/banco";
 import { getAllCuentaCorriente } from "../api/cuentaCorriente";
@@ -112,7 +110,25 @@ export default function CuentaPorCobrar({ ruta }) {
       setLoading(false);
     }
   };
-
+  const handleGenerarAsiento = async (cuenta) => {
+    try {
+      // TODO: Implementar generación de asiento contable
+      toast.current.show({
+        severity: "info",
+        summary: "Información",
+        detail: "Función de generar asiento contable pendiente de implementar",
+        life: 3000,
+      });
+    } catch (error) {
+      console.error("Error al generar asiento:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo generar el asiento contable",
+        life: 3000,
+      });
+    }
+  };
   const openNew = () => {
     setFormData({});
     setSelectedCuenta(null);
@@ -267,6 +283,7 @@ export default function CuentaPorCobrar({ ruta }) {
     setDeleteCuentaDialog(false);
     setSelectedCuenta(null);
   };
+
   const empresaBodyTemplate = (rowData) => {
     const empresa = empresas.find(
       (e) => Number(e.id) === Number(rowData.empresaId),
@@ -292,22 +309,10 @@ export default function CuentaPorCobrar({ ruta }) {
     const estado = estados.find(
       (e) => Number(e.id) === Number(rowData.estadoId),
     );
-
-    const getSeverity = (estadoNombre) => {
-      const nombre = estadoNombre?.toUpperCase() || "";
-      if (nombre.includes("PAGADA") || nombre.includes("COBRADA"))
-        return "success";
-      if (nombre.includes("PENDIENTE")) return "warning";
-      if (nombre.includes("VENCIDA")) return "danger";
-      if (nombre.includes("PARCIAL")) return "info";
-      if (nombre.includes("ANULADA")) return "secondary";
-      return "info";
-    };
-
     return (
       <Tag
-        value={estado?.nombre || "-"}
-        severity={getSeverity(estado?.nombre)}
+        value={estado?.descripcion || "-"}
+        severity={estado?.severityColor || "info"}
       />
     );
   };
@@ -319,11 +324,30 @@ export default function CuentaPorCobrar({ ruta }) {
 
   const montoBodyTemplate = (rowData, field) => {
     const monto = rowData[field] || 0;
-    return new Intl.NumberFormat("es-PE", {
-      style: "decimal",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(monto);
+    const moneda = monedas.find(m => Number(m.id) === Number(rowData.monedaId));
+    
+    // Determinar color de fondo según moneda
+    let backgroundColor = 'transparent';
+    if (moneda?.codigoSunat === 'PEN') {
+      backgroundColor = '#fffbea'; // Amarillo claro para Soles
+    } else if (moneda?.codigoSunat === 'USD') {
+      backgroundColor = '#e8f5e9'; // Verde claro para Dólares
+    }
+    
+    return (
+      <div style={{ 
+        backgroundColor, 
+        padding: '0.5rem',
+        borderRadius: '4px',
+        textAlign: 'right'
+      }}>
+        {new Intl.NumberFormat("es-PE", {
+          style: "decimal",
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(monto)}
+      </div>
+    );
   };
 
   const booleanBodyTemplate = (rowData, field) => {
@@ -412,15 +436,12 @@ export default function CuentaPorCobrar({ ruta }) {
   return (
     <div className="card">
       <Toast ref={toast} />
-
       <h2>Gestión de Cuentas por Cobrar</h2>
-
       <Toolbar
         className="mb-4"
         left={leftToolbarTemplate}
         right={rightToolbarTemplate}
       />
-
       <DataTable
         value={cuentas}
         loading={loading}
@@ -429,8 +450,8 @@ export default function CuentaPorCobrar({ ruta }) {
         stripedRows
         showGridlines
         paginator
-        rows={50}
-        rowsPerPageOptions={[50, 100, 200, 500]}
+        rows={100}
+        rowsPerPageOptions={[100, 200, 300, 500]}
         size="small"
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar
@@ -528,43 +549,24 @@ export default function CuentaPorCobrar({ ruta }) {
         className="p-fluid"
         onHide={hideDialog}
       >
-        <TabView>
-          <TabPanel header="Datos Generales">
-            <CuentaPorCobrarForm
-              isEdit={isEdit}
-              defaultValues={formData}
-              empresas={empresas}
-              clientes={clientes}
-              monedas={monedas}
-              estados={estados}
-              preFacturas={preFacturas}
-              onSubmit={saveCuenta}
-              onCancel={hideDialog}
-              loading={loading}
-              readOnly={!!isEdit && !permisos.puedeEditar}
-            />
-          </TabPanel>
-
-          <TabPanel
-            header="Pagos / Cobros"
-            disabled={!isEdit || !selectedCuenta}
-          >
-            <PagosTab
-              cuentaPorCobrarId={selectedCuenta?.id}
-              saldoPendiente={selectedCuenta?.saldoPendiente}
-              monedaId={selectedCuenta?.monedaId}
-              empresaId={selectedCuenta?.empresaId}
-              monedas={monedas}
-              mediosPago={mediosPago}
-              bancos={bancos}
-              cuentasCorrientes={cuentasCorrientes}
-              estados={estados}
-              puedeEditar={permisos.puedeEditar}
-              toast={toast}
-              onPagoRegistrado={loadData}
-            />
-          </TabPanel>
-        </TabView>
+        <CuentaPorCobrarForm
+          isEdit={isEdit}
+          defaultValues={formData}
+          empresas={empresas}
+          clientes={clientes}
+          monedas={monedas}
+          estados={estados}
+          mediosPago={mediosPago}
+          bancos={bancos}
+          cuentasCorrientes={cuentasCorrientes}
+          onSubmit={saveCuenta}
+          onCancel={hideDialog}
+          onGenerarAsiento={handleGenerarAsiento}
+          loading={loading}
+          readOnly={!!isEdit && !permisos.puedeEditar}
+          permisos={permisos}
+          toast={toast}
+        />
       </Dialog>
 
       <Dialog

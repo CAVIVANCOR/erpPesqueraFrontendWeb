@@ -757,12 +757,17 @@ const PreFactura = ({ ruta }) => {
       const precio = Number(det.precioUnitario) || 0;
       return sum + cantidad * precio;
     }, 0);
-
+    const pagosPrevios = Number(rowData.pagosPreviosSI) || 0;
     const porcentajeIGV = Number(rowData.porcentajeIGV) || 0;
-    const igv = rowData.esExoneradoAlIGV ? 0 : subtotal * (porcentajeIGV / 100);
-    const total = subtotal + igv;
+    // Restar pagos previos del SUBTOTAL (no del total)
+    const subtotalNeto = subtotal - pagosPrevios;
+    // Calcular IGV sobre el subtotal NETO
+    const igv = rowData.esExoneradoAlIGV
+      ? 0
+      : subtotalNeto * (porcentajeIGV / 100);
+    // Calcular total
+    const total = subtotalNeto + igv;
     const simboloMoneda = rowData.moneda?.simbolo || "";
-
     return (
       <div style={{ textAlign: "right" }}>
         <Tag

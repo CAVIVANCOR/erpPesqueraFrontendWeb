@@ -146,7 +146,6 @@ export default function PreFacturaForm({
     unidadNegocioId: defaultValues?.unidadNegocioId
       ? Number(defaultValues.unidadNegocioId)
       : null,
-
     // Montos
     subtotal: defaultValues?.subtotal || 0,
     totalDescuentos: defaultValues?.totalDescuentos || 0,
@@ -154,7 +153,7 @@ export default function PreFacturaForm({
     total: defaultValues?.total || 0,
     montoAdelantadoCliente: defaultValues?.montoAdelantadoCliente || 0,
     porcentajeAdelanto: defaultValues?.porcentajeAdelanto || 0,
-
+    pagosPreviosSI: defaultValues?.pagosPreviosSI || 0, // ← AGREGAR ESTA LÍNEA
     // Estado y aprobación - CONVERTIDOS A NUMBER
     estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 45,
     motivoRechazo: defaultValues?.motivoRechazo || "",
@@ -333,7 +332,6 @@ export default function PreFacturaForm({
         unidadNegocioId: defaultValues?.unidadNegocioId
           ? Number(defaultValues.unidadNegocioId)
           : null,
-
         // Montos
         subtotal: defaultValues?.subtotal || 0,
         totalDescuentos: defaultValues?.totalDescuentos || 0,
@@ -341,7 +339,7 @@ export default function PreFacturaForm({
         total: defaultValues?.total || 0,
         montoAdelantadoCliente: defaultValues?.montoAdelantadoCliente || 0,
         porcentajeAdelanto: defaultValues?.porcentajeAdelanto || 0,
-
+        pagosPreviosSI: defaultValues?.pagosPreviosSI || 0, // ← AGREGAR ESTA LÍNEA
         // Estado y aprobación - CONVERTIDOS A NUMBER
         estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 45,
         motivoRechazo: defaultValues?.motivoRechazo || "",
@@ -832,6 +830,9 @@ export default function PreFacturaForm({
       porcentajeAdelanto: formData.porcentajeAdelanto
         ? Number(formData.porcentajeAdelanto)
         : null,
+      pagosPreviosSI: formData.pagosPreviosSI // ← AGREGAR ESTAS 3 LÍNEAS
+        ? Number(formData.pagosPreviosSI)
+        : null,
     };
 
     // Validaciones
@@ -1027,9 +1028,11 @@ export default function PreFacturaForm({
   const estaAnulada = estadoId === 47;
   const estaParticionada = estadoId === 48;
   const estaFacturada = estadoId === 95;
+  const estaEmitida = estadoId === 96;
+  const estaComprobanteGenerado = estadoId === 97;
+  const estaValidadoSunat = estadoId === 98;
   const puedeEditar = estaPendiente && !loading;
   const puedeAnular = (estaPendiente || estaAprobada) && !loading;
-
   // Preparar options para dropdowns
   const empresasOptions = empresas.map((e) => ({
     ...e,
@@ -1302,7 +1305,6 @@ export default function PreFacturaForm({
               />
             </>
           )}
-
           {/* Botón Partir PreFactura - Solo visible si está APROBADA */}
           {estaAprobada && isEdit && (
             <Button
@@ -1314,30 +1316,52 @@ export default function PreFacturaForm({
               tooltip="Mantener la Original y Crear Dos Copias Identicas Editables"
             />
           )}
-
-          {/* Botón Generar Venta - Solo visible si está APROBADA y es GERENCIAL */}
-          {estaAprobada && isEdit && formData.esGerencial && (
-            <Button
-              label="Generar Venta"
-              icon="pi pi-file"
-              className="p-button-help"
-              onClick={handleFacturarNegraClick}
-              disabled={readOnly || loading || !permisos.puedeEditar}
-              tooltip="Generar CxC Negra (Gerencial) sin comprobante"
-            />
-          )}
-
-          {/* Botón Emitir Comprobante - Solo visible si está APROBADA y NO es GERENCIAL */}
-          {estaAprobada && isEdit && !formData.esGerencial && (
-            <Button
-              label="Emitir Comprobante"
-              icon="pi pi-file-check"
-              className="p-button-success"
-              onClick={handleFacturarBlancaClick}
-              disabled={readOnly || loading || !permisos.puedeEditar}
-              tooltip="Generar CxC Blanca y Comprobante Electrónico SUNAT"
-            />
-          )}
+          {/* Botón Generar Venta (Negra) - Visible si está APROBADA o EMITIDA (con permiso de reactivar) y ES GERENCIAL */}
+          {(estaAprobada ||
+            ((estaEmitida || estaComprobanteGenerado || estaValidadoSunat) &&
+              permisos.puedeReactivarDocs)) &&
+            isEdit &&
+            formData.esGerencial && (
+              <Button
+                label={
+                  estaEmitida || estaComprobanteGenerado || estaValidadoSunat
+                    ? "Regenerar Venta"
+                    : "Generar Venta"
+                }
+                icon="pi pi-file"
+                className="p-button-help"
+                onClick={handleFacturarNegraClick}
+                disabled={readOnly || loading || !permisos.puedeEditar}
+                tooltip={
+                  estaEmitida || estaComprobanteGenerado || estaValidadoSunat
+                    ? "Regenerar CxC Negra (Gerencial) sin comprobante (elimina y recrea)"
+                    : "Generar CxC Negra (Gerencial) sin comprobante"
+                }
+              />
+            )}
+          {/* Botón Emitir Comprobante - Visible si está APROBADA o EMITIDA (con permiso de reactivar) y NO es GERENCIAL */}
+          {(estaAprobada ||
+            ((estaEmitida || estaComprobanteGenerado || estaValidadoSunat) &&
+              permisos.puedeReactivarDocs)) &&
+            isEdit &&
+            !formData.esGerencial && (
+              <Button
+                label={
+                  estaEmitida || estaComprobanteGenerado || estaValidadoSunat
+                    ? "Regenerar CxC"
+                    : "Emitir Comprobante"
+                }
+                icon="pi pi-file-check"
+                className="p-button-success"
+                onClick={handleFacturarBlancaClick}
+                disabled={readOnly || loading || !permisos.puedeEditar}
+                tooltip={
+                  estaEmitida || estaComprobanteGenerado || estaValidadoSunat
+                    ? "Regenerar CxC Blanca y Comprobante Electrónico SUNAT (elimina y recrea)"
+                    : "Generar CxC Blanca y Comprobante Electrónico SUNAT"
+                }
+              />
+            )}
         </div>
 
         {/* Botones derecha: Guardar y Cancelar */}

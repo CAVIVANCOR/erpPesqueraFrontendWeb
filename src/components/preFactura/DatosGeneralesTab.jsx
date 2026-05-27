@@ -68,8 +68,12 @@ export default function DatosGeneralesTab({
   const monedaSeleccionada = monedasOptions.find(
     (m) => m.value === formData.monedaId,
   );
-  const simboloMoneda =
-    monedaSeleccionada?.codigoSunat || "";
+  const simboloMoneda = monedaSeleccionada?.codigoSunat || "";
+  // Detectar si es Saldo Inicial
+  const tipoDocSeleccionado = tiposDocumentoOptions.find(
+    (t) => Number(t.value) === Number(formData.tipoDocumentoId),
+  );
+  const esSaldoInicial = tipoDocSeleccionado?.label?.includes("SI-");
 
   return (
     <div className="fluid">
@@ -935,6 +939,10 @@ export default function DatosGeneralesTab({
           porcentajeIGV={formData.porcentajeIgv || 0}
           monedaId={formData.monedaId}
           monedas={monedasOptions}
+          pagosPreviosSI={formData.pagosPreviosSI || 0}
+          tipoDocumentoId={formData.tipoDocumentoId}
+          tiposDocumentoOptions={tiposDocumentoOptions}
+          onChange={onChange}
         />
       </Panel>
 

@@ -6,13 +6,25 @@ import { Calendar } from "primereact/calendar";
 import { InputNumber } from "primereact/inputnumber";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
-import { Checkbox } from "primereact/checkbox";
-import { Panel } from "primereact/panel";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { TabView, TabPanel } from "primereact/tabview";
-import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
+import { Dialog } from "primereact/dialog";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import {
+  getResponsiveFontSize,
+  formatearNumero,
+  formatearFecha,
+} from "../../utils/utils";
 import CardAsientoContable from "../common/CardAsientoContable";
+import PagoCuentaPorCobrarForm from "../pagoCuentaPorCobrar/PagoCuentaPorCobrarForm";
+import {
+  getPagosPorCuentaCobrar,
+  deletePagoCuentaPorCobrar,
+  createPagoCuentaPorCobrar,
+  updatePagoCuentaPorCobrar,
+} from "../../api/cuentasPorCobrarPagar/pagoCuentaPorCobrar";
+
 export default function CuentaPorCobrarForm({
   isEdit,
   defaultValues,
@@ -20,15 +32,20 @@ export default function CuentaPorCobrarForm({
   clientes,
   monedas,
   estados,
-  preFacturas,
+  mediosPago,
+  bancos,
+  cuentasCorrientes,
   onSubmit,
   onCancel,
   onGenerarAsiento,
   loading,
   readOnly = false,
   permisos = {},
+  toast,
 }) {
   const [activeTab, setActiveTab] = useState(0);
+
+  // Estados principales
   const [preFacturaId, setPreFacturaId] = useState(
     defaultValues?.preFacturaId || null,
   );
@@ -66,7 +83,8 @@ export default function CuentaPorCobrarForm({
   const [observaciones, setObservaciones] = useState(
     defaultValues?.observaciones || "",
   );
-  // Nuevos estados para detracción, retención y percepción
+
+  // Estados impuestos SUNAT
   const [tieneDetraccion, setTieneDetraccion] = useState(
     defaultValues?.tieneDetraccion || false,
   );
@@ -84,7 +102,6 @@ export default function CuentaPorCobrarForm({
       ? new Date(defaultValues.fechaDetraccion)
       : null,
   );
-
   const [tieneRetencion, setTieneRetencion] = useState(
     defaultValues?.tieneRetencion || false,
   );
@@ -99,7 +116,6 @@ export default function CuentaPorCobrarForm({
       ? new Date(defaultValues.fechaRetencion)
       : null,
   );
-
   const [tienePercepcion, setTienePercepcion] = useState(
     defaultValues?.tienePercepcion || false,
   );
@@ -116,168 +132,54 @@ export default function CuentaPorCobrarForm({
       ? new Date(defaultValues.fechaPercepcion)
       : null,
   );
-  const [clientesFiltrados, setClientesFiltrados] = useState([]);
-  const [preFacturasFiltradas, setPreFacturasFiltradas] = useState([]);
-  const [selectedPreFactura, setSelectedPreFactura] = useState(null);
+
+  // Estados para CRUD de pagos
+  const [pagos, setPagos] = useState([]);
+  const [loadingPagos, setLoadingPagos] = useState(false);
+  const [showPagoDialog, setShowPagoDialog] = useState(false);
+  const [pagoSeleccionado, setPagoSeleccionado] = useState(null);
+  const [isEditPago, setIsEditPago] = useState(false);
+
+  // Cargar pagos si es edición
   useEffect(() => {
-    if (preFacturas && preFacturas.length > 0 && empresaId) {
-      const preFacturasAprobadas = preFacturas.filter((pf) => {
-        const perteneceEmpresa = Number(pf.empresaId) === Number(empresaId);
-        const estadoValido = pf.estadoId && Number(pf.estadoId) > 45;
-        return perteneceEmpresa && estadoValido;
+    if (isEdit && defaultValues?.id) {
+      cargarPagos();
+    }
+  }, [isEdit, defaultValues?.id]);
+
+  // Recalcular montoPagado y saldoPendiente cuando cambien los pagos
+  useEffect(() => {
+    const totalPagado = pagos.reduce(
+      (sum, pago) => sum + Number(pago.montoPago || 0),
+      0,
+    );
+    setMontoPagado(totalPagado);
+    setSaldoPendiente(Number(montoTotal) - totalPagado);
+  }, [pagos, montoTotal]);
+
+  const cargarPagos = async () => {
+    try {
+      setLoadingPagos(true);
+      const data = await getPagosPorCuentaCobrar(defaultValues.id);
+      setPagos(data || []);
+    } catch (error) {
+      console.error("Error al cargar pagos:", error);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar los pagos",
+        life: 3000,
       });
-
-      const clientesConFacturasAprobadas =
-        clientes?.filter((c) => {
-          const tieneFacturasAprobadas = preFacturasAprobadas.some(
-            (pf) => Number(pf.clienteId) === Number(c.id),
-          );
-          const perteneceEmpresa = Number(c.empresaId) === Number(empresaId);
-          return tieneFacturasAprobadas && perteneceEmpresa;
-        }) || [];
-
-      setClientesFiltrados(clientesConFacturasAprobadas);
-    } else {
-      setClientesFiltrados([]);
+    } finally {
+      setLoadingPagos(false);
     }
-  }, [clientes, preFacturas, empresaId]);
-
-  useEffect(() => {
-    if (preFacturas && preFacturas.length > 0 && clienteId && empresaId) {
-      const preFacturasPorCliente = preFacturas.filter((pf) => {
-        const perteneceCliente = Number(pf.clienteId) === Number(clienteId);
-        const perteneceEmpresa = Number(pf.empresaId) === Number(empresaId);
-        const estadoValido = pf.estadoId && Number(pf.estadoId) > 45;
-        return perteneceCliente && perteneceEmpresa && estadoValido;
-      });
-      setPreFacturasFiltradas(preFacturasPorCliente);
-    } else {
-      setPreFacturasFiltradas([]);
-    }
-  }, [preFacturas, clienteId, empresaId]);
-
-  useEffect(() => {
-    if (defaultValues && Object.keys(defaultValues).length > 0) {
-      setPreFacturaId(
-        defaultValues.preFacturaId ? Number(defaultValues.preFacturaId) : null,
-      );
-      setEmpresaId(
-        defaultValues.empresaId ? Number(defaultValues.empresaId) : null,
-      );
-      setClienteId(
-        defaultValues.clienteId ? Number(defaultValues.clienteId) : null,
-      );
-      setNumeroPreFactura(defaultValues.numeroPreFactura || "");
-      setFechaEmision(
-        defaultValues.fechaEmision
-          ? new Date(defaultValues.fechaEmision)
-          : new Date(),
-      );
-      setFechaVencimiento(
-        defaultValues.fechaVencimiento
-          ? new Date(defaultValues.fechaVencimiento)
-          : new Date(),
-      );
-      setMontoTotal(defaultValues.montoTotal || 0);
-      setMontoPagado(defaultValues.montoPagado || 0);
-      setSaldoPendiente(defaultValues.saldoPendiente || 0);
-      setEsSaldoInicial(defaultValues.esSaldoInicial || false);
-      setEsGerencial(defaultValues.esGerencial || false);
-      setMonedaId(
-        defaultValues.monedaId ? Number(defaultValues.monedaId) : null,
-      );
-      setEsContado(defaultValues.esContado || false);
-      setEstadoId(
-        defaultValues.estadoId ? Number(defaultValues.estadoId) : null,
-      );
-      setObservaciones(defaultValues.observaciones || "");
-
-      // Nuevos campos
-      setTieneDetraccion(defaultValues.tieneDetraccion || false);
-      setMontoDetraccion(defaultValues.montoDetraccion || 0);
-      setPorcentajeDetraccion(defaultValues.porcentajeDetraccion || 0);
-      setNumeroConstanciaDetraccion(
-        defaultValues.numeroConstanciaDetraccion || "",
-      );
-      setFechaDetraccion(
-        defaultValues.fechaDetraccion
-          ? new Date(defaultValues.fechaDetraccion)
-          : null,
-      );
-
-      setTieneRetencion(defaultValues.tieneRetencion || false);
-      setMontoRetencion(defaultValues.montoRetencion || 0);
-      setNumeroComprobanteRetencion(
-        defaultValues.numeroComprobanteRetencion || "",
-      );
-      setFechaRetencion(
-        defaultValues.fechaRetencion
-          ? new Date(defaultValues.fechaRetencion)
-          : null,
-      );
-
-      setTienePercepcion(defaultValues.tienePercepcion || false);
-      setMontoPercepcion(defaultValues.montoPercepcion || 0);
-      setPorcentajePercepcion(defaultValues.porcentajePercepcion || 0);
-      setNumeroComprobantePercepcion(
-        defaultValues.numeroComprobantePercepcion || "",
-      );
-      setFechaPercepcion(
-        defaultValues.fechaPercepcion
-          ? new Date(defaultValues.fechaPercepcion)
-          : null,
-      );
-    }
-  }, [defaultValues]);
-
-  useEffect(() => {
-    const saldo = Number(montoTotal) - Number(montoPagado);
-    setSaldoPendiente(saldo);
-  }, [montoTotal, montoPagado]);
-
-  const handleEmpresaChange = (value) => {
-    setEmpresaId(value);
-    setClienteId(null);
-    setPreFacturaId(null);
-    setSelectedPreFactura(null);
-    setPreFacturasFiltradas([]);
-  };
-
-  const handleClienteChange = (value) => {
-    setClienteId(value);
-    setPreFacturaId(null);
-    setSelectedPreFactura(null);
-  };
-
-  const handleSeleccionarPreFactura = (preFactura) => {
-    setSelectedPreFactura(preFactura);
-    setPreFacturaId(Number(preFactura.id));
-    setNumeroPreFactura(
-      preFactura.numeroDocumento || preFactura.codigo || `PF-${preFactura.id}`,
-    );
-    setFechaEmision(
-      preFactura.fechaDocumento
-        ? new Date(preFactura.fechaDocumento)
-        : new Date(),
-    );
-    setFechaVencimiento(
-      preFactura.fechaVencimiento
-        ? new Date(preFactura.fechaVencimiento)
-        : new Date(),
-    );
-    setMontoTotal(Number(preFactura.total || 0));
-    setMontoPagado(Number(preFactura.montoPagado || 0));
-    setSaldoPendiente(
-      Number(preFactura.saldoPendiente || preFactura.total || 0),
-    );
-    setMonedaId(preFactura.monedaId ? Number(preFactura.monedaId) : monedaId);
   };
 
   const handleSubmit = () => {
-    const dataParaGrabacion = {
-      preFacturaId: preFacturaId ? Number(preFacturaId) : null,
-      empresaId: empresaId ? Number(empresaId) : null,
-      clienteId: clienteId ? Number(clienteId) : null,
+    const data = {
+      preFacturaId: preFacturaId ? BigInt(preFacturaId) : null,
+      empresaId: BigInt(empresaId),
+      clienteId: BigInt(clienteId),
       numeroPreFactura,
       fechaEmision,
       fechaVencimiento,
@@ -286,829 +188,586 @@ export default function CuentaPorCobrarForm({
       saldoPendiente: Number(saldoPendiente),
       esSaldoInicial,
       esGerencial,
-      monedaId: monedaId ? Number(monedaId) : null,
+      monedaId: BigInt(monedaId),
       esContado,
-      estadoId: estadoId ? Number(estadoId) : null,
+      estadoId: BigInt(estadoId),
       observaciones,
-
-      // Nuevos campos
       tieneDetraccion,
       montoDetraccion: Number(montoDetraccion),
       porcentajeDetraccion: porcentajeDetraccion
         ? Number(porcentajeDetraccion)
         : null,
-      numeroConstanciaDetraccion,
-      fechaDetraccion,
-
+      numeroConstanciaDetraccion: numeroConstanciaDetraccion || null,
+      fechaDetraccion: fechaDetraccion || null,
       tieneRetencion,
       montoRetencion: Number(montoRetencion),
-      numeroComprobanteRetencion,
-      fechaRetencion,
-
+      numeroComprobanteRetencion: numeroComprobanteRetencion || null,
+      fechaRetencion: fechaRetencion || null,
       tienePercepcion,
       montoPercepcion: Number(montoPercepcion),
       porcentajePercepcion: porcentajePercepcion
         ? Number(porcentajePercepcion)
         : null,
-      numeroComprobantePercepcion,
-      fechaPercepcion,
+      numeroComprobantePercepcion: numeroComprobantePercepcion || null,
+      fechaPercepcion: fechaPercepcion || null,
     };
+    onSubmit(data);
+  };
 
-    if (!dataParaGrabacion.empresaId || !dataParaGrabacion.clienteId) {
-      alert("Complete los campos obligatorios (Empresa, Cliente)");
-      return;
+  const handleRegistrarPago = () => {
+    setPagoSeleccionado(null);
+    setIsEditPago(false);
+    setShowPagoDialog(true);
+  };
+
+  const handleEditarPago = (pago) => {
+    setPagoSeleccionado(pago);
+    setIsEditPago(true);
+    setShowPagoDialog(true);
+  };
+
+  const handleEliminarPago = (pago) => {
+    confirmDialog({
+      message: `¿Está seguro de eliminar el pago de ${formatearNumero(pago.montoPago, 2)}?`,
+      header: "Confirmar Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Sí, eliminar",
+      rejectLabel: "Cancelar",
+      acceptClassName: "p-button-danger",
+      accept: async () => {
+        try {
+          await deletePagoCuentaPorCobrar(pago.id);
+          toast?.current?.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: "Pago eliminado correctamente",
+            life: 3000,
+          });
+          cargarPagos();
+        } catch (error) {
+          console.error("Error al eliminar pago:", error);
+          toast?.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail:
+              error.response?.data?.mensaje || "No se pudo eliminar el pago",
+            life: 3000,
+          });
+        }
+      },
+    });
+  };
+
+  const handleSubmitPago = async (dataPago) => {
+    try {
+      if (isEditPago) {
+        await updatePagoCuentaPorCobrar(pagoSeleccionado.id, dataPago);
+        toast?.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Pago actualizado correctamente",
+          life: 3000,
+        });
+      } else {
+        await createPagoCuentaPorCobrar({
+          ...dataPago,
+          cuentaPorCobrarId: BigInt(defaultValues.id),
+        });
+        toast?.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Pago registrado correctamente",
+          life: 3000,
+        });
+      }
+      setShowPagoDialog(false);
+      cargarPagos();
+    } catch (error) {
+      console.error("Error al guardar pago:", error);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.mensaje || "No se pudo guardar el pago",
+        life: 3000,
+      });
     }
-
-    if (!dataParaGrabacion.monedaId || !dataParaGrabacion.estadoId) {
-      alert("Complete los campos obligatorios (Moneda, Estado)");
-      return;
-    }
-
-    onSubmit(dataParaGrabacion);
   };
 
-  const formatCurrency = (value, monedaId) => {
-    const moneda = monedas?.find((m) => Number(m.id) === Number(monedaId));
-    const simbolo = moneda?.simbolo || "";
-    return `${simbolo} ${Number(value || 0).toFixed(2)}`;
+  // Templates para DataTable
+  const montoTemplate = (rowData) => {
+    const moneda = monedas?.find(
+      (m) => Number(m.id) === Number(rowData.monedaId),
+    );
+    return `${moneda?.codigo || ""} ${formatearNumero(rowData.montoPago, 2)}`;
   };
 
-  const formatDate = (value) => {
-    if (!value) return "";
-    const date = new Date(value);
-    return date.toLocaleDateString("es-PE");
+  const fechaTemplate = (rowData) => {
+    return formatearFecha(rowData.fechaPago);
   };
 
-  const getEstadoDescripcion = (estadoId) => {
-    if (!estadoId) return "SIN ESTADO";
-    const estado = estados?.find((e) => Number(e.id) === Number(estadoId));
-    return estado?.descripcion || "DESCONOCIDO";
+  const medioPagoTemplate = (rowData) => {
+    const medio = mediosPago?.find(
+      (m) => Number(m.id) === Number(rowData.medioPagoId),
+    );
+    return medio?.descripcion || "-";
   };
 
-  const getEstadoSeverity = (estadoId) => {
-    if (!estadoId) return "info";
-    const estado = estados?.find((e) => Number(e.id) === Number(estadoId));
-    return estado?.severityColor || "info";
+  const bancoTemplate = (rowData) => {
+    if (!rowData.bancoId) return "-";
+    const banco = bancos?.find((b) => Number(b.id) === Number(rowData.bancoId));
+    return banco?.nombre || "-";
   };
 
-  const handleAnular = () => {
-    if (!puedeEditar) return;
-    setEstadoId(104);
+  const accionesTemplate = (rowData) => {
+    return (
+      <div style={{ display: "flex", gap: "4px" }}>
+        <Button
+          icon="pi pi-eye"
+          className="p-button-rounded p-button-info p-button-sm"
+          onClick={() => handleEditarPago(rowData)}
+          tooltip="Ver detalle"
+          disabled={readOnly || !permisos.puedeEditar}
+        />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-danger p-button-sm"
+          onClick={() => handleEliminarPago(rowData)}
+          tooltip="Eliminar"
+          disabled={readOnly || !permisos.puedeEliminar}
+        />
+      </div>
+    );
   };
 
-  const handleCanjear = () => {
-    if (!puedeEditar) return;
-    setEstadoId(105);
-  };
+  // Preparar options
+  const empresasOptions =
+    empresas?.map((e) => ({
+      label: e.razonSocial,
+      value: Number(e.id),
+    })) || [];
+
+  const clientesOptions =
+    clientes?.map((c) => ({
+      label: c.razonSocial,
+      value: Number(c.id),
+    })) || [];
+
+  const monedasOptions =
+    monedas?.map((m) => ({
+      label: `${m.codigo} - ${m.nombre}`,
+      value: Number(m.id),
+    })) || [];
+
+  const estadosOptions =
+    estados?.map((e) => ({
+      label: e.descripcion,
+      value: Number(e.id),
+    })) || [];
 
   const puedeEditar = !readOnly && !loading;
+
   return (
     <div className="p-fluid">
+      <ConfirmDialog />
+
       <TabView
         activeIndex={activeTab}
         onTabChange={(e) => setActiveTab(e.index)}
       >
         {/* TAB 1: DATOS GENERALES */}
         <TabPanel header="Datos Generales" leftIcon="pi pi-file">
-      <Panel header="Datos de la Cuenta por Cobrar" className="mb-3">
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginBottom: 15,
-            alignItems: "end",
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="empresaId"
-            >
-              Empresa*
-            </label>
-            <Dropdown
-              id="empresaId"
-              value={empresaId}
-              options={empresas.map((e) => ({
-                label: e.razonSocial,
-                value: Number(e.id),
-              }))}
-              onChange={(e) => handleEmpresaChange(e.value)}
-              placeholder="Seleccionar empresa"
-              disabled={isEdit || !puedeEditar}
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-
-          <div style={{ flex: 2 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="clienteId"
-            >
-              Cliente* (Solo clientes con documentos pendientes)
-            </label>
-            <Dropdown
-              id="clienteId"
-              value={clienteId}
-              options={clientesFiltrados.map((c) => ({
-                label: c.razonSocial,
-                value: Number(c.id),
-              }))}
-              onChange={(e) => handleClienteChange(e.value)}
-              placeholder="Seleccionar cliente"
-              filter
-              disabled={!empresaId || !puedeEditar}
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-          <div style={{ flex: 0.5 }}>
-            <Button
-              id="esGerencial"
-              label={esGerencial ? "GERENCIAL" : "GERENCIAL"}
-              icon={esGerencial ? "pi pi-check-circle" : "pi pi-times-circle"}
-              severity={esGerencial ? "success" : "secondary"}
-              onClick={() => setEsGerencial(!esGerencial)}
-              disabled={!puedeEditar}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <Button
-              label={`Estado: ${getEstadoDescripcion(estadoId)}`}
-              severity={getEstadoSeverity(estadoId)}
-              style={{
-                fontWeight: "bold",
-                textTransform: "uppercase",
-                pointerEvents: "none",
-              }}
-              disabled
-            />
-          </div>
-        </div>
-
-        {clienteId && preFacturasFiltradas.length > 0 && (
-          <Panel
-            header="PreFacturas Pendientes de Pago"
-            className="mb-3"
-            toggleable
-            collapsed={false}
-          >
-            <DataTable
-              value={preFacturasFiltradas}
-              selection={selectedPreFactura}
-              onSelectionChange={(e) => handleSeleccionarPreFactura(e.value)}
-              selectionMode="single"
-              dataKey="id"
-              paginator
-              rows={5}
-              style={{ fontSize: "12px" }}
-              emptyMessage="No hay prefacturas pendientes"
-            >
-              <Column
-                selectionMode="single"
-                headerStyle={{ width: "3rem" }}
-              ></Column>
-              <Column
-                field="numeroDocumento"
-                header="Número"
-                body={(rowData) =>
-                  rowData.numeroDocumento ||
-                  rowData.codigo ||
-                  `PF-${rowData.id}`
-                }
-                style={{ fontWeight: "bold" }}
-              ></Column>
-              <Column
-                field="fechaDocumento"
-                header="Fecha Emisión"
-                body={(rowData) => formatDate(rowData.fechaDocumento)}
-              ></Column>
-              <Column
-                field="fechaVencimiento"
-                header="Fecha Vencimiento"
-                body={(rowData) => formatDate(rowData.fechaVencimiento)}
-              ></Column>
-              <Column
-                field="monedaId"
-                header="Moneda"
-                body={(rowData) => {
-                  const moneda = monedas?.find(
-                    (m) => Number(m.id) === Number(rowData.monedaId),
-                  );
-                  return moneda?.codigoSunat || "";
-                }}
-              ></Column>
-              <Column
-                field="total"
-                header="Monto Total"
-                body={(rowData) =>
-                  formatCurrency(rowData.total, rowData.monedaId)
-                }
-                style={{ textAlign: "right", fontWeight: "bold" }}
-              ></Column>
-              <Column
-                field="saldoPendiente"
-                header="Saldo Pendiente"
-                body={(rowData) =>
-                  formatCurrency(rowData.saldoPendiente, rowData.monedaId)
-                }
-                style={{
-                  textAlign: "right",
-                  fontWeight: "bold",
-                  color: "#d32f2f",
-                }}
-              ></Column>
-            </DataTable>
-          </Panel>
-        )}
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginBottom: 15,
-            alignItems: "end",
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 0.5 }}>
-            <Button
-              id="esSaldoInicial"
-              label={esSaldoInicial ? "SALDO INICIAL" : "SALDO INICIAL"}
-              icon={
-                esSaldoInicial ? "pi pi-check-circle" : "pi pi-times-circle"
-              }
-              severity={esSaldoInicial ? "warning" : "secondary"}
-              onClick={() => setEsSaldoInicial(!esSaldoInicial)}
-              disabled={!puedeEditar}
-              style={{
-                whiteSpace: "nowrap",
-                fontWeight: "bold",
-                justifyContent: "center",
-              }}
-            />
-          </div>
-          <div style={{ flex: 2 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="preFacturaId"
-            >
-              PreFactura (Opcional)
-            </label>
-            <Dropdown
-              id="preFacturaId"
-              value={preFacturaId}
-              options={preFacturasFiltradas.map((pf) => {
-                const moneda = monedas?.find(
-                  (m) => Number(m.id) === Number(pf.monedaId),
-                );
-                const monedaCodigo = moneda?.codigoSunat || "";
-                const numero = pf.numeroDocumento || `PF-${pf.id}`;
-                const fecha = pf.fechaDocumento
-                  ? new Date(pf.fechaDocumento).toLocaleDateString("es-PE")
-                  : "";
-                const monto = Number(pf.total || 0).toFixed(2);
-
-                return {
-                  label: `${numero} - ${fecha} - ${monedaCodigo} ${formatearNumero(monto)}`,
-                  value: Number(pf.id),
-                };
-              })}
-              onChange={(e) => {
-                const pfSeleccionada = preFacturasFiltradas.find(
-                  (pf) => Number(pf.id) === Number(e.value),
-                );
-                if (pfSeleccionada) {
-                  handleSeleccionarPreFactura(pfSeleccionada);
-                }
-              }}
-              placeholder="Seleccionar PreFactura"
-              filter
-              showClear
-              disabled={!clienteId || !puedeEditar}
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="numeroPreFactura"
-            >
-              Número PreFactura*
-            </label>
-            <InputText
-              id="numeroPreFactura"
-              value={numeroPreFactura}
-              onChange={(e) => setNumeroPreFactura(e.target.value)}
-              placeholder="Ej: PF-2024-000001"
-              disabled={!puedeEditar}
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-          <div style={{ flex: 0.7 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="fechaEmision"
-            >
-              Fecha Emisión*
-            </label>
-            <Calendar
-              id="fechaEmision"
-              value={fechaEmision}
-              onChange={(e) => setFechaEmision(e.value)}
-              dateFormat="dd/mm/yy"
-              showIcon
-              disabled={!puedeEditar}
-              style={{ fontWeight: "bold" }}
-            />
-          </div>
-          <div style={{ flex: 0.7 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="fechaVencimiento"
-            >
-              Fecha Vencimiento*
-            </label>
-            <Calendar
-              id="fechaVencimiento"
-              value={fechaVencimiento}
-              onChange={(e) => setFechaVencimiento(e.value)}
-              dateFormat="dd/mm/yy"
-              showIcon
-              disabled={!puedeEditar}
-              style={{ fontWeight: "bold" }}
-            />
-          </div>
-          <div style={{ flex: 0.5 }}>
-            <Button
-              id="esContado"
-              label={esContado ? "CONTADO" : "CRÉDITO"}
-              icon={esContado ? "pi pi-check-circle" : "pi pi-times-circle"}
-              severity={esContado ? "info" : "secondary"}
-              onClick={() => setEsContado(!esContado)}
-              disabled={!puedeEditar}
-            />
-          </div>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginBottom: 15,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 0.75 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="monedaId"
-            >
-              Moneda*
-            </label>
-            <Dropdown
-              id="monedaId"
-              value={monedaId}
-              options={
-                monedas?.map((m) => ({
-                  label: m.codigoSunat,
-                  value: Number(m.id),
-                })) || []
-              }
-              onChange={(e) => setMonedaId(e.value)}
-              placeholder="Moneda"
-              disabled={!puedeEditar}
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="montoTotal"
-            >
-              Monto Total*
-            </label>
-            <InputNumber
-              id="montoTotal"
-              value={montoTotal}
-              onValueChange={(e) => setMontoTotal(e.value)}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              disabled={!puedeEditar}
-              style={{ fontWeight: "bold" }}
-            />
-          </div>
-
-          <div style={{ flex: 1 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="montoPagado"
-            >
-              Monto Pagado
-            </label>
-            <InputNumber
-              id="montoPagado"
-              value={montoPagado}
-              onValueChange={(e) => setMontoPagado(e.value)}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              disabled={!puedeEditar}
-              style={{ fontWeight: "bold" }}
-            />
-          </div>
-
-          <div style={{ flex: 1 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="saldoPendiente"
-            >
-              Saldo Pendiente
-            </label>
-            <InputNumber
-              id="saldoPendiente"
-              value={saldoPendiente}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              disabled
-              style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
-            />
-          </div>
-        </div>
-
-        {/* PANEL DE IMPUESTOS SUNAT */}
-        <Panel
-          header="Impuestos SUNAT"
-          className="mb-3"
-          toggleable
-          collapsed={true}
-        >
-          {/* DETRACCIÓN */}
-          <div
-            style={{
-              marginBottom: 15,
-              padding: 10,
-              backgroundColor: "#f9f9f9",
-              borderRadius: 5,
-            }}
-          >
+          {/* INFORMACIÓN GENERAL */}
+          <div className="p-fluid">
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
                 gap: 10,
-                marginBottom: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <Checkbox
-                inputId="tieneDetraccion"
-                checked={tieneDetraccion}
-                onChange={(e) => setTieneDetraccion(e.checked)}
-                disabled={!puedeEditar}
-              />
-              <label
-                htmlFor="tieneDetraccion"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Tiene Detracción SPOT
-              </label>
-            </div>
-
-            {tieneDetraccion && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <label
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: getResponsiveFontSize(),
-                    }}
-                  >
-                    Monto Detracción
-                  </label>
-                  <InputNumber
-                    value={montoDetraccion}
-                    onValueChange={(e) => setMontoDetraccion(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    disabled={!puedeEditar}
-                    style={{ fontWeight: "bold" }}
-                  />
-                </div>
-                <div style={{ flex: 0.5 }}>
-                  <label
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: getResponsiveFontSize(),
-                    }}
-                  >
-                    % Detracción
-                  </label>
-                  <InputNumber
-                    value={porcentajeDetraccion}
-                    onValueChange={(e) => setPorcentajeDetraccion(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    suffix="%"
-                    disabled={!puedeEditar}
-                    style={{ fontWeight: "bold" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: getResponsiveFontSize(),
-                    }}
-                  >
-                    N° Constancia
-                  </label>
-                  <InputText
-                    value={numeroConstanciaDetraccion}
-                    onChange={(e) =>
-                      setNumeroConstanciaDetraccion(e.target.value)
-                    }
-                    disabled={!puedeEditar}
-                    style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                  />
-                </div>
-                <div style={{ flex: 0.7 }}>
-                  <label
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: getResponsiveFontSize(),
-                    }}
-                  >
-                    Fecha Detracción
-                  </label>
-                  <Calendar
-                    value={fechaDetraccion}
-                    onChange={(e) => setFechaDetraccion(e.value)}
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    showButtonBar
-                    disabled={!puedeEditar}
-                    style={{ fontWeight: "bold" }}
-                  />
-                </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="empresaId">Empresa *</label>
+                <Dropdown
+                  id="empresaId"
+                  value={empresaId}
+                  options={empresasOptions}
+                  onChange={(e) => setEmpresaId(e.value)}
+                  placeholder="Seleccione empresa"
+                  disabled={!puedeEditar || isEdit}
+                  style={{ fontSize: getResponsiveFontSize() }}
+                />
               </div>
-            )}
-          </div>
-
-          {/* RETENCIÓN */}
-          <div
-            style={{
-              marginBottom: 15,
-              padding: 10,
-              backgroundColor: "#f9f9f9",
-              borderRadius: 5,
-            }}
-          >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="clienteId">Cliente *</label>
+                <Dropdown
+                  id="clienteId"
+                  value={clienteId}
+                  options={clientesOptions}
+                  onChange={(e) => setClienteId(e.value)}
+                  placeholder="Seleccione cliente"
+                  disabled={!puedeEditar || isEdit}
+                  filter
+                  style={{ fontSize: getResponsiveFontSize() }}
+                />
+              </div>
+              <div style={{ flex: 0.5 }}>
+                <label htmlFor="tipoDoc">Tipo Documento</label>
+                <InputText
+                  id="tipoDoc"
+                  value={esSaldoInicial ? "SI-CXC" : "FACTURA"}
+                  disabled
+                  style={{ fontSize: getResponsiveFontSize() }}
+                />
+              </div>
+              <div style={{ flex: 0.5 }}>
+                <label htmlFor="numeroPreFactura">Documento *</label>
+                <InputText
+                  id="numeroPreFactura"
+                  value={numeroPreFactura}
+                  onChange={(e) => setNumeroPreFactura(e.target.value)}
+                  disabled={!puedeEditar}
+                  style={{ fontSize: getResponsiveFontSize() }}
+                />
+              </div>
+              <div style={{ flex: 0.5 }}>
+                <label htmlFor="origen">Origen PreFactura</label>
+                <InputText
+                  id="origen"
+                  value={preFacturaId ? `PF-${preFacturaId}` : "Sin PreFactura"}
+                  disabled
+                  style={{ fontSize: getResponsiveFontSize() }}
+                />
+              </div>
+            </div>
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
                 gap: 10,
-                marginBottom: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <Checkbox
-                inputId="tieneRetencion"
-                checked={tieneRetencion}
-                onChange={(e) => setTieneRetencion(e.checked)}
-                disabled={!puedeEditar}
-              />
-              <label
-                htmlFor="tieneRetencion"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Tiene Retención (3% IGV)
-              </label>
-            </div>
-
-            {tieneRetencion && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <label
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: getResponsiveFontSize(),
-                    }}
-                  >
-                    Monto Retención
-                  </label>
-                  <InputNumber
-                    value={montoRetencion}
-                    onValueChange={(e) => setMontoRetencion(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    disabled={!puedeEditar}
-                    style={{ fontWeight: "bold" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: getResponsiveFontSize(),
-                    }}
-                  >
-                    N° Comprobante
-                  </label>
-                  <InputText
-                    value={numeroComprobanteRetencion}
-                    onChange={(e) =>
-                      setNumeroComprobanteRetencion(e.target.value)
-                    }
-                    disabled={!puedeEditar}
-                    style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                  />
-                </div>
-                <div style={{ flex: 0.7 }}>
-                  <label
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: getResponsiveFontSize(),
-                    }}
-                  >
-                    Fecha Retención
-                  </label>
-                  <Calendar
-                    value={fechaRetencion}
-                    onChange={(e) => setFechaRetencion(e.value)}
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    showButtonBar
-                    disabled={!puedeEditar}
-                    style={{ fontWeight: "bold" }}
-                  />
-                </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaEmision">Fecha Emisión *</label>
+                <Calendar
+                  id="fechaEmision"
+                  value={fechaEmision}
+                  onChange={(e) => setFechaEmision(e.value)}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  disabled={!puedeEditar}
+                  style={{ fontSize: getResponsiveFontSize() }}
+                />
               </div>
-            )}
-          </div>
 
-          {/* PERCEPCIÓN */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaVencimiento">Fecha Vencimiento *</label>
+                <Calendar
+                  id="fechaVencimiento"
+                  value={fechaVencimiento}
+                  onChange={(e) => setFechaVencimiento(e.value)}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  disabled={!puedeEditar}
+                  style={{ fontSize: getResponsiveFontSize() }}
+                />
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label htmlFor="monedaId">Moneda *</label>
+                <Dropdown
+                  id="monedaId"
+                  value={monedaId}
+                  options={monedasOptions}
+                  onChange={(e) => setMonedaId(e.value)}
+                  placeholder="Seleccione moneda"
+                  disabled={!puedeEditar}
+                  style={{ fontSize: getResponsiveFontSize() }}
+                />
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label htmlFor="estadoId">Estado *</label>
+                <Dropdown
+                  id="estadoId"
+                  value={estadoId}
+                  options={estadosOptions}
+                  onChange={(e) => setEstadoId(e.value)}
+                  placeholder="Seleccione estado"
+                  disabled={!puedeEditar}
+                  style={{ fontSize: getResponsiveFontSize() }}
+                />
+              </div>
+            </div>
+          </div>
           <div
             style={{
-              marginBottom: 15,
-              padding: 10,
-              backgroundColor: "#f9f9f9",
-              borderRadius: 5,
+              display: "flex",
+              gap: 10,
+              alignItems: "end",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                marginBottom: 10,
-              }}
-            >
-              <Checkbox
-                inputId="tienePercepcion"
-                checked={tienePercepcion}
-                onChange={(e) => setTienePercepcion(e.checked)}
+            <div style={{ flex: 1 }}>
+              <Button
+                label={tieneDetraccion ? "DETRACCIÓN" : "DETRACCIÓN"}
+                icon={
+                  tieneDetraccion ? "pi pi-check-circle" : "pi pi-times-circle"
+                }
+                severity={tieneDetraccion ? "warning" : "secondary"}
+                onClick={() => setTieneDetraccion(!tieneDetraccion)}
                 disabled={!puedeEditar}
-              />
-              <label
-                htmlFor="tienePercepcion"
                 style={{
-                  fontWeight: "bold",
+                  minWidth: "140px",
                   fontSize: getResponsiveFontSize(),
                 }}
-              >
-                Tiene Percepción (Empresa es agente)
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="tieneDetraccion" className="ml-2">
+                Tiene Detracción
               </label>
+              <InputNumber
+                value={montoDetraccion}
+                onValueChange={(e) => setMontoDetraccion(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                disabled={!puedeEditar || !tieneDetraccion}
+                placeholder="Monto"
+                className="ml-2"
+                style={{ width: "120px", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <InputNumber
+                value={porcentajeDetraccion}
+                onValueChange={(e) => setPorcentajeDetraccion(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                disabled={!puedeEditar || !tieneDetraccion}
+                placeholder="%"
+                className="ml-2"
+                style={{ width: "80px", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <InputText
+                value={numeroConstanciaDetraccion}
+                onChange={(e) => setNumeroConstanciaDetraccion(e.target.value)}
+                disabled={!puedeEditar || !tieneDetraccion}
+                placeholder="N° Constancia"
+                className="ml-2"
+                style={{ width: "150px", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label={tieneRetencion ? "RETENCIÓN" : "RETENCIÓN"}
+                icon={
+                  tieneRetencion ? "pi pi-check-circle" : "pi pi-times-circle"
+                }
+                severity={tieneRetencion ? "danger" : "secondary"}
+                onClick={() => setTieneRetencion(!tieneRetencion)}
+                disabled={!puedeEditar}
+                style={{
+                  minWidth: "140px",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="tieneRetencion" className="ml-2">
+                Tiene Retención
+              </label>
+              <InputNumber
+                value={montoRetencion}
+                onValueChange={(e) => setMontoRetencion(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                disabled={!puedeEditar || !tieneRetencion}
+                placeholder="Monto"
+                className="ml-2"
+                style={{ width: "120px", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <InputText
+                value={numeroComprobanteRetencion}
+                onChange={(e) => setNumeroComprobanteRetencion(e.target.value)}
+                disabled={!puedeEditar || !tieneRetencion}
+                placeholder="N° Comprobante"
+                className="ml-2"
+                style={{ width: "150px", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label={tienePercepcion ? "PERCEPCIÓN" : "PERCEPCIÓN"}
+                icon={
+                  tienePercepcion ? "pi pi-check-circle" : "pi pi-times-circle"
+                }
+                severity={tienePercepcion ? "info" : "secondary"}
+                onClick={() => setTienePercepcion(!tienePercepcion)}
+                disabled={!puedeEditar}
+                style={{
+                  minWidth: "140px",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="tienePercepcion" className="ml-2">
+                Tiene Percepción
+              </label>
+              <InputNumber
+                value={montoPercepcion}
+                onValueChange={(e) => setMontoPercepcion(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                disabled={!puedeEditar || !tienePercepcion}
+                placeholder="Monto"
+                className="ml-2"
+                style={{ width: "120px", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <InputNumber
+                value={porcentajePercepcion}
+                onValueChange={(e) => setPorcentajePercepcion(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                disabled={!puedeEditar || !tienePercepcion}
+                placeholder="%"
+                className="ml-2"
+                style={{ width: "80px", fontSize: getResponsiveFontSize() }}
+              />
             </div>
 
-            {tienePercepcion && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <label
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: getResponsiveFontSize(),
-                    }}
-                  >
-                    Monto Percepción
-                  </label>
-                  <InputNumber
-                    value={montoPercepcion}
-                    onValueChange={(e) => setMontoPercepcion(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    disabled={!puedeEditar}
-                    style={{ fontWeight: "bold" }}
+            <div style={{ flex: 1 }}>
+              <InputText
+                value={numeroComprobantePercepcion}
+                onChange={(e) => setNumeroComprobantePercepcion(e.target.value)}
+                disabled={!puedeEditar || !tienePercepcion}
+                placeholder="N° Comprobante"
+                className="ml-2"
+                style={{ width: "150px", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+          </div>
+
+          {/* PAGOS RECIBIDOS */}
+          {isEdit && (
+            <div>
+              <div className="col-12 flex justify-content-between align-items-center">
+                <h6 style={{ margin: 0, fontWeight: "600" }}>
+                  PAGOS RECIBIDOS
+                </h6>
+                <Button
+                  label="Registrar Pago"
+                  icon="pi pi-plus"
+                  className="p-button-success p-button-sm"
+                  onClick={handleRegistrarPago}
+                  disabled={readOnly || !permisos.puedeEditar || loadingPagos}
+                />
+              </div>
+
+              <div className="col-12">
+                <DataTable
+                  value={pagos}
+                  loading={loadingPagos}
+                  emptyMessage="No hay pagos registrados"
+                  size="small"
+                  style={{ fontSize: getResponsiveFontSize() }}
+                >
+                  <Column
+                    field="fechaPago"
+                    header="Fecha Pago"
+                    body={fechaTemplate}
+                    style={{ width: "120px" }}
                   />
-                </div>
-                <div style={{ flex: 0.5 }}>
-                  <label
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: getResponsiveFontSize(),
-                    }}
-                  >
-                    % Percepción
-                  </label>
-                  <InputNumber
-                    value={porcentajePercepcion}
-                    onValueChange={(e) => setPorcentajePercepcion(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    suffix="%"
-                    disabled={!puedeEditar}
-                    style={{ fontWeight: "bold" }}
+                  <Column
+                    field="montoPago"
+                    header="Monto"
+                    body={montoTemplate}
+                    style={{ width: "120px" }}
                   />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: getResponsiveFontSize(),
-                    }}
-                  >
-                    N° Comprobante
-                  </label>
-                  <InputText
-                    value={numeroComprobantePercepcion}
-                    onChange={(e) =>
-                      setNumeroComprobantePercepcion(e.target.value)
-                    }
-                    disabled={!puedeEditar}
-                    style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                  <Column
+                    field="medioPagoId"
+                    header="Medio Pago"
+                    body={medioPagoTemplate}
+                    style={{ width: "150px" }}
                   />
-                </div>
-                <div style={{ flex: 0.7 }}>
-                  <label
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: getResponsiveFontSize(),
-                    }}
-                  >
-                    Fecha Percepción
-                  </label>
-                  <Calendar
-                    value={fechaPercepcion}
-                    onChange={(e) => setFechaPercepcion(e.value)}
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    showButtonBar
-                    disabled={!puedeEditar}
-                    style={{ fontWeight: "bold" }}
+                  <Column
+                    field="numeroOperacion"
+                    header="N° Operación"
+                    style={{ width: "150px" }}
                   />
+                  <Column
+                    field="bancoId"
+                    header="Banco"
+                    body={bancoTemplate}
+                    style={{ width: "150px" }}
+                  />
+                  <Column
+                    header="Acciones"
+                    body={accionesTemplate}
+                    style={{ width: "100px" }}
+                  />
+                </DataTable>
+
+                {/* TOTALES */}
+                <div
+                  className="grid mt-3"
+                  style={{
+                    backgroundColor: "#f8f9fa",
+                    padding: "1rem",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <div className="col-12 md:col-4">
+                    <strong>Monto Total CxC:</strong>{" "}
+                    {monedasOptions
+                      .find((m) => m.value === monedaId)
+                      ?.label?.split(" - ")[0] || ""}{" "}
+                    {formatearNumero(montoTotal, 2)}
+                  </div>
+                  <div className="col-12 md:col-4">
+                    <strong>Monto Pagado:</strong>{" "}
+                    {monedasOptions
+                      .find((m) => m.value === monedaId)
+                      ?.label?.split(" - ")[0] || ""}{" "}
+                    {formatearNumero(montoPagado, 2)}
+                  </div>
+                  <div className="col-12 md:col-4">
+                    <strong>Saldo Pendiente:</strong>{" "}
+                    {monedasOptions
+                      .find((m) => m.value === monedaId)
+                      ?.label?.split(" - ")[0] || ""}{" "}
+                    {formatearNumero(saldoPendiente, 2)}
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
-        </Panel>
+            </div>
+          )}
 
-        <div style={{ marginBottom: 15 }}>
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="observaciones"
-          >
-            Observaciones
-          </label>
-          <InputTextarea
-            id="observaciones"
-            value={observaciones}
-            onChange={(e) => setObservaciones(e.target.value)}
-            rows={3}
-            placeholder="Observaciones adicionales..."
-            disabled={!puedeEditar}
-            style={{ fontWeight: "normal" }}
-          />
-        </div>
-      </Panel>
+          {/* OBSERVACIONES */}
+          <div className="grid mb-3">
+            <div className="col-12">
+              <label htmlFor="observaciones">Observaciones</label>
+              <InputTextarea
+                id="observaciones"
+                value={observaciones}
+                onChange={(e) => setObservaciones(e.target.value)}
+                rows={3}
+                disabled={!puedeEditar}
+                style={{ fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+          </div>
         </TabPanel>
 
         {/* TAB 2: ASIENTO CONTABLE */}
@@ -1117,7 +776,7 @@ export default function CuentaPorCobrarForm({
             <CardAsientoContable
               asientoContableId={defaultValues?.asientoContableId}
               onGenerarAsiento={() => onGenerarAsiento(defaultValues)}
-              disabled={loading}
+              permisos={permisos}
               loading={loading}
               tituloCard="Asiento Contable"
             />
@@ -1125,56 +784,50 @@ export default function CuentaPorCobrarForm({
         )}
       </TabView>
 
-      {/* BOTONES DE ACCIÓN - SIEMPRE VISIBLES */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 10,
-          marginTop: 18,
-          paddingTop: 18,
-          borderTop: "1px solid #dee2e6",
-        }}
-      >
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <Button
-            label="Anular"
-            icon="pi pi-ban"
-            severity="secondary"
-            onClick={handleAnular}
-            disabled={!puedeEditar || estadoId === 104}
-            type="button"
-          />
-          <Button
-            label="Canjear"
-            icon="pi pi-sync"
-            severity="contrast"
-            onClick={handleCanjear}
-            disabled={!puedeEditar || estadoId === 105}
-            type="button"
-          />
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <Button
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-secondary"
-            onClick={onCancel}
-            disabled={loading}
-            type="button"
-          />
-          <Button
-            label={isEdit ? "Actualizar" : "Guardar"}
-            icon="pi pi-check"
-            className="p-button-success"
-            onClick={handleSubmit}
-            loading={loading}
-            disabled={!puedeEditar}
-            type="button"
-          />
-        </div>
+      {/* BOTONES DE ACCIÓN */}
+      <div className="flex justify-content-end gap-2 mt-3">
+        <Button
+          label="Cancelar"
+          icon="pi pi-times"
+          className="p-button-secondary"
+          onClick={onCancel}
+          disabled={loading}
+        />
+        <Button
+          label="Guardar"
+          icon="pi pi-save"
+          onClick={handleSubmit}
+          disabled={!puedeEditar}
+          loading={loading}
+        />
       </div>
+
+      {/* DIALOG PARA REGISTRAR/EDITAR PAGO */}
+      <Dialog
+        header={isEditPago ? "Editar Pago" : "Registrar Pago"}
+        visible={showPagoDialog}
+        style={{ width: "600px" }}
+        onHide={() => setShowPagoDialog(false)}
+        modal
+      >
+        <PagoCuentaPorCobrarForm
+          isEdit={isEditPago}
+          defaultValues={{
+            ...pagoSeleccionado,
+            cuentaPorCobrarId: defaultValues.id, // ⭐ Pre-asignar la cuenta
+          }}
+          cuentasPorCobrar={[defaultValues]}
+          monedas={monedas}
+          mediosPago={mediosPago}
+          bancos={bancos}
+          cuentasCorrientes={cuentasCorrientes}
+          onSubmit={handleSubmitPago}
+          onCancel={() => setShowPagoDialog(false)}
+          loading={false}
+          readOnly={false}
+          hideCuentaField={true} // ⭐ Ocultar el campo
+        />
+      </Dialog>
     </div>
   );
 }
