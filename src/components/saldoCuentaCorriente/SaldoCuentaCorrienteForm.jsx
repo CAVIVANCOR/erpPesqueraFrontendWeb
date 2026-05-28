@@ -192,243 +192,257 @@ export default function SaldoCuentaCorrienteForm({
           {/* TAB 1: DATOS GENERALES */}
           <TabPanel header="Datos Generales" leftIcon="pi pi-file">
             <form onSubmit={handleSubmit} className="p-fluid">
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="empresaId" style={{ fontWeight: "bold" }}>
-              Empresa <span style={{ color: "red" }}>*</span>
-            </label>
-            <Dropdown
-              id="empresaId"
-              value={formData.empresaId}
-              options={empresasOptions}
-              onChange={(e) => handleChange("empresaId", e.value)}
-              placeholder="Seleccione empresa"
-              required
-              disabled={readOnly || loading || guardando}
-              filter
-              showClear
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="cuentaCorrienteId" style={{ fontWeight: "bold" }}>
-              Cuenta Corriente <span style={{ color: "red" }}>*</span>
-            </label>
-            <Dropdown
-              id="cuentaCorrienteId"
-              value={formData.cuentaCorrienteId}
-              options={cuentasOptions}
-              onChange={(e) => handleChange("cuentaCorrienteId", e.value)}
-              placeholder="Seleccione cuenta"
-              required
-              disabled={readOnly || loading || guardando}
-              filter
-              showClear
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="fecha" style={{ fontWeight: "bold" }}>
-              Fecha <span style={{ color: "red" }}>*</span>
-            </label>
-            <Calendar
-              id="fecha"
-              value={formData.fecha}
-              onChange={(e) => handleChange("fecha", e.value)}
-              dateFormat="dd/mm/yy"
-              showIcon
-              disabled={readOnly || loading || guardando}
-              required
-            />
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginTop: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="saldoAnterior" style={{ fontWeight: "bold" }}>
-              Saldo Anterior <span style={{ color: "red" }}>*</span>
-            </label>
-            <InputNumber
-              id="saldoAnterior"
-              value={formData.saldoAnterior}
-              onValueChange={(e) => handleChange("saldoAnterior", e.value)}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              disabled={readOnly || loading || guardando}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="ingresos" style={{ fontWeight: "bold" }}>
-              Ingresos <span style={{ color: "red" }}>*</span>
-            </label>
-            <InputNumber
-              id="ingresos"
-              value={formData.ingresos}
-              onValueChange={(e) => handleChange("ingresos", e.value)}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              min={0}
-              disabled={readOnly || loading || guardando}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="egresos" style={{ fontWeight: "bold" }}>
-              Egresos <span style={{ color: "red" }}>*</span>
-            </label>
-            <InputNumber
-              id="egresos"
-              value={formData.egresos}
-              onValueChange={(e) => handleChange("egresos", e.value)}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              min={0}
-              disabled={readOnly || loading || guardando}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="saldoActual">Saldo Actual (Calculado)</label>
-            <InputNumber
-              id="saldoActual"
-              value={formData.saldoActual}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              disabled={true}
-              style={{ backgroundColor: "#e9ecef" }}
-            />
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginTop: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="centroCostoId">Centro de Costo</label>
-            <Dropdown
-              id="centroCostoId"
-              value={formData.centroCostoId}
-              options={centrosOptions}
-              onChange={(e) => handleChange("centroCostoId", e.value)}
-              placeholder="Seleccione centro de costo"
-              disabled={readOnly || loading || guardando}
-              filter
-              showClear
-            />
-          </div>
-        </div>
-
-        <div
-          style={{
-            marginTop: 20,
-            padding: 15,
-            backgroundColor: "#f0f8ff",
-            borderRadius: 8,
-            border: "1px solid #b0d4f1",
-          }}
-        >
-          <h4 style={{ margin: "0 0 10px 0", color: "#1e3a5f" }}>
-            Conciliación Bancaria
-          </h4>
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "end",
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <label htmlFor="saldoContable">Saldo Contable</label>
-              <InputNumber
-                id="saldoContable"
-                value={formData.saldoContable}
-                onValueChange={(e) => handleChange("saldoContable", e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                disabled={readOnly || loading || guardando}
-                placeholder="Ingrese saldo contable"
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="diferencia">Diferencia (Calculada)</label>
-              <InputNumber
-                id="diferencia"
-                value={formData.diferencia}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                disabled={true}
+              <div
                 style={{
-                  backgroundColor: "#e9ecef",
-                  color:
-                    formData.diferencia && Math.abs(formData.diferencia) > 0.01
-                      ? "red"
-                      : "green",
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
                 }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="fechaConciliacion">Fecha Conciliación</label>
-              <Calendar
-                id="fechaConciliacion"
-                value={formData.fechaConciliacion}
-                onChange={(e) => handleChange("fechaConciliacion", e.value)}
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled={readOnly || loading || guardando}
-                placeholder="Seleccione fecha"
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <ToggleButton
-                id="conciliado"
-                checked={formData.conciliado}
-                onChange={(e) => handleChange("conciliado", e.value)}
-                onLabel="CONCILIADO"
-                offLabel="CONCILIADO"
-                onIcon="pi pi-check"
-                offIcon="pi pi-times"
-                disabled={readOnly || loading || guardando}
-                className={
-                  formData.conciliado ? "p-button-success" : "p-button-danger"
-                }
-                style={{ width: "100%" }}
-              />
-            </div>
-          </div>
-        </div>
-      </form>
+              >
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="empresaId" style={{ fontWeight: "bold" }}>
+                    Empresa <span style={{ color: "red" }}>*</span>
+                  </label>
+                  <Dropdown
+                    id="empresaId"
+                    value={formData.empresaId}
+                    options={empresasOptions}
+                    onChange={(e) => handleChange("empresaId", e.value)}
+                    placeholder="Seleccione empresa"
+                    required
+                    disabled={readOnly || loading || guardando}
+                    filter
+                    showClear
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label
+                    htmlFor="cuentaCorrienteId"
+                    style={{ fontWeight: "bold" }}
+                  >
+                    Cuenta Corriente <span style={{ color: "red" }}>*</span>
+                  </label>
+                  <Dropdown
+                    id="cuentaCorrienteId"
+                    value={formData.cuentaCorrienteId}
+                    options={cuentasOptions}
+                    onChange={(e) => handleChange("cuentaCorrienteId", e.value)}
+                    placeholder="Seleccione cuenta"
+                    required
+                    disabled={readOnly || loading || guardando}
+                    filter
+                    showClear
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="fecha" style={{ fontWeight: "bold" }}>
+                    Fecha <span style={{ color: "red" }}>*</span>
+                  </label>
+                  <Calendar
+                    id="fecha"
+                    value={formData.fecha}
+                    onChange={(e) => handleChange("fecha", e.value)}
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    disabled={readOnly || loading || guardando}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginTop: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="saldoAnterior" style={{ fontWeight: "bold" }}>
+                    Saldo Anterior <span style={{ color: "red" }}>*</span>
+                  </label>
+                  <InputNumber
+                    id="saldoAnterior"
+                    value={formData.saldoAnterior}
+                    onValueChange={(e) =>
+                      handleChange("saldoAnterior", e.value)
+                    }
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled={readOnly || loading || guardando}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="ingresos" style={{ fontWeight: "bold" }}>
+                    Ingresos <span style={{ color: "red" }}>*</span>
+                  </label>
+                  <InputNumber
+                    id="ingresos"
+                    value={formData.ingresos}
+                    onValueChange={(e) => handleChange("ingresos", e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    min={0}
+                    disabled={readOnly || loading || guardando}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="egresos" style={{ fontWeight: "bold" }}>
+                    Egresos <span style={{ color: "red" }}>*</span>
+                  </label>
+                  <InputNumber
+                    id="egresos"
+                    value={formData.egresos}
+                    onValueChange={(e) => handleChange("egresos", e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    min={0}
+                    disabled={readOnly || loading || guardando}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="saldoActual">Saldo Actual (Calculado)</label>
+                  <InputNumber
+                    id="saldoActual"
+                    value={formData.saldoActual}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled={true}
+                    style={{ backgroundColor: "#e9ecef" }}
+                  />
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginTop: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="centroCostoId">Centro de Costo</label>
+                  <Dropdown
+                    id="centroCostoId"
+                    value={formData.centroCostoId}
+                    options={centrosOptions}
+                    onChange={(e) => handleChange("centroCostoId", e.value)}
+                    placeholder="Seleccione centro de costo"
+                    disabled={readOnly || loading || guardando}
+                    filter
+                    showClear
+                  />
+                </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 20,
+                  padding: 15,
+                  backgroundColor: "#f0f8ff",
+                  borderRadius: 8,
+                  border: "1px solid #b0d4f1",
+                }}
+              >
+                <h4 style={{ margin: "0 0 10px 0", color: "#1e3a5f" }}>
+                  Conciliación Bancaria
+                </h4>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    alignItems: "end",
+                    flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <label htmlFor="saldoContable">Saldo Contable</label>
+                    <InputNumber
+                      id="saldoContable"
+                      value={formData.saldoContable}
+                      onValueChange={(e) =>
+                        handleChange("saldoContable", e.value)
+                      }
+                      mode="decimal"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
+                      disabled={readOnly || loading || guardando}
+                      placeholder="Ingrese saldo contable"
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label htmlFor="diferencia">Diferencia (Calculada)</label>
+                    <InputNumber
+                      id="diferencia"
+                      value={formData.diferencia}
+                      mode="decimal"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
+                      disabled={true}
+                      style={{
+                        backgroundColor: "#e9ecef",
+                        color:
+                          formData.diferencia &&
+                          Math.abs(formData.diferencia) > 0.01
+                            ? "red"
+                            : "green",
+                      }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label htmlFor="fechaConciliacion">
+                      Fecha Conciliación
+                    </label>
+                    <Calendar
+                      id="fechaConciliacion"
+                      value={formData.fechaConciliacion}
+                      onChange={(e) =>
+                        handleChange("fechaConciliacion", e.value)
+                      }
+                      dateFormat="dd/mm/yy"
+                      showIcon
+                      disabled={readOnly || loading || guardando}
+                      placeholder="Seleccione fecha"
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <ToggleButton
+                      id="conciliado"
+                      checked={formData.conciliado}
+                      onChange={(e) => handleChange("conciliado", e.value)}
+                      onLabel="CONCILIADO"
+                      offLabel="CONCILIADO"
+                      onIcon="pi pi-check"
+                      offIcon="pi pi-times"
+                      disabled={readOnly || loading || guardando}
+                      className={
+                        formData.conciliado
+                          ? "p-button-success"
+                          : "p-button-danger"
+                      }
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </form>
           </TabPanel>
 
           {/* TAB 2: ASIENTO CONTABLE */}
           {isEdit && (
-            <TabPanel header="Asiento Contable" leftIcon="pi pi-book">
+            <TabPanel header="Asientos Contables" leftIcon="pi pi-book">
               <CardAsientoContable
-                asientoContableId={defaultValues?.asientoContableId}
+                asientosContables={defaultValues?.asientosContables || []} // ✅ Array de asientos
+                saldoCuentaCorrienteId={defaultValues?.id} // ✅ ID del saldo
                 onGenerarAsiento={() => onGenerarAsiento(defaultValues)}
                 disabled={loading || guardando}
                 loading={loading || guardando}
-                tituloCard="Asiento Contable"
               />
             </TabPanel>
           )}
@@ -462,9 +476,11 @@ export default function SaldoCuentaCorrienteForm({
             type="button"
             onClick={(e) => {
               // Buscar el formulario y disparar submit
-              const form = document.querySelector('form');
+              const form = document.querySelector("form");
               if (form) {
-                form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                form.dispatchEvent(
+                  new Event("submit", { cancelable: true, bubbles: true }),
+                );
               }
             }}
             loading={loading || guardando}

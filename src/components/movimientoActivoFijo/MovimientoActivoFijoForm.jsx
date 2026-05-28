@@ -37,7 +37,6 @@ import { getMonedas } from "../../api/moneda";
 import { getPeriodosPorEmpresa } from "../../api/contabilidad/periodoContable";
 import { getCentrosCosto } from "../../api/centroCosto";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
-import { eliminarAsientoContableMovimiento } from "../../api/movimientoActivoFijo";
 /**
  * Esquema de validación con Yup
  * Define las reglas de validación para el formulario
@@ -270,19 +269,14 @@ const MovimientoActivoFijoForm = ({
    */
   const cargarCombos = async () => {
     try {
-      const [
-        empresasData,
-        activosData,
-        tiposData,
-        monedasData,
-        centrosData,
-      ] = await Promise.all([
-        getEmpresas(),
-        getActivos(),
-        getTiposMovimientoActivoFijo(),
-        getMonedas(),
-        getCentrosCosto(),
-      ]);
+      const [empresasData, activosData, tiposData, monedasData, centrosData] =
+        await Promise.all([
+          getEmpresas(),
+          getActivos(),
+          getTiposMovimientoActivoFijo(),
+          getMonedas(),
+          getCentrosCosto(),
+        ]);
 
       setEmpresas(empresasData);
       setActivos(activosData);
@@ -474,47 +468,20 @@ const MovimientoActivoFijoForm = ({
     return errors[fieldName] ? "p-invalid" : "";
   };
 
-const handleEliminarAsiento = () => {
-  confirmDialog({
-    message:
-      "¿Está seguro de eliminar el asiento contable? Esta acción no se puede deshacer.",
-    header: "Confirmar Eliminación",
-    icon: "pi pi-exclamation-triangle",
-    acceptLabel: "Sí, Eliminar",
-    rejectLabel: "Cancelar",
-    acceptClassName: "p-button-danger",
-    accept: async () => {
-      setLoading(true);
-      try {
-        await eliminarAsientoContableMovimiento(movimiento.id);
-        
-        toast.current.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Asiento contable eliminado correctamente",
-          life: 3000,
-        });
-        
-        // Cerrar el formulario para que se recargue la lista
-        if (onCancel) {
-          onCancel();
-        }
-      } catch (error) {
-        console.error("Error al eliminar asiento:", error);
-        toast.current.show({
-          severity: "error",
-          summary: "Error",
-          detail:
-            error.response?.data?.message ||
-            "Error al eliminar el asiento contable",
-          life: 3000,
-        });
-      } finally {
-        setLoading(false);
-      }
-    },
-  });
-};
+  /**
+   * Maneja la visualización de asientos contables
+   */
+  const handleVerAsientos = () => {
+    // TODO: Implementar modal o navegación para ver lista de asientos
+    // Por ahora, mostrar mensaje informativo
+    toast.current.show({
+      severity: "info",
+      summary: "Asientos Contables",
+      detail: `Este movimiento tiene ${movimiento.asientosContables?.length || 0} asiento(s) contable(s) generado(s).`,
+      life: 3000,
+    });
+  };
+
   // Opciones para combos
   const empresasOptions = empresas.map((empresa) => ({
     label: empresa.razonSocial,
@@ -1012,36 +979,25 @@ const handleEliminarAsiento = () => {
               <>
                 <Button
                   type="button"
-                  label={
-                    movimiento.asientoContableId
-                      ? "Regenerar Asiento"
-                      : "Generar Asiento"
-                  }
+                  label="Generar Asiento" // ✅ Siempre "Generar" (permite múltiples)
                   icon="pi pi-book"
-                  className={
-                    movimiento.asientoContableId
-                      ? "p-button-warning"
-                      : "p-button-info"
-                  }
+                  className="p-button-info"
                   onClick={handleGenerarAsiento}
                   disabled={loading || readOnly}
-                  tooltip={
-                    movimiento.asientoContableId
-                      ? "Regenerar el asiento contable existente"
-                      : "Generar asiento contable para este movimiento"
-                  }
+                  tooltip="Generar nuevo asiento contable para este movimiento"
                 />
-                {movimiento.asientoContableId && (
-                  <Button
-                    type="button"
-                    label="Eliminar Asiento"
-                    icon="pi pi-trash"
-                    className="p-button-danger"
-                    onClick={handleEliminarAsiento}
-                    disabled={loading || readOnly}
-                    tooltip="Eliminar el asiento contable y permitir modificar el movimiento"
-                  />
-                )}
+                {movimiento.asientosContables &&
+                  movimiento.asientosContables.length > 0 && ( // ✅ Verificar array
+                    <Button
+                      type="button"
+                      label={`Ver Asientos (${movimiento.asientosContables.length})`} // ✅ Mostrar cantidad
+                      icon="pi pi-eye"
+                      className="p-button-secondary"
+                      onClick={handleVerAsientos} // ✅ Nueva función para ver lista
+                      disabled={loading || readOnly}
+                      tooltip="Ver asientos contables generados"
+                    />
+                  )}
               </>
             )}
 

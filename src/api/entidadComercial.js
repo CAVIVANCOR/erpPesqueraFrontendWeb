@@ -163,3 +163,18 @@ export async function clonarEntidadAEmpresas(id) {
   const res = await axios.post(`${API_URL}/${id}/clonar-a-empresas`, {}, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Clona una EntidadComercial a empresas seleccionadas específicamente
+ * @param {number} entidadComercialId - ID de la entidad comercial a clonar
+ * @param {Array<number>} empresasDestino - Array de IDs de empresas destino
+ * @returns {Promise<Object>} Resumen de operaciones realizadas
+ */
+export async function clonarEntidadAEmpresasSeleccionadas(entidadComercialId, empresasDestino) {
+  const res = await axios.post(
+    `${API_URL}/clonar-a-empresas`,
+    { entidadComercialId, empresasDestino },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

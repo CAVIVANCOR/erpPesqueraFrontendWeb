@@ -739,12 +739,6 @@ export default function PersonalForm({
           ? data.esAdministrativo
           : true,
     };
-    // Fin construcción payload profesional
-    console.log('📅 DEBUG - Fecha Cese:', {
-      raw: data.fechaCese,
-      formatted: payload.fechaCese,
-      cesado: payload.cesado
-    });
     onSubmit(payload);
   };
 

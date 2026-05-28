@@ -1590,7 +1590,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                       locale="es-PE"
                       minFractionDigits={2}
                       disabled={readOnly}
-                      style={{ width: "100%" , fontWeight: "bold"}}
+                      style={{ width: "100%", fontWeight: "bold" }}
                     />
                   )}
                 />
@@ -1623,7 +1623,8 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                       outlined
                       style={{
                         width: "100%",
-                        fontSize: getResponsiveFontSize(), fontWeight: "bold"
+                        fontSize: getResponsiveFontSize(),
+                        fontWeight: "bold",
                       }}
                     />
                   )}
@@ -1659,7 +1660,8 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                       outlined
                       style={{
                         width: "100%",
-                        fontSize: getResponsiveFontSize(), fontWeight: "bold"
+                        fontSize: getResponsiveFontSize(),
+                        fontWeight: "bold",
                       }}
                     />
                   )}
@@ -1695,7 +1697,8 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                       outlined
                       style={{
                         width: "100%",
-                        fontSize: getResponsiveFontSize(), fontWeight: "bold"
+                        fontSize: getResponsiveFontSize(),
+                        fontWeight: "bold",
                       }}
                     />
                   )}
@@ -1726,7 +1729,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                         style={{
                           width: "100%",
                           fontSize: getResponsiveFontSize(),
-                          fontWeight: "bold"
+                          fontWeight: "bold",
                         }}
                         filter
                         showClear
@@ -1750,7 +1753,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               >
                 Destino de Fondos
               </label>
-                            <Controller
+              <Controller
                 name="destinoFondos"
                 control={control}
                 render={({ field }) => (
@@ -1763,11 +1766,11 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                     placeholder="Descripción del destino de los fondos del préstamo"
                     disabled={readOnly}
                     rows={2}
-                    style={{ 
+                    style={{
                       width: "100%",
                       fontWeight: "bold",
                       color: "#8B0000",
-                      backgroundColor: "#FFFACD"
+                      backgroundColor: "#FFFACD",
                     }}
                   />
                 )}
@@ -2014,13 +2017,11 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
 
         {/* TAB 7: ASIENTO CONTABLE */}
         {isEdit && (
-          <TabPanel header="Asiento Contable" leftIcon="pi pi-book">
+          <TabPanel header="Asientos Contables" leftIcon="pi pi-book">
             <CardAsientoContable
-              asientoContableId={defaultValues?.asientoContableId}
-              onGenerarAsiento={() => onGenerarAsiento(defaultValues)}
-              disabled={loading}
-              loading={loading}
-              tituloCard="Asiento Contable"
+              asientosContables={defaultValues?.asientosContables || []} // ✅ Array de asientos
+              prestamoBancarioId={defaultValues?.id} // ✅ ID del préstamo
+              // ... otras props
             />
           </TabPanel>
         )}

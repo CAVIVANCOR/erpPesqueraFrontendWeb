@@ -19,6 +19,8 @@ import { Toolbar } from "primereact/toolbar";
 import { Button } from "primereact/button";
 import { ButtonGroup } from "primereact/buttongroup";
 import { Tag } from "primereact/tag";
+import { Dialog } from "primereact/dialog";
+import { confirmDialog, ConfirmDialog } from "primereact/confirmdialog";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import DetalleComisionFidelizacionEntidad from "./DetalleComisionFidelizacionEntidad";
 import {
@@ -27,7 +29,7 @@ import {
   crearEntidadComercial,
   actualizarEntidadComercial,
   getAgenciasEnvio,
-  clonarEntidadAEmpresas,
+  clonarEntidadAEmpresasSeleccionadas,
 } from "../../api/entidadComercial";
 import {
   crearDireccionEntidad,
@@ -55,6 +57,9 @@ import DetalleLineasCreditoEntidad from "./DetalleLineasCreditoEntidad";
 import DetalleCtasCteEntidad from "./DetalleCtasCteEntidad";
 import { getDepartamentos } from "../../api/departamento";
 import { getProvincias } from "../../api/provincia";
+// ✅ AGREGAR ESTOS IMPORTS
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
 // Esquema de validación básico para EntidadComercial
 const validationSchema = yup.object().shape({
   // Solo validaciones básicas requeridas para el guardado principal
@@ -110,6 +115,11 @@ const EntidadComercialForm = ({
   const [vendedores, setVendedores] = useState([]);
   const [agenciasEnvio, setAgenciasEnvio] = useState([]);
   const [monedas, setMonedas] = useState([]);
+  // ✅ AGREGAR ESTOS ESTADOS
+  const [dialogClonarVisible, setDialogClonarVisible] = useState(false);
+  const [empresasDisponibles, setEmpresasDisponibles] = useState([]);
+  const [empresasSeleccionadas, setEmpresasSeleccionadas] = useState([]);
+  const [loadingEmpresas, setLoadingEmpresas] = useState(false);
   const toast = toastProp || useRef(null);
   const direccionesRef = useRef(null);
   const contactosRef = useRef(null);
@@ -701,64 +711,71 @@ const EntidadComercialForm = ({
   /**
    * Maneja la clonación de la entidad comercial a todas las empresas
    */
+  // ✅ REEMPLAZAR LA FUNCIÓN EXISTENTE
   const handleClonarAEmpresas = async () => {
-    if (!entidadComercial?.id) {
-      toast.current?.show({
+    // Abrir el dialog y cargar empresas
+    await cargarEmpresasDisponibles();
+    setDialogClonarVisible(true);
+  };
+
+  // ✅ AGREGAR ESTA NUEVA FUNCIÓN
+  const ejecutarClonacion = async () => {
+    if (empresasSeleccionadas.length === 0) {
+      toast.current.show({
         severity: "warn",
         summary: "Advertencia",
-        detail: "Debe guardar la entidad antes de clonarla",
+        detail: "Debe seleccionar al menos una empresa",
         life: 3000,
       });
       return;
     }
 
-    try {
-      setLoading(true);
-      const resumen = await clonarEntidadAEmpresas(Number(entidadComercial.id));
+    // Confirmación antes de clonar
+    confirmDialog({
+      message: `¿Está seguro de clonar esta entidad a ${empresasSeleccionadas.length} empresa(s)?`,
+      header: "Confirmar Clonación",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Sí, Clonar",
+      rejectLabel: "Cancelar",
+      accept: async () => {
+        try {
+          setLoading(true);
 
-      const mensaje = `
-        Clonación completada:
-        • Empresas procesadas: ${resumen.empresasProcesadas}
-        • Entidades creadas: ${resumen.entidadesCreadas}
-        • Entidades actualizadas: ${resumen.entidadesActualizadas}
-        • Direcciones creadas: ${resumen.direccionesCreadas}
-        • Direcciones actualizadas: ${resumen.direccionesActualizadas}
-        • Contactos creados: ${resumen.contactosCreados}
-        • Contactos actualizados: ${resumen.contactosActualizados}
-        • Cuentas creadas: ${resumen.ctaCteCreadas}
-        • Cuentas actualizadas: ${resumen.ctaCteActualizadas}
-      `;
+          // Usar la API existente del proyecto
+          const resultado = await clonarEntidadAEmpresasSeleccionadas(
+            entidadComercial.id,
+            empresasSeleccionadas.map((emp) => emp.id),
+          );
 
-      toast.current?.show({
-        severity: "success",
-        summary: "Clonación Exitosa",
-        detail: mensaje,
-        life: 8000,
-      });
+          // Cerrar dialog
+          setDialogClonarVisible(false);
 
-      if (resumen.errores && resumen.errores.length > 0) {
-        resumen.errores.forEach((error) => {
-          toast.current?.show({
-            severity: "warn",
-            summary: `Error en ${error.empresaNombre}`,
-            detail: error.error,
+          // Mostrar resultado
+          toast.current.show({
+            severity: "success",
+            summary: "Clonación Exitosa",
+            detail: `Entidad clonada exitosamente a ${empresasSeleccionadas.length} empresa(s)`,
             life: 5000,
           });
-        });
-      }
-    } catch (error) {
-      console.error("Error al clonar entidad:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail:
-          error.response?.data?.message ||
-          "Error al clonar la entidad comercial",
-        life: 3000,
-      });
-    } finally {
-      setLoading(false);
-    }
+
+          // Limpiar selección
+          setEmpresasSeleccionadas([]);
+        } catch (error) {
+          console.error("Error al clonar entidad:", error);
+          toast.current.show({
+            severity: "error",
+            summary: "Error",
+            detail:
+              error.response?.data?.message ||
+              error.message ||
+              "Error al clonar la entidad",
+            life: 5000,
+          });
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   if (loading && !esEdicion) {
@@ -771,6 +788,41 @@ const EntidadComercialForm = ({
       </div>
     );
   }
+
+  // ✅ AGREGAR ESTA FUNCIÓN
+  const cargarEmpresasDisponibles = async () => {
+    try {
+      setLoadingEmpresas(true);
+
+      // Obtener todas las empresas usando la API existente
+      const empresas = await getEmpresas();
+
+      // Filtrar empresas activas y excluir la empresa actual
+      const empresasFiltradas = empresas.filter(
+        (emp) => !emp.cesado && emp.id !== entidadComercial?.empresaId,
+      );
+
+      // Ordenar alfabéticamente por razón social
+      empresasFiltradas.sort((a, b) =>
+        a.razonSocial.localeCompare(b.razonSocial),
+      );
+
+      setEmpresasDisponibles(empresasFiltradas);
+
+      // Por defecto, seleccionar todas las empresas
+      setEmpresasSeleccionadas(empresasFiltradas);
+    } catch (error) {
+      console.error("Error al cargar empresas:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar las empresas disponibles",
+        life: 3000,
+      });
+    } finally {
+      setLoadingEmpresas(false);
+    }
+  };
 
   return (
     <div className="entidad-comercial-form">
@@ -1099,6 +1151,114 @@ const EntidadComercialForm = ({
           </div>
         </div>
       </form>
+
+      {/* ✅ AGREGAR ESTE DIALOG COMPLETO */}
+      <Dialog
+        header="Seleccionar Empresas para Clonar"
+        visible={dialogClonarVisible}
+        style={{ width: "70vw" }}
+        breakpoints={{ "960px": "90vw", "640px": "95vw" }}
+        onHide={() => setDialogClonarVisible(false)}
+        modal
+        draggable={false}
+      >
+        <div className="mb-3">
+          <p className="text-sm text-gray-600">
+            <strong>Entidad:</strong>{" "}
+            {entidadComercial?.razonSocial || entidadComercial?.nombreComercial}
+            {entidadComercial?.id && ` (ID: ${entidadComercial.id})`}
+          </p>
+          <p className="text-sm text-gray-600 mt-2">
+            Seleccione las empresas a las cuales desea clonar esta entidad con
+            todos sus datos relacionados.
+          </p>
+        </div>
+
+        {loadingEmpresas ? (
+          <div
+            className="flex justify-content-center align-items-center"
+            style={{ minHeight: "200px" }}
+          >
+            <i
+              className="pi pi-spin pi-spinner"
+              style={{ fontSize: "2rem" }}
+            ></i>
+          </div>
+        ) : (
+          <DataTable
+            value={empresasDisponibles}
+            selection={empresasSeleccionadas}
+            onSelectionChange={(e) => setEmpresasSeleccionadas(e.value)}
+            dataKey="id"
+            selectionMode="checkbox"
+            paginator
+            rows={10}
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            filterDisplay="row"
+            emptyMessage="No hay empresas disponibles"
+            responsiveLayout="scroll"
+            className="datatable-responsive"
+          >
+            <Column
+              selectionMode="multiple"
+              headerStyle={{ width: "3rem" }}
+              exportable={false}
+            />
+            <Column
+              field="razonSocial"
+              header="Razón Social"
+              sortable
+              filter
+              filterPlaceholder="Buscar por razón social"
+              style={{ minWidth: "250px" }}
+            />
+            <Column
+              field="ruc"
+              header="RUC"
+              sortable
+              filter
+              filterPlaceholder="Buscar por RUC"
+              style={{ minWidth: "120px" }}
+            />
+            <Column
+              field="nombreComercial"
+              header="Nombre Comercial"
+              sortable
+              filter
+              filterPlaceholder="Buscar por nombre"
+              style={{ minWidth: "200px" }}
+            />
+          </DataTable>
+        )}
+
+        <div className="flex justify-content-between align-items-center mt-4 pt-3 border-top-1 border-gray-300">
+          <div className="flex align-items-center gap-2">
+            <i className="pi pi-info-circle text-blue-500"></i>
+            <span className="text-sm font-semibold text-blue-600">
+              {empresasSeleccionadas.length} de {empresasDisponibles.length}{" "}
+              empresas seleccionadas
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              onClick={() => setDialogClonarVisible(false)}
+              className="p-button-text p-button-secondary"
+              disabled={loading}
+            />
+            <Button
+              label="Clonar Entidad"
+              icon="pi pi-clone"
+              onClick={ejecutarClonacion}
+              disabled={empresasSeleccionadas.length === 0 || loading}
+              loading={loading}
+              severity="info"
+            />
+          </div>
+        </div>
+      </Dialog>
+      <ConfirmDialog />
     </div>
   );
 };

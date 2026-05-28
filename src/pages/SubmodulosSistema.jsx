@@ -358,6 +358,7 @@ export default function SubmodulosSistemaPage({ ruta }) {
             )
           }
         />
+        <Column field="nombreModeloOrigen" header="Modulo Origen" sortable />
         <Column
           field="activo"
           header="Activo"

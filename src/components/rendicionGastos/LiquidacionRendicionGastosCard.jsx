@@ -26,16 +26,50 @@ const LiquidacionRendicionGastosCard = ({
   const [pdfUrl, setPdfUrl] = useState(null);
   const [liquidando, setLiquidando] = useState(false);
 
+  // Estados locales para valores de liquidación (se actualizan inmediatamente)
+  const [saldoInicialLocal, setSaldoInicialLocal] = useState(0);
+  const [saldoFinalLocal, setSaldoFinalLocal] = useState(0);
+  const [fechaLiquidacionLocal, setFechaLiquidacionLocal] = useState(null);
+  const [estaLiquidadaLocal, setEstaLiquidadaLocal] = useState(false);
+
   const estaLiquidada = getValues("entregaARendirLiquidada");
   const urlLiquidacion = getValues("urlLiquidacionEntregaARendir");
   const rendicionGastosId = movimientoData?.documentoOrigenId;
 
-  useEffect(() => {
+   // Usar valores locales si existen, sino usar movimientoData, sino formulario
+  const saldoInicial = saldoInicialLocal || Number(movimientoData?.saldoInicialAsignacion || 0) || Number(getValues("saldoInicialAsignacion") || 0);
+  const saldoFinal = saldoFinalLocal || Number(movimientoData?.saldoFinalAsignacion || 0) || Number(getValues("saldoFinalAsignacion") || 0);
+  const fechaLiquidacion = fechaLiquidacionLocal || movimientoData?.fechaLiquidacionEntregaARendir || getValues("fechaLiquidacionEntregaARendir");
+
+    useEffect(() => {
     if (urlLiquidacion) {
       setPdfUrl(urlLiquidacion);
     }
   }, [urlLiquidacion]);
 
+  // Inicializar estados locales desde movimientoData cuando se carga el componente
+  useEffect(() => {
+    if (movimientoData) {
+      const liquidada = movimientoData.entregaARendirLiquidada;
+      if (liquidada) {
+        setSaldoInicialLocal(Number(movimientoData.saldoInicialAsignacion || 0));
+        setSaldoFinalLocal(Number(movimientoData.saldoFinalAsignacion || 0));
+        setFechaLiquidacionLocal(movimientoData.fechaLiquidacionEntregaARendir);
+        setEstaLiquidadaLocal(true);
+      }
+    }
+  }, [movimientoData]);
+
+  // También actualizar cuando cambian los valores del formulario
+  useEffect(() => {
+    const liquidada = getValues("entregaARendirLiquidada");
+    if (liquidada && !estaLiquidadaLocal) {
+      setSaldoInicialLocal(Number(getValues("saldoInicialAsignacion") || 0));
+      setSaldoFinalLocal(Number(getValues("saldoFinalAsignacion") || 0));
+      setFechaLiquidacionLocal(getValues("fechaLiquidacionEntregaARendir"));
+      setEstaLiquidadaLocal(true);
+    }
+  }, [estaLiquidada]);
   const generarPdfWrapper = async () => {
     if (!detMovId) {
       throw new Error(
@@ -136,8 +170,10 @@ const LiquidacionRendicionGastosCard = ({
     try {
       setLiquidando(true);
 
-      if (!rendicionGastosId) {
-        throw new Error("No se encontró el ID de la Rendición de Gastos");
+      if (!detMovId) {
+        throw new Error(
+          "No se encontró el ID del movimiento de entrega a rendir",
+        );
       }
 
       if (!pdfUrl) {
@@ -146,7 +182,7 @@ const LiquidacionRendicionGastosCard = ({
 
       const token = useAuthStore.getState().token;
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/rendiciones-gastos/${rendicionGastosId}/liquidar`,
+        `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir/${detMovId}/liquidar`,
         {
           method: "POST",
           headers: {
@@ -169,11 +205,60 @@ const LiquidacionRendicionGastosCard = ({
 
       const resultado = await response.json();
 
+      // Construir mensaje detallado con los cálculos
+      let mensajeDetalle = "Rendición de Gastos liquidada correctamente.\n\n";
+
+      if (resultado.detallesCalculo) {
+        const {
+          saldoInicial,
+          montoAsignado,
+          totalGastos,
+          totalDevoluciones,
+          saldoFinal,
+        } = resultado.detallesCalculo;
+
+        mensajeDetalle += `📊 Detalles del Cálculo:\n`;
+        mensajeDetalle += `• Saldo Inicial: S/. ${saldoInicial.toFixed(2)}\n`;
+        mensajeDetalle += `• Monto Asignado: S/. ${montoAsignado.toFixed(2)}\n`;
+        mensajeDetalle += `• Total Gastado: S/. ${totalGastos.toFixed(2)}\n`;
+        mensajeDetalle += `• Devoluciones: S/. ${totalDevoluciones.toFixed(2)}\n`;
+        mensajeDetalle += `• Saldo Final: S/. ${saldoFinal.toFixed(2)}`;
+      }
+
+      // Actualizar estados locales INMEDIATAMENTE para re-render
+      setSaldoInicialLocal(Number(resultado.saldoInicialAsignacion || 0));
+      setSaldoFinalLocal(Number(resultado.saldoFinalAsignacion || 0));
+      setFechaLiquidacionLocal(resultado.fechaLiquidacionEntregaARendir);
+      setEstaLiquidadaLocal(true);
+
+      // Actualizar los campos del formulario con los valores retornados
+      if (resultado.saldoInicialAsignacion !== undefined) {
+        setValue("saldoInicialAsignacion", resultado.saldoInicialAsignacion);
+      }
+      if (resultado.saldoFinalAsignacion !== undefined) {
+        setValue("saldoFinalAsignacion", resultado.saldoFinalAsignacion);
+      }
+      if (resultado.entregaARendirLiquidada !== undefined) {
+        setValue("entregaARendirLiquidada", resultado.entregaARendirLiquidada);
+      }
+      if (resultado.fechaLiquidacionEntregaARendir !== undefined) {
+        setValue(
+          "fechaLiquidacionEntregaARendir",
+          resultado.fechaLiquidacionEntregaARendir,
+        );
+      }
+      if (resultado.urlLiquidacionEntregaARendir !== undefined) {
+        setValue(
+          "urlLiquidacionEntregaARendir",
+          resultado.urlLiquidacionEntregaARendir,
+        );
+      }
+
       toast.current?.show({
         severity: "success",
-        summary: "Éxito",
-        detail: `Rendición de Gastos liquidada correctamente. Se actualizaron ${resultado.movimientosActualizados} movimientos.`,
-        life: 5000,
+        summary: "✅ Liquidación Exitosa",
+        detail: mensajeDetalle,
+        life: 8000,
       });
 
       if (onLiquidacionExitosa) {
@@ -197,21 +282,194 @@ const LiquidacionRendicionGastosCard = ({
       <Toast ref={toast} />
 
       <Card title="Liquidación de Rendición de Gastos">
+        {/* ========================================
+            SECCIÓN: INFORMACIÓN DE LIQUIDACIÓN
+            ======================================== */}
+        {(estaLiquidada || estaLiquidadaLocal) && (
+          <div
+            style={{
+              marginBottom: "1.5rem",
+              padding: "1rem",
+              backgroundColor: "#f8f9fa",
+              borderRadius: "8px",
+              border: "2px solid #28a745",
+            }}
+          >
+            <h3
+              style={{
+                margin: "0 0 1rem 0",
+                color: "#28a745",
+                fontSize: "1.1rem",
+                fontWeight: "bold",
+              }}
+            >
+              ✅ Liquidación Completada
+            </h3>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+                gap: "1rem",
+              }}
+            >
+              {/* Saldo Inicial */}
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <label
+                  style={{
+                    fontWeight: "bold",
+                    marginBottom: "0.5rem",
+                    color: "#495057",
+                  }}
+                >
+                  💰 Saldo Inicial
+                </label>
+                <InputNumber
+                  value={saldoInicial}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  disabled
+                  prefix="S/. "
+                  inputStyle={{
+                    fontWeight: "bold",
+                    fontSize: "1.1rem",
+                    backgroundColor: "#e3f2fd",
+                    color: "#1565c0",
+                    textAlign: "right",
+                  }}
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              {/* Saldo Final */}
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <label
+                  style={{
+                    fontWeight: "bold",
+                    marginBottom: "0.5rem",
+                    color: "#495057",
+                  }}
+                >
+                  💵 Saldo Final
+                </label>
+                <InputNumber
+                  value={saldoFinal}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  disabled
+                  prefix="S/. "
+                  inputStyle={{
+                    fontWeight: "bold",
+                    fontSize: "1.1rem",
+                    backgroundColor: saldoFinal >= 0 ? "#e8f5e9" : "#ffebee",
+                    color: saldoFinal >= 0 ? "#2e7d32" : "#c62828",
+                    textAlign: "right",
+                  }}
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              {/* Fecha de Liquidación */}
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <label
+                  style={{
+                    fontWeight: "bold",
+                    marginBottom: "0.5rem",
+                    color: "#495057",
+                  }}
+                >
+                  📅 Fecha de Liquidación
+                </label>
+                <input
+                  type="text"
+                  value={
+                    fechaLiquidacion
+                      ? new Date(fechaLiquidacion).toLocaleString("es-PE", {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "N/A"
+                  }
+                  disabled
+                  style={{
+                    padding: "0.75rem",
+                    fontSize: "1.1rem",
+                    fontWeight: "bold",
+                    backgroundColor: "#fff3cd",
+                    color: "#856404",
+                    border: "1px solid #ffc107",
+                    borderRadius: "4px",
+                    textAlign: "center",
+                  }}
+                />
+              </div>
+
+              {/* Estado de Liquidación */}
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <label
+                  style={{
+                    fontWeight: "bold",
+                    marginBottom: "0.5rem",
+                    color: "#495057",
+                  }}
+                >
+                  📊 Estado
+                </label>
+                <div
+                  style={{
+                    padding: "0.75rem",
+                    fontSize: "1.1rem",
+                    fontWeight: "bold",
+                    backgroundColor: "#d4edda",
+                    color: "#155724",
+                    border: "2px solid #28a745",
+                    borderRadius: "4px",
+                    textAlign: "center",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <i className="pi pi-check-circle" />
+                  LIQUIDADA
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================
+            SECCIÓN: GENERACIÓN Y VISUALIZACIÓN DE PDF
+            ======================================== */}
         <PDFGeneratedUploader
           generatePdfFunction={generarPdfWrapper}
           pdfData={getValues()}
           moduleName="liquidacion-entrega-rendir-pesca-industrial"
           entityId={detMovId}
           fileName={`liquidacion-rendicion-gastos-${detMovId}.pdf`}
-          buttonLabel="Generar Liquidación"
+          buttonLabel={
+            estaLiquidada && permisos.puedeReactivarDocs
+              ? "Regenerar PDF de Liquidación"
+              : "Generar Liquidación"
+          }
           buttonIcon="pi pi-file-pdf"
           buttonClassName="p-button-success"
-          disabled={!detMovId || readOnly || estaLiquidada}
+          disabled={
+            !detMovId ||
+            readOnly ||
+            (estaLiquidada && !permisos.puedeReactivarDocs)
+          }
           warningMessage={
             !detMovId
               ? "Debe guardar el movimiento antes de generar la liquidación"
-              : estaLiquidada
-                ? "Esta rendición de gastos ya está liquidada"
+              : estaLiquidada && !permisos.puedeReactivarDocs
+                ? "Esta rendición de gastos ya está liquidada. No tiene permiso para regenerar."
                 : null
           }
           toast={toast}
