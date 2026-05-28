@@ -583,13 +583,13 @@ const DetMovsRendicionGastosForm = ({
         : true;
 
       // Filtro 2: Solo asignaciones NO liquidadas
-      const noEstaLiquidada = !mov.entregaARendirLiquidada;
+      // const noEstaLiquidada = !mov.entregaARendirLiquidada;
 
       // Filtro 3: Solo asignaciones principales (no gastos)
       const esAsignacionPrincipal =
         mov.formaParteCalculoEntregaARendir === true;
 
-      return esDelResponsable && noEstaLiquidada && esAsignacionPrincipal;
+      return esDelResponsable && esAsignacionPrincipal;
     })
     .map((mov) => {
       // Calcular monto asignado
