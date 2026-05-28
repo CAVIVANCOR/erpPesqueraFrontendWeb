@@ -49,6 +49,7 @@ const DetMovsRendicionGastosForm = ({
   productos = [],
   empresas = [],
   movimientosAsignacionEntregaRendir = [],
+  todosLosMovimientos = [], // NUEVO: todos los movimientos para calcular gastos
   onGuardadoExitoso,
   onCancelar,
   permisos = {},
@@ -319,13 +320,36 @@ const DetMovsRendicionGastosForm = ({
         }
 
         setValue("fechaMovimiento", new Date());
-        setValue("moduloOrigenMovCajaId", 3);
+        setValue("operacionSinFactura", true);  // ← AGREGAR: Preseleccionar S/COMPROBANTE
+
         if (usuario?.personalId) {
           setValue("responsableId", Number(usuario.personalId));
+
+          // Autocompletar empresa y entidad comercial desde el personal del usuario
+          const selectedPersonal = personal.find(
+            (p) => Number(p.id) === Number(usuario.personalId),
+          );
+
+          if (selectedPersonal) {
+            // Preseleccionar empresa
+            if (selectedPersonal.empresaId) {
+              setValue("empresaId", Number(selectedPersonal.empresaId));
+            }
+
+            // Preseleccionar entidad comercial desde Empresa.entidadComercialId
+            if (
+              selectedPersonal.empresa &&
+              selectedPersonal.empresa.entidadComercialId
+            ) {
+              setValue(
+                "entidadComercialId",
+                Number(selectedPersonal.empresa.entidadComercialId),
+              );
+            }
+          }
         }
       }
     };
-
     cargarDatosIniciales();
   }, [movimiento, isEditing]);
 
@@ -548,12 +572,74 @@ const DetMovsRendicionGastosForm = ({
       value: Number(td.id),
     }));
 
-  const asignacionOrigenOptions = (
-    movimientosAsignacionEntregaRendir || []
-  ).map((mov) => ({
-    label: `Mov #${mov.id} ${formatearFechaHora(mov.fechaMovimiento)} - ${mov.descripcion || "Sin descripción"} - ${mov.moneda?.simbolo || ""} ${formatearNumero(mov.monto)}`,
-    value: Number(mov.id),
-  }));
+  // Filtrar asignaciones: solo del responsable seleccionado y NO liquidadas
+  const responsableIdSeleccionado = watch("responsableId");
+
+  const asignacionOrigenOptions = (movimientosAsignacionEntregaRendir || [])
+    .filter((mov) => {
+      // Filtro 1: Solo del responsable seleccionado
+      const esDelResponsable = responsableIdSeleccionado
+        ? Number(mov.responsableId) === Number(responsableIdSeleccionado)
+        : true;
+
+      // Filtro 2: Solo asignaciones NO liquidadas
+      const noEstaLiquidada = !mov.entregaARendirLiquidada;
+
+      // Filtro 3: Solo asignaciones principales (no gastos)
+      const esAsignacionPrincipal =
+        mov.formaParteCalculoEntregaARendir === true;
+
+      return esDelResponsable && noEstaLiquidada && esAsignacionPrincipal;
+    })
+    .map((mov) => {
+      // Calcular monto asignado
+      const montoAsignado = Number(mov.monto || 0);
+
+      // Calcular total de gastos asociados a esta asignación
+      const gastosAsociados = (
+        todosLosMovimientos ||
+        movimientosAsignacionEntregaRendir ||
+        []
+      ).filter(
+        (gasto) =>
+          gasto.asignacionOrigenId &&
+          Number(gasto.asignacionOrigenId) === Number(mov.id),
+      );
+
+      const totalGastos = gastosAsociados.reduce((sum, gasto) => {
+        return sum + Number(gasto.monto || 0);
+      }, 0);
+
+      // Calcular saldo disponible REAL
+      const saldoDisponible = montoAsignado - totalGastos;
+      const porcentajeSaldo =
+        montoAsignado > 0 ? (saldoDisponible / montoAsignado) * 100 : 0;
+
+      // Determinar estado visual
+      let estadoIcono = "🟢"; // Verde
+      if (porcentajeSaldo <= 0) {
+        estadoIcono = "⚪"; // Gris (sin saldo pero no liquidada)
+      } else if (porcentajeSaldo < 40) {
+        estadoIcono = "🟡"; // Amarillo
+      }
+
+      // Formato de fecha corta
+      const fecha = mov.fechaMovimiento
+        ? new Date(mov.fechaMovimiento).toLocaleDateString("es-PE", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "2-digit",
+          })
+        : "S/F";
+
+      return {
+        label: `💰 MOV-${mov.id} • ${fecha} • ${mov.moneda?.simbolo || "S/."} ${formatearNumero(montoAsignado)} → ${estadoIcono} Saldo: ${mov.moneda?.simbolo || "S/."} ${formatearNumero(saldoDisponible)}`,
+        value: Number(mov.id),
+        saldoDisponible,
+        porcentajeSaldo,
+        totalGastos, // Para debug si es necesario
+      };
+    });
 
   const handleToggleOperacionSinFactura = () => {
     const valorActual = getValues("operacionSinFactura");
@@ -1074,8 +1160,143 @@ const DetMovsRendicionGastosForm = ({
                           placeholder="Seleccione asignación origen"
                           showClear
                           filter
+                          filterBy="label"
+                          emptyMessage="No hay asignaciones disponibles"
+                          emptyFilterMessage="No se encontraron asignaciones"
+                          itemTemplate={(option) => {
+                            if (!option) return null;
+
+                            // Determinar color del saldo según porcentaje
+                            let colorSaldo = "#2e7d32"; // Verde
+                            if (option.porcentajeSaldo <= 0) {
+                              colorSaldo = "#616161"; // Gris
+                            } else if (option.porcentajeSaldo < 40) {
+                              colorSaldo = "#856404"; // Amarillo oscuro
+                            }
+
+                            // Extraer partes del label
+                            const partes = option.label.split("→");
+                            const parteIzquierda = partes[0] || "";
+                            const parteDerecha = partes[1] || "";
+
+                            // Extraer código, fecha y monto de la parte izquierda
+                            // Formato: "💰 MOV-234 • 07/05/26 • S/. 2,500.00 "
+                            const partesIzq = parteIzquierda.split("•");
+                            const codigoYFecha = partesIzq
+                              .slice(0, 2)
+                              .join("•")
+                              .trim(); // "💰 MOV-234 • 07/05/26"
+                            const montoTexto = partesIzq[2]?.trim() || ""; // "S/. 2,500.00"
+
+                            // Determinar moneda y color de fondo del tag para el MONTO
+                            const esUSD = montoTexto.includes("$");
+                            const colorFondoTag = esUSD ? "#d4edda" : "#fff3cd"; // Verde claro para USD, Amarillo claro para PEN
+                            const colorTextoTag = esUSD ? "#155724" : "#856404"; // Verde oscuro para USD, Amarillo oscuro para PEN
+                            const colorBordeTag = esUSD ? "#28a745" : "#ffc107"; // Verde para USD, Amarillo para PEN
+
+                            return (
+                              <div
+                                style={{
+                                  padding: "0.25rem 0",
+                                  fontSize: "0.95rem",
+                                  lineHeight: "1.3",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "0.5rem",
+                                }}
+                              >
+                                <span style={{ fontWeight: "normal" }}>
+                                  {codigoYFecha} •
+                                </span>
+                                <span
+                                  style={{
+                                    fontWeight: "bold",
+                                    padding: "0.25rem 0.5rem",
+                                    backgroundColor: colorFondoTag,
+                                    color: colorTextoTag,
+                                    border: `1px solid ${colorBordeTag}`,
+                                    borderRadius: "4px",
+                                    fontSize: "0.9rem",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {montoTexto}
+                                </span>
+                                <span
+                                  style={{
+                                    fontWeight: "bold",
+                                    color: colorSaldo,
+                                  }}
+                                >
+                                  → {parteDerecha}
+                                </span>
+                              </div>
+                            );
+                          }}
+                          valueTemplate={(option) => {
+                            if (!option) return "Seleccione asignación origen";
+
+                            // Extraer partes del label
+                            const partes = option.label.split("→");
+                            const parteIzquierda = partes[0] || "";
+                            const parteDerecha = partes[1] || "";
+
+                            // Extraer código, fecha y monto de la parte izquierda
+                            const partesIzq = parteIzquierda.split("•");
+                            const codigoYFecha = partesIzq
+                              .slice(0, 2)
+                              .join("•")
+                              .trim();
+                            const montoTexto = partesIzq[2]?.trim() || "";
+
+                            // Determinar moneda y color de fondo del tag
+                            const esUSD = montoTexto.includes("$");
+                            const colorFondoTag = esUSD ? "#d4edda" : "#fff3cd";
+                            const colorTextoTag = esUSD ? "#155724" : "#856404";
+                            const colorBordeTag = esUSD ? "#28a745" : "#ffc107";
+
+                            return (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "0.5rem",
+                                }}
+                              >
+                                <span style={{ fontWeight: "normal" }}>
+                                  {codigoYFecha} •
+                                </span>
+                                <span
+                                  style={{
+                                    fontWeight: "bold",
+                                    padding: "0.25rem 0.5rem",
+                                    backgroundColor: colorFondoTag,
+                                    color: colorTextoTag,
+                                    border: `1px solid ${colorBordeTag}`,
+                                    borderRadius: "4px",
+                                    fontSize: "0.9rem",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {montoTexto}
+                                </span>
+                                <span style={{ fontWeight: "bold" }}>
+                                  {parteDerecha}
+                                </span>
+                              </div>
+                            );
+                          }}
                           style={{ fontWeight: "bold" }}
-                          disabled={formularioDeshabilitado}
+                          disabled={
+                            formularioDeshabilitado ||
+                            !responsableIdSeleccionado
+                          }
+                          tooltip={
+                            !responsableIdSeleccionado
+                              ? "Primero seleccione un responsable"
+                              : ""
+                          }
+                          tooltipOptions={{ position: "top" }}
                         />
                       )}
                     />

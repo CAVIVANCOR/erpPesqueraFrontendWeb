@@ -1518,6 +1518,7 @@ export default function RendicionGastosList({ ruta }) {
           movimientosAsignacionEntregaRendir={
             movimientosAsignacionEntregaRendir
           }
+          todosLosMovimientos={movimientos}
           onGuardadoExitoso={handleGuardarMovimiento}
           onCancelar={() => {
             setShowMovimientoForm(false);
