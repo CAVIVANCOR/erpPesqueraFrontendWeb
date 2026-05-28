@@ -1322,7 +1322,7 @@ export default function RendicionGastosList({ ruta }) {
                 >
                   <Dropdown
                     value={filtroResponsable}
-                    options={opcionesResponsables}
+                    options={obtenerOpcionesResponsablesDisponibles}
                     optionLabel="label"
                     optionValue="value"
                     placeholder="Filtrar por Responsable"
