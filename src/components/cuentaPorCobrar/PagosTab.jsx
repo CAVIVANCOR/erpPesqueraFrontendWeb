@@ -182,7 +182,7 @@ export default function PagosTab({
 
   const confirmarEliminar = (pago) => {
     confirmDialog({
-      message: `¿Está seguro de eliminar el cobro de ${Number(pago.montoPago).toFixed(2)}?`,
+      message: `¿Está seguro de eliminar el cobro de ${Number(pago.montoPagado).toFixed(2)}?`,
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
       acceptLabel: "Sí, eliminar",
@@ -226,7 +226,7 @@ export default function PagosTab({
       style: "decimal",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(Number(rowData.montoPago || 0));
+    }).format(Number(rowData.montoPagado || 0));
   };
 
   const monedaBodyTemplate = (rowData) => {
@@ -267,7 +267,7 @@ export default function PagosTab({
   };
 
   const totalPagado = pagos.reduce(
-    (sum, p) => sum + Number(p.montoPago || 0),
+    (sum, p) => sum + Number(p.montoPagado || 0),
     0,
   );
 

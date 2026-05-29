@@ -225,7 +225,7 @@ export default function PagosTab({
   const confirmarEliminar = (pago) => {
     confirmDialog({
       message: `¿Está seguro de eliminar el pago de ${Number(
-        pago.montoPago
+        pago.montoPagado
       ).toFixed(2)}?`,
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
@@ -268,7 +268,7 @@ export default function PagosTab({
   };
 
   const montoTemplate = (rowData) => {
-    return Number(rowData.montoPago).toFixed(2);
+    return Number(rowData.montoPagado).toFixed(2);
   };
 
   const medioPagoTemplate = (rowData) => {

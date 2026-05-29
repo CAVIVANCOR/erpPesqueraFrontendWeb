@@ -9,6 +9,7 @@ import { Button } from "primereact/button";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { TabView, TabPanel } from "primereact/tabview";
+import { Panel } from "primereact/panel";
 import { Dialog } from "primereact/dialog";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import {
@@ -24,6 +25,7 @@ import {
   createPagoCuentaPorCobrar,
   updatePagoCuentaPorCobrar,
 } from "../../api/cuentasPorCobrarPagar/pagoCuentaPorCobrar";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 export default function CuentaPorCobrarForm({
   isEdit,
@@ -32,6 +34,7 @@ export default function CuentaPorCobrarForm({
   clientes,
   monedas,
   estados,
+  periodosContables, // ⬅️ DEBE EXISTIR ESTA PROP
   mediosPago,
   bancos,
   cuentasCorrientes,
@@ -43,6 +46,7 @@ export default function CuentaPorCobrarForm({
   permisos = {},
   toast,
 }) {
+  const usuario = useAuthStore((state) => state.usuario);
   const [activeTab, setActiveTab] = useState(0);
 
   // Estados principales
@@ -84,52 +88,48 @@ export default function CuentaPorCobrarForm({
     defaultValues?.observaciones || "",
   );
 
-  // Estados impuestos SUNAT
+  // Estados impuestos SUNAT - TOTALES (calculados desde pagos)
   const [tieneDetraccion, setTieneDetraccion] = useState(
     defaultValues?.tieneDetraccion || false,
   );
-  const [montoDetraccion, setMontoDetraccion] = useState(
-    defaultValues?.montoDetraccion || 0,
-  );
-  const [porcentajeDetraccion, setPorcentajeDetraccion] = useState(
-    defaultValues?.porcentajeDetraccion || 0,
-  );
-  const [numeroConstanciaDetraccion, setNumeroConstanciaDetraccion] = useState(
-    defaultValues?.numeroConstanciaDetraccion || "",
-  );
-  const [fechaDetraccion, setFechaDetraccion] = useState(
-    defaultValues?.fechaDetraccion
-      ? new Date(defaultValues.fechaDetraccion)
-      : null,
+  const [montoDetraccionTotal, setMontoDetraccionTotal] = useState(
+    defaultValues?.montoDetraccionTotal || 0,
   );
   const [tieneRetencion, setTieneRetencion] = useState(
     defaultValues?.tieneRetencion || false,
   );
-  const [montoRetencion, setMontoRetencion] = useState(
-    defaultValues?.montoRetencion || 0,
+  const [montoRetencionTotal, setMontoRetencionTotal] = useState(
+    defaultValues?.montoRetencionTotal || 0,
   );
-  const [numeroComprobanteRetencion, setNumeroComprobanteRetencion] = useState(
-    defaultValues?.numeroComprobanteRetencion || "",
-  );
-  const [fechaRetencion, setFechaRetencion] = useState(
-    defaultValues?.fechaRetencion
-      ? new Date(defaultValues.fechaRetencion)
-      : null,
+  const [porcentajeRetencion, setPorcentajeRetencion] = useState(
+    defaultValues?.porcentajeRetencion || null,
   );
   const [tienePercepcion, setTienePercepcion] = useState(
     defaultValues?.tienePercepcion || false,
   );
-  const [montoPercepcion, setMontoPercepcion] = useState(
-    defaultValues?.montoPercepcion || 0,
+  const [montoPercepcionTotal, setMontoPercepcionTotal] = useState(
+    defaultValues?.montoPercepcionTotal || 0,
   );
-  const [porcentajePercepcion, setPorcentajePercepcion] = useState(
-    defaultValues?.porcentajePercepcion || 0,
+
+  // Estados contabilidad y auditoría
+  const [fechaContable, setFechaContable] = useState(
+    defaultValues?.fechaContable
+      ? new Date(defaultValues.fechaContable)
+      : new Date(),
   );
-  const [numeroComprobantePercepcion, setNumeroComprobantePercepcion] =
-    useState(defaultValues?.numeroComprobantePercepcion || "");
-  const [fechaPercepcion, setFechaPercepcion] = useState(
-    defaultValues?.fechaPercepcion
-      ? new Date(defaultValues.fechaPercepcion)
+  const [periodoContableId, setPeriodoContableId] = useState(
+    defaultValues?.periodoContableId || null,
+  );
+  const [creadoPor, setCreadoPor] = useState(defaultValues?.creadoPor || null);
+  const [actualizadoPor, setActualizadoPor] = useState(
+    defaultValues?.actualizadoPor || null,
+  );
+  const [fechaCreacion, setFechaCreacion] = useState(
+    defaultValues?.fechaCreacion ? new Date(defaultValues.fechaCreacion) : null,
+  );
+  const [fechaActualizacion, setFechaActualizacion] = useState(
+    defaultValues?.fechaActualizacion
+      ? new Date(defaultValues.fechaActualizacion)
       : null,
   );
 
@@ -147,14 +147,35 @@ export default function CuentaPorCobrarForm({
     }
   }, [isEdit, defaultValues?.id]);
 
-  // Recalcular montoPagado y saldoPendiente cuando cambien los pagos
+  // Recalcular montoPagado, saldoPendiente y totales de impuestos cuando cambien los pagos
   useEffect(() => {
     const totalPagado = pagos.reduce(
-      (sum, pago) => sum + Number(pago.montoPago || 0),
+      (sum, pago) => sum + Number(pago.montoPagado || 0),
       0,
     );
+    const totalDetraccion = pagos.reduce(
+      (sum, pago) => sum + Number(pago.montoDetraccion || 0),
+      0,
+    );
+    const totalRetencion = pagos.reduce(
+      (sum, pago) => sum + Number(pago.montoRetencion || 0),
+      0,
+    );
+    const totalPercepcion = pagos.reduce(
+      (sum, pago) => sum + Number(pago.montoPercepcion || 0),
+      0,
+    );
+
     setMontoPagado(totalPagado);
     setSaldoPendiente(Number(montoTotal) - totalPagado);
+    setMontoDetraccionTotal(totalDetraccion);
+    setMontoRetencionTotal(totalRetencion);
+    setMontoPercepcionTotal(totalPercepcion);
+
+    // Actualizar flags según si hay montos
+    setTieneDetraccion(totalDetraccion > 0);
+    setTieneRetencion(totalRetencion > 0);
+    setTienePercepcion(totalPercepcion > 0);
   }, [pagos, montoTotal]);
 
   const cargarPagos = async () => {
@@ -193,23 +214,23 @@ export default function CuentaPorCobrarForm({
       estadoId: BigInt(estadoId),
       observaciones,
       tieneDetraccion,
-      montoDetraccion: Number(montoDetraccion),
-      porcentajeDetraccion: porcentajeDetraccion
-        ? Number(porcentajeDetraccion)
-        : null,
-      numeroConstanciaDetraccion: numeroConstanciaDetraccion || null,
-      fechaDetraccion: fechaDetraccion || null,
+      montoDetraccionTotal: Number(montoDetraccionTotal),
       tieneRetencion,
-      montoRetencion: Number(montoRetencion),
-      numeroComprobanteRetencion: numeroComprobanteRetencion || null,
-      fechaRetencion: fechaRetencion || null,
-      tienePercepcion,
-      montoPercepcion: Number(montoPercepcion),
-      porcentajePercepcion: porcentajePercepcion
-        ? Number(porcentajePercepcion)
+      montoRetencionTotal: Number(montoRetencionTotal),
+      porcentajeRetencion: porcentajeRetencion
+        ? Number(porcentajeRetencion)
         : null,
-      numeroComprobantePercepcion: numeroComprobantePercepcion || null,
-      fechaPercepcion: fechaPercepcion || null,
+      tienePercepcion,
+      montoPercepcionTotal: Number(montoPercepcionTotal),
+      fechaContable,
+      periodoContableId: periodoContableId ? BigInt(periodoContableId) : null,
+      creadoPor: isEdit
+        ? creadoPor
+        : usuario?.personalId
+          ? BigInt(usuario.personalId)
+          : null,
+      actualizadoPor:
+        isEdit && usuario?.personalId ? BigInt(usuario.personalId) : null,
     };
     onSubmit(data);
   };
@@ -228,7 +249,7 @@ export default function CuentaPorCobrarForm({
 
   const handleEliminarPago = (pago) => {
     confirmDialog({
-      message: `¿Está seguro de eliminar el pago de ${formatearNumero(pago.montoPago, 2)}?`,
+      message: `¿Está seguro de eliminar el pago de ${formatearNumero(pago.montoPagado, 2)}?`,
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
       acceptLabel: "Sí, eliminar",
@@ -298,7 +319,7 @@ export default function CuentaPorCobrarForm({
     const moneda = monedas?.find(
       (m) => Number(m.id) === Number(rowData.monedaId),
     );
-    return `${moneda?.codigo || ""} ${formatearNumero(rowData.montoPago, 2)}`;
+    return `${moneda?.codigoSunat || ""} ${formatearNumero(rowData.montoPagado, 2)}`;
   };
 
   const fechaTemplate = (rowData) => {
@@ -354,7 +375,7 @@ export default function CuentaPorCobrarForm({
 
   const monedasOptions =
     monedas?.map((m) => ({
-      label: `${m.codigo} - ${m.nombre}`,
+      label: m.codigoSunat,
       value: Number(m.id),
     })) || [];
 
@@ -394,7 +415,6 @@ export default function CuentaPorCobrarForm({
                   onChange={(e) => setEmpresaId(e.value)}
                   placeholder="Seleccione empresa"
                   disabled={!puedeEditar || isEdit}
-                  style={{ fontSize: getResponsiveFontSize() }}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -407,7 +427,6 @@ export default function CuentaPorCobrarForm({
                   placeholder="Seleccione cliente"
                   disabled={!puedeEditar || isEdit}
                   filter
-                  style={{ fontSize: getResponsiveFontSize() }}
                 />
               </div>
               <div style={{ flex: 0.5 }}>
@@ -416,7 +435,6 @@ export default function CuentaPorCobrarForm({
                   id="tipoDoc"
                   value={esSaldoInicial ? "SI-CXC" : "FACTURA"}
                   disabled
-                  style={{ fontSize: getResponsiveFontSize() }}
                 />
               </div>
               <div style={{ flex: 0.5 }}>
@@ -426,7 +444,6 @@ export default function CuentaPorCobrarForm({
                   value={numeroPreFactura}
                   onChange={(e) => setNumeroPreFactura(e.target.value)}
                   disabled={!puedeEditar}
-                  style={{ fontSize: getResponsiveFontSize() }}
                 />
               </div>
               <div style={{ flex: 0.5 }}>
@@ -435,7 +452,6 @@ export default function CuentaPorCobrarForm({
                   id="origen"
                   value={preFacturaId ? `PF-${preFacturaId}` : "Sin PreFactura"}
                   disabled
-                  style={{ fontSize: getResponsiveFontSize() }}
                 />
               </div>
             </div>
@@ -446,7 +462,7 @@ export default function CuentaPorCobrarForm({
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.7, color: "blue" }}>
                 <label htmlFor="fechaEmision">Fecha Emisión *</label>
                 <Calendar
                   id="fechaEmision"
@@ -459,8 +475,8 @@ export default function CuentaPorCobrarForm({
                 />
               </div>
 
-              <div style={{ flex: 1 }}>
-                <label htmlFor="fechaVencimiento">Fecha Vencimiento *</label>
+              <div style={{ flex: 0.7, color: "red" }}>
+                <label htmlFor="fechaVencimiento">Fecha Vence *</label>
                 <Calendar
                   id="fechaVencimiento"
                   value={fechaVencimiento}
@@ -471,7 +487,37 @@ export default function CuentaPorCobrarForm({
                   style={{ fontSize: getResponsiveFontSize() }}
                 />
               </div>
-
+              <div style={{ flex: 0.7, color: "green" }}>
+                <label htmlFor="fechaContable">Fecha Contable *</label>
+                <Calendar
+                  id="fechaContable"
+                  value={fechaContable}
+                  onChange={(e) => setFechaContable(e.value)}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  disabled={!puedeEditar}
+                  style={{ fontSize: getResponsiveFontSize() }}
+                />
+              </div>
+              <div style={{ flex: 1, color: "green" }}>
+                <label htmlFor="periodoContableId">Periodo Contable</label>
+                <Dropdown
+                  id="periodoContableId"
+                  value={periodoContableId}
+                  options={
+                    periodosContables?.map((p) => ({
+                      label: p.nombrePeriodo,
+                      value: Number(p.id),
+                    })) || []
+                  }
+                  onChange={(e) => setPeriodoContableId(e.value)}
+                  placeholder="Seleccione periodo contable"
+                  showClear
+                  filter
+                  disabled={!puedeEditar}
+                  style={{ fontSize: getResponsiveFontSize() }}
+                />
+              </div>
               <div style={{ flex: 1 }}>
                 <label htmlFor="monedaId">Moneda *</label>
                 <Dropdown
@@ -499,275 +545,265 @@ export default function CuentaPorCobrarForm({
               </div>
             </div>
           </div>
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "end",
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <Button
-                label={tieneDetraccion ? "DETRACCIÓN" : "DETRACCIÓN"}
-                icon={
-                  tieneDetraccion ? "pi pi-check-circle" : "pi pi-times-circle"
-                }
-                severity={tieneDetraccion ? "warning" : "secondary"}
-                onClick={() => setTieneDetraccion(!tieneDetraccion)}
-                disabled={!puedeEditar}
-                style={{
-                  minWidth: "140px",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="tieneDetraccion" className="ml-2">
-                Tiene Detracción
-              </label>
-              <InputNumber
-                value={montoDetraccion}
-                onValueChange={(e) => setMontoDetraccion(e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                disabled={!puedeEditar || !tieneDetraccion}
-                placeholder="Monto"
-                className="ml-2"
-                style={{ width: "120px", fontSize: getResponsiveFontSize() }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <InputNumber
-                value={porcentajeDetraccion}
-                onValueChange={(e) => setPorcentajeDetraccion(e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                disabled={!puedeEditar || !tieneDetraccion}
-                placeholder="%"
-                className="ml-2"
-                style={{ width: "80px", fontSize: getResponsiveFontSize() }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <InputText
-                value={numeroConstanciaDetraccion}
-                onChange={(e) => setNumeroConstanciaDetraccion(e.target.value)}
-                disabled={!puedeEditar || !tieneDetraccion}
-                placeholder="N° Constancia"
-                className="ml-2"
-                style={{ width: "150px", fontSize: getResponsiveFontSize() }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                label={tieneRetencion ? "RETENCIÓN" : "RETENCIÓN"}
-                icon={
-                  tieneRetencion ? "pi pi-check-circle" : "pi pi-times-circle"
-                }
-                severity={tieneRetencion ? "danger" : "secondary"}
-                onClick={() => setTieneRetencion(!tieneRetencion)}
-                disabled={!puedeEditar}
-                style={{
-                  minWidth: "140px",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="tieneRetencion" className="ml-2">
-                Tiene Retención
-              </label>
-              <InputNumber
-                value={montoRetencion}
-                onValueChange={(e) => setMontoRetencion(e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                disabled={!puedeEditar || !tieneRetencion}
-                placeholder="Monto"
-                className="ml-2"
-                style={{ width: "120px", fontSize: getResponsiveFontSize() }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <InputText
-                value={numeroComprobanteRetencion}
-                onChange={(e) => setNumeroComprobanteRetencion(e.target.value)}
-                disabled={!puedeEditar || !tieneRetencion}
-                placeholder="N° Comprobante"
-                className="ml-2"
-                style={{ width: "150px", fontSize: getResponsiveFontSize() }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                label={tienePercepcion ? "PERCEPCIÓN" : "PERCEPCIÓN"}
-                icon={
-                  tienePercepcion ? "pi pi-check-circle" : "pi pi-times-circle"
-                }
-                severity={tienePercepcion ? "info" : "secondary"}
-                onClick={() => setTienePercepcion(!tienePercepcion)}
-                disabled={!puedeEditar}
-                style={{
-                  minWidth: "140px",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="tienePercepcion" className="ml-2">
-                Tiene Percepción
-              </label>
-              <InputNumber
-                value={montoPercepcion}
-                onValueChange={(e) => setMontoPercepcion(e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                disabled={!puedeEditar || !tienePercepcion}
-                placeholder="Monto"
-                className="ml-2"
-                style={{ width: "120px", fontSize: getResponsiveFontSize() }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <InputNumber
-                value={porcentajePercepcion}
-                onValueChange={(e) => setPorcentajePercepcion(e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                disabled={!puedeEditar || !tienePercepcion}
-                placeholder="%"
-                className="ml-2"
-                style={{ width: "80px", fontSize: getResponsiveFontSize() }}
-              />
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <InputText
-                value={numeroComprobantePercepcion}
-                onChange={(e) => setNumeroComprobantePercepcion(e.target.value)}
-                disabled={!puedeEditar || !tienePercepcion}
-                placeholder="N° Comprobante"
-                className="ml-2"
-                style={{ width: "150px", fontSize: getResponsiveFontSize() }}
-              />
-            </div>
-          </div>
 
           {/* PAGOS RECIBIDOS */}
           {isEdit && (
             <div>
-              <div className="col-12 flex justify-content-between align-items-center">
-                <h6 style={{ margin: 0, fontWeight: "600" }}>
-                  PAGOS RECIBIDOS
-                </h6>
-                <Button
-                  label="Registrar Pago"
-                  icon="pi pi-plus"
-                  className="p-button-success p-button-sm"
-                  onClick={handleRegistrarPago}
-                  disabled={readOnly || !permisos.puedeEditar || loadingPagos}
-                />
-              </div>
+              {/* Fila de totales */}
+              {/* MONTOS Y SALDOS */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 5,
+                  marginTop: 10,
+                  padding: 5,
+                  alignItems: "end",
+                  backgroundColor: "#f0f8ff",
+                  borderRadius: 8,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 0.5 }}>
+                  <label style={{ opacity: 0 }}>.</label>
+                  <Button
+                    label="Pago"
+                    icon="pi pi-plus"
+                    className="p-button-success"
+                    onClick={handleRegistrarPago}
+                    disabled={readOnly || !permisos.puedeEditar || loadingPagos}
+                    style={{ width: "100%", fontWeight: "bold" }}
+                    tooltip={"Registrar un Nuevo Pago"}
+                    tooltipOptions={{ position: "top" }}
+                  />
+                </div>
+                <div style={{ flex: 0.5 }}>
+                  <label>Detracción</label>
+                  <InputNumber
+                    value={montoDetraccionTotal}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    inputStyle={{
+                      fontSize: getResponsiveFontSize(),
+                      width: "100%",
+                      backgroundColor: tieneDetraccion ? "#fff3cd" : "#fff",
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 0.5 }}>
+                  <label>% Retención</label>
+                  <InputNumber
+                    value={porcentajeRetencion}
+                    onValueChange={(e) => setPorcentajeRetencion(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled={!puedeEditar}
+                    suffix="%"
+                    inputStyle={{
+                      fontSize: getResponsiveFontSize(),
+                      width: "100%",
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 0.5 }}>
+                  <label>Retención</label>
+                  <InputNumber
+                    value={montoRetencionTotal}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    inputStyle={{
+                      fontSize: getResponsiveFontSize(),
+                      width: "100%",
+                      backgroundColor: tieneRetencion ? "#f8d7da" : "#fff",
+                    }}
+                  />
+                </div>
 
-              <div className="col-12">
-                <DataTable
-                  value={pagos}
-                  loading={loadingPagos}
-                  emptyMessage="No hay pagos registrados"
-                  size="small"
-                  style={{ fontSize: getResponsiveFontSize() }}
-                >
-                  <Column
-                    field="fechaPago"
-                    header="Fecha Pago"
-                    body={fechaTemplate}
-                    style={{ width: "120px" }}
+                <div style={{ flex: 0.5 }}>
+                  <label>Percepción</label>
+                  <InputNumber
+                    value={montoPercepcionTotal}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    inputStyle={{
+                      fontSize: getResponsiveFontSize(),
+                      width: "100%",
+                      backgroundColor: tienePercepcion ? "#d1ecf1" : "#fff",
+                    }}
                   />
-                  <Column
-                    field="montoPago"
-                    header="Monto"
-                    body={montoTemplate}
-                    style={{ width: "120px" }}
+                </div>
+                <div style={{ flex: 1, color: "blue" }}>
+                  <label htmlFor="montoTotal">Monto Total *</label>
+                  <InputNumber
+                    id="montoTotal"
+                    value={montoTotal}
+                    onValueChange={(e) => setMontoTotal(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled={!puedeEditar}
+                    inputStyle={{
+                      fontWeight: "bold",
+                      width: "100%",
+                      textAlign: "right",
+                    }}
                   />
-                  <Column
-                    field="medioPagoId"
-                    header="Medio Pago"
-                    body={medioPagoTemplate}
-                    style={{ width: "150px" }}
+                </div>
+                <div style={{ flex: 1, color: "blue" }}>
+                  <label htmlFor="montoPagado">Monto Pagado</label>
+                  <InputNumber
+                    id="montoPagado"
+                    value={montoPagado}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    inputStyle={{
+                      fontWeight: "bold",
+                      width: "100%",
+                      textAlign: "right",
+                    }}
                   />
-                  <Column
-                    field="numeroOperacion"
-                    header="N° Operación"
-                    style={{ width: "150px" }}
+                </div>
+                <div style={{ flex: 1, color: "blue" }}>
+                  <label htmlFor="saldoPendiente">Saldo Pendiente</label>
+                  <InputNumber
+                    id="saldoPendiente"
+                    value={saldoPendiente}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    inputStyle={{
+                      fontWeight: "bold",
+                      width: "100%",
+                      textAlign: "right",
+                    }}
                   />
-                  <Column
-                    field="bancoId"
-                    header="Banco"
-                    body={bancoTemplate}
-                    style={{ width: "150px" }}
-                  />
-                  <Column
-                    header="Acciones"
-                    body={accionesTemplate}
-                    style={{ width: "100px" }}
-                  />
-                </DataTable>
-
-                {/* TOTALES */}
-                <div
-                  className="grid mt-3"
-                  style={{
-                    backgroundColor: "#f8f9fa",
-                    padding: "1rem",
-                    borderRadius: "4px",
-                  }}
-                >
-                  <div className="col-12 md:col-4">
-                    <strong>Monto Total CxC:</strong>{" "}
-                    {monedasOptions
-                      .find((m) => m.value === monedaId)
-                      ?.label?.split(" - ")[0] || ""}{" "}
-                    {formatearNumero(montoTotal, 2)}
-                  </div>
-                  <div className="col-12 md:col-4">
-                    <strong>Monto Pagado:</strong>{" "}
-                    {monedasOptions
-                      .find((m) => m.value === monedaId)
-                      ?.label?.split(" - ")[0] || ""}{" "}
-                    {formatearNumero(montoPagado, 2)}
-                  </div>
-                  <div className="col-12 md:col-4">
-                    <strong>Saldo Pendiente:</strong>{" "}
-                    {monedasOptions
-                      .find((m) => m.value === monedaId)
-                      ?.label?.split(" - ")[0] || ""}{" "}
-                    {formatearNumero(saldoPendiente, 2)}
-                  </div>
                 </div>
               </div>
+              <DataTable
+                value={pagos}
+                showGridlines
+                stripedRows
+                loading={loadingPagos}
+                emptyMessage="No hay pagos registrados"
+                size="small"
+                style={{ fontSize: getResponsiveFontSize() }}
+              >
+                <Column
+                  field="fechaPago"
+                  header="Fecha Pago"
+                  body={fechaTemplate}
+                  style={{ width: "120px" }}
+                />
+                <Column
+                  field="montoPago"
+                  header="Monto"
+                  body={montoTemplate}
+                  style={{ width: "120px" }}
+                />
+                <Column
+                  field="medioPagoId"
+                  header="Medio Pago"
+                  body={medioPagoTemplate}
+                  style={{ width: "150px" }}
+                />
+                <Column
+                  field="numeroOperacion"
+                  header="N° Operación"
+                  style={{ width: "150px" }}
+                />
+                <Column
+                  field="bancoId"
+                  header="Banco"
+                  body={bancoTemplate}
+                  style={{ width: "150px" }}
+                />
+                <Column
+                  header="Acciones"
+                  body={accionesTemplate}
+                  style={{ width: "100px" }}
+                />
+              </DataTable>
             </div>
           )}
+          <Panel header="Información Adicional" toggleable collapsed>
+            {/* Sección de Auditoría */}
+            {isEdit && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginTop: 20,
+                  padding: 15,
+                  backgroundColor: "#e9ecef",
+                  borderRadius: 8,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label>Creado Por</label>
+                  <InputText
+                    value={creadoPor ? `Usuario ID: ${creadoPor}` : "N/A"}
+                    disabled
+                    style={{ fontSize: getResponsiveFontSize(), width: "100%" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label>Fecha Creación</label>
+                  <Calendar
+                    value={fechaCreacion}
+                    disabled
+                    showTime
+                    dateFormat="dd/mm/yy"
+                    style={{ fontSize: getResponsiveFontSize(), width: "100%" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label>Actualizado Por</label>
+                  <InputText
+                    value={
+                      actualizadoPor ? `Usuario ID: ${actualizadoPor}` : "N/A"
+                    }
+                    disabled
+                    style={{ fontSize: getResponsiveFontSize(), width: "100%" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label>Fecha Actualización</label>
+                  <Calendar
+                    value={fechaActualizacion}
+                    disabled
+                    showTime
+                    dateFormat="dd/mm/yy"
+                    style={{ fontSize: getResponsiveFontSize(), width: "100%" }}
+                  />
+                </div>
+              </div>
+            )}
 
-          {/* OBSERVACIONES */}
-          <div className="grid mb-3">
-            <div className="col-12">
-              <label htmlFor="observaciones">Observaciones</label>
-              <InputTextarea
-                id="observaciones"
-                value={observaciones}
-                onChange={(e) => setObservaciones(e.target.value)}
-                rows={3}
-                disabled={!puedeEditar}
-                style={{ fontSize: getResponsiveFontSize() }}
-              />
+            {/* OBSERVACIONES */}
+            <div className="grid mb-3">
+              <div className="col-12">
+                <label htmlFor="observaciones">Observaciones</label>
+                <InputTextarea
+                  id="observaciones"
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value)}
+                  rows={3}
+                  disabled={!puedeEditar}
+                  style={{ fontSize: getResponsiveFontSize() }}
+                />
+              </div>
             </div>
-          </div>
+          </Panel>
         </TabPanel>
 
         {/* TAB 2: ASIENTO CONTABLE */}

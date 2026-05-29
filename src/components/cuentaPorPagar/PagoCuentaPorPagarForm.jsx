@@ -42,7 +42,7 @@ export default function PagoCuentaPorPagarForm({
       setFormData({
         id: pago.id,
         fechaPago: new Date(pago.fechaPago),
-        montoPago: Number(pago.montoPago),
+        montoPago: Number(pago.montoPagado),
         monedaId: Number(pago.monedaId),
         tipoCambio: Number(pago.tipoCambio),
         medioPagoId: Number(pago.medioPagoId),

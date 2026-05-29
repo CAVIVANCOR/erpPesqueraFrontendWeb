@@ -31,6 +31,7 @@ import { getPreFacturas } from "../api/preFactura";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
+import { getPeriodosContables } from "../api/contabilidad/periodoContable";
 
 export default function CuentaPorCobrar({ ruta }) {
   const { usuario } = useAuthStore();
@@ -47,7 +48,7 @@ export default function CuentaPorCobrar({ ruta }) {
   const [monedas, setMonedas] = useState([]);
   const [estados, setEstados] = useState([]);
   const [preFacturas, setPreFacturas] = useState([]);
-
+  const [periodosContables, setPeriodosContables] = useState([]);
   const [mediosPago, setMediosPago] = useState([]);
   const [bancos, setBancos] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
@@ -74,6 +75,7 @@ export default function CuentaPorCobrar({ ruta }) {
         monedasData,
         estadosData,
         preFacturasData,
+        periodosContablesData,
         mediosPagoData,
         bancosData,
         cuentasCorrientesData,
@@ -84,6 +86,7 @@ export default function CuentaPorCobrar({ ruta }) {
         getMonedas(),
         getEstadosMultiFuncion(),
         getPreFacturas(),
+        getPeriodosContables(),
         getMediosPago(),
         getBancos(),
         getAllCuentaCorriente(),
@@ -95,6 +98,7 @@ export default function CuentaPorCobrar({ ruta }) {
       setMonedas(monedasData || []);
       setEstados(estadosData || []);
       setPreFacturas(preFacturasData || []);
+      setPeriodosContables(periodosContablesData || []);
       setMediosPago(mediosPagoData || []);
       setBancos(bancosData || []);
       setCuentasCorrientes(cuentasCorrientesData || []);
@@ -200,8 +204,23 @@ export default function CuentaPorCobrar({ ruta }) {
     try {
       setLoading(true);
 
+      // ✅ AGREGAR DATOS DE AUDITORÍA
+      const dataConAuditoria = {
+        ...data, // ← Todos los datos del formulario
+        creadoPor: esEdicion
+          ? data.creadoPor // ← Si es edición, mantener el creador original
+          : usuario?.personalId
+            ? BigInt(usuario.personalId)
+            : null, // ← Si es nuevo, usar usuario actual
+        actualizadoPor:
+          esEdicion && usuario?.personalId
+            ? BigInt(usuario.personalId) // ← Si es edición, registrar quién actualiza
+            : null, // ← Si es nuevo, no hay actualizador aún
+      };
+
       if (esEdicion) {
-        await updateCuentaPorCobrar(selectedCuenta.id, data);
+        // ✅ USAR dataConAuditoria EN VEZ DE data
+        await updateCuentaPorCobrar(selectedCuenta.id, dataConAuditoria);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -209,7 +228,8 @@ export default function CuentaPorCobrar({ ruta }) {
           life: 3000,
         });
       } else {
-        await createCuentaPorCobrar(data);
+        // ✅ USAR dataConAuditoria EN VEZ DE data
+        await createCuentaPorCobrar(dataConAuditoria);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -324,23 +344,27 @@ export default function CuentaPorCobrar({ ruta }) {
 
   const montoBodyTemplate = (rowData, field) => {
     const monto = rowData[field] || 0;
-    const moneda = monedas.find(m => Number(m.id) === Number(rowData.monedaId));
-    
+    const moneda = monedas.find(
+      (m) => Number(m.id) === Number(rowData.monedaId),
+    );
+
     // Determinar color de fondo según moneda
-    let backgroundColor = 'transparent';
-    if (moneda?.codigoSunat === 'PEN') {
-      backgroundColor = '#fffbea'; // Amarillo claro para Soles
-    } else if (moneda?.codigoSunat === 'USD') {
-      backgroundColor = '#e8f5e9'; // Verde claro para Dólares
+    let backgroundColor = "transparent";
+    if (moneda?.codigoSunat === "PEN") {
+      backgroundColor = "#fffbea"; // Amarillo claro para Soles
+    } else if (moneda?.codigoSunat === "USD") {
+      backgroundColor = "#e8f5e9"; // Verde claro para Dólares
     }
-    
+
     return (
-      <div style={{ 
-        backgroundColor, 
-        padding: '0.5rem',
-        borderRadius: '4px',
-        textAlign: 'right'
-      }}>
+      <div
+        style={{
+          backgroundColor,
+          padding: "0.5rem",
+          borderRadius: "4px",
+          textAlign: "right",
+        }}
+      >
         {new Intl.NumberFormat("es-PE", {
           style: "decimal",
           minimumFractionDigits: 2,
@@ -556,6 +580,7 @@ export default function CuentaPorCobrar({ ruta }) {
           clientes={clientes}
           monedas={monedas}
           estados={estados}
+          periodosContables={periodosContables}
           mediosPago={mediosPago}
           bancos={bancos}
           cuentasCorrientes={cuentasCorrientes}

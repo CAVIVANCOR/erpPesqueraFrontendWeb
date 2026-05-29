@@ -11,6 +11,7 @@ import { Panel } from "primereact/panel";
 import { TabView, TabPanel } from "primereact/tabview";
 import { getResponsiveFontSize } from "../../utils/utils";
 import CardAsientoContable from "../common/CardAsientoContable";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 export default function CuentaPorPagarForm({
   isEdit,
@@ -27,6 +28,7 @@ export default function CuentaPorPagarForm({
   readOnly = false,
   permisos = {},
 }) {
+  const usuario = useAuthStore((state) => state.usuario);
   const [activeTab, setActiveTab] = useState(0);
   // Estados del formulario
   const [ordenCompraId, setOrdenCompraId] = useState(
@@ -88,46 +90,48 @@ export default function CuentaPorPagarForm({
   const [tieneDetraccion, setTieneDetraccion] = useState(
     defaultValues?.tieneDetraccion || false
   );
-  const [montoDetraccion, setMontoDetraccion] = useState(
-    defaultValues?.montoDetraccion || 0
+  const [montoDetraccionTotal, setMontoDetraccionTotal] = useState(
+    defaultValues?.montoDetraccionTotal || 0
   );
   const [porcentajeDetraccion, setPorcentajeDetraccion] = useState(
     defaultValues?.porcentajeDetraccion || 0
-  );
-  const [numeroConstanciaDetraccion, setNumeroConstanciaDetraccion] = useState(
-    defaultValues?.numeroConstanciaDetraccion || ""
-  );
-  const [fechaDetraccion, setFechaDetraccion] = useState(
-    defaultValues?.fechaDetraccion ? new Date(defaultValues.fechaDetraccion) : null
   );
 
   const [tieneRetencion, setTieneRetencion] = useState(
     defaultValues?.tieneRetencion || false
   );
-  const [montoRetencion, setMontoRetencion] = useState(
-    defaultValues?.montoRetencion || 0
+  const [montoRetencionTotal, setMontoRetencionTotal] = useState(
+    defaultValues?.montoRetencionTotal || 0
   );
-  const [numeroComprobanteRetencion, setNumeroComprobanteRetencion] = useState(
-    defaultValues?.numeroComprobanteRetencion || ""
-  );
-  const [fechaRetencion, setFechaRetencion] = useState(
-    defaultValues?.fechaRetencion ? new Date(defaultValues.fechaRetencion) : null
+  const [porcentajeRetencion, setPorcentajeRetencion] = useState(
+    defaultValues?.porcentajeRetencion || null
   );
 
   const [tienePercepcion, setTienePercepcion] = useState(
     defaultValues?.tienePercepcion || false
   );
-  const [montoPercepcion, setMontoPercepcion] = useState(
-    defaultValues?.montoPercepcion || 0
+  const [montoPercepcionTotal, setMontoPercepcionTotal] = useState(
+    defaultValues?.montoPercepcionTotal || 0
   );
   const [porcentajePercepcion, setPorcentajePercepcion] = useState(
     defaultValues?.porcentajePercepcion || 0
   );
-  const [numeroComprobantePercepcion, setNumeroComprobantePercepcion] = useState(
-    defaultValues?.numeroComprobantePercepcion || ""
+
+  const [fechaContable, setFechaContable] = useState(
+    defaultValues?.fechaContable ? new Date(defaultValues.fechaContable) : new Date()
   );
-  const [fechaPercepcion, setFechaPercepcion] = useState(
-    defaultValues?.fechaPercepcion ? new Date(defaultValues.fechaPercepcion) : null
+  const [periodoContableId, setPeriodoContableId] = useState(
+    defaultValues?.periodoContableId || null
+  );
+  const [creadoPor, setCreadoPor] = useState(defaultValues?.creadoPor || null);
+  const [actualizadoPor, setActualizadoPor] = useState(
+    defaultValues?.actualizadoPor || null
+  );
+  const [fechaCreacion, setFechaCreacion] = useState(
+    defaultValues?.fechaCreacion ? new Date(defaultValues.fechaCreacion) : null
+  );
+  const [fechaActualizacion, setFechaActualizacion] = useState(
+    defaultValues?.fechaActualizacion ? new Date(defaultValues.fechaActualizacion) : null
   );
 
   // Filtrar proveedores por empresa
@@ -187,29 +191,24 @@ export default function CuentaPorPagarForm({
       );
       setObservaciones(defaultValues.observaciones || "");
       
-      // Nuevos campos
       setTieneDetraccion(defaultValues.tieneDetraccion || false);
-      setMontoDetraccion(defaultValues.montoDetraccion || 0);
+      setMontoDetraccionTotal(defaultValues.montoDetraccionTotal || 0);
       setPorcentajeDetraccion(defaultValues.porcentajeDetraccion || 0);
-      setNumeroConstanciaDetraccion(defaultValues.numeroConstanciaDetraccion || "");
-      setFechaDetraccion(
-        defaultValues.fechaDetraccion ? new Date(defaultValues.fechaDetraccion) : null
-      );
       
       setTieneRetencion(defaultValues.tieneRetencion || false);
-      setMontoRetencion(defaultValues.montoRetencion || 0);
-      setNumeroComprobanteRetencion(defaultValues.numeroComprobanteRetencion || "");
-      setFechaRetencion(
-        defaultValues.fechaRetencion ? new Date(defaultValues.fechaRetencion) : null
-      );
+      setMontoRetencionTotal(defaultValues.montoRetencionTotal || 0);
+      setPorcentajeRetencion(defaultValues.porcentajeRetencion || null);
       
       setTienePercepcion(defaultValues.tienePercepcion || false);
-      setMontoPercepcion(defaultValues.montoPercepcion || 0);
+      setMontoPercepcionTotal(defaultValues.montoPercepcionTotal || 0);
       setPorcentajePercepcion(defaultValues.porcentajePercepcion || 0);
-      setNumeroComprobantePercepcion(defaultValues.numeroComprobantePercepcion || "");
-      setFechaPercepcion(
-        defaultValues.fechaPercepcion ? new Date(defaultValues.fechaPercepcion) : null
-      );
+      
+      setFechaContable(defaultValues.fechaContable ? new Date(defaultValues.fechaContable) : new Date());
+      setPeriodoContableId(defaultValues.periodoContableId || null);
+      setCreadoPor(defaultValues.creadoPor || null);
+      setActualizadoPor(defaultValues.actualizadoPor || null);
+      setFechaCreacion(defaultValues.fechaCreacion ? new Date(defaultValues.fechaCreacion) : null);
+      setFechaActualizacion(defaultValues.fechaActualizacion ? new Date(defaultValues.fechaActualizacion) : null);
     }
   }, [defaultValues]);
 
@@ -239,23 +238,22 @@ export default function CuentaPorPagarForm({
       estadoId: estadoId ? Number(estadoId) : null,
       observaciones,
       
-      // Nuevos campos
       tieneDetraccion,
-      montoDetraccion: Number(montoDetraccion),
+      montoDetraccionTotal: Number(montoDetraccionTotal),
       porcentajeDetraccion: porcentajeDetraccion ? Number(porcentajeDetraccion) : null,
-      numeroConstanciaDetraccion,
-      fechaDetraccion,
       
       tieneRetencion,
-      montoRetencion: Number(montoRetencion),
-      numeroComprobanteRetencion,
-      fechaRetencion,
+      montoRetencionTotal: Number(montoRetencionTotal),
+      porcentajeRetencion: porcentajeRetencion ? Number(porcentajeRetencion) : null,
       
       tienePercepcion,
-      montoPercepcion: Number(montoPercepcion),
+      montoPercepcionTotal: Number(montoPercepcionTotal),
       porcentajePercepcion: porcentajePercepcion ? Number(porcentajePercepcion) : null,
-      numeroComprobantePercepcion,
-      fechaPercepcion,
+      
+      fechaContable,
+      periodoContableId: periodoContableId ? BigInt(periodoContableId) : null,
+      creadoPor: isEdit ? creadoPor : usuario?.personalId ? BigInt(usuario.personalId) : null,
+      actualizadoPor: isEdit && usuario?.personalId ? BigInt(usuario.personalId) : null,
     };
 
     if (!dataParaGrabacion.empresaId || !dataParaGrabacion.proveedorId) {
@@ -560,6 +558,42 @@ export default function CuentaPorPagarForm({
           </div>
         </div>
 
+        {/* CAMPOS CONTABLES */}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginBottom: 15,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              Fecha Contable *
+            </label>
+            <Calendar
+              value={fechaContable}
+              onChange={(e) => setFechaContable(e.value)}
+              dateFormat="dd/mm/yy"
+              showIcon
+              disabled={!puedeEditar}
+              inputStyle={{ fontWeight: "bold" }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              Periodo Contable
+            </label>
+            <InputText
+              value={periodoContableId || ""}
+              onChange={(e) => setPeriodoContableId(e.target.value)}
+              disabled={!puedeEditar}
+              placeholder="ID del periodo contable"
+              style={{ fontWeight: "bold" }}
+            />
+          </div>
+        </div>
+
         {/* FILA 5: Checkboxes y Estado */}
         <div
           style={{
@@ -716,31 +750,6 @@ export default function CuentaPorPagarForm({
                     inputStyle={{ fontWeight: "bold" }}
                   />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
-                    N° Constancia
-                  </label>
-                  <InputText
-                    value={numeroConstanciaDetraccion}
-                    onChange={(e) => setNumeroConstanciaDetraccion(e.target.value)}
-                    disabled={!puedeEditar}
-                    style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                  />
-                </div>
-                <div style={{ flex: 0.7 }}>
-                  <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
-                    Fecha Detracción
-                  </label>
-                  <Calendar
-                    value={fechaDetraccion}
-                    onChange={(e) => setFechaDetraccion(e.value)}
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    showButtonBar
-                    disabled={!puedeEditar}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                </div>
               </div>
             )}
           </div>
@@ -763,11 +772,10 @@ export default function CuentaPorPagarForm({
               <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
-                    Monto Retención
+                    Monto Retención Total (calculado)
                   </label>
                   <InputNumber
-                    value={montoRetencion}
-                    onValueChange={(e) => setMontoRetencion(e.value)}
+                    value={montoRetencionTotal}
                     mode="decimal"
                     minFractionDigits={2}
                     maxFractionDigits={2}
@@ -777,25 +785,15 @@ export default function CuentaPorPagarForm({
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
-                    N° Comprobante
+                    % Retención
                   </label>
-                  <InputText
-                    value={numeroComprobanteRetencion}
-                    onChange={(e) => setNumeroComprobanteRetencion(e.target.value)}
-                    disabled={!puedeEditar}
-                    style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                  />
-                </div>
-                <div style={{ flex: 0.7 }}>
-                  <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
-                    Fecha Retención
-                  </label>
-                  <Calendar
-                    value={fechaRetencion}
-                    onChange={(e) => setFechaRetencion(e.value)}
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    showButtonBar
+                  <InputNumber
+                    value={porcentajeRetencion}
+                    onValueChange={(e) => setPorcentajeRetencion(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    suffix="%"
                     disabled={!puedeEditar}
                     inputStyle={{ fontWeight: "bold" }}
                   />
@@ -822,11 +820,10 @@ export default function CuentaPorPagarForm({
               <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
-                    Monto Percepción
+                    Monto Percepción Total (calculado)
                   </label>
                   <InputNumber
-                    value={montoPercepcion}
-                    onValueChange={(e) => setMontoPercepcion(e.value)}
+                    value={montoPercepcionTotal}
                     mode="decimal"
                     minFractionDigits={2}
                     maxFractionDigits={2}
@@ -845,31 +842,6 @@ export default function CuentaPorPagarForm({
                     minFractionDigits={2}
                     maxFractionDigits={2}
                     suffix="%"
-                    disabled={!puedeEditar}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
-                    N° Comprobante
-                  </label>
-                  <InputText
-                    value={numeroComprobantePercepcion}
-                    onChange={(e) => setNumeroComprobantePercepcion(e.target.value)}
-                    disabled={!puedeEditar}
-                    style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                  />
-                </div>
-                <div style={{ flex: 0.7 }}>
-                  <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
-                    Fecha Percepción
-                  </label>
-                  <Calendar
-                    value={fechaPercepcion}
-                    onChange={(e) => setFechaPercepcion(e.value)}
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    showButtonBar
                     disabled={!puedeEditar}
                     inputStyle={{ fontWeight: "bold" }}
                   />
@@ -900,6 +872,65 @@ export default function CuentaPorPagarForm({
             }}
           />
         </div>
+
+        {/* AUDITORÍA */}
+        {isEdit && (
+          <div style={{ marginTop: 20, padding: 15, backgroundColor: "#f0f0f0", borderRadius: 5 }}>
+            <h4 style={{ marginBottom: 10 }}>Auditoría</h4>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                  Creado Por
+                </label>
+                <InputText
+                  value={creadoPor ? `Usuario ID: ${creadoPor}` : "N/A"}
+                  disabled
+                  style={{ backgroundColor: "#e0e0e0" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                  Fecha Creación
+                </label>
+                <Calendar
+                  value={fechaCreacion}
+                  disabled
+                  dateFormat="dd/mm/yy"
+                  showTime
+                  style={{ backgroundColor: "#e0e0e0" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                  Actualizado Por
+                </label>
+                <InputText
+                  value={actualizadoPor ? `Usuario ID: ${actualizadoPor}` : "N/A"}
+                  disabled
+                  style={{ backgroundColor: "#e0e0e0" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                  Fecha Actualización
+                </label>
+                <Calendar
+                  value={fechaActualizacion}
+                  disabled
+                  dateFormat="dd/mm/yy"
+                  showTime
+                  style={{ backgroundColor: "#e0e0e0" }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </Panel>
         </TabPanel>
 
