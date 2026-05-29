@@ -70,7 +70,7 @@ export default function RendicionGastosList({ ruta }) {
   const [editingMovimiento, setEditingMovimiento] = useState(null);
   const [saldosARendir, setSaldosARendir] = useState({});
   const [calculandoSaldos, setCalculandoSaldos] = useState(false);
-
+  const [recalculandoSaldos, setRecalculandoSaldos] = useState(false);
   // Cargar datos iniciales
   useEffect(() => {
     cargarDatos();
@@ -199,6 +199,182 @@ export default function RendicionGastosList({ ruta }) {
       setCalculandoSaldos(false);
     }
   }, [movimientos]);
+
+  // 💰 CALCULAR SALDOS INICIAL Y FINAL POR RESPONSABLE (CRONOLÓGICO)
+  const calcularSaldosDetallados = useMemo(() => {
+    const saldosDetallados = {};
+
+    // Filtrar solo movimientos con formaParteCalculoEntregaARendir = true
+    const movimientosEntregaRendir = movimientos.filter(
+      (mov) => mov.formaParteCalculoEntregaARendir === true,
+    );
+
+    // Agrupar por responsableId
+    const movimientosPorResponsable = movimientosEntregaRendir.reduce(
+      (grupos, mov) => {
+        const responsableId = Number(mov.responsableId);
+        if (!grupos[responsableId]) {
+          grupos[responsableId] = [];
+        }
+        grupos[responsableId].push(mov);
+        return grupos;
+      },
+      {},
+    );
+
+    // Procesar cada responsable independientemente
+    Object.keys(movimientosPorResponsable).forEach((responsableId) => {
+      const movimientosResponsable = movimientosPorResponsable[responsableId];
+
+      // Ordenar cronológicamente (fecha + ID)
+      movimientosResponsable.sort((a, b) => {
+        const fechaA = new Date(a.fechaMovimiento);
+        const fechaB = new Date(b.fechaMovimiento);
+        if (fechaA.getTime() !== fechaB.getTime()) {
+          return fechaA - fechaB;
+        }
+        return Number(a.id) - Number(b.id);
+      });
+
+      // Calcular saldos secuencialmente
+      let saldoAcumulado = 0;
+
+      movimientosResponsable.forEach((movimiento) => {
+        const movimientoId = Number(movimiento.id);
+        const esAsignacion =
+          movimiento.asignacionOrigenId === null ||
+          movimiento.asignacionOrigenId === undefined ||
+          Number(movimiento.asignacionOrigenId) === 0;
+
+        const saldoInicial = saldoAcumulado;
+        let saldoFinal;
+
+        if (esAsignacion) {
+          // ASIGNACIÓN: suma al saldo
+          saldoFinal = saldoAcumulado + Number(movimiento.monto || 0);
+        } else {
+          // GASTO: resta del saldo
+          saldoFinal = saldoAcumulado - Number(movimiento.monto || 0);
+        }
+
+        saldosDetallados[movimientoId] = {
+          saldoInicial: saldoInicial,
+          saldoFinal: saldoFinal,
+          responsableId: Number(responsableId),
+          esAsignacion: esAsignacion,
+        };
+
+        saldoAcumulado = saldoFinal;
+      });
+    });
+
+    return saldosDetallados;
+  }, [movimientos]);
+
+  // 🔄 RECALCULAR Y GUARDAR SALDOS EN BASE DE DATOS
+  const recalcularYGuardarSaldos = async () => {
+    setRecalculandoSaldos(true);
+
+    try {
+      const saldosCalculados = calcularSaldosDetallados;
+      const movimientosActualizar = [];
+
+      // Preparar actualizaciones
+      Object.keys(saldosCalculados).forEach((movimientoId) => {
+        const saldos = saldosCalculados[movimientoId];
+        movimientosActualizar.push({
+          id: Number(movimientoId),
+          saldoInicialAsignacion: saldos.saldoInicial,
+          saldoFinalAsignacion: saldos.saldoFinal,
+        });
+      });
+
+      // Actualizar en lotes
+      let actualizados = 0;
+      let errores = 0;
+
+      for (const movimiento of movimientosActualizar) {
+        try {
+          await actualizarDetMovsEntregaRendir(movimiento.id, {
+            saldoInicialAsignacion: movimiento.saldoInicialAsignacion,
+            saldoFinalAsignacion: movimiento.saldoFinalAsignacion,
+          });
+          actualizados++;
+        } catch (error) {
+          console.error(
+            `Error actualizando movimiento ${movimiento.id}:`,
+            error,
+          );
+          errores++;
+        }
+      }
+
+      // Recargar datos
+      await cargarDatos();
+
+      // Mostrar resultado
+      toast.current?.show({
+        severity: errores > 0 ? "warn" : "success",
+        summary: errores > 0 ? "Recálculo Parcial" : "Recálculo Exitoso",
+        detail: `${actualizados} movimientos actualizados${errores > 0 ? `, ${errores} errores` : ""}`,
+        life: 5000,
+      });
+    } catch (error) {
+      console.error("Error en recálculo de saldos:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al recalcular saldos",
+        life: 3000,
+      });
+    } finally {
+      setRecalculandoSaldos(false);
+    }
+  };
+
+  // 🔄 RECALCULAR SALDOS SOLO DEL RESPONSABLE AFECTADO (OPTIMIZADO)
+  const recalcularSaldosAfectados = async (responsableId) => {
+    try {
+      if (!responsableId) return;
+
+      const saldosCalculados = calcularSaldosDetallados;
+      const movimientosActualizar = [];
+
+      // Filtrar solo movimientos del responsable afectado
+      Object.keys(saldosCalculados).forEach((movimientoId) => {
+        const saldos = saldosCalculados[movimientoId];
+        if (Number(saldos.responsableId) === Number(responsableId)) {
+          movimientosActualizar.push({
+            id: Number(movimientoId),
+            saldoInicialAsignacion: saldos.saldoInicial,
+            saldoFinalAsignacion: saldos.saldoFinal,
+          });
+        }
+      });
+
+      // Actualizar en BD sin bloquear UI
+      for (const movimiento of movimientosActualizar) {
+        try {
+          await actualizarDetMovsEntregaRendir(movimiento.id, {
+            saldoInicialAsignacion: movimiento.saldoInicialAsignacion,
+            saldoFinalAsignacion: movimiento.saldoFinalAsignacion,
+          });
+        } catch (error) {
+          console.error(
+            `Error actualizando saldos del movimiento ${movimiento.id}:`,
+            error,
+          );
+          // Continuar con los demás aunque uno falle
+        }
+      }
+
+      // Recargar datos para reflejar cambios
+      await cargarDatos();
+    } catch (error) {
+      console.error("Error al recalcular saldos afectados:", error);
+      // No mostrar toast de error para no interrumpir flujo del usuario
+    }
+  };
 
   // Filtrar movimientos que son asignaciones
   const movimientosAsignacionEntregaRendir = useMemo(() => {
@@ -735,17 +911,36 @@ export default function RendicionGastosList({ ruta }) {
   const handleGuardarMovimiento = async (data) => {
     try {
       if (editingMovimiento) {
+        // ═══════════════════════════════════════════════════════
+        // EDICIÓN: Actualizar movimiento y recalcular saldos
+        // ═══════════════════════════════════════════════════════
         await actualizarDetMovsEntregaRendir(editingMovimiento.id, data);
+
+        // Recargar datos para obtener estado actualizado
+        await cargarDatos();
+
+        // Recalcular saldos de todos los movimientos afectados
+        await recalcularSaldosAfectados(editingMovimiento.responsableId);
+
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
           detail: "Movimiento actualizado correctamente",
           life: 3000,
         });
-        cargarDatos();
         return;
       } else {
+        // ═══════════════════════════════════════════════════════
+        // CREACIÓN: Crear movimiento y calcular saldos
+        // ═══════════════════════════════════════════════════════
         const movimientoCreado = await crearDetMovsEntregaRendir(data);
+
+        // Recargar datos para incluir el nuevo movimiento
+        await cargarDatos();
+
+        // Recalcular saldos del responsable afectado
+        await recalcularSaldosAfectados(movimientoCreado.responsableId);
+
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -753,7 +948,6 @@ export default function RendicionGastosList({ ruta }) {
           life: 3000,
         });
         setEditingMovimiento(movimientoCreado);
-        cargarDatos();
         return;
       }
     } catch (error) {
@@ -978,42 +1172,98 @@ export default function RendicionGastosList({ ruta }) {
     );
   };
   const saldoInicialAsignacionTemplate = (rowData) => {
-    if (
-      !rowData.saldoInicialAsignacion &&
-      rowData.saldoInicialAsignacion !== 0
-    ) {
-      return "";
+    const movimientoId = Number(rowData.id);
+    const saldos = calcularSaldosDetallados[movimientoId];
+
+    // Si no hay saldos calculados, no mostrar
+    if (!saldos) {
+      return <div style={{ textAlign: "center", color: "#999" }}>-</div>;
     }
 
     const moneda = monedas.find(
       (m) => Number(m.id) === Number(rowData.monedaId),
     );
 
+    const saldoInicial = saldos.saldoInicial;
+
+    // Determinar color según el saldo
+    const esPositivo = saldoInicial >= 0;
+    const backgroundColor = esPositivo ? "#3b82f6" : "#ef4444"; // Azul o Rojo
+    const textColor = "#ffffff"; // Blanco para contraste
+
     return (
-      <div style={{ textAlign: "right", fontWeight: "bold" }}>
-        {moneda?.simbolo || ""}{" "}
-        {formatearNumero(rowData.saldoInicialAsignacion, 2)}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: backgroundColor,
+            color: textColor,
+            padding: "8px 12px",
+            borderRadius: "6px",
+            fontWeight: "bold",
+            fontSize: "15px",
+            minWidth: "120px",
+            textAlign: "right",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+          }}
+        >
+          {moneda?.simbolo || ""} {formatearNumero(saldoInicial, 2)}
+        </div>
       </div>
     );
   };
 
   const saldoFinalAsignacionTemplate = (rowData) => {
-    if (!rowData.saldoFinalAsignacion && rowData.saldoFinalAsignacion !== 0) {
-      return "";
+    const movimientoId = Number(rowData.id);
+    const saldos = calcularSaldosDetallados[movimientoId];
+
+    // Si no hay saldos calculados, no mostrar
+    if (!saldos) {
+      return <div style={{ textAlign: "center", color: "#999" }}>-</div>;
     }
 
     const moneda = monedas.find(
       (m) => Number(m.id) === Number(rowData.monedaId),
     );
 
+    const saldoFinal = saldos.saldoFinal;
+
+    // Determinar color según el saldo
+    const esPositivo = saldoFinal >= 0;
+    const backgroundColor = esPositivo ? "#3b82f6" : "#ef4444"; // Azul o Rojo
+    const textColor = "#ffffff"; // Blanco para contraste
+
     return (
-      <div style={{ textAlign: "right", fontWeight: "bold" }}>
-        {moneda?.simbolo || ""}{" "}
-        {formatearNumero(rowData.saldoFinalAsignacion, 2)}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: backgroundColor,
+            color: textColor,
+            padding: "8px 12px",
+            borderRadius: "6px",
+            fontWeight: "bold",
+            fontSize: "15px",
+            minWidth: "120px",
+            textAlign: "right",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+          }}
+        >
+          {moneda?.simbolo || ""} {formatearNumero(saldoFinal, 2)}
+        </div>
       </div>
     );
   };
-
   /**
    * Template para Comprobante de Movimiento (PDF)
    */
@@ -1208,6 +1458,31 @@ export default function RendicionGastosList({ ruta }) {
                     type="button"
                     raised
                     style={{ width: "100%" }}
+                    tooltip="Limpiar filtros"
+                    tooltipOptions={{ position: "top" }}
+                  />
+                </div>
+                <div style={{ flex: 0.35 }}>
+                  <Button
+                    label="Recalcular Saldos"
+                    icon={
+                      recalculandoSaldos
+                        ? "pi pi-spin pi-spinner"
+                        : "pi pi-calculator"
+                    }
+                    className="p-button-warning"
+                    severity="warning"
+                    onClick={recalcularYGuardarSaldos}
+                    disabled={recalculandoSaldos || !permisos?.puedeEditar}
+                    type="button"
+                    raised
+                    style={{ width: "100%" }}
+                    tooltip={
+                      !permisos?.puedeEditar
+                        ? "No tiene permisos para recalcular"
+                        : "Recalcular y guardar saldos en BD"
+                    }
+                    tooltipOptions={{ position: "top" }}
                   />
                 </div>
               </div>
