@@ -35,6 +35,7 @@ import { getRequerimientosCompra } from "../api/requerimientoCompra";
 import { getMonedas } from "../api/moneda";
 import { getUnidadesNegocio } from "../api/unidadNegocio";
 import { getCentrosCosto } from "../api/centroCosto";
+import { getPeriodosContables } from "../api/contabilidad/periodoContable";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getSeriesDoc } from "../api/serieDoc";
 import { getConceptosMovAlmacen } from "../api/conceptoMovAlmacen";
@@ -56,10 +57,10 @@ export default function OrdenCompra({ ruta }) {
   }
   const toast = useRef(null);
   const [items, setItems] = useState([]);
-  
+
   // Filtrado automático por Unidad de Negocio
   const { datosFiltrados: ordenesFiltradas } = useUnidadNegocioFilter(items);
-  
+
   const [empresas, setEmpresas] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [formasPago, setFormasPago] = useState([]);
@@ -79,6 +80,7 @@ export default function OrdenCompra({ ruta }) {
   const [estadosMercaderia, setEstadosMercaderia] = useState([]);
   const [estadosCalidad, setEstadosCalidad] = useState([]);
   const [unidadesNegocio, setUnidadesNegocio] = useState([]);
+  const [periodosContables, setPeriodosContables] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -183,6 +185,7 @@ export default function OrdenCompra({ ruta }) {
         tiposMovimientoData,
         conceptosMovAlmacenData,
         unidadesNegocioData,
+        periodosContablesData, // ✅ AGREGADO
       ] = await Promise.all([
         getOrdenesCompra(),
         getEmpresas(),
@@ -202,6 +205,7 @@ export default function OrdenCompra({ ruta }) {
         getAllTipoMovEntregaRendir(),
         getConceptosMovAlmacen(),
         getUnidadesNegocio({ activo: true }),
+        getPeriodosContables(), // ✅ AGREGADO
       ]);
 
       setEmpresas(empresasData);
@@ -251,6 +255,7 @@ export default function OrdenCompra({ ruta }) {
         (r) => r.estadoDocId === 33,
       );
       setRequerimientos(requerimientosAprobados);
+      setPeriodosContables(periodosContablesData || []);
       if (unidadesNegocioData && Array.isArray(unidadesNegocioData)) {
         setUnidadesNegocio(
           unidadesNegocioData.map((un) => ({ ...un, id: Number(un.id) })),
@@ -1027,6 +1032,7 @@ export default function OrdenCompra({ ruta }) {
           monedas={monedas}
           centrosCosto={centrosCosto}
           unidadesNegocio={unidadesNegocio}
+          periodosContables={periodosContables}
           empresaFija={empresaSeleccionada}
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}

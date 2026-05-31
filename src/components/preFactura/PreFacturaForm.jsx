@@ -39,6 +39,7 @@ export default function PreFacturaForm({
   puertos = [],
   tiposContenedor = [],
   agenteAduanas = [],
+  periodosContables = [], // ✅ AGREGADO
   empresaFija,
   onSubmit,
   onCancel,
@@ -89,6 +90,9 @@ export default function PreFacturaForm({
     fechaContable: defaultValues?.fechaContable
       ? new Date(defaultValues.fechaContable)
       : new Date(),
+    periodoContableId: defaultValues?.periodoContableId
+      ? Number(defaultValues.periodoContableId)
+      : null, // ✅ AGREGADO
     // Cliente y direcciones - CONVERTIDOS A NUMBER PARA DROPDOWNS
     clienteId: defaultValues?.clienteId
       ? Number(defaultValues.clienteId)
@@ -275,6 +279,9 @@ export default function PreFacturaForm({
         fechaContable: defaultValues?.fechaContable
           ? new Date(defaultValues.fechaContable)
           : new Date(),
+        periodoContableId: defaultValues?.periodoContableId
+          ? Number(defaultValues.periodoContableId)
+          : null, // ✅ AGREGADO
         // Cliente y direcciones - CONVERTIDOS A NUMBER
         clienteId: defaultValues?.clienteId
           ? Number(defaultValues.clienteId)
@@ -738,6 +745,9 @@ export default function PreFacturaForm({
       fechaDocumento: formData.fechaDocumento,
       fechaVencimiento: formData.fechaVencimiento,
       fechaContable: formData.fechaContable,
+      periodoContableId: formData.periodoContableId
+        ? Number(formData.periodoContableId)
+        : null, // ✅ AGREGADO
       clienteId: formData.clienteId ? Number(formData.clienteId) : null,
       contactoClienteId: formData.contactoClienteId
         ? Number(formData.contactoClienteId)
@@ -979,9 +989,8 @@ export default function PreFacturaForm({
         life: 5000,
       });
 
-      // Cerrar diálogo y recargar lista
-      onComprobanteGenerado?.();
-      onCancel?.(); // Cerrar el formulario
+      // Cerrar formulario y recargar lista
+      onCancel?.(); // Esto recarga la lista en el padre
     } catch (error) {
       console.error("Error al facturar negra:", error);
       toast?.current?.show({
@@ -1007,9 +1016,8 @@ export default function PreFacturaForm({
         life: 5000,
       });
 
-      // Cerrar diálogo y recargar lista
-      onComprobanteGenerado?.();
-      onCancel?.(); // Cerrar el formulario
+      // Cerrar formulario y recargar lista
+      onCancel?.(); // Esto recarga la lista en el padre
     } catch (error) {
       console.error("Error al facturar blanca:", error);
       toast?.current?.show({
@@ -1212,6 +1220,7 @@ export default function PreFacturaForm({
             puertosOptions={puertosOptions}
             tiposContenedorOptions={tiposContenedorOptions}
             agenteAduanasOptions={agenteAduanasOptions}
+            periodosContables={periodosContables}
             contactosClienteOptions={contactosClienteOptions}
             direccionesClienteOptions={direccionesClienteOptions}
             isEdit={isEdit}

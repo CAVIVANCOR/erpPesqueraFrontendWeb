@@ -118,7 +118,9 @@ export default function CuentaPorCobrarForm({
       : new Date(),
   );
   const [periodoContableId, setPeriodoContableId] = useState(
-    defaultValues?.periodoContableId || null,
+    defaultValues?.periodoContableId
+      ? Number(defaultValues.periodoContableId)
+      : null,
   );
   const [creadoPor, setCreadoPor] = useState(defaultValues?.creadoPor || null);
   const [actualizadoPor, setActualizadoPor] = useState(
@@ -470,7 +472,7 @@ export default function CuentaPorCobrarForm({
                   onChange={(e) => setFechaEmision(e.value)}
                   dateFormat="dd/mm/yy"
                   showIcon
-                  disabled={!puedeEditar}
+                  disabled
                   style={{ fontSize: getResponsiveFontSize() }}
                 />
               </div>
@@ -483,7 +485,7 @@ export default function CuentaPorCobrarForm({
                   onChange={(e) => setFechaVencimiento(e.value)}
                   dateFormat="dd/mm/yy"
                   showIcon
-                  disabled={!puedeEditar}
+                  disabled
                   style={{ fontSize: getResponsiveFontSize() }}
                 />
               </div>
@@ -495,7 +497,7 @@ export default function CuentaPorCobrarForm({
                   onChange={(e) => setFechaContable(e.value)}
                   dateFormat="dd/mm/yy"
                   showIcon
-                  disabled={!puedeEditar}
+                  disabled
                   style={{ fontSize: getResponsiveFontSize() }}
                 />
               </div>
@@ -505,16 +507,49 @@ export default function CuentaPorCobrarForm({
                   id="periodoContableId"
                   value={periodoContableId}
                   options={
-                    periodosContables?.map((p) => ({
-                      label: p.nombrePeriodo,
-                      value: Number(p.id),
-                    })) || []
+                    periodosContables
+                      ?.filter((p) => {
+                        // Filtrar por empresa
+                        return Number(p.empresaId) === Number(empresaId);
+                      })
+                      .sort((a, b) => {
+                        // Ordenar por fecha de inicio descendente (más recientes primero)
+                        return (
+                          new Date(b.fechaInicio) - new Date(a.fechaInicio)
+                        );
+                      })
+                      .map((p) => {
+                        // Agregar indicador visual del estado
+                        let estadoLabel = "";
+                        const estadoId = Number(p.estadoId);
+
+                        // IDs de estados para PERIODO CONTABLE:
+                        // 73 = ABIERTO, 74 = CERRADO, 75 = BLOQUEADO
+                        if (estadoId === 73) {
+                          estadoLabel = "🟢 ABIERTO";
+                        } else if (estadoId === 74) {
+                          estadoLabel = "🔴 CERRADO";
+                        } else if (estadoId === 75) {
+                          estadoLabel = "🔒 BLOQUEADO";
+                        } else {
+                          estadoLabel =
+                            p.estado?.descripcion || "⚪ SIN ESTADO";
+                        }
+
+                        return {
+                          label: `${p.nombrePeriodo} - ${estadoLabel}`,
+                          value: Number(p.id),
+                          estadoId: estadoId,
+                          disabled: estadoId !== 73 && !isEdit, // Deshabilitar si no está ABIERTO (solo en creación)
+                        };
+                      }) || []
                   }
                   onChange={(e) => setPeriodoContableId(e.value)}
                   placeholder="Seleccione periodo contable"
                   showClear
                   filter
-                  disabled={!puedeEditar}
+                  optionDisabled="disabled"
+                  disabled
                   style={{ fontSize: getResponsiveFontSize() }}
                 />
               </div>
@@ -526,7 +561,7 @@ export default function CuentaPorCobrarForm({
                   options={monedasOptions}
                   onChange={(e) => setMonedaId(e.value)}
                   placeholder="Seleccione moneda"
-                  disabled={!puedeEditar}
+                  disabled
                   style={{ fontSize: getResponsiveFontSize() }}
                 />
               </div>
@@ -539,7 +574,7 @@ export default function CuentaPorCobrarForm({
                   options={estadosOptions}
                   onChange={(e) => setEstadoId(e.value)}
                   placeholder="Seleccione estado"
-                  disabled={!puedeEditar}
+                  disabled
                   style={{ fontSize: getResponsiveFontSize() }}
                 />
               </div>
@@ -599,7 +634,7 @@ export default function CuentaPorCobrarForm({
                     mode="decimal"
                     minFractionDigits={2}
                     maxFractionDigits={2}
-                    disabled={!puedeEditar}
+                    disabled
                     suffix="%"
                     inputStyle={{
                       fontSize: getResponsiveFontSize(),
@@ -647,7 +682,7 @@ export default function CuentaPorCobrarForm({
                     mode="decimal"
                     minFractionDigits={2}
                     maxFractionDigits={2}
-                    disabled={!puedeEditar}
+                    disabled
                     inputStyle={{
                       fontWeight: "bold",
                       width: "100%",
@@ -820,21 +855,35 @@ export default function CuentaPorCobrarForm({
         )}
       </TabView>
 
-      {/* BOTONES DE ACCIÓN */}
-      <div className="flex justify-content-end gap-2 mt-3">
+      {/* Botones de acción */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 8,
+          marginTop: 18,
+        }}
+      >
         <Button
           label="Cancelar"
           icon="pi pi-times"
-          className="p-button-secondary"
+          type="button"
           onClick={onCancel}
           disabled={loading}
+          className="p-button-warning"
+          severity="warning"
+          raised
         />
         <Button
-          label="Guardar"
-          icon="pi pi-save"
-          onClick={handleSubmit}
-          disabled={!puedeEditar}
+          label={isEdit ? "Actualizar" : "Guardar"}
+          icon="pi pi-check"
+          type="submit"
           loading={loading}
+          disabled={!puedeEditar}
+          onClick={handleSubmit}
+          className="p-button-success"
+          severity="success"
+          raised
         />
       </div>
 
@@ -842,7 +891,7 @@ export default function CuentaPorCobrarForm({
       <Dialog
         header={isEditPago ? "Editar Pago" : "Registrar Pago"}
         visible={showPagoDialog}
-        style={{ width: "600px" }}
+        style={{ width: "1200px" }}
         onHide={() => setShowPagoDialog(false)}
         modal
       >

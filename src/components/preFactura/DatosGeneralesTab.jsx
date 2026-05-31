@@ -39,6 +39,7 @@ export default function DatosGeneralesTab({
   puertosOptions,
   tiposContenedorOptions,
   agenteAduanasOptions,
+  periodosContables = [], // ✅ AGREGADO
   isEdit,
   puedeEditar,
   puedeEditarDetalles,
@@ -74,6 +75,41 @@ export default function DatosGeneralesTab({
     (t) => Number(t.value) === Number(formData.tipoDocumentoId),
   );
   const esSaldoInicial = tipoDocSeleccionado?.label?.includes("SI-");
+  // ✅ FILTRAR Y PREPARAR PERIODOS CONTABLES
+  const periodosContablesFiltrados = periodosContables
+    .filter((p) => {
+      // Solo filtrar por empresa
+      return Number(p.empresaId) === Number(formData.empresaId);
+    })
+    .sort((a, b) => {
+      // Ordenar por fecha de inicio descendente (más recientes primero)
+      return new Date(b.fechaInicio) - new Date(a.fechaInicio);
+    })
+    .map((p) => {
+      // Agregar indicador visual del estado
+      let estadoLabel = "";
+      const estadoId = Number(p.estadoId);
+
+      // IDs de estados para PERIODO CONTABLE:
+      // 73 = ABIERTO, 74 = CERRADO, 75 = BLOQUEADO
+      if (estadoId === 73) {
+        estadoLabel = "🟢 ABIERTO";
+      } else if (estadoId === 74) {
+        estadoLabel = "🔴 CERRADO";
+      } else if (estadoId === 75) {
+        estadoLabel = "🔒 BLOQUEADO";
+      } else {
+        // Fallback: usar descripción del estado si existe
+        estadoLabel = p.estado?.descripcion || "⚪ SIN ESTADO";
+      }
+
+      return {
+        label: `${p.nombrePeriodo} - ${estadoLabel}`,
+        value: Number(p.id),
+        estadoId: estadoId,
+        disabled: estadoId !== 73 && !isEdit, // Deshabilitar si no está ABIERTO (solo en creación)
+      };
+    });
 
   return (
     <div className="fluid">
@@ -163,6 +199,26 @@ export default function DatosGeneralesTab({
           <div style={{ flex: 1 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="periodoContableId"
+            >
+              Periodo Contable
+            </label>
+            <Dropdown
+              id="periodoContableId"
+              value={formData.periodoContableId}
+              options={periodosContablesFiltrados || []}
+              optionDisabled={(option) => option.disabled}
+              onChange={(e) => onChange("periodoContableId", e.value)}
+              placeholder="Seleccione periodo contable"
+              showClear
+              filter
+              disabled={!puedeEditar || readOnly}
+              style={{ fontSize: getResponsiveFontSize() }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="estadoId"
             >
               Estado*
@@ -177,44 +233,6 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar estado"
               disabled={!puedeEditar || readOnly}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-          <div style={{ flex: 0.5 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="nroLiquidacionFacturacion"
-            >
-              N°Liquidación
-              {!usuario?.esSuperUsuario && (
-                <i
-                  className="pi pi-lock"
-                  style={{
-                    marginLeft: "0.5rem",
-                    fontSize: "0.8rem",
-                    color: "#999",
-                  }}
-                  title="Solo editable por SuperUsuario"
-                />
-              )}
-            </label>
-            <InputText
-              id="nroLiquidacionFacturacion"
-              value={formData.nroLiquidacionFacturacion || ""}
-              onChange={(e) =>
-                onChange(
-                  "nroLiquidacionFacturacion",
-                  e.target.value.toUpperCase(),
-                )
-              }
-              maxLength={40}
-              disabled={readOnly || !usuario?.esSuperUsuario}
-              style={{ fontWeight: "bold" }}
-              placeholder={
-                usuario?.esSuperUsuario
-                  ? "N° Liquidación"
-                  : "Solo SuperUsuario puede editar"
-              }
-              className={!usuario?.esSuperUsuario ? "p-disabled" : ""}
             />
           </div>
           <div style={{ flex: 1 }}>
@@ -300,7 +318,7 @@ export default function DatosGeneralesTab({
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
-          <div style={{ flex: 0.7 }}>
+          <div style={{ flex: 0.25 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="numSerieDoc"
@@ -314,7 +332,7 @@ export default function DatosGeneralesTab({
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
-          <div style={{ flex: 0.7 }}>
+          <div style={{ flex: 0.5 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="numCorreDoc"
@@ -366,6 +384,44 @@ export default function DatosGeneralesTab({
                 justifyContent: "center",
                 color: "#000",
               }}
+            />
+          </div>
+          <div style={{ flex: 0.5 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="nroLiquidacionFacturacion"
+            >
+              N°Liquidación
+              {!usuario?.esSuperUsuario && (
+                <i
+                  className="pi pi-lock"
+                  style={{
+                    marginLeft: "0.5rem",
+                    fontSize: "0.8rem",
+                    color: "#999",
+                  }}
+                  title="Solo editable por SuperUsuario"
+                />
+              )}
+            </label>
+            <InputText
+              id="nroLiquidacionFacturacion"
+              value={formData.nroLiquidacionFacturacion || ""}
+              onChange={(e) =>
+                onChange(
+                  "nroLiquidacionFacturacion",
+                  e.target.value.toUpperCase(),
+                )
+              }
+              maxLength={40}
+              disabled={readOnly || !usuario?.esSuperUsuario}
+              style={{ fontWeight: "bold" }}
+              placeholder={
+                usuario?.esSuperUsuario
+                  ? "N° Liquidación"
+                  : "Solo SuperUsuario puede editar"
+              }
+              className={!usuario?.esSuperUsuario ? "p-disabled" : ""}
             />
           </div>
           {/* PREFACTURA ORIGEN - Botón para ir al origen (para copias) */}
@@ -424,65 +480,6 @@ export default function DatosGeneralesTab({
                 }}
                 tooltip="Partición/Original"
                 tooltipOptions={{ position: "top" }}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* FILA 3: Estado, Fecha Aprobación (si está aprobada) */}
-        <div
-          style={{
-            alignItems: "end",
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-            marginTop: "1rem",
-          }}
-        >
-          {formData.fechaAprobacion && (
-            <div style={{ flex: 1 }}>
-              <label
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-                htmlFor="fechaAprobacion"
-              >
-                Fecha Aprobación
-              </label>
-              <Calendar
-                id="fechaAprobacion"
-                value={formData.fechaAprobacion}
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled
-                inputStyle={{
-                  fontWeight: "bold",
-                  backgroundColor: "#f0f0f0",
-                }}
-              />
-            </div>
-          )}
-          {formData.motivoRechazo && (
-            <div style={{ flex: 2 }}>
-              <label
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-                htmlFor="motivoRechazo"
-              >
-                Motivo Rechazo
-              </label>
-              <InputTextarea
-                id="motivoRechazo"
-                value={formData.motivoRechazo || ""}
-                disabled
-                rows={2}
-                style={{
-                  fontWeight: "bold",
-                  backgroundColor: "#fff3cd",
-                }}
               />
             </div>
           )}
@@ -1400,11 +1397,69 @@ export default function DatosGeneralesTab({
       {/* SECCIÓN 6: OBSERVACIONES */}
       {/* ============================================ */}
       <Panel
-        header="📝 Observaciones"
+        header="📝 Fecha Aprobación, Motivo Rechazo y Observaciones"
         toggleable
         collapsed
         style={{ marginTop: "1rem" }}
       >
+        {/* FILA 3: Estado, Fecha Aprobación (si está aprobada) */}
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+            marginTop: "1rem",
+          }}
+        >
+          {formData.fechaAprobacion && (
+            <div style={{ flex: 1 }}>
+              <label
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+                htmlFor="fechaAprobacion"
+              >
+                Fecha Aprobación
+              </label>
+              <Calendar
+                id="fechaAprobacion"
+                value={formData.fechaAprobacion}
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled
+                inputStyle={{
+                  fontWeight: "bold",
+                  backgroundColor: "#f0f0f0",
+                }}
+              />
+            </div>
+          )}
+          {formData.motivoRechazo && (
+            <div style={{ flex: 2 }}>
+              <label
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+                htmlFor="motivoRechazo"
+              >
+                Motivo Rechazo
+              </label>
+              <InputTextarea
+                id="motivoRechazo"
+                value={formData.motivoRechazo || ""}
+                disabled
+                rows={2}
+                style={{
+                  fontWeight: "bold",
+                  backgroundColor: "#fff3cd",
+                }}
+              />
+            </div>
+          )}
+        </div>
         <InputTextarea
           id="observaciones"
           value={formData.observaciones || ""}

@@ -43,6 +43,7 @@ import { getTiposContenedor } from "../api/tipoContenedor";
 import { getTiposProducto } from "../api/tipoProducto";
 import { getPersonal } from "../api/personal";
 import { getBancos } from "../api/banco";
+import { getPeriodosContables } from "../api/contabilidad/periodoContable";
 import { usePermissions } from "../hooks/usePermissions";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
@@ -75,6 +76,7 @@ const PreFactura = ({ ruta }) => {
   const [tiposProducto, setTiposProducto] = useState([]);
   const [personalOptions, setPersonalOptions] = useState([]);
   const [bancos, setBancos] = useState([]);
+  const [periodosContables, setPeriodosContables] = useState([]);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -143,6 +145,7 @@ const PreFactura = ({ ruta }) => {
         tiposProductoData,
         personalData,
         bancosData,
+        periodosContablesData, // ✅ AGREGADO
       ] = await Promise.all([
         getAllPreFactura(),
         getEmpresas(),
@@ -159,6 +162,7 @@ const PreFactura = ({ ruta }) => {
         getTiposProducto(),
         getPersonal(),
         getBancos(),
+        getPeriodosContables(), // ✅ AGREGADO
       ]);
 
       setEmpresas(empresasData);
@@ -216,6 +220,7 @@ const PreFactura = ({ ruta }) => {
       setTiposProducto(tiposProductoData);
       setPersonalOptions(personalData);
       setBancos(bancosData);
+      setPeriodosContables(periodosContablesData || []);
     } catch (err) {
       toast.current?.show({
         severity: "error",
@@ -1209,6 +1214,7 @@ const PreFactura = ({ ruta }) => {
           monedas={monedas}
           unidadesNegocio={unidadesNegocio}
           bancos={bancos}
+          periodosContables={periodosContables}
           incoterms={incoterms}
           tiposContenedor={tiposContenedor}
           empresaFija={empresaSeleccionada}

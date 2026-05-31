@@ -27,6 +27,7 @@ export default function OrdenCompraForm({
   tiposDocumento,
   seriesDoc,
   estadosOrden,
+  periodosContables = [], // ✅ AGREGADO
   empresaFija,
   onSubmit,
   onCancel,
@@ -71,6 +72,9 @@ export default function OrdenCompraForm({
     defaultValues?.fechaContable
       ? new Date(defaultValues.fechaContable)
       : new Date(),
+  );
+  const [periodoContableId, setPeriodoContableId] = useState(
+    defaultValues?.periodoContableId || null,
   );
   const [requerimientoCompraId, setRequerimientoCompraId] = useState(
     defaultValues?.requerimientoCompraId || null,
@@ -491,6 +495,7 @@ export default function OrdenCompraForm({
       numeroDocumento,
       fechaDocumento,
       fechaContable,
+      periodoContableId: periodoContableId ? Number(periodoContableId) : null,
       requerimientoCompraId: requerimientoCompraId
         ? Number(requerimientoCompraId)
         : null,
@@ -704,6 +709,7 @@ export default function OrdenCompraForm({
             tiposDocumentoOptions={tiposDocumentoOptions}
             seriesDocOptions={seriesDocOptions}
             estadosOrdenOptions={estadosOrdenOptions}
+            periodosContables={periodosContables}
             isEdit={isEdit}
             puedeEditar={puedeEditar}
             detallesCount={detallesCount}

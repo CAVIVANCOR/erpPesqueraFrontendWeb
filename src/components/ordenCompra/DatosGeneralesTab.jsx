@@ -24,6 +24,7 @@ export default function DatosGeneralesTab({
   tiposDocumentoOptions,
   seriesDocOptions,
   estadosOrdenOptions,
+  periodosContables = [],
   isEdit,
   puedeEditar,
   detallesCount = 0,
@@ -73,6 +74,43 @@ export default function DatosGeneralesTab({
     );
     return moneda?.codigoSunat || "PEN";
   };
+
+  // ✅ FILTRAR Y PREPARAR PERIODOS CONTABLES
+  const periodosContablesFiltrados = periodosContables
+    .filter((p) => {
+      // Solo filtrar por empresa
+      return Number(p.empresaId) === Number(formData.empresaId);
+    })
+    .sort((a, b) => {
+      // Ordenar por fecha de inicio descendente (más recientes primero)
+      return new Date(b.fechaInicio) - new Date(a.fechaInicio);
+    })
+    .map((p) => {
+      // Agregar indicador visual del estado
+      let estadoLabel = "";
+      const estadoId = Number(p.estadoId);
+
+      // IDs de estados para PERIODO CONTABLE:
+      // 73 = ABIERTO, 74 = CERRADO, 75 = BLOQUEADO
+      if (estadoId === 73) {
+        estadoLabel = "🟢 ABIERTO";
+      } else if (estadoId === 74) {
+        estadoLabel = "🔴 CERRADO";
+      } else if (estadoId === 75) {
+        estadoLabel = "🔒 BLOQUEADO";
+      } else {
+        // Fallback: usar descripción del estado si existe
+        estadoLabel = p.estado?.descripcion || "⚪ SIN ESTADO";
+      }
+
+      return {
+        label: `${p.nombrePeriodo} - ${estadoLabel}`,
+        value: Number(p.id),
+        estadoId: estadoId,
+        disabled: estadoId !== 73 && !isEdit, // Deshabilitar si no está ABIERTO (solo en creación)
+      };
+    });
+
   return (
     <div className="fluid">
       <div
@@ -138,6 +176,27 @@ export default function DatosGeneralesTab({
             showIcon
             disabled={!puedeEditar || readOnly}
             inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          {/* PERIODO CONTABLE */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="periodoContableId"
+          >
+            Periodo Contable
+          </label>
+          <Dropdown
+            id="periodoContableId"
+            value={formData.periodoContableId}
+            options={periodosContablesFiltrados || []}
+            optionDisabled={(option) => option.disabled}
+            onChange={(e) => onChange("periodoContableId", e.value)}
+            placeholder="Seleccione periodo contable"
+            showClear
+            filter
+            disabled={!puedeEditar || readOnly}
+            style={{ fontSize: getResponsiveFontSize() }}
           />
         </div>
         <div style={{ flex: 0.75 }}>

@@ -8,7 +8,6 @@ import { InputNumber } from "primereact/inputnumber";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
-import { Checkbox } from "primereact/checkbox";
 import { getResponsiveFontSize } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 
@@ -33,118 +32,121 @@ export default function PagoCuentaPorCobrarForm({
   // ESTADOS PRINCIPALES
   // ========================================
   const [cuentaPorCobrarId, setCuentaPorCobrarId] = useState(
-    defaultValues?.cuentaPorCobrarId || null
+    defaultValues?.cuentaPorCobrarId || null,
   );
   const [fechaPago, setFechaPago] = useState(
-    defaultValues?.fechaPago ? new Date(defaultValues.fechaPago) : new Date()
+    defaultValues?.fechaPago ? new Date(defaultValues.fechaPago) : new Date(),
   );
-  
+
   // 🔄 RENOMBRADO: montoPago → montoPagado
   const [montoPagado, setMontoPagado] = useState(
-    defaultValues?.montoPagado || 0
+    defaultValues?.montoPagado || 0,
   );
-  
+
   // 🔄 RENOMBRADO: monedaId → monedaPagoId
   const [monedaPagoId, setMonedaPagoId] = useState(
-    defaultValues?.monedaPagoId || null
+    defaultValues?.monedaPagoId || null,
   );
-  
-  const [tipoCambio, setTipoCambio] = useState(
-    defaultValues?.tipoCambio || 1
-  );
+
+  const [tipoCambio, setTipoCambio] = useState(defaultValues?.tipoCambio || 1);
 
   // ✅ NUEVOS CAMPOS: Aplicación a la deuda
   const [montoAplicadoDeuda, setMontoAplicadoDeuda] = useState(
-    defaultValues?.montoAplicadoDeuda || 0
+    defaultValues?.montoAplicadoDeuda || 0,
   );
   const [monedaDeudaId, setMonedaDeudaId] = useState(
-    defaultValues?.monedaDeudaId || null
+    defaultValues?.monedaDeudaId || null,
   );
 
   // ========================================
   // ESTADOS DETRACCIÓN
   // ========================================
   const [tieneDetraccion, setTieneDetraccion] = useState(
-    defaultValues?.tieneDetraccion || false
+    defaultValues?.tieneDetraccion || false,
   );
   const [montoDetraccion, setMontoDetraccion] = useState(
-    defaultValues?.montoDetraccion || 0
+    defaultValues?.montoDetraccion || 0,
   );
   const [porcentajeDetraccion, setPorcentajeDetraccion] = useState(
-    defaultValues?.porcentajeDetraccion || null
+    defaultValues?.porcentajeDetraccion || null,
   );
   const [numeroConstanciaDetraccion, setNumeroConstanciaDetraccion] = useState(
-    defaultValues?.numeroConstanciaDetraccion || ""
+    defaultValues?.numeroConstanciaDetraccion || "",
   );
   const [fechaDetraccion, setFechaDetraccion] = useState(
-    defaultValues?.fechaDetraccion ? new Date(defaultValues.fechaDetraccion) : null
+    defaultValues?.fechaDetraccion
+      ? new Date(defaultValues.fechaDetraccion)
+      : null,
   );
 
   // ========================================
   // ESTADOS RETENCIÓN
   // ========================================
   const [tieneRetencion, setTieneRetencion] = useState(
-    defaultValues?.tieneRetencion || false
+    defaultValues?.tieneRetencion || false,
   );
   const [montoRetencion, setMontoRetencion] = useState(
-    defaultValues?.montoRetencion || 0
+    defaultValues?.montoRetencion || 0,
   );
   const [porcentajeRetencion, setPorcentajeRetencion] = useState(
-    defaultValues?.porcentajeRetencion || null
+    defaultValues?.porcentajeRetencion || null,
   );
   const [numeroComprobanteRetencion, setNumeroComprobanteRetencion] = useState(
-    defaultValues?.numeroComprobanteRetencion || ""
+    defaultValues?.numeroComprobanteRetencion || "",
   );
   const [fechaRetencion, setFechaRetencion] = useState(
-    defaultValues?.fechaRetencion ? new Date(defaultValues.fechaRetencion) : null
+    defaultValues?.fechaRetencion
+      ? new Date(defaultValues.fechaRetencion)
+      : null,
   );
 
   // ========================================
   // ESTADOS PERCEPCIÓN
   // ========================================
   const [tienePercepcion, setTienePercepcion] = useState(
-    defaultValues?.tienePercepcion || false
+    defaultValues?.tienePercepcion || false,
   );
   const [montoPercepcion, setMontoPercepcion] = useState(
-    defaultValues?.montoPercepcion || 0
+    defaultValues?.montoPercepcion || 0,
   );
   const [porcentajePercepcion, setPorcentajePercepcion] = useState(
-    defaultValues?.porcentajePercepcion || null
+    defaultValues?.porcentajePercepcion || null,
   );
-  const [numeroComprobantePercepcion, setNumeroComprobantePercepcion] = useState(
-    defaultValues?.numeroComprobantePercepcion || ""
-  );
+  const [numeroComprobantePercepcion, setNumeroComprobantePercepcion] =
+    useState(defaultValues?.numeroComprobantePercepcion || "");
   const [fechaPercepcion, setFechaPercepcion] = useState(
-    defaultValues?.fechaPercepcion ? new Date(defaultValues.fechaPercepcion) : null
+    defaultValues?.fechaPercepcion
+      ? new Date(defaultValues.fechaPercepcion)
+      : null,
   );
 
   // ========================================
   // ESTADOS MEDIO DE PAGO
   // ========================================
   const [medioPagoId, setMedioPagoId] = useState(
-    defaultValues?.medioPagoId || null
+    defaultValues?.medioPagoId || null,
   );
   const [numeroOperacion, setNumeroOperacion] = useState(
-    defaultValues?.numeroOperacion || ""
+    defaultValues?.numeroOperacion || "",
   );
-  const [bancoId, setBancoId] = useState(
-    defaultValues?.bancoId || null
-  );
+  const [bancoId, setBancoId] = useState(defaultValues?.bancoId || null);
   const [cuentaBancariaId, setCuentaBancariaId] = useState(
-    defaultValues?.cuentaBancariaId || null
+    defaultValues?.cuentaBancariaId || null,
   );
   const [observaciones, setObservaciones] = useState(
-    defaultValues?.observaciones || ""
+    defaultValues?.observaciones || "",
   );
 
   // ========================================
   // ESTADOS CONTABILIDAD
   // ========================================
   const [fechaContable, setFechaContable] = useState(
-    defaultValues?.fechaContable ? new Date(defaultValues.fechaContable) : new Date()
+    defaultValues?.fechaContable
+      ? new Date(defaultValues.fechaContable)
+      : new Date(),
   );
   const [periodoContableId, setPeriodoContableId] = useState(
-    defaultValues?.periodoContableId || null
+    defaultValues?.periodoContableId || null,
   );
 
   // ========================================
@@ -152,14 +154,96 @@ export default function PagoCuentaPorCobrarForm({
   // ========================================
   const [creadoPor, setCreadoPor] = useState(defaultValues?.creadoPor || null);
   const [actualizadoPor, setActualizadoPor] = useState(
-    defaultValues?.actualizadoPor || null
+    defaultValues?.actualizadoPor || null,
   );
   const [fechaCreacion, setFechaCreacion] = useState(
-    defaultValues?.fechaCreacion ? new Date(defaultValues.fechaCreacion) : null
+    defaultValues?.fechaCreacion ? new Date(defaultValues.fechaCreacion) : null,
   );
   const [fechaActualizacion, setFechaActualizacion] = useState(
-    defaultValues?.fechaActualizacion ? new Date(defaultValues.fechaActualizacion) : null
+    defaultValues?.fechaActualizacion
+      ? new Date(defaultValues.fechaActualizacion)
+      : null,
   );
+  // ========================================
+  // HANDLERS: Exclusividad mutua Detracción/Retención/Percepción
+  // ========================================
+  const handleToggleDetraccion = () => {
+    const nuevoEstado = !tieneDetraccion;
+    setTieneDetraccion(nuevoEstado);
+
+    // Si se activa Detracción, desactivar los otros
+    if (nuevoEstado) {
+      setTieneRetencion(false);
+      setTienePercepcion(false);
+      // Limpiar campos de Retención y Percepción
+      setMontoRetencion(0);
+      setPorcentajeRetencion(null);
+      setNumeroComprobanteRetencion("");
+      setFechaRetencion(null);
+      setMontoPercepcion(0);
+      setPorcentajePercepcion(null);
+      setNumeroComprobantePercepcion("");
+      setFechaPercepcion(null);
+    } else {
+      // Si se desactiva, limpiar campos de Detracción
+      setMontoDetraccion(0);
+      setPorcentajeDetraccion(null);
+      setNumeroConstanciaDetraccion("");
+      setFechaDetraccion(null);
+    }
+  };
+
+  const handleToggleRetencion = () => {
+    const nuevoEstado = !tieneRetencion;
+    setTieneRetencion(nuevoEstado);
+
+    // Si se activa Retención, desactivar los otros
+    if (nuevoEstado) {
+      setTieneDetraccion(false);
+      setTienePercepcion(false);
+      // Limpiar campos de Detracción y Percepción
+      setMontoDetraccion(0);
+      setPorcentajeDetraccion(null);
+      setNumeroConstanciaDetraccion("");
+      setFechaDetraccion(null);
+      setMontoPercepcion(0);
+      setPorcentajePercepcion(null);
+      setNumeroComprobantePercepcion("");
+      setFechaPercepcion(null);
+    } else {
+      // Si se desactiva, limpiar campos de Retención
+      setMontoRetencion(0);
+      setPorcentajeRetencion(null);
+      setNumeroComprobanteRetencion("");
+      setFechaRetencion(null);
+    }
+  };
+
+  const handleTogglePercepcion = () => {
+    const nuevoEstado = !tienePercepcion;
+    setTienePercepcion(nuevoEstado);
+
+    // Si se activa Percepción, desactivar los otros
+    if (nuevoEstado) {
+      setTieneDetraccion(false);
+      setTieneRetencion(false);
+      // Limpiar campos de Detracción y Retención
+      setMontoDetraccion(0);
+      setPorcentajeDetraccion(null);
+      setNumeroConstanciaDetraccion("");
+      setFechaDetraccion(null);
+      setMontoRetencion(0);
+      setPorcentajeRetencion(null);
+      setNumeroComprobanteRetencion("");
+      setFechaRetencion(null);
+    } else {
+      // Si se desactiva, limpiar campos de Percepción
+      setMontoPercepcion(0);
+      setPorcentajePercepcion(null);
+      setNumeroComprobantePercepcion("");
+      setFechaPercepcion(null);
+    }
+  };
 
   // ========================================
   // ESTADOS AUXILIARES
@@ -175,64 +259,84 @@ export default function PagoCuentaPorCobrarForm({
   useEffect(() => {
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       setCuentaPorCobrarId(
-        defaultValues.cuentaPorCobrarId ? Number(defaultValues.cuentaPorCobrarId) : null
+        defaultValues.cuentaPorCobrarId
+          ? Number(defaultValues.cuentaPorCobrarId)
+          : null,
       );
       setFechaPago(
-        defaultValues.fechaPago ? new Date(defaultValues.fechaPago) : new Date()
+        defaultValues.fechaPago
+          ? new Date(defaultValues.fechaPago)
+          : new Date(),
       );
       setMontoPagado(defaultValues.montoPagado || 0);
       setMonedaPagoId(
-        defaultValues.monedaPagoId ? Number(defaultValues.monedaPagoId) : null
+        defaultValues.monedaPagoId ? Number(defaultValues.monedaPagoId) : null,
       );
       setTipoCambio(defaultValues.tipoCambio || 1);
       setMontoAplicadoDeuda(defaultValues.montoAplicadoDeuda || 0);
       setMonedaDeudaId(
-        defaultValues.monedaDeudaId ? Number(defaultValues.monedaDeudaId) : null
+        defaultValues.monedaDeudaId
+          ? Number(defaultValues.monedaDeudaId)
+          : null,
       );
 
       // Detracción
       setTieneDetraccion(defaultValues.tieneDetraccion || false);
       setMontoDetraccion(defaultValues.montoDetraccion || 0);
       setPorcentajeDetraccion(defaultValues.porcentajeDetraccion || null);
-      setNumeroConstanciaDetraccion(defaultValues.numeroConstanciaDetraccion || "");
+      setNumeroConstanciaDetraccion(
+        defaultValues.numeroConstanciaDetraccion || "",
+      );
       setFechaDetraccion(
-        defaultValues.fechaDetraccion ? new Date(defaultValues.fechaDetraccion) : null
+        defaultValues.fechaDetraccion
+          ? new Date(defaultValues.fechaDetraccion)
+          : null,
       );
 
       // Retención
       setTieneRetencion(defaultValues.tieneRetencion || false);
       setMontoRetencion(defaultValues.montoRetencion || 0);
       setPorcentajeRetencion(defaultValues.porcentajeRetencion || null);
-      setNumeroComprobanteRetencion(defaultValues.numeroComprobanteRetencion || "");
+      setNumeroComprobanteRetencion(
+        defaultValues.numeroComprobanteRetencion || "",
+      );
       setFechaRetencion(
-        defaultValues.fechaRetencion ? new Date(defaultValues.fechaRetencion) : null
+        defaultValues.fechaRetencion
+          ? new Date(defaultValues.fechaRetencion)
+          : null,
       );
 
       // Percepción
       setTienePercepcion(defaultValues.tienePercepcion || false);
       setMontoPercepcion(defaultValues.montoPercepcion || 0);
       setPorcentajePercepcion(defaultValues.porcentajePercepcion || null);
-      setNumeroComprobantePercepcion(defaultValues.numeroComprobantePercepcion || "");
+      setNumeroComprobantePercepcion(
+        defaultValues.numeroComprobantePercepcion || "",
+      );
       setFechaPercepcion(
-        defaultValues.fechaPercepcion ? new Date(defaultValues.fechaPercepcion) : null
+        defaultValues.fechaPercepcion
+          ? new Date(defaultValues.fechaPercepcion)
+          : null,
       );
 
       // Medio de pago
       setMedioPagoId(
-        defaultValues.medioPagoId ? Number(defaultValues.medioPagoId) : null
+        defaultValues.medioPagoId ? Number(defaultValues.medioPagoId) : null,
       );
       setNumeroOperacion(defaultValues.numeroOperacion || "");
-      setBancoId(
-        defaultValues.bancoId ? Number(defaultValues.bancoId) : null
-      );
+      setBancoId(defaultValues.bancoId ? Number(defaultValues.bancoId) : null);
       setCuentaBancariaId(
-        defaultValues.cuentaBancariaId ? Number(defaultValues.cuentaBancariaId) : null
+        defaultValues.cuentaBancariaId
+          ? Number(defaultValues.cuentaBancariaId)
+          : null,
       );
       setObservaciones(defaultValues.observaciones || "");
 
       // Contabilidad
       setFechaContable(
-        defaultValues.fechaContable ? new Date(defaultValues.fechaContable) : new Date()
+        defaultValues.fechaContable
+          ? new Date(defaultValues.fechaContable)
+          : new Date(),
       );
       setPeriodoContableId(defaultValues.periodoContableId || null);
 
@@ -240,10 +344,14 @@ export default function PagoCuentaPorCobrarForm({
       setCreadoPor(defaultValues.creadoPor || null);
       setActualizadoPor(defaultValues.actualizadoPor || null);
       setFechaCreacion(
-        defaultValues.fechaCreacion ? new Date(defaultValues.fechaCreacion) : null
+        defaultValues.fechaCreacion
+          ? new Date(defaultValues.fechaCreacion)
+          : null,
       );
       setFechaActualizacion(
-        defaultValues.fechaActualizacion ? new Date(defaultValues.fechaActualizacion) : null
+        defaultValues.fechaActualizacion
+          ? new Date(defaultValues.fechaActualizacion)
+          : null,
       );
     }
   }, [defaultValues]);
@@ -254,7 +362,7 @@ export default function PagoCuentaPorCobrarForm({
   useEffect(() => {
     if (cuentaPorCobrarId && cuentasPorCobrar) {
       const cuenta = cuentasPorCobrar.find(
-        (c) => Number(c.id) === Number(cuentaPorCobrarId)
+        (c) => Number(c.id) === Number(cuentaPorCobrarId),
       );
       if (cuenta) {
         setCuentaSeleccionada(cuenta);
@@ -274,21 +382,28 @@ export default function PagoCuentaPorCobrarForm({
     const montoBase = Number(montoPagado) || 0;
     const detraccion = tieneDetraccion ? Number(montoDetraccion) || 0 : 0;
     const retencion = tieneRetencion ? Number(montoRetencion) || 0 : 0;
-    
+
     // Monto aplicado = Monto pagado + Detracción + Retención
     const montoCalculado = montoBase + detraccion + retencion;
     setMontoAplicadoDeuda(montoCalculado);
-  }, [montoPagado, tieneDetraccion, montoDetraccion, tieneRetencion, montoRetencion]);
+  }, [
+    montoPagado,
+    tieneDetraccion,
+    montoDetraccion,
+    tieneRetencion,
+    montoRetencion,
+  ]);
 
   // ========================================
   // HANDLER: Submit
   // ========================================
   const handleSubmit = () => {
-    const estadoPagoId = estados?.find(
-      (e) =>
-        e.nombre?.toUpperCase().includes("PAGADO") ||
-        e.nombre?.toUpperCase().includes("COBRADO")
-    )?.id || estadoId;
+    const estadoPagoId =
+      estados?.find(
+        (e) =>
+          e.nombre?.toUpperCase().includes("PAGADO") ||
+          e.nombre?.toUpperCase().includes("COBRADO"),
+      )?.id || estadoId;
 
     const dataParaGrabacion = {
       cuentaPorCobrarId: cuentaPorCobrarId ? Number(cuentaPorCobrarId) : null,
@@ -303,22 +418,37 @@ export default function PagoCuentaPorCobrarForm({
       // Detracción
       tieneDetraccion,
       montoDetraccion: tieneDetraccion ? Number(montoDetraccion) : 0,
-      porcentajeDetraccion: tieneDetraccion && porcentajeDetraccion ? Number(porcentajeDetraccion) : null,
-      numeroConstanciaDetraccion: tieneDetraccion ? numeroConstanciaDetraccion : null,
+      porcentajeDetraccion:
+        tieneDetraccion && porcentajeDetraccion
+          ? Number(porcentajeDetraccion)
+          : null,
+      numeroConstanciaDetraccion: tieneDetraccion
+        ? numeroConstanciaDetraccion
+        : null,
       fechaDetraccion: tieneDetraccion ? fechaDetraccion : null,
 
       // Retención
       tieneRetencion,
       montoRetencion: tieneRetencion ? Number(montoRetencion) : 0,
-      porcentajeRetencion: tieneRetencion && porcentajeRetencion ? Number(porcentajeRetencion) : null,
-      numeroComprobanteRetencion: tieneRetencion ? numeroComprobanteRetencion : null,
+      porcentajeRetencion:
+        tieneRetencion && porcentajeRetencion
+          ? Number(porcentajeRetencion)
+          : null,
+      numeroComprobanteRetencion: tieneRetencion
+        ? numeroComprobanteRetencion
+        : null,
       fechaRetencion: tieneRetencion ? fechaRetencion : null,
 
       // Percepción
       tienePercepcion,
       montoPercepcion: tienePercepcion ? Number(montoPercepcion) : 0,
-      porcentajePercepcion: tienePercepcion && porcentajePercepcion ? Number(porcentajePercepcion) : null,
-      numeroComprobantePercepcion: tienePercepcion ? numeroComprobantePercepcion : null,
+      porcentajePercepcion:
+        tienePercepcion && porcentajePercepcion
+          ? Number(porcentajePercepcion)
+          : null,
+      numeroComprobantePercepcion: tienePercepcion
+        ? numeroComprobantePercepcion
+        : null,
       fechaPercepcion: tienePercepcion ? fechaPercepcion : null,
 
       // Medio de pago
@@ -357,7 +487,7 @@ export default function PagoCuentaPorCobrarForm({
 
     if (Number(montoPagado) > Number(saldoPendiente)) {
       alert(
-        `El monto del pago (${montoPagado}) no puede ser mayor al saldo pendiente (${saldoPendiente})`
+        `El monto del pago (${montoPagado}) no puede ser mayor al saldo pendiente (${saldoPendiente})`,
       );
       return;
     }
@@ -381,7 +511,7 @@ export default function PagoCuentaPorCobrarForm({
 
   const monedasOptions =
     monedas?.map((m) => ({
-      label: `${m.codigoSunat} - ${m.nombre}`,
+      label: m.codigoSunat,
       value: Number(m.id),
     })) || [];
 
@@ -410,7 +540,7 @@ export default function PagoCuentaPorCobrarForm({
     <div className="formgrid grid">
       {/* PANEL: Información del Cobro */}
       <Panel header="Información del Cobro" className="col-12 mb-3">
-        <div className="formgrid grid">
+        <div className="p-fluid">
           {!hideCuentaField && (
             <div className="field col-12 md:col-6">
               <label htmlFor="cuentaPorCobrarId">
@@ -429,22 +559,6 @@ export default function PagoCuentaPorCobrarForm({
               />
             </div>
           )}
-
-          <div className="field col-12 md:col-6">
-            <label htmlFor="fechaPago">
-              Fecha de Pago <span style={{ color: "red" }}>*</span>
-            </label>
-            <Calendar
-              id="fechaPago"
-              value={fechaPago}
-              onChange={(e) => setFechaPago(e.value)}
-              dateFormat="dd/mm/yy"
-              showIcon
-              disabled={readOnly}
-              style={{ width: "100%" }}
-            />
-          </div>
-
           {cuentaSeleccionada && (
             <div className="field col-12">
               <Panel
@@ -472,102 +586,217 @@ export default function PagoCuentaPorCobrarForm({
             </div>
           )}
 
-          <div className="field col-12 md:col-4">
-            <label htmlFor="montoPagado">
-              Monto Pagado <span style={{ color: "red" }}>*</span>
-            </label>
-            <InputNumber
-              id="montoPagado"
-              value={montoPagado}
-              onValueChange={(e) => setMontoPagado(e.value)}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              disabled={readOnly}
-              style={{ width: "100%" }}
-            />
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 0.7 }}>
+              <label htmlFor="fechaPago">
+                Fecha de Pago <span style={{ color: "red" }}>*</span>
+              </label>
+              <Calendar
+                id="fechaPago"
+                value={fechaPago}
+                onChange={(e) => setFechaPago(e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled={readOnly}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <label htmlFor="monedaPagoId">
+                Moneda Pago <span style={{ color: "red" }}>*</span>
+              </label>
+              <Dropdown
+                id="monedaPagoId"
+                value={monedaPagoId}
+                options={monedasOptions}
+                onChange={(e) => setMonedaPagoId(e.value)}
+                placeholder="Seleccione moneda"
+                disabled={readOnly}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <label htmlFor="montoPagado">
+                Monto Pagado <span style={{ color: "red" }}>*</span>
+              </label>
+              <InputNumber
+                id="montoPagado"
+                value={montoPagado}
+                onValueChange={(e) => setMontoPagado(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                disabled={readOnly}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="medioPagoId">
+                Medio de Pago <span style={{ color: "red" }}>*</span>
+              </label>
+              <Dropdown
+                id="medioPagoId"
+                value={medioPagoId}
+                options={mediosPagoOptions}
+                onChange={(e) => setMedioPagoId(e.value)}
+                placeholder="Seleccione medio de pago"
+                disabled={readOnly}
+                style={{ width: "100%" }}
+              />
+            </div>
           </div>
-
-          <div className="field col-12 md:col-4">
-            <label htmlFor="monedaPagoId">
-              Moneda Pago <span style={{ color: "red" }}>*</span>
-            </label>
-            <Dropdown
-              id="monedaPagoId"
-              value={monedaPagoId}
-              options={monedasOptions}
-              onChange={(e) => setMonedaPagoId(e.value)}
-              placeholder="Seleccione moneda"
-              disabled={readOnly || cuentaSeleccionada}
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          <div className="field col-12 md:col-4">
-            <label htmlFor="tipoCambio">Tipo de Cambio</label>
-            <InputNumber
-              id="tipoCambio"
-              value={tipoCambio}
-              onValueChange={(e) => setTipoCambio(e.value)}
-              mode="decimal"
-              minFractionDigits={4}
-              maxFractionDigits={4}
-              disabled={readOnly}
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          <div className="field col-12 md:col-6">
-            <label htmlFor="montoAplicadoDeuda">
-              Monto Aplicado a Deuda (calculado)
-            </label>
-            <InputNumber
-              id="montoAplicadoDeuda"
-              value={montoAplicadoDeuda}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              disabled
-              style={{ width: "100%", backgroundColor: "#e8f5e9" }}
-            />
-          </div>
-
-          <div className="field col-12 md:col-6">
-            <label htmlFor="monedaDeudaId">Moneda Deuda</label>
-            <Dropdown
-              id="monedaDeudaId"
-              value={monedaDeudaId}
-              options={monedasOptions}
-              onChange={(e) => setMonedaDeudaId(e.value)}
-              placeholder="Seleccione moneda"
-              disabled
-              style={{ width: "100%", backgroundColor: "#f0f0f0" }}
-            />
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 0.25 }}>
+              <label htmlFor="tipoCambio">T/C</label>
+              <InputNumber
+                id="tipoCambio"
+                value={tipoCambio}
+                onValueChange={(e) => setTipoCambio(e.value)}
+                mode="decimal"
+                minFractionDigits={4}
+                maxFractionDigits={4}
+                disabled={readOnly}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="monedaDeudaId">Moneda Deuda</label>
+              <Dropdown
+                id="monedaDeudaId"
+                value={monedaDeudaId}
+                options={monedasOptions}
+                onChange={(e) => setMonedaDeudaId(e.value)}
+                placeholder="Seleccione moneda"
+                disabled
+                style={{ width: "100%", backgroundColor: "#f0f0f0" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="montoAplicadoDeuda">Monto Aplicado a Deuda</label>
+              <InputNumber
+                id="montoAplicadoDeuda"
+                value={montoAplicadoDeuda}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                disabled
+                style={{ width: "100%", backgroundColor: "#e8f5e9" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="numeroOperacion">Número de Operación</label>
+              <InputText
+                id="numeroOperacion"
+                value={numeroOperacion}
+                onChange={(e) => setNumeroOperacion(e.target.value)}
+                disabled={readOnly}
+                style={{ width: "100%" }}
+              />
+            </div>
           </div>
         </div>
       </Panel>
 
       {/* PANEL: Detracción */}
-      <Panel header="Detracción (SUNAT)" className="col-12 mb-3">
-        <div className="formgrid grid">
-          <div className="field col-12">
-            <div className="flex align-items-center">
-              <Checkbox
-                inputId="tieneDetraccion"
-                checked={tieneDetraccion}
-                onChange={(e) => setTieneDetraccion(e.checked)}
+      <Panel
+        header="Detracción, Retencion, Percepcion (SUNAT)"
+        className="col-12 mb-3"
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "end",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {/* BOTÓN DETRACCIÓN */}
+          {(!tieneRetencion && !tienePercepcion) && (
+            <div style={{ flex: 1 }}>
+              <Button
+                label={
+                  tieneDetraccion ? "✅Detracción" : "Detracción"
+                }
+                icon={tieneDetraccion ? "pi pi-check-circle" : "pi pi-circle"}
+                onClick={handleToggleDetraccion}
                 disabled={readOnly}
+                className={
+                  tieneDetraccion ? "p-button-success" : "p-button-outlined"
+                }
+                style={{
+                  width: "100%",
+                  fontWeight: "bold",
+                  backgroundColor: tieneDetraccion ? "#4caf50" : "transparent",
+                  borderColor: tieneDetraccion ? "#4caf50" : "#9e9e9e",
+                  color: tieneDetraccion ? "#fff" : "#9e9e9e",
+                }}
               />
-              <label htmlFor="tieneDetraccion" className="ml-2">
-                Tiene Detracción
-              </label>
             </div>
-          </div>
+          )}
 
+          {/* BOTÓN RETENCIÓN */}
+          {(!tieneDetraccion && !tienePercepcion) && (
+            <div style={{ flex: 1 }}>
+              <Button
+                label={
+                  tieneRetencion ? "✅Retención" : "Retención"
+                }
+                icon={tieneRetencion ? "pi pi-check-circle" : "pi pi-circle"}
+                onClick={handleToggleRetencion}
+                disabled={readOnly}
+                className={
+                  tieneRetencion ? "p-button-warning" : "p-button-outlined"
+                }
+                style={{
+                  width: "100%",
+                  fontWeight: "bold",
+                  backgroundColor: tieneRetencion ? "#ff9800" : "transparent",
+                  borderColor: tieneRetencion ? "#ff9800" : "#9e9e9e",
+                  color: tieneRetencion ? "#fff" : "#9e9e9e",
+                }}
+              />
+            </div>
+          )}
+
+          {/* BOTÓN PERCEPCIÓN */}
+          {(!tieneDetraccion && !tieneRetencion) && (
+            <div style={{ flex: 1 }}>
+              <Button
+                label={
+                  tienePercepcion ? "✅Percepción" : "Percepción"
+                }
+                icon={tienePercepcion ? "pi pi-check-circle" : "pi pi-circle"}
+                onClick={handleTogglePercepcion}
+                disabled={readOnly}
+                className={
+                  tienePercepcion ? "p-button-info" : "p-button-outlined"
+                }
+                style={{
+                  width: "100%",
+                  fontWeight: "bold",
+                  backgroundColor: tienePercepcion ? "#2196f3" : "transparent",
+                  borderColor: tienePercepcion ? "#2196f3" : "#9e9e9e",
+                  color: tienePercepcion ? "#fff" : "#9e9e9e",
+                }}
+              />
+            </div>
+          )}
           {tieneDetraccion && (
             <>
-              <div className="field col-12 md:col-4">
-                <label htmlFor="montoDetraccion">Monto Detracción</label>
+              <div style={{ flex: 0.5 }}>
+                <label htmlFor="montoDetraccion">Monto</label>
                 <InputNumber
                   id="montoDetraccion"
                   value={montoDetraccion}
@@ -580,7 +809,7 @@ export default function PagoCuentaPorCobrarForm({
                 />
               </div>
 
-              <div className="field col-12 md:col-4">
+              <div style={{ flex: 0.5 }}>
                 <label htmlFor="porcentajeDetraccion">% Detracción</label>
                 <InputNumber
                   id="porcentajeDetraccion"
@@ -595,8 +824,8 @@ export default function PagoCuentaPorCobrarForm({
                 />
               </div>
 
-              <div className="field col-12 md:col-4">
-                <label htmlFor="fechaDetraccion">Fecha Detracción</label>
+              <div style={{ flex: 0.7 }}>
+                <label htmlFor="fechaDetraccion">Fecha</label>
                 <Calendar
                   id="fechaDetraccion"
                   value={fechaDetraccion}
@@ -608,44 +837,24 @@ export default function PagoCuentaPorCobrarForm({
                 />
               </div>
 
-              <div className="field col-12">
-                <label htmlFor="numeroConstanciaDetraccion">
-                  N° Constancia SUNAT
-                </label>
+              <div style={{ flex: 0.5 }}>
+                <label htmlFor="numeroConstanciaDetraccion">N° Constancia</label>
                 <InputText
                   id="numeroConstanciaDetraccion"
                   value={numeroConstanciaDetraccion}
-                  onChange={(e) => setNumeroConstanciaDetraccion(e.target.value)}
+                  onChange={(e) =>
+                    setNumeroConstanciaDetraccion(e.target.value)
+                  }
                   disabled={readOnly}
                   style={{ width: "100%" }}
                 />
               </div>
             </>
           )}
-        </div>
-      </Panel>
-
-      {/* PANEL: Retención */}
-      <Panel header="Retención (SUNAT)" className="col-12 mb-3">
-        <div className="formgrid grid">
-          <div className="field col-12">
-            <div className="flex align-items-center">
-              <Checkbox
-                inputId="tieneRetencion"
-                checked={tieneRetencion}
-                onChange={(e) => setTieneRetencion(e.checked)}
-                disabled={readOnly}
-              />
-              <label htmlFor="tieneRetencion" className="ml-2">
-                Tiene Retención
-              </label>
-            </div>
-          </div>
-
           {tieneRetencion && (
             <>
-              <div className="field col-12 md:col-4">
-                <label htmlFor="montoRetencion">Monto Retención</label>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="montoRetencion">Monto</label>
                 <InputNumber
                   id="montoRetencion"
                   value={montoRetencion}
@@ -657,8 +866,7 @@ export default function PagoCuentaPorCobrarForm({
                   style={{ width: "100%" }}
                 />
               </div>
-
-              <div className="field col-12 md:col-4">
+              <div style={{ flex: 1 }}>
                 <label htmlFor="porcentajeRetencion">% Retención</label>
                 <InputNumber
                   id="porcentajeRetencion"
@@ -672,9 +880,8 @@ export default function PagoCuentaPorCobrarForm({
                   style={{ width: "100%" }}
                 />
               </div>
-
-              <div className="field col-12 md:col-4">
-                <label htmlFor="fechaRetencion">Fecha Retención</label>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaRetencion">Fecha</label>
                 <Calendar
                   id="fechaRetencion"
                   value={fechaRetencion}
@@ -685,45 +892,26 @@ export default function PagoCuentaPorCobrarForm({
                   style={{ width: "100%" }}
                 />
               </div>
-
-              <div className="field col-12">
+              <div style={{ flex: 1 }}>
                 <label htmlFor="numeroComprobanteRetencion">
-                  N° Comprobante Retención
+                  N° Constancia
                 </label>
                 <InputText
                   id="numeroComprobanteRetencion"
                   value={numeroComprobanteRetencion}
-                  onChange={(e) => setNumeroComprobanteRetencion(e.target.value)}
+                  onChange={(e) =>
+                    setNumeroComprobanteRetencion(e.target.value)
+                  }
                   disabled={readOnly}
                   style={{ width: "100%" }}
                 />
               </div>
             </>
           )}
-        </div>
-      </Panel>
-
-      {/* PANEL: Percepción */}
-      <Panel header="Percepción (SUNAT)" className="col-12 mb-3">
-        <div className="formgrid grid">
-          <div className="field col-12">
-            <div className="flex align-items-center">
-              <Checkbox
-                inputId="tienePercepcion"
-                checked={tienePercepcion}
-                onChange={(e) => setTienePercepcion(e.checked)}
-                disabled={readOnly}
-              />
-              <label htmlFor="tienePercepcion" className="ml-2">
-                Tiene Percepción
-              </label>
-            </div>
-          </div>
-
           {tienePercepcion && (
             <>
-              <div className="field col-12 md:col-4">
-                <label htmlFor="montoPercepcion">Monto Percepción</label>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="montoPercepcion">Monto</label>
                 <InputNumber
                   id="montoPercepcion"
                   value={montoPercepcion}
@@ -735,8 +923,7 @@ export default function PagoCuentaPorCobrarForm({
                   style={{ width: "100%" }}
                 />
               </div>
-
-              <div className="field col-12 md:col-4">
+              <div style={{ flex: 1 }}>
                 <label htmlFor="porcentajePercepcion">% Percepción</label>
                 <InputNumber
                   id="porcentajePercepcion"
@@ -750,9 +937,8 @@ export default function PagoCuentaPorCobrarForm({
                   style={{ width: "100%" }}
                 />
               </div>
-
-              <div className="field col-12 md:col-4">
-                <label htmlFor="fechaPercepcion">Fecha Percepción</label>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaPercepcion">Fecha</label>
                 <Calendar
                   id="fechaPercepcion"
                   value={fechaPercepcion}
@@ -763,15 +949,16 @@ export default function PagoCuentaPorCobrarForm({
                   style={{ width: "100%" }}
                 />
               </div>
-
-              <div className="field col-12">
+              <div style={{ flex: 1 }}>
                 <label htmlFor="numeroComprobantePercepcion">
-                  N° Comprobante Percepción
+                  N° Constancia
                 </label>
                 <InputText
                   id="numeroComprobantePercepcion"
                   value={numeroComprobantePercepcion}
-                  onChange={(e) => setNumeroComprobantePercepcion(e.target.value)}
+                  onChange={(e) =>
+                    setNumeroComprobantePercepcion(e.target.value)
+                  }
                   disabled={readOnly}
                   style={{ width: "100%" }}
                 />
@@ -784,32 +971,6 @@ export default function PagoCuentaPorCobrarForm({
       {/* PANEL: Medio de Pago */}
       <Panel header="Medio de Pago" className="col-12 mb-3">
         <div className="formgrid grid">
-          <div className="field col-12 md:col-6">
-            <label htmlFor="medioPagoId">
-              Medio de Pago <span style={{ color: "red" }}>*</span>
-            </label>
-            <Dropdown
-              id="medioPagoId"
-              value={medioPagoId}
-              options={mediosPagoOptions}
-              onChange={(e) => setMedioPagoId(e.value)}
-              placeholder="Seleccione medio de pago"
-              disabled={readOnly}
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          <div className="field col-12 md:col-6">
-            <label htmlFor="numeroOperacion">Número de Operación</label>
-            <InputText
-              id="numeroOperacion"
-              value={numeroOperacion}
-              onChange={(e) => setNumeroOperacion(e.target.value)}
-              disabled={readOnly}
-              style={{ width: "100%" }}
-            />
-          </div>
-
           <div className="field col-12 md:col-6">
             <label htmlFor="bancoId">Banco</label>
             <Dropdown
