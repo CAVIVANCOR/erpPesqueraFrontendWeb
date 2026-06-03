@@ -4,7 +4,7 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
-import { Dropdown } from "primereact/dropdown";
+import { Tag } from "primereact/tag";
 import { InputNumber } from "primereact/inputnumber";
 import { confirmDialog } from "primereact/confirmdialog";
 import ProductoSelectorDialog from "../common/productoSelectorConStock/components/ProductoSelectorDialog";
@@ -358,6 +358,22 @@ export default function DetallesTab({
     const moneda = monedas.find((m) => Number(m.id) === Number(monedaId));
     return moneda?.codigoSunat || "PEN";
   };
+
+  // Helper para obtener color de fondo según moneda
+  const getColorPorMoneda = () => {
+    const codigoMoneda = getCodigoMoneda();
+    switch (codigoMoneda) {
+      case "USD":
+        return "#d4edda"; // Verde claro para dólares
+      case "PEN":
+        return "#fff3cd"; // Amarillo claro para soles
+      case "EUR":
+        return "#e3f2fd"; // Azul claro para euros
+      default:
+        return "#f8f9fa"; // Gris claro para otras monedas
+    }
+  };
+
   // Calcular totales restando pagos previos SI
   const subtotalMostrado = esSaldoInicial
     ? subtotal - (pagosPreviosSI || 0)
@@ -413,7 +429,7 @@ export default function DetallesTab({
               inputStyle={{
                 fontWeight: "bold",
                 fontSize: "1.1rem",
-                backgroundColor: "#fff3cd",
+                backgroundColor: getColorPorMoneda(),
                 textAlign: "right",
               }}
             />
@@ -431,7 +447,7 @@ export default function DetallesTab({
             inputStyle={{
               fontWeight: "bold",
               fontSize: "1.1rem",
-              backgroundColor: "#fff",
+              backgroundColor: getColorPorMoneda(),
               textAlign: "right",
             }}
           />
@@ -450,7 +466,7 @@ export default function DetallesTab({
             inputStyle={{
               fontWeight: "bold",
               fontSize: "1.1rem",
-              backgroundColor: "#fff",
+              backgroundColor: getColorPorMoneda(),
               textAlign: "right",
             }}
           />
@@ -467,7 +483,7 @@ export default function DetallesTab({
             inputStyle={{
               fontWeight: "bold",
               fontSize: "1.2rem",
-              backgroundColor: "#e3f2fd",
+              backgroundColor: getColorPorMoneda(),
               color: "#1976D2",
               textAlign: "right",
             }}
@@ -520,7 +536,7 @@ export default function DetallesTab({
       {/* Diálogo para agregar/editar detalle */}
       <Dialog
         visible={dialogVisible}
-        style={{ width: "500px" }}
+        style={{ width: "900px" }}
         header={editando ? "Editar Detalle" : "Agregar Detalle"}
         modal
         footer={dialogFooter}
@@ -530,13 +546,6 @@ export default function DetallesTab({
           <div style={{ marginBottom: "1rem" }}>
             <label htmlFor="productoId">Producto *</label>
             <Button
-              label={
-                detalleActual.productoId
-                  ? productos.find(
-                      (p) => Number(p.id) === Number(detalleActual.productoId),
-                    )?.nombre || "Seleccionar Producto"
-                  : "Seleccionar Producto"
-              }
               icon="pi pi-search"
               onClick={() => setShowProductoSelector(true)}
               disabled={loading || !empresaId}
@@ -545,49 +554,129 @@ export default function DetallesTab({
                 justifyContent: "flex-start",
                 backgroundColor: "#2196F3",
                 borderColor: "#2196F3",
-                fontWeight: "bold",
+                padding: "0.75rem",
+                minHeight: "45px",
               }}
-            />
+            >
+              {detalleActual.productoId ? (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    flexWrap: "wrap",
+                    width: "100%",
+                  }}
+                >
+                  {(() => {
+                    const productoSeleccionado = productos.find(
+                      (p) => Number(p.id) === Number(detalleActual.productoId),
+                    );
+                    if (!productoSeleccionado) return "Seleccionar Producto";
+
+                    return (
+                      <>
+                        {productoSeleccionado.familia?.nombre && (
+                          <Tag
+                            value={productoSeleccionado.familia.nombre}
+                            style={{
+                              backgroundColor: "#2196F3",
+                              color: "white",
+                              fontWeight: "bold",
+                              fontSize: "0.75rem",
+                              padding: "0.25rem 0.5rem",
+                            }}
+                          />
+                        )}
+                        {productoSeleccionado.subfamilia?.nombre && (
+                          <Tag
+                            value={productoSeleccionado.subfamilia.nombre}
+                            style={{
+                              backgroundColor: "#4CAF50",
+                              color: "white",
+                              fontWeight: "bold",
+                              fontSize: "0.75rem",
+                              padding: "0.25rem 0.5rem",
+                            }}
+                          />
+                        )}
+                        {(productoSeleccionado.descripcionArmada ||
+                          productoSeleccionado.nombre) && (
+                          <Tag
+                            value={
+                              productoSeleccionado.descripcionArmada ||
+                              productoSeleccionado.nombre
+                            }
+                            style={{
+                              backgroundColor: "#f44336",
+                              color: "white",
+                              fontWeight: "bold",
+                              fontSize: "0.75rem",
+                              padding: "0.25rem 0.5rem",
+                            }}
+                          />
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <span style={{ color: "white", fontWeight: "bold" }}>
+                  Seleccionar Producto
+                </span>
+              )}
+            </Button>
           </div>
 
-          <div style={{ marginBottom: "1rem" }}>
-            <label htmlFor="cantidad">Cantidad *</label>
-            <InputNumber
-              id="cantidad"
-              value={detalleActual.cantidad}
-              onValueChange={(e) =>
-                setDetalleActual({ ...detalleActual, cantidad: e.value })
-              }
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={3}
-              min={0.001}
-              disabled={loading}
-              inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="cantidad">Cantidad *</label>
+              <InputNumber
+                id="cantidad"
+                value={detalleActual.cantidad}
+                onValueChange={(e) =>
+                  setDetalleActual({ ...detalleActual, cantidad: e.value })
+                }
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={3}
+                min={0.001}
+                disabled={loading}
+                inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+              />
+            </div>
 
-          <div style={{ marginBottom: "1rem" }}>
-            <label htmlFor="precioUnitario">Precio Unitario *</label>
-            <InputNumber
-              id="precioUnitario"
-              value={detalleActual.precioUnitario}
-              onValueChange={(e) =>
-                setDetalleActual({ ...detalleActual, precioUnitario: e.value })
-              }
-              mode="currency"
-              currency={getCodigoMoneda()}
-              locale="es-PE"
-              minFractionDigits={2}
-              maxFractionDigits={6}
-              min={0}
-              disabled={loading}
-              inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
+            <div style={{ flex: 1 }}>
+              <label htmlFor="precioUnitario">Precio Unitario *</label>
+              <InputNumber
+                id="precioUnitario"
+                value={detalleActual.precioUnitario}
+                onValueChange={(e) =>
+                  setDetalleActual({
+                    ...detalleActual,
+                    precioUnitario: e.value,
+                  })
+                }
+                mode="currency"
+                currency={getCodigoMoneda()}
+                locale="es-PE"
+                minFractionDigits={2}
+                maxFractionDigits={6}
+                min={0}
+                disabled={loading}
+                inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+              />
+            </div>
           </div>
 
           {/* Mostrar subtotal calculado */}
-          {detalleActual.cantidad && detalleActual.precioUnitario && (
+          {detalleActual.cantidad > 0 && detalleActual.precioUnitario > 0 && (
             <div
               style={{
                 marginTop: "1rem",

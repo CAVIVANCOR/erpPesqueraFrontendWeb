@@ -11,6 +11,8 @@ import { Panel } from "primereact/panel";
 import { Badge } from "primereact/badge";
 import DetallesTab from "./DetallesTab";
 import { getResponsiveFontSize } from "../../utils/utils";
+import EntidadComercialSelector from "../common/EntidadComercialSelector";
+import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
 import { useAuthStore } from "../../shared/stores/useAuthStore"; // ← AGREGAR ESTA LÍNEA
 
 export default function DatosGeneralesTab({
@@ -21,6 +23,9 @@ export default function DatosGeneralesTab({
   onIrAMovimientoAlmacen, // Agregar después de onIrAPreFacturaOrigen
   onIrACotizacionVenta, // Agregar después de onIrAMovimientoAlmacen
   onIrAContratoServicio, // Agregar después de onIrACotizacionVenta
+  onClienteCreado, // ← NUEVO
+  refreshClientes, // ← NUEVO
+  toast, // ← NUEVO
   empresasOptions,
   tiposDocumentoOptions,
   clientesOptions,
@@ -49,7 +54,6 @@ export default function DatosGeneralesTab({
   productos,
   empresaId,
   empresas, // ⭐ AGREGAR
-  toast,
   onCountChange,
   // Totales calculados
   subtotal = 0,
@@ -78,8 +82,14 @@ export default function DatosGeneralesTab({
   // ✅ FILTRAR Y PREPARAR PERIODOS CONTABLES
   const periodosContablesFiltrados = periodosContables
     .filter((p) => {
-      // Solo filtrar por empresa
-      return Number(p.empresaId) === Number(formData.empresaId);
+      // Filtrar por empresa O incluir el periodo seleccionado actualmente
+      const perteneceAEmpresa =
+        Number(p.empresaId) === Number(formData.empresaId);
+      const esPeriodoSeleccionado =
+        formData.periodoContableId &&
+        Number(p.id) === Number(formData.periodoContableId);
+
+      return perteneceAEmpresa || esPeriodoSeleccionado;
     })
     .sort((a, b) => {
       // Ordenar por fecha de inicio descendente (más recientes primero)
@@ -205,7 +215,11 @@ export default function DatosGeneralesTab({
             </label>
             <Dropdown
               id="periodoContableId"
-              value={formData.periodoContableId}
+              value={
+                formData.periodoContableId
+                  ? Number(formData.periodoContableId)
+                  : null
+              }
               options={periodosContablesFiltrados || []}
               optionDisabled={(option) => option.disabled}
               onChange={(e) => onChange("periodoContableId", e.value)}
@@ -391,18 +405,7 @@ export default function DatosGeneralesTab({
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="nroLiquidacionFacturacion"
             >
-              N°Liquidación
-              {!usuario?.esSuperUsuario && (
-                <i
-                  className="pi pi-lock"
-                  style={{
-                    marginLeft: "0.5rem",
-                    fontSize: "0.8rem",
-                    color: "#999",
-                  }}
-                  title="Solo editable por SuperUsuario"
-                />
-              )}
+              Referencia (N°Liquidación)
             </label>
             <InputText
               id="nroLiquidacionFacturacion"
@@ -414,14 +417,8 @@ export default function DatosGeneralesTab({
                 )
               }
               maxLength={40}
-              disabled={readOnly || !usuario?.esSuperUsuario}
+              disabled={!puedeEditar || readOnly || formData.facturado}
               style={{ fontWeight: "bold" }}
-              placeholder={
-                usuario?.esSuperUsuario
-                  ? "N° Liquidación"
-                  : "Solo SuperUsuario puede editar"
-              }
-              className={!usuario?.esSuperUsuario ? "p-disabled" : ""}
             />
           </div>
           {/* PREFACTURA ORIGEN - Botón para ir al origen (para copias) */}
@@ -503,25 +500,50 @@ export default function DatosGeneralesTab({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          <div style={{ flex: 2 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="clienteId"
-            >
-              Cliente*
-            </label>
-            <Dropdown
-              id="clienteId"
-              value={formData.clienteId}
-              options={clientesOptions}
-              onChange={(e) => onChange("clienteId", e.value)}
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Seleccionar cliente"
-              filter
-              disabled={!puedeEditar || readOnly || !formData.empresaId}
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
+          <div
+            style={{
+              display: "flex",
+              alignItems:"end",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+              flex: 2,
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <label
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+                htmlFor="clienteId"
+              >
+                Cliente*
+              </label>
+              <EntidadComercialSelector
+                empresaIdPreseleccionada={formData.empresaId}
+                value={formData.clienteId}
+                onChange={(value) => onChange("clienteId", value)}
+                disabled={!puedeEditar || readOnly || !formData.empresaId}
+                required={true}
+                placeholder="Seleccione un cliente"
+                refreshTrigger={refreshClientes}
+              />
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <label style={{ opacity: 0 }}>.</label>
+              <CrearEntidadComercialButton
+                empresaId={formData.empresaId}
+                tipoEntidad="cliente"
+                onEntidadCreada={onClienteCreado}
+                label="Crear Cliente"
+                icon="pi pi-users"
+                severity="success"
+                outlined={true}
+                disabled={!puedeEditar || readOnly || !formData.empresaId}
+                className="w-full"
+                toast={toast}
+              />
+            </div>
           </div>
           <div style={{ flex: 1 }}>
             <label

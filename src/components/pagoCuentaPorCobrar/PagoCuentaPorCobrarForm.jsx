@@ -1,6 +1,6 @@
 // src/components/pagoCuentaPorCobrar/PagoCuentaPorCobrarForm.jsx
 // ✅ VERSIÓN COMPLETA CON TODOS LOS CAMPOS DEL SCHEMA
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
@@ -10,6 +10,9 @@ import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
 import { getResponsiveFontSize } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import CuentaCorrienteSelector from "../common/CuentaCorrienteSelector";
+import { consultarTipoCambioSunat } from "../../api/consultaExterna";
+import CuentaCxCCxPSelector from "../common/CuentaCxCCxPSelector";
 
 export default function PagoCuentaPorCobrarForm({
   isEdit,
@@ -20,11 +23,15 @@ export default function PagoCuentaPorCobrarForm({
   bancos,
   cuentasCorrientes,
   estados,
+  periodosContables,
   onSubmit,
   onCancel,
   loading,
   readOnly = false,
   hideCuentaField = false,
+  toast,
+  empresaIdCuenta = null,
+  clienteIdCuenta = null,
 }) {
   const usuario = useAuthStore((state) => state.usuario);
 
@@ -133,6 +140,7 @@ export default function PagoCuentaPorCobrarForm({
   const [cuentaBancariaId, setCuentaBancariaId] = useState(
     defaultValues?.cuentaBancariaId || null,
   );
+
   const [observaciones, setObservaciones] = useState(
     defaultValues?.observaciones || "",
   );
@@ -253,6 +261,9 @@ export default function PagoCuentaPorCobrarForm({
   const [empresaId, setEmpresaId] = useState(null);
   const [estadoId, setEstadoId] = useState(null);
 
+  // Estado para controlar carga inicial de tipo de cambio
+  const [fechaPagoInicial, setFechaPagoInicial] = useState(null);
+
   // ========================================
   // EFFECT: Cargar datos al editar
   // ========================================
@@ -338,7 +349,10 @@ export default function PagoCuentaPorCobrarForm({
           ? new Date(defaultValues.fechaContable)
           : new Date(),
       );
-      setPeriodoContableId(defaultValues.periodoContableId || null);
+      // Solo asignar si existe en defaultValues (modo edición)
+      if (defaultValues.periodoContableId !== undefined) {
+        setPeriodoContableId(Number(defaultValues.periodoContableId));
+      }
 
       // Auditoría
       setCreadoPor(defaultValues.creadoPor || null);
@@ -367,32 +381,164 @@ export default function PagoCuentaPorCobrarForm({
       if (cuenta) {
         setCuentaSeleccionada(cuenta);
         setSaldoPendiente(Number(cuenta.saldoPendiente || 0));
-        setMonedaPagoId(Number(cuenta.monedaId));
+
+        // ⚠️ SOLO establecer monedaPagoId si NO estamos editando
+        // Al editar, respetamos la moneda guardada en defaultValues
+        if (!isEdit || !defaultValues?.monedaPagoId) {
+          setMonedaPagoId(Number(cuenta.monedaId));
+        }
+
         setMonedaDeudaId(Number(cuenta.monedaId));
         setEmpresaId(Number(cuenta.empresaId));
         setEstadoId(Number(cuenta.estadoId));
+
+        // Cargar periodoContableId de la CuentaPorCobrar
+        if (cuenta.periodoContableId) {
+          setPeriodoContableId(Number(cuenta.periodoContableId));
+        }
       }
     }
-  }, [cuentaPorCobrarId, cuentasPorCobrar]);
+  }, [cuentaPorCobrarId, cuentasPorCobrar, isEdit, defaultValues]);
 
   // ========================================
-  // EFFECT: Calcular monto aplicado a deuda
+  // EFFECT: Calcular montoAplicadoDeuda automáticamente
   // ========================================
   useEffect(() => {
-    const montoBase = Number(montoPagado) || 0;
-    const detraccion = tieneDetraccion ? Number(montoDetraccion) || 0 : 0;
-    const retencion = tieneRetencion ? Number(montoRetencion) || 0 : 0;
+    // ⚠️ VALIDACIÓN MEJORADA: Permitir cálculo incluso si montoPagado es 0
+    // Solo validar que las monedas y tipo de cambio existan
+    if (!monedaPagoId || !monedaDeudaId || !tipoCambio) {
+      // Si falta información, mantener el valor actual o poner 0
+      if (!montoPagado || montoPagado === 0) {
+        setMontoAplicadoDeuda(0);
+      }
+      return;
+    }
 
-    // Monto aplicado = Monto pagado + Detracción + Retención
-    const montoCalculado = montoBase + detraccion + retencion;
-    setMontoAplicadoDeuda(montoCalculado);
+    // Si montoPagado es 0 o vacío, el monto aplicado es 0
+    if (!montoPagado || Number(montoPagado) === 0) {
+      setMontoAplicadoDeuda(0);
+      return;
+    }
+
+    const monedaPago = monedas?.find(
+      (m) => Number(m.id) === Number(monedaPagoId),
+    );
+    const monedaDeuda = monedas?.find(
+      (m) => Number(m.id) === Number(monedaDeudaId),
+    );
+
+    if (!monedaPago || !monedaDeuda) {
+      setMontoAplicadoDeuda(0);
+      return;
+    }
+
+    const codigoPago = monedaPago.codigoSunat;
+    const codigoDeuda = monedaDeuda.codigoSunat;
+
+    let montoCalculado = 0;
+
+    // CASO 1: Misma moneda - No hay conversión
+    if (codigoPago === codigoDeuda) {
+      montoCalculado = Number(montoPagado);
+    }
+    // CASO 2: Pago en PEN, Deuda en USD
+    else if (codigoPago === "PEN" && codigoDeuda === "USD") {
+      montoCalculado = Number(montoPagado) / Number(tipoCambio);
+    }
+    // CASO 3: Pago en USD, Deuda en PEN
+    else if (codigoPago === "USD" && codigoDeuda === "PEN") {
+      montoCalculado = Number(montoPagado) * Number(tipoCambio);
+    }
+    // CASO 4: Otras combinaciones (EUR, etc.)
+    else {
+      montoCalculado = Number(montoPagado);
+    }
+
+    // Validar que montoCalculado sea un número válido antes de usar toFixed
+    if (
+      typeof montoCalculado === "number" &&
+      isFinite(montoCalculado) &&
+      !isNaN(montoCalculado)
+    ) {
+      // ⭐ AGREGAR detracción y retención al monto convertido
+      const detraccion = tieneDetraccion ? Number(montoDetraccion) || 0 : 0;
+      const retencion = tieneRetencion ? Number(montoRetencion) || 0 : 0;
+      const montoFinal =
+        Number(montoCalculado.toFixed(2)) + detraccion + retencion;
+
+      setMontoAplicadoDeuda(Number(montoFinal.toFixed(2)));
+    } else {
+      setMontoAplicadoDeuda(0);
+    }
   }, [
     montoPagado,
+    monedaPagoId,
+    monedaDeudaId,
+    tipoCambio,
+    monedas,
     tieneDetraccion,
     montoDetraccion,
     tieneRetencion,
     montoRetencion,
   ]);
+  // ========================================
+  // EFFECT: Inicializar fechaPagoInicial SOLO en el primer render
+  // ========================================
+  useEffect(() => {
+    // Solo ejecutar si fechaPagoInicial es null (primera vez)
+    if (fechaPagoInicial === null) {
+      setFechaPagoInicial(fechaPago);
+    }
+  }, []); // Array vacío = solo se ejecuta una vez al montar
+
+  // ========================================
+  // EFFECT: Cargar tipo de cambio SUNAT al cambiar fecha de pago
+  // ========================================
+  useEffect(() => {
+    const cargarTipoCambio = async () => {
+      // No ejecutar si no hay fecha o si es la carga inicial
+      if (!fechaPago || fechaPagoInicial === null) return;
+
+      // Comparar fechas por valor (ISO string) en lugar de por referencia
+      const fechaActualISO = new Date(fechaPago).toISOString();
+      const fechaInicialISO = new Date(fechaPagoInicial).toISOString();
+
+      // No ejecutar si la fecha no ha cambiado realmente
+      if (fechaActualISO === fechaInicialISO) return;
+
+      try {
+        // Convertir fecha a formato YYYY-MM-DD
+        const fecha = new Date(fechaPago);
+        const fechaISO = fecha.toISOString().split("T")[0];
+
+        // Consultar tipo de cambio SUNAT
+        const tipoCambioData = await consultarTipoCambioSunat({
+          date: fechaISO,
+        });
+
+        // Para COBROS usamos buy_price (precio de compra del dólar)
+        if (tipoCambioData && tipoCambioData.buy_price) {
+          const tipoCambioCompra = parseFloat(tipoCambioData.buy_price);
+          setTipoCambio(tipoCambioCompra.toFixed(3));
+
+          // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
+          setFechaPagoInicial(fechaPago);
+
+          // Mostrar notificación de consulta exitosa
+          toast?.current?.show({
+            severity: "success",
+            summary: "Tipo de Cambio Actualizado",
+            detail: `T.C. SUNAT: S/ ${tipoCambioCompra.toFixed(3)} por USD (Fecha: ${fechaISO})`,
+            life: 3000,
+          });
+        }
+      } catch (error) {
+        console.error("Error al cargar tipo de cambio SUNAT:", error);
+      }
+    };
+
+    cargarTipoCambio();
+  }, [fechaPago, fechaPagoInicial]);
 
   // ========================================
   // HANDLER: Submit
@@ -537,55 +683,38 @@ export default function PagoCuentaPorCobrarForm({
   // RENDER
   // ========================================
   return (
-    <div className="formgrid grid">
+    <div className="p-fluid">
       {/* PANEL: Información del Cobro */}
-      <Panel header="Información del Cobro" className="col-12 mb-3">
+      <Panel header="Información del Cobro">
         <div className="p-fluid">
-          {!hideCuentaField && (
-            <div className="field col-12 md:col-6">
-              <label htmlFor="cuentaPorCobrarId">
-                Cuenta por Cobrar <span style={{ color: "red" }}>*</span>
-              </label>
-              <Dropdown
-                id="cuentaPorCobrarId"
+            <div style={{ flex: 1 }}>
+              <CuentaCxCCxPSelector
+                tipo="CXC"
                 value={cuentaPorCobrarId}
-                options={cuentasPorCobrarOptions}
-                onChange={(e) => setCuentaPorCobrarId(e.value)}
-                placeholder="Seleccione cuenta por cobrar"
-                filter
-                showClear
-                disabled={readOnly || isEdit}
-                style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                empresaIdPreseleccionada={empresaIdCuenta || empresaId}
+                entidadIdPreseleccionada={clienteIdCuenta}
+                cuentaActual={cuentaSeleccionada}
+                onChange={(cuenta) => {
+                  setCuentaPorCobrarId(Number(cuenta.id));
+                  setSaldoPendiente(Number(cuenta.saldoPendiente || 0));
+
+                  // ⚠️ SOLO establecer monedaPagoId si NO estamos editando
+                  if (!isEdit || !defaultValues?.monedaPagoId) {
+                    setMonedaPagoId(Number(cuenta.monedaId));
+                  }
+
+                  setMonedaDeudaId(Number(cuenta.monedaId));
+                  setEmpresaId(Number(cuenta.empresaId));
+                  setEstadoId(Number(cuenta.estadoId));
+                  if (cuenta.periodoContableId) {
+                    setPeriodoContableId(Number(cuenta.periodoContableId));
+                  }
+                }}
+                disabled={readOnly || hideCuentaField}
+                label="Cuenta por Cobrar"
+                placeholder="Seleccione una cuenta por cobrar pendiente..."
               />
             </div>
-          )}
-          {cuentaSeleccionada && (
-            <div className="field col-12">
-              <Panel
-                header="Información de la Cuenta"
-                className="p-3"
-                style={{ backgroundColor: "#f8f9fa" }}
-              >
-                <div className="grid">
-                  <div className="col-12 md:col-4">
-                    <strong>Cliente:</strong>{" "}
-                    {cuentaSeleccionada.cliente?.razonSocial || "-"}
-                  </div>
-                  <div className="col-12 md:col-4">
-                    <strong>Monto Total:</strong>{" "}
-                    {Number(cuentaSeleccionada.montoTotal || 0).toFixed(2)}
-                  </div>
-                  <div className="col-12 md:col-4">
-                    <strong>Saldo Pendiente:</strong>{" "}
-                    <span style={{ color: "red", fontWeight: "bold" }}>
-                      {Number(saldoPendiente).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              </Panel>
-            </div>
-          )}
-
           <div
             style={{
               display: "flex",
@@ -658,6 +787,37 @@ export default function PagoCuentaPorCobrarForm({
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="numeroOperacion">Número de Operación</label>
+              <InputText
+                id="numeroOperacion"
+                value={numeroOperacion}
+                onChange={(e) => setNumeroOperacion(e.target.value)}
+                disabled={readOnly}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <CuentaCorrienteSelector
+                empresaIdPreseleccionada={empresaId}
+                value={cuentaBancariaId}
+                onChange={({ cuentaCorrienteId, bancoId }) => {
+                  setCuentaBancariaId(cuentaCorrienteId);
+                  setBancoId(bancoId); // ← Banco se asigna automáticamente
+                }}
+                label="Cuenta Corriente"
+                disabled={readOnly}
+                placeholder="Seleccione cuenta corriente"
+              />
+            </div>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
             <div style={{ flex: 0.25 }}>
               <label htmlFor="tipoCambio">T/C</label>
               <InputNumber
@@ -695,25 +855,12 @@ export default function PagoCuentaPorCobrarForm({
                 style={{ width: "100%", backgroundColor: "#e8f5e9" }}
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="numeroOperacion">Número de Operación</label>
-              <InputText
-                id="numeroOperacion"
-                value={numeroOperacion}
-                onChange={(e) => setNumeroOperacion(e.target.value)}
-                disabled={readOnly}
-                style={{ width: "100%" }}
-              />
-            </div>
           </div>
         </div>
       </Panel>
 
       {/* PANEL: Detracción */}
-      <Panel
-        header="Detracción, Retencion, Percepcion (SUNAT)"
-        className="col-12 mb-3"
-      >
+      <Panel header="Detracción, Retencion, Percepcion (SUNAT)">
         <div
           style={{
             display: "flex",
@@ -723,12 +870,10 @@ export default function PagoCuentaPorCobrarForm({
           }}
         >
           {/* BOTÓN DETRACCIÓN */}
-          {(!tieneRetencion && !tienePercepcion) && (
+          {!tieneRetencion && !tienePercepcion && (
             <div style={{ flex: 1 }}>
               <Button
-                label={
-                  tieneDetraccion ? "✅Detracción" : "Detracción"
-                }
+                label={tieneDetraccion ? "✅Detracción" : "Detracción"}
                 icon={tieneDetraccion ? "pi pi-check-circle" : "pi pi-circle"}
                 onClick={handleToggleDetraccion}
                 disabled={readOnly}
@@ -747,12 +892,10 @@ export default function PagoCuentaPorCobrarForm({
           )}
 
           {/* BOTÓN RETENCIÓN */}
-          {(!tieneDetraccion && !tienePercepcion) && (
+          {!tieneDetraccion && !tienePercepcion && (
             <div style={{ flex: 1 }}>
               <Button
-                label={
-                  tieneRetencion ? "✅Retención" : "Retención"
-                }
+                label={tieneRetencion ? "✅Retención" : "Retención"}
                 icon={tieneRetencion ? "pi pi-check-circle" : "pi pi-circle"}
                 onClick={handleToggleRetencion}
                 disabled={readOnly}
@@ -771,12 +914,10 @@ export default function PagoCuentaPorCobrarForm({
           )}
 
           {/* BOTÓN PERCEPCIÓN */}
-          {(!tieneDetraccion && !tieneRetencion) && (
+          {!tieneDetraccion && !tieneRetencion && (
             <div style={{ flex: 1 }}>
               <Button
-                label={
-                  tienePercepcion ? "✅Percepción" : "Percepción"
-                }
+                label={tienePercepcion ? "✅Percepción" : "Percepción"}
                 icon={tienePercepcion ? "pi pi-check-circle" : "pi pi-circle"}
                 onClick={handleTogglePercepcion}
                 disabled={readOnly}
@@ -838,7 +979,9 @@ export default function PagoCuentaPorCobrarForm({
               </div>
 
               <div style={{ flex: 0.5 }}>
-                <label htmlFor="numeroConstanciaDetraccion">N° Constancia</label>
+                <label htmlFor="numeroConstanciaDetraccion">
+                  N° Constancia
+                </label>
                 <InputText
                   id="numeroConstanciaDetraccion"
                   value={numeroConstanciaDetraccion}
@@ -966,45 +1109,14 @@ export default function PagoCuentaPorCobrarForm({
             </>
           )}
         </div>
-      </Panel>
-
-      {/* PANEL: Medio de Pago */}
-      <Panel header="Medio de Pago" className="col-12 mb-3">
-        <div className="formgrid grid">
-          <div className="field col-12 md:col-6">
-            <label htmlFor="bancoId">Banco</label>
-            <Dropdown
-              id="bancoId"
-              value={bancoId}
-              options={bancosOptions}
-              onChange={(e) => setBancoId(e.value)}
-              placeholder="Seleccione banco"
-              showClear
-              disabled={readOnly}
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          <div className="field col-12 md:col-6">
-            <label htmlFor="cuentaBancariaId">Cuenta Bancaria</label>
-            <Dropdown
-              id="cuentaBancariaId"
-              value={cuentaBancariaId}
-              options={cuentasCorrientesOptions}
-              onChange={(e) => setCuentaBancariaId(e.value)}
-              placeholder="Seleccione cuenta bancaria"
-              showClear
-              disabled={readOnly}
-              style={{ width: "100%" }}
-            />
-          </div>
-        </div>
-      </Panel>
-
-      {/* PANEL: Contabilidad */}
-      <Panel header="Contabilidad" className="col-12 mb-3">
-        <div className="formgrid grid">
-          <div className="field col-12 md:col-6">
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
             <label htmlFor="fechaContable">Fecha Contable</label>
             <Calendar
               id="fechaContable"
@@ -1017,39 +1129,81 @@ export default function PagoCuentaPorCobrarForm({
             />
           </div>
 
-          <div className="field col-12 md:col-6">
+          <div style={{ flex: 1 }}>
             <label htmlFor="periodoContableId">Periodo Contable</label>
-            <InputText
+            <Dropdown
               id="periodoContableId"
-              value={periodoContableId || ""}
-              onChange={(e) => setPeriodoContableId(e.target.value)}
+              value={periodoContableId ? Number(periodoContableId) : null}
+              options={(() => {
+                const opciones =
+                  periodosContables
+                    ?.filter((p) => {
+                      const match = Number(p.empresaId) === Number(empresaId);
+                      return match;
+                    })
+                    .map((p) => {
+                      let estadoLabel = "";
+                      const estadoId = Number(p.estadoId);
+                      if (estadoId === 73) {
+                        estadoLabel = "🟢 ABIERTO";
+                      } else if (estadoId === 74) {
+                        estadoLabel = "🔴 CERRADO";
+                      } else if (estadoId === 75) {
+                        estadoLabel = "🔒 BLOQUEADO";
+                      } else {
+                        estadoLabel = p.estado?.descripcion || "⚪ SIN ESTADO";
+                      }
+                      return {
+                        label: `${p.nombrePeriodo} - ${estadoLabel}`,
+                        value: Number(p.id),
+                        estadoId: estadoId,
+                        disabled: estadoId !== 73 && !isEdit,
+                      };
+                    }) || [];
+                return opciones;
+              })()}
+              onChange={(e) => setPeriodoContableId(e.value)}
+              placeholder="Seleccione periodo contable"
+              showClear
+              filter
+              optionDisabled="disabled"
               disabled={readOnly}
-              placeholder="ID del periodo contable"
+              style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+            />
+          </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label htmlFor="observaciones">Observaciones</label>
+            <InputTextarea
+              id="observaciones"
+              value={observaciones}
+              onChange={(e) => setObservaciones(e.target.value)}
+              rows={1}
+              disabled={readOnly}
               style={{ width: "100%" }}
             />
           </div>
         </div>
       </Panel>
 
-      {/* PANEL: Observaciones */}
-      <Panel header="Observaciones" className="col-12 mb-3">
-        <div className="field col-12">
-          <InputTextarea
-            id="observaciones"
-            value={observaciones}
-            onChange={(e) => setObservaciones(e.target.value)}
-            rows={3}
-            disabled={readOnly}
-            style={{ width: "100%" }}
-          />
-        </div>
-      </Panel>
-
       {/* PANEL: Auditoría (solo visible en edición) */}
       {isEdit && (
-        <Panel header="Auditoría" className="col-12 mb-3">
-          <div className="formgrid grid">
-            <div className="field col-12 md:col-6">
+        <Panel header="Auditoría">
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
               <label>Creado Por</label>
               <InputText
                 value={creadoPor ? `Usuario ID: ${creadoPor}` : "N/A"}
@@ -1058,7 +1212,7 @@ export default function PagoCuentaPorCobrarForm({
               />
             </div>
 
-            <div className="field col-12 md:col-6">
+            <div style={{ flex: 1 }}>
               <label>Fecha Creación</label>
               <Calendar
                 value={fechaCreacion}
@@ -1069,7 +1223,7 @@ export default function PagoCuentaPorCobrarForm({
               />
             </div>
 
-            <div className="field col-12 md:col-6">
+            <div style={{ flex: 1 }}>
               <label>Actualizado Por</label>
               <InputText
                 value={actualizadoPor ? `Usuario ID: ${actualizadoPor}` : "N/A"}
@@ -1078,7 +1232,7 @@ export default function PagoCuentaPorCobrarForm({
               />
             </div>
 
-            <div className="field col-12 md:col-6">
+            <div style={{ flex: 1 }}>
               <label>Fecha Actualización</label>
               <Calendar
                 value={fechaActualizacion}
@@ -1094,7 +1248,14 @@ export default function PagoCuentaPorCobrarForm({
 
       {/* BOTONES */}
       {!readOnly && (
-        <div className="col-12" style={{ textAlign: "right" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 8,
+            marginTop: 18,
+          }}
+        >
           <Button
             label="Cancelar"
             icon="pi pi-times"

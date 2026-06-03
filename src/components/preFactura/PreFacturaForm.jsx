@@ -45,6 +45,7 @@ export default function PreFacturaForm({
   onCancel,
   onAprobar,
   onAnular,
+  onClienteCreado, // ← NUEVO
   loading,
   toast,
   permisos = {},
@@ -437,6 +438,7 @@ export default function PreFacturaForm({
   const [direccionesCliente, setDireccionesCliente] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
   const [detallesCount, setDetallesCount] = useState(0);
+  const [refreshClientes, setRefreshClientes] = useState(null);
   const [totales, setTotales] = useState({ subtotal: 0, igv: 0, total: 0 });
   const [estadosPreFactura, setEstadosPreFactura] = useState([]);
   const [fechaDocumentoInicial, setFechaDocumentoInicial] = useState(null);
@@ -704,6 +706,47 @@ export default function PreFacturaForm({
 
     calcularTotales();
   }, [detallesCount, porcentajeIgv, exoneradoIgv, isEdit, defaultValues?.id]);
+
+  const handleClienteCreado = async (cliente) => {
+    try {
+      // ✅ PRIMERO: Recargar clientes desde el padre (si existe callback)
+      if (onClienteCreado && typeof onClienteCreado === "function") {
+        await onClienteCreado(cliente);
+      }
+
+      // ✅ SEGUNDO: Forzar recarga del selector con timestamp
+      setRefreshClientes(Date.now());
+
+      // ✅ TERCERO: Esperar un momento para que se actualice el selector
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // ✅ CUARTO: Auto-seleccionar el nuevo cliente
+      if (cliente && cliente.id) {
+        const clienteIdNumber = Number(cliente.id);
+        handleChange("clienteId", clienteIdNumber);
+
+        // Mostrar mensaje de éxito
+        if (toast && toast.current) {
+          toast.current.show({
+            severity: "success",
+            summary: "Cliente Creado",
+            detail: `Cliente "${cliente.razonSocial || cliente.nombreComercial}" creado y seleccionado correctamente`,
+            life: 4000,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error al manejar cliente creado:", error);
+      if (toast && toast.current) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al seleccionar el cliente creado",
+          life: 3000,
+        });
+      }
+    }
+  };
 
   // Calcular automáticamente porcentajeAdelanto cuando cambia montoAdelantadoCliente
   useEffect(() => {
@@ -1242,6 +1285,8 @@ export default function PreFacturaForm({
             onIrAMovimientoAlmacen={onIrAMovimientoAlmacen}
             onIrACotizacionVenta={onIrACotizacionVenta}
             onIrAContratoServicio={onIrAContratoServicio}
+            onClienteCreado={handleClienteCreado}
+            refreshClientes={refreshClientes}
           />
         </TabPanel>
         {/* TAB 2: IMPRESION PDF */}

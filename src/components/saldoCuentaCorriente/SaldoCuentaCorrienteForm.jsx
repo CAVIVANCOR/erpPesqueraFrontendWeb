@@ -1,5 +1,5 @@
 // src/components/saldoCuentaCorriente/SaldoCuentaCorrienteForm.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { InputNumber } from "primereact/inputnumber";
@@ -75,6 +75,17 @@ export default function SaldoCuentaCorrienteForm({
     });
   }, [defaultValues]);
 
+  // ✅ NUEVO: Filtrar cuentas corrientes por empresa seleccionada
+  const cuentasFiltradas = useMemo(() => {
+    if (!formData.empresaId) {
+      return cuentasCorrientes;
+    }
+
+    return cuentasCorrientes.filter(
+      (cuenta) => Number(cuenta.empresaId) === Number(formData.empresaId),
+    );
+  }, [cuentasCorrientes, formData.empresaId]);
+
   // Calcular saldo actual automáticamente
   useEffect(() => {
     const calculado =
@@ -97,8 +108,30 @@ export default function SaldoCuentaCorrienteForm({
     }
   }, [formData.saldoActual, formData.saldoContable]);
 
+  // ✅ NUEVO: Validar que la cuenta seleccionada pertenezca a la empresa
+  useEffect(() => {
+    if (formData.cuentaCorrienteId && formData.empresaId) {
+      const cuentaValida = cuentasFiltradas.find(
+        (c) => Number(c.id) === Number(formData.cuentaCorrienteId),
+      );
+
+      if (!cuentaValida) {
+        setFormData((prev) => ({ ...prev, cuentaCorrienteId: null }));
+      }
+    }
+  }, [formData.empresaId, formData.cuentaCorrienteId, cuentasFiltradas]);
+
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    // ✅ Si cambia la empresa, resetear la cuenta corriente
+    if (field === "empresaId") {
+      setFormData((prev) => ({
+        ...prev,
+        empresaId: value,
+        cuentaCorrienteId: null,
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -171,10 +204,120 @@ export default function SaldoCuentaCorrienteForm({
     value: Number(empresa.id),
   }));
 
-  const cuentasOptions = cuentasCorrientes.map((cuenta) => ({
-    label: `${cuenta.descripcion} - ${cuenta.numeroCuenta}`,
+  // ✅ ACTUALIZADO: Usar cuentasFiltradas en lugar de cuentasCorrientes
+  const cuentasOptions = cuentasFiltradas.map((cuenta) => ({
+    label: `${cuenta.tipoCuentaCorriente?.nombre || "Sin tipo"} - ${cuenta.banco?.nombre || "Sin banco"} - ${cuenta.moneda?.codigoSunat || ""} - ${cuenta.numeroCuenta || ""}`,
     value: Number(cuenta.id),
   }));
+
+  // ✅ ACTUALIZADO: Template profesional para el dropdown de cuentas
+  const cuentaItemTemplate = (option) => {
+    if (!option) return null;
+
+    // ✅ Buscar en cuentasFiltradas en lugar de cuentasCorrientes
+    const cuenta = cuentasFiltradas.find((c) => Number(c.id) === option.value);
+    if (!cuenta) return option.label;
+
+    const tipoCuenta = cuenta.tipoCuentaCorriente?.nombre || "Sin tipo";
+    const banco = cuenta.banco?.nombre || "Sin banco";
+    const moneda = cuenta.moneda?.codigoSunat || "";
+    const numero = cuenta.numeroCuenta || "";
+
+    // Determinar color de moneda
+    const estiloMoneda =
+      moneda === "USD"
+        ? { bg: "#d1e7dd", color: "#0f5132", border: "#badbcc" }
+        : moneda === "PEN"
+          ? { bg: "#fff3cd", color: "#664d03", border: "#ffecb5" }
+          : { bg: "#e2e3e5", color: "#41464b", border: "#d3d6d8" };
+
+    return (
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          alignItems: "center",
+          padding: "4px 0",
+        }}
+      >
+        {/* TAG 1: TIPO DE CUENTA */}
+        <span
+          style={{
+            backgroundColor: "#e0cffc",
+            color: "#59359a",
+            border: "1px solid #d4bbf7",
+            padding: "4px 8px",
+            borderRadius: "4px",
+            fontSize: "0.875rem",
+            fontWeight: "500",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+            minWidth: "100px",
+          }}
+        >
+          <i className="pi pi-credit-card" style={{ fontSize: "0.75rem" }} />
+          {tipoCuenta}
+        </span>
+
+        {/* TAG 2: BANCO */}
+        <span
+          style={{
+            backgroundColor: "#cfe2ff",
+            color: "#084298",
+            border: "1px solid #b6d4fe",
+            padding: "4px 8px",
+            borderRadius: "4px",
+            fontSize: "0.875rem",
+            fontWeight: "500",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+            minWidth: "100px",
+          }}
+        >
+          <i className="pi pi-building" style={{ fontSize: "0.75rem" }} />
+          {banco}
+        </span>
+
+        {/* TAG 3: MONEDA */}
+        <span
+          style={{
+            backgroundColor: estiloMoneda.bg,
+            color: estiloMoneda.color,
+            border: `1px solid ${estiloMoneda.border}`,
+            padding: "4px 8px",
+            borderRadius: "4px",
+            fontSize: "0.875rem",
+            fontWeight: "600",
+            minWidth: "60px",
+            textAlign: "center",
+          }}
+        >
+          {moneda}
+        </span>
+
+        {/* TAG 4: NÚMERO */}
+        <span
+          style={{
+            backgroundColor: "#e2e3e5",
+            color: "#41464b",
+            border: "1px solid #d3d6d8",
+            padding: "4px 8px",
+            borderRadius: "4px",
+            fontSize: "0.875rem",
+            fontWeight: "500",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+          }}
+        >
+          <i className="pi pi-hashtag" style={{ fontSize: "0.75rem" }} />
+          {numero}
+        </span>
+      </div>
+    );
+  };
 
   const centrosOptions = centrosCosto.map((cc) => ({
     label: cc.Nombre || cc.nombre,
@@ -227,10 +370,13 @@ export default function SaldoCuentaCorrienteForm({
                     value={formData.cuentaCorrienteId}
                     options={cuentasOptions}
                     onChange={(e) => handleChange("cuentaCorrienteId", e.value)}
+                    itemTemplate={cuentaItemTemplate}
+                    valueTemplate={cuentaItemTemplate} // ✅ AGREGAR ESTA LÍNEA
                     placeholder="Seleccione cuenta"
                     required
                     disabled={readOnly || loading || guardando}
                     filter
+                    filterBy="label"
                     showClear
                   />
                 </div>
@@ -438,8 +584,8 @@ export default function SaldoCuentaCorrienteForm({
           {isEdit && (
             <TabPanel header="Asientos Contables" leftIcon="pi pi-book">
               <CardAsientoContable
-                asientosContables={defaultValues?.asientosContables || []} // ✅ Array de asientos
-                saldoCuentaCorrienteId={defaultValues?.id} // ✅ ID del saldo
+                asientosContables={defaultValues?.asientosContables || []}
+                saldoCuentaCorrienteId={defaultValues?.id}
                 onGenerarAsiento={() => onGenerarAsiento(defaultValues)}
                 disabled={loading || guardando}
                 loading={loading || guardando}
@@ -448,7 +594,7 @@ export default function SaldoCuentaCorrienteForm({
           )}
         </TabView>
 
-        {/* Botones de acción - SIEMPRE VISIBLES PARA TODAS LAS PESTAÑAS */}
+        {/* Botones de acción */}
         <div
           style={{
             display: "flex",
@@ -475,7 +621,6 @@ export default function SaldoCuentaCorrienteForm({
             icon="pi pi-check"
             type="button"
             onClick={(e) => {
-              // Buscar el formulario y disparar submit
               const form = document.querySelector("form");
               if (form) {
                 form.dispatchEvent(

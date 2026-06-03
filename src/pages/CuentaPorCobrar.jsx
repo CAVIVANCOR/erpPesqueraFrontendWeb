@@ -178,6 +178,7 @@ export default function CuentaPorCobrar({ ruta }) {
       setLoading(false);
     }
   };
+
   const saveCuenta = async (data) => {
     const esEdicion = isEdit && selectedCuenta;
 
@@ -210,11 +211,11 @@ export default function CuentaPorCobrar({ ruta }) {
         creadoPor: esEdicion
           ? data.creadoPor // ← Si es edición, mantener el creador original
           : usuario?.personalId
-            ? BigInt(usuario.personalId)
+            ? Number(usuario.personalId)
             : null, // ← Si es nuevo, usar usuario actual
         actualizadoPor:
           esEdicion && usuario?.personalId
-            ? BigInt(usuario.personalId) // ← Si es edición, registrar quién actualiza
+            ? Number(usuario.personalId) // ← Si es edición, registrar quién actualiza
             : null, // ← Si es nuevo, no hay actualizador aún
       };
 
@@ -238,7 +239,6 @@ export default function CuentaPorCobrar({ ruta }) {
         });
       }
 
-      hideDialog();
       loadData();
     } catch (error) {
       console.error("Error al guardar cuenta por cobrar:", error);

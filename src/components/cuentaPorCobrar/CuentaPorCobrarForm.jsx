@@ -20,11 +20,11 @@ import {
 import CardAsientoContable from "../common/CardAsientoContable";
 import PagoCuentaPorCobrarForm from "../pagoCuentaPorCobrar/PagoCuentaPorCobrarForm";
 import {
-  getPagosPorCuentaCobrar,
+  getPagosByCuentaPorCobrar,
   deletePagoCuentaPorCobrar,
   createPagoCuentaPorCobrar,
   updatePagoCuentaPorCobrar,
-} from "../../api/cuentasPorCobrarPagar/pagoCuentaPorCobrar";
+} from "../../api/cuentasPorCobrarPagar/pago";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 export default function CuentaPorCobrarForm({
@@ -149,6 +149,41 @@ export default function CuentaPorCobrarForm({
     }
   }, [isEdit, defaultValues?.id]);
 
+  // Helper para obtener color de fondo según moneda
+  const getColorPorMoneda = () => {
+    if (!monedaId) return "#fff3cd"; // Amarillo por defecto (PEN)
+    const moneda = monedas?.find((m) => Number(m.id) === Number(monedaId));
+    const codigoMoneda = moneda?.codigoSunat || "PEN";
+
+    switch (codigoMoneda) {
+      case "USD":
+        return "#d4edda"; // Verde claro para dólares
+      case "PEN":
+        return "#fff3cd"; // Amarillo claro para soles
+      case "EUR":
+        return "#e3f2fd"; // Azul claro para euros
+      default:
+        return "#f8f9fa"; // Gris claro para otras monedas
+    }
+  };
+
+  // Helper para obtener color de fondo según moneda
+  const getColorPorMonedaPago = (monedaPagoId) => {
+    const moneda = monedas?.find((m) => Number(m.id) === Number(monedaPagoId));
+    const codigoMoneda = moneda?.codigoSunat || "PEN";
+
+    switch (codigoMoneda) {
+      case "USD":
+        return "#d4edda"; // Verde claro para dólares
+      case "PEN":
+        return "#fff3cd"; // Amarillo claro para soles
+      case "EUR":
+        return "#e3f2fd"; // Azul claro para euros
+      default:
+        return "#f8f9fa"; // Gris claro para otras monedas
+    }
+  };
+
   // Recalcular montoPagado, saldoPendiente y totales de impuestos cuando cambien los pagos
   useEffect(() => {
     const totalPagado = pagos.reduce(
@@ -183,7 +218,7 @@ export default function CuentaPorCobrarForm({
   const cargarPagos = async () => {
     try {
       setLoadingPagos(true);
-      const data = await getPagosPorCuentaCobrar(defaultValues.id);
+      const data = await getPagosByCuentaPorCobrar(defaultValues.id);
       setPagos(data || []);
     } catch (error) {
       console.error("Error al cargar pagos:", error);
@@ -200,9 +235,9 @@ export default function CuentaPorCobrarForm({
 
   const handleSubmit = () => {
     const data = {
-      preFacturaId: preFacturaId ? BigInt(preFacturaId) : null,
-      empresaId: BigInt(empresaId),
-      clienteId: BigInt(clienteId),
+      preFacturaId: preFacturaId ? Number(preFacturaId) : null,
+      empresaId: Number(empresaId),
+      clienteId: Number(clienteId),
       numeroPreFactura,
       fechaEmision,
       fechaVencimiento,
@@ -211,9 +246,9 @@ export default function CuentaPorCobrarForm({
       saldoPendiente: Number(saldoPendiente),
       esSaldoInicial,
       esGerencial,
-      monedaId: BigInt(monedaId),
+      monedaId: Number(monedaId),
       esContado,
-      estadoId: BigInt(estadoId),
+      estadoId: Number(estadoId),
       observaciones,
       tieneDetraccion,
       montoDetraccionTotal: Number(montoDetraccionTotal),
@@ -225,14 +260,14 @@ export default function CuentaPorCobrarForm({
       tienePercepcion,
       montoPercepcionTotal: Number(montoPercepcionTotal),
       fechaContable,
-      periodoContableId: periodoContableId ? BigInt(periodoContableId) : null,
+      periodoContableId: periodoContableId ? Number(periodoContableId) : null,
       creadoPor: isEdit
         ? creadoPor
         : usuario?.personalId
-          ? BigInt(usuario.personalId)
+          ? Number(usuario.personalId)
           : null,
       actualizadoPor:
-        isEdit && usuario?.personalId ? BigInt(usuario.personalId) : null,
+        isEdit && usuario?.personalId ? Number(usuario.personalId) : null,
     };
     onSubmit(data);
   };
@@ -294,7 +329,7 @@ export default function CuentaPorCobrarForm({
       } else {
         await createPagoCuentaPorCobrar({
           ...dataPago,
-          cuentaPorCobrarId: BigInt(defaultValues.id),
+          cuentaPorCobrarId: Number(defaultValues.id),
         });
         toast?.current?.show({
           severity: "success",
@@ -319,9 +354,88 @@ export default function CuentaPorCobrarForm({
   // Templates para DataTable
   const montoTemplate = (rowData) => {
     const moneda = monedas?.find(
+      (m) => Number(m.id) === Number(rowData.monedaPagoId),
+    );
+    const codigo = moneda?.codigoSunat || "PEN";
+    return (
+      <span
+        style={{
+          backgroundColor: getColorPorMonedaPago(rowData.monedaPagoId),
+          padding: "0.25rem 0.5rem",
+          borderRadius: "4px",
+          fontWeight: "bold",
+          display: "inline-block",
+          width: "100%",
+          textAlign: "right",
+        }}
+      >
+        {formatearNumero(rowData.montoPagado, 2)}
+      </span>
+    );
+  };
+
+  const monedaPagoTemplate = (rowData) => {
+    const moneda = monedas?.find(
+      (m) => Number(m.id) === Number(rowData.monedaPagoId),
+    );
+    const codigo = moneda?.codigoSunat || "-";
+    return (
+      <span
+        style={{
+          backgroundColor: getColorPorMonedaPago(rowData.monedaPagoId),
+          padding: "0.25rem 0.5rem",
+          borderRadius: "4px",
+          fontWeight: "bold",
+        }}
+      >
+        {codigo}
+      </span>
+    );
+  };
+
+  const monedaDeudaTemplate = (rowData) => {
+    const moneda = monedas?.find(
       (m) => Number(m.id) === Number(rowData.monedaId),
     );
-    return `${moneda?.codigoSunat || ""} ${formatearNumero(rowData.montoPagado, 2)}`;
+    const codigo = moneda?.codigoSunat || "-";
+    return (
+      <span
+        style={{
+          backgroundColor: getColorPorMoneda(),
+          padding: "0.25rem 0.5rem",
+          borderRadius: "4px",
+          fontWeight: "bold",
+        }}
+      >
+        {codigo}
+      </span>
+    );
+  };
+
+  const cuentaCorrienteTemplate = (rowData) => {
+    if (!rowData.cuentaBancariaId) return "-";
+    const cuenta = cuentasCorrientes?.find(
+      (c) => Number(c.id) === Number(rowData.cuentaBancariaId),
+    );
+    return cuenta?.numeroCuenta || "-";
+  };
+
+  const montoAplicadoTemplate = (rowData) => {
+    return (
+      <span
+        style={{
+          backgroundColor: getColorPorMoneda(),
+          padding: "0.25rem 0.5rem",
+          borderRadius: "4px",
+          fontWeight: "bold",
+          display: "inline-block",
+          width: "100%",
+          textAlign: "right",
+        }}
+      >
+        {formatearNumero(rowData.montoAplicadoDeuda || rowData.montoPagado, 2)}
+      </span>
+    );
   };
 
   const fechaTemplate = (rowData) => {
@@ -622,7 +736,7 @@ export default function CuentaPorCobrarForm({
                     inputStyle={{
                       fontSize: getResponsiveFontSize(),
                       width: "100%",
-                      backgroundColor: tieneDetraccion ? "#fff3cd" : "#fff",
+                      backgroundColor: getColorPorMoneda(),
                     }}
                   />
                 </div>
@@ -639,6 +753,7 @@ export default function CuentaPorCobrarForm({
                     inputStyle={{
                       fontSize: getResponsiveFontSize(),
                       width: "100%",
+                      backgroundColor: getColorPorMoneda(),
                     }}
                   />
                 </div>
@@ -653,7 +768,7 @@ export default function CuentaPorCobrarForm({
                     inputStyle={{
                       fontSize: getResponsiveFontSize(),
                       width: "100%",
-                      backgroundColor: tieneRetencion ? "#f8d7da" : "#fff",
+                      backgroundColor: getColorPorMoneda(),
                     }}
                   />
                 </div>
@@ -669,7 +784,7 @@ export default function CuentaPorCobrarForm({
                     inputStyle={{
                       fontSize: getResponsiveFontSize(),
                       width: "100%",
-                      backgroundColor: tienePercepcion ? "#d1ecf1" : "#fff",
+                      backgroundColor: getColorPorMoneda(),
                     }}
                   />
                 </div>
@@ -687,6 +802,7 @@ export default function CuentaPorCobrarForm({
                       fontWeight: "bold",
                       width: "100%",
                       textAlign: "right",
+                      backgroundColor: getColorPorMoneda(),
                     }}
                   />
                 </div>
@@ -703,6 +819,7 @@ export default function CuentaPorCobrarForm({
                       fontWeight: "bold",
                       width: "100%",
                       textAlign: "right",
+                      backgroundColor: getColorPorMoneda(),
                     }}
                   />
                 </div>
@@ -719,6 +836,7 @@ export default function CuentaPorCobrarForm({
                       fontWeight: "bold",
                       width: "100%",
                       textAlign: "right",
+                      backgroundColor: getColorPorMoneda(),
                     }}
                   />
                 </div>
@@ -739,16 +857,34 @@ export default function CuentaPorCobrarForm({
                   style={{ width: "120px" }}
                 />
                 <Column
-                  field="montoPago"
-                  header="Monto"
+                  header="Monto Pagado"
                   body={montoTemplate}
-                  style={{ width: "120px" }}
+                  style={{ width: "120px", textAlign: "right" }}
                 />
                 <Column
-                  field="medioPagoId"
+                  header="Moneda Pago"
+                  body={monedaPagoTemplate}
+                  style={{ width: "100px" }}
+                />
+                <Column
+                  header="Moneda Deuda"
+                  body={monedaDeudaTemplate}
+                  style={{ width: "100px" }}
+                />
+                <Column
                   header="Medio Pago"
                   body={medioPagoTemplate}
                   style={{ width: "150px" }}
+                />
+                <Column
+                  header="Cuenta Corriente"
+                  body={cuentaCorrienteTemplate}
+                  style={{ width: "150px" }}
+                />
+                <Column
+                  header="Monto Aplicado"
+                  body={montoAplicadoTemplate}
+                  style={{ width: "120px", textAlign: "right" }}
                 />
                 <Column
                   field="numeroOperacion"
@@ -756,7 +892,6 @@ export default function CuentaPorCobrarForm({
                   style={{ width: "150px" }}
                 />
                 <Column
-                  field="bancoId"
                   header="Banco"
                   body={bancoTemplate}
                   style={{ width: "150px" }}
@@ -891,7 +1026,7 @@ export default function CuentaPorCobrarForm({
       <Dialog
         header={isEditPago ? "Editar Pago" : "Registrar Pago"}
         visible={showPagoDialog}
-        style={{ width: "1200px" }}
+        style={{ width: "1300px" }}
         onHide={() => setShowPagoDialog(false)}
         modal
       >
@@ -902,10 +1037,15 @@ export default function CuentaPorCobrarForm({
             cuentaPorCobrarId: defaultValues.id, // ⭐ Pre-asignar la cuenta
           }}
           cuentasPorCobrar={[defaultValues]}
+          empresaIdCuenta={defaultValues.empresaId}
+          clienteIdCuenta={defaultValues.clienteId}
           monedas={monedas}
           mediosPago={mediosPago}
           bancos={bancos}
           cuentasCorrientes={cuentasCorrientes}
+          estados={estados}
+          periodosContables={periodosContables}
+          toast={toast}
           onSubmit={handleSubmitPago}
           onCancel={() => setShowPagoDialog(false)}
           loading={false}

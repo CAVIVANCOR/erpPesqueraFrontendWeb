@@ -396,7 +396,16 @@ const PreFactura = ({ ruta }) => {
       });
     }
   };
-
+  const handleClienteCreado = async (cliente) => {
+    try {
+      // Recargar la lista completa de clientes
+      const { getEntidadesComerciales } = await import("../api/entidadComercial");
+      const clientesData = await getEntidadesComerciales();
+      setClientes(clientesData);
+    } catch (error) {
+      console.error("Error al recargar clientes:", error);
+    }
+  };
   const abrirDialogoNuevo = async () => {
     try {
       // Crear objeto inicial
@@ -476,7 +485,8 @@ const PreFactura = ({ ruta }) => {
         const { getPreFacturaPorId } = await import("../api/preFactura");
         const preFacturaCompleta = await getPreFacturaPorId(resultado.id);
         setSelectedPreFactura(preFacturaCompleta);
-        setRefreshKey((prev) => prev + 1);
+        // ❌ NO incrementar refreshKey aquí - causa reset del formulario
+        // setRefreshKey((prev) => prev + 1);
       }
 
       cargarDatos();
@@ -617,8 +627,7 @@ const PreFactura = ({ ruta }) => {
             detail: "Pre-factura anulada correctamente.",
             life: 3000,
           });
-
-          cargarPreFacturas();
+          cargarDatos();
           cerrarDialogo();
         } catch (err) {
           console.error("Error al anular pre-factura:", err);
@@ -667,7 +676,7 @@ const PreFactura = ({ ruta }) => {
         summary: "Éxito",
         detail: "Pre-factura eliminada correctamente",
       });
-      cargarPreFacturas();
+      cargarDatos();
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -1193,6 +1202,7 @@ const PreFactura = ({ ruta }) => {
           onCancel={cerrarDialogo}
           onAprobar={handleAprobarPreFactura}
           onAnular={handleAnularPreFactura}
+          onClienteCreado={handleClienteCreado}
           onIrAPreFacturaOrigen={handleIrAPreFacturaOrigen}
           loading={loading}
           toast={toast}

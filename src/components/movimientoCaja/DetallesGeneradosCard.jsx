@@ -9,8 +9,7 @@ import { Button } from "primereact/button";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { getSaldosPorMovimiento } from "../../api/saldoCuentaCorriente";
 import { getAsientosPorMovimiento } from "../../api/contabilidad/asientoContable";
-import { getPagosPorMovimiento as getPagosCxCPorMovimiento } from "../../api/cuentasPorCobrarPagar/pagoCuentaPorCobrar";
-import { getPagosPorMovimiento as getPagosCxPPorMovimiento } from "../../api/cuentasPorCobrarPagar/pagoCuentaPorPagar";
+import { getPagosByMovimiento } from "../../api/cuentasPorCobrarPagar/pago";
 
 const DetallesGeneradosCard = ({
   movimientoId,
@@ -61,7 +60,7 @@ const DetallesGeneradosCard = ({
 
       // Cargar pagos de cuentas por cobrar
       try {
-        const pagosCxCData = await getPagosCxCPorMovimiento(movimientoId);
+        const pagosCxCData = await getPagosByMovimiento(movimientoId);
         setPagosCxC(pagosCxCData || []);
       } catch (error) {
         console.error("Error al cargar pagos CxC:", error);
@@ -70,7 +69,7 @@ const DetallesGeneradosCard = ({
 
       // Cargar pagos de cuentas por pagar
       try {
-        const pagosCxPData = await getPagosCxPPorMovimiento(movimientoId);
+        const pagosCxPData = await getPagosByMovimiento(movimientoId);
         setPagosCxP(pagosCxPData || []);
       } catch (error) {
         console.error("Error al cargar pagos CxP:", error);

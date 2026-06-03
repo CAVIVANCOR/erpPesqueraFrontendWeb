@@ -119,7 +119,7 @@ export default function Dashboard() {
       icono: "pi-shopping-cart",
       modulos: 8,
       color: "#1E8449",
-            submenu: [
+      submenu: [
         {
           label: "Requerimiento Compra",
           key: "requerimientoCompra",
@@ -269,12 +269,17 @@ export default function Dashboard() {
       descripcion:
         "Control financiero, cuentas corrientes y asientos contables",
       icono: "pi-wallet",
-      modulos: 22,
+      modulos: 23,
       color: "#5DADE2",
       submenu: [
         {
           label: "Movimientos de Caja",
           key: "movimientoCaja",
+          icon: "pi-money-bill",
+        },
+        {
+          label: "Tesorería Pendientes", // ← AGREGAR AQUÍ
+          key: "tesoreriaPendientes",
           icon: "pi-money-bill",
         },
         {

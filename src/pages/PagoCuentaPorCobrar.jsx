@@ -10,18 +10,19 @@ import { Toolbar } from "primereact/toolbar";
 import { Tag } from "primereact/tag";
 import PagoCuentaPorCobrarForm from "../components/pagoCuentaPorCobrar/PagoCuentaPorCobrarForm";
 import {
-  getPagosCuentaPorCobrar,
-  getPagoCuentaPorCobrarById,
+  getPago,
+  getPagoById,
   createPagoCuentaPorCobrar,
   updatePagoCuentaPorCobrar,
   deletePagoCuentaPorCobrar,
-} from "../api/cuentasPorCobrarPagar/pagoCuentaPorCobrar";
+} from "../api/cuentasPorCobrarPagar/pago";
 import { getCuentaPorCobrar } from "../api/cuentasPorCobrarPagar/cuentaPorCobrar";
 import { getMonedas } from "../api/moneda";
 import { getMediosPago } from "../api/medioPago";
 import { getBancos } from "../api/banco";
 import { getAllCuentaCorriente } from "../api/cuentaCorriente";
 import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
+import { getPeriodosContables } from "../api/contabilidad/periodoContable";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
 export default function PagoCuentaPorCobrar() {
@@ -35,7 +36,7 @@ export default function PagoCuentaPorCobrar() {
   const [bancos, setBancos] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [estados, setEstados] = useState([]);
-
+  const [periodosContables, setPeriodosContables] = useState([]);
   const [selectedPago, setSelectedPago] = useState(null);
   const [pagoDialog, setPagoDialog] = useState(false);
   const [deletePagoDialog, setDeletePagoDialog] = useState(false);
@@ -51,6 +52,7 @@ export default function PagoCuentaPorCobrar() {
 
   const loadData = async () => {
     try {
+      console.log("🔍 DEBUG PADRE - loadData() INICIANDO...");
       setLoading(true);
       const [
         pagosData,
@@ -60,6 +62,7 @@ export default function PagoCuentaPorCobrar() {
         bancosData,
         cuentasCorrientesData,
         estadosData,
+        periodosContablesData,
       ] = await Promise.all([
         getPagosCuentaPorCobrar(),
         getCuentaPorCobrar(),
@@ -68,21 +71,29 @@ export default function PagoCuentaPorCobrar() {
         getBancos(),
         getAllCuentaCorriente(),
         getEstadosMultiFuncion(),
+        getPeriodosContables(),
       ]);
 
-      const pagosFiltrados = pagosData?.filter((p) => p.cuentaPorCobrarId !== null) || [];
+      console.log("🔍 DEBUG PADRE - Promise.all completado");
+
+      const pagosFiltrados =
+        pagosData?.filter((p) => p.cuentaPorCobrarId !== null) || [];
       setPagos(pagosFiltrados);
-      
-      const cuentasPendientes = cuentasData?.filter(
-        (c) => Number(c.saldoPendiente || 0) > 0
-      ) || [];
+
+      const cuentasPendientes =
+        cuentasData?.filter((c) => Number(c.saldoPendiente || 0) > 0) || [];
       setCuentasPorCobrar(cuentasPendientes);
-      
+
       setMonedas(monedasData || []);
       setMediosPago(mediosPagoData || []);
       setBancos(bancosData || []);
       setCuentasCorrientes(cuentasCorrientesData || []);
       setEstados(estadosData || []);
+      console.log(
+        "🔍 DEBUG PADRE - periodosContablesData:",
+        periodosContablesData,
+      );
+      setPeriodosContables(periodosContablesData || []);
     } catch (error) {
       console.error("Error al cargar datos:", error);
       toast.current?.show({
@@ -113,14 +124,16 @@ export default function PagoCuentaPorCobrar() {
     try {
       setLoading(true);
       const pagoCompleto = await getPagoCuentaPorCobrarById(pago.id);
-      
+
       const dataParaEdicion = {
         ...pagoCompleto,
         cuentaPorCobrarId: Number(pagoCompleto.cuentaPorCobrarId),
         monedaId: Number(pagoCompleto.monedaId),
         medioPagoId: Number(pagoCompleto.medioPagoId),
         bancoId: pagoCompleto.bancoId ? Number(pagoCompleto.bancoId) : null,
-        cuentaBancariaId: pagoCompleto.cuentaBancariaId ? Number(pagoCompleto.cuentaBancariaId) : null,
+        cuentaBancariaId: pagoCompleto.cuentaBancariaId
+          ? Number(pagoCompleto.cuentaBancariaId)
+          : null,
       };
 
       setFormData(dataParaEdicion);
@@ -186,7 +199,7 @@ export default function PagoCuentaPorCobrar() {
     try {
       setLoading(true);
       await deletePagoCuentaPorCobrar(selectedPago.id);
-      
+
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
@@ -216,7 +229,9 @@ export default function PagoCuentaPorCobrar() {
   };
 
   const cuentaPorCobrarBodyTemplate = (rowData) => {
-    const cuenta = cuentasPorCobrar.find((c) => Number(c.id) === Number(rowData.cuentaPorCobrarId));
+    const cuenta = cuentasPorCobrar.find(
+      (c) => Number(c.id) === Number(rowData.cuentaPorCobrarId),
+    );
     if (!cuenta && rowData.cuentaPorCobrar) {
       return `${rowData.cuentaPorCobrar.numeroPreFactura || rowData.cuentaPorCobrarId}`;
     }
@@ -227,12 +242,16 @@ export default function PagoCuentaPorCobrar() {
     if (rowData.cuentaPorCobrar?.cliente) {
       return rowData.cuentaPorCobrar.cliente.razonSocial;
     }
-    const cuenta = cuentasPorCobrar.find((c) => Number(c.id) === Number(rowData.cuentaPorCobrarId));
+    const cuenta = cuentasPorCobrar.find(
+      (c) => Number(c.id) === Number(rowData.cuentaPorCobrarId),
+    );
     return cuenta?.cliente?.razonSocial || "-";
   };
 
   const monedaBodyTemplate = (rowData) => {
-    const moneda = monedas.find((m) => Number(m.id) === Number(rowData.monedaId));
+    const moneda = monedas.find(
+      (m) => Number(m.id) === Number(rowData.monedaId),
+    );
     return moneda?.codigoSunat || "-";
   };
 
@@ -240,7 +259,9 @@ export default function PagoCuentaPorCobrar() {
     if (rowData.medioPago) {
       return rowData.medioPago.nombre;
     }
-    const medio = mediosPago.find((m) => Number(m.id) === Number(rowData.medioPagoId));
+    const medio = mediosPago.find(
+      (m) => Number(m.id) === Number(rowData.medioPagoId),
+    );
     return medio?.nombre || "-";
   };
 
@@ -355,12 +376,7 @@ export default function PagoCuentaPorCobrar() {
         stripedRows
         size="small"
       >
-        <Column
-          field="id"
-          header="ID"
-          sortable
-          style={{ minWidth: "80px" }}
-        />
+        <Column field="id" header="ID" sortable style={{ minWidth: "80px" }} />
         <Column
           header="Cuenta por Cobrar"
           body={cuentaPorCobrarBodyTemplate}
@@ -419,6 +435,10 @@ export default function PagoCuentaPorCobrar() {
         className="p-fluid"
         onHide={hideDialog}
       >
+        {console.log(
+          "🔍 RENDER Dialog - periodosContables:",
+          periodosContables,
+        )}
         <PagoCuentaPorCobrarForm
           isEdit={isEdit}
           defaultValues={formData}
@@ -428,6 +448,8 @@ export default function PagoCuentaPorCobrar() {
           bancos={bancos}
           cuentasCorrientes={cuentasCorrientes}
           estados={estados}
+          periodosContables={periodosContables}
+          toast={toast}
           onSubmit={savePago}
           onCancel={hideDialog}
           loading={loading}

@@ -10,12 +10,12 @@ import { Toolbar } from "primereact/toolbar";
 import { Tag } from "primereact/tag";
 import PagoCuentaPorPagarForm from "../components/pagoCuentaPorPagar/PagoCuentaPorPagarForm";
 import {
-  getPagosCuentaPorPagar,
-  getPagoCuentaPorPagarById,
+  getPago,
+  getPagoById,
   createPagoCuentaPorPagar,
   updatePagoCuentaPorPagar,
   deletePagoCuentaPorPagar,
-} from "../api/cuentasPorCobrarPagar/pagoCuentaPorPagar";
+} from "../api/cuentasPorCobrarPagar/pago";
 import { getCuentaPorPagar } from "../api/cuentasPorCobrarPagar/cuentaPorPagar";
 import { getMonedas } from "../api/moneda";
 import { getMediosPago } from "../api/medioPago";
@@ -61,7 +61,7 @@ export default function PagoCuentaPorPagar() {
         cuentasCorrientesData,
         estadosData,
       ] = await Promise.all([
-        getPagosCuentaPorPagar(),
+        getPago(),
         getCuentaPorPagar(),
         getMonedas(),
         getMediosPago(),
@@ -112,7 +112,7 @@ export default function PagoCuentaPorPagar() {
   const editPago = async (pago) => {
     try {
       setLoading(true);
-      const pagoCompleto = await getPagoCuentaPorPagarById(pago.id);
+      const pagoCompleto = await getPagoById(pago.id, 'PAGAR');
       
       const dataParaEdicion = {
         ...pagoCompleto,

@@ -39,6 +39,7 @@ import MotivoOriginoOT from "../../pages/MotivoOriginoOT";
 import Banco from "../../pages/Banco";
 import Incoterm from "../../pages/Incoterm";
 import MovimientoCaja from "../../pages/MovimientoCaja";
+import TesoreriaPendientes from "../../pages/TesoreriaPendientes";
 import TipoCuentaCorriente from "../../pages/TipoCuentaCorriente";
 import CentroCosto from "../../pages/CentroCosto";
 import CategoriaCCosto from "../../pages/CategoriaCCosto";
@@ -379,6 +380,10 @@ export default function BaseLayout({ children, onLogout }) {
     movimientoCaja: {
       label: "Movimientos de Caja",
       componente: <MovimientoCaja ruta="movimientoCaja" />,
+    },
+    tesoreriaPendientes: {
+      label: "Tesorería Pendientes",
+      componente: <TesoreriaPendientes ruta="tesoreriaPendientes" />,
     },
     cuentaCorriente: {
       label: "Cuenta Corriente",
