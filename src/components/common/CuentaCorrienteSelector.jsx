@@ -59,6 +59,7 @@ const COLOR_TODAS = { bg: '#2196F3', text: '#FFFFFF', border: '#2196F3' }; // Az
 const COLORES_TEXTO = {
   banco: '#1976D2',        // 🔵 Azul
   moneda: '#2E7D32',       // 🟢 Verde
+  descripcion: '#F57C00',  // 🟡 Naranja (NUEVO)
   numeroCuenta: '#D32F2F', // 🔴 Rojo
   separador: '#666'        // Gris para los guiones
 };
@@ -79,17 +80,17 @@ const getEmpresaNombre = (empresaId, empresas) => {
   if (!empresaId) {
     return "Sin empresa";
   }
-  
+
   if (!empresas || empresas.length === 0) {
     return `ID: ${empresaId}`;
   }
-  
+
   const empresa = empresas.find((e) => Number(e.id) === Number(empresaId));
-  
+
   if (!empresa) {
     return `ID: ${empresaId}`;
   }
-  
+
   return empresa.nombre || empresa.razonSocial || `ID: ${empresaId}`;
 };
 
@@ -180,7 +181,7 @@ const CuentaCorrienteSelector = ({
       recargarDatos();
     }
   }, [refreshTrigger]);
-  
+
   // Actualizar empresaFiltro si cambia la preselección
   useEffect(() => {
     if (empresaIdPreseleccionada) {
@@ -193,7 +194,7 @@ const CuentaCorrienteSelector = ({
     if (!value) {
       return null;
     }
-    
+
     const cuenta = cuentasCorrientes.find((c) => Number(c.id) === Number(value));
     return cuenta;
   }, [cuentasCorrientes, value]);
@@ -222,7 +223,7 @@ const CuentaCorrienteSelector = ({
     if (!empresaFiltro) {
       return cuentasConFiltroEstado;
     }
-    
+
     const filtradas = cuentasConFiltroEstado.filter(
       (cuenta) => Number(cuenta.empresaId) === Number(empresaFiltro)
     );
@@ -273,7 +274,7 @@ const CuentaCorrienteSelector = ({
         bancoId: Number(cuenta.bancoId) // ← BANCO AUTOMÁTICO
       });
     }
-    
+
     setDialogVisible(false);
     setGlobalFilterValue("");
   };
@@ -320,6 +321,29 @@ const CuentaCorrienteSelector = ({
       </span>
     );
   };
+
+  /**
+ * Template para el tipo de cuenta corriente
+ */
+  const tipoCuentaTemplate = (rowData) => {
+    return (
+      <span style={{ fontSize: "0.85rem", color: "#495057" }}>
+        {rowData.tipoCuentaCorriente?.nombre || "N/A"}
+      </span>
+    );
+  };
+
+  /**
+   * Template para la descripción
+   */
+  const descripcionTemplate = (rowData) => {
+    return (
+      <span style={{ color: COLORES_TEXTO.descripcion, fontWeight: "500", fontSize: "0.85rem" }}>
+        {rowData.descripcion || "Sin descripción"}
+      </span>
+    );
+  };
+
 
   /**
    * Función para determinar la clase CSS de la fila
@@ -396,15 +420,26 @@ const CuentaCorrienteSelector = ({
         {loading ? (
           <span style={{ color: "#999" }}>Cargando...</span>
         ) : cuentaSeleccionada ? (
-          <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-            <span style={{ color: COLORES_TEXTO.banco }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", flexWrap: "wrap" }}>
+            {/* 🔵 BANCO */}
+            <span style={{ color: COLORES_TEXTO.banco, fontWeight: "600" }}>
               {cuentaSeleccionada.banco?.nombreCorto || cuentaSeleccionada.banco?.nombre || "Sin banco"}
             </span>
             <span style={{ color: COLORES_TEXTO.separador }}> - </span>
-            <span style={{ color: COLORES_TEXTO.moneda }}>
+
+            {/* 🟢 MONEDA */}
+            <span style={{ color: COLORES_TEXTO.moneda, fontWeight: "600" }}>
               {cuentaSeleccionada.moneda?.codigoSunat || "N/A"}
             </span>
             <span style={{ color: COLORES_TEXTO.separador }}> - </span>
+
+            {/* 🟡 DESCRIPCIÓN */}
+            <span style={{ color: COLORES_TEXTO.descripcion, fontWeight: "500" }}>
+              {cuentaSeleccionada.descripcion || "Sin descripción"}
+            </span>
+            <span style={{ color: COLORES_TEXTO.separador }}> - </span>
+
+            {/* 🔴 NÚMERO DE CUENTA */}
             <span style={{ color: COLORES_TEXTO.numeroCuenta, fontWeight: "bold" }}>
               {cuentaSeleccionada.numeroCuenta || "Sin número"}
             </span>
@@ -431,25 +466,25 @@ const CuentaCorrienteSelector = ({
         maximizable
       >
         {/* Layout de 2 columnas */}
-        <div style={{ 
-          display: "grid", 
-          gridTemplateColumns: "180px 1fr", 
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "180px 1fr",
           gap: "1rem",
           height: "600px"
         }}>
-          
+
           {/* ========== COLUMNA 1: EMPRESAS ========== */}
-          <div style={{ 
-            display: "flex", 
+          <div style={{
+            display: "flex",
             flexDirection: "column",
             borderRight: "1px solid #dee2e6"
           }}>
             <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: "600" }}>
               Empresas
             </h4>
-            <div style={{ 
-              display: "flex", 
-              flexDirection: "column", 
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
               gap: "0.35rem",
               overflowY: "auto",
               paddingRight: "0.5rem"
@@ -511,7 +546,7 @@ const CuentaCorrienteSelector = ({
           {/* ========== COLUMNA 2: TABLA DE CUENTAS CORRIENTES ========== */}
           <div style={{ display: "flex", flexDirection: "column" }}>
             {header}
-            
+
             <DataTable
               ref={dt}
               value={cuentasOrdenadas}
@@ -524,7 +559,7 @@ const CuentaCorrienteSelector = ({
               rows={20}
               rowsPerPageOptions={[20, 40, 100]}
               globalFilter={globalFilterValue}
-              globalFilterFields={['numeroCuenta', 'numeroCuentaCCI', 'banco.nombre', 'moneda.codigoSunat']}
+              globalFilterFields={['numeroCuenta', 'numeroCuentaCCI', 'banco.nombre', 'moneda.codigoSunat', 'descripcion', 'tipoCuentaCorriente.nombre']}
               emptyMessage="No se encontraron cuentas corrientes"
               stripedRows
               showGridlines
@@ -540,14 +575,30 @@ const CuentaCorrienteSelector = ({
                 header="Banco"
                 body={bancoTemplate}
                 sortable
-                style={{ minWidth: "200px" }}
+                style={{ minWidth: "150px" }}
               />
               <Column
                 field="moneda.codigoSunat"
                 header="Moneda"
                 body={monedaTemplate}
                 sortable
-                style={{ minWidth: "100px" }}
+                style={{ minWidth: "80px" }}
+              />
+              {/* 🆕 NUEVA COLUMNA: TIPO CUENTA */}
+              <Column
+                field="tipoCuentaCorriente.nombre"
+                header="Tipo Cuenta"
+                body={tipoCuentaTemplate}
+                sortable
+                style={{ minWidth: "150px" }}
+              />
+              {/* 🆕 NUEVA COLUMNA: DESCRIPCIÓN */}
+              <Column
+                field="descripcion"
+                header="Descripción"
+                body={descripcionTemplate}
+                sortable
+                style={{ minWidth: "180px" }}
               />
               <Column
                 field="numeroCuenta"
@@ -555,7 +606,7 @@ const CuentaCorrienteSelector = ({
                 body={numeroCuentaTemplate}
                 sortable
                 filterField="numeroCuenta"
-                style={{ minWidth: "200px" }}
+                style={{ minWidth: "180px" }}
               />
               <Column
                 field="numeroCuentaCCI"

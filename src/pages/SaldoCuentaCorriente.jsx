@@ -342,7 +342,7 @@ export default function SaldoCuentaCorriente({ ruta }) {
         asientoEditado,
         usuario?.id
       );
-      
+
       toast.current?.show({
         severity: "success",
         summary: "Asiento generado",
@@ -381,12 +381,110 @@ export default function SaldoCuentaCorriente({ ruta }) {
     setGlobalFilter("");
   };
 
-  const cuentaNombreBodyTemplate = (rowData) => {
-    const cuenta = rowData.cuentaCorriente;
-    return cuenta
-      ? `${cuenta.numeroCuenta} - ${cuenta.banco?.nombre || ""}`
-      : "-";
-  };
+ const cuentaNombreBodyTemplate = (rowData) => {
+  const cuenta = rowData.cuentaCorriente;
+  if (!cuenta) return "-";
+console.log("cuenta",cuenta,"rowData",rowData)
+  const tipoCuenta = cuenta.tipoCuentaCorriente?.nombre || "Sin tipo";
+  const banco = cuenta.banco?.nombre || "Sin banco";
+  const moneda = cuenta.moneda?.codigoSunat || "";
+  const numero = cuenta.numeroCuenta || "";
+
+  // Determinar color de moneda
+  const estiloMoneda =
+    moneda === "USD"
+      ? { bg: "#d1e7dd", color: "#0f5132", border: "#badbcc" }
+      : moneda === "PEN"
+        ? { bg: "#fff3cd", color: "#664d03", border: "#ffecb5" }
+        : { bg: "#e2e3e5", color: "#41464b", border: "#d3d6d8" };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "8px",
+        alignItems: "center",
+        padding: "4px 0",
+      }}
+    >
+      {/* TAG 1: TIPO DE CUENTA */}
+      <span
+        style={{
+          backgroundColor: "#e0cffc",
+          color: "#59359a",
+          border: "1px solid #d4bbf7",
+          padding: "4px 8px",
+          borderRadius: "4px",
+          fontSize: "0.875rem",
+          fontWeight: "500",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "4px",
+          minWidth: "100px",
+        }}
+      >
+        <i className="pi pi-credit-card" style={{ fontSize: "0.75rem" }} />
+        {tipoCuenta}
+      </span>
+
+      {/* TAG 2: BANCO */}
+      <span
+        style={{
+          backgroundColor: "#cfe2ff",
+          color: "#084298",
+          border: "1px solid #b6d4fe",
+          padding: "4px 8px",
+          borderRadius: "4px",
+          fontSize: "0.875rem",
+          fontWeight: "500",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "4px",
+          minWidth: "100px",
+        }}
+      >
+        <i className="pi pi-building" style={{ fontSize: "0.75rem" }} />
+        {banco}
+      </span>
+
+      {/* TAG 3: MONEDA */}
+      <span
+        style={{
+          backgroundColor: estiloMoneda.bg,
+          color: estiloMoneda.color,
+          border: `1px solid ${estiloMoneda.border}`,
+          padding: "4px 8px",
+          borderRadius: "4px",
+          fontSize: "0.875rem",
+          fontWeight: "600",
+          minWidth: "60px",
+          textAlign: "center",
+        }}
+      >
+        {moneda}
+      </span>
+
+      {/* TAG 4: NÚMERO */}
+      <span
+        style={{
+          backgroundColor: "#e2e3e5",
+          color: "#41464b",
+          border: "1px solid #d3d6d8",
+          padding: "4px 8px",
+          borderRadius: "4px",
+          fontSize: "0.875rem",
+          fontWeight: "500",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "4px",
+        }}
+      >
+        <i className="pi pi-hashtag" style={{ fontSize: "0.75rem" }} />
+        {numero}
+      </span>
+    </div>
+  );
+};
 
   const empresaNombreBodyTemplate = (rowData) => {
     const empresa = rowData.empresa;
@@ -712,6 +810,12 @@ export default function SaldoCuentaCorriente({ ruta }) {
       >
         <Column field="id" header="ID" sortable />
         <Column
+          field="empresaId"
+          header="Empresa"
+          body={empresaNombreBodyTemplate}
+          sortable
+        />
+        <Column
           field="fecha"
           header="Fecha"
           body={fechaBodyTemplate}
@@ -721,12 +825,6 @@ export default function SaldoCuentaCorriente({ ruta }) {
           field="cuentaCorrienteId"
           header="Cuenta Corriente"
           body={cuentaNombreBodyTemplate}
-          sortable
-        />
-        <Column
-          field="empresaId"
-          header="Empresa"
-          body={empresaNombreBodyTemplate}
           sortable
         />
         <Column
@@ -809,10 +907,10 @@ export default function SaldoCuentaCorriente({ ruta }) {
         saldos={
           selectedCuentaAnalisis
             ? items.filter(
-                (item) =>
-                  Number(item.cuentaCorrienteId) ===
-                  Number(selectedCuentaAnalisis.cuentaCorrienteId)
-              )
+              (item) =>
+                Number(item.cuentaCorrienteId) ===
+                Number(selectedCuentaAnalisis.cuentaCorrienteId)
+            )
             : []
         }
         cuentaCorriente={selectedCuentaAnalisis?.cuentaCorriente || null}
@@ -824,10 +922,10 @@ export default function SaldoCuentaCorriente({ ruta }) {
         saldos={
           selectedCuentaAnalisis
             ? items.filter(
-                (item) =>
-                  Number(item.cuentaCorrienteId) ===
-                  Number(selectedCuentaAnalisis.cuentaCorrienteId)
-              )
+              (item) =>
+                Number(item.cuentaCorrienteId) ===
+                Number(selectedCuentaAnalisis.cuentaCorrienteId)
+            )
             : []
         }
         cuentaCorriente={selectedCuentaAnalisis?.cuentaCorriente || null}

@@ -1,5 +1,5 @@
 // src/components/cuentaPorCobrar/CuentaPorCobrarForm.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
@@ -25,27 +25,29 @@ import {
   createPagoCuentaPorCobrar,
   updatePagoCuentaPorCobrar,
 } from "../../api/cuentasPorCobrarPagar/pago";
+import { getCuentaPorCobrarById } from "../../api/cuentasPorCobrarPagar/cuentaPorCobrar";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 
-export default function CuentaPorCobrarForm({
+const CuentaPorCobrarForm = forwardRef(({
   isEdit,
   defaultValues,
   empresas,
   clientes,
   monedas,
   estados,
-  periodosContables, // ⬅️ DEBE EXISTIR ESTA PROP
+  periodosContables,
   mediosPago,
   bancos,
   cuentasCorrientes,
   onSubmit,
   onCancel,
   onGenerarAsiento,
+  onSaveSuccess,
   loading,
   readOnly = false,
   permisos = {},
   toast,
-}) {
+}, ref) => {
   const usuario = useAuthStore((state) => state.usuario);
   const [activeTab, setActiveTab] = useState(0);
 
@@ -186,8 +188,9 @@ export default function CuentaPorCobrarForm({
 
   // Recalcular montoPagado, saldoPendiente y totales de impuestos cuando cambien los pagos
   useEffect(() => {
+    console.log("pagos", pagos)
     const totalPagado = pagos.reduce(
-      (sum, pago) => sum + Number(pago.montoPagado || 0),
+      (sum, pago) => sum + Number(pago.montoAplicadoDeuda || 0),
       0,
     );
     const totalDetraccion = pagos.reduce(
@@ -202,7 +205,7 @@ export default function CuentaPorCobrarForm({
       (sum, pago) => sum + Number(pago.montoPercepcion || 0),
       0,
     );
-
+    console.log("setMontoPagado(totalPagado)", totalPagado)
     setMontoPagado(totalPagado);
     setSaldoPendiente(Number(montoTotal) - totalPagado);
     setMontoDetraccionTotal(totalDetraccion);
@@ -232,6 +235,43 @@ export default function CuentaPorCobrarForm({
       setLoadingPagos(false);
     }
   };
+
+  /**
+ * Recarga la cuenta por cobrar completa desde el backend
+ * Esto asegura que los valores mostrados estén sincronizados
+ */
+  const recargarCuentaDesdeBackend = async () => {
+    if (!isEdit || !defaultValues?.id) return;
+
+    try {
+      const cuentaActualizada = await getCuentaPorCobrarById(defaultValues.id);
+
+      // Actualizar todos los campos con los valores del backend
+      setMontoTotal(cuentaActualizada.montoTotal || 0);
+      setMontoPagado(cuentaActualizada.montoPagado || 0);
+      setSaldoPendiente(cuentaActualizada.saldoPendiente || 0);
+      setMontoDetraccionTotal(cuentaActualizada.montoDetraccionTotal || 0);
+      setMontoRetencionTotal(cuentaActualizada.montoRetencionTotal || 0);
+      setMontoPercepcionTotal(cuentaActualizada.montoPercepcionTotal || 0);
+      setTieneDetraccion(cuentaActualizada.tieneDetraccion || false);
+      setTieneRetencion(cuentaActualizada.tieneRetencion || false);
+      setTienePercepcion(cuentaActualizada.tienePercepcion || false);
+      setEstadoId(cuentaActualizada.estadoId || 100);
+
+      console.log("✅ Cuenta recargada desde backend:", {
+        montoPagado: cuentaActualizada.montoPagado,
+        saldoPendiente: cuentaActualizada.saldoPendiente,
+      });
+    } catch (error) {
+      console.error("❌ Error al recargar cuenta desde backend:", error);
+    }
+  };
+
+  
+  // Exponer funciones al componente padre mediante ref
+  useImperativeHandle(ref, () => ({
+    recargarCuentaDesdeBackend
+  }));
 
   const handleSubmit = () => {
     const data = {
@@ -301,7 +341,8 @@ export default function CuentaPorCobrarForm({
             detail: "Pago eliminado correctamente",
             life: 3000,
           });
-          cargarPagos();
+          await cargarPagos();
+          await recargarCuentaDesdeBackend();
         } catch (error) {
           console.error("Error al eliminar pago:", error);
           toast?.current?.show({
@@ -339,7 +380,8 @@ export default function CuentaPorCobrarForm({
         });
       }
       setShowPagoDialog(false);
-      cargarPagos();
+      await cargarPagos();
+      await recargarCuentaDesdeBackend(); // 🆕 Recargar cuenta después de eliminar pago
     } catch (error) {
       console.error("Error al guardar pago:", error);
       toast?.current?.show({
@@ -395,8 +437,9 @@ export default function CuentaPorCobrarForm({
 
   const monedaDeudaTemplate = (rowData) => {
     const moneda = monedas?.find(
-      (m) => Number(m.id) === Number(rowData.monedaId),
+      (m) => Number(m.id) === Number(rowData.monedaDeudaId),
     );
+    console.log("moneda", moneda, "rowData", rowData)
     const codigo = moneda?.codigoSunat || "-";
     return (
       <span
@@ -412,12 +455,52 @@ export default function CuentaPorCobrarForm({
     );
   };
 
-  const cuentaCorrienteTemplate = (rowData) => {
+  const cuentaCorrienteUnificadaTemplate = (rowData) => {
     if (!rowData.cuentaBancariaId) return "-";
+
     const cuenta = cuentasCorrientes?.find(
       (c) => Number(c.id) === Number(rowData.cuentaBancariaId),
     );
-    return cuenta?.numeroCuenta || "-";
+
+    if (!cuenta) return "-";
+
+    const banco = cuenta.banco?.nombre || "Sin banco";
+    const moneda = cuenta.moneda?.codigoSunat || "---";
+    const descripcion = cuenta.descripcion || "S/D";
+    const numeroCuenta = cuenta.numeroCuenta || "Sin cuenta";
+
+    return (
+      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* 🔵 BANCO */}
+        <span style={{ color: '#1976D2', fontWeight: '600' }}>
+          {banco}
+        </span>
+
+        {/* Separador */}
+        <span style={{ color: '#666' }}>-</span>
+
+        {/* 🟢 MONEDA */}
+        <span style={{ color: '#2E7D32', fontWeight: '600' }}>
+          {moneda}
+        </span>
+
+        {/* Separador */}
+        <span style={{ color: '#666' }}>-</span>
+
+        {/* 🟡 DESCRIPCIÓN */}
+        <span style={{ color: '#F57C00', fontWeight: '500' }}>
+          {descripcion}
+        </span>
+
+        {/* Separador */}
+        <span style={{ color: '#666' }}>-</span>
+
+        {/* 🔴 NÚMERO DE CUENTA */}
+        <span style={{ color: '#D32F2F', fontWeight: '500' }}>
+          {numeroCuenta}
+        </span>
+      </div>
+    );
   };
 
   const montoAplicadoTemplate = (rowData) => {
@@ -446,14 +529,9 @@ export default function CuentaPorCobrarForm({
     const medio = mediosPago?.find(
       (m) => Number(m.id) === Number(rowData.medioPagoId),
     );
-    return medio?.descripcion || "-";
+    return medio?.nombre || "-";
   };
 
-  const bancoTemplate = (rowData) => {
-    if (!rowData.bancoId) return "-";
-    const banco = bancos?.find((b) => Number(b.id) === Number(rowData.bancoId));
-    return banco?.nombre || "-";
-  };
 
   const accionesTemplate = (rowData) => {
     return (
@@ -857,19 +935,14 @@ export default function CuentaPorCobrarForm({
                   style={{ width: "120px" }}
                 />
                 <Column
-                  header="Monto Pagado"
-                  body={montoTemplate}
-                  style={{ width: "120px", textAlign: "right" }}
-                />
-                <Column
                   header="Moneda Pago"
                   body={monedaPagoTemplate}
                   style={{ width: "100px" }}
                 />
                 <Column
-                  header="Moneda Deuda"
-                  body={monedaDeudaTemplate}
-                  style={{ width: "100px" }}
+                  header="Monto Pagado"
+                  body={montoTemplate}
+                  style={{ width: "120px", textAlign: "right" }}
                 />
                 <Column
                   header="Medio Pago"
@@ -877,24 +950,24 @@ export default function CuentaPorCobrarForm({
                   style={{ width: "150px" }}
                 />
                 <Column
-                  header="Cuenta Corriente"
-                  body={cuentaCorrienteTemplate}
-                  style={{ width: "150px" }}
-                />
-                <Column
-                  header="Monto Aplicado"
-                  body={montoAplicadoTemplate}
-                  style={{ width: "120px", textAlign: "right" }}
-                />
-                <Column
                   field="numeroOperacion"
                   header="N° Operación"
                   style={{ width: "150px" }}
                 />
                 <Column
-                  header="Banco"
-                  body={bancoTemplate}
-                  style={{ width: "150px" }}
+                  header="Cuenta Corriente"
+                  body={cuentaCorrienteUnificadaTemplate}
+                  style={{ minWidth: "350px" }}
+                />
+                <Column
+                  header="Moneda Deuda"
+                  body={monedaDeudaTemplate}
+                  style={{ width: "100px" }}
+                />
+                <Column
+                  header="Monto Aplicado"
+                  body={montoAplicadoTemplate}
+                  style={{ width: "120px", textAlign: "right" }}
                 />
                 <Column
                   header="Acciones"
@@ -1055,4 +1128,6 @@ export default function CuentaPorCobrarForm({
       </Dialog>
     </div>
   );
-}
+});
+
+export default CuentaPorCobrarForm;

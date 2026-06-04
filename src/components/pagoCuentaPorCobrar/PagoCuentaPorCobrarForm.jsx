@@ -622,24 +622,47 @@ export default function PagoCuentaPorCobrarForm({
 
     // Validaciones
     if (!dataParaGrabacion.cuentaPorCobrarId) {
-      alert("Debe seleccionar una Cuenta por Cobrar");
+      toast?.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar una Cuenta por Cobrar",
+        life: 3000,
+      });
       return;
     }
 
     if (!dataParaGrabacion.montoPagado || dataParaGrabacion.montoPagado <= 0) {
-      alert("El monto del pago debe ser mayor a 0");
+      toast?.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "El monto del pago debe ser mayor a 0",
+        life: 3000,
+      });
       return;
     }
 
-    if (Number(montoPagado) > Number(saldoPendiente)) {
-      alert(
-        `El monto del pago (${montoPagado}) no puede ser mayor al saldo pendiente (${saldoPendiente})`,
-      );
+    // ✅ VALIDACIÓN CORREGIDA: Considerar monto del pago anterior al editar
+    const saldoDisponible = isEdit
+      ? Number(saldoPendiente) + Number(defaultValues?.montoPagado || 0)
+      : Number(saldoPendiente);
+
+    if (Number(montoPagado) > saldoDisponible) {
+      toast?.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: `El monto del pago (${montoPagado}) no puede ser mayor al saldo disponible (${saldoDisponible.toFixed(2)})`,
+        life: 4000,
+      });
       return;
     }
 
     if (!dataParaGrabacion.medioPagoId) {
-      alert("Debe seleccionar un Medio de Pago");
+      toast?.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar un Medio de Pago",
+        life: 3000,
+      });
       return;
     }
 
@@ -687,34 +710,34 @@ export default function PagoCuentaPorCobrarForm({
       {/* PANEL: Información del Cobro */}
       <Panel header="Información del Cobro">
         <div className="p-fluid">
-            <div style={{ flex: 1 }}>
-              <CuentaCxCCxPSelector
-                tipo="CXC"
-                value={cuentaPorCobrarId}
-                empresaIdPreseleccionada={empresaIdCuenta || empresaId}
-                entidadIdPreseleccionada={clienteIdCuenta}
-                cuentaActual={cuentaSeleccionada}
-                onChange={(cuenta) => {
-                  setCuentaPorCobrarId(Number(cuenta.id));
-                  setSaldoPendiente(Number(cuenta.saldoPendiente || 0));
+          <div style={{ flex: 1 }}>
+            <CuentaCxCCxPSelector
+              tipo="CXC"
+              value={cuentaPorCobrarId}
+              empresaIdPreseleccionada={empresaIdCuenta || empresaId}
+              entidadIdPreseleccionada={clienteIdCuenta}
+              cuentaActual={cuentaSeleccionada}
+              onChange={(cuenta) => {
+                setCuentaPorCobrarId(Number(cuenta.id));
+                setSaldoPendiente(Number(cuenta.saldoPendiente || 0));
 
-                  // ⚠️ SOLO establecer monedaPagoId si NO estamos editando
-                  if (!isEdit || !defaultValues?.monedaPagoId) {
-                    setMonedaPagoId(Number(cuenta.monedaId));
-                  }
+                // ⚠️ SOLO establecer monedaPagoId si NO estamos editando
+                if (!isEdit || !defaultValues?.monedaPagoId) {
+                  setMonedaPagoId(Number(cuenta.monedaId));
+                }
 
-                  setMonedaDeudaId(Number(cuenta.monedaId));
-                  setEmpresaId(Number(cuenta.empresaId));
-                  setEstadoId(Number(cuenta.estadoId));
-                  if (cuenta.periodoContableId) {
-                    setPeriodoContableId(Number(cuenta.periodoContableId));
-                  }
-                }}
-                disabled={readOnly || hideCuentaField}
-                label="Cuenta por Cobrar"
-                placeholder="Seleccione una cuenta por cobrar pendiente..."
-              />
-            </div>
+                setMonedaDeudaId(Number(cuenta.monedaId));
+                setEmpresaId(Number(cuenta.empresaId));
+                setEstadoId(Number(cuenta.estadoId));
+                if (cuenta.periodoContableId) {
+                  setPeriodoContableId(Number(cuenta.periodoContableId));
+                }
+              }}
+              disabled={readOnly || hideCuentaField}
+              label="Cuenta por Cobrar"
+              placeholder="Seleccione una cuenta por cobrar pendiente..."
+            />
+          </div>
           <div
             style={{
               display: "flex",

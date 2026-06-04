@@ -1,5 +1,5 @@
 // src/components/cuentaPorPagar/CuentaPorPagarForm.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
@@ -25,9 +25,10 @@ import {
   createPagoCuentaPorPagar,
   updatePagoCuentaPorPagar,
 } from "../../api/cuentasPorCobrarPagar/pago";
+import { getCuentaPorPagarById } from "../../api/cuentasPorCobrarPagar/cuentaPorPagar";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 
-export default function CuentaPorPagarForm({
+const CuentaPorPagarForm = forwardRef(({
   isEdit,
   defaultValues,
   empresas,
@@ -46,7 +47,7 @@ export default function CuentaPorPagarForm({
   readOnly = false,
   permisos = {},
   toast,
-}) {
+}, ref) => {
   const usuario = useAuthStore((state) => state.usuario);
   const [activeTab, setActiveTab] = useState(0);
 
@@ -187,7 +188,7 @@ export default function CuentaPorPagarForm({
   // Recalcular montoPagado, saldoPendiente y totales de impuestos cuando cambien los pagos
   useEffect(() => {
     const totalPagado = pagos.reduce(
-      (sum, pago) => sum + Number(pago.montoPagado || 0),
+      (sum, pago) => sum + Number(pago.montoAplicadoDeuda || 0),
       0,
     );
     const totalDetraccion = pagos.reduce(
@@ -231,6 +232,43 @@ export default function CuentaPorPagarForm({
       setLoadingPagos(false);
     }
   };
+
+
+  /**
+   * Recarga la cuenta por pagar completa desde el backend
+   * Esto asegura que los valores mostrados estén sincronizados
+   */
+  const recargarCuentaDesdeBackend = async () => {
+    if (!isEdit || !defaultValues?.id) return;
+
+    try {
+      const cuentaActualizada = await getCuentaPorPagarById(defaultValues.id);
+
+      // Actualizar todos los campos con los valores del backend
+      setMontoTotal(cuentaActualizada.montoTotal || 0);
+      setMontoPagado(cuentaActualizada.montoPagado || 0);
+      setSaldoPendiente(cuentaActualizada.saldoPendiente || 0);
+      setMontoDetraccionTotal(cuentaActualizada.montoDetraccionTotal || 0);
+      setMontoRetencionTotal(cuentaActualizada.montoRetencionTotal || 0);
+      setMontoPercepcionTotal(cuentaActualizada.montoPercepcionTotal || 0);
+      setTieneDetraccion(cuentaActualizada.tieneDetraccion || false);
+      setTieneRetencion(cuentaActualizada.tieneRetencion || false);
+      setTienePercepcion(cuentaActualizada.tienePercepcion || false);
+      setEstadoId(cuentaActualizada.estadoId || 100);
+
+      console.log("✅ Cuenta recargada desde backend:", {
+        montoPagado: cuentaActualizada.montoPagado,
+        saldoPendiente: cuentaActualizada.saldoPendiente,
+      });
+    } catch (error) {
+      console.error("❌ Error al recargar cuenta desde backend:", error);
+    }
+  };
+
+  // Exponer funciones al componente padre mediante ref
+  useImperativeHandle(ref, () => ({
+    recargarCuentaDesdeBackend
+  }));
 
   const handleSubmit = () => {
     const data = {
@@ -300,7 +338,8 @@ export default function CuentaPorPagarForm({
             detail: "Pago eliminado correctamente",
             life: 3000,
           });
-          cargarPagos();
+          await cargarPagos();
+          await recargarCuentaDesdeBackend();
         } catch (error) {
           console.error("Error al eliminar pago:", error);
           toast?.current?.show({
@@ -338,7 +377,8 @@ export default function CuentaPorPagarForm({
         });
       }
       setShowPagoDialog(false);
-      cargarPagos();
+      await cargarPagos();
+      await recargarCuentaDesdeBackend();
     } catch (error) {
       console.error("Error al guardar pago:", error);
       toast?.current?.show({
@@ -574,7 +614,7 @@ export default function CuentaPorPagarForm({
 
 
 
-                        <div
+            <div
               style={{
                 display: "flex",
                 gap: 10,
@@ -1049,4 +1089,6 @@ export default function CuentaPorPagarForm({
       </Dialog>
     </div>
   );
-}
+});
+
+export default CuentaPorPagarForm;

@@ -42,6 +42,7 @@ export default function CuentaPorCobrar({ ruta }) {
   }
 
   const toast = useRef(null);
+  const formRef = useRef(null);
   const [cuentas, setCuentas] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -228,6 +229,11 @@ export default function CuentaPorCobrar({ ruta }) {
           detail: "Cuenta por cobrar actualizada correctamente",
           life: 3000,
         });
+
+        // 🆕 Recargar la cuenta actualizada para el formulario
+        if (formRef.current?.recargarCuentaDesdeBackend) {
+          await formRef.current.recargarCuentaDesdeBackend();
+        }
       } else {
         // ✅ USAR dataConAuditoria EN VEZ DE data
         await createCuentaPorCobrar(dataConAuditoria);
@@ -591,6 +597,7 @@ export default function CuentaPorCobrar({ ruta }) {
           readOnly={!!isEdit && !permisos.puedeEditar}
           permisos={permisos}
           toast={toast}
+          ref={formRef}
         />
       </Dialog>
 

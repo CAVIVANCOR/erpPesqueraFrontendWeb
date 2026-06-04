@@ -40,8 +40,8 @@ export default function CuentaPorPagar({ ruta }) {
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
-
   const toast = useRef(null);
+  const formRef = useRef(null);
   const [cuentas, setCuentas] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [proveedores, setProveedores] = useState([]);
@@ -222,6 +222,12 @@ export default function CuentaPorPagar({ ruta }) {
       if (esEdicion) {
         // ✅ USAR dataConAuditoria EN VEZ DE data
         await updateCuentaPorPagar(selectedCuenta.id, dataConAuditoria);
+
+        // 🆕 Recargar la cuenta actualizada para el formulario
+        if (formRef.current?.recargarCuentaDesdeBackend) {
+          await formRef.current.recargarCuentaDesdeBackend();
+        }
+
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -592,6 +598,7 @@ export default function CuentaPorPagar({ ruta }) {
           readOnly={!!isEdit && !permisos.puedeEditar}
           permisos={permisos}
           toast={toast}
+          ref={formRef}
         />
       </Dialog>
 
