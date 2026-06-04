@@ -381,110 +381,105 @@ export default function SaldoCuentaCorriente({ ruta }) {
     setGlobalFilter("");
   };
 
- const cuentaNombreBodyTemplate = (rowData) => {
-  const cuenta = rowData.cuentaCorriente;
-  if (!cuenta) return "-";
-console.log("cuenta",cuenta,"rowData",rowData)
-  const tipoCuenta = cuenta.tipoCuentaCorriente?.nombre || "Sin tipo";
-  const banco = cuenta.banco?.nombre || "Sin banco";
-  const moneda = cuenta.moneda?.codigoSunat || "";
-  const numero = cuenta.numeroCuenta || "";
+  const cuentaNombreBodyTemplate = (rowData) => {
+    const cuenta = rowData.cuentaCorriente;
+    if (!cuenta) return "-";
 
-  // Determinar color de moneda
-  const estiloMoneda =
-    moneda === "USD"
-      ? { bg: "#d1e7dd", color: "#0f5132", border: "#badbcc" }
-      : moneda === "PEN"
-        ? { bg: "#fff3cd", color: "#664d03", border: "#ffecb5" }
-        : { bg: "#e2e3e5", color: "#41464b", border: "#d3d6d8" };
+    const tipoCuenta = cuenta.tipoCuentaCorriente?.nombre || "Sin tipo";
+    const banco = cuenta.banco?.nombre || "Sin banco";
+    const moneda = cuenta.moneda?.codigoSunat || "";
+    const numero = cuenta.numeroCuenta || "";
 
-  return (
-    <div
-      style={{
-        display: "flex",
-        gap: "8px",
-        alignItems: "center",
-        padding: "4px 0",
-      }}
-    >
-      {/* TAG 1: TIPO DE CUENTA */}
-      <span
+    // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
+    const colorFondo = cuenta.moneda?.colorFondo || "#e2e3e5";
+
+    return (
+      <div
         style={{
-          backgroundColor: "#e0cffc",
-          color: "#59359a",
-          border: "1px solid #d4bbf7",
-          padding: "4px 8px",
-          borderRadius: "4px",
-          fontSize: "0.875rem",
-          fontWeight: "500",
-          display: "inline-flex",
+          display: "flex",
+          gap: "8px",
           alignItems: "center",
-          gap: "4px",
-          minWidth: "100px",
+          padding: "4px 0",
         }}
       >
-        <i className="pi pi-credit-card" style={{ fontSize: "0.75rem" }} />
-        {tipoCuenta}
-      </span>
+        {/* TAG 1: TIPO DE CUENTA */}
+        <span
+          style={{
+            backgroundColor: "#e0cffc",
+            color: "#59359a",
+            border: "1px solid #d4bbf7",
+            padding: "4px 8px",
+            borderRadius: "4px",
+            fontSize: "0.875rem",
+            fontWeight: "500",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+            minWidth: "100px",
+          }}
+        >
+          <i className="pi pi-credit-card" style={{ fontSize: "0.75rem" }} />
+          {tipoCuenta}
+        </span>
 
-      {/* TAG 2: BANCO */}
-      <span
-        style={{
-          backgroundColor: "#cfe2ff",
-          color: "#084298",
-          border: "1px solid #b6d4fe",
-          padding: "4px 8px",
-          borderRadius: "4px",
-          fontSize: "0.875rem",
-          fontWeight: "500",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "4px",
-          minWidth: "100px",
-        }}
-      >
-        <i className="pi pi-building" style={{ fontSize: "0.75rem" }} />
-        {banco}
-      </span>
+        {/* TAG 2: BANCO */}
+        <span
+          style={{
+            backgroundColor: "#cfe2ff",
+            color: "#084298",
+            border: "1px solid #b6d4fe",
+            padding: "4px 8px",
+            borderRadius: "4px",
+            fontSize: "0.875rem",
+            fontWeight: "500",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+            minWidth: "100px",
+          }}
+        >
+          <i className="pi pi-building" style={{ fontSize: "0.75rem" }} />
+          {banco}
+        </span>
 
-      {/* TAG 3: MONEDA */}
-      <span
-        style={{
-          backgroundColor: estiloMoneda.bg,
-          color: estiloMoneda.color,
-          border: `1px solid ${estiloMoneda.border}`,
-          padding: "4px 8px",
-          borderRadius: "4px",
-          fontSize: "0.875rem",
-          fontWeight: "600",
-          minWidth: "60px",
-          textAlign: "center",
-        }}
-      >
-        {moneda}
-      </span>
+        {/* TAG 3: MONEDA */}
+        <span
+          style={{
+            backgroundColor: colorFondo,
+            color: "#000",
+            border: `1px solid ${colorFondo}`,
+            padding: "4px 8px",
+            borderRadius: "4px",
+            fontSize: "0.875rem",
+            fontWeight: "600",
+            minWidth: "60px",
+            textAlign: "center",
+          }}
+        >
+          {moneda}
+        </span>
 
-      {/* TAG 4: NÚMERO */}
-      <span
-        style={{
-          backgroundColor: "#e2e3e5",
-          color: "#41464b",
-          border: "1px solid #d3d6d8",
-          padding: "4px 8px",
-          borderRadius: "4px",
-          fontSize: "0.875rem",
-          fontWeight: "500",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "4px",
-        }}
-      >
-        <i className="pi pi-hashtag" style={{ fontSize: "0.75rem" }} />
-        {numero}
-      </span>
-    </div>
-  );
-};
+        {/* TAG 4: NÚMERO */}
+        <span
+          style={{
+            backgroundColor: "#e2e3e5",
+            color: "#41464b",
+            border: "1px solid #d3d6d8",
+            padding: "4px 8px",
+            borderRadius: "4px",
+            fontSize: "0.875rem",
+            fontWeight: "500",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+          }}
+        >
+          <i className="pi pi-hashtag" style={{ fontSize: "0.75rem" }} />
+          {numero}
+        </span>
+      </div>
+    );
+  };
 
   const empresaNombreBodyTemplate = (rowData) => {
     const empresa = rowData.empresa;
@@ -494,8 +489,23 @@ console.log("cuenta",cuenta,"rowData",rowData)
   const montoBodyTemplate = (rowData, field, color) => {
     const moneda = rowData.cuentaCorriente?.moneda;
     const simbolo = moneda?.simbolo || "";
+    // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
+    const colorFondo = moneda?.colorFondo || "#ffffff";
+    
     return (
-      <span style={{ color: color || "inherit" }}>
+      <span 
+        style={{ 
+          color: color || "inherit",
+          backgroundColor: colorFondo,
+          padding: "6px 12px",
+          borderRadius: "4px",
+          fontWeight: "bold",
+          fontSize: "14px",
+          display: "inline-block",
+          minWidth: "100px",
+          textAlign: "right",
+        }}
+      >
         {simbolo} {Number(rowData[field]).toFixed(2)}
       </span>
     );
@@ -506,8 +516,23 @@ console.log("cuenta",cuenta,"rowData",rowData)
     const moneda = rowData.cuentaCorriente?.moneda;
     const simbolo = moneda?.simbolo || "";
     const valor = Number(rowData.diferencia);
+    // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
+    const colorFondo = moneda?.colorFondo || "#ffffff";
+    
     return (
-      <span style={{ color: Math.abs(valor) > 0.01 ? "red" : "green" }}>
+      <span 
+        style={{ 
+          color: Math.abs(valor) > 0.01 ? "red" : "green",
+          backgroundColor: colorFondo,
+          padding: "6px 12px",
+          borderRadius: "4px",
+          fontWeight: "bold",
+          fontSize: "14px",
+          display: "inline-block",
+          minWidth: "100px",
+          textAlign: "right",
+        }}
+      >
         {simbolo} {valor.toFixed(2)}
       </span>
     );

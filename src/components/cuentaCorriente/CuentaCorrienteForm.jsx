@@ -90,8 +90,7 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
       // Filtrar cuentas de efectivo: 101 (Caja) y 104 (Cuentas Corrientes)
       const cuentasEfectivo = cuentas.filter(
         (c) =>
-          c.codigoCuenta.startsWith("101") || 
-          c.codigoCuenta.startsWith("104"),
+          c.codigoCuenta.startsWith("10"),
       );
       setCuentasContables(cuentasEfectivo);
     } catch (error) {
@@ -294,6 +293,12 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
     value: Number(c.id),
   }));
 
+  // ✅ OPTIMIZADO: Obtener color de fondo de la moneda seleccionada
+  const getMonedaColorFondo = () => {
+    if (!monedaId) return "#ffffff";
+    const monedaSeleccionada = monedas.find((m) => Number(m.id) === Number(monedaId));
+    return monedaSeleccionada?.colorFondo || "#ffffff";
+  };
   return (
     <form onSubmit={handleSubmit}>
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -321,7 +326,6 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
                 value={empresaId}
                 options={empresasOptions}
                 onChange={(e) => setEmpresaId(e.value)}
-                placeholder="Seleccionar empresa"
                 filter
                 disabled={isEdit}
                 style={{
@@ -339,7 +343,6 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
                 value={bancoId}
                 options={bancosOptions}
                 onChange={(e) => setBancoId(e.value)}
-                placeholder="Seleccionar banco"
                 filter
                 style={{
                   width: "100%",
@@ -355,7 +358,6 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
                 rows={1}
-                placeholder="Ingrese una descripción adicional (opcional)"
                 style={{
                   width: "100%",
                   fontWeight: "bold",
@@ -379,7 +381,6 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
                 id="numeroCuenta"
                 value={numeroCuenta}
                 onChange={(e) => setNumeroCuenta(e.target.value)}
-                placeholder="Ej: 0011-0200-0100012345"
                 style={{
                   width: "100%",
                   fontWeight: "bold",
@@ -394,7 +395,6 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
                 id="numeroCuentaCCI"
                 value={numeroCuentaCCI}
                 onChange={(e) => setNumeroCuentaCCI(e.target.value)}
-                placeholder="Ej: 00211020010001234567"
                 maxLength={20}
                 style={{
                   width: "100%",
@@ -414,7 +414,6 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
                 id="codigoSwift"
                 value={codigoSwift}
                 onChange={(e) => setCodigoSwift(e.target.value)}
-                placeholder="Ej: BCPLPEPL"
                 maxLength={11}
                 style={{
                   width: "100%",
@@ -443,7 +442,6 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
               value={tipoCuentaCorrienteId}
               options={tiposCuentaOptions}
               onChange={(e) => setTipoCuentaCorrienteId(e.value)}
-              placeholder="Seleccionar tipo"
               style={{
                 width: "100%",
                 fontWeight: "bold",
@@ -459,7 +457,6 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
               value={monedaId}
               options={monedasOptions}
               onChange={(e) => setMonedaId(e.value)}
-              placeholder="Seleccionar moneda"
               disabled={isEdit}
               style={{
                 width: "100%",
@@ -486,7 +483,11 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
               placeholder="0.00"
               style={{
                 width: "100%",
+              }}
+              inputStyle={{
                 fontWeight: "bold",
+                backgroundColor: getMonedaColorFondo(),
+                fontSize: "16px",
               }}
             />
             <small style={{ color: "#6b7280" }}>
@@ -549,7 +550,6 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
               onChange={(e) => setFechaApertura(e.value)}
               dateFormat="dd/mm/yy"
               showIcon
-              placeholder="Seleccione fecha"
               style={{ width: "100%" }}
             />
           </div>
@@ -562,7 +562,6 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
               onChange={(e) => setFechaCierre(e.value)}
               dateFormat="dd/mm/yy"
               showIcon
-              placeholder="Seleccione fecha"
               style={{ width: "100%" }}
             />
             <small style={{ color: "#6b7280" }}>

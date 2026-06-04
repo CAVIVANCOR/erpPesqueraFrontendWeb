@@ -27,6 +27,7 @@ export default function SaldoCuentaCorrienteForm({
   const toast = useRef(null);
   const [guardando, setGuardando] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [monedaSeleccionada, setMonedaSeleccionada] = useState(null); // ← NUEVO ESTADO
 
   const [formData, setFormData] = useState({
     cuentaCorrienteId: defaultValues?.cuentaCorrienteId || null,
@@ -68,12 +69,14 @@ export default function SaldoCuentaCorrienteForm({
       fechaConciliacion: defaultValues?.fechaConciliacion
         ? new Date(defaultValues.fechaConciliacion)
         : null,
-      centroCostoId: defaultValues?.centroCostoId
-        ? Number(defaultValues.centroCostoId)
-        : null,
+      centroCostoId: defaultValues?.centroCostoId || null,
     });
-  }, [defaultValues]);
 
+    // ✅ CARGAR MONEDA INICIAL EN MODO EDICIÓN
+    if (defaultValues?.cuentaCorriente?.moneda) {
+      setMonedaSeleccionada(defaultValues.cuentaCorriente.moneda);
+    }
+  }, [defaultValues]);
   // Calcular saldo actual automáticamente
   useEffect(() => {
     const calculado =
@@ -160,6 +163,12 @@ export default function SaldoCuentaCorrienteForm({
     value: Number(cc.id),
   }));
 
+
+  // ✅ OPTIMIZADO: Obtener color de fondo de la moneda seleccionada
+  const getMonedaColorFondo = () => {
+    return monedaSeleccionada?.colorFondo || "#ffffff";
+  };
+
   return (
     <>
       <Toast ref={toast} />
@@ -178,15 +187,16 @@ export default function SaldoCuentaCorrienteForm({
                   flexDirection: window.innerWidth < 768 ? "column" : "row",
                 }}
               >
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 3 }}>
                   <CuentaCorrienteSelector
                     empresaIdPreseleccionada={formData.empresaId}
                     value={formData.cuentaCorrienteId}
-                    onChange={({ cuentaCorrienteId, bancoId }) => {
+                    onChange={({ cuentaCorrienteId, bancoId, moneda }) => {
                       setFormData((prev) => ({
                         ...prev,
                         cuentaCorrienteId,
                       }));
+                      setMonedaSeleccionada(moneda); // ← GUARDAR MONEDA
                     }}
                     label="Cuenta Corriente"
                     disabled={readOnly || loading || guardando}
@@ -232,6 +242,11 @@ export default function SaldoCuentaCorrienteForm({
                     minFractionDigits={2}
                     maxFractionDigits={2}
                     disabled={readOnly || loading || guardando}
+                    inputStyle={{
+                      backgroundColor: getMonedaColorFondo(),
+                      fontWeight: "bold",
+                      fontSize: "16px",
+                    }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -247,6 +262,11 @@ export default function SaldoCuentaCorrienteForm({
                     maxFractionDigits={2}
                     min={0}
                     disabled={readOnly || loading || guardando}
+                    inputStyle={{
+                      backgroundColor: getMonedaColorFondo(),
+                      fontWeight: "bold",
+                      fontSize: "16px",
+                    }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -262,6 +282,11 @@ export default function SaldoCuentaCorrienteForm({
                     maxFractionDigits={2}
                     min={0}
                     disabled={readOnly || loading || guardando}
+                    inputStyle={{
+                      backgroundColor: getMonedaColorFondo(),
+                      fontWeight: "bold",
+                      fontSize: "16px",
+                    }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -273,7 +298,11 @@ export default function SaldoCuentaCorrienteForm({
                     minFractionDigits={2}
                     maxFractionDigits={2}
                     disabled={true}
-                    style={{ backgroundColor: "#e9ecef" }}
+                    inputStyle={{
+                      backgroundColor: getMonedaColorFondo(),
+                      fontWeight: "bold",
+                      fontSize: "16px",
+                    }}
                   />
                 </div>
               </div>
@@ -334,6 +363,11 @@ export default function SaldoCuentaCorrienteForm({
                       maxFractionDigits={2}
                       disabled={readOnly || loading || guardando}
                       placeholder="Ingrese saldo contable"
+                      inputStyle={{
+                        backgroundColor: getMonedaColorFondo(),
+                        fontWeight: "bold",
+                        fontSize: "16px",
+                      }}
                     />
                   </div>
                   <div style={{ flex: 1 }}>
@@ -345,11 +379,13 @@ export default function SaldoCuentaCorrienteForm({
                       minFractionDigits={2}
                       maxFractionDigits={2}
                       disabled={true}
-                      style={{
-                        backgroundColor: "#e9ecef",
+                      inputStyle={{
+                        backgroundColor: getMonedaColorFondo(),
+                        fontWeight: "bold",
+                        fontSize: "16px",
                         color:
                           formData.diferencia &&
-                          Math.abs(formData.diferencia) > 0.01
+                            Math.abs(formData.diferencia) > 0.01
                             ? "red"
                             : "green",
                       }}

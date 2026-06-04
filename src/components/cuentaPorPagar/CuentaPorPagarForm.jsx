@@ -151,38 +151,17 @@ const CuentaPorPagarForm = forwardRef(({
     }
   }, [isEdit, defaultValues?.id]);
 
-  // Helper para obtener color de fondo según moneda
+  // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
   const getColorPorMoneda = () => {
-    if (!monedaId) return "#fff3cd";
+    if (!monedaId) return "#ffffff";
     const moneda = monedas?.find((m) => Number(m.id) === Number(monedaId));
-    const codigoMoneda = moneda?.codigoSunat || "PEN";
-
-    switch (codigoMoneda) {
-      case "USD":
-        return "#d4edda";
-      case "PEN":
-        return "#fff3cd";
-      case "EUR":
-        return "#e3f2fd";
-      default:
-        return "#f8f9fa";
-    }
+    return moneda?.colorFondo || "#ffffff";
   };
 
+  // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
   const getColorPorMonedaPago = (monedaPagoId) => {
     const moneda = monedas?.find((m) => Number(m.id) === Number(monedaPagoId));
-    const codigoMoneda = moneda?.codigoSunat || "PEN";
-
-    switch (codigoMoneda) {
-      case "USD":
-        return "#d4edda";
-      case "PEN":
-        return "#fff3cd";
-      case "EUR":
-        return "#e3f2fd";
-      default:
-        return "#f8f9fa";
-    }
+    return moneda?.colorFondo || "#ffffff";
   };
 
   // Recalcular montoPagado, saldoPendiente y totales de impuestos cuando cambien los pagos

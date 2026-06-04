@@ -8,6 +8,7 @@ import { Dialog } from "primereact/dialog";
 import { confirmDialog } from "primereact/confirmdialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dropdown } from "primereact/dropdown";
+import { InputText } from "primereact/inputtext";
 import { Tag } from "primereact/tag";
 import CuentaCorrienteForm from "../components/cuentaCorriente/CuentaCorrienteForm";
 import MovimientosCuentaDialog from "../components/cuentaCorriente/MovimientosCuentaDialog";
@@ -54,7 +55,7 @@ const CuentaCorriente = ({ ruta }) => {
   const [empresaFiltro, setEmpresaFiltro] = useState(null);
   const [bancoFiltro, setBancoFiltro] = useState(null);
   const [estadoFiltro, setEstadoFiltro] = useState("TODOS");
-
+  const [globalFilterValue, setGlobalFilterValue] = useState("");
   useEffect(() => {
     cargarDatosIniciales();
   }, []);
@@ -406,11 +407,11 @@ const CuentaCorriente = ({ ruta }) => {
             {rowData.descripcion}
           </div>
         )}
-        <div style={{ fontWeight: "bold", fontSize: "14px" }}>
+        <div style={{ fontWeight: "bold", fontSize: "16px", color: "#111827" }}>
           {rowData.numeroCuenta}
         </div>
         {rowData.numeroCuentaCCI && (
-          <div style={{ fontSize: "11px", color: "#6b7280" }}>
+          <div style={{ fontSize: "12px", color: "#6b7280", fontWeight: "500" }}>
             CCI: {rowData.numeroCuentaCCI}
           </div>
         )}
@@ -419,11 +420,18 @@ const CuentaCorriente = ({ ruta }) => {
   };
 
   const monedaTemplate = (rowData) => {
+    // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
+    const colorFondo = rowData.moneda?.colorFondo || "#e2e3e5";
+
     return (
       <Tag
         value={rowData.moneda?.simbolo || "-"}
-        severity={rowData.moneda?.simbolo === "USD" ? "info" : "success"}
-        style={{ fontWeight: "bold" }}
+        style={{
+          backgroundColor: colorFondo,
+          color: "#000",
+          fontWeight: "bold",
+          border: `1px solid ${colorFondo}`,
+        }}
       />
     );
   };
@@ -431,6 +439,9 @@ const CuentaCorriente = ({ ruta }) => {
   const saldoActualTemplate = (rowData) => {
     const saldo = Number(rowData.saldoActual || 0);
     const saldoMin = Number(rowData.saldoMinimo || 0);
+
+    // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
+    const colorFondo = rowData.moneda?.colorFondo || "#e2e3e5";
 
     let color = "#22c55e";
     let icon = "pi-check-circle";
@@ -452,11 +463,14 @@ const CuentaCorriente = ({ ruta }) => {
           display: "flex",
           alignItems: "center",
           gap: "8px",
-          fontWeight: "bold",
+          backgroundColor: colorFondo,
+          padding: "8px 12px",
+          borderRadius: "6px",
+          border: `2px solid ${colorFondo}`,
         }}
       >
-        <i className={`pi ${icon}`} style={{ color, fontSize: "1rem" }} />
-        <span style={{ color }}>
+        <i className={`pi ${icon}`} style={{ color, fontSize: "1.1rem" }} />
+        <span style={{ color, fontWeight: "bold", fontSize: "18px" }}>
           {rowData.moneda?.simbolo}{" "}
           {saldo.toLocaleString("es-PE", {
             minimumFractionDigits: 2,
@@ -466,7 +480,6 @@ const CuentaCorriente = ({ ruta }) => {
       </div>
     );
   };
-
   const saldoMinimoTemplate = (rowData) => {
     const saldoMin = Number(rowData.saldoMinimo || 0);
     return (
@@ -694,6 +707,20 @@ const CuentaCorriente = ({ ruta }) => {
             />
           </div>
 
+          <div style={{ flex: 1.2 }}>
+            <label htmlFor="globalFilter">Buscar</label>
+            <span className="p-input-icon-left" style={{ width: "100%" }}>
+              <i className="pi pi-search" />
+              <InputText
+                id="globalFilter"
+                value={globalFilterValue}
+                onChange={(e) => setGlobalFilterValue(e.target.value)}
+                placeholder="Buscar por cuenta, descripción o CCI..."
+                style={{ width: "100%", fontWeight: "bold" }}
+              />
+            </span>
+          </div>
+
           <div style={{ flex: 0.5 }}>
             {/* ⭐ NUEVO BOTÓN REPORTES */}
             <Button
@@ -782,6 +809,14 @@ const CuentaCorriente = ({ ruta }) => {
           rows={10}
           rowsPerPageOptions={[5, 10, 25, 50]}
           emptyMessage="No hay cuentas corrientes registradas"
+          globalFilter={globalFilterValue}
+          globalFilterFields={[
+            "numeroCuenta",
+            "descripcion",
+            "numeroCuentaCCI",
+            "banco.nombre",
+            "empresa.razonSocial",
+          ]}
           style={{
             fontSize: getResponsiveFontSize(),
             cursor:
@@ -811,24 +846,24 @@ const CuentaCorriente = ({ ruta }) => {
             style={{ minWidth: "200px" }}
           />
           <Column
+            field="tipoCuentaCorriente.nombre"
+            header="Tipo Cuenta"
+            sortable
+            style={{ minWidth: "100px" }}
+          />
+          <Column
             field="banco.nombre"
             header="Banco"
             body={bancoTemplate}
             sortable
-            style={{ minWidth: "150px" }}
+            style={{ minWidth: "100px" }}
           />
           <Column
             field="numeroCuenta"
             header="Número Cuenta"
             body={numeroCuentaTemplate}
             sortable
-            style={{ minWidth: "180px" }}
-          />
-          <Column
-            field="tipoCuentaCorriente.nombre"
-            header="Tipo Cuenta"
-            sortable
-            style={{ minWidth: "150px" }}
+            style={{ minWidth: "100px" }}
           />
           <Column
             field="moneda.simbolo"
@@ -841,13 +876,6 @@ const CuentaCorriente = ({ ruta }) => {
             field="saldoActual"
             header="Saldo Actual"
             body={saldoActualTemplate}
-            sortable
-            style={{ minWidth: "150px" }}
-          />
-          <Column
-            field="saldoMinimo"
-            header="Saldo Mínimo"
-            body={saldoMinimoTemplate}
             sortable
             style={{ minWidth: "150px" }}
           />

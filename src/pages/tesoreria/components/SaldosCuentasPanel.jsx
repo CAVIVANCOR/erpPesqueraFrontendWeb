@@ -75,27 +75,13 @@ const SaldosCuentasPanel = ({
     const codigoMoneda = rowData.moneda?.codigoSunat;
     const simbolo = rowData.moneda?.simbolo || "";
 
-    // Determinar estilo según moneda
-    let estilo = {};
-    if (codigoMoneda === "USD") {
-      estilo = {
-        backgroundColor: "#d4edda",
-        color: "#155724",
-        border: "1px solid #c3e6cb",
-      };
-    } else if (codigoMoneda === "PEN") {
-      estilo = {
-        backgroundColor: "#fff3cd",
-        color: "#856404",
-        border: "1px solid #ffeaa7",
-      };
-    } else {
-      estilo = {
-        backgroundColor: "#f8f9fa",
-        color: "#495057",
-        border: "1px solid #dee2e6",
-      };
-    }
+    // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
+    const colorFondo = cuenta.moneda?.colorFondo || "#e2e3e5";
+    const estilo = {
+      backgroundColor: colorFondo,
+      color: "#000",
+      border: `1px solid ${colorFondo}`,
+    };
 
     return (
       <span

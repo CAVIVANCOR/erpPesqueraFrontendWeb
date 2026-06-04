@@ -151,41 +151,18 @@ const CuentaPorCobrarForm = forwardRef(({
     }
   }, [isEdit, defaultValues?.id]);
 
-  // Helper para obtener color de fondo según moneda
+  // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
   const getColorPorMoneda = () => {
-    if (!monedaId) return "#fff3cd"; // Amarillo por defecto (PEN)
+    if (!monedaId) return "#ffffff";
     const moneda = monedas?.find((m) => Number(m.id) === Number(monedaId));
-    const codigoMoneda = moneda?.codigoSunat || "PEN";
-
-    switch (codigoMoneda) {
-      case "USD":
-        return "#d4edda"; // Verde claro para dólares
-      case "PEN":
-        return "#fff3cd"; // Amarillo claro para soles
-      case "EUR":
-        return "#e3f2fd"; // Azul claro para euros
-      default:
-        return "#f8f9fa"; // Gris claro para otras monedas
-    }
+    return moneda?.colorFondo || "#ffffff";
   };
 
-  // Helper para obtener color de fondo según moneda
+  // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
   const getColorPorMonedaPago = (monedaPagoId) => {
     const moneda = monedas?.find((m) => Number(m.id) === Number(monedaPagoId));
-    const codigoMoneda = moneda?.codigoSunat || "PEN";
-
-    switch (codigoMoneda) {
-      case "USD":
-        return "#d4edda"; // Verde claro para dólares
-      case "PEN":
-        return "#fff3cd"; // Amarillo claro para soles
-      case "EUR":
-        return "#e3f2fd"; // Azul claro para euros
-      default:
-        return "#f8f9fa"; // Gris claro para otras monedas
-    }
+    return moneda?.colorFondo || "#ffffff";
   };
-
   // Recalcular montoPagado, saldoPendiente y totales de impuestos cuando cambien los pagos
   useEffect(() => {
     console.log("pagos", pagos)
@@ -267,7 +244,7 @@ const CuentaPorCobrarForm = forwardRef(({
     }
   };
 
-  
+
   // Exponer funciones al componente padre mediante ref
   useImperativeHandle(ref, () => ({
     recargarCuentaDesdeBackend
@@ -641,10 +618,10 @@ const CuentaPorCobrarForm = forwardRef(({
                 />
               </div>
               <div style={{ flex: 0.5 }}>
-                <label htmlFor="origen">Origen PreFactura</label>
+                <label htmlFor="origen">Referencia</label>
                 <InputText
                   id="origen"
-                  value={preFacturaId ? `PF-${preFacturaId}` : "Sin PreFactura"}
+                  value={defaultValues?.preFactura?.nroLiquidacionFacturacion}
                   disabled
                 />
               </div>

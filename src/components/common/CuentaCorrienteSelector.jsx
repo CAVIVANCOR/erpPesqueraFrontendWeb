@@ -57,6 +57,7 @@ const COLOR_TODAS = { bg: '#2196F3', text: '#FFFFFF', border: '#2196F3' }; // Az
 
 // Colores específicos para Banco, Moneda y Número de Cuenta
 const COLORES_TEXTO = {
+  tipoCuenta: '#50b1b8',   // 🔵 Azul
   banco: '#1976D2',        // 🔵 Azul
   moneda: '#2E7D32',       // 🟢 Verde
   descripcion: '#F57C00',  // 🟡 Naranja (NUEVO)
@@ -271,7 +272,8 @@ const CuentaCorrienteSelector = ({
     if (onChange) {
       onChange({
         cuentaCorrienteId: Number(cuenta.id),
-        bancoId: Number(cuenta.bancoId) // ← BANCO AUTOMÁTICO
+        bancoId: Number(cuenta.bancoId), // ← BANCO AUTOMÁTICO
+        moneda: cuenta.moneda // ← MONEDA AUTOMÁTICA (incluye colorFondo)
       });
     }
 
@@ -339,7 +341,7 @@ const CuentaCorrienteSelector = ({
   const descripcionTemplate = (rowData) => {
     return (
       <span style={{ color: COLORES_TEXTO.descripcion, fontWeight: "500", fontSize: "0.85rem" }}>
-        {rowData.descripcion || "Sin descripción"}
+        {rowData.descripcion || ""}
       </span>
     );
   };
@@ -415,15 +417,21 @@ const CuentaCorrienteSelector = ({
         style={{
           justifyContent: "flex-start",
           textAlign: "left",
+          backgroundColor: cuentaSeleccionada?.moneda?.colorFondo || "#ffffff",
+          fontWeight: "bold",
         }}
       >
         {loading ? (
           <span style={{ color: "#999" }}>Cargando...</span>
         ) : cuentaSeleccionada ? (
           <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", flexWrap: "wrap" }}>
+            {/* 🔵 TIPO CUENTA */}
+            <span style={{ color: COLORES_TEXTO.tipoCuenta, fontWeight: "600" }}>
+              {cuentaSeleccionada.tipoCuentaCorriente?.nombre || "S/T"}
+            </span>
             {/* 🔵 BANCO */}
             <span style={{ color: COLORES_TEXTO.banco, fontWeight: "600" }}>
-              {cuentaSeleccionada.banco?.nombreCorto || cuentaSeleccionada.banco?.nombre || "Sin banco"}
+              {cuentaSeleccionada.banco?.nombre || "S/B"}
             </span>
             <span style={{ color: COLORES_TEXTO.separador }}> - </span>
 
@@ -570,6 +578,14 @@ const CuentaCorrienteSelector = ({
               loading={loading}
               style={{ fontSize: getResponsiveFontSize() }}
             >
+              {/* 🆕 NUEVA COLUMNA: TIPO CUENTA */}
+              <Column
+                field="tipoCuentaCorriente.nombre"
+                header="Tipo Cuenta"
+                body={tipoCuentaTemplate}
+                sortable
+                style={{ minWidth: "150px" }}
+              />
               <Column
                 field="banco.nombre"
                 header="Banco"
@@ -584,14 +600,7 @@ const CuentaCorrienteSelector = ({
                 sortable
                 style={{ minWidth: "80px" }}
               />
-              {/* 🆕 NUEVA COLUMNA: TIPO CUENTA */}
-              <Column
-                field="tipoCuentaCorriente.nombre"
-                header="Tipo Cuenta"
-                body={tipoCuentaTemplate}
-                sortable
-                style={{ minWidth: "150px" }}
-              />
+
               {/* 🆕 NUEVA COLUMNA: DESCRIPCIÓN */}
               <Column
                 field="descripcion"

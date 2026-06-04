@@ -130,9 +130,8 @@ const Moneda = ({ ruta }) => {
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: `Moneda "${
-          confirmState.row.nombreLargo || confirmState.row.codigoSunat
-        }" eliminada correctamente`,
+        detail: `Moneda "${confirmState.row.nombreLargo || confirmState.row.codigoSunat
+          }" eliminada correctamente`,
       });
 
       await cargarMonedas();
@@ -177,6 +176,31 @@ const Moneda = ({ ruta }) => {
   };
 
   /**
+   * Template para mostrar el color de fondo
+   */
+  const colorFondoTemplate = (rowData) => {
+    if (!rowData.colorFondo) return "-";
+
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <span
+          style={{
+            backgroundColor: rowData.colorFondo,
+            width: "30px",
+            height: "30px",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+            display: "inline-block",
+          }}
+          title={rowData.colorFondo}
+        />
+        <span style={{ fontFamily: "monospace", fontSize: "0.85rem" }}>
+          {rowData.colorFondo}
+        </span>
+      </div>
+    );
+  };
+  /**
    * Template para acciones
    */
 
@@ -220,9 +244,8 @@ const Moneda = ({ ruta }) => {
             <span style={{ color: "#b71c1c" }}>eliminar</span> la moneda{" "}
             <b>
               {confirmState.row
-                ? `"${
-                    confirmState.row.nombreLargo || confirmState.row.codigoSunat
-                  }"`
+                ? `"${confirmState.row.nombreLargo || confirmState.row.codigoSunat
+                }"`
                 : ""}
             </b>
             ?
@@ -263,6 +286,11 @@ const Moneda = ({ ruta }) => {
           fontSize: getResponsiveFontSize(),
           cursor:
             permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+        }}
+        rowStyle={(rowData) => {
+          return rowData.colorFondo
+            ? { backgroundColor: rowData.colorFondo }
+            : {};
         }}
         globalFilter={globalFilter}
         globalFilterFields={["codigoSunat", "nombreLargo", "simbolo"]}
@@ -322,6 +350,13 @@ const Moneda = ({ ruta }) => {
           header="Símbolo"
           sortable
           style={{ minWidth: "100px" }}
+        />
+        <Column
+          field="colorFondo"
+          header="Color Fondo"
+          body={colorFondoTemplate}
+          sortable
+          style={{ minWidth: "180px" }}
         />
         <Column
           field="activo"

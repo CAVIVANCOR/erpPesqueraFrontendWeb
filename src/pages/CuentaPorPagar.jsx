@@ -328,7 +328,28 @@ export default function CuentaPorPagar({ ruta }) {
     const moneda = monedas.find(
       (m) => Number(m.id) === Number(rowData.monedaId),
     );
-    return moneda?.codigoSunat || "-";
+
+    // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
+    const colorFondo = moneda?.colorFondo || "#e2e3e5";
+
+    return (
+      <span
+        style={{
+          backgroundColor: colorFondo,
+          color: "#000",
+          fontSize: "0.9rem",
+          fontWeight: "bold",
+          padding: "4px 8px",
+          borderRadius: "4px",
+          border: `1px solid ${colorFondo}`,
+          display: "inline-block",
+          minWidth: "50px",
+          textAlign: "center",
+        }}
+      >
+        {moneda?.codigoSunat || "-"}
+      </span>
+    );
   };
 
   const estadoBodyTemplate = (rowData) => {
@@ -347,28 +368,27 @@ export default function CuentaPorPagar({ ruta }) {
     if (!rowData[field]) return "-";
     return new Date(rowData[field]).toLocaleDateString("es-PE");
   };
-
+  const tipoDocumentoBodyTemplate = (rowData) => {
+    return rowData.ordenCompra?.tipoDocumento?.codigo || "-";
+  };
   const montoBodyTemplate = (rowData, field) => {
     const monto = rowData[field] || 0;
     const moneda = monedas.find(
       (m) => Number(m.id) === Number(rowData.monedaId),
     );
 
-    // Determinar color de fondo según moneda
-    let backgroundColor = "transparent";
-    if (moneda?.codigoSunat === "PEN") {
-      backgroundColor = "#fffbea"; // Amarillo claro para Soles
-    } else if (moneda?.codigoSunat === "USD") {
-      backgroundColor = "#e8f5e9"; // Verde claro para Dólares
-    }
+    // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
+    const colorFondo = moneda?.colorFondo || "#ffffff";
 
     return (
       <div
         style={{
-          backgroundColor,
+          backgroundColor: colorFondo,
           padding: "0.5rem",
           borderRadius: "4px",
           textAlign: "right",
+          fontWeight: "bold",
+          fontSize: "14px",
         }}
       >
         {new Intl.NumberFormat("es-PE", {
@@ -508,8 +528,14 @@ export default function CuentaPorPagar({ ruta }) {
           style={{ minWidth: "200px" }}
         />
         <Column
+          header="Tipo Dcmto"
+          body={tipoDocumentoBodyTemplate}
+          sortable
+          style={{ minWidth: "100px" }}
+        />
+        <Column
           field="numeroOrdenCompra"
-          header="Nro. Orden Compra"
+          header="N° Dcmto Origen"
           sortable
           style={{ minWidth: "150px" }}
         />

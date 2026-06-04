@@ -39,6 +39,7 @@ const MonedaForm = ({ moneda, onSave, onCancel, toast, readOnly = false }) => {
       codigoSunat: "",
       nombreLargo: "",
       simbolo: "",
+      colorFondo: "",
       activo: true,
     },
     mode: "onChange",
@@ -50,12 +51,14 @@ const MonedaForm = ({ moneda, onSave, onCancel, toast, readOnly = false }) => {
       setValue("codigoSunat", moneda.codigoSunat || "");
       setValue("nombreLargo", moneda.nombreLargo || "");
       setValue("simbolo", moneda.simbolo || "");
+      setValue("colorFondo", moneda.colorFondo || "");
       setValue("activo", moneda.activo !== undefined ? moneda.activo : true);
     } else {
       reset({
         codigoSunat: "",
         nombreLargo: "",
         simbolo: "",
+        colorFondo: "",
         activo: true,
       });
     }
@@ -71,6 +74,7 @@ const MonedaForm = ({ moneda, onSave, onCancel, toast, readOnly = false }) => {
         simbolo: data.simbolo.trim().toUpperCase(),
         codigoSunat: data.codigoSunat.trim(),
         nombreLargo: data.nombreLargo.trim(),
+        colorFondo: data.colorFondo?.trim() || null,
         activo: Boolean(data.activo),
       };
 
@@ -242,6 +246,63 @@ const MonedaForm = ({ moneda, onSave, onCancel, toast, readOnly = false }) => {
           )}
         />
         {getFormErrorMessage("simbolo")}
+      </div>
+
+      <div className="field mt-4">
+        <label
+          htmlFor="colorFondo"
+          className={classNames("font-medium", { "p-error": errors.colorFondo })}
+        >
+          Color de Fondo
+        </label>
+        <Controller
+          name="colorFondo"
+          control={control}
+          rules={{
+            maxLength: {
+              value: 7,
+              message: "Máximo 7 caracteres (formato #RRGGBB)",
+            },
+            pattern: {
+              value: /^#[0-9A-Fa-f]{6}$/,
+              message: "Formato inválido. Use #RRGGBB (Ej: #FF5733)",
+            },
+          }}
+          render={({ field, fieldState }) => (
+            <div className="p-inputgroup">
+              <span className="p-inputgroup-addon">
+                <i className="pi pi-palette" />
+              </span>
+              <InputText
+                id={field.name}
+                value={field.value || ""}
+                onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                className={classNames("w-full", {
+                  "p-invalid": fieldState.error,
+                })}
+                disabled={readOnly || loading}
+                maxLength={7}
+                placeholder="Ej: #FF5733"
+                style={{ fontWeight: "bold" }}
+              />
+              {field.value && (
+                <span
+                  className="p-inputgroup-addon"
+                  style={{
+                    backgroundColor: field.value,
+                    width: "40px",
+                    border: "1px solid #ccc",
+                  }}
+                  title={`Vista previa: ${field.value}`}
+                />
+              )}
+            </div>
+          )}
+        />
+        {getFormErrorMessage("colorFondo")}
+        <small className="p-text-secondary">
+          Formato hexadecimal: #RRGGBB (Ej: #FF5733 para naranja)
+        </small>
       </div>
 
       <div className="p-col-12 p-field">

@@ -522,9 +522,7 @@ const MovimientoActivoFijoForm = ({
 
   const getMonedaBackgroundColor = () => {
     if (!monedaSeleccionada) return "transparent";
-    const esUSD = monedaSeleccionada.codigoSunat === "USD";
-    const esPEN = monedaSeleccionada.codigoSunat === "PEN";
-    return esUSD ? "#d4edda" : esPEN ? "#fff3cd" : "transparent";
+    return monedaSeleccionada.colorFondo || "transparent";
   };
 
   return (
