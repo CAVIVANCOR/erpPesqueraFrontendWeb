@@ -616,11 +616,11 @@ export default function useAsientoLogic({
       nuevosDetalles = detalles.map((d) =>
         d.id === editingDetalle.id
           ? {
-              ...d,
-              ...detalleConvertido,
-              numeroLinea: d.numeroLinea,
-              id: d.id,
-            }
+            ...d,
+            ...detalleConvertido,
+            numeroLinea: d.numeroLinea,
+            id: d.id,
+          }
           : d,
       );
     } else {
@@ -1092,35 +1092,35 @@ export default function useAsientoLogic({
       detalles:
         detalles.length > 0
           ? detalles.map((d) => ({
-              numeroLinea: d.numeroLinea,
-              planCuentaId: Number(d.planCuentaId),
-              glosa: d.glosa,
-              debe: Number(d.debe || 0),
-              haber: Number(d.haber || 0),
-              monedaId: Number(d.monedaId) || Number(formData.monedaId),
-              tipoCambio:
-                d.tipoCambio || formData.tipoCambio
-                  ? Number(d.tipoCambio || formData.tipoCambio)
-                  : null,
-              debeMonedaExtranjera: d.debeMonedaExtranjera
-                ? Number(d.debeMonedaExtranjera)
+            numeroLinea: d.numeroLinea,
+            planCuentaId: Number(d.planCuentaId),
+            glosa: d.glosa,
+            debe: Number(d.debe || 0),
+            haber: Number(d.haber || 0),
+            monedaId: Number(d.monedaId) || Number(formData.monedaId),
+            tipoCambio:
+              d.tipoCambio || formData.tipoCambio
+                ? Number(d.tipoCambio || formData.tipoCambio)
                 : null,
-              haberMonedaExtranjera: d.haberMonedaExtranjera
-                ? Number(d.haberMonedaExtranjera)
-                : null,
-              centroCostoId: d.centroCostoId ? Number(d.centroCostoId) : null,
-              entidadComercialId: d.entidadComercialId
-                ? Number(d.entidadComercialId)
-                : null,
-              activoId: d.activoId ? Number(d.activoId) : null,
-              tipoDocumentoOrigenId: d.tipoDocumentoOrigenId
-                ? Number(d.tipoDocumentoOrigenId)
-                : null,
-              numeroDocumentoOrigen: d.numeroDocumentoOrigen || null,
-              fechaDocumentoOrigen: d.fechaDocumentoOrigen?.toISOString(),
-              creadoPor: d.creadoPor ? Number(d.creadoPor) : null,
-              creadoEn: d.creadoEn || null,
-            }))
+            debeMonedaExtranjera: d.debeMonedaExtranjera
+              ? Number(d.debeMonedaExtranjera)
+              : null,
+            haberMonedaExtranjera: d.haberMonedaExtranjera
+              ? Number(d.haberMonedaExtranjera)
+              : null,
+            centroCostoId: d.centroCostoId ? Number(d.centroCostoId) : null,
+            entidadComercialId: d.entidadComercialId
+              ? Number(d.entidadComercialId)
+              : null,
+            activoId: d.activoId ? Number(d.activoId) : null,
+            tipoDocumentoOrigenId: d.tipoDocumentoOrigenId
+              ? Number(d.tipoDocumentoOrigenId)
+              : null,
+            numeroDocumentoOrigen: d.numeroDocumentoOrigen || null,
+            fechaDocumentoOrigen: d.fechaDocumentoOrigen?.toISOString(),
+            creadoPor: d.creadoPor ? Number(d.creadoPor) : null,
+            creadoEn: d.creadoEn || null,
+          }))
           : [],
     };
 

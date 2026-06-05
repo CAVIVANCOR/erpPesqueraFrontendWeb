@@ -14,6 +14,7 @@ import { getResponsiveFontSize } from "../../utils/utils";
 import EntidadComercialSelector from "../common/EntidadComercialSelector";
 import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
 import { useAuthStore } from "../../shared/stores/useAuthStore"; // ← AGREGAR ESTA LÍNEA
+import IrACxCEditar from "../common/IrACxCEditar";
 
 export default function DatosGeneralesTab({
   formData,
@@ -44,7 +45,11 @@ export default function DatosGeneralesTab({
   puertosOptions,
   tiposContenedorOptions,
   agenteAduanasOptions,
-  periodosContables = [], // ✅ AGREGADO
+  periodosContables = [],
+  mediosPago = [],
+  bancos = [],
+  cuentasCorrientes = [],
+  estadosCxC = [],
   isEdit,
   puedeEditar,
   puedeEditarDetalles,
@@ -120,7 +125,6 @@ export default function DatosGeneralesTab({
         disabled: estadoId !== 73 && !isEdit, // Deshabilitar si no está ABIERTO (solo en creación)
       };
     });
-
   return (
     <div className="fluid">
       {/* ============================================ */}
@@ -286,7 +290,7 @@ export default function DatosGeneralesTab({
             marginTop: "1rem",
           }}
         >
-          <div style={{ flex: 1.2 }}>
+          <div style={{ flex: 1 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="tipoDocumentoId"
@@ -360,7 +364,7 @@ export default function DatosGeneralesTab({
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 0.5 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="numeroDocumento"
@@ -421,6 +425,31 @@ export default function DatosGeneralesTab({
               style={{ fontWeight: "bold" }}
             />
           </div>
+          {/* BOTÓN EDITAR CxC - Aparece solo si existe CxC asociada */}
+  
+            <div style={{ flex: 0.5, display: "flex", alignItems: "flex-end" }}>
+              <IrACxCEditar
+                preFacturaId={formData.id}
+                preFactura={formData}
+                empresas={empresas || []}
+                clientes={clientesOptions || []}
+                monedas={monedasOptions || []}
+                estados={estadosCxC || []}
+                periodosContables={periodosContables || []}
+                mediosPago={mediosPago || []}
+                bancos={bancos || []}
+                cuentasCorrientes={cuentasCorrientes || []}
+                permisos={{}}
+                toast={toast}
+                showCxCId={true}
+                estadoIdMinimo={1}
+                severity="success"
+                outlined={true}
+                icon="pi pi-arrow-right"
+                style={{ width: "100%", fontWeight: "bold" }}
+              />
+            </div>
+      
           {/* PREFACTURA ORIGEN - Botón para ir al origen (para copias) */}
           {formData.preFacturaOrigenId && (
             <div style={{ flex: 1 }}>
@@ -503,7 +532,7 @@ export default function DatosGeneralesTab({
           <div
             style={{
               display: "flex",
-              alignItems:"end",
+              alignItems: "end",
               gap: 10,
               flexDirection: window.innerWidth < 768 ? "column" : "row",
               flex: 2,
@@ -936,9 +965,8 @@ export default function DatosGeneralesTab({
       {/* SECCIÓN 7: DETALLES DE PRODUCTOS */}
       {/* ============================================ */}
       <Panel
-        header={`📦 Detalles de Productos ${
-          detallesCount > 0 ? `(${detallesCount})` : ""
-        }`}
+        header={`📦 Detalles de Productos ${detallesCount > 0 ? `(${detallesCount})` : ""
+          }`}
         toggleable
         collapsed={false}
         style={{ marginTop: "1rem" }}

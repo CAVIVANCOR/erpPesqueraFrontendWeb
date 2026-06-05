@@ -50,3 +50,8 @@ export async function getCuentasPorCobrarVencidas(empresaId) {
   const res = await axios.get(`${API_URL}/empresa/${empresaId}/vencidas`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+export async function getCuentaPorCobrarByPreFacturaId(preFacturaId) {
+  const res = await axios.get(`${API_URL}/prefactura/${preFacturaId}`, { headers: getAuthHeaders() });
+  return res.data;
+}

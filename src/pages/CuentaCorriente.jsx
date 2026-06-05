@@ -11,8 +11,6 @@ import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Tag } from "primereact/tag";
 import CuentaCorrienteForm from "../components/cuentaCorriente/CuentaCorrienteForm";
-import MovimientosCuentaDialog from "../components/cuentaCorriente/MovimientosCuentaDialog";
-import HistoricoSaldosDialog from "../components/cuentaCorriente/HistoricoSaldosDialog";
 import {
   getAllCuentaCorriente,
   eliminarCuentaCorriente,
@@ -55,6 +53,7 @@ const CuentaCorriente = ({ ruta }) => {
   const [empresaFiltro, setEmpresaFiltro] = useState(null);
   const [bancoFiltro, setBancoFiltro] = useState(null);
   const [estadoFiltro, setEstadoFiltro] = useState("TODOS");
+  const [filtroSaldo, setFiltroSaldo] = useState("CON_SALDO"); // ✅ NUEVO: Por defecto muestra con saldo
   const [globalFilterValue, setGlobalFilterValue] = useState("");
   useEffect(() => {
     cargarDatosIniciales();
@@ -70,7 +69,7 @@ const CuentaCorriente = ({ ruta }) => {
     if (todasLasCuentas.length > 0) {
       aplicarFiltros();
     }
-  }, [empresaFiltro, bancoFiltro, estadoFiltro]);
+  }, [empresaFiltro, bancoFiltro, estadoFiltro, filtroSaldo]); // ✅ Agregado filtroSaldo
 
   const cargarDatosIniciales = async () => {
     try {
@@ -97,32 +96,11 @@ const CuentaCorriente = ({ ruta }) => {
   const cargarCuentas = async () => {
     try {
       setLoading(true);
-      let cuentasData = await getAllCuentaCorriente();
+      // ✅ El backend YA envía saldoActual calculado
+      const cuentasData = await getAllCuentaCorriente();
 
-      // Cargar saldo actual para cada cuenta
-      const cuentasConSaldo = await Promise.all(
-        cuentasData.map(async (cuenta) => {
-          try {
-            const ultimoSaldo = await getUltimoSaldoCuenta(cuenta.id);
-            return {
-              ...cuenta,
-              saldoActual: ultimoSaldo?.saldoActual || 0,
-            };
-          } catch (error) {
-            console.error(
-              `Error al cargar saldo de cuenta ${cuenta.id}:`,
-              error,
-            );
-            return {
-              ...cuenta,
-              saldoActual: 0,
-            };
-          }
-        }),
-      );
-
-      setTodasLasCuentas(cuentasConSaldo);
-      aplicarFiltros(cuentasConSaldo);
+      setTodasLasCuentas(cuentasData);
+      aplicarFiltros(cuentasData);
     } catch (error) {
       console.error("Error al cargar cuentas:", error);
       toast.current.show({
@@ -162,6 +140,18 @@ const CuentaCorriente = ({ ruta }) => {
       cuentasFiltradas = cuentasFiltradas.filter((c) => c.activa === false);
     }
 
+    // ✅ NUEVO: Filtro por saldo
+    if (filtroSaldo === "CON_SALDO") {
+      cuentasFiltradas = cuentasFiltradas.filter(
+        (c) => Number(c.saldoActual || 0) > 0,
+      );
+    } else if (filtroSaldo === "SIN_SALDO") {
+      cuentasFiltradas = cuentasFiltradas.filter(
+        (c) => Number(c.saldoActual || 0) <= 0,
+      );
+    }
+    // Si es "TODAS", no filtra
+
     setCuentas(cuentasFiltradas);
 
     // Mostrar mensaje con cantidad de registros
@@ -174,6 +164,50 @@ const CuentaCorriente = ({ ruta }) => {
       });
     }
   };
+
+
+  // ✅ NUEVO: Función para ciclar entre estados del filtro de saldo
+  const toggleFiltroSaldo = () => {
+    const estados = ["CON_SALDO", "SIN_SALDO", "TODAS"];
+    const indiceActual = estados.indexOf(filtroSaldo);
+    const siguienteIndice = (indiceActual + 1) % estados.length;
+    setFiltroSaldo(estados[siguienteIndice]);
+  };
+
+  // ✅ NUEVO: Configuración del botón según el estado
+  const getConfigFiltroSaldo = () => {
+    switch (filtroSaldo) {
+      case "CON_SALDO":
+        return {
+          label: "Con Saldo",
+          icon: "pi pi-check-circle",
+          severity: "success",
+          tooltip: "Mostrando cuentas con saldo > 0. Click para ver sin saldo",
+        };
+      case "SIN_SALDO":
+        return {
+          label: "Sin Saldo",
+          icon: "pi pi-times-circle",
+          severity: "danger",
+          tooltip: "Mostrando cuentas con saldo ≤ 0. Click para ver todas",
+        };
+      case "TODAS":
+        return {
+          label: "Todas",
+          icon: "pi pi-list",
+          severity: "info",
+          tooltip: "Mostrando todas las cuentas. Click para ver solo con saldo",
+        };
+      default:
+        return {
+          label: "Con Saldo",
+          icon: "pi pi-check-circle",
+          severity: "success",
+          tooltip: "Mostrando cuentas con saldo > 0",
+        };
+    }
+  };
+
 
   const handleNuevo = () => {
     if (!permisos.puedeCrear) {
@@ -286,20 +320,11 @@ const CuentaCorriente = ({ ruta }) => {
     }
   };
 
-  const handleVerMovimientos = (cuenta) => {
-    setSelectedCuenta(cuenta);
-    setShowMovimientos(true);
-  };
-
-  const handleVerHistorico = (cuenta) => {
-    setSelectedCuenta(cuenta);
-    setShowHistorico(true);
-  };
-
   const handleLimpiarFiltros = () => {
     setEmpresaFiltro(null);
     setBancoFiltro(null);
     setEstadoFiltro("TODOS");
+    setFiltroSaldo("CON_SALDO"); // ✅ Resetear a valor por defecto
     toast.current.show({
       severity: "success",
       summary: "Filtros Limpiados",
@@ -462,6 +487,7 @@ const CuentaCorriente = ({ ruta }) => {
         style={{
           display: "flex",
           alignItems: "center",
+          justifyContent: "flex-end", // ✅ AGREGAR: Alinea el contenido a la derecha
           gap: "8px",
           backgroundColor: colorFondo,
           padding: "8px 12px",
@@ -478,18 +504,6 @@ const CuentaCorriente = ({ ruta }) => {
           })}
         </span>
       </div>
-    );
-  };
-  const saldoMinimoTemplate = (rowData) => {
-    const saldoMin = Number(rowData.saldoMinimo || 0);
-    return (
-      <span style={{ fontWeight: "bold" }}>
-        {rowData.moneda?.simbolo}{" "}
-        {saldoMin.toLocaleString("es-PE", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}
-      </span>
     );
   };
 
@@ -555,22 +569,6 @@ const CuentaCorriente = ({ ruta }) => {
         style={{ display: "flex", gap: "8px", justifyContent: "center" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <Button
-          icon="pi pi-list"
-          className="p-button-rounded p-button-info p-button-sm"
-          onClick={() => handleVerMovimientos(rowData)}
-          tooltip="Ver Movimientos"
-          tooltipOptions={{ position: "top" }}
-          disabled={!permisos.puedeVer}
-        />
-        <Button
-          icon="pi pi-chart-line"
-          className="p-button-rounded p-button-success p-button-sm"
-          onClick={() => handleVerHistorico(rowData)}
-          tooltip="Histórico de Saldos"
-          tooltipOptions={{ position: "top" }}
-          disabled={!permisos.puedeVer}
-        />
         <Button
           icon="pi pi-pencil"
           className="p-button-rounded p-button-warning p-button-sm"
@@ -670,6 +668,7 @@ const CuentaCorriente = ({ ruta }) => {
             gap: "16px",
             marginBottom: "20px",
             alignItems: "end",
+            fontSize: getResponsiveFontSize(),
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
@@ -696,27 +695,26 @@ const CuentaCorriente = ({ ruta }) => {
               />
             )}
           </div>
-          <div style={{ flex: 0.7 }}>
+          <div style={{ flex: 0.5 }}>
             <Button
-              label="Nueva Cuenta"
+              label="Nuevo"
               icon="pi pi-plus"
               severity="success"
               onClick={handleNuevo}
               disabled={!permisos.puedeCrear}
-              style={{ width: "100%", fontWeight: "bold" }}
+              style={{ width: "100%", fontWeight: "bold", fontSize: getResponsiveFontSize() }}
             />
           </div>
 
-          <div style={{ flex: 1.2 }}>
+          <div style={{ flex: 1 }}>
             <label htmlFor="globalFilter">Buscar</label>
             <span className="p-input-icon-left" style={{ width: "100%" }}>
-              <i className="pi pi-search" />
               <InputText
                 id="globalFilter"
                 value={globalFilterValue}
                 onChange={(e) => setGlobalFilterValue(e.target.value)}
                 placeholder="Buscar por cuenta, descripción o CCI..."
-                style={{ width: "100%", fontWeight: "bold" }}
+                style={{ width: "100%", fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               />
             </span>
           </div>
@@ -729,7 +727,7 @@ const CuentaCorriente = ({ ruta }) => {
               severity="info"
               onClick={() => setShowReportesDialog(true)}
               disabled={!permisos.puedeVer}
-              style={{ width: "100%", fontWeight: "bold" }}
+              style={{ width: "100%", fontWeight: "bold", fontSize: getResponsiveFontSize() }}
             />
           </div>
           <div style={{ flex: 1 }}>
@@ -744,7 +742,7 @@ const CuentaCorriente = ({ ruta }) => {
               options={empresasOptions}
               onChange={(e) => setEmpresaFiltro(e.value)}
               placeholder="Seleccionar empresa"
-              style={{ width: "100%", fontWeight: "bold" }}
+              style={{ width: "100%", fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               filter
             />
           </div>
@@ -761,7 +759,7 @@ const CuentaCorriente = ({ ruta }) => {
               options={bancosOptions}
               onChange={(e) => setBancoFiltro(e.value)}
               placeholder="Todos los bancos"
-              style={{ width: "100%", fontWeight: "bold" }}
+              style={{ width: "100%", fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               filter
             />
           </div>
@@ -777,8 +775,19 @@ const CuentaCorriente = ({ ruta }) => {
               value={estadoFiltro}
               options={estadosOptions}
               onChange={(e) => setEstadoFiltro(e.value)}
-              style={{ width: "100%", fontWeight: "bold" }}
+              style={{ width: "100%", fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               filter
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              label={getConfigFiltroSaldo().label}
+              icon={getConfigFiltroSaldo().icon}
+              onClick={toggleFiltroSaldo}
+              severity={getConfigFiltroSaldo().severity}
+              tooltip={getConfigFiltroSaldo().tooltip}
+              tooltipOptions={{ position: "top" }}
+              style={{ width: "100%", fontWeight: "bold", fontSize: getResponsiveFontSize() }}
             />
           </div>
           <div style={{ flex: 0.1 }}>
@@ -788,6 +797,7 @@ const CuentaCorriente = ({ ruta }) => {
               severity="secondary"
               tooltip="Limpiar todos los filtros"
               tooltipOptions={{ position: "top" }}
+              size="small"
             />
           </div>
           <div style={{ flex: 0.1 }}>
@@ -797,6 +807,7 @@ const CuentaCorriente = ({ ruta }) => {
               severity="info"
               tooltip="Actualizar"
               tooltipOptions={{ position: "top" }}
+              size="small"
             />
           </div>
         </div>
@@ -806,8 +817,8 @@ const CuentaCorriente = ({ ruta }) => {
           value={cuentas}
           loading={loading}
           paginator
-          rows={10}
-          rowsPerPageOptions={[5, 10, 25, 50]}
+          rows={20}
+          rowsPerPageOptions={[20, 40, 80, 120]}
           emptyMessage="No hay cuentas corrientes registradas"
           globalFilter={globalFilterValue}
           globalFilterFields={[
@@ -877,7 +888,7 @@ const CuentaCorriente = ({ ruta }) => {
             header="Saldo Actual"
             body={saldoActualTemplate}
             sortable
-            style={{ minWidth: "150px" }}
+            style={{ minWidth: "150px", textAlign: "right" }}
           />
           <Column
             field="cuentaContable"
@@ -915,22 +926,6 @@ const CuentaCorriente = ({ ruta }) => {
           toast={toast}
         />
       </Dialog>
-
-      {/* Diálogo Movimientos */}
-      <MovimientosCuentaDialog
-        visible={showMovimientos}
-        onHide={() => setShowMovimientos(false)}
-        cuenta={selectedCuenta}
-        toast={toast}
-      />
-
-      {/* Diálogo Histórico */}
-      <HistoricoSaldosDialog
-        visible={showHistorico}
-        onHide={() => setShowHistorico(false)}
-        cuenta={selectedCuenta}
-        toast={toast}
-      />
       {/* ⭐ COMPONENTE DE REPORTES */}
       <ReportesCuentaCorriente
         visible={showReportesDialog}

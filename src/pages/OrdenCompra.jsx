@@ -271,6 +271,25 @@ export default function OrdenCompra({ ruta }) {
     setLoading(false);
   };
 
+  // Función para recargar solo proveedores
+  const recargarProveedores = async () => {
+    try {
+      const proveedoresData = await getEntidadesComerciales();
+      setProveedores(proveedoresData);
+    } catch (err) {
+      console.error(
+        "🔴 [OrdenCompra] Error al recargar proveedores:",
+        err,
+      );
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo recargar el listado de proveedores",
+        life: 3000,
+      });
+    }
+  };
+
   const handleEdit = async (rowData) => {
     try {
       const { getOrdenCompraPorId } = await import("../api/ordenCompra");
@@ -720,9 +739,9 @@ export default function OrdenCompra({ ruta }) {
   const tipoCambioTemplate = (rowData) => {
     return rowData.tipoCambio
       ? Number(rowData.tipoCambio).toLocaleString("es-PE", {
-          minimumFractionDigits: 4,
-          maximumFractionDigits: 4,
-        })
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4,
+      })
       : "";
   };
 
@@ -833,6 +852,26 @@ export default function OrdenCompra({ ruta }) {
                   optionValue="value"
                   showClear
                   disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Nuevo"
+                  icon="pi pi-plus"
+                  onClick={() => {
+                    setEditing(null);
+                    setShowDialog(true);
+                  }}
+                  disabled={!permisos.puedeCrear || !empresaSeleccionada}
+                  tooltip={
+                    !empresaSeleccionada
+                      ? "Seleccione una empresa primero"
+                      : !permisos.puedeCrear
+                        ? "No tiene permisos para crear"
+                        : "Nueva Orden de Compra"
+                  }
+                  tooltipOptions={{ position: "top" }}
+                  style={{ fontWeight: "bold" }}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -1028,6 +1067,7 @@ export default function OrdenCompra({ ruta }) {
           tiposDocumento={tiposDocumento}
           seriesDoc={seriesDoc}
           estadosOrden={estadosDoc}
+          onProveedorCreado={recargarProveedores}
           requerimientos={requerimientos}
           monedas={monedas}
           centrosCosto={centrosCosto}
@@ -1074,11 +1114,11 @@ export default function OrdenCompra({ ruta }) {
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           monedas={monedas}
-          onSubmit={() => {}}
+          onSubmit={() => { }}
           onCancel={() => setShowRequerimientoDialog(false)}
-          onAprobar={() => {}}
-          onAnular={() => {}}
-          onAutorizarCompra={() => {}}
+          onAprobar={() => { }}
+          onAnular={() => { }}
+          onAutorizarCompra={() => { }}
           loading={false}
           toast={toast}
           permisos={{ puedeVer: true, puedeEditar: false }}
@@ -1110,11 +1150,11 @@ export default function OrdenCompra({ ruta }) {
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           monedas={monedas}
-          onSubmit={() => {}}
+          onSubmit={() => { }}
           onCancel={() => setShowMovimientoAlmacenDialog(false)}
-          onCerrar={() => {}}
-          onAnular={() => {}}
-          onGenerarKardex={() => {}}
+          onCerrar={() => { }}
+          onAnular={() => { }}
+          onGenerarKardex={() => { }}
           loading={false}
           toast={toast}
           permisos={{ puedeVer: true, puedeEditar: false }}

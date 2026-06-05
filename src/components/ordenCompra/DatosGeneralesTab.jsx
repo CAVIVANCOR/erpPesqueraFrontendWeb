@@ -9,7 +9,7 @@ import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
 import DetallesTab from "./DetallesTab";
 import { getResponsiveFontSize } from "../../utils/utils";
-
+import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
 export default function DatosGeneralesTab({
   formData,
   onChange,
@@ -61,6 +61,7 @@ export default function DatosGeneralesTab({
   onOrdenCompraOrigenIdChange,
   esParticionada,
   onEsParticionadaChange,
+  onProveedorCreado, // ✅ NUEVO: callback para recargar proveedores
 }) {
   // Helper para obtener código de moneda (ISO)
   const getCodigoMoneda = () => {
@@ -110,7 +111,38 @@ export default function DatosGeneralesTab({
         disabled: estadoId !== 73 && !isEdit, // Deshabilitar si no está ABIERTO (solo en creación)
       };
     });
+  // ✅ Callback cuando se crea un proveedor
+  const handleEntidadCreada = async (entidad) => {
+    // ✅ PRIMERO: Recargar proveedores (esperar a que termine)
+    if (onProveedorCreado && typeof onProveedorCreado === "function") {
+      await onProveedorCreado(entidad);
+    }
 
+    // ✅ SEGUNDO: Auto-seleccionar el nuevo proveedor DESPUÉS de recargar
+    if (entidad && entidad.id) {
+      // Usar setTimeout para asegurar que el dropdown se haya actualizado
+      setTimeout(() => {
+        const proveedorIdNumber = Number(entidad.id);
+        onChange("proveedorId", proveedorIdNumber);
+
+        // ✅ TERCERO: Auto-copiar la forma de pago del proveedor a la Orden
+        if (entidad.formaPagoId) {
+          const formaPagoIdNumber = Number(entidad.formaPagoId);
+          onChange("formaPagoId", formaPagoIdNumber);
+        }
+      }, 100);
+    }
+
+    // Mostrar mensaje de éxito
+    if (toast && toast.current) {
+      toast.current.show({
+        severity: "success",
+        summary: "Proveedor Creado",
+        detail: `Proveedor "${entidad.razonSocial || entidad.nombre}" creado y seleccionado exitosamente.`,
+        life: 4000,
+      });
+    }
+  };
   return (
     <div className="fluid">
       <div
@@ -188,7 +220,11 @@ export default function DatosGeneralesTab({
           </label>
           <Dropdown
             id="periodoContableId"
-            value={formData.periodoContableId}
+            value={
+              formData.periodoContableId
+                ? Number(formData.periodoContableId)
+                : null
+            }
             options={periodosContablesFiltrados || []}
             optionDisabled={(option) => option.disabled}
             onChange={(e) => onChange("periodoContableId", e.value)}
@@ -523,6 +559,22 @@ export default function DatosGeneralesTab({
             style={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
+        <div style={{ flex: 0.5 }}>
+          {/* ✅ COMPONENTE GENÉRICO REUTILIZABLE */}
+          <CrearEntidadComercialButton
+            empresaId={formData.empresaId}
+            tipoEntidad="proveedor"
+            onEntidadCreada={handleEntidadCreada}
+            label="Crear Proveedor"
+            icon="pi pi-building"
+            severity="info"
+            outlined={true}
+            disabled={readOnly || !puedeEditar}
+            className="w-full mt-2"
+            toast={toast}
+          />
+        </div>
+
         {/* ⭐ NUEVO: DIRECCIÓN DE RECEPCIÓN EN ALMACÉN */}
         <div style={{ flex: 2 }}>
           <label

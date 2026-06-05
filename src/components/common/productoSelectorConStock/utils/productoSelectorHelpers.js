@@ -7,9 +7,10 @@
  * @returns {Object} Objeto producto
  */
 export const getProductoFromRow = (rowData, esIngreso) => {
-  return esIngreso ? rowData : rowData.producto;
+  // Tanto en ingreso como en egreso, el producto está en rowData.producto
+  // porque useProductoSelectorData siempre estructura los datos así
+  return rowData.producto || rowData;
 };
-
 /**
  * Formatea un número con separadores de miles y decimales
  * @param {number} value - Valor a formatear

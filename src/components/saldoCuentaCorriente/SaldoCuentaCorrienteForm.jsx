@@ -158,12 +158,6 @@ export default function SaldoCuentaCorrienteForm({
     }
   };
 
-  const centrosOptions = centrosCosto.map((cc) => ({
-    label: cc.Nombre || cc.nombre,
-    value: Number(cc.id),
-  }));
-
-
   // ✅ OPTIMIZADO: Obtener color de fondo de la moneda seleccionada
   const getMonedaColorFondo = () => {
     return monedaSeleccionada?.colorFondo || "#ffffff";
@@ -303,29 +297,6 @@ export default function SaldoCuentaCorrienteForm({
                       fontWeight: "bold",
                       fontSize: "16px",
                     }}
-                  />
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  marginTop: 10,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="centroCostoId">Centro de Costo</label>
-                  <Dropdown
-                    id="centroCostoId"
-                    value={formData.centroCostoId}
-                    options={centrosOptions}
-                    onChange={(e) => handleChange("centroCostoId", e.value)}
-                    placeholder="Seleccione centro de costo"
-                    disabled={readOnly || loading || guardando}
-                    filter
-                    showClear
                   />
                 </div>
               </div>

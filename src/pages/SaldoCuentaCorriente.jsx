@@ -46,8 +46,7 @@ export default function SaldoCuentaCorriente({ ruta }) {
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [empresaFilter, setEmpresaFilter] = useState(null);
   const [cuentaFilter, setCuentaFilter] = useState(null);
-  const [fechaInicioFilter, setFechaInicioFilter] = useState(null);
-  const [fechaFinFilter, setFechaFinFilter] = useState(null);
+  const [rangoFechasFilter, setRangoFechasFilter] = useState(null); // ✅ Un solo estado para el rango
   const [conciliadoFilter, setConciliadoFilter] = useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -74,8 +73,23 @@ export default function SaldoCuentaCorriente({ ruta }) {
 
   useEffect(() => {
     filtrarItems();
-  }, [items, empresaFilter, cuentaFilter, fechaInicioFilter, fechaFinFilter, conciliadoFilter]);
+  }, [items, empresaFilter, cuentaFilter, rangoFechasFilter, conciliadoFilter]);
 
+    // ✅ Limpiar filtro de cuenta cuando cambia la empresa
+  useEffect(() => {
+    if (empresaFilter && cuentaFilter) {
+      // Verificar si la cuenta seleccionada pertenece a la empresa filtrada
+      const cuentaSeleccionada = cuentasCorrientes.find(
+        (c) => Number(c.id) === Number(cuentaFilter)
+      );
+      
+      if (cuentaSeleccionada && Number(cuentaSeleccionada.empresaId) !== Number(empresaFilter)) {
+        // Si la cuenta no pertenece a la empresa, limpiar el filtro de cuenta
+        setCuentaFilter(null);
+      }
+    }
+  }, [empresaFilter, cuentasCorrientes]);
+  
   const cargarDatos = async () => {
     setLoading(true);
     try {
@@ -116,22 +130,27 @@ export default function SaldoCuentaCorriente({ ruta }) {
       );
     }
 
-    if (fechaInicioFilter) {
-      filtrados = filtrados.filter((item) => {
-        const fechaItem = new Date(item.fecha);
-        const fechaIni = new Date(fechaInicioFilter);
-        fechaIni.setHours(0, 0, 0, 0);
-        return fechaItem >= fechaIni;
-      });
-    }
+    // ✅ Filtro por rango de fechas (un solo componente)
+    if (rangoFechasFilter && rangoFechasFilter.length === 2) {
+      const [fechaInicio, fechaFin] = rangoFechasFilter;
 
-    if (fechaFinFilter) {
-      filtrados = filtrados.filter((item) => {
-        const fechaItem = new Date(item.fecha);
-        const fechaFinDia = new Date(fechaFinFilter);
-        fechaFinDia.setHours(23, 59, 59, 999);
-        return fechaItem <= fechaFinDia;
-      });
+      if (fechaInicio) {
+        filtrados = filtrados.filter((item) => {
+          const fechaItem = new Date(item.fecha);
+          const fechaIni = new Date(fechaInicio);
+          fechaIni.setHours(0, 0, 0, 0);
+          return fechaItem >= fechaIni;
+        });
+      }
+
+      if (fechaFin) {
+        filtrados = filtrados.filter((item) => {
+          const fechaItem = new Date(item.fecha);
+          const fechaFinDia = new Date(fechaFin);
+          fechaFinDia.setHours(23, 59, 59, 999);
+          return fechaItem <= fechaFinDia;
+        });
+      }
     }
 
     if (conciliadoFilter !== null) {
@@ -375,8 +394,7 @@ export default function SaldoCuentaCorriente({ ruta }) {
   const limpiarFiltros = () => {
     setEmpresaFilter(null);
     setCuentaFilter(null);
-    setFechaInicioFilter(null);
-    setFechaFinFilter(null);
+    setRangoFechasFilter(null);
     setConciliadoFilter(null);
     setGlobalFilter("");
   };
@@ -491,10 +509,10 @@ export default function SaldoCuentaCorriente({ ruta }) {
     const simbolo = moneda?.simbolo || "";
     // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
     const colorFondo = moneda?.colorFondo || "#ffffff";
-    
+
     return (
-      <span 
-        style={{ 
+      <span
+        style={{
           color: color || "inherit",
           backgroundColor: colorFondo,
           padding: "6px 12px",
@@ -518,10 +536,10 @@ export default function SaldoCuentaCorriente({ ruta }) {
     const valor = Number(rowData.diferencia);
     // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
     const colorFondo = moneda?.colorFondo || "#ffffff";
-    
+
     return (
-      <span 
-        style={{ 
+      <span
+        style={{
           color: Math.abs(valor) > 0.01 ? "red" : "green",
           backgroundColor: colorFondo,
           padding: "6px 12px",
@@ -619,10 +637,20 @@ export default function SaldoCuentaCorriente({ ruta }) {
     value: Number(emp.id),
   }));
 
-  const cuentaOptions = cuentasCorrientes.map((cuenta) => ({
-    label: `${cuenta.numeroCuenta} - ${cuenta.banco?.nombre || ""}`,
-    value: Number(cuenta.id),
-  }));
+  // ✅ Filtrar cuentas por empresa seleccionada
+  const cuentaOptions = cuentasCorrientes
+    .filter((cuenta) => {
+      // Si hay empresa seleccionada, solo mostrar cuentas de esa empresa
+      if (empresaFilter) {
+        return Number(cuenta.empresaId) === Number(empresaFilter);
+      }
+      // Si no hay empresa seleccionada, mostrar todas
+      return true;
+    })
+    .map((cuenta) => ({
+      label: `${cuenta.numeroCuenta} - ${cuenta.banco?.nombre || ""} ${cuenta.descripcion ? `- ${cuenta.descripcion}` : ""}`,
+      value: Number(cuenta.id),
+    }));
 
   const conciliadoOptions = [
     { label: "Sí", value: true },
@@ -778,29 +806,18 @@ export default function SaldoCuentaCorriente({ ruta }) {
                   style={{ width: "100%" }}
                 />
               </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="fechaInicioFilter">Desde</label>
+              <div style={{ flex: 1.5 }}>
+                <label htmlFor="rangoFechasFilter">Rango de Fechas</label>
                 <Calendar
-                  id="fechaInicioFilter"
-                  value={fechaInicioFilter}
-                  onChange={(e) => setFechaInicioFilter(e.value)}
+                  id="rangoFechasFilter"
+                  value={rangoFechasFilter}
+                  onChange={(e) => setRangoFechasFilter(e.value)}
+                  selectionMode="range"
                   dateFormat="dd/mm/yy"
                   showIcon
-                  placeholder="Fecha inicio"
+                  placeholder="Seleccionar rango"
                   showButtonBar
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="fechaFinFilter">Hasta</label>
-                <Calendar
-                  id="fechaFinFilter"
-                  value={fechaFinFilter}
-                  onChange={(e) => setFechaFinFilter(e.value)}
-                  dateFormat="dd/mm/yy"
-                  showIcon
-                  placeholder="Fecha fin"
-                  showButtonBar
+                  readOnlyInput
                   style={{ width: "100%" }}
                 />
               </div>

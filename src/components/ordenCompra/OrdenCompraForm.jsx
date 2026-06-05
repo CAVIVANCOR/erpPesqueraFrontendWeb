@@ -11,7 +11,7 @@ import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 import { obtenerDireccionesPorEntidad } from "../../api/direccionEntidad";
 import { obtenerContactosPorEntidad } from "../../api/contactoEntidad";
 import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
-
+import { getSeriesDoc } from "../../api/preFactura";
 export default function OrdenCompraForm({
   isEdit,
   defaultValues,
@@ -42,6 +42,8 @@ export default function OrdenCompraForm({
   permisos = {},
   readOnly = false,
   onRecargarRegistro,
+  onProveedorCreado, // ✅ NUEVO: callback para recargar proveedores
+
 }) {
   const { usuario } = useAuthStore();
 
@@ -85,7 +87,13 @@ export default function OrdenCompraForm({
   const [formaPagoId, setFormaPagoId] = useState(
     defaultValues?.formaPagoId || null,
   );
-  const [monedaId, setMonedaId] = useState(defaultValues?.monedaId || null);
+  const [monedaId, setMonedaId] = useState(
+    defaultValues?.moneda?.id
+      ? Number(defaultValues.moneda.id)
+      : defaultValues?.monedaId
+        ? Number(defaultValues.monedaId)
+        : 1,
+  );
   const [tipoCambio, setTipoCambio] = useState(
     defaultValues?.tipoCambio || null,
   );
@@ -151,14 +159,14 @@ export default function OrdenCompraForm({
   );
   const [direccionesEmpresa, setDireccionesEmpresa] = useState([]);
   const [contactosProveedor, setContactosProveedor] = useState([]);
-
+  const [personalFiltrado, setPersonalFiltrado] = useState([]);
+  const [seriesDocFiltradas, setSeriesDocFiltradas] = useState([]);
   const [proveedoresFiltrados, setProveedoresFiltrados] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
   const [detallesCount, setDetallesCount] = useState(0);
   const [datosAdicionalesCount, setDatosAdicionalesCount] = useState(0);
   const [totales, setTotales] = useState({ subtotal: 0, igv: 0, total: 0 });
   const [fechaDocumentoInicial, setFechaDocumentoInicial] = useState(null);
-
   useEffect(() => {
     if (proveedores && proveedores.length > 0 && empresaId) {
       const proveedoresPorEmpresa = proveedores.filter(
@@ -194,6 +202,16 @@ export default function OrdenCompraForm({
         defaultValues.fechaDocumento
           ? new Date(defaultValues.fechaDocumento)
           : new Date(),
+      );
+      setFechaContable(
+        defaultValues.fechaContable
+          ? new Date(defaultValues.fechaContable)
+          : new Date(),
+      );
+      setPeriodoContableId(
+        defaultValues.periodoContableId
+          ? Number(defaultValues.periodoContableId)
+          : null,
       );
       setRequerimientoCompraId(
         defaultValues.requerimientoCompraId
@@ -421,6 +439,69 @@ export default function OrdenCompraForm({
     cargarContactosProveedor();
   }, [proveedorId]);
 
+  useEffect(() => {
+    if (empresaId && personalOptions && personalOptions.length > 0) {
+      const personalPorEmpresa = personalOptions.filter(
+        (p) => Number(p.empresaId) === Number(empresaId),
+      );
+      setPersonalFiltrado(personalPorEmpresa);
+    } else {
+      setPersonalFiltrado([]);
+    }
+  }, [personalOptions, empresaId]);
+
+  useEffect(() => {
+    const cargarSeriesDoc = async () => {
+      if (empresaId && tipoDocumentoId) {
+        try {
+          const series = await getSeriesDoc(empresaId, tipoDocumentoId);
+          setSeriesDocFiltradas(series);
+        } catch (err) {
+          console.error("Error al cargar series de documentos:", err);
+          setSeriesDocFiltradas([]);
+        }
+      } else {
+        setSeriesDocFiltradas([]);
+      }
+    };
+    cargarSeriesDoc();
+  }, [empresaId, tipoDocumentoId]);
+
+  // Inicializar porcentajeIGV desde la empresa cuando cambie empresaId (solo en creación)
+  useEffect(() => {
+    if (empresaId && empresas && empresas.length > 0 && !isEdit) {
+      const empresaSeleccionada = empresas.find(
+        (e) => Number(e.id) === Number(empresaId),
+      );
+      if (
+        empresaSeleccionada &&
+        empresaSeleccionada.porcentajeIgv !== undefined
+      ) {
+        setPorcentajeIGV(empresaSeleccionada.porcentajeIgv);
+      }
+    }
+  }, [empresaId, empresas, isEdit]);
+
+  // Actualizar porcentajeIGV cuando cambie esExoneradoAlIGV
+  useEffect(() => {
+    if (empresaId && empresas && empresas.length > 0) {
+      const empresaSeleccionada = empresas.find(
+        (e) => Number(e.id) === Number(empresaId),
+      );
+
+      if (esExoneradoAlIGV) {
+        setPorcentajeIGV(0);
+      } else {
+        if (
+          empresaSeleccionada &&
+          empresaSeleccionada.porcentajeIgv !== undefined
+        ) {
+          setPorcentajeIGV(empresaSeleccionada.porcentajeIgv);
+        }
+      }
+    }
+  }, [esExoneradoAlIGV, empresaId, empresas]);
+
   const handleSerieChange = (serieId) => {
     if (serieId) {
       const serie = seriesDoc.find((s) => Number(s.id) === Number(serieId));
@@ -454,7 +535,8 @@ export default function OrdenCompraForm({
       numCorreDoc: setNumCorreDoc,
       numeroDocumento: setNumeroDocumento,
       fechaDocumento: setFechaDocumento,
-      fechaContable: setFechaContable, // ← AGREGAR ESTA LÍNEA
+      fechaContable: setFechaContable,
+      periodoContableId: setPeriodoContableId,
       requerimientoCompraId: setRequerimientoCompraId,
       proveedorId: setProveedorId,
       formaPagoId: setFormaPagoId,
@@ -505,7 +587,7 @@ export default function OrdenCompraForm({
       tipoCambio,
       fechaEntrega,
       fechaRecepcion,
-      fechaVencimiento,
+      fechaVencimiento: fechaVencimiento || null,
       solicitanteId: solicitanteId ? Number(solicitanteId) : null,
       aprobadoPorId: aprobadoPorId ? Number(aprobadoPorId) : null,
       estadoId: estadoId ? Number(estadoId) : null,
@@ -631,6 +713,7 @@ export default function OrdenCompraForm({
     numeroDocumento,
     fechaDocumento,
     fechaContable, // ← AGREGAR ESTA LÍNEA
+    periodoContableId, // ← AGREGAR ESTA LÍNEA
     requerimientoCompraId,
     proveedorId,
     formaPagoId,
@@ -665,7 +748,7 @@ export default function OrdenCompraForm({
     value: Number(t.id),
   }));
 
-  const seriesDocOptions = (seriesDoc || []).map((s) => {
+  const seriesDocOptions = (seriesDocFiltradas || []).map((s) => {
     const correlativoActual = Number(s.correlativo);
     const descripcionSerie = getDescripcionSerie(s.serie);
     return {
@@ -702,7 +785,7 @@ export default function OrdenCompraForm({
             empresas={empresas}
             proveedores={proveedoresFiltrados}
             formasPago={formasPago}
-            personalOptions={personalOptions}
+            personalOptions={personalFiltrado}
             monedas={monedas}
             centrosCosto={centrosCosto}
             unidadesNegocioOptions={unidadesNegocioOptions}
@@ -741,13 +824,13 @@ export default function OrdenCompraForm({
             onOrdenCompraOrigenIdChange={setOrdenCompraOrigenId}
             esParticionada={esParticionada}
             onEsParticionadaChange={setEsParticionada}
+            onProveedorCreado={onProveedorCreado}
           />
         </TabPanel>
 
         <TabPanel
-          header={`Datos Adicionales ${
-            datosAdicionalesCount > 0 ? `(${datosAdicionalesCount})` : ""
-          }`}
+          header={`Datos Adicionales ${datosAdicionalesCount > 0 ? `(${datosAdicionalesCount})` : ""
+            }`}
           leftIcon="pi pi-paperclip"
           disabled={!isEdit}
         >

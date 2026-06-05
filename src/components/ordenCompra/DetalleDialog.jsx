@@ -241,6 +241,7 @@ export default function DetalleDialog({
           modo="ingreso"
           empresaId={empresaId}
           propietarioStockId={entidadComercialId}
+          almacenId={null}
           esCustodia={false}
         />
         {/* Primera fila: Cantidad y Unidad */}

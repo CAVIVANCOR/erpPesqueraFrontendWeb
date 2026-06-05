@@ -58,6 +58,8 @@ export default function PreFacturaForm({
   const { usuario } = useAuthStore();
   // Estado único para todos los campos del formulario (patrón eficiente)
   const [formData, setFormData] = useState({
+      id: defaultValues?.id || null,
+
     // Datos básicos
     empresaId: defaultValues?.empresaId
       ? Number(defaultValues.empresaId)
@@ -442,7 +444,9 @@ export default function PreFacturaForm({
   const [totales, setTotales] = useState({ subtotal: 0, igv: 0, total: 0 });
   const [estadosPreFactura, setEstadosPreFactura] = useState([]);
   const [fechaDocumentoInicial, setFechaDocumentoInicial] = useState(null);
-
+  const [mediosPago, setMediosPago] = useState([]);
+  const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
+  const [estadosCxC, setEstadosCxC] = useState([]);
   // Extraer valores individuales para compatibilidad
   const {
     empresaId,
@@ -584,7 +588,7 @@ export default function PreFacturaForm({
     cargarSeriesDoc();
   }, [empresaId, tipoDocumentoId]);
 
-  // Cargar estados de pre-factura (tipoProvieneDeId = 14)
+   // Cargar estados de pre-factura (tipoProvieneDeId = 14)
   useEffect(() => {
     const cargarEstados = async () => {
       try {
@@ -596,6 +600,30 @@ export default function PreFacturaForm({
       }
     };
     cargarEstados();
+  }, []);
+
+  // Cargar catálogos para CxC (Medios de Pago, Estados CxC, Cuentas Corrientes)
+  useEffect(() => {
+    const cargarCatalogosCxC = async () => {
+      try {
+        // Cargar medios de pago (tipoProvieneDeId = 13)
+        const mediosPagoData = await getEstadosMultiFuncionPorTipoProviene(13);
+        setMediosPago(mediosPagoData);
+
+        // Cargar estados de CxC (tipoProvieneDeId = 20)
+        const estadosCxCData = await getEstadosMultiFuncionPorTipoProviene(20);
+        setEstadosCxC(estadosCxCData);
+
+        // Cuentas corrientes: por ahora vacío (se cargaría desde un endpoint específico)
+        setCuentasCorrientes([]);
+      } catch (err) {
+        console.error("Error al cargar catálogos de CxC:", err);
+        setMediosPago([]);
+        setEstadosCxC([]);
+        setCuentasCorrientes([]);
+      }
+    };
+    cargarCatalogosCxC();
   }, []);
 
   // Guardar fecha inicial para evitar carga automática en mount
@@ -1113,9 +1141,8 @@ export default function PreFacturaForm({
   const clientesOptions = (clientes || []).map((c) => ({
     ...c,
     id: Number(c.id),
-    label: `${c.tipoDocumento?.codigo || ""} - ${c.numeroDocumento} - ${
-      c.razonSocial
-    }`,
+    label: `${c.tipoDocumento?.codigo || ""} - ${c.numeroDocumento} - ${c.razonSocial
+      }`,
     value: Number(c.id),
   }));
 
@@ -1266,6 +1293,10 @@ export default function PreFacturaForm({
             periodosContables={periodosContables}
             contactosClienteOptions={contactosClienteOptions}
             direccionesClienteOptions={direccionesClienteOptions}
+            mediosPago={mediosPago}
+            bancos={bancosOptions}
+            cuentasCorrientes={cuentasCorrientes}
+            estadosCxC={estadosCxC}
             isEdit={isEdit}
             puedeEditar={puedeEditar}
             puedeEditarDetalles={puedeEditar}

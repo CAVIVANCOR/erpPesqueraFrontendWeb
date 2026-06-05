@@ -1,11 +1,24 @@
 // src/components/saldoCuentaCorriente/ProyeccionCuentaCorriente.jsx
 import React, { useState, useEffect } from "react";
 import { Dialog } from "primereact/dialog";
-import { Chart } from "primereact/chart";
 import { Dropdown } from "primereact/dropdown";
 import { Tag } from "primereact/tag";
 import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
+import { TabView, TabPanel } from "primereact/tabview";
+import { Message } from "primereact/message";
+import {
+  ComposedChart,
+  LineChart,
+  Line,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 export default function ProyeccionCuentaCorriente({
   visible,
@@ -15,24 +28,138 @@ export default function ProyeccionCuentaCorriente({
 }) {
   const [periodo, setPeriodo] = useState("mensual");
   const [periodosProyectar, setPeriodosProyectar] = useState(6);
-  const [chartDataProyeccion, setChartDataProyeccion] = useState(null);
+  const [chartDataProyeccion, setChartDataProyeccion] = useState([]);
+  const [chartDataEscenarios, setChartDataEscenarios] = useState([]);
   const [estadisticas, setEstadisticas] = useState(null);
-  const [chartKey, setChartKey] = useState(0);
+  const [metricas, setMetricas] = useState(null);
+  const [datosInsuficientes, setDatosInsuficientes] = useState(false);
 
   useEffect(() => {
     if (visible && saldos.length > 0) {
-      setChartDataProyeccion(null);
+      setChartDataProyeccion([]);
+      setChartDataEscenarios([]);
+      setDatosInsuficientes(false);
       setTimeout(() => {
         procesarProyeccion();
-        setChartKey((prev) => prev + 1);
       }, 100);
     }
   }, [visible, saldos, periodo, periodosProyectar]);
+
+  const calcularRegresionLineal = (valores) => {
+    const n = valores.length;
+    if (n < 2) return null;
+
+    const indices = valores.map((_, i) => i + 1);
+
+    const promedioX = indices.reduce((a, b) => a + b, 0) / n;
+    const promedioY = valores.reduce((a, b) => a + b, 0) / n;
+
+    let numerador = 0;
+    let denominador = 0;
+
+    for (let i = 0; i < n; i++) {
+      numerador += (indices[i] - promedioX) * (valores[i] - promedioY);
+      denominador += Math.pow(indices[i] - promedioX, 2);
+    }
+
+    const pendiente = denominador !== 0 ? numerador / denominador : 0;
+    const intercepto = promedioY - pendiente * promedioX;
+
+    let ssRes = 0;
+    let ssTot = 0;
+
+    for (let i = 0; i < n; i++) {
+      const valorPredicho = intercepto + pendiente * indices[i];
+      ssRes += Math.pow(valores[i] - valorPredicho, 2);
+      ssTot += Math.pow(valores[i] - promedioY, 2);
+    }
+
+    const r2 = ssTot !== 0 ? Math.max(0, 1 - ssRes / ssTot) : 0;
+
+    const desviacionEstandar = Math.sqrt(
+      valores.reduce((sum, val) => sum + Math.pow(val - promedioY, 2), 0) / n
+    );
+
+    return {
+      pendiente,
+      intercepto,
+      r2,
+      desviacionEstandar,
+      confianza: r2 > 0.7 ? "Alta" : r2 > 0.4 ? "Media" : "Baja",
+    };
+  };
+
+  const proyectarConTendencia = (datosHistoricos, periodosProyectar) => {
+    const n = datosHistoricos.length;
+
+    if (n < 3) {
+      const promedio = datosHistoricos.reduce((a, b) => a + b, 0) / n;
+      const proyecciones = {
+        base: [],
+        optimista: [],
+        pesimista: [],
+        confianza: [],
+      };
+
+      for (let i = 1; i <= periodosProyectar; i++) {
+        proyecciones.base.push(promedio);
+        proyecciones.optimista.push(promedio * 1.1);
+        proyecciones.pesimista.push(promedio * 0.9);
+        proyecciones.confianza.push(0.3);
+      }
+
+      return {
+        proyecciones,
+        regresion: {
+          pendiente: 0,
+          intercepto: promedio,
+          r2: 0,
+          desviacionEstandar: 0,
+          confianza: "Baja",
+        },
+        metodoUsado: "promedio",
+      };
+    }
+
+    const regresion = calcularRegresionLineal(datosHistoricos);
+    if (!regresion) return null;
+
+    const proyecciones = {
+      base: [],
+      optimista: [],
+      pesimista: [],
+      confianza: [],
+    };
+
+    for (let i = 1; i <= periodosProyectar; i++) {
+      const valorProyectado =
+        regresion.intercepto + regresion.pendiente * (n + i);
+
+      const margenError = 1.96 * regresion.desviacionEstandar;
+      const confianzaPeriodo = Math.max(0, regresion.r2 - i * 0.05);
+
+      proyecciones.base.push(Math.max(0, valorProyectado));
+      proyecciones.optimista.push(Math.max(0, valorProyectado + margenError));
+      proyecciones.pesimista.push(Math.max(0, valorProyectado - margenError));
+      proyecciones.confianza.push(confianzaPeriodo);
+    }
+
+    return {
+      proyecciones,
+      regresion,
+      metodoUsado: "regresion",
+    };
+  };
 
   const procesarProyeccion = () => {
     const saldosOrdenados = [...saldos].sort(
       (a, b) => new Date(a.fecha) - new Date(b.fecha)
     );
+
+    if (saldosOrdenados.length < 1) {
+      setDatosInsuficientes(true);
+      return;
+    }
 
     let labelsHistoricos = [];
     let dataIngresosHistoricos = [];
@@ -101,20 +228,25 @@ export default function ProyeccionCuentaCorriente({
       );
     }
 
-    const promedioIngresos =
-      dataIngresosHistoricos.reduce((a, b) => a + b, 0) /
-      dataIngresosHistoricos.length;
-    const promedioEgresos =
-      dataEgresosHistoricos.reduce((a, b) => a + b, 0) /
-      dataEgresosHistoricos.length;
+    const proyeccionIngresos = proyectarConTendencia(
+      dataIngresosHistoricos,
+      periodosProyectar
+    );
+    const proyeccionEgresos = proyectarConTendencia(
+      dataEgresosHistoricos,
+      periodosProyectar
+    );
+    const proyeccionSaldo = proyectarConTendencia(
+      dataSaldoHistorico,
+      periodosProyectar
+    );
+
+    if (!proyeccionIngresos || !proyeccionEgresos || !proyeccionSaldo) {
+      setDatosInsuficientes(true);
+      return;
+    }
 
     const labelsProyectados = [];
-    const dataIngresosProyectados = [];
-    const dataEgresosProyectados = [];
-    const dataSaldoProyectado = [];
-
-    let ultimoSaldo = dataSaldoHistorico[dataSaldoHistorico.length - 1] || 0;
-
     for (let i = 1; i <= periodosProyectar; i++) {
       if (periodo === "mensual") {
         const ultimaFecha = new Date(
@@ -132,113 +264,110 @@ export default function ProyeccionCuentaCorriente({
         );
         labelsProyectados.push((ultimoAnio + i).toString());
       }
-
-      dataIngresosProyectados.push(promedioIngresos);
-      dataEgresosProyectados.push(promedioEgresos);
-      ultimoSaldo = ultimoSaldo + promedioIngresos - promedioEgresos;
-      dataSaldoProyectado.push(ultimoSaldo);
     }
 
-    const saldoProyectadoFinal =
-      dataSaldoProyectado[dataSaldoProyectado.length - 1] || 0;
-    const variacionProyectada =
-      saldoProyectadoFinal - dataSaldoHistorico[dataSaldoHistorico.length - 1];
+    const saldoActual = dataSaldoHistorico[dataSaldoHistorico.length - 1] || 0;
+    const saldoProyectadoBase =
+      proyeccionSaldo.proyecciones.base[
+        proyeccionSaldo.proyecciones.base.length - 1
+      ] || 0;
+    const variacionProyectada = saldoProyectadoBase - saldoActual;
+
+    const promedioIngresos =
+      dataIngresosHistoricos.reduce((a, b) => a + b, 0) /
+      dataIngresosHistoricos.length;
+    const promedioEgresos =
+      dataEgresosHistoricos.reduce((a, b) => a + b, 0) /
+      dataEgresosHistoricos.length;
 
     setEstadisticas({
-      saldoActual: dataSaldoHistorico[dataSaldoHistorico.length - 1] || 0,
-      saldoProyectado: saldoProyectadoFinal,
+      saldoActual,
+      saldoProyectado: saldoProyectadoBase,
       variacionProyectada,
       promedioIngresos,
       promedioEgresos,
       periodosProyectados: periodosProyectar,
+      metodoUsado: proyeccionSaldo.metodoUsado,
+      datosHistoricos: dataSaldoHistorico.length,
     });
 
-    setChartDataProyeccion({
-      labels: labelsProyectados,
-      datasets: [
-        {
-          label: "Ingresos Proyectados",
-          data: dataIngresosProyectados,
-          borderColor: "rgb(54, 162, 235)",
-          backgroundColor: "rgba(54, 162, 235, 0.5)",
-        },
-        {
-          label: "Egresos Proyectados",
-          data: dataEgresosProyectados,
-          borderColor: "rgb(255, 99, 132)",
-          backgroundColor: "rgba(255, 99, 132, 0.5)",
-        },
-        {
-          label: "Saldo Proyectado",
-          data: dataSaldoProyectado,
-          borderColor: "rgb(75, 192, 192)",
-          backgroundColor: "rgba(75, 192, 192, 0.5)",
-        },
-      ],
+    setMetricas({
+      ingresos: {
+        tendencia:
+          proyeccionIngresos.regresion.pendiente > 0
+            ? "Creciente"
+            : proyeccionIngresos.regresion.pendiente < 0
+            ? "Decreciente"
+            : "Estable",
+        tasaCrecimiento:
+          dataIngresosHistoricos[0] !== 0
+            ? (
+                (proyeccionIngresos.regresion.pendiente /
+                  dataIngresosHistoricos[0]) *
+                100
+              ).toFixed(2)
+            : "0.00",
+        r2: (proyeccionIngresos.regresion.r2 * 100).toFixed(1),
+        confiabilidad: proyeccionIngresos.regresion.confianza,
+      },
+      egresos: {
+        tendencia:
+          proyeccionEgresos.regresion.pendiente > 0
+            ? "Creciente"
+            : proyeccionEgresos.regresion.pendiente < 0
+            ? "Decreciente"
+            : "Estable",
+        tasaCrecimiento:
+          dataEgresosHistoricos[0] !== 0
+            ? (
+                (proyeccionEgresos.regresion.pendiente /
+                  dataEgresosHistoricos[0]) *
+                100
+              ).toFixed(2)
+            : "0.00",
+        r2: (proyeccionEgresos.regresion.r2 * 100).toFixed(1),
+        confiabilidad: proyeccionEgresos.regresion.confianza,
+      },
+      saldo: {
+        tendencia:
+          proyeccionSaldo.regresion.pendiente > 0
+            ? "Creciente"
+            : proyeccionSaldo.regresion.pendiente < 0
+            ? "Decreciente"
+            : "Estable",
+        tasaCrecimiento:
+          dataSaldoHistorico[0] !== 0
+            ? (
+                (proyeccionSaldo.regresion.pendiente / dataSaldoHistorico[0]) *
+                100
+              ).toFixed(2)
+            : "0.00",
+        r2: (proyeccionSaldo.regresion.r2 * 100).toFixed(1),
+        confiabilidad: proyeccionSaldo.regresion.confianza,
+      },
     });
-  };
 
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "top",
-        labels: {
-          color: "#495057",
-          font: {
-            size: 12,
-            weight: "bold",
-          },
-          usePointStyle: true,
-          padding: 15,
-        },
-      },
-      tooltip: {
-        mode: "index",
-        intersect: false,
-        callbacks: {
-          label: function (context) {
-            const moneda = cuentaCorriente?.moneda?.simbolo || "";
-            return `${
-              context.dataset.label
-            }: ${moneda} ${context.parsed.y.toFixed(2)}`;
-          },
-        },
-      },
-    },
-    interaction: {
-      mode: "nearest",
-      axis: "x",
-      intersect: false,
-    },
-    scales: {
-      x: {
-        ticks: {
-          color: "#495057",
-          font: { size: 11 },
-        },
-        grid: {
-          color: "#ebedef",
-          drawBorder: false,
-        },
-      },
-      y: {
-        beginAtZero: true,
-        ticks: {
-          color: "#495057",
-          font: { size: 12 },
-          callback: function (value) {
-            const moneda = cuentaCorriente?.moneda?.simbolo || "";
-            return `${moneda} ${value.toFixed(0)}`;
-          },
-        },
-        grid: {
-          color: "#ebedef",
-          drawBorder: false,
-        },
-      },
-    },
+    const chartDataProyeccionFormatted = labelsProyectados.map(
+      (label, index) => ({
+        periodo: label,
+        ingresos: proyeccionIngresos.proyecciones.base[index],
+        egresos: proyeccionEgresos.proyecciones.base[index],
+        saldo: proyeccionSaldo.proyecciones.base[index],
+      })
+    );
+
+    setChartDataProyeccion(chartDataProyeccionFormatted);
+
+    const chartDataEscenariosFormatted = labelsProyectados.map(
+      (label, index) => ({
+        periodo: label,
+        optimista: proyeccionSaldo.proyecciones.optimista[index],
+        base: proyeccionSaldo.proyecciones.base[index],
+        pesimista: proyeccionSaldo.proyecciones.pesimista[index],
+      })
+    );
+
+    setChartDataEscenarios(chartDataEscenariosFormatted);
   };
 
   const periodoOptions = [
@@ -248,16 +377,50 @@ export default function ProyeccionCuentaCorriente({
 
   const moneda = cuentaCorriente?.moneda?.simbolo || "";
 
+  const CustomTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div
+          style={{
+            backgroundColor: "#fff",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+            padding: "10px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          }}
+        >
+          <p style={{ margin: "0 0 5px 0", fontWeight: "bold" }}>
+            {payload[0].payload.periodo}
+          </p>
+          {payload.map((entry, index) => (
+            <p
+              key={index}
+              style={{
+                margin: "3px 0",
+                color: entry.color,
+                fontSize: "0.9rem",
+              }}
+            >
+              <strong>{entry.name}:</strong> {moneda}{" "}
+              {Number(entry.value).toFixed(2)}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <Dialog
       header={
         <div>
           <i className="pi pi-chart-bar" style={{ marginRight: "0.5rem" }} />
-          Proyección Financiera
+          Proyección Financiera Profesional
         </div>
       }
       visible={visible}
-      style={{ width: "90vw", maxWidth: "1400px" }}
+      style={{ width: "95vw", maxWidth: "1600px" }}
       onHide={onHide}
       modal
       maximizable
@@ -268,6 +431,7 @@ export default function ProyeccionCuentaCorriente({
             display: "flex",
             alignItems: "center",
             gap: 8,
+            marginBottom: "1rem",
           }}
         >
           <div style={{ flex: 2 }}>
@@ -327,13 +491,28 @@ export default function ProyeccionCuentaCorriente({
           </div>
         </div>
 
+        {datosInsuficientes && (
+          <Message
+            severity="warn"
+            text="No hay suficientes datos históricos para generar proyecciones. Registre más movimientos de saldo para obtener análisis más precisos."
+            style={{ marginBottom: "1rem", width: "100%" }}
+          />
+        )}
+
+        {estadisticas && estadisticas.metodoUsado === "promedio" && (
+          <Message
+            severity="info"
+            text={`Proyección basada en promedio simple (${estadisticas.datosHistoricos} ${estadisticas.datosHistoricos === 1 ? "registro" : "registros"}). Para proyecciones más precisas con regresión lineal, registre al menos 3 movimientos de saldo.`}
+            style={{ marginBottom: "1rem", width: "100%" }}
+          />
+        )}
+
         {estadisticas && (
           <div
             style={{
               display: "flex",
               gap: "0.5rem",
               marginBottom: "1rem",
-              marginTop: "1rem",
               flexWrap: "wrap",
               justifyContent: "space-between",
             }}
@@ -432,37 +611,376 @@ export default function ProyeccionCuentaCorriente({
                 </div>
               </div>
             </Tag>
-            <Tag
-              style={{
-                padding: "0.5rem 1rem",
-                flex: "1 1 auto",
-                minWidth: "150px",
-                backgroundColor: "#607D8B",
-                color: "white",
-              }}
-            >
-              <div style={{ textAlign: "center", width: "100%" }}>
-                <div style={{ fontSize: "0.7rem", marginBottom: "0.2rem" }}>
-                  Períodos Proyectados
-                </div>
-                <div style={{ fontSize: "1rem", fontWeight: "bold" }}>
-                  {estadisticas.periodosProyectados}
-                </div>
-              </div>
-            </Tag>
           </div>
         )}
 
-        <div style={{ height: "500px", marginBottom: "1rem" }}>
-          {chartDataProyeccion && (
-            <Chart
-              key={chartKey}
-              type="bar"
-              data={chartDataProyeccion}
-              options={chartOptions}
-            />
-          )}
-        </div>
+        {!datosInsuficientes && (
+          <TabView>
+            <TabPanel header="Proyección Base" leftIcon="pi pi-chart-line">
+              <div style={{ height: "500px" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={chartDataProyeccion}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ebedef" />
+                    <XAxis
+                      dataKey="periodo"
+                      tick={{ fill: "#495057", fontSize: 11 }}
+                      stroke="#495057"
+                    />
+                    <YAxis
+                      yAxisId="left"
+                      tick={{ fill: "#495057", fontSize: 12 }}
+                      stroke="#495057"
+                      tickFormatter={(value) =>
+                        `${moneda} ${value.toFixed(0)}`
+                      }
+                    />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      tick={{ fill: "rgb(75, 192, 192)", fontSize: 12 }}
+                      stroke="rgb(75, 192, 192)"
+                      tickFormatter={(value) =>
+                        `${moneda} ${value.toFixed(0)}`
+                      }
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend
+                      wrapperStyle={{
+                        paddingTop: "20px",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                      }}
+                    />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="ingresos"
+                      fill="rgb(54, 162, 235)"
+                      name="Ingresos"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="egresos"
+                      fill="rgb(255, 99, 132)"
+                      name="Egresos"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="saldo"
+                      stroke="rgb(75, 192, 192)"
+                      strokeWidth={3}
+                      name="Saldo"
+                      dot={{ r: 4, fill: "rgb(75, 192, 192)" }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </TabPanel>
+
+            <TabPanel header="Escenarios" leftIcon="pi pi-sitemap">
+              <div style={{ height: "500px" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartDataEscenarios}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ebedef" />
+                    <XAxis
+                      dataKey="periodo"
+                      tick={{ fill: "#495057", fontSize: 11 }}
+                      stroke="#495057"
+                    />
+                    <YAxis
+                      tick={{ fill: "#495057", fontSize: 12 }}
+                      stroke="#495057"
+                      tickFormatter={(value) =>
+                        `${moneda} ${value.toFixed(0)}`
+                      }
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend
+                      wrapperStyle={{
+                        paddingTop: "20px",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="optimista"
+                      stroke="rgb(76, 175, 80)"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="Optimista"
+                      dot={{ r: 3 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="base"
+                      stroke="rgb(75, 192, 192)"
+                      strokeWidth={3}
+                      name="Base"
+                      dot={{ r: 4, fill: "rgb(75, 192, 192)" }}
+                      activeDot={{ r: 6 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="pesimista"
+                      stroke="rgb(244, 67, 54)"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="Pesimista"
+                      dot={{ r: 3 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </TabPanel>
+
+            <TabPanel
+              header="Métricas Estadísticas"
+              leftIcon="pi pi-calculator"
+            >
+              {metricas && (
+                <div style={{ padding: "1rem" }}>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(300px, 1fr))",
+                      gap: "1rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        border: "2px solid rgb(54, 162, 235)",
+                        borderRadius: "8px",
+                        padding: "1rem",
+                        backgroundColor: "rgba(54, 162, 235, 0.05)",
+                      }}
+                    >
+                      <h4
+                        style={{
+                          margin: "0 0 1rem 0",
+                          color: "rgb(54, 162, 235)",
+                        }}
+                      >
+                        📈 Análisis de Ingresos
+                      </h4>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.5rem",
+                        }}
+                      >
+                        <div>
+                          <strong>Tendencia:</strong>{" "}
+                          <Tag
+                            value={metricas.ingresos.tendencia}
+                            severity={
+                              metricas.ingresos.tendencia === "Creciente"
+                                ? "success"
+                                : metricas.ingresos.tendencia === "Decreciente"
+                                ? "danger"
+                                : "info"
+                            }
+                          />
+                        </div>
+                        <div>
+                          <strong>Tasa de Crecimiento:</strong>{" "}
+                          {metricas.ingresos.tasaCrecimiento}% por período
+                        </div>
+                        <div>
+                          <strong>R² (Precisión):</strong>{" "}
+                          {metricas.ingresos.r2}%
+                        </div>
+                        <div>
+                          <strong>Confiabilidad:</strong>{" "}
+                          <Tag
+                            value={metricas.ingresos.confiabilidad}
+                            severity={
+                              metricas.ingresos.confiabilidad === "Alta"
+                                ? "success"
+                                : metricas.ingresos.confiabilidad === "Media"
+                                ? "warning"
+                                : "danger"
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "2px solid rgb(255, 99, 132)",
+                        borderRadius: "8px",
+                        padding: "1rem",
+                        backgroundColor: "rgba(255, 99, 132, 0.05)",
+                      }}
+                    >
+                      <h4
+                        style={{
+                          margin: "0 0 1rem 0",
+                          color: "rgb(255, 99, 132)",
+                        }}
+                      >
+                        📉 Análisis de Egresos
+                      </h4>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.5rem",
+                        }}
+                      >
+                        <div>
+                          <strong>Tendencia:</strong>{" "}
+                          <Tag
+                            value={metricas.egresos.tendencia}
+                            severity={
+                              metricas.egresos.tendencia === "Creciente"
+                                ? "danger"
+                                : metricas.egresos.tendencia === "Decreciente"
+                                ? "success"
+                                : "info"
+                            }
+                          />
+                        </div>
+                        <div>
+                          <strong>Tasa de Crecimiento:</strong>{" "}
+                          {metricas.egresos.tasaCrecimiento}% por período
+                        </div>
+                        <div>
+                          <strong>R² (Precisión):</strong>{" "}
+                          {metricas.egresos.r2}%
+                        </div>
+                        <div>
+                          <strong>Confiabilidad:</strong>{" "}
+                          <Tag
+                            value={metricas.egresos.confiabilidad}
+                            severity={
+                              metricas.egresos.confiabilidad === "Alta"
+                                ? "success"
+                                : metricas.egresos.confiabilidad === "Media"
+                                ? "warning"
+                                : "danger"
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "2px solid rgb(75, 192, 192)",
+                        borderRadius: "8px",
+                        padding: "1rem",
+                        backgroundColor: "rgba(75, 192, 192, 0.05)",
+                      }}
+                    >
+                      <h4
+                        style={{
+                          margin: "0 0 1rem 0",
+                          color: "rgb(75, 192, 192)",
+                        }}
+                      >
+                        💰 Análisis de Saldo
+                      </h4>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.5rem",
+                        }}
+                      >
+                        <div>
+                          <strong>Tendencia:</strong>{" "}
+                          <Tag
+                            value={metricas.saldo.tendencia}
+                            severity={
+                              metricas.saldo.tendencia === "Creciente"
+                                ? "success"
+                                : metricas.saldo.tendencia === "Decreciente"
+                                ? "danger"
+                                : "info"
+                            }
+                          />
+                        </div>
+                        <div>
+                          <strong>Tasa de Crecimiento:</strong>{" "}
+                          {metricas.saldo.tasaCrecimiento}% por período
+                        </div>
+                        <div>
+                          <strong>R² (Precisión):</strong> {metricas.saldo.r2}%
+                        </div>
+                        <div>
+                          <strong>Confiabilidad:</strong>{" "}
+                          <Tag
+                            value={metricas.saldo.confiabilidad}
+                            severity={
+                              metricas.saldo.confiabilidad === "Alta"
+                                ? "success"
+                                : metricas.saldo.confiabilidad === "Media"
+                                ? "warning"
+                                : "danger"
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "2rem",
+                      padding: "1rem",
+                      backgroundColor: "#f8f9fa",
+                      borderRadius: "8px",
+                      border: "1px solid #dee2e6",
+                    }}
+                  >
+                    <h4 style={{ margin: "0 0 0.5rem 0" }}>
+                      📚 Interpretación de Métricas
+                    </h4>
+                    <ul
+                      style={{
+                        margin: 0,
+                        paddingLeft: "1.5rem",
+                      }}
+                    >
+                      <li>
+                        <strong>R² (Coeficiente de Determinación):</strong> Mide
+                        qué tan bien el modelo se ajusta a los datos. Valores
+                        cercanos a 100% indican alta precisión.
+                      </li>
+                      <li>
+                        <strong>Confiabilidad:</strong> Alta (R² &​gt; 70%),
+                        Media (R² &​gt; 40%), Baja (R² ≤ 40%)
+                      </li>
+                      <li>
+                        <strong>Tasa de Crecimiento:</strong> Porcentaje de
+                        cambio promedio por período basado en regresión lineal.
+                      </li>
+                      <li>
+                        <strong>Escenarios:</strong> Optimista (+1.96σ), Base
+                        (proyección), Pesimista (-1.96σ) con intervalo de
+                        confianza del 95%.
+                      </li>
+                      {estadisticas.metodoUsado === "promedio" && (
+                        <li style={{ color: "#ff9800", fontWeight: "bold" }}>
+                          <strong>Nota:</strong> Con pocos datos históricos, se
+                          usa promedio simple. Registre más movimientos para
+                          análisis más precisos con regresión lineal.
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </TabPanel>
+          </TabView>
+        )}
       </div>
     </Dialog>
   );
