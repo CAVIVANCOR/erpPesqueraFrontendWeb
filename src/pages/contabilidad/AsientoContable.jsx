@@ -387,7 +387,14 @@ export default function AsientoContable({ ruta }) {
           life: 3000,
         });
       }
+
+      // Recargar lista
       await cargarDatos();
+
+      // Si estamos en el formulario, recargar el asiento actual
+      if (selected?.id === row.id) {
+        await recargarAsientoActual();
+      }
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -649,17 +656,19 @@ export default function AsientoContable({ ruta }) {
         <Button
           icon="pi pi-pencil"
           className="p-button-text p-mr-2"
-          disabled={
-            (!permisos.puedeVer && !permisos.puedeEditar) ||
-            esAprobado ||
-            esAnulado
-          }
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
           onClick={() => {
             if (permisos.puedeVer || permisos.puedeEditar) {
               onEdit(rowData);
             }
           }}
-          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+          tooltip={
+            esAprobado
+              ? "Editar (volverá a PENDIENTE)"
+              : permisos.puedeEditar
+                ? "Editar"
+                : "Ver"
+          }
         />
         <Button
           icon="pi pi-trash"
@@ -1430,6 +1439,7 @@ export default function AsientoContable({ ruta }) {
         closeOnEscape
       >
         <AsientoContableForm
+          key={selected?.id || 'new'}
           isEdit={isEdit}
           defaultValues={selected || {}}
           empresaFija={empresaFilter}
@@ -1442,6 +1452,9 @@ export default function AsientoContable({ ruta }) {
           onCancel={onCancel}
           loading={loading}
           readOnly={isEdit && !permisos.puedeEditar}
+          onAprobar={handleAprobar}
+          onAnular={handleAnular}
+          onRecargar={recargarAsientoActual}
         />
       </Dialog>
     </div>

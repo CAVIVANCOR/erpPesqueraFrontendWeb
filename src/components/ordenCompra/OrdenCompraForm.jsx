@@ -370,16 +370,21 @@ export default function OrdenCompraForm({
           await import("../../api/detalleOrdenCompra");
         const detalles = await getDetallesOrdenCompra(defaultValues.id);
 
-        const subtotalCalc = detalles.reduce(
+        // ⭐ subtotal ya viene SIN IGV desde los detalles
+        const subtotalSinIGV = detalles.reduce(
           (sum, det) => sum + (Number(det.subtotal) || 0),
           0,
         );
         const igvCalc = esExoneradoAlIGV
           ? 0
-          : subtotalCalc * (Number(porcentajeIGV) / 100);
-        const totalCalc = subtotalCalc + igvCalc;
+          : subtotalSinIGV * (Number(porcentajeIGV) / 100);
+        const totalCalc = subtotalSinIGV + igvCalc;
 
-        setTotales({ subtotal: subtotalCalc, igv: igvCalc, total: totalCalc });
+        setTotales({
+          subtotal: subtotalSinIGV,  // ⭐ Valor Compra (sin IGV)
+          igv: igvCalc,              // ⭐ IGV (18%)
+          total: totalCalc           // ⭐ Precio Compra Total (con IGV)
+        });
       } catch (err) {
         console.error("Error al calcular totales:", err);
       }
@@ -783,9 +788,9 @@ export default function OrdenCompraForm({
             onChange={handleChange}
             onSerieChange={handleSerieChange}
             empresas={empresas}
-            proveedores={proveedoresFiltrados}
+            proveedores={proveedores}
             formasPago={formasPago}
-            personalOptions={personalFiltrado}
+            personalOptions={personalOptions}
             monedas={monedas}
             centrosCosto={centrosCosto}
             unidadesNegocioOptions={unidadesNegocioOptions}
@@ -800,6 +805,7 @@ export default function OrdenCompraForm({
             productos={productos}
             toast={toast}
             onCountChange={setDetallesCount}
+            onDetallesChange={() => setDetallesCount((prev) => prev + 0.0001)} // ⭐ NUEVO: Forzar recálculo
             subtotal={totales.subtotal}
             totalIGV={totales.igv}
             total={totales.total}

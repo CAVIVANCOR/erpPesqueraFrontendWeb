@@ -37,6 +37,8 @@ import { getMonedas } from "../../api/moneda";
 import { getPeriodosPorEmpresa } from "../../api/contabilidad/periodoContable";
 import { getCentrosCosto } from "../../api/centroCosto";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import AsientoContableManager from "../common/AsientoContableManager";
+
 /**
  * Esquema de validación con Yup
  * Define las reglas de validación para el formulario
@@ -108,7 +110,6 @@ const MovimientoActivoFijoForm = ({
   activoIdInicial,
   onSave,
   onCancel,
-  onGenerarAsiento,
   permisos = {},
   readOnly = false,
 }) => {
@@ -452,14 +453,6 @@ const MovimientoActivoFijoForm = ({
     }
   };
 
-  /**
-   * Maneja la generación de asiento contable
-   */
-  const handleGenerarAsiento = () => {
-    if (onGenerarAsiento && movimiento) {
-      onGenerarAsiento(movimiento);
-    }
-  };
 
   /**
    * Obtiene la clase CSS para campos con errores
@@ -468,19 +461,6 @@ const MovimientoActivoFijoForm = ({
     return errors[fieldName] ? "p-invalid" : "";
   };
 
-  /**
-   * Maneja la visualización de asientos contables
-   */
-  const handleVerAsientos = () => {
-    // TODO: Implementar modal o navegación para ver lista de asientos
-    // Por ahora, mostrar mensaje informativo
-    toast.current.show({
-      severity: "info",
-      summary: "Asientos Contables",
-      detail: `Este movimiento tiene ${movimiento.asientosContables?.length || 0} asiento(s) contable(s) generado(s).`,
-      life: 3000,
-    });
-  };
 
   // Opciones para combos
   const empresasOptions = empresas.map((empresa) => ({
@@ -970,35 +950,17 @@ const MovimientoActivoFijoForm = ({
             marginTop: 20,
           }}
         >
-          {esEdicion &&
-            onGenerarAsiento &&
-            movimiento.periodoContable &&
-            Number(movimiento.periodoContable.estadoId) === 73 && (
-              <>
-                <Button
-                  type="button"
-                  label="Generar Asiento" // ✅ Siempre "Generar" (permite múltiples)
-                  icon="pi pi-book"
-                  className="p-button-info"
-                  onClick={handleGenerarAsiento}
-                  disabled={loading || readOnly}
-                  tooltip="Generar nuevo asiento contable para este movimiento"
-                />
-                {movimiento.asientosContables &&
-                  movimiento.asientosContables.length > 0 && ( // ✅ Verificar array
-                    <Button
-                      type="button"
-                      label={`Ver Asientos (${movimiento.asientosContables.length})`} // ✅ Mostrar cantidad
-                      icon="pi pi-eye"
-                      className="p-button-secondary"
-                      onClick={handleVerAsientos} // ✅ Nueva función para ver lista
-                      disabled={loading || readOnly}
-                      tooltip="Ver asientos contables generados"
-                    />
-                  )}
-              </>
-            )}
-
+          {/* Componente genérico de asientos contables */}
+          {esEdicion && movimiento?.id && (
+            <AsientoContableManager
+              documentoId={movimiento.id}
+              documentoTipo="MovimientoActivoFijo"
+              empresaId={movimiento.empresaId}
+              periodoContableId={movimiento.periodoContableId}
+              showAsButton={true}
+              readOnly={readOnly}
+            />
+          )}
           <Button
             type="button"
             label="Cancelar"

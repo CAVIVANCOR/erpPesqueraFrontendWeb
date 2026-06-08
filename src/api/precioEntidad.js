@@ -79,3 +79,25 @@ export async function obtenerPrecioVigente(empresaId, empresaEntidadComercialId,
   const res = await axios.get(`${API_URL}/precio-vigente?${params.toString()}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Obtiene el precio de venta vigente para un producto en PreFactura.
+ * Busca primero precio especial del cliente, luego precio estándar de la empresa.
+ * @param {number} productoId - ID del producto
+ * @param {number|null} clienteId - ID del cliente (null para precio estándar)
+ * @param {number} empresaEntidadComercialId - ID de la entidad comercial de la empresa vendedora
+ * @param {string} fechaDocumento - Fecha del documento en formato ISO
+ * @returns {Promise<Object|null>} - Precio vigente o null
+ */
+export async function obtenerPrecioVentaVigente(productoId, clienteId, empresaEntidadComercialId, fechaDocumento) {
+  const params = new URLSearchParams({
+    productoId,
+    empresaEntidadComercialId,
+    fechaDocumento,
+  });
+  if (clienteId) {
+    params.append('clienteId', clienteId);
+  }
+  const res = await axios.get(`${API_URL}/precio-venta-vigente?${params.toString()}`, { headers: getAuthHeaders() });
+  return res.data;
+}

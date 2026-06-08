@@ -19,6 +19,7 @@ import {
 import { Dialog } from "primereact/dialog";
 import { InputNumber } from "primereact/inputnumber";
 import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
+import AsientoContableManager from "../common/AsientoContableManager";
 
 export default function PreFacturaForm({
   isEdit,
@@ -58,7 +59,7 @@ export default function PreFacturaForm({
   const { usuario } = useAuthStore();
   // Estado único para todos los campos del formulario (patrón eficiente)
   const [formData, setFormData] = useState({
-      id: defaultValues?.id || null,
+    id: defaultValues?.id || null,
 
     // Datos básicos
     empresaId: defaultValues?.empresaId
@@ -249,6 +250,8 @@ export default function PreFacturaForm({
   useEffect(() => {
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       setFormData({
+        // ID (CRÍTICO - NO OLVIDAR)
+        id: defaultValues?.id || null,
         // Datos básicos
         empresaId: defaultValues?.empresaId
           ? Number(defaultValues.empresaId)
@@ -447,6 +450,7 @@ export default function PreFacturaForm({
   const [mediosPago, setMediosPago] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [estadosCxC, setEstadosCxC] = useState([]);
+
   // Extraer valores individuales para compatibilidad
   const {
     empresaId,
@@ -588,7 +592,7 @@ export default function PreFacturaForm({
     cargarSeriesDoc();
   }, [empresaId, tipoDocumentoId]);
 
-   // Cargar estados de pre-factura (tipoProvieneDeId = 14)
+  // Cargar estados de pre-factura (tipoProvieneDeId = 14)
   useEffect(() => {
     const cargarEstados = async () => {
       try {
@@ -1260,6 +1264,8 @@ export default function PreFacturaForm({
     label: unidad.nombre,
     value: Number(unidad.id),
   }));
+
+
   return (
     <div className="p-fluid">
       <TabView
@@ -1451,6 +1457,16 @@ export default function PreFacturaForm({
 
         {/* Botones derecha: Guardar y Cancelar */}
         <div style={{ display: "flex", gap: 8 }}>
+          {/* Componente genérico de asientos contables */}
+          {isEdit && formData.id && (
+            <AsientoContableManager
+              documentoId={formData.id}
+              documentoTipo="PreFactura"
+              empresaId={formData.empresaId}
+              periodoContableId={formData.periodoContableId}
+              showAsButton={true}
+            />
+          )}
           <Button
             label="Cancelar"
             icon="pi pi-times"

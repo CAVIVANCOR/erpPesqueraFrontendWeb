@@ -79,51 +79,50 @@ export default function IrACxCEditar({
     let isMounted = true;
 
     const loadCxC = async () => {
-      console.log("🔵 [loadCxC] INICIO - preFacturaId:", preFacturaId);
 
       if (!preFacturaId) {
-        console.log("🔴 [loadCxC] NO hay preFacturaId");
         setCxcData(null);
         setLoading(false);
         return;
       }
 
+      // ⭐ NUEVO: Solo cargar CxC si el estado es >= 96 (APROBADA)
+      const estadoId = Number(preFactura?.estadoId || 0);
+      if (estadoId < 96) {
+        if (isMounted) {
+          setCxcData(null);
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
-        console.log("🔵 [loadCxC] setLoading(true)");
         setLoading(true);
         setError(null);
 
-        console.log("🔵 [loadCxC] Llamando API...");
         const response = await getCuentaPorCobrarByPreFacturaId(preFacturaId);
-        console.log("🔵 [loadCxC] Respuesta:", response);
 
         if (response && response.id) {
-          console.log("✅ [loadCxC] CxC cargada - setCxcData");
           setCxcData(response);
         } else {
-          console.log("❌ [loadCxC] No hay response.id");
           if (isMounted) {
             setCxcData(null);
           }
         }
       } catch (err) {
-        console.error("❌ [loadCxC] Error:", err);
         setError(err.response?.data?.message || "No se encontró la Cuenta por Cobrar");
         setCxcData(null);
       } finally {
-        console.log("🔵 [loadCxC] FINALIZANDO - isMounted:", isMounted);
         setLoading(false);
       }
     };
 
-    console.log("🟢 [USEEFFECT] Ejecutando loadCxC()");
     loadCxC();
 
     return () => {
-      console.log("🔴 [USEEFFECT] Cleanup - isMounted = false");
       isMounted = false;
     };
-  }, [preFacturaId]);
+  }, [preFacturaId, preFactura?.estadoId]);
 
   const handleClick = () => {
     if (cxcData) {

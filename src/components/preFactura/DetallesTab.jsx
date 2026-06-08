@@ -4,10 +4,12 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
-import { Tag } from "primereact/tag";
 import { InputNumber } from "primereact/inputnumber";
 import { confirmDialog } from "primereact/confirmdialog";
-import ProductoSelectorDialog from "../common/productoSelectorConStock/components/ProductoSelectorDialog";
+import {
+  ProductoSelectorDialog,
+  ProductoSelectedDisplay,
+} from "../common/productoSelectorConStock";
 import {
   getDetallesPreFactura,
   crearDetallePreFactura,
@@ -33,13 +35,16 @@ export default function DetallesTab({
   pagosPreviosSI = 0,
   tipoDocumentoId = null,
   tiposDocumentoOptions = [],
-  onChange = () => {},
+  onChange = () => { },
+  // ⭐ NUEVOS PROPS PARA PRECIO AUTOMÁTICO
+  clienteId = null,
+  fechaDocumento = null,
 }) {
   // Obtener entidadComercialId de la empresa seleccionada
   const empresaSeleccionada = empresas?.find(
     (e) => Number(e.id) === Number(empresaId),
   );
-  const clienteId = empresaSeleccionada?.entidadComercialId || null;
+  const empresaEntidadComercialId = empresaSeleccionada?.entidadComercialId || null;
   // Detectar si es Saldo Inicial
   const tipoDocSeleccionado = tiposDocumentoOptions.find(
     (t) => Number(t.value) === Number(tipoDocumentoId),
@@ -129,6 +134,8 @@ export default function DetallesTab({
 
   const handleProductoSeleccionado = (productoData) => {
     // productoData viene de ProductoSelectorDialog
+    // Si es tipo "saldo" (egreso), puede traer precioUnitario automático
+    // Si es tipo "producto" (ingreso), precioUnitario será 0
     setDetalleActual({
       ...detalleActual,
       productoId: Number(productoData.productoId),
@@ -261,13 +268,7 @@ export default function DetallesTab({
     return (
       <div>
         <div style={{ fontWeight: "500" }}>
-          {rowData.producto?.descripcionArmada ||
-            rowData.producto?.descripcion ||
-            rowData.producto?.nombre ||
-            "N/A"}
-        </div>
-        <div style={{ fontSize: "0.85rem", color: "#666" }}>
-          Código: {rowData.producto?.codigo || "N/A"}
+          {rowData.producto?.descripcionArmada || "N/A"}
         </div>
       </div>
     );
@@ -285,10 +286,15 @@ export default function DetallesTab({
   };
 
   const precioTemplate = (rowData) => {
-    const codigoMoneda = getCodigoMoneda();
+    const simboloMoneda = getSimboloMoneda();
     return (
-      <div style={{ textAlign: "right", fontWeight: "bold" }}>
-        {codigoMoneda}{" "}
+      <div style={{ 
+        textAlign: "right", 
+        fontWeight: "bold",
+        backgroundColor: getColorPorMoneda(),
+        padding: "0.5rem"
+      }}>
+        {simboloMoneda}{" "}
         {new Intl.NumberFormat("es-PE", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
@@ -298,11 +304,17 @@ export default function DetallesTab({
   };
 
   const subtotalTemplate = (rowData) => {
-    const codigoMoneda = getCodigoMoneda();
+    const simboloMoneda = getSimboloMoneda();
     const subtotal = Number(rowData.cantidad) * Number(rowData.precioUnitario);
     return (
-      <div style={{ textAlign: "right", fontWeight: "bold", color: "#2196F3" }}>
-        {codigoMoneda}{" "}
+      <div style={{ 
+        textAlign: "right", 
+        fontWeight: "bold", 
+        color: "#2196F3",
+        backgroundColor: getColorPorMoneda(),
+        padding: "0.5rem"
+      }}>
+        {simboloMoneda}{" "}
         {new Intl.NumberFormat("es-PE", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
@@ -359,19 +371,18 @@ export default function DetallesTab({
     return moneda?.codigoSunat || "PEN";
   };
 
-  // Helper para obtener color de fondo según moneda
+  // Helper para obtener símbolo de moneda desde la BD
+  const getSimboloMoneda = () => {
+    if (!monedaId) return "S/.";
+    const moneda = monedas.find((m) => Number(m.id) === Number(monedaId));
+    return moneda?.simbolo || "S/.";
+  };
+
+  // Helper para obtener color de fondo desde la BD
   const getColorPorMoneda = () => {
-    const codigoMoneda = getCodigoMoneda();
-    switch (codigoMoneda) {
-      case "USD":
-        return "#d4edda"; // Verde claro para dólares
-      case "PEN":
-        return "#fff3cd"; // Amarillo claro para soles
-      case "EUR":
-        return "#e3f2fd"; // Azul claro para euros
-      default:
-        return "#f8f9fa"; // Gris claro para otras monedas
-    }
+    if (!monedaId) return "#fff3cd";
+    const moneda = monedas.find((m) => Number(m.id) === Number(monedaId));
+    return moneda?.colorFondo || "#ffffff";
   };
 
   // Calcular totales restando pagos previos SI
@@ -436,7 +447,7 @@ export default function DetallesTab({
           </div>
         )}
         <div style={{ flex: 1 }}>
-          <label style={{ fontWeight: "bold" }}>Subtotal</label>
+          <label style={{ fontWeight: "bold" }}>VALOR VENTA TOTAL</label>
           <InputNumber
             value={subtotalMostrado || 0}
             mode="currency"
@@ -454,7 +465,7 @@ export default function DetallesTab({
         </div>
         <div style={{ flex: 1 }}>
           <label style={{ fontWeight: "bold" }}>
-            IGV ({porcentajeIGV || 0}%)
+            TOTAL IGV ({porcentajeIGV || 0}%)
           </label>
           <InputNumber
             value={totalIGV || 0}
@@ -472,7 +483,7 @@ export default function DetallesTab({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={{ fontWeight: "bold", color: "#2196F3" }}>TOTAL</label>
+          <label style={{ fontWeight: "bold", color: "#2196F3" }}>PRECIO VENTA TOTAL</label>
           <InputNumber
             value={totalMostrado || 0}
             mode="currency"
@@ -501,6 +512,18 @@ export default function DetallesTab({
         stripedRows
       >
         <Column
+          field="producto.familia.nombre"
+          header="Familia"
+          style={{ width: "150px" }}
+          body={(rowData) => rowData.producto?.familia?.nombre || "-"}
+        />
+        <Column
+          field="producto.subfamilia.nombre"
+          header="Subfamilia"
+          style={{ width: "150px" }}
+          body={(rowData) => rowData.producto?.subfamilia?.nombre || "-"}
+        />
+        <Column
           field="producto.nombre"
           header="Producto"
           body={productoTemplate}
@@ -512,19 +535,22 @@ export default function DetallesTab({
           body={cantidadTemplate}
           style={{ width: "100px", textAlign: "right" }}
           bodyStyle={{ textAlign: "right" }}
+          alignHeader="center"
         />
         <Column
           field="precioUnitario"
-          header="Precio Unit."
+          header="Valor Unit. Venta"
           body={precioTemplate}
-          style={{ width: "140px", textAlign: "right" }}
+          style={{ width: "160px", textAlign: "right" }}
           bodyStyle={{ textAlign: "right" }}
+          alignHeader="center"
         />
         <Column
-          header="Subtotal"
+          header="Valor Venta"
           body={subtotalTemplate}
-          style={{ width: "140px", textAlign: "right" }}
+          style={{ width: "160px", textAlign: "right" }}
           bodyStyle={{ textAlign: "right" }}
+          alignHeader="center"
         />
         <Column
           header="Acciones"
@@ -543,90 +569,18 @@ export default function DetallesTab({
         onHide={cerrarDialogo}
       >
         <div className="p-fluid">
-          <div style={{ marginBottom: "1rem" }}>
-            <label htmlFor="productoId">Producto *</label>
-            <Button
-              icon="pi pi-search"
-              onClick={() => setShowProductoSelector(true)}
-              disabled={loading || !empresaId}
-              style={{
-                width: "100%",
-                justifyContent: "flex-start",
-                backgroundColor: "#2196F3",
-                borderColor: "#2196F3",
-                padding: "0.75rem",
-                minHeight: "45px",
-              }}
-            >
-              {detalleActual.productoId ? (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    flexWrap: "wrap",
-                    width: "100%",
-                  }}
-                >
-                  {(() => {
-                    const productoSeleccionado = productos.find(
-                      (p) => Number(p.id) === Number(detalleActual.productoId),
-                    );
-                    if (!productoSeleccionado) return "Seleccionar Producto";
-
-                    return (
-                      <>
-                        {productoSeleccionado.familia?.nombre && (
-                          <Tag
-                            value={productoSeleccionado.familia.nombre}
-                            style={{
-                              backgroundColor: "#2196F3",
-                              color: "white",
-                              fontWeight: "bold",
-                              fontSize: "0.75rem",
-                              padding: "0.25rem 0.5rem",
-                            }}
-                          />
-                        )}
-                        {productoSeleccionado.subfamilia?.nombre && (
-                          <Tag
-                            value={productoSeleccionado.subfamilia.nombre}
-                            style={{
-                              backgroundColor: "#4CAF50",
-                              color: "white",
-                              fontWeight: "bold",
-                              fontSize: "0.75rem",
-                              padding: "0.25rem 0.5rem",
-                            }}
-                          />
-                        )}
-                        {(productoSeleccionado.descripcionArmada ||
-                          productoSeleccionado.nombre) && (
-                          <Tag
-                            value={
-                              productoSeleccionado.descripcionArmada ||
-                              productoSeleccionado.nombre
-                            }
-                            style={{
-                              backgroundColor: "#f44336",
-                              color: "white",
-                              fontWeight: "bold",
-                              fontSize: "0.75rem",
-                              padding: "0.25rem 0.5rem",
-                            }}
-                          />
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-              ) : (
-                <span style={{ color: "white", fontWeight: "bold" }}>
-                  Seleccionar Producto
-                </span>
-              )}
-            </Button>
-          </div>
+          <ProductoSelectedDisplay
+            producto={
+              detalleActual.productoId
+                ? productos.find(
+                  (p) => Number(p.id) === Number(detalleActual.productoId)
+                )
+                : null
+            }
+            onChangeClick={() => setShowProductoSelector(true)}
+            disabled={loading || !empresaId}
+            label="Producto *"
+          />
 
           <div
             style={{
@@ -653,7 +607,7 @@ export default function DetallesTab({
             </div>
 
             <div style={{ flex: 1 }}>
-              <label htmlFor="precioUnitario">Precio Unitario *</label>
+              <label htmlFor="precioUnitario">Valor de Venta Unitario (Sin IGV) *</label>
               <InputNumber
                 id="precioUnitario"
                 value={detalleActual.precioUnitario}
@@ -673,9 +627,32 @@ export default function DetallesTab({
                 inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             </div>
+            {/* Campo informativo: Precio de Venta Unitario (Con IGV) */}
+            {detalleActual.precioUnitario > 0 && (
+              <div style={{ marginTop: "0.5rem" }}>
+                <label htmlFor="precioConIGV" style={{ color: "#666", fontSize: "0.9rem" }}>
+                  Precio de Venta Unitario (Con IGV) - Informativo
+                </label>
+                <InputNumber
+                  id="precioConIGV"
+                  value={Number(detalleActual.precioUnitario) * (1 + (porcentajeIGV || 0) / 100)}
+                  mode="currency"
+                  currency={getCodigoMoneda()}
+                  locale="es-PE"
+                  minFractionDigits={2}
+                  disabled
+                  inputStyle={{
+                    fontWeight: "bold",
+                    backgroundColor: "#f0f0f0",
+                    color: "#666",
+                    textAlign: "right",
+                  }}
+                />
+              </div>
+            )}
           </div>
 
-          {/* Mostrar subtotal calculado */}
+          {/* Mostrar resumen calculado */}
           {detalleActual.cantidad > 0 && detalleActual.precioUnitario > 0 && (
             <div
               style={{
@@ -683,25 +660,73 @@ export default function DetallesTab({
                 padding: "1rem",
                 backgroundColor: "#f8f9fa",
                 borderRadius: "4px",
+                border: "1px solid #dee2e6",
               }}
             >
+              <div style={{ marginBottom: "0.5rem", fontWeight: "bold", color: "#495057" }}>
+                RESUMEN
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: "1rem",
+                  marginBottom: "0.3rem",
+                }}
+              >
+                <span>Valor Venta Total (Sin IGV):</span>
+                <span style={{ fontWeight: "bold" }}>
+                  {getSimboloMoneda()}{" "}
+                  {new Intl.NumberFormat("es-PE", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }).format(
+                    Number(detalleActual.cantidad) *
+                    Number(detalleActual.precioUnitario),
+                  )}
+                </span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: "1rem",
+                  marginBottom: "0.3rem",
+                }}
+              >
+                <span>IGV ({porcentajeIGV || 0}%):</span>
+                <span style={{ fontWeight: "bold" }}>
+                  {getSimboloMoneda()}{" "}
+                  {new Intl.NumberFormat("es-PE", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }).format(
+                    Number(detalleActual.cantidad) *
+                    Number(detalleActual.precioUnitario) *
+                    ((porcentajeIGV || 0) / 100),
+                  )}
+                </span>
+              </div>
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   fontSize: "1.1rem",
                   fontWeight: "bold",
+                  paddingTop: "0.5rem",
+                  borderTop: "2px solid #dee2e6",
                 }}
               >
-                <span>Subtotal:</span>
+                <span style={{ color: "#2196F3" }}>Precio de Venta Total (Con IGV):</span>
                 <span style={{ color: "#2196F3" }}>
-                  {getCodigoMoneda()}{" "}
+                  {getSimboloMoneda()}{" "}
                   {new Intl.NumberFormat("es-PE", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   }).format(
                     Number(detalleActual.cantidad) *
-                      Number(detalleActual.precioUnitario),
+                    Number(detalleActual.precioUnitario) *
+                    (1 + (porcentajeIGV || 0) / 100),
                   )}
                 </span>
               </div>
@@ -716,8 +741,14 @@ export default function DetallesTab({
         modo="egreso"
         esCustodia={false}
         empresaId={empresaId}
-        propietarioStockId={clienteId}
+        propietarioStockId={empresaEntidadComercialId}
         almacenId={null}
+        productoIdSeleccionado={detalleActual.productoId}
+        clienteId={clienteId}
+        empresaEntidadComercialId={empresaEntidadComercialId}
+        monedaId={monedaId}
+        fechaDocumento={fechaDocumento}
+        buscarPrecioVenta={true}
         onSelect={handleProductoSeleccionado}
       />
     </div>

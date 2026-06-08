@@ -26,7 +26,7 @@ export const useProductoSelectorData = ({
   useEffect(() => {
     if (visible && empresaId && propietarioStockId) {
       cargarDatos();
-    }
+    } 
   }, [
     visible,
     empresaId,
@@ -45,9 +45,8 @@ export const useProductoSelectorData = ({
    * Nivel 3: Stock con variables (al hacer clic en almacén)
    */
   const cargarDatos = async () => {
-    
+
     if (!empresaId || !propietarioStockId) {
-      console.log("❌ [cargarDatos] Faltan parámetros requeridos");
       return;
     }
 
@@ -77,7 +76,7 @@ export const useProductoSelectorData = ({
    * Para mercadería en custodia: Producto.propietarioStockId = propietarioStockId
    */
   const cargarProductosConStockConsolidado = async () => {
-    
+
     // 1. Cargar productos activos de la empresa
     const filtrosProductos = {
       empresaId,
@@ -89,16 +88,32 @@ export const useProductoSelectorData = ({
     // 1.1. Filtrar productos según configuración
     let productosFiltrados = productosData;
 
-    if (familiaProductoId) {
-      // MODO INGRESO: Mostrar TODOS los productos de la familia (sin filtro de kardex)
-      // El filtro de kardex solo aplica en EGRESO
+    // Filtrar por familias según modo (ingreso/egreso)
+    if (esIngreso) {
+      // MODO INGRESO: Mostrar solo productos de familias con esParaIngresos = true
       productosFiltrados = productosData.filter(
+        (producto) => producto.familia?.esParaIngresos === true
+      );
+
+      // Agrupar por familia para ver distribución
+      const familias = productosFiltrados.reduce((acc, p) => {
+        const famNombre = p.familia?.nombre || 'SIN FAMILIA';
+        acc[famNombre] = (acc[famNombre] || 0) + 1;
+        return acc;
+      }, {});
+    } else {
+      // MODO EGRESO: Mostrar solo productos de familias con esParaEgresos = true
+      productosFiltrados = productosData.filter(
+        (producto) => producto.familia?.esParaEgresos === true
+      );
+    }
+
+    // Filtro adicional por familia específica (si se proporciona)
+    if (familiaProductoId) {
+      productosFiltrados = productosFiltrados.filter(
         (producto) =>
           Number(producto.subfamilia?.familiaId) === Number(familiaProductoId),
       );
-    } else {
-      // Sin familia especificada: mostrar todos los productos
-      productosFiltrados = productosData;
     }
 
     // 2. Cargar saldos generales desde SaldosProductoCliente (consolidado por producto)
@@ -128,9 +143,9 @@ export const useProductoSelectorData = ({
       const costoPromedio =
         saldosProducto.length > 0
           ? saldosProducto.reduce(
-              (sum, s) => sum + Number(s.costoUnitarioPromedio || 0),
-              0,
-            ) / saldosProducto.length
+            (sum, s) => sum + Number(s.costoUnitarioPromedio || 0),
+            0,
+          ) / saldosProducto.length
           : 0;
 
       return {
@@ -152,7 +167,7 @@ export const useProductoSelectorData = ({
    * NIVEL 1 (Egresos): Carga solo productos con stock disponible
    */
   const cargarProductosConStock = async () => {
-    
+
     // CASO 1: Si es familia SERVICIOS (5), cargar desde catálogo de productos
     if (familiaProductoId && Number(familiaProductoId) === 5) {
       const filtrosProductos = {
@@ -195,7 +210,7 @@ export const useProductoSelectorData = ({
     };
 
     let saldosData = await getSaldosProductoClienteConFiltros(filtros);
-    
+
     // CASO 3: Si hay filtro de familia (que NO sea SERVICIOS), aplicar filtro
     if (familiaProductoId && Number(familiaProductoId) !== 5) {
       saldosData = saldosData.filter((saldo) => {
@@ -203,7 +218,7 @@ export const useProductoSelectorData = ({
         return Number(familiaId) === Number(familiaProductoId);
       });
     }
-    
+
     setItems(saldosData);
   };
 

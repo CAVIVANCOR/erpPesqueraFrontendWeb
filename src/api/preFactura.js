@@ -272,3 +272,59 @@ export async function aprobarPreFactura(id) {
     throw error;
   }
 }
+
+/**
+ * Obtiene el borrador de asiento contable para una PreFactura
+ * @param {number} preFacturaId - ID de la PreFactura
+ * @returns {Promise<Object>} - Borrador del asiento
+ */
+export async function obtenerBorradorAsiento(preFacturaId) {
+  try {
+    const response = await axios.get(`${API_URL}/${preFacturaId}/borrador-asiento`, {
+      headers: getAuthHeaders(),
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error al obtener borrador de asiento:", error);
+    throw error;
+  }
+}
+
+/**
+ * Guarda el asiento contable editado
+ * @param {number} preFacturaId - ID de la PreFactura
+ * @param {Object} asientoData - Datos del asiento editado
+ * @returns {Promise<Object>} - Asiento guardado
+ */
+export async function guardarAsientoContable(preFacturaId, asientoData) {
+  try {
+    const response = await axios.post(
+      `${API_URL}/${preFacturaId}/guardar-asiento`,
+      { asientoData },
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error al guardar asiento contable:", error);
+    throw error;
+  }
+}
+
+/**
+ * Elimina un asiento contable específico
+ * @param {number} preFacturaId - ID de la PreFactura
+ * @param {number} asientoId - ID del asiento a eliminar
+ * @returns {Promise<Object>} - Confirmación
+ */
+export async function eliminarAsientoContable(preFacturaId, asientoId) {
+  try {
+    const response = await axios.delete(
+      `${API_URL}/${preFacturaId}/asiento/${asientoId}`,
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error al eliminar asiento contable:", error);
+    throw error;
+  }
+}

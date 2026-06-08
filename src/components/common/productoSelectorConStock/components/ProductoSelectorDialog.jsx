@@ -1,8 +1,10 @@
 // src/components/movimientoAlmacen/ProductoSelectorDialog.jsx
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { crearProducto } from "../../../../api/producto";
+import { obtenerPrecioVentaVigente } from "../../../../api/precioEntidad";
+import { consultarTipoCambioSunat } from "../../../../api/consultaExterna";
 import { getEmpresas } from "../../../../api/empresa";
 import { getEntidadesComerciales } from "../../../../api/entidadComercial";
 import { getColores } from "../../../../api/color";
@@ -49,12 +51,19 @@ export default function ProductoSelectorDialog({
   estadoCalidadDefault = 10,
   familiaProductoId = null,
   filtroFamiliaInicial = null,
+  productoIdSeleccionado = null,
+  // ⭐ NUEVOS PROPS PARA PREFACTURA
+  clienteId = null,
+  empresaEntidadComercialId = null,
+  monedaId = null,
+  fechaDocumento = null,
+  buscarPrecioVenta = false, // Flag para activar búsqueda de precio
   onSelect,
 }) {
   const toast = useRef(null);
   const esIngreso = modo === "ingreso";
   const [soloConSaldo, setSoloConSaldo] = useState(modo !== "ingreso");
-  
+
   // Custom Hooks
   const catalogos = useCatalogos(visible, toast);
   const { items, loading, cargarDatos } = useProductoSelectorData({
@@ -84,8 +93,14 @@ export default function ProductoSelectorDialog({
     filteredItems,
     opcionesDinamicas,
     limpiarFiltros,
-  } = useProductoSelectorFilters(items, catalogos, modo, filtroFamiliaInicial);
+   } = useProductoSelectorFilters(items, catalogos, modo, filtroFamiliaInicial);
 
+  // ⭐ NUEVO: Limpiar filtros cuando se abre el diálogo
+  useEffect(() => {
+    if (visible) {
+      limpiarFiltros();
+    }
+  }, [visible]); // Solo cuando cambia visible
   // Permisos para crear productos
   const permisosProducto = usePermissions("productos");
 
@@ -129,27 +144,79 @@ export default function ProductoSelectorDialog({
     }
   };
 
-  /**
+    /**
    * Maneja botón Seleccionar
    */
-  const handleSelect = (rowData) => {
+  const handleSelect = async (rowData) => {
     if (esIngreso) {
-      // INGRESO: Seleccionar producto directamente
+      // INGRESO: Seleccionar producto directamente (SIN búsqueda de precio)
       onSelect({
         tipo: "producto",
-        productoId: rowData.id,
-        producto: rowData,
+        productoId: rowData.productoId,
+        producto: rowData.producto,
         estadoMercaderiaId: estadoMercaderiaDefault,
         estadoCalidadId: estadoCalidadDefault,
+        precioUnitario: 0,
       });
       onHide();
     } else {
-      // EGRESO/TRANSFERENCIA: Retornar saldo completo
+      // EGRESO/VENTA: Buscar precio automático si está habilitado
+      let precioUnitario = 0;
+
+      if (buscarPrecioVenta && fechaDocumento && empresaEntidadComercialId) {
+        try {
+          const fechaISO = new Date(fechaDocumento).toISOString().split("T")[0];
+          const precioEncontrado = await obtenerPrecioVentaVigente(
+            rowData.productoId,
+            clienteId,
+            empresaEntidadComercialId,
+            fechaISO,
+          );
+
+          if (precioEncontrado) {
+            let precioFinal = Number(precioEncontrado.precioUnitario);
+
+            // Convertir moneda si es necesario
+            if (monedaId && Number(precioEncontrado.monedaId) !== Number(monedaId)) {
+              try {
+                const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
+                if (tipoCambioData && tipoCambioData.compra) {
+                  const tc = Number(tipoCambioData.compra);
+                  const monedaPrecio = precioEncontrado.moneda?.codigoSunat;
+                  
+                  if (monedaPrecio === "USD" && Number(monedaId) === 2) {
+                    // USD → PEN
+                    precioFinal = precioFinal * tc;
+                  } else if (monedaPrecio === "PEN" && Number(monedaId) === 1) {
+                    // PEN → USD
+                    precioFinal = precioFinal / tc;
+                  }
+                }
+              } catch (tcError) {
+                console.warn("No se pudo obtener tipo de cambio:", tcError);
+              }
+            }
+
+            precioUnitario = precioFinal;
+          }
+        } catch (error) {
+          console.error("Error al buscar precio de venta:", error);
+          toast.current?.show({
+            severity: "warn",
+            summary: "Advertencia",
+            detail: "No se pudo obtener el precio automático. Ingrese manualmente.",
+            life: 3000,
+          });
+        }
+      }
+
+      // EGRESO: Retornar saldo completo con precio
       onSelect({
         tipo: "saldo",
         productoId: rowData.productoId,
         producto: rowData.producto,
         saldo: rowData,
+        precioUnitario: precioUnitario,
       });
       onHide();
     }
@@ -311,6 +378,7 @@ export default function ProductoSelectorDialog({
           header={tableHeader}
           onRowClick={handleRowClick}
           onSelect={handleSelect}
+          productoIdSeleccionado={productoIdSeleccionado} // ⭐ NUEVO
         />
       </Dialog>
 

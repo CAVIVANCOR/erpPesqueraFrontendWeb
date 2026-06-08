@@ -52,7 +52,6 @@ export default function PagoCuentaPorCobrar() {
 
   const loadData = async () => {
     try {
-      console.log("🔍 DEBUG PADRE - loadData() INICIANDO...");
       setLoading(true);
       const [
         pagosData,
@@ -73,26 +72,17 @@ export default function PagoCuentaPorCobrar() {
         getEstadosMultiFuncion(),
         getPeriodosContables(),
       ]);
-
-      console.log("🔍 DEBUG PADRE - Promise.all completado");
-
       const pagosFiltrados =
         pagosData?.filter((p) => p.cuentaPorCobrarId !== null) || [];
       setPagos(pagosFiltrados);
-
       const cuentasPendientes =
         cuentasData?.filter((c) => Number(c.saldoPendiente || 0) > 0) || [];
       setCuentasPorCobrar(cuentasPendientes);
-
       setMonedas(monedasData || []);
       setMediosPago(mediosPagoData || []);
       setBancos(bancosData || []);
       setCuentasCorrientes(cuentasCorrientesData || []);
       setEstados(estadosData || []);
-      console.log(
-        "🔍 DEBUG PADRE - periodosContablesData:",
-        periodosContablesData,
-      );
       setPeriodosContables(periodosContablesData || []);
     } catch (error) {
       console.error("Error al cargar datos:", error);
@@ -435,10 +425,6 @@ export default function PagoCuentaPorCobrar() {
         className="p-fluid"
         onHide={hideDialog}
       >
-        {console.log(
-          "🔍 RENDER Dialog - periodosContables:",
-          periodosContables,
-        )}
         <PagoCuentaPorCobrarForm
           isEdit={isEdit}
           defaultValues={formData}

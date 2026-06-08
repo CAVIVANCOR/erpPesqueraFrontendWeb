@@ -167,13 +167,47 @@ const FamiliaProducto = ({ ruta }) => {
   };
 
   /**
-   * Template para el nombre de la familia de producto
-   */
+ * Template para el nombre de la familia de producto
+ */
   const nombreTemplate = (rowData) => {
     return (
       <span style={{ fontWeight: "bold", textTransform: "uppercase" }}>
         {rowData.nombre}
       </span>
+    );
+  };
+
+  /**
+   * Template para esParaIngresos
+   */
+  const esParaIngresosTemplate = (rowData) => {
+    return (
+      <div style={{ textAlign: "center" }}>
+        <i
+          className={rowData.esParaIngresos ? "pi pi-check-circle" : "pi pi-times-circle"}
+          style={{
+            fontSize: "1.2rem",
+            color: rowData.esParaIngresos ? "#22c55e" : "#ef4444",
+          }}
+        />
+      </div>
+    );
+  };
+
+  /**
+   * Template para esParaEgresos
+   */
+  const esParaEgresosTemplate = (rowData) => {
+    return (
+      <div style={{ textAlign: "center" }}>
+        <i
+          className={rowData.esParaEgresos ? "pi pi-check-circle" : "pi pi-times-circle"}
+          style={{
+            fontSize: "1.2rem",
+            color: rowData.esParaEgresos ? "#22c55e" : "#ef4444",
+          }}
+        />
+      </div>
     );
   };
 
@@ -313,6 +347,20 @@ const FamiliaProducto = ({ ruta }) => {
           body={nombreTemplate}
           sortable
           style={{ minWidth: "200px" }}
+        />
+        <Column
+          field="esParaIngresos"
+          header="Para Ingresos"
+          body={esParaIngresosTemplate}
+          sortable
+          style={{ minWidth: "120px", textAlign: "center" }}
+        />
+        <Column
+          field="esParaEgresos"
+          header="Para Egresos"
+          body={esParaEgresosTemplate}
+          sortable
+          style={{ minWidth: "120px", textAlign: "center" }}
         />
         <Column
           body={accionesTemplate}

@@ -165,7 +165,6 @@ const CuentaPorCobrarForm = forwardRef(({
   };
   // Recalcular montoPagado, saldoPendiente y totales de impuestos cuando cambien los pagos
   useEffect(() => {
-    console.log("pagos", pagos)
     const totalPagado = pagos.reduce(
       (sum, pago) => sum + Number(pago.montoAplicadoDeuda || 0),
       0,
@@ -182,7 +181,6 @@ const CuentaPorCobrarForm = forwardRef(({
       (sum, pago) => sum + Number(pago.montoPercepcion || 0),
       0,
     );
-    console.log("setMontoPagado(totalPagado)", totalPagado)
     setMontoPagado(totalPagado);
     setSaldoPendiente(Number(montoTotal) - totalPagado);
     setMontoDetraccionTotal(totalDetraccion);
@@ -234,11 +232,6 @@ const CuentaPorCobrarForm = forwardRef(({
       setTieneRetencion(cuentaActualizada.tieneRetencion || false);
       setTienePercepcion(cuentaActualizada.tienePercepcion || false);
       setEstadoId(cuentaActualizada.estadoId || 100);
-
-      console.log("✅ Cuenta recargada desde backend:", {
-        montoPagado: cuentaActualizada.montoPagado,
-        saldoPendiente: cuentaActualizada.saldoPendiente,
-      });
     } catch (error) {
       console.error("❌ Error al recargar cuenta desde backend:", error);
     }
@@ -416,7 +409,6 @@ const CuentaPorCobrarForm = forwardRef(({
     const moneda = monedas?.find(
       (m) => Number(m.id) === Number(rowData.monedaDeudaId),
     );
-    console.log("moneda", moneda, "rowData", rowData)
     const codigo = moneda?.codigoSunat || "-";
     return (
       <span

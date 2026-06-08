@@ -33,6 +33,7 @@ export default function DatosGeneralesTab({
   productos,
   toast,
   onCountChange,
+  onDetallesChange, // ⭐ NUEVO: Callback cuando cambian los detalles
   // Totales calculados
   subtotal = null,
   totalIGV = null,
@@ -957,6 +958,7 @@ export default function DatosGeneralesTab({
             puedeEditar={puedeEditar}
             toast={toast}
             onCountChange={onCountChange}
+            onChange={onDetallesChange} // ⭐ NUEVO: Callback para recalcular totales
             subtotal={subtotal}
             totalIGV={totalIGV}
             total={total}

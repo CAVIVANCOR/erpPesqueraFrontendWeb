@@ -20,11 +20,14 @@ export default function AsientoContableForm({
   onCancel,
   loading = false,
   readOnly = false,
+  onAprobar,      // ← DEBE ESTAR AQUÍ
+  onAnular,       // ← DEBE ESTAR AQUÍ
+  onRecargar,     // ← DEBE ESTAR AQUÍ
 }) {
   const toast = useRef(null);
 
   // ✅ USAR CUSTOM HOOK PARA TODA LA LÓGICA
-    const {
+  const {
     formData,
     detalles,
     planCuentas,
@@ -92,8 +95,15 @@ export default function AsientoContableForm({
   });
 
   const estadoId = Number(formData.estadoId);
-  const esPendiente = estadoId === 76;
-  const isReadOnly = readOnly || !esPendiente;
+  const esPendiente = estadoId === 76;  // PENDIENTE
+  const esAprobado = estadoId === 77;   // APROBADO (corregido de 75 a 77)
+  const esAnulado = estadoId === 78;    // ANULADO (corregido de 77 a 78)
+
+  // Verificar si el período está cerrado
+  const periodoEstaCerrado = defaultValues?.periodoContable?.estado?.descripcion !== "ABIERTO";
+
+  // Solo lectura si: período CERRADO
+  const isReadOnly = readOnly || periodoEstaCerrado;
 
   return (
     <>
@@ -115,6 +125,9 @@ export default function AsientoContableForm({
         loading={loading}
         guardando={guardando}
         asientoId={asientoId}
+        onAprobar={onAprobar}      // ← DEBE ESTAR AQUÍ
+        onAnular={onAnular}         // ← DEBE ESTAR AQUÍ
+        onRecargar={onRecargar}     // ← DEBE ESTAR AQUÍ
       />
 
       {/* ✅ COMPONENTE DETALLES (DATATABLE) */}
@@ -152,7 +165,7 @@ export default function AsientoContableForm({
       />
 
       {/* ✅ DIÁLOGO DETALLE */}
-            <DetalleDialog
+      <DetalleDialog
         visible={showDetalleDialog}
         onHide={() => {
           setShowDetalleDialog(false);

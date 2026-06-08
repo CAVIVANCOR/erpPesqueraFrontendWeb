@@ -225,17 +225,6 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
     };
     
     setOpcionesDinamicas(opcionesCalculadas);
-
-    // PRESELECCIONAR MERCADERIA INMEDIATAMENTE solo si no hay filtro
-    if (!familiaId && familiasDisponibles.length > 0) {
-      const mercaderia = familiasDisponibles.find(f => 
-        f.nombre?.toUpperCase().includes('MERCADERIA') || 
-        f.nombre?.toUpperCase().includes('MERCADERÍA')
-      );
-      if (mercaderia) {
-        setFamiliaId(Number(mercaderia.id));
-      }
-    }
   }, [esIngreso, catalogosEstables, familiaId]);
 
   // Aplicar filtros cuando cambian

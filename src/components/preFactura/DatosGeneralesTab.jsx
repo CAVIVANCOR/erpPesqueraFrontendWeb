@@ -426,30 +426,30 @@ export default function DatosGeneralesTab({
             />
           </div>
           {/* BOTÓN EDITAR CxC - Aparece solo si existe CxC asociada */}
-  
-            <div style={{ flex: 0.5, display: "flex", alignItems: "flex-end" }}>
-              <IrACxCEditar
-                preFacturaId={formData.id}
-                preFactura={formData}
-                empresas={empresas || []}
-                clientes={clientesOptions || []}
-                monedas={monedasOptions || []}
-                estados={estadosCxC || []}
-                periodosContables={periodosContables || []}
-                mediosPago={mediosPago || []}
-                bancos={bancos || []}
-                cuentasCorrientes={cuentasCorrientes || []}
-                permisos={{}}
-                toast={toast}
-                showCxCId={true}
-                estadoIdMinimo={1}
-                severity="success"
-                outlined={true}
-                icon="pi pi-arrow-right"
-                style={{ width: "100%", fontWeight: "bold" }}
-              />
-            </div>
-      
+
+          <div style={{ flex: 0.5, display: "flex", alignItems: "flex-end" }}>
+            <IrACxCEditar
+              preFacturaId={formData.id}
+              preFactura={formData}
+              empresas={empresas || []}
+              clientes={clientesOptions || []}
+              monedas={monedasOptions || []}
+              estados={estadosCxC || []}
+              periodosContables={periodosContables || []}
+              mediosPago={mediosPago || []}
+              bancos={bancos || []}
+              cuentasCorrientes={cuentasCorrientes || []}
+              permisos={{}}
+              toast={toast}
+              showCxCId={true}
+              estadoIdMinimo={1}
+              severity="success"
+              outlined={true}
+              icon="pi pi-arrow-right"
+              style={{ width: "100%", fontWeight: "bold" }}
+            />
+          </div>
+
           {/* PREFACTURA ORIGEN - Botón para ir al origen (para copias) */}
           {formData.preFacturaOrigenId && (
             <div style={{ flex: 1 }}>
@@ -990,6 +990,8 @@ export default function DatosGeneralesTab({
           tipoDocumentoId={formData.tipoDocumentoId}
           tiposDocumentoOptions={tiposDocumentoOptions}
           onChange={onChange}
+          clienteId={formData.clienteId}
+          fechaDocumento={formData.fechaDocumento}
         />
       </Panel>
 

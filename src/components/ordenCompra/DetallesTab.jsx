@@ -19,6 +19,7 @@ export default function DetallesTab({
   puedeEditar,
   toast,
   onCountChange,
+  onChange, // ⭐ NUEVO: Callback para notificar cambios
   subtotal = 0,
   totalIGV = 0,
   total = 0,
@@ -93,6 +94,10 @@ export default function DetallesTab({
             detail: "Detalle eliminado correctamente",
           });
           cargarDetalles();
+          // ⭐ NUEVO: Notificar al padre para que recalcule totales
+          if (onChange) {
+            onChange();
+          }
         } catch (err) {
           toast.current.show({
             severity: "error",
@@ -107,34 +112,38 @@ export default function DetallesTab({
   const handleSaveSuccess = () => {
     setShowDialog(false);
     cargarDetalles();
+    // ⭐ NUEVO: Notificar al padre para que recalcule totales
+    if (onChange) {
+      onChange();
+    }
   };
 
   const cantidadTemplate = (rowData) => {
     return rowData.cantidad
       ? Number(rowData.cantidad).toLocaleString("es-PE", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
       : "";
   };
 
   const precioTemplate = (rowData) => {
-    const codigoMoneda = getCodigoMoneda();
+    const simboloMoneda = getSimboloMoneda();
     return rowData.precioUnitario
-      ? `${codigoMoneda} ${Number(rowData.precioUnitario).toLocaleString("es-PE", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`
+      ? `${simboloMoneda} ${Number(rowData.precioUnitario).toLocaleString("es-PE", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`
       : "";
   };
 
   const subtotalTemplate = (rowData) => {
-    const codigoMoneda = getCodigoMoneda();
+    const simboloMoneda = getSimboloMoneda();
     return rowData.subtotal
-      ? `${codigoMoneda} ${Number(rowData.subtotal).toLocaleString("es-PE", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`
+      ? `${simboloMoneda} ${Number(rowData.subtotal).toLocaleString("es-PE", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`
       : "";
   };
 
@@ -160,6 +169,13 @@ export default function DetallesTab({
     if (!monedaId) return "PEN";
     const moneda = monedas.find((m) => Number(m.id) === Number(monedaId));
     return moneda?.codigoSunat || "PEN";
+  };
+
+  // Helper para obtener símbolo de moneda desde la BD
+  const getSimboloMoneda = () => {
+    if (!monedaId) return "S/.";
+    const moneda = monedas.find((m) => Number(m.id) === Number(monedaId));
+    return moneda?.simbolo || "S/.";
   };
 
   return (
@@ -273,6 +289,18 @@ export default function DetallesTab({
           fontSize: getResponsiveFontSize(),
         }}
       >
+        <Column
+          field="producto.familia.nombre"
+          header="Familia"
+          style={{ width: "150px" }}
+          body={(rowData) => rowData.producto?.familia?.nombre || "-"}
+        />
+        <Column
+          field="producto.subfamilia.nombre"
+          header="Subfamilia"
+          style={{ width: "150px" }}
+          body={(rowData) => rowData.producto?.subfamilia?.nombre || "-"}
+        />
         <Column field="producto.descripcionArmada" header="Producto" />
         <Column
           field="cantidad"
@@ -287,14 +315,14 @@ export default function DetallesTab({
         />
         <Column
           field="precioUnitario"
-          header="Precio Unit."
+          header="P. Compra Unit."
           body={precioTemplate}
           style={{ width: "140px", textAlign: "right" }}
           bodyStyle={{ textAlign: "right" }}
         />
         <Column
           field="subtotal"
-          header="Subtotal"
+          header="P. Compra SubTotal"
           body={subtotalTemplate}
           style={{ width: "140px", textAlign: "right" }}
           bodyStyle={{ textAlign: "right" }}
@@ -311,10 +339,13 @@ export default function DetallesTab({
         onHide={() => setShowDialog(false)}
         detalle={editingDetalle}
         ordenCompraId={ordenCompraId}
-        productos={productos}
         empresaId={empresaId}
+        entidadComercialId={empresas?.find(e => Number(e.id) === Number(empresaId))?.entidadComercialId} // ⭐ CORRECTO: entidadComercialId de la empresa
+        productos={productos}
         datosGenerales={datosGenerales}
         empresas={empresas}
+        porcentajeIGV={porcentajeIGV}
+        esExoneradoIGV={datosGenerales?.esExoneradoAlIGV || false}
         puedeEditarDetalles={puedeEditar}
         onSaveSuccess={handleSaveSuccess}
         toast={toast}

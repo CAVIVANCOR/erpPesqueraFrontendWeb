@@ -68,6 +68,8 @@ export const crearFamiliaProducto = async (familiaProducto) => {
     // Normalización de datos según reglas ERP Megui
     const datosNormalizados = {
       nombre: familiaProducto.nombre?.toUpperCase().trim(),
+      esParaIngresos: familiaProducto.esParaIngresos,
+      esParaEgresos: familiaProducto.esParaEgresos,
     };
 
     const response = await axios.post(API_URL, datosNormalizados, getAuthHeaders());
@@ -90,6 +92,8 @@ export const actualizarFamiliaProducto = async (id, familiaProducto) => {
     // Normalización de datos según reglas ERP Megui
     const datosNormalizados = {
       nombre: familiaProducto.nombre?.toUpperCase().trim(),
+      esParaIngresos: familiaProducto.esParaIngresos,
+      esParaEgresos: familiaProducto.esParaEgresos,
     };
 
     const response = await axios.put(`${API_URL}/${id}`, datosNormalizados, getAuthHeaders());
@@ -99,7 +103,6 @@ export const actualizarFamiliaProducto = async (id, familiaProducto) => {
     throw error;
   }
 };
-
 /**
  * Elimina una familia de producto
  * @param {number} id - ID de la familia de producto a eliminar

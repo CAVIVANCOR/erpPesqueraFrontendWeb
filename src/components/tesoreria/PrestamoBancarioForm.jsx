@@ -1177,7 +1177,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   fontSize: getResponsiveFontSize(),
                 }}
               >
-                Día de Pago *
+                Día de Pago Aprox. *
               </label>
               <Controller
                 name="diaPago"

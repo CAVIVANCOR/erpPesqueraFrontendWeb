@@ -187,6 +187,16 @@ export default function useAsientoLogic({
     }
   }, [defaultValues?.id]);
 
+  // Actualizar formData cuando cambia defaultValues (después de aprobar/anular)
+  useEffect(() => {
+    if (defaultValues?.estadoId) {
+      setFormData((prev) => ({
+        ...prev,
+        estadoId: Number(defaultValues.estadoId),
+      }));
+    }
+  }, [defaultValues?.estadoId]);
+
   // Guardar fecha inicial
   useEffect(() => {
     if (formData.fechaAsiento && fechaAsientoInicial === null) {

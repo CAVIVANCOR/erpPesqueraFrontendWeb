@@ -22,6 +22,9 @@ export default function AsientoCabecera({
   loading,
   guardando,
   asientoId,
+  onAprobar,
+  onAnular,
+  onRecargar,
 }) {
   return (
     <form onSubmit={onSubmit} className="p-fluid">
@@ -276,6 +279,42 @@ export default function AsientoCabecera({
             size="small"
           />
         </div>
+        {/* Botón Aprobar: Solo si es PENDIENTE, está cuadrado y hay función */}
+        {onAprobar && asientoId && formData.estadoId === 76 && formData.estaCuadrado && !isReadOnly && (
+          <div style={{ flex: 1 }}>
+            <Button
+              label="Aprobar Asiento"
+              icon="pi pi-check-circle"
+              severity="success"
+              size="small"
+              raised
+              type="button"
+              disabled={loading || guardando}
+              loading={loading || guardando}
+              onClick={() => {
+                onAprobar({ id: asientoId, ...formData });
+              }}
+            />
+          </div>
+        )}
+        {/* Botón Anular: Solo si es APROBADO y hay función */}
+        {onAnular && asientoId && formData.estadoId === 77 && !isReadOnly && (
+          <div style={{ flex: 1 }}>
+            <Button
+              label="Anular Asiento"
+              icon="pi pi-ban"
+              severity="danger"
+              size="small"
+              raised
+              type="button"
+              disabled={loading || guardando}
+              loading={loading || guardando}
+              onClick={() => {
+                onAnular({ id: asientoId, ...formData });
+              }}
+            />
+          </div>
+        )}
       </div>
     </form>
   );

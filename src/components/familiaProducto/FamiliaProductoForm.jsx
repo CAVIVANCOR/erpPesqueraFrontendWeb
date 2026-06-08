@@ -13,6 +13,7 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { InputText } from "primereact/inputtext";
+import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { classNames } from "primereact/utils";
@@ -24,6 +25,7 @@ import {
 /**
  * Esquema de validación YUP para FamiliaProducto
  * Reglas: nombre obligatorio, máximo 80 caracteres, normalización a mayúsculas
+ * esParaIngresos y esParaEgresos son booleanos opcionales
  */
 const esquemaValidacion = yup.object().shape({
   nombre: yup
@@ -48,10 +50,13 @@ const FamiliaProductoForm = ({ familiaProducto, onSave, onCancel, toast, readOnl
     formState: { errors, isSubmitting },
     reset,
     setValue,
+    watch,
   } = useForm({
     resolver: yupResolver(esquemaValidacion),
     defaultValues: {
       nombre: "",
+      esParaIngresos: false,
+      esParaEgresos: false,
     },
   });
 
@@ -61,8 +66,14 @@ const FamiliaProductoForm = ({ familiaProducto, onSave, onCancel, toast, readOnl
   useEffect(() => {
     if (modoEdicion && familiaProducto) {
       setValue("nombre", familiaProducto.nombre || "");
+      setValue("esParaIngresos", familiaProducto.esParaIngresos || false);
+      setValue("esParaEgresos", familiaProducto.esParaEgresos || false);
     } else {
-      reset({ nombre: "" });
+      reset({
+        nombre: "",
+        esParaIngresos: false,
+        esParaEgresos: false,
+      });
     }
   }, [familiaProducto, modoEdicion, setValue, reset]);
 
@@ -71,12 +82,13 @@ const FamiliaProductoForm = ({ familiaProducto, onSave, onCancel, toast, readOnl
    * Normaliza datos y llama a la API correspondiente
    */
   const onSubmit = async (data) => {
-    try {
+    try {      
       // Normalización de datos según reglas ERP Megui
       const datosNormalizados = {
         nombre: data.nombre.toUpperCase().trim(),
+        esParaIngresos: Boolean(data.esParaIngresos),
+        esParaEgresos: Boolean(data.esParaEgresos),
       };
-
       if (modoEdicion) {
         await actualizarFamiliaProducto(familiaProducto.id, datosNormalizados);
         toast.current?.show({
@@ -142,6 +154,34 @@ const FamiliaProductoForm = ({ familiaProducto, onSave, onCancel, toast, readOnl
           {errors.nombre && (
             <small className="p-error">{errors.nombre.message}</small>
           )}
+        </div>
+
+        {/* Campo esParaIngresos */}
+        <div className="field">
+          <label className="font-bold">Usar para Ingresos (Compras)</label>
+          <Button
+            type="button"
+            label={watch("esParaIngresos") ? "SÍ" : "NO"}
+            icon={watch("esParaIngresos") ? "pi pi-check" : "pi pi-times"}
+            className={watch("esParaIngresos") ? "p-button-success" : "p-button-danger"}
+            onClick={() => setValue("esParaIngresos", !watch("esParaIngresos"))}
+            disabled={isSubmitting || readOnly}
+            style={{ width: "100%" }}
+          />
+        </div>
+
+        {/* Campo esParaEgresos */}
+        <div className="field">
+          <label className="font-bold">Usar para Egresos (Ventas)</label>
+          <Button
+            type="button"
+            label={watch("esParaEgresos") ? "SÍ" : "NO"}
+            icon={watch("esParaEgresos") ? "pi pi-check" : "pi pi-times"}
+            className={watch("esParaEgresos") ? "p-button-success" : "p-button-danger"}
+            onClick={() => setValue("esParaEgresos", !watch("esParaEgresos"))}
+            disabled={isSubmitting || readOnly}
+            style={{ width: "100%" }}
+          />
         </div>
 
         {/* Botones de acción */}

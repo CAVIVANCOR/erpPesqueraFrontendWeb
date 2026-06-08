@@ -12,15 +12,10 @@ import { Tag } from "primereact/tag";
 import { Calendar } from "primereact/calendar";
 import { InputText } from "primereact/inputtext";
 import MovimientoActivoFijoForm from "../components/movimientoActivoFijo/MovimientoActivoFijoForm";
-import AsientoContableEditor from "../components/common/AsientoContableEditor";
-import AsientoContableViewer from "../components/common/AsientoContableViewer";
 import {
   getMovimientosActivoFijo,
   eliminarMovimientoActivoFijo,
-  generarBorradorAsiento,
-  guardarAsientoContable,
 } from "../api/movimientoActivoFijo";
-import { deleteAsientoContable } from "../api/contabilidad/asientoContable";
 import { getEmpresas } from "../api/empresa";
 import { getActivos } from "../api/activo";
 import { getTiposMovimientoActivoFijo } from "../api/tipoMovimientoActivoFijo";
@@ -56,11 +51,6 @@ export default function MovimientoActivoFijo({ ruta }) {
   const [selected, setSelected] = useState(null);
   const [isEdit, setIsEdit] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [showAsientoEditor, setShowAsientoEditor] = useState(false);
-  const [borradorAsiento, setBorradorAsiento] = useState(null);
-  const [movimientoParaAsiento, setMovimientoParaAsiento] = useState(null);
-  const [showAsientoDialog, setShowAsientoDialog] = useState(false);
-  const [selectedAsientoId, setSelectedAsientoId] = useState(null);
   const [showFormatSelector, setShowFormatSelector] = useState(false);
   const [showPDFViewer, setShowPDFViewer] = useState(false);
   const [showExcelViewer, setShowExcelViewer] = useState(false);
@@ -101,221 +91,114 @@ export default function MovimientoActivoFijo({ ruta }) {
   };
 
   const filtrarItems = () => {
-    let filtrados = [...items];
+    let resultado = [...items];
 
     if (empresaFilter) {
-      filtrados = filtrados.filter(
-        (item) => Number(item.empresaId) === Number(empresaFilter),
+      resultado = resultado.filter(
+        (item) => Number(item.empresaId) === Number(empresaFilter)
       );
     }
 
     if (activoFilter) {
-      filtrados = filtrados.filter(
-        (item) => Number(item.activoId) === Number(activoFilter),
+      resultado = resultado.filter(
+        (item) => Number(item.activoId) === Number(activoFilter)
       );
     }
 
     if (tipoMovimientoFilter) {
-      filtrados = filtrados.filter(
+      resultado = resultado.filter(
         (item) =>
-          Number(item.tipoMovimientoId) === Number(tipoMovimientoFilter),
+          Number(item.tipoMovimientoActivoFijoId) ===
+          Number(tipoMovimientoFilter)
       );
     }
 
     if (rangoFechas && rangoFechas[0]) {
-      filtrados = filtrados.filter((item) => {
-        const fechaMovimiento = new Date(item.fechaMovimiento);
-        const fechaIni = new Date(rangoFechas[0]);
-        fechaIni.setHours(0, 0, 0, 0);
+      const fechaInicio = new Date(rangoFechas[0]);
+      fechaInicio.setHours(0, 0, 0, 0);
 
-        if (rangoFechas[1]) {
-          const fechaFinDia = new Date(rangoFechas[1]);
-          fechaFinDia.setHours(23, 59, 59, 999);
-          return fechaMovimiento >= fechaIni && fechaMovimiento <= fechaFinDia;
-        }
+      if (rangoFechas[1]) {
+        const fechaFin = new Date(rangoFechas[1]);
+        fechaFin.setHours(23, 59, 59, 999);
 
-        return fechaMovimiento >= fechaIni;
-      });
+        resultado = resultado.filter((item) => {
+          const fechaMovimiento = new Date(item.fechaMovimiento);
+          return fechaMovimiento >= fechaInicio && fechaMovimiento <= fechaFin;
+        });
+      } else {
+        resultado = resultado.filter((item) => {
+          const fechaMovimiento = new Date(item.fechaMovimiento);
+          return fechaMovimiento >= fechaInicio;
+        });
+      }
     }
-    setItemsFiltrados(filtrados);
+
+    setItemsFiltrados(resultado);
   };
 
-  const onNew = () => {
-    if (!permisos.puedeCrear) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Acceso Denegado",
-        detail: "No tiene permisos para crear registros.",
-        life: 3000,
-      });
-      return;
-    }
+  const handleNuevo = () => {
     setSelected(null);
     setIsEdit(false);
     setShowDialog(true);
   };
 
-  const onEdit = (rowData) => {
-    if (!permisos.puedeVer && !permisos.puedeEditar) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Acceso Denegado",
-        detail: "No tiene permisos para ver o editar registros.",
-        life: 3000,
-      });
-      return;
-    }
+  const handleEditar = (rowData) => {
     setSelected(rowData);
     setIsEdit(true);
     setShowDialog(true);
   };
 
-  const onDelete = (rowData) => {
-    if (!permisos.puedeEliminar) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Acceso Denegado",
-        detail: "No tiene permisos para eliminar registros.",
-        life: 3000,
-      });
-      return;
-    }
-
+  const handleEliminar = (rowData) => {
     confirmDialog({
-      message: `¿Está seguro de eliminar el movimiento del ${formatearFecha(rowData.fechaMovimiento)}?`,
+      message: `¿Está seguro de eliminar el movimiento del activo "${rowData.activo?.nombre}"?`,
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
-      acceptClassName: "p-button-danger",
-      acceptLabel: "Sí, Eliminar",
+      acceptLabel: "Sí, eliminar",
       rejectLabel: "Cancelar",
-      accept: () => confirmarEliminacion(rowData.id),
+      accept: async () => {
+        try {
+          await eliminarMovimientoActivoFijo(rowData.id);
+          toast.current?.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: "Movimiento eliminado correctamente",
+            life: 3000,
+          });
+          await cargarDatos();
+        } catch (error) {
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail:
+              error.response?.data?.message ||
+              "Error al eliminar el movimiento",
+            life: 3000,
+          });
+        }
+      },
     });
   };
 
-  const confirmarEliminacion = async (id) => {
-    try {
-      await eliminarMovimientoActivoFijo(id);
-      toast.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "Movimiento eliminado correctamente",
-        life: 3000,
-      });
-      await cargarDatos();
-    } catch (error) {
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail:
-          error.response?.data?.message || "Error al eliminar el movimiento",
-        life: 3000,
-      });
-    }
-  };
-
-  const onSave = async (resultado, cerrarDialogo = true) => {
-    // Actualizar la lista en segundo plano
+  const onSave = async (movimiento, cerrarDialogo = true) => {
     await cargarDatos();
 
-    // Solo cerrar el diálogo si se indica explícitamente
     if (cerrarDialogo) {
       setShowDialog(false);
-      toast.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: isEdit
-          ? "Movimiento actualizado correctamente"
-          : "Movimiento creado correctamente",
-        life: 3000,
-      });
+      setSelected(null);
+    } else {
+      // Actualizar el selected con los nuevos datos
+      const movimientoActualizado = items.find(
+        (item) => Number(item.id) === Number(movimiento.id)
+      );
+      if (movimientoActualizado) {
+        setSelected(movimientoActualizado);
+      }
     }
-    // Si no se cierra, el toast ya se mostró en el formulario
   };
 
   const onCancel = () => {
     setShowDialog(false);
     setSelected(null);
-  };
-
-  const handleGenerarAsiento = async (rowData) => {
-    if (showDialog) {
-      setShowDialog(false);
-    }
-
-    setLoading(true);
-    try {
-      if (rowData?.asientoContableId) {
-        toast.current?.show({
-          severity: "info",
-          summary: "Regenerando asiento",
-          detail: "Se eliminará el asiento existente y se generará uno nuevo",
-          life: 3000,
-        });
-        await deleteAsientoContable(rowData.asientoContableId);
-      }
-
-      const borrador = await generarBorradorAsiento(rowData.id);
-      setBorradorAsiento(borrador);
-      setMovimientoParaAsiento(rowData);
-      setShowAsientoEditor(true);
-    } catch (error) {
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail:
-          error.response?.data?.message ||
-          "Error al generar borrador de asiento",
-        life: 3000,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGuardarAsiento = async (asientoEditado) => {
-    if (!movimientoParaAsiento) return;
-
-    setLoading(true);
-    try {
-      await guardarAsientoContable(
-        movimientoParaAsiento.id,
-        asientoEditado,
-        usuario?.id,
-      );
-
-      toast.current?.show({
-        severity: "success",
-        summary: "Asiento generado",
-        detail: "El asiento contable fue generado y vinculado correctamente",
-        life: 3000,
-      });
-
-      setShowAsientoEditor(false);
-      setBorradorAsiento(null);
-      setMovimientoParaAsiento(null);
-      await cargarDatos();
-    } catch (error) {
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail:
-          error.response?.data?.message || "Error al guardar asiento contable",
-        life: 3000,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCancelarAsiento = () => {
-    setShowAsientoEditor(false);
-    setBorradorAsiento(null);
-    setMovimientoParaAsiento(null);
-  };
-
-  const handleVerAsiento = (asientoId) => {
-    setSelectedAsientoId(asientoId);
-    setShowAsientoDialog(true);
   };
 
   const limpiarFiltros = () => {
@@ -326,476 +209,374 @@ export default function MovimientoActivoFijo({ ruta }) {
     setGlobalFilter("");
   };
 
+  const handleGenerarReporte = async (formato) => {
+    setShowFormatSelector(false);
+    setLoading(true);
+
+    try {
+      const datosReporte = {
+        movimientos: itemsFiltrados,
+        empresaFilter: empresaFilter
+          ? empresas.find((e) => Number(e.id) === Number(empresaFilter))
+          : null,
+        activoFilter: activoFilter
+          ? activos.find((a) => Number(a.id) === Number(activoFilter))
+          : null,
+        tipoMovimientoFilter: tipoMovimientoFilter
+          ? tiposMovimiento.find(
+            (t) => Number(t.id) === Number(tipoMovimientoFilter)
+          )
+          : null,
+        rangoFechas: rangoFechas,
+        usuario: usuario,
+      };
+
+      if (formato === "pdf") {
+        const pdfBlob = await generarMovimientosActivoFijoPDF(datosReporte);
+        setReportData(pdfBlob);
+        setShowPDFViewer(true);
+      } else if (formato === "excel") {
+        const excelBlob = await generarMovimientosActivoFijoExcel(datosReporte);
+        setReportData(excelBlob);
+        setShowExcelViewer(true);
+      }
+    } catch (error) {
+      console.error("Error al generar reporte:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al generar el reporte",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Templates de columnas
+  const empresaBodyTemplate = (rowData) => {
+    return rowData.empresa?.razonSocial || "-";
+  };
+
+  const activoBodyTemplate = (rowData) => {
+    return rowData.activo?.nombre || "-";
+  };
+
+  const tipoMovimientoBodyTemplate = (rowData) => {
+    return rowData.tipoMovimiento?.nombre || "-";
+  };
+
+  const descripcionActivoBodyTemplate = (rowData) => {
+    return rowData.activo?.descripcion || "-";
+  };
+
   const fechaBodyTemplate = (rowData) => {
     return formatearFecha(rowData.fechaMovimiento);
   };
 
   const montoBodyTemplate = (rowData) => {
-    const esUSD = rowData.moneda?.codigoSunat === "USD";
-    const esPEN =
-      rowData.moneda?.codigoSunat === "PEN" || !rowData.moneda?.codigoSunat;
-    const backgroundColor = esUSD
-      ? "#d4edda"
-      : esPEN
-        ? "#fff3cd"
-        : "transparent";
+    const moneda = rowData.moneda?.codigoSunat || "PEN";
+    return new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: moneda === "USD" ? "USD" : "PEN",
+    }).format(rowData.valorNeto || 0);
+  };
 
+  const periodoBodyTemplate = (rowData) => {
+    return rowData.periodoContable?.nombrePeriodo || "-";
+  };
+
+  const accionesBodyTemplate = (rowData) => {
     return (
-      <div
-        style={{
-          backgroundColor,
-          padding: "4px 8px",
-          borderRadius: "4px",
-          fontWeight: "bold",
-        }}
-      >
-        {new Intl.NumberFormat("es-PE", {
-          style: "currency",
-          currency: rowData.moneda?.codigoSunat || "PEN",
-          minimumFractionDigits: 2,
-        }).format(rowData.monto || 0)}
-      </div>
-    );
-  };
-
-  const depreciacionBodyTemplate = (rowData) => {
-    if (!rowData.depreciacionAcumulada) return "-";
-    const esUSD = rowData.moneda?.codigoSunat === "USD";
-    const esPEN =
-      rowData.moneda?.codigoSunat === "PEN" || !rowData.moneda?.codigoSunat;
-    const backgroundColor = esUSD
-      ? "#d4edda"
-      : esPEN
-        ? "#fff3cd"
-        : "transparent";
-    return (
-      <div
-        style={{
-          backgroundColor,
-          padding: "4px 8px",
-          borderRadius: "4px",
-          fontWeight: "bold",
-        }}
-      >
-        {new Intl.NumberFormat("es-PE", {
-          style: "currency",
-          currency: rowData.moneda?.codigoSunat || "PEN",
-          minimumFractionDigits: 2,
-        }).format(rowData.depreciacionAcumulada)}
-      </div>
-    );
-  };
-
-  const valorNetoBodyTemplate = (rowData) => {
-    if (!rowData.valorNeto) return "-";
-    const esUSD = rowData.moneda?.codigoSunat === "USD";
-    const esPEN =
-      rowData.moneda?.codigoSunat === "PEN" || !rowData.moneda?.codigoSunat;
-    const backgroundColor = esUSD
-      ? "#d4edda"
-      : esPEN
-        ? "#fff3cd"
-        : "transparent";
-    return (
-      <div
-        style={{
-          backgroundColor,
-          padding: "4px 8px",
-          borderRadius: "4px",
-          fontWeight: "bold",
-        }}
-      >
-        {new Intl.NumberFormat("es-PE", {
-          style: "currency",
-          currency: rowData.moneda?.codigoSunat || "PEN",
-          minimumFractionDigits: 2,
-        }).format(rowData.valorNeto)}
-      </div>
-    );
-  };
-
-  const asientoBodyTemplate = (rowData) => {
-    if (!rowData.asientoContableId) {
-      return (
-        <Button
-          icon="pi pi-plus-circle"
-          className="p-button-text p-button-help"
-          disabled={loading}
-          onClick={() => handleGenerarAsiento(rowData)}
-          tooltip="Generar Asiento Contable"
-        />
-      );
-    } else {
-      return (
-        <Button
-          icon="pi pi-eye"
-          className="p-button-text p-button-info"
-          onClick={() => handleVerAsiento(rowData.asientoContableId)}
-          tooltip="Ver Asiento Contable"
-        />
-      );
-    }
-  };
-
-  const handleGenerarReporte = () => {
-    setReportData({
-      movimientos: itemsFiltrados,
-      fechaGeneracion: new Date(),
-    });
-    setShowFormatSelector(true);
-  };
-
-  const actionBodyTemplate = (rowData) => {
-    return (
-      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-text p-button-sm"
-          onClick={() => onEdit(rowData)}
-          disabled={!permisos.puedeVer && !permisos.puedeEditar}
-          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
-          tooltipOptions={{ position: "top" }}
-        />
-        <Button
-          icon="pi pi-trash"
-          className="p-button-text p-button-danger p-button-sm"
-          onClick={() => onDelete(rowData)}
-          disabled={!permisos.puedeEliminar}
-          tooltip="Eliminar"
-          tooltipOptions={{ position: "top" }}
-        />
+      <div style={{ display: "flex", gap: "0.5rem" }}>
+        {permisos.puedeEditar && (
+          <Button
+            icon="pi pi-pencil"
+            className="p-button-rounded p-button-text p-button-warning"
+            onClick={() => handleEditar(rowData)}
+            tooltip="Editar"
+          />
+        )}
+        {permisos.puedeEliminar && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-rounded p-button-text p-button-danger"
+            onClick={() => handleEliminar(rowData)}
+            tooltip="Eliminar"
+          />
+        )}
       </div>
     );
   };
 
   const header = (
-    <>
-      <div
-        style={{
-          alignItems: "end",
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <h2 className="m-0">Movimientos de Activo Fijo</h2>
-        </div>
-        <div style={{ flex: 1 }}>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: "1rem",
+      }}
+    >
+      <h2 style={{ margin: 0, fontSize: getResponsiveFontSize() }}>
+        Movimientos de Activos Fijos
+      </h2>
+      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+        <InputText
+          value={globalFilter}
+          onChange={(e) => setGlobalFilter(e.target.value)}
+          placeholder="Buscar..."
+          style={{ width: "200px" }}
+        />
+        {permisos.puedeCrear && (
           <Button
             label="Nuevo"
             icon="pi pi-plus"
-            className="p-button-success"
-            onClick={onNew}
-            disabled={!permisos.puedeCrear}
-            tooltip={
-              !permisos.puedeCrear
-                ? "No tiene permisos para crear"
-                : "Nuevo Movimiento"
-            }
+            onClick={handleNuevo}
+            disabled={loading}
           />
-        </div>
-        <div style={{ flex: 1 }}>
-          <Button
-            label="Reporte"
-            icon="pi pi-file-pdf"
-            className="p-button-help"
-            onClick={handleGenerarReporte}
-            disabled={!permisos.puedeVer || itemsFiltrados.length === 0}
-            tooltip="Generar Reporte PDF/Excel"
-          />
-        </div>
-
-        <div style={{ flex: 1 }}>
-          <Dropdown
-            value={empresaFilter}
-            options={empresas.map((e) => ({
-              label: e.razonSocial,
-              value: Number(e.id),
-            }))}
-            onChange={(e) => setEmpresaFilter(e.value)}
-            placeholder="Filtrar por Empresa"
-            showClear
-            className="w-full md:w-14rem"
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <Dropdown
-            value={activoFilter}
-            options={activos.map((a) => ({
-              label: a.nombre,
-              value: Number(a.id),
-            }))}
-            onChange={(e) => setActivoFilter(e.value)}
-            placeholder="Filtrar por Activo"
-            showClear
-            filter
-            className="w-full md:w-14rem"
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <Dropdown
-            value={tipoMovimientoFilter}
-            options={tiposMovimiento
-              .filter((t) => t.activo)
-              .map((t) => ({
-                label: t.nombre,
-                value: Number(t.id),
-              }))}
-            onChange={(e) => setTipoMovimientoFilter(e.value)}
-            placeholder="Filtrar por Tipo"
-            showClear
-            className="w-full md:w-14rem"
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <Calendar
-            value={rangoFechas}
-            onChange={(e) => setRangoFechas(e.value)}
-            selectionMode="range"
-            readOnlyInput
-            placeholder="Rango de Fechas"
-            dateFormat="dd/mm/yy"
-            showIcon
-            className="w-full md:w-14rem"
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <span className="p-input-icon-left">
-            <InputText
-              type="search"
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              placeholder="Buscar..."
-              className="w-full"
-            />
-          </span>
-        </div>
-        <div style={{ flex: 0.25 }}>
-          <Button
-            icon="pi pi-filter-slash"
-            className="p-button-outlined"
-            onClick={limpiarFiltros}
-          />
-        </div>
+        )}
+        <Button
+          label="Reporte"
+          icon="pi pi-file"
+          className="p-button-help"
+          onClick={() => setShowFormatSelector(true)}
+          disabled={loading || itemsFiltrados.length === 0}
+        />
       </div>
-    </>
+    </div>
+  );
+
+  const filtrosPanel = (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+        gap: "1rem",
+        padding: "1rem",
+        backgroundColor: "#f8f9fa",
+        borderRadius: "4px",
+        marginBottom: "1rem",
+      }}
+    >
+      <div>
+        <label htmlFor="empresaFilter" style={{ display: "block", marginBottom: "0.5rem" }}>
+          Empresa
+        </label>
+        <Dropdown
+          id="empresaFilter"
+          value={empresaFilter}
+          options={empresas.map((e) => ({
+            label: e.razonSocial,
+            value: Number(e.id),
+          }))}
+          onChange={(e) => setEmpresaFilter(e.value)}
+          placeholder="Todas"
+          showClear
+          style={{ width: "100%" }}
+        />
+      </div>
+      <div>
+        <label htmlFor="activoFilter" style={{ display: "block", marginBottom: "0.5rem" }}>
+          Activo
+        </label>
+        <Dropdown
+          id="activoFilter"
+          value={activoFilter}
+          options={activos.map((a) => ({
+            label: a.nombre,
+            value: Number(a.id),
+          }))}
+          onChange={(e) => setActivoFilter(e.value)}
+          placeholder="Todos"
+          showClear
+          filter
+          style={{ width: "100%" }}
+        />
+      </div>
+      <div>
+        <label htmlFor="tipoMovimientoFilter" style={{ display: "block", marginBottom: "0.5rem" }}>
+          Tipo Movimiento
+        </label>
+        <Dropdown
+          id="tipoMovimientoFilter"
+          value={tipoMovimientoFilter}
+          options={tiposMovimiento.map((t) => ({
+            label: t.nombre,
+            value: Number(t.id),
+          }))}
+          onChange={(e) => setTipoMovimientoFilter(e.value)}
+          placeholder="Todos"
+          showClear
+          style={{ width: "100%" }}
+        />
+      </div>
+      <div>
+        <label htmlFor="rangoFechas" style={{ display: "block", marginBottom: "0.5rem" }}>
+          Rango de Fechas
+        </label>
+        <Calendar
+          id="rangoFechas"
+          value={rangoFechas}
+          onChange={(e) => setRangoFechas(e.value)}
+          selectionMode="range"
+          readOnlyInput
+          showIcon
+          placeholder="Seleccionar rango"
+          dateFormat="dd/mm/yy"
+          style={{ width: "100%" }}
+        />
+      </div>
+      <div style={{ display: "flex", alignItems: "flex-end" }}>
+        <Button
+          label="Limpiar Filtros"
+          icon="pi pi-filter-slash"
+          className="p-button-outlined"
+          onClick={limpiarFiltros}
+          style={{ width: "100%" }}
+        />
+      </div>
+    </div>
   );
 
   return (
-    <div className="p-m-4">
+    <div className="card">
       <Toast ref={toast} />
       <ConfirmDialog />
 
-      <div className="card">
-        <DataTable
-          value={itemsFiltrados}
-          loading={loading}
-          dataKey="id"
-          paginator
-          rows={10}
-          rowsPerPageOptions={[5, 10, 25, 50]}
-          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} movimientos"
-          globalFilter={globalFilter}
-          emptyMessage="No se encontraron movimientos"
-          header={header}
-          onRowClick={
-            permisos.puedeVer || permisos.puedeEditar
-              ? (e) => onEdit(e.data)
-              : undefined
-          }
-          scrollable
-          scrollHeight="600px"
-          style={{
-            cursor:
-              permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
-            fontSize: getResponsiveFontSize(),
-          }}
-        >
-          <Column
-            field="id"
-            header="ID"
-            sortable
-            style={{ minWidth: "80px" }}
-          />
-          <Column
-            field="empresa.razonSocial"
-            header="Empresa"
-            sortable
-            style={{ minWidth: "180px" }}
-          />
-          <Column
-            field="activo.nombre"
-            header="Activo"
-            sortable
-            style={{ minWidth: "200px" }}
-          />
-          <Column
-            field="tipoMovimiento.nombre"
-            header="Tipo Movimiento"
-            sortable
-            style={{ minWidth: "180px" }}
-          />
-          <Column
-            field="periodoContable.nombrePeriodo"
-            header="Período"
-            sortable
-            style={{ minWidth: "150px" }}
-          />
-          <Column
-            field="fechaContable"
-            header="Fecha Contable"
-            body={(rowData) =>
-              rowData.fechaContable
-                ? formatearFecha(rowData.fechaContable)
-                : "-"
-            }
-            sortable
-            style={{ minWidth: "130px" }}
-          />
-          <Column
-            field="centroCosto.Nombre"
-            header="Centro Costo"
-            sortable
-            style={{ minWidth: "150px" }}
-            body={(rowData) => rowData.centroCosto?.Nombre || "-"}
-          />
-          <Column
-            field="fechaMovimiento"
-            header="Fecha"
-            body={fechaBodyTemplate}
-            sortable
-            style={{ minWidth: "120px" }}
-          />
-          <Column
-            field="monto"
-            header="Monto"
-            body={montoBodyTemplate}
-            sortable
-            style={{ minWidth: "130px" }}
-          />
-          <Column
-            field="depreciacionAcumulada"
-            header="Dep. Acumulada"
-            body={depreciacionBodyTemplate}
-            sortable
-            style={{ minWidth: "150px" }}
-          />
-          <Column
-            field="valorNeto"
-            header="Valor Neto"
-            body={valorNetoBodyTemplate}
-            sortable
-            style={{ minWidth: "130px" }}
-          />
-          <Column
-            body={asientoBodyTemplate}
-            header="Asiento"
-            style={{ minWidth: "100px" }}
-          />
-          <Column
-            body={actionBodyTemplate}
-            header="Acciones"
-            frozen
-            alignFrozen="right"
-            style={{ minWidth: "120px" }}
-          />
-        </DataTable>
-      </div>
+      {filtrosPanel}
 
+      <DataTable
+        value={itemsFiltrados}
+        loading={loading}
+        header={header}
+        globalFilter={globalFilter}
+        emptyMessage="No se encontraron movimientos"
+        paginator
+        rows={40}
+        rowsPerPageOptions={[40, 80, 160, 250]}
+        showGridlines
+        stripedRows
+        size="small"
+        style={{ fontSize: getResponsiveFontSize() }}
+        selectionMode="single"
+        onRowClick={(e) => permisos.puedeEditar && handleEditar(e.data)}
+        className="cursor-pointer"
+      >
+        <Column
+          field="empresa.razonSocial"
+          header="Empresa"
+          body={empresaBodyTemplate}
+          sortable
+          filter
+          filterPlaceholder="Buscar por empresa"
+        />
+        <Column
+          field="activo.nombre"
+          header="Activo"
+          body={activoBodyTemplate}
+          sortable
+          filter
+          filterPlaceholder="Buscar por activo"
+        />
+        <Column
+          field="activo.descripcion"
+          header="Descripción"
+          body={descripcionActivoBodyTemplate}
+          sortable
+          filter
+          filterPlaceholder="Buscar por descripción"
+        />
+        <Column
+          field="tipoMovimiento.nombre"
+          header="Tipo Movimiento"
+          body={tipoMovimientoBodyTemplate}
+          sortable
+          filter
+          filterPlaceholder="Buscar por tipo"
+        />
+        <Column
+          field="fechaMovimiento"
+          header="Fecha"
+          body={fechaBodyTemplate}
+          sortable
+          style={{ minWidth: "120px" }}
+        />
+        <Column
+          field="valorNeto"
+          header="Valor Neto"
+          body={montoBodyTemplate}
+          sortable
+          style={{ minWidth: "150px", textAlign: "right" }}
+        />
+        <Column
+          field="periodoContable.nombrePeriodo"
+          header="Período"
+          body={periodoBodyTemplate}
+          sortable
+          filter
+          filterPlaceholder="Buscar por período"
+        />
+        <Column
+          header="Acciones"
+          body={accionesBodyTemplate}
+          style={{ minWidth: "120px", textAlign: "center" }}
+        />
+      </DataTable>
+
+      {/* Diálogo para crear/editar */}
       <Dialog
         visible={showDialog}
-        style={{ width: "1200px" }}
-        header={
-          isEdit
-            ? "Editar Movimiento de Activo Fijo"
-            : "Nuevo Movimiento de Activo Fijo"
-        }
-        modal
-        className="p-fluid"
         onHide={onCancel}
+        header={isEdit ? "Editar Movimiento" : "Nuevo Movimiento"}
+        style={{ width: "90vw", maxWidth: "1200px" }}
         maximizable
+        modal
       >
         <MovimientoActivoFijoForm
           movimiento={selected}
+          empresas={empresas}
+          activos={activos}
+          tiposMovimiento={tiposMovimiento}
+          esEdicion={isEdit}
           empresaIdInicial={empresaFilter}
           activoIdInicial={activoFilter}
           onSave={onSave}
           onCancel={onCancel}
-          onGenerarAsiento={handleGenerarAsiento}
           permisos={permisos}
           readOnly={!!selected && !!selected.id && !permisos.puedeEditar}
         />
       </Dialog>
 
-      <Dialog
-        header="Generar Asiento Contable"
-        visible={showAsientoEditor}
-        style={{ width: "95vw", maxWidth: "1400px" }}
-        modal
-        onHide={handleCancelarAsiento}
-        maximizable
-        dismissableMask={false}
-      >
-        {borradorAsiento && (
-          <AsientoContableEditor
-            borradorAsiento={borradorAsiento}
-            onGuardar={handleGuardarAsiento}
-            onCancelar={handleCancelarAsiento}
-            loading={loading}
-          />
-        )}
-      </Dialog>
-
-      <Dialog
-        header="Ver Asiento Contable"
-        visible={showAsientoDialog}
-        style={{ width: "95vw", maxWidth: "1400px" }}
-        modal
-        onHide={() => setShowAsientoDialog(false)}
-        maximizable
-      >
-        {selectedAsientoId && (
-          <AsientoContableViewer
-            asientoId={selectedAsientoId}
-            onClose={() => setShowAsientoDialog(false)}
-          />
-        )}
-      </Dialog>
+      {/* Selector de formato de reporte */}
       <ReportFormatSelector
         visible={showFormatSelector}
         onHide={() => setShowFormatSelector(false)}
-        onSelectPDF={() => {
-          setShowPDFViewer(true);
-          setShowFormatSelector(false);
-        }}
-        onSelectExcel={() => {
-          setShowExcelViewer(true);
-          setShowFormatSelector(false);
-        }}
+        onSelectFormat={handleGenerarReporte}
+        title="Generar Reporte de Movimientos de Activos Fijos"
       />
+
+      {/* Visor de PDF */}
       <TemporaryPDFViewer
         visible={showPDFViewer}
         onHide={() => {
           setShowPDFViewer(false);
-          setShowFormatSelector(false);
+          setReportData(null);
         }}
-        data={reportData}
-        generatePDF={generarMovimientosActivoFijoPDF}
-        fileName={`movimientos-activo-fijo-${new Date().toISOString().split("T")[0]}.pdf`}
-        title="Listado de Movimientos de Activo Fijo"
+        pdfBlob={reportData}
+        fileName="movimientos_activos_fijos.pdf"
       />
+
+      {/* Visor de Excel */}
       <TemporaryExcelViewer
         visible={showExcelViewer}
         onHide={() => {
           setShowExcelViewer(false);
-          setShowFormatSelector(false);
+          setReportData(null);
         }}
-        data={reportData}
-        generateExcel={generarMovimientosActivoFijoExcel}
-        fileName={`movimientos-activo-fijo-${new Date().toISOString().split("T")[0]}.xlsx`}
-        title="Listado de Movimientos de Activo Fijo"
+        excelBlob={reportData}
+        fileName="movimientos_activos_fijos.xlsx"
       />
     </div>
   );

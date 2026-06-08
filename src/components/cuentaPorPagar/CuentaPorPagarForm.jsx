@@ -234,11 +234,6 @@ const CuentaPorPagarForm = forwardRef(({
       setTieneRetencion(cuentaActualizada.tieneRetencion || false);
       setTienePercepcion(cuentaActualizada.tienePercepcion || false);
       setEstadoId(cuentaActualizada.estadoId || 100);
-
-      console.log("✅ Cuenta recargada desde backend:", {
-        montoPagado: cuentaActualizada.montoPagado,
-        saldoPendiente: cuentaActualizada.saldoPendiente,
-      });
     } catch (error) {
       console.error("❌ Error al recargar cuenta desde backend:", error);
     }
