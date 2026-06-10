@@ -10,6 +10,7 @@ import { Panel } from "primereact/panel";
 import DetallesTab from "./DetallesTab";
 import { getResponsiveFontSize } from "../../utils/utils";
 import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
+import IrACxPEditar from "../common/IrACxPEditar";
 export default function DatosGeneralesTab({
   formData,
   onChange,
@@ -764,6 +765,31 @@ export default function DatosGeneralesTab({
             style={{ width: "100%" }}
           />
         </div>
+        {/* BOTÓN EDITAR CxP - Aparece solo si existe CxP asociada */}
+        {isEdit && formData.id && (
+          <div style={{ flex: 0.5, display: "flex", alignItems: "flex-end", marginTop: "1rem" }}>
+            <IrACxPEditar
+              ordenCompraId={formData.id}
+              ordenCompra={formData}
+              empresas={empresas || []}
+              proveedores={proveedoresOptions || []}
+              monedas={monedasOptions || []}
+              estados={estadosCxP || []}
+              periodosContables={periodosContables || []}
+              mediosPago={mediosPago || []}
+              bancos={bancos || []}
+              cuentasCorrientes={cuentasCorrientes || []}
+              permisos={{}}
+              toast={toast}
+              showCxPId={true}
+              estadoIdMinimo={39}
+              severity="warning"
+              outlined={true}
+              icon="pi pi-arrow-right"
+              style={{ width: "100%", fontWeight: "bold" }}
+            />
+          </div>
+        )}
       </div>
 
       <div

@@ -12,6 +12,12 @@ import { confirmDialog } from "primereact/confirmdialog";
 import { Badge } from "primereact/badge";
 import DetServicioContratoForm from "./DetServicioContratoForm";
 import { formatearNumero } from "../../utils/utils";
+import {
+  getDetallesPorContrato,
+  crearDetServicioContrato,
+  actualizarDetServicioContrato,
+  eliminarDetServicioContrato,
+} from "../../api/detServicioContrato";
 
 export default function DetServicioContratoCard({
   contratoId,
@@ -21,10 +27,41 @@ export default function DetServicioContratoCard({
   moneda,
   toast,
   isEdit = false,
+  empresaId = null,
+  empresaEntidadComercialId = null,
+  clienteId = null,
+  fechaCelebracion = null,
 }) {
   const [showDialog, setShowDialog] = useState(false);
   const [editingDetalle, setEditingDetalle] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Cargar detalles cuando cambie el contratoId
+  useEffect(() => {
+    if (contratoId && isEdit) {
+      cargarDetalles();
+    }
+  }, [contratoId, isEdit]);
+
+  const cargarDetalles = async () => {
+    if (!contratoId) return;
+
+    setLoading(true);
+    try {
+      const data = await getDetallesPorContrato(contratoId);
+      setDetalles(data);
+    } catch (error) {
+      console.error("Error al cargar detalles:", error);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar los detalles del contrato",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAdd = () => {
     setEditingDetalle(null);
@@ -38,47 +75,108 @@ export default function DetServicioContratoCard({
 
   const handleDelete = (detalle) => {
     confirmDialog({
-      message: `¿Está seguro de eliminar el servicio "${detalle.producto?.nombre || 'este servicio'}"?`,
+      message: `¿Está seguro de eliminar el servicio "${detalle.productoServicio?.descripcionArmada || 'este servicio'}"?`,
       header: 'Confirmar Eliminación',
       icon: 'pi pi-exclamation-triangle',
       acceptLabel: 'Sí, eliminar',
       rejectLabel: 'Cancelar',
       acceptClassName: 'p-button-danger',
-      accept: () => {
-        const nuevosDetalles = detalles.filter((d) => d !== detalle);
-        setDetalles(nuevosDetalles);
-        toast?.current?.show({
-          severity: "success",
-          summary: "Eliminado",
-          detail: "Servicio eliminado correctamente",
-        });
+      accept: async () => {
+        if (!detalle.id) {
+          // Detalle no guardado, solo remover del estado
+          const nuevosDetalles = detalles.filter((d) => d !== detalle);
+          setDetalles(nuevosDetalles);
+          toast?.current?.show({
+            severity: "success",
+            summary: "Eliminado",
+            detail: "Servicio eliminado correctamente",
+          });
+          return;
+        }
+
+        // Detalle guardado, eliminar del backend
+        setLoading(true);
+        try {
+          await eliminarDetServicioContrato(detalle.id);
+          await cargarDetalles(); // Recargar lista
+          toast?.current?.show({
+            severity: "success",
+            summary: "Eliminado",
+            detail: "Servicio eliminado correctamente",
+            life: 3000,
+          });
+        } catch (error) {
+          console.error("Error al eliminar detalle:", error);
+          toast?.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "No se pudo eliminar el servicio",
+            life: 3000,
+          });
+        } finally {
+          setLoading(false);
+        }
       }
     });
   };
 
-  const handleSave = (detalleData) => {
-    if (editingDetalle) {
-      // Actualizar detalle existente
-      const nuevosDetalles = detalles.map((d) =>
-        d === editingDetalle ? detalleData : d
-      );
-      setDetalles(nuevosDetalles);
+  const handleSave = async (detalleData) => {
+    if (!contratoId) {
       toast?.current?.show({
-        severity: "success",
-        summary: "Actualizado",
-        detail: "Servicio actualizado correctamente",
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe guardar el contrato antes de agregar servicios",
+        life: 3000,
       });
-    } else {
-      // Agregar nuevo detalle
-      setDetalles([...detalles, detalleData]);
-      toast?.current?.show({
-        severity: "success",
-        summary: "Agregado",
-        detail: "Servicio agregado correctamente",
-      });
+      return;
     }
-    setShowDialog(false);
-    setEditingDetalle(null);
+
+    setLoading(true);
+    try {
+      // Preparar datos para backend
+      const dataToSave = {
+        contratoServicioId: Number(contratoId),
+        productoServicioId: Number(detalleData.productoId),
+        cantidad: Number(detalleData.cantidad),
+        valorVentaUnitario: Number(detalleData.valorVentaUnitario),
+        incluyeLuz: Boolean(detalleData.incluyeLuz),
+      };
+
+      if (editingDetalle && editingDetalle.id) {
+        // Actualizar detalle existente
+        await actualizarDetServicioContrato(editingDetalle.id, dataToSave);
+        toast?.current?.show({
+          severity: "success",
+          summary: "Actualizado",
+          detail: "Servicio actualizado correctamente",
+          life: 3000,
+        });
+      } else {
+        // Crear nuevo detalle
+        await crearDetServicioContrato(dataToSave);
+        toast?.current?.show({
+          severity: "success",
+          summary: "Agregado",
+          detail: "Servicio agregado correctamente",
+          life: 3000,
+        });
+      }
+
+      // Recargar detalles desde backend
+      await cargarDetalles();
+      setShowDialog(false);
+      setEditingDetalle(null);
+    } catch (error) {
+      console.error("Error al guardar detalle:", error);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.mensaje || "No se pudo guardar el servicio",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Helper para obtener símbolo de moneda
@@ -88,7 +186,7 @@ export default function DetServicioContratoCard({
 
   // Templates de columnas
   const productoTemplate = (rowData) => {
-    return rowData.producto?.nombre || "";
+    return rowData.productoServicio?.descripcionArmada || "";
   };
 
   const cantidadTemplate = (rowData) => {
@@ -96,38 +194,21 @@ export default function DetServicioContratoCard({
   };
 
   const precioTemplate = (rowData) => {
-    return `${getSimboloMoneda()} ${formatearNumero(rowData.precioUnitario || 0, 2)}`;
+    return `${getSimboloMoneda()} ${formatearNumero(rowData.valorVentaUnitario || 0, 2)}`;
   };
 
   const totalTemplate = (rowData) => {
-    const total = (rowData.cantidad || 0) * (rowData.precioUnitario || 0);
+    const total = (rowData.cantidad || 0) * (rowData.valorVentaUnitario || 0);
     return `${getSimboloMoneda()} ${formatearNumero(total, 2)}`;
   };
 
-  const kwhTemplate = (rowData) => {
-    if (!rowData.aplicaCargoLuz) return "-";
-    return formatearNumero(rowData.cantidadKwh || 0, 2);
-  };
-
-  const precioKwhTemplate = (rowData) => {
-    if (!rowData.aplicaCargoLuz) return "-";
-    return `${getSimboloMoneda()} ${formatearNumero(rowData.precioKwh || 0, 4)}`;
-  };
-
-  const recargoKwhTemplate = (rowData) => {
-    if (!rowData.aplicaCargoLuz) return "-";
-    return `${getSimboloMoneda()} ${formatearNumero(rowData.recargoKwh || 0, 4)}`;
-  };
-
-  const totalLuzTemplate = (rowData) => {
-    if (!rowData.aplicaCargoLuz) return "-";
-    const totalLuz = (rowData.cantidadKwh || 0) * ((rowData.precioKwh || 0) + (rowData.recargoKwh || 0));
-    return `${getSimboloMoneda()} ${formatearNumero(totalLuz, 2)}`;
+  const luzTemplate = (rowData) => {
+    return rowData.incluyeLuz ? "Sí" : "No";
   };
 
   const accionesTemplate = (rowData) => {
     return (
-      <div style={{ display: "flex", gap: "0.5rem" }}>
+      <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
         <Button
           icon="pi pi-pencil"
           className="p-button-rounded p-button-text p-button-warning"
@@ -148,21 +229,11 @@ export default function DetServicioContratoCard({
 
   // Calcular totales
   const calcularTotales = () => {
-    let totalServicios = 0;
-    let totalLuz = 0;
+    const total = detalles.reduce((sum, detalle) => {
+      return sum + ((detalle.cantidad || 0) * (detalle.valorVentaUnitario || 0));
+    }, 0);
 
-    detalles.forEach((detalle) => {
-      totalServicios += (detalle.cantidad || 0) * (detalle.precioUnitario || 0);
-      if (detalle.aplicaCargoLuz) {
-        totalLuz += (detalle.cantidadKwh || 0) * ((detalle.precioKwh || 0) + (detalle.recargoKwh || 0));
-      }
-    });
-
-    return {
-      totalServicios,
-      totalLuz,
-      total: totalServicios + totalLuz,
-    };
+    return { total };
   };
 
   const totales = calcularTotales();
@@ -196,15 +267,38 @@ export default function DetServicioContratoCard({
         style={{ fontSize: "12px" }}
         stripedRows
       >
-        <Column field="producto.nombre" header="Servicio" body={productoTemplate} />
-        <Column field="cantidad" header="Cantidad" body={cantidadTemplate} />
-        <Column field="precioUnitario" header="Precio Unit." body={precioTemplate} />
-        <Column header="Total" body={totalTemplate} />
-        <Column field="cantidadKwh" header="kWh" body={kwhTemplate} />
-        <Column field="precioKwh" header="Precio kWh" body={precioKwhTemplate} />
-        <Column field="recargoKwh" header="Recargo kWh" body={recargoKwhTemplate} />
-        <Column header="Total Luz" body={totalLuzTemplate} />
-        <Column header="Acciones" body={accionesTemplate} style={{ width: "120px" }} />
+        <Column 
+          field="productoServicio.descripcionArmada" 
+          header="Servicio" 
+          body={productoTemplate} 
+        />
+        <Column 
+          field="cantidad" 
+          header="Cantidad" 
+          body={cantidadTemplate} 
+          style={{ width: "120px", textAlign: "right" }}
+        />
+        <Column 
+          field="valorVentaUnitario" 
+          header="Valor Venta Unit." 
+          body={precioTemplate} 
+          style={{ width: "150px", textAlign: "right" }}
+        />
+        <Column 
+          header="Total" 
+          body={totalTemplate} 
+          style={{ width: "150px", textAlign: "right" }}
+        />
+        <Column 
+          header="Incluye Luz" 
+          body={luzTemplate} 
+          style={{ width: "120px", textAlign: "center" }}
+        />
+        <Column 
+          header="Acciones" 
+          body={accionesTemplate} 
+          style={{ width: "120px", textAlign: "center" }}
+        />
       </DataTable>
 
       {/* Totales */}
@@ -214,25 +308,12 @@ export default function DetServicioContratoCard({
           padding: "1rem",
           backgroundColor: "#f8f9fa",
           borderRadius: "8px",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: "1rem",
+          display: "flex",
+          justifyContent: "flex-end",
         }}
       >
-        <div>
-          <strong>Total Servicios:</strong>
-          <div style={{ fontSize: "1.2rem", color: "#007ad9" }}>
-            {getSimboloMoneda()} {formatearNumero(totales.totalServicios, 2)}
-          </div>
-        </div>
-        <div>
-          <strong>Total Luz:</strong>
-          <div style={{ fontSize: "1.2rem", color: "#007ad9" }}>
-            {getSimboloMoneda()} {formatearNumero(totales.totalLuz, 2)}
-          </div>
-        </div>
-        <div>
-          <strong>Total General:</strong>
+        <div style={{ textAlign: "right" }}>
+          <strong>Total Contrato:</strong>
           <div style={{ fontSize: "1.5rem", color: "#28a745", fontWeight: "bold" }}>
             {getSimboloMoneda()} {formatearNumero(totales.total, 2)}
           </div>
@@ -251,6 +332,10 @@ export default function DetServicioContratoCard({
           onSave={handleSave}
           productos={productos}
           moneda={moneda}
+          empresaId={empresaId}
+          empresaEntidadComercialId={empresaEntidadComercialId}
+          clienteId={clienteId}
+          fechaDocumento={fechaCelebracion}
         />
       )}
     </div>

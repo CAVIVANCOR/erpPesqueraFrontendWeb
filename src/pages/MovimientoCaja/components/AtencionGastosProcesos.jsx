@@ -6,7 +6,6 @@ import TabPanelPescaConsumo from "../../../components/movimientoCaja/TabPanelPes
 import TabPanelCompras from "../../../components/movimientoCaja/TabPanelCompras";
 import TabPanelVentas from "../../../components/movimientoCaja/TabPanelVentas";
 import TabPanelAlmacen from "../../../components/movimientoCaja/TabPanelAlmacen";
-import TabPanelServicios from "../../../components/movimientoCaja/TabPanelServicios";
 import TabPanelOTMantenimiento from "../../../components/movimientoCaja/TabPanelOTMantenimiento";
 
 const AtencionGastosProcesos = ({
@@ -61,14 +60,6 @@ const AtencionGastosProcesos = ({
   loadingDetEntregaAlmacen,
   cargarMovimientosDetEntregaAlmacen,
   cargarEntregasARendirAlmacen,
-  entregasARendirServicios,
-  movimientosDetEntregaServicios,
-  selectedMovimientosDetEntregaServicios,
-  setSelectedMovimientosDetEntregaServicios,
-  setSelectedDetMovsIdsServicios,
-  loadingDetEntregaServicios,
-  cargarMovimientosDetEntregaServicios,
-  cargarEntregasARendirServicios,
   entregasOTMantenimiento,
   movimientosOTMantenimiento,
   selectedMovimientosOTMantenimiento,
@@ -258,43 +249,6 @@ const AtencionGastosProcesos = ({
             }}
             onAplicarValidacion={() =>
               onAplicarMovimientos(selectedMovimientosDetEntregaAlmacen, "almacen")
-            }
-            toast={toast}
-          />
-        </TabPanel>
-
-        <TabPanel
-          header={
-            <div className="flex align-items-center gap-2">
-              <i className="pi pi-wrench"></i>
-              <span>Servicios</span>
-              <Badge value={movimientosDetEntregaServicios?.length || 0} severity="info" />
-            </div>
-          }
-        >
-          <TabPanelServicios
-            entregaARendir={entregasARendirServicios?.[0] || null}
-            movimientos={movimientosDetEntregaServicios}
-            personal={personal}
-            centrosCosto={centrosCosto}
-            tiposMovimiento={tipoMovEntregaRendir}
-            entidadesComerciales={entidadesComerciales}
-            monedas={monedas}
-            tiposDocumento={tiposDocumento}
-            productos={productos}
-            loading={loadingDetEntregaServicios}
-            permisos={permisos}
-            selectedMovimiento={selectedMovimientosDetEntregaServicios}
-            onSelectionChange={(e) => {
-              setSelectedMovimientosDetEntregaServicios(e.value);
-              setSelectedDetMovsIdsServicios(e.value ? [e.value.id] : []);
-            }}
-            onDataChange={() => {
-              cargarMovimientosDetEntregaServicios();
-              cargarEntregasARendirServicios();
-            }}
-            onAplicarValidacion={() =>
-              onAplicarMovimientos(selectedMovimientosDetEntregaServicios, "servicios")
             }
             toast={toast}
           />

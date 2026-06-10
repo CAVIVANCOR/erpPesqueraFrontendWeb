@@ -2,8 +2,8 @@
 // Pantalla CRUD profesional para PreFactura. Cumple regla transversal ERP Megui:
 // - Edición por clic en fila, borrado seguro con roles, ConfirmDialog, Toast
 // - Autenticación JWT desde Zustand, normalización de IDs, documentación en español
-import React, { useState, useEffect, useRef } from "react";
-import { Navigate } from "react-router-dom";
+import React, { useRef, useState, useEffect } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -50,11 +50,14 @@ import { Dropdown } from "primereact/dropdown";
 import ColorTag from "../components/shared/ColorTag";
 import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
 import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
+import GenerarKardexDialog from "../components/common/kardex/GenerarKardexDialog";
+import { generarMovimientoAlmacenPreFactura, regenerarKardexPreFactura } from "../api/preFactura";
 /**
  * Componente PreFactura
  * Gestión CRUD de pre-facturas con patrón profesional ERP Megui
  */
 const PreFactura = ({ ruta }) => {
+  const navigate = useNavigate();
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
   // Verificar acceso al módulo
@@ -93,7 +96,8 @@ const PreFactura = ({ ruta }) => {
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [selectedPreFactura, setSelectedPreFactura] = useState(null);
-
+  const [showKardexDialog, setShowKardexDialog] = useState(false);
+  const [kardexDocumentoActual, setKardexDocumentoActual] = useState(null);
   // Filtrado automático por Unidad de Negocio
   const { datosFiltrados: preFacturasFiltradas } =
     useUnidadNegocioFilter(preFacturas);
@@ -686,6 +690,126 @@ const PreFactura = ({ ruta }) => {
     }
   };
 
+  const handleGenerarKardex = async (id) => {
+    try {
+      const preFacturaActual = items.find((item) => Number(item.id) === Number(id));
+
+      if (!preFacturaActual) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se encontró la pre-factura",
+        });
+        return;
+      }
+
+      // ✅ VALIDAR ESTADOS PERMITIDOS (todos excepto 45 PENDIENTE y 47 ANULADA)
+      const estadoId = Number(preFacturaActual.estadoId);
+      const estadosPermitidos = [46, 48, 95, 96, 97, 98, 99]; // APROBADA, PARTICIONADA, FACTURADA, EMITIDA, CE GENERADO, VALIDADO SUNAT, NO VALIDADO SUNAT
+
+      if (!estadosPermitidos.includes(estadoId)) {
+        const mensajes = {
+          45: "La pre-factura debe estar APROBADA para generar kardex",
+          47: "No se puede generar kardex de una pre-factura ANULADA",
+        };
+
+        toast.current.show({
+          severity: "warn",
+          summary: "Acción no permitida",
+          detail: mensajes[estadoId] || "Estado no válido para generar kardex",
+          life: 5000,
+        });
+        return;
+      }
+
+      // Guardar pre-factura actual para el diálogo
+      setKardexDocumentoActual(preFacturaActual);
+
+      if (preFacturaActual.movSalidaAlmacenId) {
+        // Ya tiene kardex - Mostrar confirmación de regeneración
+        confirmDialog({
+          message:
+            "Esta pre-factura ya tiene un kardex generado. ¿Desea regenerarlo? Esto eliminará el movimiento de almacén actual, recalculará todos los saldos y creará un nuevo movimiento con los datos actuales de la pre-factura.",
+          header: "Regenerar Kardex",
+          icon: "pi pi-exclamation-triangle",
+          acceptLabel: "Sí, continuar",
+          rejectLabel: "Cancelar",
+          acceptClassName: "p-button-warning",
+          accept: () => {
+            // Abrir diálogo para seleccionar opciones
+            setShowKardexDialog(true);
+          },
+        });
+      } else {
+        // No tiene kardex - Abrir diálogo directamente
+        setShowKardexDialog(true);
+      }
+    } catch (error) {
+      console.error("Error en handleGenerarKardex:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al procesar la solicitud",
+      });
+    }
+  };
+
+  const handleProcesarGeneracionKardex = async (datosKardex) => {
+    try {
+      setLoading(true);
+
+      const preFacturaId = kardexDocumentoActual.id;
+      const esRegeneracion = Boolean(kardexDocumentoActual.movSalidaAlmacenId);
+
+      let movimientoId = null;
+
+      if (esRegeneracion) {
+        // Regenerar kardex
+        const resultado = await regenerarKardexPreFactura(preFacturaId);
+        movimientoId = resultado?.movimientoId || kardexDocumentoActual.movSalidaAlmacenId;
+      } else {
+        // Generar movimiento por primera vez
+        const resultado = await generarMovimientoAlmacenPreFactura(preFacturaId, datosKardex);
+        movimientoId = resultado?.movimientoId;
+      }
+
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: esRegeneracion
+          ? "Kardex regenerado correctamente"
+          : "Movimiento de almacén creado correctamente",
+        life: 3000,
+      });
+
+      // Cerrar diálogo
+      setShowKardexDialog(false);
+      setKardexDocumentoActual(null);
+      setShowDialog(false);
+
+      // Redirigir a edición del movimiento creado
+      if (movimientoId) {
+        navigate(`/movimientos-almacen/${movimientoId}/editar`);
+      }
+    } catch (error) {
+      console.error("Error al generar movimiento:", error);
+
+      const mensajeError =
+        error.response?.data?.mensaje ||
+        error.response?.data?.message ||
+        error.message ||
+        "Error al generar el movimiento de almacén";
+
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: mensajeError,
+        life: 7000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   const onRowClick = (event) => {
     if (permisos.puedeVer || permisos.puedeEditar) {
       abrirDialogoEdicion(event.data);
@@ -741,9 +865,9 @@ const PreFactura = ({ ruta }) => {
   const tipoCambioTemplate = (rowData) => {
     return rowData.tipoCambio
       ? Number(rowData.tipoCambio).toLocaleString("es-PE", {
-          minimumFractionDigits: 4,
-          maximumFractionDigits: 4,
-        })
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4,
+      })
       : "";
   };
   const tipoDocumentoTemplate = (rowData) => {
@@ -1038,16 +1162,16 @@ const PreFactura = ({ ruta }) => {
                     badge={
                       filtroParticionadas === "originales"
                         ? items
-                            .filter((i) => i.esParticionada === true)
-                            .length.toString()
+                          .filter((i) => i.esParticionada === true)
+                          .length.toString()
                         : filtroParticionadas === "copias"
                           ? items
-                              .filter(
-                                (i) =>
-                                  i.preFacturaOrigenId !== null &&
-                                  i.preFacturaOrigenId !== undefined,
-                              )
-                              .length.toString()
+                            .filter(
+                              (i) =>
+                                i.preFacturaOrigenId !== null &&
+                                i.preFacturaOrigenId !== undefined,
+                            )
+                            .length.toString()
                           : undefined
                     }
                     disabled={loading}
@@ -1231,6 +1355,7 @@ const PreFactura = ({ ruta }) => {
           onIrAMovimientoAlmacen={handleIrAMovimientoAlmacen}
           onIrACotizacionVenta={handleIrACotizacionVenta}
           onIrAContratoServicio={handleIrAContratoServicio}
+          onGenerarKardex={handleGenerarKardex}
         />
       </Dialog>
 
@@ -1260,10 +1385,10 @@ const PreFactura = ({ ruta }) => {
           unidadesNegocio={unidadesNegocio}
           incoterms={incoterms}
           tiposContenedor={tiposContenedor}
-          onSubmit={() => {}}
+          onSubmit={() => { }}
           onCancel={() => setShowCotizacionDialog(false)}
-          onAprobar={() => {}}
-          onAnular={() => {}}
+          onAprobar={() => { }}
+          onAnular={() => { }}
           loading={false}
           readOnly={true}
           toast={toast}
@@ -1292,11 +1417,11 @@ const PreFactura = ({ ruta }) => {
           empresaFija={empresaSeleccionada}
           centrosCosto={centrosCosto}
           monedas={monedas}
-          onSubmit={() => {}}
+          onSubmit={() => { }}
           onCancel={() => setShowMovimientoAlmacenDialog(false)}
-          onCerrar={() => {}}
-          onAnular={() => {}}
-          onGenerarKardex={() => {}}
+          onCerrar={() => { }}
+          onAnular={() => { }}
+          onGenerarKardex={() => { }}
           loading={false}
           toast={toast}
           permisos={{ puedeVer: true, puedeEditar: false }}
@@ -1330,16 +1455,39 @@ const PreFactura = ({ ruta }) => {
           unidadesNegocio={unidadesNegocio}
           incoterms={incoterms}
           tiposContenedor={tiposContenedor}
-          onSubmit={() => {}}
+          onSubmit={() => { }}
           onCancel={() => setShowContratoServicioDialog(false)}
-          onAprobar={() => {}}
-          onAnular={() => {}}
+          onAprobar={() => { }}
+          onAnular={() => { }}
           loading={false}
           readOnly={true}
           toast={toast}
           permisos={{ puedeEditar: false, puedeEliminar: false }}
         />
       </Dialog>
+
+      {/* Diálogo de generación de Kardex */}
+      {kardexDocumentoActual && (
+        <GenerarKardexDialog
+          visible={showKardexDialog}
+          onHide={() => {
+            setShowKardexDialog(false);
+            setKardexDocumentoActual(null);
+          }}
+          tipoDocumento="preFactura"
+          documentoId={kardexDocumentoActual.id}
+          numeroDocumento={kardexDocumentoActual.numeroDocumento}
+          serieDocumento={kardexDocumentoActual.serieDoc?.serie}
+          entidadComercial={kardexDocumentoActual.cliente?.razonSocial}
+          entidadComercialId={kardexDocumentoActual.clienteId}
+          totalItems={kardexDocumentoActual.detalles?.length || 0}
+          empresaId={kardexDocumentoActual.empresaId}
+          empresaEntidadComercialId={kardexDocumentoActual.empresa?.entidadComercialId}
+          onGenerar={handleProcesarGeneracionKardex}
+          loading={loading}
+        />
+      )}
+
     </div>
   );
 };

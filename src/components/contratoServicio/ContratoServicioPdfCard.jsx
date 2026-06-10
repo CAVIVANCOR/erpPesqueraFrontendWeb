@@ -18,12 +18,14 @@ const ContratoServicioPdfCard = ({
   watch,
   getValues,
   defaultValues = {},
+  entityId,
   readOnly = false,
 }) => {
   return (
     <PDFDocumentManager
       moduleName="contrato-servicio"
       fieldName="urlContratoPdf"
+      entityId={entityId}
       title="Documento PDF del Contrato"
       dialogTitle="Subir Contrato PDF"
       uploadButtonLabel="Capturar/Subir Contrato"

@@ -1,6 +1,6 @@
 // src/pages/OrdenCompra.jsx
 import React, { useRef, useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -48,8 +48,10 @@ import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
 import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
+import GenerarKardexDialog from "../components/common/kardex/GenerarKardexDialog";
 
 export default function OrdenCompra({ ruta }) {
+  const navigate = useNavigate();
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
@@ -98,6 +100,8 @@ export default function OrdenCompra({ ruta }) {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [proveedoresUnicos, setProveedoresUnicos] = useState([]);
+  const [showKardexDialog, setShowKardexDialog] = useState(false);
+  const [kardexDocumentoActual, setKardexDocumentoActual] = useState(null);
 
   useEffect(() => {
     cargarDatos();
@@ -576,120 +580,46 @@ export default function OrdenCompra({ ruta }) {
         return;
       }
 
-      // ✅ VALIDAR ESTADOS PROHIBIDOS - AGREGADO SIN ELIMINAR NADA
+      // ✅ VALIDAR ESTADOS PERMITIDOS
       const estadoId = Number(ordenActual.estadoId);
-      const estadosProhibidos = [38, 40, 50];
+      const estadosPermitidos = [39, 112, 113]; // APROBADO, PARTICIONADA, FACTURADA
 
-      if (estadosProhibidos.includes(estadoId)) {
+      if (!estadosPermitidos.includes(estadoId)) {
         const mensajes = {
           38: "La orden debe estar APROBADA para generar kardex",
           40: "No se puede generar kardex de una orden ANULADA",
-          50: "No se puede generar kardex de una orden PARTICIONADA",
         };
 
         toast.current.show({
           severity: "warn",
           summary: "Acción no permitida",
-          detail: mensajes[estadoId],
+          detail: mensajes[estadoId] || "Estado no válido para generar kardex",
           life: 5000,
         });
         return;
       }
 
+      // Guardar orden actual para el diálogo
+      setKardexDocumentoActual(ordenActual);
+
       if (ordenActual.movIngresoAlmacenId) {
+        // Ya tiene kardex - Mostrar confirmación de regeneración
         confirmDialog({
           message:
             "Esta orden ya tiene un kardex generado. ¿Desea regenerarlo? Esto eliminará el movimiento de almacén actual, recalculará todos los saldos y creará un nuevo movimiento con los datos actuales de la orden.",
           header: "Regenerar Kardex",
           icon: "pi pi-exclamation-triangle",
-          acceptLabel: "Sí, regenerar",
+          acceptLabel: "Sí, continuar",
           rejectLabel: "Cancelar",
           acceptClassName: "p-button-warning",
-          accept: async () => {
-            try {
-              setLoading(true);
-              await regenerarKardexOrdenCompra(id);
-
-              toast.current.show({
-                severity: "success",
-                summary: "Éxito",
-                detail: "Kardex regenerado correctamente",
-              });
-
-              const { getOrdenCompraPorId } =
-                await import("../api/ordenCompra");
-              const ordenActualizada = await getOrdenCompraPorId(id);
-              setEditing(ordenActualizada);
-
-              await cargarDatos();
-            } catch (error) {
-              console.error("Error al regenerar kardex:", error);
-
-              // ✅ CAPTURAR MENSAJE DEL BACKEND
-              const mensajeError =
-                error.response?.data?.mensaje ||
-                error.response?.data?.message ||
-                error.message ||
-                "Error al regenerar el kardex";
-
-              toast.current.show({
-                severity: "error",
-                summary: "Error",
-                detail: mensajeError,
-                life: 7000, // 7 segundos para que el usuario pueda leer el mensaje completo
-              });
-            } finally {
-              setLoading(false);
-            }
+          accept: () => {
+            // Abrir diálogo para seleccionar opciones
+            setShowKardexDialog(true);
           },
         });
       } else {
-        confirmDialog({
-          message:
-            "¿Está seguro de generar el kardex para esta orden de compra? Se creará el movimiento de ingreso a almacén y se actualizarán los saldos de stock.",
-          header: "Confirmar Generación de Kardex",
-          icon: "pi pi-info-circle",
-          acceptLabel: "Sí, generar",
-          rejectLabel: "Cancelar",
-          acceptClassName: "p-button-success",
-          accept: async () => {
-            try {
-              setLoading(true);
-              await generarMovimientoAlmacen(id, {});
-
-              toast.current.show({
-                severity: "success",
-                summary: "Éxito",
-                detail: "Kardex generado correctamente",
-              });
-
-              const { getOrdenCompraPorId } =
-                await import("../api/ordenCompra");
-              const ordenActualizada = await getOrdenCompraPorId(id);
-              setEditing(ordenActualizada);
-
-              await cargarDatos();
-            } catch (error) {
-              console.error("Error al generar kardex:", error);
-
-              // ✅ CAPTURAR MENSAJE DEL BACKEND
-              const mensajeError =
-                error.response?.data?.mensaje ||
-                error.response?.data?.message ||
-                error.message ||
-                "Error al generar el kardex";
-
-              toast.current.show({
-                severity: "error",
-                summary: "Error",
-                detail: mensajeError,
-                life: 7000,
-              });
-            } finally {
-              setLoading(false);
-            }
-          },
-        });
+        // No tiene kardex - Abrir diálogo directamente
+        setShowKardexDialog(true);
       }
     } catch (error) {
       console.error("Error en handleGenerarKardex:", error);
@@ -698,6 +628,63 @@ export default function OrdenCompra({ ruta }) {
         summary: "Error",
         detail: "Error al procesar la solicitud",
       });
+    }
+  };
+
+  const handleProcesarGeneracionKardex = async (datosKardex) => {
+    try {
+      setLoading(true);
+
+      const ordenId = kardexDocumentoActual.id;
+      const esRegeneracion = Boolean(kardexDocumentoActual.movIngresoAlmacenId);
+
+      let movimientoId = null;
+
+      if (esRegeneracion) {
+        // Regenerar kardex
+        const resultado = await regenerarKardexOrdenCompra(ordenId);
+        movimientoId = resultado?.movimientoId || kardexDocumentoActual.movIngresoAlmacenId;
+      } else {
+        // Generar movimiento por primera vez
+        const resultado = await generarMovimientoAlmacen(ordenId, datosKardex);
+        movimientoId = resultado?.movimientoId;
+      }
+
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: esRegeneracion
+          ? "Kardex regenerado correctamente"
+          : "Movimiento de almacén creado correctamente",
+        life: 3000,
+      });
+
+      // Cerrar diálogo
+      setShowKardexDialog(false);
+      setKardexDocumentoActual(null);
+      setShowDialog(false);
+
+      // Redirigir a edición del movimiento creado
+      if (movimientoId) {
+        navigate(`/movimientos-almacen/${movimientoId}/editar`);
+      }
+    } catch (error) {
+      console.error("Error al generar movimiento:", error);
+
+      const mensajeError =
+        error.response?.data?.mensaje ||
+        error.response?.data?.message ||
+        error.message ||
+        "Error al generar el movimiento de almacén";
+
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: mensajeError,
+        life: 7000,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1161,6 +1148,29 @@ export default function OrdenCompra({ ruta }) {
           readOnly={true}
         />
       </Dialog>
+
+      {/* Diálogo de generación de Kardex */}
+      {kardexDocumentoActual && (
+        <GenerarKardexDialog
+          visible={showKardexDialog}
+          onHide={() => {
+            setShowKardexDialog(false);
+            setKardexDocumentoActual(null);
+          }}
+          tipoDocumento="ordenCompra"
+          documentoId={kardexDocumentoActual.id}
+          numeroDocumento={kardexDocumentoActual.numeroDocumento}
+          serieDocumento={kardexDocumentoActual.serieDoc?.serie}
+          entidadComercial={kardexDocumentoActual.proveedor?.razonSocial}
+          entidadComercialId={kardexDocumentoActual.proveedorId}
+          totalItems={kardexDocumentoActual.detalles?.length || 0}
+          empresaId={kardexDocumentoActual.empresaId}
+          empresaEntidadComercialId={kardexDocumentoActual.empresa?.entidadComercialId}
+          onGenerar={handleProcesarGeneracionKardex}
+          loading={loading}
+        />
+      )}
+
     </div>
   );
 }

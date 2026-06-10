@@ -7,10 +7,13 @@
 import React, { useState, useEffect } from "react";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
-import { Dropdown } from "primereact/dropdown";
 import { InputNumber } from "primereact/inputnumber";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Checkbox } from "primereact/checkbox";
+import {
+  ProductoSelectorDialog,
+  ProductoSelectedDisplay,
+} from "../common/productoSelectorConStock";
 
 const DetServicioContratoForm = ({
   visible,
@@ -19,36 +22,19 @@ const DetServicioContratoForm = ({
   onSave,
   productos = [],
   moneda,
+  empresaId = null,
+  empresaEntidadComercialId = null,
+  clienteId = null,
+  fechaDocumento = null,
 }) => {
+  const [showProductoSelector, setShowProductoSelector] = useState(false);
   const [formData, setFormData] = useState({
-    productoId: detalle?.productoId || null,
-    producto: detalle?.producto || null,
+    productoId: detalle?.productoServicioId || null,
+    producto: detalle?.productoServicio || null,
     cantidad: detalle?.cantidad || 1,
-    precioUnitario: detalle?.precioUnitario || 0,
-    valorTotal: detalle?.valorTotal || 0,
-    aplicaCargoLuz: detalle?.aplicaCargoLuz || false,
-    cantidadKwh: detalle?.cantidadKwh || 0,
-    precioKwh: detalle?.precioKwh || 0,
-    recargoKwh: detalle?.recargoKwh || 0,
-    valorTotalLuz: detalle?.valorTotalLuz || 0,
-    observaciones: detalle?.observaciones || "",
+    valorVentaUnitario: detalle?.valorVentaUnitario || 0,
+    incluyeLuz: detalle?.incluyeLuz || false,
   });
-
-  // Calcular valor total automáticamente
-  useEffect(() => {
-    const total = (formData.cantidad || 0) * (formData.precioUnitario || 0);
-    setFormData((prev) => ({ ...prev, valorTotal: total }));
-  }, [formData.cantidad, formData.precioUnitario]);
-
-  // Calcular valor total luz automáticamente
-  useEffect(() => {
-    if (formData.aplicaCargoLuz) {
-      const totalLuz = (formData.cantidadKwh || 0) * ((formData.precioKwh || 0) + (formData.recargoKwh || 0));
-      setFormData((prev) => ({ ...prev, valorTotalLuz: totalLuz }));
-    } else {
-      setFormData((prev) => ({ ...prev, valorTotalLuz: 0 }));
-    }
-  }, [formData.aplicaCargoLuz, formData.cantidadKwh, formData.precioKwh, formData.recargoKwh]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -63,34 +49,30 @@ const DetServicioContratoForm = ({
     }));
   };
 
+  const handleProductoSeleccionado = (productoData) => {
+    // productoData viene de ProductoSelectorDialog con precio automático
+    setFormData((prev) => ({
+      ...prev,
+      productoId: Number(productoData.productoId),
+      valorVentaUnitario: Number(productoData.precioUnitario || 0),
+    }));
+    setShowProductoSelector(false);
+  };
+
   const handleSubmit = () => {
     // Validaciones
     if (!formData.productoId) {
       alert("Debe seleccionar un servicio");
       return;
     }
-
     if (!formData.cantidad || formData.cantidad <= 0) {
       alert("La cantidad debe ser mayor a 0");
       return;
     }
-
-    if (!formData.precioUnitario || formData.precioUnitario <= 0) {
-      alert("El precio unitario debe ser mayor a 0");
+    if (!formData.valorVentaUnitario || formData.valorVentaUnitario <= 0) {
+      alert("El valor de venta unitario debe ser mayor a 0");
       return;
     }
-
-    if (formData.aplicaCargoLuz) {
-      if (!formData.cantidadKwh || formData.cantidadKwh <= 0) {
-        alert("La cantidad de kWh debe ser mayor a 0");
-        return;
-      }
-      if (!formData.precioKwh || formData.precioKwh <= 0) {
-        alert("El precio de kWh debe ser mayor a 0");
-        return;
-      }
-    }
-
     onSave(formData);
   };
 
@@ -128,28 +110,22 @@ const DetServicioContratoForm = ({
     >
       <div style={{ display: "grid", gap: "1rem" }}>
         {/* Servicio */}
-        <div>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
-            Servicio <span style={{ color: "red" }}>*</span>
-          </label>
-          <Dropdown
-            value={formData.productoId}
-            options={productos}
-            onChange={(e) => handleProductoChange(e.value)}
-            optionLabel="nombre"
-            optionValue="id"
-            placeholder="Seleccionar servicio"
-            filter
-            showClear
-            style={{ width: "100%" }}
-          />
-        </div>
+        <ProductoSelectedDisplay
+          producto={
+            formData.productoId
+              ? productos.find((p) => Number(p.id) === Number(formData.productoId))
+              : null
+          }
+          onChangeClick={() => setShowProductoSelector(true)}
+          disabled={false}
+          label="Servicio *"
+        />
 
-        {/* Cantidad y Precio */}
+        {/* Cantidad y Valor Venta Unitario */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
+            gridTemplateColumns: "1fr 1fr",
             gap: "1rem",
           }}
         >
@@ -162,7 +138,7 @@ const DetServicioContratoForm = ({
               onValueChange={(e) => handleChange("cantidad", e.value)}
               mode="decimal"
               minFractionDigits={2}
-              maxFractionDigits={2}
+              maxFractionDigits={4}
               min={0}
               style={{ width: "100%" }}
             />
@@ -170,154 +146,51 @@ const DetServicioContratoForm = ({
 
           <div>
             <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
-              Precio Unitario <span style={{ color: "red" }}>*</span>
+              Valor Venta Unitario <span style={{ color: "red" }}>*</span>
             </label>
             <InputNumber
-              value={formData.precioUnitario}
-              onValueChange={(e) => handleChange("precioUnitario", e.value)}
+              value={formData.valorVentaUnitario}
+              onValueChange={(e) => handleChange("valorVentaUnitario", e.value)}
               mode="decimal"
               minFractionDigits={2}
-              maxFractionDigits={2}
+              maxFractionDigits={4}
               min={0}
               prefix={`${getSimboloMoneda()} `}
               style={{ width: "100%" }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
-              Valor Total
-            </label>
-            <InputNumber
-              value={formData.valorTotal}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              prefix={`${getSimboloMoneda()} `}
-              style={{ width: "100%" }}
-              readOnly
-              disabled
             />
           </div>
         </div>
 
-        {/* Checkbox Aplica Cargo Luz */}
+        {/* Checkbox Incluye Luz */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <Checkbox
-            inputId="aplicaCargoLuz"
-            checked={formData.aplicaCargoLuz}
-            onChange={(e) => handleChange("aplicaCargoLuz", e.checked)}
+            inputId="incluyeLuz"
+            checked={formData.incluyeLuz}
+            onChange={(e) => handleChange("incluyeLuz", e.checked)}
           />
-          <label htmlFor="aplicaCargoLuz" style={{ fontWeight: "bold", cursor: "pointer" }}>
-            Aplica Cargo por Servicio de Luz
+          <label htmlFor="incluyeLuz" style={{ fontWeight: "bold", cursor: "pointer" }}>
+            Incluye Servicio de Luz
           </label>
-        </div>
-
-        {/* Campos de Luz (solo si aplica) */}
-        {formData.aplicaCargoLuz && (
-          <div
-            style={{
-              padding: "1rem",
-              backgroundColor: "#fff3cd",
-              borderRadius: "8px",
-              border: "1px solid #ffc107",
-            }}
-          >
-            <h4 style={{ marginTop: 0, marginBottom: "1rem" }}>
-              <i className="pi pi-bolt" style={{ marginRight: "0.5rem" }}></i>
-              Datos de Consumo Eléctrico
-            </h4>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-                gap: "1rem",
-              }}
-            >
-              <div>
-                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
-                  Cantidad kWh <span style={{ color: "red" }}>*</span>
-                </label>
-                <InputNumber
-                  value={formData.cantidadKwh}
-                  onValueChange={(e) => handleChange("cantidadKwh", e.value)}
-                  mode="decimal"
-                  minFractionDigits={2}
-                  maxFractionDigits={2}
-                  min={0}
-                  suffix=" kWh"
-                  style={{ width: "100%" }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
-                  Precio kWh <span style={{ color: "red" }}>*</span>
-                </label>
-                <InputNumber
-                  value={formData.precioKwh}
-                  onValueChange={(e) => handleChange("precioKwh", e.value)}
-                  mode="decimal"
-                  minFractionDigits={4}
-                  maxFractionDigits={4}
-                  min={0}
-                  prefix={`${getSimboloMoneda()} `}
-                  style={{ width: "100%" }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
-                  Recargo kWh
-                </label>
-                <InputNumber
-                  value={formData.recargoKwh}
-                  onValueChange={(e) => handleChange("recargoKwh", e.value)}
-                  mode="decimal"
-                  minFractionDigits={4}
-                  maxFractionDigits={4}
-                  min={0}
-                  prefix={`${getSimboloMoneda()} `}
-                  style={{ width: "100%" }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
-                  Total Luz
-                </label>
-                <InputNumber
-                  value={formData.valorTotalLuz}
-                  mode="decimal"
-                  minFractionDigits={2}
-                  maxFractionDigits={2}
-                  prefix={`${getSimboloMoneda()} `}
-                  style={{ width: "100%" }}
-                  readOnly
-                  disabled
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Observaciones */}
-        <div>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
-            Observaciones
-          </label>
-          <InputTextarea
-            value={formData.observaciones}
-            onChange={(e) => handleChange("observaciones", e.target.value)}
-            rows={3}
-            style={{
-              width: "100%",
-              textTransform: "uppercase",
-              fontWeight: "bold",
-            }}
-          />
         </div>
       </div>
+
+      {/* Selector de Productos Avanzado */}
+      <ProductoSelectorDialog
+        visible={showProductoSelector}
+        onHide={() => setShowProductoSelector(false)}
+        modo="egreso"
+        esCustodia={false}
+        empresaId={empresaId}
+        propietarioStockId={empresaEntidadComercialId}
+        almacenId={null}
+        productoIdSeleccionado={formData.productoId}
+        clienteId={clienteId}
+        empresaEntidadComercialId={empresaEntidadComercialId}
+        monedaId={moneda?.id}
+        fechaDocumento={fechaDocumento}
+        buscarPrecioVenta={true}
+        onSelect={handleProductoSeleccionado}
+      />
     </Dialog>
   );
 };

@@ -76,7 +76,7 @@ const SaldosCuentasPanel = ({
     const simbolo = rowData.moneda?.simbolo || "";
 
     // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
-    const colorFondo = cuenta.moneda?.colorFondo || "#e2e3e5";
+    const colorFondo = rowData.moneda?.colorFondo || "#e2e3e5";
     const estilo = {
       backgroundColor: colorFondo,
       color: "#000",

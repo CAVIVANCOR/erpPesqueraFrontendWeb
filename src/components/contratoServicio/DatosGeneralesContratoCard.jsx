@@ -80,9 +80,9 @@ const DatosGeneralesContratoCard = ({
   // Filtrar clientes por empresa y tipoEntidadId = 15 (Clientes Servicios)
   const clientesFiltrados = formData.empresaId
     ? clientes.filter(
-        (c) =>
-          Number(c.empresaId) === Number(formData.empresaId)
-      )
+      (c) =>
+        Number(c.empresaId) === Number(formData.empresaId)
+    )
     : [];
 
   // Filtrar tipos de documento para mostrar solo ID = 20 (Contratos de Servicios)
@@ -160,257 +160,276 @@ const DatosGeneralesContratoCard = ({
   return (
     <div className="card">
       <Panel header="Información del Contrato" toggleable>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-            gap: "1rem",
-            marginBottom: "1rem",
-          }}
-        >
-          {/* Empresa */}
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontWeight: "bold",
-              }}
-            >
-              Empresa <span style={{ color: "red" }}>*</span>
-            </label>
-            <Dropdown
-              value={formData.empresaId}
-              options={empresas.map((e) => ({ ...e, id: Number(e.id) }))}
-              onChange={(e) => handleChange("empresaId", e.value)}
-              optionLabel="razonSocial"
-              optionValue="id"
-              placeholder="Seleccionar"
-              filter
-              showClear
-              style={{ width: "100%" }}
-              disabled={isEdit || readOnly}
-            />
+        <div className="p-fluid">
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              {/* Empresa */}
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Empresa <span style={{ color: "red" }}>*</span>
+              </label>
+              <Dropdown
+                value={formData.empresaId}
+                options={empresas.map((e) => ({ ...e, id: Number(e.id) }))}
+                onChange={(e) => handleChange("empresaId", e.value)}
+                optionLabel="razonSocial"
+                optionValue="id"
+                placeholder="Seleccionar"
+                filter
+                showClear
+                style={{ width: "100%" }}
+                disabled={isEdit || readOnly}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              {/* Sede */}
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Sede
+              </label>
+              <Dropdown
+                value={formData.sedeId}
+                options={sedesFiltradas.map((s) => ({ ...s, id: Number(s.id) }))}
+                onChange={(e) => handleChange("sedeId", e.value)}
+                optionLabel="nombre"
+                optionValue="id"
+                placeholder="Seleccionar"
+                filter
+                showClear
+                style={{ width: "100%" }}
+                disabled={!formData.empresaId || readOnly}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              {/* Unidad de Negocio */}
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Unidad de Negocio <span style={{ color: "red" }}>*</span>
+              </label>
+              <Dropdown
+                value={
+                  formData.unidadNegocioId
+                    ? Number(formData.unidadNegocioId)
+                    : null
+                }
+                options={unidadesNegocioOptions}
+                onChange={(e) => handleChange("unidadNegocioId", e.value)}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccionar unidad de negocio"
+                filter
+                showClear
+                style={{ width: "100%" }}
+                disabled={readOnly}
+              />
+            </div>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              {/* Almacén */}
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Almacén
+              </label>
+              <Dropdown
+                value={formData.almacenId}
+                options={almacenesFiltrados.map((a) => ({
+                  ...a,
+                  id: Number(a.id),
+                }))}
+                onChange={(e) => handleChange("almacenId", e.value)}
+                optionLabel="nombre"
+                optionValue="id"
+                placeholder="Seleccionar"
+                filter
+                showClear
+                style={{ width: "100%" }}
+                disabled={!formData.empresaId || readOnly}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              {/* Activo */}
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Activo
+              </label>
+              <Dropdown
+                value={formData.activoId}
+                options={activosFiltrados.map((a) => ({
+                  ...a,
+                  id: Number(a.id),
+                }))}
+                onChange={(e) => handleChange("activoId", e.value)}
+                optionLabel="nombre"
+                optionValue="id"
+                placeholder="Seleccionar"
+                filter
+                showClear
+                style={{ width: "100%" }}
+                disabled={!formData.empresaId || readOnly}
+              />
+            </div>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              {/* Cliente */}
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Cliente <span style={{ color: "red" }}>*</span>
+              </label>
+              <Dropdown
+                value={formData.clienteId}
+                options={clientesFiltrados.map((c) => ({
+                  ...c,
+                  id: Number(c.id),
+                }))}
+                onChange={(e) => handleChange("clienteId", e.value)}
+                optionLabel="razonSocial"
+                optionValue="id"
+                placeholder="Seleccionar"
+                filter
+                showClear
+                style={{ width: "100%" }}
+                disabled={!formData.empresaId || readOnly}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              {/* Contacto Cliente */}
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Contacto Cliente
+              </label>
+              <Dropdown
+                value={formData.contactoClienteId}
+                options={contactosFiltrados}
+                onChange={(e) => handleChange("contactoClienteId", e.value)}
+                optionLabel="nombreCompleto"
+                optionValue="id"
+                placeholder="Seleccionar"
+                filter
+                showClear
+                style={{ width: "100%" }}
+                disabled={!formData.clienteId || readOnly}
+              />
+            </div>
           </div>
 
-          {/* Sede */}
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontWeight: "bold",
-              }}
-            >
-              Sede
-            </label>
-            <Dropdown
-              value={formData.sedeId}
-              options={sedesFiltradas.map((s) => ({ ...s, id: Number(s.id) }))}
-              onChange={(e) => handleChange("sedeId", e.value)}
-              optionLabel="nombre"
-              optionValue="id"
-              placeholder="Seleccionar"
-              filter
-              showClear
-              style={{ width: "100%" }}
-              disabled={!formData.empresaId || readOnly}
-            />
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              {/* Responsable */}
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Responsable <span style={{ color: "red" }}>*</span>
+              </label>
+              <Dropdown
+                value={
+                  formData.responsableId ? Number(formData.responsableId) : null
+                }
+                options={personalOptions.map((p) => ({
+                  label:
+                    p.nombreCompleto || `${p.nombres || ""} ${p.apellidos || ""}`,
+                  value: Number(p.id),
+                }))}
+                onChange={(e) => handleChange("responsableId", e.value)}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccionar"
+                filter
+                showClear
+                style={{ width: "100%" }}
+                disabled={readOnly}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              {/* Aprobador */}
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Aprobador <span style={{ color: "red" }}>*</span>
+              </label>
+              <Dropdown
+                value={formData.aprobadorId ? Number(formData.aprobadorId) : null}
+                options={personalOptions.map((p) => ({
+                  label: `${p.nombres} ${p.apellidos}`,
+                  value: Number(p.id),
+                }))}
+                onChange={(e) => handleChange("aprobadorId", e.value)}
+                placeholder="Auto-asignado desde Parámetro Aprobador"
+                filter
+                showClear
+                style={{ width: "100%" }}
+              />
+            </div>
           </div>
 
-          {/* Activo */}
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontWeight: "bold",
-              }}
-            >
-              Activo
-            </label>
-            <Dropdown
-              value={formData.activoId}
-              options={activosFiltrados.map((a) => ({
-                ...a,
-                id: Number(a.id),
-              }))}
-              onChange={(e) => handleChange("activoId", e.value)}
-              optionLabel="nombre"
-              optionValue="id"
-              placeholder="Seleccionar"
-              filter
-              showClear
-              style={{ width: "100%" }}
-              disabled={!formData.empresaId || readOnly}
-            />
-          </div>
-
-          {/* Almacén */}
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontWeight: "bold",
-              }}
-            >
-              Almacén
-            </label>
-            <Dropdown
-              value={formData.almacenId}
-              options={almacenesFiltrados.map((a) => ({
-                ...a,
-                id: Number(a.id),
-              }))}
-              onChange={(e) => handleChange("almacenId", e.value)}
-              optionLabel="nombre"
-              optionValue="id"
-              placeholder="Seleccionar"
-              filter
-              showClear
-              style={{ width: "100%" }}
-              disabled={!formData.empresaId || readOnly}
-            />
-          </div>
-
-          {/* Cliente */}
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontWeight: "bold",
-              }}
-            >
-              Cliente <span style={{ color: "red" }}>*</span>
-            </label>
-            <Dropdown
-              value={formData.clienteId}
-              options={clientesFiltrados.map((c) => ({
-                ...c,
-                id: Number(c.id),
-              }))}
-              onChange={(e) => handleChange("clienteId", e.value)}
-              optionLabel="razonSocial"
-              optionValue="id"
-              placeholder="Seleccionar"
-              filter
-              showClear
-              style={{ width: "100%" }}
-              disabled={!formData.empresaId || readOnly}
-            />
-          </div>
-
-          {/* Contacto Cliente */}
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontWeight: "bold",
-              }}
-            >
-              Contacto Cliente
-            </label>
-            <Dropdown
-              value={formData.contactoClienteId}
-              options={contactosFiltrados}
-              onChange={(e) => handleChange("contactoClienteId", e.value)}
-              optionLabel="nombreCompleto"
-              optionValue="id"
-              placeholder="Seleccionar"
-              filter
-              showClear
-              style={{ width: "100%" }}
-              disabled={!formData.clienteId || readOnly}
-            />
-          </div>
-
-          {/* Responsable */}
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontWeight: "bold",
-              }}
-            >
-              Responsable <span style={{ color: "red" }}>*</span>
-            </label>
-            <Dropdown
-              value={
-                formData.responsableId ? Number(formData.responsableId) : null
-              }
-              options={personalOptions.map((p) => ({
-                label:
-                  p.nombreCompleto || `${p.nombres || ""} ${p.apellidos || ""}`,
-                value: Number(p.id),
-              }))}
-              onChange={(e) => handleChange("responsableId", e.value)}
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Seleccionar"
-              filter
-              showClear
-              style={{ width: "100%" }}
-              disabled={readOnly}
-            />
-          </div>
-
-          {/* Aprobador */}
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontWeight: "bold",
-              }}
-            >
-              Aprobador <span style={{ color: "red" }}>*</span>
-            </label>
-            <Dropdown
-              value={formData.aprobadorId ? Number(formData.aprobadorId) : null}
-              options={personalOptions.map((p) => ({
-                label: `${p.nombres} ${p.apellidos}`,
-                value: Number(p.id),
-              }))}
-              onChange={(e) => handleChange("aprobadorId", e.value)}
-              placeholder="Auto-asignado desde Parámetro Aprobador"
-              filter
-              showClear
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          {/* Unidad de Negocio */}
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontWeight: "bold",
-              }}
-            >
-              Unidad de Negocio <span style={{ color: "red" }}>*</span>
-            </label>
-            <Dropdown
-              value={
-                formData.unidadNegocioId
-                  ? Number(formData.unidadNegocioId)
-                  : null
-              }
-              options={unidadesNegocioOptions}
-              onChange={(e) => handleChange("unidadNegocioId", e.value)}
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Seleccionar unidad de negocio"
-              filter
-              showClear
-              style={{ width: "100%" }}
-              disabled={readOnly}
-            />
-          </div>
         </div>
       </Panel>
 
@@ -802,6 +821,12 @@ const DatosGeneralesContratoCard = ({
             isEdit={isEdit}
             readOnly={readOnly}
             onCountChange={onCountChange}
+            empresaId={formData.empresaId}
+            empresaEntidadComercialId={
+              empresas.find((e) => Number(e.id) === Number(formData.empresaId))?.entidadComercialId
+            }
+            clienteId={formData.clienteId}
+            fechaCelebracion={formData.fechaCelebracion}
             subtotal={subtotal}
             total={total}
           />

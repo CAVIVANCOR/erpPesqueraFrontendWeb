@@ -12,6 +12,8 @@ import { obtenerDireccionesPorEntidad } from "../../api/direccionEntidad";
 import { obtenerContactosPorEntidad } from "../../api/contactoEntidad";
 import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 import { getSeriesDoc } from "../../api/preFactura";
+import AsientoContableManager from "../common/AsientoContableManager";
+
 export default function OrdenCompraForm({
   isEdit,
   defaultValues,
@@ -741,7 +743,8 @@ export default function OrdenCompraForm({
   const estaPendiente = Number(estadoId) === 38 || !estadoId;
   const estaAprobado = Number(estadoId) === 39;
   const estaAnulado = Number(estadoId) === 40;
-  const estaParticionada = Number(estadoId) === 50;
+  const estaParticionado = Number(estadoId) === 112;
+  const estaFacturado = Number(estadoId) === 113;
   const kardexGenerado = !!movIngresoAlmacenId;
   const puedeEditar = estaPendiente && !loading;
   const puedeEditarDatosAdicionales = !loading;
@@ -918,14 +921,14 @@ export default function OrdenCompraForm({
                 readOnly ||
                 loading ||
                 !permisos.puedeEditar ||
-                (!estaAprobado && !kardexGenerado) ||
-                estaAnulado
+                estaAnulado ||
+                (!estaAprobado && !estaParticionado && !estaFacturado)
               }
               tooltip={
-                !estaAprobado && !kardexGenerado
-                  ? "Solo se puede generar kardex en órdenes aprobadas"
-                  : estaAnulado
-                    ? "No se puede generar kardex en orden anulada"
+                estaAnulado
+                  ? "No se puede generar kardex en orden anulada"
+                  : !estaAprobado && !estaParticionado && !estaFacturado
+                    ? "Solo se puede generar kardex en órdenes APROBADAS, PARTICIONADAS o FACTURADAS"
                     : kardexGenerado
                       ? "Regenerar kardex (eliminar y crear nuevo movimiento)"
                       : readOnly
@@ -960,7 +963,18 @@ export default function OrdenCompraForm({
           )}
         </div>
 
-        <div style={{ flex: 1 }}></div>
+        <div style={{ flex: 1 }}>
+          {/* Componente genérico de asientos contables */}
+          {isEdit && formData.id && (
+            <AsientoContableManager
+              documentoId={formData.id}
+              documentoTipo="OrdenCompra"
+              empresaId={formData.empresaId}
+              periodoContableId={formData.periodoContableId}
+              showAsButton={true}
+            />
+          )}
+        </div>
         <div style={{ flex: 1 }}>
           <Button
             label="Cancelar"

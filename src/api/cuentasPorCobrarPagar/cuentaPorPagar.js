@@ -50,3 +50,8 @@ export async function getCuentasPorPagarVencidas(empresaId) {
   const res = await axios.get(`${API_URL}/empresa/${empresaId}/vencidas`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+export async function getCuentaPorPagarByOrdenCompraId(ordenCompraId) {
+  const res = await axios.get(`${API_URL}/ordencompra/${ordenCompraId}`, { headers: getAuthHeaders() });
+  return res.data;
+}

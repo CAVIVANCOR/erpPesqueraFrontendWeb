@@ -780,6 +780,29 @@ export default function PreFacturaForm({
     }
   };
 
+  const handleGenerarKardexClick = () => {
+    if (!defaultValues.id) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe guardar la pre-factura antes de generar el kardex",
+      });
+      return;
+    }
+
+    if (!defaultValues.detalles || defaultValues.detalles.length === 0) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "La pre-factura debe tener al menos un detalle para generar el kardex",
+      });
+      return;
+    }
+
+    onGenerarKardex(defaultValues.id);
+  };
+
+
   // Calcular automáticamente porcentajeAdelanto cuando cambia montoAdelantadoCliente
   useEffect(() => {
     if (formData.montoAdelantadoCliente && totales.total > 0) {
@@ -1114,6 +1137,12 @@ export default function PreFacturaForm({
   const estaEmitida = estadoId === 96;
   const estaComprobanteGenerado = estadoId === 97;
   const estaValidadoSunat = estadoId === 98;
+  const estaNoValidadoSunat = estadoId === 99;
+  const kardexGenerado = Boolean(defaultValues.movSalidaAlmacenId);
+
+  // Estados válidos para generar kardex (todos excepto PENDIENTE y ANULADA)
+  const puedeGenerarKardex = [46, 48, 95, 96, 97, 98, 99].includes(estadoId);
+
   const puedeEditar = estaPendiente && !loading;
   const puedeAnular = (estaPendiente || estaAprobada) && !loading;
   // Preparar options para dropdowns
@@ -1534,6 +1563,39 @@ export default function PreFacturaForm({
               marginTop: 16,
             }}
           >
+            <div style={{ flex: 1 }}>
+              {isEdit && (
+                <Button
+                  label="Generar Kardex"
+                  icon="pi pi-database"
+                  className="p-button-info"
+                  onClick={handleGenerarKardexClick}
+                  disabled={
+                    readOnly ||
+                    loading ||
+                    !permisos.puedeEditar ||
+                    estaAnulada ||
+                    estaPendiente ||
+                    !puedeGenerarKardex
+                  }
+                  tooltip={
+                    estaAnulada
+                      ? "No se puede generar kardex en pre-factura anulada"
+                      : estaPendiente
+                        ? "No se puede generar kardex en pre-factura pendiente"
+                        : !puedeGenerarKardex
+                          ? "Solo se puede generar kardex en pre-facturas APROBADAS, PARTICIONADAS, FACTURADAS, EMITIDAS o con estados SUNAT"
+                          : kardexGenerado
+                            ? "Regenerar kardex (eliminar y crear nuevo movimiento)"
+                            : readOnly
+                              ? "Modo solo lectura"
+                              : !permisos.puedeEditar
+                                ? "No tiene permisos para generar kardex"
+                                : "Generar movimiento de almacén y kardex"
+                  }
+                />
+              )}
+            </div>
             <Button
               label="Cancelar"
               icon="pi pi-times"

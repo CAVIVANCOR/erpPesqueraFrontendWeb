@@ -1,11 +1,11 @@
 // src/components/contratoServicio/ContratoServicioForm.jsx
 import React, { useState, useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import DatosGeneralesContratoCard from "./DatosGeneralesContratoCard";
 import ContratoServicioPdfCard from "./ContratoServicioPdfCard";
-import EntregaARendirContratoCard from "./EntregaARendirContratoCard";
 import { getSeriesDoc } from "../../api/contratoServicio";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
@@ -44,13 +44,24 @@ const ContratoServicioForm = ({
   const [urlContratoPdf, setUrlContratoPdf] = useState(
     contrato?.urlContratoPdf || null,
   );
-  const [countEntregasRendir, setCountEntregasRendir] = useState(0);
   const [detallesCount, setDetallesCount] = useState(
     contrato?.detallesServicios?.length || 0,
   );
   const [totales, setTotales] = useState({ subtotal: 0, total: 0 });
   const [fechaCelebracionInicial, setFechaCelebracionInicial] = useState(null);
-
+  // Inicializar react-hook-form para PDFDocumentManager
+  const {
+    control,
+    watch,
+    setValue: setFormValue,
+    getValues,
+    formState: { errors: formErrors },
+  } = useForm({
+    defaultValues: {
+      urlContratoPdf: contrato?.urlContratoPdf || null,
+    },
+    mode: "onChange",
+  });
   const [formData, setFormData] = useState({
     id: contrato?.id || null,
     empresaId: contrato?.empresaId
@@ -98,7 +109,7 @@ const ContratoServicioForm = ({
     incluyeLuz: contrato?.incluyeLuz || false,
     porcentajeRecargoLuz: contrato?.porcentajeRecargoLuz || null,
     costoPorKilovatio: contrato?.costoPorKilovatio || null,
-    tipoCambio: contrato?.tipoCambio || 0.0,
+    tipoCambio: contrato?.tipoCambio || null,
     unidadNegocioId: contrato?.unidadNegocioId
       ? Number(contrato.unidadNegocioId)
       : null,
@@ -160,10 +171,21 @@ const ContratoServicioForm = ({
     }
   }, [formData.fechaInicioContrato, isEdit]);
 
-  // Sincronizar urlContratoPdf con formData
+  // Sincronizar urlContratoPdf bidireccional entre formData y react-hook-form
   useEffect(() => {
-    setFormData((prev) => ({ ...prev, urlContratoPdf: urlContratoPdf }));
-  }, [urlContratoPdf]);
+    const subscription = watch((value, { name }) => {
+      if (name === "urlContratoPdf") {
+        setUrlContratoPdf(value.urlContratoPdf);
+        setFormData((prev) => ({ ...prev, urlContratoPdf: value.urlContratoPdf }));
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
+
+  // Sincronizar desde urlContratoPdf state a react-hook-form
+  useEffect(() => {
+    setFormValue("urlContratoPdf", urlContratoPdf);
+  }, [urlContratoPdf, setFormValue]);
 
   // Guardar fecha inicial para evitar carga automática en mount
   useEffect(() => {
@@ -171,6 +193,48 @@ const ContratoServicioForm = ({
       setFechaCelebracionInicial(formData.fechaCelebracion);
     }
   }, [formData.fechaCelebracion, fechaCelebracionInicial]);
+  // Cargar tipo de cambio SUNAT automáticamente al crear nuevo contrato
+  useEffect(() => {
+    const cargarTipoCambioInicial = async () => {
+      // Solo ejecutar si es un nuevo contrato (no edición) y tipoCambio es null
+      if (isEdit || formData.tipoCambio !== null) return;
+      if (!formData.fechaCelebracion) return;
+
+      try {
+        const fecha = new Date(formData.fechaCelebracion);
+        const fechaISO = fecha.toISOString().split("T")[0];
+
+        const tipoCambioData = await consultarTipoCambioSunat({
+          date: fechaISO,
+        });
+
+        if (tipoCambioData && tipoCambioData.sell_price) {
+          const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
+          handleChange("tipoCambio", tipoCambioVenta.toFixed(3));
+
+          // Establecer fecha inicial después de cargar
+          setFechaCelebracionInicial(formData.fechaCelebracion);
+
+          toast?.current?.show({
+            severity: "success",
+            summary: "Tipo de Cambio Cargado",
+            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioVenta.toFixed(3)} por USD`,
+            life: 3000,
+          });
+        }
+      } catch (error) {
+        console.error("Error al cargar tipo de cambio inicial:", error);
+        toast?.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "No se pudo obtener el tipo de cambio de SUNAT. Ingrese manualmente.",
+          life: 4000,
+        });
+      }
+    };
+
+    cargarTipoCambioInicial();
+  }, [isEdit]); // Solo ejecutar una vez al montar, no cuando cambie la fecha
 
   // Cargar tipo de cambio SUNAT solo cuando el usuario modifica manualmente fechaCelebracion
   useEffect(() => {
@@ -257,7 +321,15 @@ const ContratoServicioForm = ({
   const handleSubmit = async () => {
     try {
       setLoading(true);
-
+      // Validar tipo de cambio
+      if (!formData.tipoCambio || formData.tipoCambio === 0) {
+        toast?.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "Debe tener un tipo de cambio válido. Espere a que se cargue de SUNAT o ingréselo manualmente.",
+        });
+        return;
+      }
       // Validaciones
       if (!formData.empresaId) {
         toast?.current?.show({
@@ -364,30 +436,14 @@ const ContratoServicioForm = ({
 
         <TabPanel header="Documento PDF" leftIcon="pi pi-file-pdf">
           <ContratoServicioPdfCard
-            contratoId={formData.id}
-            urlContratoPdf={urlContratoPdf}
-            setUrlContratoPdf={setUrlContratoPdf}
-            toast={toast}
+            control={control}
+            errors={formErrors}
+            setValue={setFormValue}
+            watch={watch}
+            getValues={getValues}
+            defaultValues={{ urlContratoPdf: urlContratoPdf }}
+            entityId={formData.id}
             readOnly={readOnly}
-          />
-        </TabPanel>
-
-        <TabPanel
-          header={`Entrega a Rendir ${countEntregasRendir > 0 ? `(${countEntregasRendir})` : ""}`}
-          leftIcon="pi pi-money-bill"
-        >
-          <EntregaARendirContratoCard
-            contratoServicio={formData}
-            personal={personalOptions}
-            centrosCosto={centrosCosto}
-            tiposMovimiento={tiposMovimiento}
-            entidadesComerciales={entidadesComerciales}
-            monedas={monedas}
-            tiposDocumento={tiposDocumento}
-            puedeEditar={isEdit}
-            onCountChange={setCountEntregasRendir}
-            readOnly={readOnly}
-            permisos={permisos}
           />
         </TabPanel>
       </TabView>

@@ -26,7 +26,7 @@ export const useProductoSelectorData = ({
   useEffect(() => {
     if (visible && empresaId && propietarioStockId) {
       cargarDatos();
-    } 
+    }
   }, [
     visible,
     empresaId,
@@ -94,20 +94,12 @@ export const useProductoSelectorData = ({
       productosFiltrados = productosData.filter(
         (producto) => producto.familia?.esParaIngresos === true
       );
-
-      // Agrupar por familia para ver distribución
-      const familias = productosFiltrados.reduce((acc, p) => {
-        const famNombre = p.familia?.nombre || 'SIN FAMILIA';
-        acc[famNombre] = (acc[famNombre] || 0) + 1;
-        return acc;
-      }, {});
     } else {
-      // MODO EGRESO: Mostrar solo productos de familias con esParaEgresos = true
+      // MODO EGRESO/VENTA: Mostrar solo productos de familias con esParaEgresos = true
       productosFiltrados = productosData.filter(
         (producto) => producto.familia?.esParaEgresos === true
       );
     }
-
     // Filtro adicional por familia específica (si se proporciona)
     if (familiaProductoId) {
       productosFiltrados = productosFiltrados.filter(
@@ -203,11 +195,15 @@ export const useProductoSelectorData = ({
 
     const filtros = {
       empresaId,
-      almacenId,
       clienteId: propietarioStockId,
       custodia: esCustodia,
       soloConSaldo: true,
     };
+
+    // Solo agregar almacenId si está definido
+    if (almacenId) {
+      filtros.almacenId = almacenId;
+    }
 
     let saldosData = await getSaldosProductoClienteConFiltros(filtros);
 

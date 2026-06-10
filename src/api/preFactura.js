@@ -328,3 +328,22 @@ export async function eliminarAsientoContable(preFacturaId, asientoId) {
     throw error;
   }
 }
+
+
+export async function generarMovimientoAlmacenPreFactura(id, datosKardex) {
+  const res = await axios.post(
+    `${API_URL}/${id}/generar-movimiento`,
+    datosKardex,
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
+
+export async function regenerarKardexPreFactura(id) {
+  const res = await axios.post(
+    `${API_URL}/${id}/regenerar-kardex`,
+    {},
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
