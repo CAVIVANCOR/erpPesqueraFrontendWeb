@@ -56,7 +56,7 @@ const ContratoServicio = ({ ruta }) => {
   }
   const [contratos, setContratos] = useState([]);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
-  
+
   // Filtrado automático por Unidad de Negocio sobre los items ya filtrados
   const { datosFiltrados: contratosFiltrados } = useUnidadNegocioFilter(itemsFiltrados);
 
@@ -101,9 +101,8 @@ const ContratoServicio = ({ ruta }) => {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: `Error al cargar contratos: ${
-          error.response?.data?.message || error.message
-        }`,
+        detail: `Error al cargar contratos: ${error.response?.data?.message || error.message
+          }`,
       });
     } finally {
       setLoading(false);
@@ -192,8 +191,8 @@ const ContratoServicio = ({ ruta }) => {
   // Filtrar clientes por empresa seleccionada
   const clientesFiltrados = empresaSeleccionada
     ? clientes.filter(
-        (c) => Number(c.empresaId) === Number(empresaSeleccionada),
-      )
+      (c) => Number(c.empresaId) === Number(empresaSeleccionada),
+    )
     : clientes;
 
   // Filtrar estados dinámicamente (solo mostrar estados que existan en los contratos)
@@ -372,12 +371,43 @@ const ContratoServicio = ({ ruta }) => {
       }
     } catch (error) {
       console.error("Error al guardar contrato:", error);
+
+      // Extraer mensaje de error del backend
+      const mensajeError =
+        error.response?.data?.mensaje ||
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message ||
+        "Error al guardar el contrato";
+
+      // Mostrar campos faltantes si los hay
+      const camposFaltantes = error.response?.data?.camposFaltantes;
+      let detalle = mensajeError;
+
+      if (camposFaltantes && camposFaltantes.length > 0) {
+        const camposTraducidos = camposFaltantes.map(campo => {
+          const traducciones = {
+            'empresaId': 'Empresa',
+            'sedeId': 'Sede',
+            'almacenId': 'Almacén',
+            'clienteId': 'Cliente',
+            'responsableId': 'Responsable',
+            'tipoDocumentoId': 'Tipo de Documento',
+            'serieDocId': 'Serie de Documento',
+            'monedaId': 'Moneda',
+            'estadoContratoId': 'Estado del Contrato',
+            'fechaCelebracion': 'Fecha de Celebración'
+          };
+          return traducciones[campo] || campo;
+        });
+        detalle = `Campos obligatorios faltantes:\n${camposTraducidos.join(', ')}`;
+      }
+
       toast.current?.show({
         severity: "error",
-        summary: "Error",
-        detail: `Error al guardar: ${
-          error.response?.data?.message || error.message
-        }`,
+        summary: "Error al Guardar",
+        detail: detalle,
+        life: 7000,
       });
     }
   };
@@ -417,9 +447,8 @@ const ContratoServicio = ({ ruta }) => {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: `Error al eliminar: ${
-          error.response?.data?.message || error.message
-        }`,
+        detail: `Error al eliminar: ${error.response?.data?.message || error.message
+          }`,
       });
     }
   };

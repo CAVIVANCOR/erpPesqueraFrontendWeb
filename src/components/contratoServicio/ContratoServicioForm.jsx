@@ -49,6 +49,7 @@ const ContratoServicioForm = ({
   );
   const [totales, setTotales] = useState({ subtotal: 0, total: 0 });
   const [fechaCelebracionInicial, setFechaCelebracionInicial] = useState(null);
+  
   // Inicializar react-hook-form para PDFDocumentManager
   const {
     control,
@@ -62,6 +63,7 @@ const ContratoServicioForm = ({
     },
     mode: "onChange",
   });
+  
   const [formData, setFormData] = useState({
     id: contrato?.id || null,
     empresaId: contrato?.empresaId
@@ -193,6 +195,7 @@ const ContratoServicioForm = ({
       setFechaCelebracionInicial(formData.fechaCelebracion);
     }
   }, [formData.fechaCelebracion, fechaCelebracionInicial]);
+
   // Cargar tipo de cambio SUNAT automáticamente al crear nuevo contrato
   useEffect(() => {
     const cargarTipoCambioInicial = async () => {
@@ -321,6 +324,7 @@ const ContratoServicioForm = ({
   const handleSubmit = async () => {
     try {
       setLoading(true);
+
       // Validar tipo de cambio
       if (!formData.tipoCambio || formData.tipoCambio === 0) {
         toast?.current?.show({
@@ -330,12 +334,22 @@ const ContratoServicioForm = ({
         });
         return;
       }
-      // Validaciones
+
+      // Validaciones de campos obligatorios
       if (!formData.empresaId) {
         toast?.current?.show({
           severity: "warn",
-          summary: "Advertencia",
+          summary: "Campo Obligatorio",
           detail: "Debe seleccionar una empresa",
+        });
+        return;
+      }
+
+      if (!formData.sedeId) {
+        toast?.current?.show({
+          severity: "warn",
+          summary: "Campo Obligatorio",
+          detail: "Debe seleccionar una sede",
         });
         return;
       }
@@ -343,7 +357,7 @@ const ContratoServicioForm = ({
       if (!formData.clienteId) {
         toast?.current?.show({
           severity: "warn",
-          summary: "Advertencia",
+          summary: "Campo Obligatorio",
           detail: "Debe seleccionar un cliente",
         });
         return;
@@ -352,8 +366,53 @@ const ContratoServicioForm = ({
       if (!formData.responsableId) {
         toast?.current?.show({
           severity: "warn",
-          summary: "Advertencia",
+          summary: "Campo Obligatorio",
           detail: "Debe seleccionar un responsable",
+        });
+        return;
+      }
+
+      if (!formData.almacenId) {
+        toast?.current?.show({
+          severity: "warn",
+          summary: "Campo Obligatorio",
+          detail: "Debe seleccionar un almacén",
+        });
+        return;
+      }
+
+      if (!formData.serieDocId) {
+        toast?.current?.show({
+          severity: "warn",
+          summary: "Campo Obligatorio",
+          detail: "Debe seleccionar una serie de documento",
+        });
+        return;
+      }
+
+      if (!formData.monedaId) {
+        toast?.current?.show({
+          severity: "warn",
+          summary: "Campo Obligatorio",
+          detail: "Debe seleccionar una moneda",
+        });
+        return;
+      }
+
+      if (!formData.estadoContratoId) {
+        toast?.current?.show({
+          severity: "warn",
+          summary: "Campo Obligatorio",
+          detail: "Debe seleccionar un estado de contrato",
+        });
+        return;
+      }
+
+      if (!formData.fechaCelebracion) {
+        toast?.current?.show({
+          severity: "warn",
+          summary: "Campo Obligatorio",
+          detail: "Debe ingresar la fecha de celebración",
         });
         return;
       }
@@ -367,10 +426,43 @@ const ContratoServicioForm = ({
       await onGuardar(dataToSend);
     } catch (error) {
       console.error("Error al guardar contrato:", error);
+
+      // Extraer mensaje de error del backend
+      const mensajeError =
+        error.response?.data?.mensaje ||
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message ||
+        "Error al guardar el contrato";
+
+      // Mostrar campos faltantes si los hay
+      const camposFaltantes = error.response?.data?.camposFaltantes;
+      let detalle = mensajeError;
+
+      if (camposFaltantes && camposFaltantes.length > 0) {
+        const camposTraducidos = camposFaltantes.map((campo) => {
+          const traducciones = {
+            empresaId: "Empresa",
+            sedeId: "Sede",
+            almacenId: "Almacén",
+            clienteId: "Cliente",
+            responsableId: "Responsable",
+            tipoDocumentoId: "Tipo de Documento",
+            serieDocId: "Serie de Documento",
+            monedaId: "Moneda",
+            estadoContratoId: "Estado del Contrato",
+            fechaCelebracion: "Fecha de Celebración",
+          };
+          return traducciones[campo] || campo;
+        });
+        detalle = `Campos obligatorios faltantes:\n${camposTraducidos.join(", ")}`;
+      }
+
       toast?.current?.show({
         severity: "error",
-        summary: "Error",
-        detail: "Error al guardar el contrato",
+        summary: "Error al Guardar",
+        detail: detalle,
+        life: 7000,
       });
     } finally {
       setLoading(false);

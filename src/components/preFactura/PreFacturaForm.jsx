@@ -1138,8 +1138,8 @@ export default function PreFacturaForm({
   const estaComprobanteGenerado = estadoId === 97;
   const estaValidadoSunat = estadoId === 98;
   const estaNoValidadoSunat = estadoId === 99;
-  const kardexGenerado = Boolean(defaultValues.movSalidaAlmacenId);
-
+  const kardexGenerado = Boolean(defaultValues?.movSalidaAlmacenId);
+  
   // Estados válidos para generar kardex (todos excepto PENDIENTE y ANULADA)
   const puedeGenerarKardex = [46, 48, 95, 96, 97, 98, 99].includes(estadoId);
 
