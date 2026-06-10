@@ -383,12 +383,23 @@ export default function OrdenCompraForm({
         const totalCalc = subtotalSinIGV + igvCalc;
 
         setTotales({
-          subtotal: subtotalSinIGV,  // ⭐ Valor Compra (sin IGV)
-          igv: igvCalc,              // ⭐ IGV (18%)
-          total: totalCalc           // ⭐ Precio Compra Total (con IGV)
+          subtotal: subtotalSinIGV,
+          igv: igvCalc,
+          total: totalCalc
         });
+
+        // ⭐ ACTUALIZAR TOTALES EN EL BACKEND (sin mostrar toast aquí)
+        if (defaultValues?.id) {
+          const { actualizarOrdenCompra } = await import("../../api/ordenCompra");
+          await actualizarOrdenCompra(defaultValues.id, {
+            subtotal: subtotalSinIGV,
+            totalIGV: igvCalc,
+            total: totalCalc,
+          });
+        }
       } catch (err) {
         console.error("Error al calcular totales:", err);
+        setTotales({ subtotal: 0, igv: 0, total: 0 });
       }
     };
 
@@ -400,6 +411,82 @@ export default function OrdenCompraForm({
     isEdit,
     defaultValues?.id,
   ]);
+
+  // ⭐ FUNCIÓN AUXILIAR: Recalcular y guardar totales en BD con Toast
+  const recalcularYGuardarTotales = async (mostrarToast = true) => {
+    if (!defaultValues?.id) {
+      return { subtotal: 0, igv: 0, total: 0 };
+    }
+
+    try {
+      const { getDetallesOrdenCompra } = await import("../../api/detalleOrdenCompra");
+      const detalles = await getDetallesOrdenCompra(defaultValues.id);
+
+      const subtotalCalc = detalles.reduce(
+        (sum, det) => sum + (Number(det.subtotal) || 0),
+        0,
+      );
+      const igvCalc = esExoneradoAlIGV
+        ? 0
+        : subtotalCalc * (Number(porcentajeIGV) / 100);
+      const totalCalc = subtotalCalc + igvCalc;
+
+      // Actualizar en BD
+      const { actualizarOrdenCompra } = await import("../../api/ordenCompra");
+      await actualizarOrdenCompra(defaultValues.id, {
+        subtotal: subtotalCalc,
+        totalIGV: igvCalc,
+        total: totalCalc,
+      });
+
+      // Actualizar estado local
+      setTotales({ subtotal: subtotalCalc, igv: igvCalc, total: totalCalc });
+
+      // ✅ Mostrar mensaje de éxito
+      if (mostrarToast) {
+        const monedaSimbolo = defaultValues?.moneda?.simbolo || "";
+        toast.current?.show({
+          severity: "success",
+          summary: "Totales Actualizados",
+          detail: `Subtotal: ${monedaSimbolo} ${subtotalCalc.toFixed(2)} | IGV: ${monedaSimbolo} ${igvCalc.toFixed(2)} | Total: ${monedaSimbolo} ${totalCalc.toFixed(2)}`,
+          life: 4000,
+        });
+      }
+
+      return { subtotal: subtotalCalc, igv: igvCalc, total: totalCalc };
+    } catch (err) {
+      console.error("Error al recalcular totales:", err);
+      if (mostrarToast) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudieron actualizar los totales en la base de datos",
+          life: 5000,
+        });
+      }
+      throw err;
+    }
+  };
+
+  // ⭐ CALLBACK para AsientoContableManager
+  const handleBeforeGenerateAsiento = async () => {
+    // Recalcular y guardar totales
+    await recalcularYGuardarTotales(true);
+
+    // ⭐ Verificar que los totales se guardaron correctamente
+    const { getOrdenCompraPorId } = await import("../../api/ordenCompra");
+    const ordenActualizada = await getOrdenCompraPorId(defaultValues.id);
+
+    if (Number(ordenActualizada.total) === 0) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Los totales no se actualizaron correctamente en la base de datos. Intente nuevamente.",
+        life: 5000,
+      });
+      throw new Error("Totales en cero");
+    }
+  };
 
   useEffect(() => {
     const cargarDireccionesEmpresa = async () => {
@@ -972,6 +1059,7 @@ export default function OrdenCompraForm({
               empresaId={formData.empresaId}
               periodoContableId={formData.periodoContableId}
               showAsButton={true}
+              onBeforeGenerate={handleBeforeGenerateAsiento}
             />
           )}
         </div>

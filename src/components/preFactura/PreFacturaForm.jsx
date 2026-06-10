@@ -47,6 +47,7 @@ export default function PreFacturaForm({
   onAprobar,
   onAnular,
   onClienteCreado, // ← NUEVO
+  onGenerarKardex, // ⭐ AGREGAR ESTA LÍNEA
   loading,
   toast,
   permisos = {},
@@ -731,13 +732,96 @@ export default function PreFacturaForm({
         const totalCalc = subtotalCalc + igvCalc;
 
         setTotales({ subtotal: subtotalCalc, igv: igvCalc, total: totalCalc });
+
+        // ⭐ ACTUALIZAR TOTALES EN EL BACKEND (sin mostrar toast aquí)
+        if (defaultValues?.id) {
+          const { actualizarPreFactura } = await import("../../api/preFactura");
+          await actualizarPreFactura(defaultValues.id, {
+            subtotal: subtotalCalc,
+            totalIGV: igvCalc,
+            total: totalCalc,
+          });
+        }
       } catch (err) {
         console.error("Error al calcular totales:", err);
+        setTotales({ subtotal: 0, igv: 0, total: 0 });
       }
     };
 
     calcularTotales();
-  }, [detallesCount, porcentajeIgv, exoneradoIgv, isEdit, defaultValues?.id]);
+  }, [detallesCount, defaultValues?.id, isEdit, exoneradoIgv, porcentajeIgv]);
+
+  // ⭐ FUNCIÓN AUXILIAR: Recalcular y guardar totales en BD con Toast
+  const recalcularYGuardarTotales = async (mostrarToast = true) => {
+    if (!defaultValues?.id) {
+      return { subtotal: 0, igv: 0, total: 0 };
+    }
+
+    try {
+      const { getDetallesPreFactura } = await import("../../api/detallePreFactura");
+      const detalles = await getDetallesPreFactura(defaultValues.id);
+
+      const subtotalCalc = detalles.reduce(
+        (sum, det) =>
+          sum + (Number(det.cantidad) * Number(det.precioUnitario) || 0),
+        0,
+      );
+      const igvCalc = exoneradoIgv
+        ? 0
+        : subtotalCalc * (Number(porcentajeIgv) / 100);
+      const totalCalc = subtotalCalc + igvCalc;
+      const { actualizarPreFactura } = await import("../../api/preFactura");
+      const resultado = await actualizarPreFactura(defaultValues.id, {
+        subtotal: subtotalCalc,
+        totalIGV: igvCalc,
+        total: totalCalc,
+      });
+      // Actualizar estado local
+      setTotales({ subtotal: subtotalCalc, igv: igvCalc, total: totalCalc });
+
+      // ✅ Mostrar mensaje de éxito
+      if (mostrarToast) {
+        const monedaSimbolo = defaultValues?.moneda?.simbolo || "";
+        toast.current?.show({
+          severity: "success",
+          summary: "Totales Actualizados",
+          detail: `Subtotal: ${monedaSimbolo} ${subtotalCalc.toFixed(2)} | IGV: ${monedaSimbolo} ${igvCalc.toFixed(2)} | Total: ${monedaSimbolo} ${totalCalc.toFixed(2)}`,
+          life: 4000,
+        });
+      }
+
+      return { subtotal: subtotalCalc, igv: igvCalc, total: totalCalc };
+    } catch (err) {
+      console.error("Error al recalcular totales:", err);
+      if (mostrarToast) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudieron actualizar los totales en la base de datos",
+          life: 5000,
+        });
+      }
+      throw err;
+    }
+  };
+
+  // ⭐ CALLBACK para AsientoContableManager
+  const handleBeforeGenerateAsiento = async () => {
+    // Recalcular y guardar totales
+    await recalcularYGuardarTotales(true);
+    // ⭐ Verificar que los totales se guardaron correctamente
+    const { getPreFacturaPorId } = await import("../../api/preFactura");
+    const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
+    if (Number(preFacturaActualizada.total) === 0) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Los totales no se actualizaron correctamente en la base de datos. Intente nuevamente.",
+        life: 5000,
+      });
+      throw new Error("Totales en cero");
+    }
+  };
 
   const handleClienteCreado = async (cliente) => {
     try {
@@ -1105,6 +1189,9 @@ export default function PreFacturaForm({
   // Handler para facturar blanca (Caso 2: Comprobante SUNAT)
   const handleFacturarBlancaClick = async () => {
     try {
+      // ⭐ RECALCULAR Y GUARDAR TOTALES ANTES DE EMITIR
+      await recalcularYGuardarTotales(true);
+
       const resultado = await facturarPreFacturaBlanca(defaultValues.id);
 
       toast?.current?.show({
@@ -1139,12 +1226,22 @@ export default function PreFacturaForm({
   const estaValidadoSunat = estadoId === 98;
   const estaNoValidadoSunat = estadoId === 99;
   const kardexGenerado = Boolean(defaultValues?.movSalidaAlmacenId);
-  
-  // Estados válidos para generar kardex (todos excepto PENDIENTE y ANULADA)
-  const puedeGenerarKardex = [46, 48, 95, 96, 97, 98, 99].includes(estadoId);
 
-  const puedeEditar = estaPendiente && !loading;
-  const puedeAnular = (estaPendiente || estaAprobada) && !loading;
+  // ⭐ PERMISOS ESPECIALES: Usuario con puedeAprobarDocs tiene acceso total
+  const tienePermisoEspecial = permisos.puedeAprobarDocs === true;
+
+  // Estados válidos para generar kardex (todos excepto PENDIENTE y ANULADA)
+  const puedeGenerarKardex = tienePermisoEspecial
+    ? !estaAnulada
+    : [46, 48, 95, 96, 97, 98, 99].includes(estadoId);
+
+  const puedeEditar = tienePermisoEspecial
+    ? !estaAnulada && !loading
+    : estaPendiente && !loading;
+
+  const puedeAnular = tienePermisoEspecial
+    ? !estaAnulada && !loading
+    : (estaPendiente || estaAprobada) && !loading;
   // Preparar options para dropdowns
   const empresasOptions = empresas.map((e) => ({
     ...e,
@@ -1400,13 +1497,19 @@ export default function PreFacturaForm({
                 icon="pi pi-check"
                 className="p-button-success"
                 onClick={handleAprobarClick}
-                disabled={readOnly || loading || !permisos.puedeEditar}
+                disabled={
+                  tienePermisoEspecial
+                    ? (readOnly || loading || estaAnulada)
+                    : (readOnly || loading || !permisos.puedeEditar)
+                }
                 tooltip={
                   readOnly
                     ? "Modo solo lectura"
-                    : !permisos.puedeEditar
-                      ? "No tiene permisos para aprobar"
-                      : ""
+                    : estaAnulada
+                      ? "No se puede aprobar un documento anulado"
+                      : !permisos.puedeEditar && !tienePermisoEspecial
+                        ? "No tiene permisos para aprobar"
+                        : "Aprobar Pre-Factura"
                 }
               />
               <Button
@@ -1414,13 +1517,19 @@ export default function PreFacturaForm({
                 icon="pi pi-ban"
                 className="p-button-danger"
                 onClick={handleAnularClick}
-                disabled={readOnly || loading || !permisos.puedeEliminar}
+                disabled={
+                  tienePermisoEspecial
+                    ? (readOnly || loading || estaAnulada)
+                    : (readOnly || loading || !permisos.puedeEliminar)
+                }
                 tooltip={
                   readOnly
                     ? "Modo solo lectura"
-                    : !permisos.puedeEliminar
-                      ? "No tiene permisos para anular"
-                      : ""
+                    : estaAnulada
+                      ? "El documento ya está anulado"
+                      : !permisos.puedeEliminar && !tienePermisoEspecial
+                        ? "No tiene permisos para anular"
+                        : "Anular Pre-Factura"
                 }
               />
             </>
@@ -1428,12 +1537,20 @@ export default function PreFacturaForm({
           {/* Botón Partir PreFactura - Solo visible si está APROBADA */}
           {estaAprobada && isEdit && (
             <Button
-              label="Partir PreFactura"
+              label="Partir"
               icon="pi pi-clone"
               className="p-button-warning"
               onClick={handlePartirClick}
-              disabled={readOnly || loading || !permisos.puedeEditar}
-              tooltip="Mantener la Original y Crear Dos Copias Identicas Editables"
+              disabled={
+                tienePermisoEspecial
+                  ? (readOnly || loading || estaAnulada)
+                  : (readOnly || loading || !permisos.puedeEditar)
+              }
+              tooltip={
+                estaAnulada
+                  ? "No se puede partir un documento anulado"
+                  : "Mantener la Original y Crear Dos Copias Identicas Editables"
+              }
             />
           )}
           {/* Botón Generar Venta (Negra) - Visible si está APROBADA o EMITIDA (con permiso de reactivar) y ES GERENCIAL */}
@@ -1445,17 +1562,23 @@ export default function PreFacturaForm({
               <Button
                 label={
                   estaEmitida || estaComprobanteGenerado || estaValidadoSunat
-                    ? "Regenerar Venta"
-                    : "Generar Venta"
+                    ? "Regenerar CxC Negra"
+                    : "Facturar Negra"
                 }
                 icon="pi pi-file"
                 className="p-button-help"
                 onClick={handleFacturarNegraClick}
-                disabled={readOnly || loading || !permisos.puedeEditar}
+                disabled={
+                  tienePermisoEspecial
+                    ? (readOnly || loading || estaAnulada)
+                    : (readOnly || loading || !permisos.puedeEditar)
+                }
                 tooltip={
-                  estaEmitida || estaComprobanteGenerado || estaValidadoSunat
-                    ? "Regenerar CxC Negra (Gerencial) sin comprobante (elimina y recrea)"
-                    : "Generar CxC Negra (Gerencial) sin comprobante"
+                  estaAnulada
+                    ? "No se puede facturar un documento anulado"
+                    : estaEmitida || estaComprobanteGenerado || estaValidadoSunat
+                      ? "Regenerar CxC Negra (Gerencial) sin comprobante (elimina y recrea)"
+                      : "Generar CxC Negra (Gerencial) sin comprobante"
                 }
               />
             )}
@@ -1468,17 +1591,23 @@ export default function PreFacturaForm({
               <Button
                 label={
                   estaEmitida || estaComprobanteGenerado || estaValidadoSunat
-                    ? "Regenerar CxC"
-                    : "Emitir Comprobante"
+                    ? "Regenerar CxC Blanca"
+                    : "Facturar Blanca"
                 }
                 icon="pi pi-file-check"
                 className="p-button-success"
                 onClick={handleFacturarBlancaClick}
-                disabled={readOnly || loading || !permisos.puedeEditar}
+                disabled={
+                  tienePermisoEspecial
+                    ? (readOnly || loading || estaAnulada)
+                    : (readOnly || loading || !permisos.puedeEditar)
+                }
                 tooltip={
-                  estaEmitida || estaComprobanteGenerado || estaValidadoSunat
-                    ? "Regenerar CxC Blanca y Comprobante Electrónico SUNAT (elimina y recrea)"
-                    : "Generar CxC Blanca y Comprobante Electrónico SUNAT"
+                  estaAnulada
+                    ? "No se puede facturar un documento anulado"
+                    : estaEmitida || estaComprobanteGenerado || estaValidadoSunat
+                      ? "Regenerar CxC Blanca y Comprobante Electrónico SUNAT (elimina y recrea)"
+                      : "Generar CxC Blanca y Comprobante Electrónico SUNAT"
                 }
               />
             )}
@@ -1486,6 +1615,35 @@ export default function PreFacturaForm({
 
         {/* Botones derecha: Guardar y Cancelar */}
         <div style={{ display: "flex", gap: 8 }}>
+          {/* Botón Generar Kardex */}
+          {isEdit && formData.id && (
+            <Button
+              label={kardexGenerado ? "Regenerar Kardex" : "Generar Kardex"}
+              icon="pi pi-database"
+              className="p-button-info"
+              onClick={handleGenerarKardexClick}
+              disabled={
+                tienePermisoEspecial
+                  ? (readOnly || loading || estaAnulada)
+                  : (readOnly || loading || !permisos.puedeEditar || estaAnulada || estaPendiente || !puedeGenerarKardex)
+              }
+              tooltip={
+                readOnly
+                  ? "Modo solo lectura"
+                  : estaAnulada
+                    ? "No se puede generar kardex en pre-facturas ANULADAS"
+                    : estaPendiente && !tienePermisoEspecial
+                      ? "No se puede generar kardex en pre-factura pendiente"
+                      : !permisos.puedeEditar && !tienePermisoEspecial
+                        ? "No tiene permisos para generar kardex"
+                        : !puedeGenerarKardex && !tienePermisoEspecial
+                          ? "Solo se puede generar kardex en pre-facturas APROBADAS, PARTICIONADAS, FACTURADAS, EMITIDAS o con estados SUNAT"
+                          : kardexGenerado
+                            ? "Regenerar kardex (eliminar y crear nuevo movimiento)"
+                            : "Generar movimiento de salida de almacén"
+              }
+            />
+          )}
           {/* Componente genérico de asientos contables */}
           {isEdit && formData.id && (
             <AsientoContableManager
@@ -1494,8 +1652,10 @@ export default function PreFacturaForm({
               empresaId={formData.empresaId}
               periodoContableId={formData.periodoContableId}
               showAsButton={true}
+              onBeforeGenerate={handleBeforeGenerateAsiento}
             />
           )}
+
           <Button
             label="Cancelar"
             icon="pi pi-times"
@@ -1507,13 +1667,19 @@ export default function PreFacturaForm({
             label="Guardar"
             icon="pi pi-save"
             onClick={handleSubmit}
-            disabled={readOnly || loading || !puedeEditar}
+            disabled={
+              tienePermisoEspecial
+                ? (readOnly || loading || estaAnulada)
+                : (readOnly || loading || !puedeEditar)
+            }
             tooltip={
               readOnly
                 ? "Modo solo lectura"
-                : !puedeEditar
-                  ? "No se puede editar"
-                  : ""
+                : estaAnulada
+                  ? "No se puede editar un documento anulado"
+                  : !puedeEditar && !tienePermisoEspecial
+                    ? "No se puede editar"
+                    : "Guardar cambios"
             }
           />
         </div>
@@ -1563,39 +1729,6 @@ export default function PreFacturaForm({
               marginTop: 16,
             }}
           >
-            <div style={{ flex: 1 }}>
-              {isEdit && (
-                <Button
-                  label="Generar Kardex"
-                  icon="pi pi-database"
-                  className="p-button-info"
-                  onClick={handleGenerarKardexClick}
-                  disabled={
-                    readOnly ||
-                    loading ||
-                    !permisos.puedeEditar ||
-                    estaAnulada ||
-                    estaPendiente ||
-                    !puedeGenerarKardex
-                  }
-                  tooltip={
-                    estaAnulada
-                      ? "No se puede generar kardex en pre-factura anulada"
-                      : estaPendiente
-                        ? "No se puede generar kardex en pre-factura pendiente"
-                        : !puedeGenerarKardex
-                          ? "Solo se puede generar kardex en pre-facturas APROBADAS, PARTICIONADAS, FACTURADAS, EMITIDAS o con estados SUNAT"
-                          : kardexGenerado
-                            ? "Regenerar kardex (eliminar y crear nuevo movimiento)"
-                            : readOnly
-                              ? "Modo solo lectura"
-                              : !permisos.puedeEditar
-                                ? "No tiene permisos para generar kardex"
-                                : "Generar movimiento de almacén y kardex"
-                  }
-                />
-              )}
-            </div>
             <Button
               label="Cancelar"
               icon="pi pi-times"

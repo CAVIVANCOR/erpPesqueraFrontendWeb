@@ -32,7 +32,7 @@ export const useKardexConfig = (
     const cargarDatos = async () => {
       setLoading(true);
       try {
-                // 1. Cargar almacenes (sin parámetro empresaId, se filtra después si es necesario)
+        // 1. Cargar almacenes (sin parámetro empresaId, se filtra después si es necesario)
         const almacenesData = await getAlmacenes();
         setAlmacenes(almacenesData || []);
 
@@ -45,20 +45,14 @@ export const useKardexConfig = (
         );
         setConceptos(conceptosFiltrados);
 
-        // 3-4. Cargar estados de mercadería y calidad (UNA SOLA LLAMADA)
-        const todosLosEstados = await getEstadosMultiFuncion();
+        // 3. Cargar estados de mercadería (tipoProvieneDeId = 2: PRODUCTOS)
+        const { getEstadosMultiFuncionPorTipoProviene } = await import("../../../api/estadoMultiFuncion");
+        const estadosMercaderiaData = await getEstadosMultiFuncionPorTipoProviene(2);
+        setEstadosMercaderia(estadosMercaderiaData || []);
 
-        // Filtrar estados de mercadería (tipoProvieneDeId = 2: PRODUCTOS)
-        const estadosMercaderiaFiltrados = (todosLosEstados || []).filter(
-          (e) => e.tipoProvieneDeId === 2
-        );
-        setEstadosMercaderia(estadosMercaderiaFiltrados);
-
-        // Filtrar estados de calidad (tipoProvieneDeId = 10: PRODUCTOS CALIDAD)
-        const estadosCalidadFiltrados = (todosLosEstados || []).filter(
-          (e) => e.tipoProvieneDeId === 10
-        );
-        setEstadosCalidad(estadosCalidadFiltrados);
+        // 4. Cargar estados de calidad (tipoProvieneDeId = 10: PRODUCTOS CALIDAD)
+        const estadosCalidadData = await getEstadosMultiFuncionPorTipoProviene(10);
+        setEstadosCalidad(estadosCalidadData || []);
 
         // 5. Cargar direcciones según tipo de movimiento
         if (tipoMovimiento === "INGRESO") {

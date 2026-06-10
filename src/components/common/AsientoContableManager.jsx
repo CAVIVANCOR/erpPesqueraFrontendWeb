@@ -37,6 +37,7 @@ const AsientoContableManager = ({
   periodoContableId,
   showAsButton = false,
   onAsientoChange,
+  onBeforeGenerate, // ⭐ NUEVO: Callback antes de generar asiento
 }) => {
   const toast = useRef(null);
 
@@ -210,21 +211,54 @@ const AsientoContableManager = ({
     }
     setLoading(true);
     try {
-      // ✅ VERIFICAR SI YA EXISTE UN ASIENTO (PENDIENTE O APROBADO)
+      // ⭐ EJECUTAR CALLBACK ANTES DE GENERAR (si existe)
+      if (onBeforeGenerate && typeof onBeforeGenerate === 'function') {
+        try {
+          await onBeforeGenerate();
+        } catch (error) {
+          // Si el callback falla, abortar generación
+          setLoading(false);
+          return;
+        }
+      }
       if (asientos.length > 0) {
-        // Si ya existe al menos un asiento, mostrar la LISTA
+        // ⭐ REGENERAR ASIENTO CON TOTALES ACTUALIZADOS
+        // Generar nuevo borrador con datos frescos
+        const urlBorrador = `${baseUrl}/${documentoId}/${config.borradorEndpoint}`;
+        const responseBorrador = config.borradorMethod === "POST"
+          ? await axios.post(urlBorrador, {}, { headers: getAuthHeaders() })
+          : await axios.get(urlBorrador, { headers: getAuthHeaders() });
+        const borradorActualizado = responseBorrador.data;
+        // Actualizar el asiento existente (mantener el ID)
+        const asientoExistente = asientos[0];
+        const asientoActualizado = {
+          ...borradorActualizado,
+          id: asientoExistente.id, // Mantener el ID del asiento existente
+        };
+        // Guardar asiento actualizado
+        await axios.put(
+          `${baseUrl}/${documentoId}/${config.guardarEndpoint}`,
+          { asientoData: asientoActualizado },
+          { headers: getAuthHeaders() }
+        );
+        // Recargar lista de asientos
+        await cargarAsientos();
+        toast.current?.show({
+          severity: "success",
+          summary: "Asiento Actualizado",
+          detail: "Asiento contable actualizado con los totales correctos.",
+          life: 4000,
+        });
+        // Mostrar lista de asientos
         setShowListDialog(true);
         return;
       }
-
       // ✅ SI NO EXISTE NINGÚN ASIENTO, GENERAR UNO NUEVO
       const urlBorrador = `${baseUrl}/${documentoId}/${config.borradorEndpoint}`;
       const responseBorrador = config.borradorMethod === "POST"
         ? await axios.post(urlBorrador, {}, { headers: getAuthHeaders() })
         : await axios.get(urlBorrador, { headers: getAuthHeaders() });
-
       const borradorGenerado = responseBorrador.data;
-
       // Guardar automáticamente en BD
       await axios.post(
         `${baseUrl}/${documentoId}/${config.guardarEndpoint}`,

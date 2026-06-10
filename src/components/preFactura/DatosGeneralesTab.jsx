@@ -69,10 +69,24 @@ export default function DatosGeneralesTab({
   readOnly = false,
   contactosClienteOptions = [],
   direccionesClienteOptions = [],
+  permisos = {}, // ⭐ NUEVO
 }) {
   // Determinar si es exportación para mostrar campos adicionales
   const esExportacion = formData.paisDestinoId || formData.incotermId;
-  const { usuario } = useAuthStore(); // ← AGREGAR ESTA LÍNEA
+  const { usuario } = useAuthStore();
+
+  // ⭐ PERMISOS ESPECIALES: Usuario con puedeAprobarDocs tiene acceso total
+  const tienePermisoEspecial = permisos.puedeAprobarDocs === true;
+  const estaAnulada = formData.estadoId === 47;
+
+  // Determinar si puede editar (normal o con permiso especial)
+  const puedeEditarConPermiso = tienePermisoEspecial
+    ? !estaAnulada && !readOnly
+    : puedeEditar && !readOnly;
+
+  const puedeEditarDetallesConPermiso = tienePermisoEspecial
+    ? !estaAnulada && !readOnly
+    : puedeEditarDetalles && !readOnly;
 
   // Obtener la moneda seleccionada dinámicamente del estado
   const monedaSeleccionada = monedasOptions.find(
@@ -172,7 +186,7 @@ export default function DatosGeneralesTab({
               onChange={(e) => onChange("fechaDocumento", e.value)}
               dateFormat="dd/mm/yy"
               showIcon
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -189,7 +203,7 @@ export default function DatosGeneralesTab({
               onChange={(e) => onChange("fechaVencimiento", e.value)}
               dateFormat="dd/mm/yy"
               showIcon
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -206,7 +220,7 @@ export default function DatosGeneralesTab({
               onChange={(e) => onChange("fechaContable", e.value)}
               dateFormat="dd/mm/yy"
               showIcon
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -230,7 +244,7 @@ export default function DatosGeneralesTab({
               placeholder="Seleccione periodo contable"
               showClear
               filter
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               style={{ fontSize: getResponsiveFontSize() }}
             />
           </div>
@@ -249,7 +263,7 @@ export default function DatosGeneralesTab({
               optionLabel="label"
               optionValue="value"
               placeholder="Seleccionar estado"
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -275,7 +289,7 @@ export default function DatosGeneralesTab({
               filter
               showClear
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
             />
           </div>
         </div>
@@ -645,7 +659,7 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar centro"
               filter
               showClear
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -666,7 +680,7 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar tipo"
               filter
               showClear
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -686,7 +700,7 @@ export default function DatosGeneralesTab({
               maxFractionDigits={2}
               min={0}
               prefix={simboloMoneda}
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -707,7 +721,7 @@ export default function DatosGeneralesTab({
               min={0}
               max={100}
               suffix="%"
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -833,7 +847,7 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar forma"
               filter
               showClear
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -854,7 +868,7 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar banco"
               filter
               showClear
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -874,7 +888,7 @@ export default function DatosGeneralesTab({
               optionValue="value"
               placeholder="Seleccionar moneda"
               filter
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -893,7 +907,7 @@ export default function DatosGeneralesTab({
               minFractionDigits={4}
               maxFractionDigits={4}
               min={0}
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -937,7 +951,7 @@ export default function DatosGeneralesTab({
               }
               severity={formData.exoneradoIgv ? "danger" : "success"}
               onClick={() => onChange("exoneradoIgv", !formData.exoneradoIgv)}
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               outlined
               style={{
                 width: "100%",
@@ -1030,7 +1044,7 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar vendedor"
               filter
               showClear
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -1051,7 +1065,7 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar autorizador"
               filter
               showClear
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -1072,7 +1086,7 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar supervisor"
               filter
               showClear
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -1105,7 +1119,7 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar responsable"
               filter
               showClear
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -1126,7 +1140,7 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar responsable"
               filter
               showClear
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -1147,7 +1161,7 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar responsable"
               filter
               showClear
-              disabled={!puedeEditar || readOnly}
+              disabled={!puedeEditarConPermiso}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -1193,7 +1207,7 @@ export default function DatosGeneralesTab({
                 placeholder="Seleccionar país"
                 filter
                 showClear
-                disabled={!puedeEditar || readOnly}
+                disabled={!puedeEditarConPermiso}
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             </div>
@@ -1217,7 +1231,7 @@ export default function DatosGeneralesTab({
                 placeholder="Seleccionar incoterm"
                 filter
                 showClear
-                disabled={!puedeEditar || readOnly}
+                disabled={!puedeEditarConPermiso}
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             </div>
@@ -1241,7 +1255,7 @@ export default function DatosGeneralesTab({
                 placeholder="Seleccionar puerto"
                 filter
                 showClear
-                disabled={!puedeEditar || readOnly}
+                disabled={!puedeEditarConPermiso}
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             </div>
@@ -1265,7 +1279,7 @@ export default function DatosGeneralesTab({
                 placeholder="Seleccionar puerto"
                 filter
                 showClear
-                disabled={!puedeEditar || readOnly}
+                disabled={!puedeEditarConPermiso}
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             </div>
@@ -1301,7 +1315,7 @@ export default function DatosGeneralesTab({
                 placeholder="Seleccionar agente"
                 filter
                 showClear
-                disabled={!puedeEditar || readOnly}
+                disabled={!puedeEditarConPermiso}
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             </div>
@@ -1319,7 +1333,7 @@ export default function DatosGeneralesTab({
                 id="numeroBuque"
                 value={formData.numeroBuque || ""}
                 onChange={(e) => onChange("numeroBuque", e.target.value)}
-                disabled={!puedeEditar || readOnly}
+                disabled={!puedeEditarConPermiso}
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             </div>
@@ -1337,7 +1351,7 @@ export default function DatosGeneralesTab({
                 id="numeroBL"
                 value={formData.numeroBL || ""}
                 onChange={(e) => onChange("numeroBL", e.target.value)}
-                disabled={!puedeEditar || readOnly}
+                disabled={!puedeEditarConPermiso}
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             </div>
@@ -1355,7 +1369,7 @@ export default function DatosGeneralesTab({
                 id="numContenedor"
                 value={formData.numContenedor || ""}
                 onChange={(e) => onChange("numContenedor", e.target.value)}
-                disabled={!puedeEditar || readOnly}
+                disabled={!puedeEditarConPermiso}
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             </div>
@@ -1391,7 +1405,7 @@ export default function DatosGeneralesTab({
                 placeholder="Seleccionar tipo"
                 filter
                 showClear
-                disabled={!puedeEditar || readOnly}
+                disabled={!puedeEditarConPermiso}
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             </div>
@@ -1413,7 +1427,7 @@ export default function DatosGeneralesTab({
                 minFractionDigits={6}
                 maxFractionDigits={6}
                 min={0}
-                disabled={!puedeEditar || readOnly}
+                disabled={!puedeEditarConPermiso}
                 inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             </div>
@@ -1437,7 +1451,7 @@ export default function DatosGeneralesTab({
                 minFractionDigits={6}
                 maxFractionDigits={6}
                 min={0}
-                disabled={!puedeEditar || readOnly}
+                disabled={!puedeEditarConPermiso}
                 inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             </div>
@@ -1517,7 +1531,7 @@ export default function DatosGeneralesTab({
           value={formData.observaciones || ""}
           onChange={(e) => onChange("observaciones", e.target.value)}
           rows={4}
-          disabled={!puedeEditar || readOnly}
+          disabled={!puedeEditarConPermiso}
           style={{ fontWeight: "bold" }}
           placeholder="Ingrese observaciones adicionales..."
         />

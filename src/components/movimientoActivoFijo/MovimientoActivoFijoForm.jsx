@@ -958,7 +958,6 @@ const MovimientoActivoFijoForm = ({
               empresaId={movimiento.empresaId}
               periodoContableId={movimiento.periodoContableId}
               showAsButton={true}
-              readOnly={readOnly}
             />
           )}
           <Button

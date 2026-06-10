@@ -39,7 +39,7 @@ export default function GenerarKardexDialog({
 }) {
   // Obtener configuración según tipo de documento
   const config = getKardexConfig(tipoDocumento);
-
+  console.log("GenerarKardexDialog config", config)
   // Cargar datos necesarios (almacenes, conceptos, estados, direcciones)
   const {
     almacenes,
@@ -86,13 +86,25 @@ export default function GenerarKardexDialog({
         fechaIngreso: new Date(),
         fechaVencimiento: null,
         lote: "",
-        estadoId: 6,
-        estadoCalidadId: 10,
+        estadoId: 6, // LIBERADO
+        estadoCalidadId: 10, // CALIDAD A
         observaciones: `${config.tipoMovimiento === "INGRESO" ? "Ingreso" : "Salida"} por ${numeroDocumento || "documento"}`,
       });
     }
   }, [visible, numeroDocumento, config.tipoMovimiento]);
 
+  // ⭐ PRESELECCIONAR estados cuando se cargan los datos
+  useEffect(() => {
+    if (visible && estadosMercaderia.length > 0 && !formData.estadoId) {
+      setFormData(prev => ({ ...prev, estadoId: 6 })); // LIBERADO
+    }
+  }, [visible, estadosMercaderia, formData.estadoId]);
+
+  useEffect(() => {
+    if (visible && estadosCalidad.length > 0 && !formData.estadoCalidadId) {
+      setFormData(prev => ({ ...prev, estadoCalidadId: 10 })); // CALIDAD A
+    }
+  }, [visible, estadosCalidad, formData.estadoCalidadId]);
   // Handlers
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -113,10 +125,6 @@ export default function GenerarKardexDialog({
     }
 
     if (!formData.dirOrigenId) {
-      return;
-    }
-
-    if (!formData.dirDestinoId) {
       return;
     }
 
@@ -207,7 +215,6 @@ export default function GenerarKardexDialog({
           !formData.conceptoMovAlmacenId ||
           !formData.fechaDocumento ||
           !formData.dirOrigenId ||
-          !formData.dirDestinoId ||
           !formData.fechaIngreso ||
           !formData.estadoId ||
           !formData.estadoCalidadId ||
@@ -407,7 +414,7 @@ export default function GenerarKardexDialog({
               fontWeight: "bold",
             }}
           >
-            Dirección Destino <span style={{ color: "red" }}>*</span>
+            Dirección Destino (Opcional)
           </label>
           <Dropdown
             id="dirDestino"
@@ -431,7 +438,7 @@ export default function GenerarKardexDialog({
           <small style={{ color: "#6c757d", fontSize: "0.85em" }}>
             {config.tipoMovimiento === "INGRESO"
               ? "Donde se recibirán los bienes (mi empresa)"
-              : "Donde se entregarán los bienes (cliente)"}
+              : "Donde se entregarán los bienes (cliente). Opcional para exportaciones."}
           </small>
         </div>
 
@@ -536,7 +543,7 @@ export default function GenerarKardexDialog({
             value={formData.estadoId}
             options={estadosMercaderia}
             onChange={(e) => handleChange("estadoId", e.value)}
-            optionLabel="nombre"
+            optionLabel="descripcion"
             optionValue="id"
             placeholder="Seleccione estado"
             style={{ width: "100%" }}
@@ -565,7 +572,7 @@ export default function GenerarKardexDialog({
             value={formData.estadoCalidadId}
             options={estadosCalidad}
             onChange={(e) => handleChange("estadoCalidadId", e.value)}
-            optionLabel="nombre"
+            optionLabel="descripcion"
             optionValue="id"
             placeholder="Seleccione calidad"
             style={{ width: "100%" }}

@@ -551,7 +551,53 @@ const PreFactura = ({ ruta }) => {
       cargarDatos(); // Recargar la lista para reflejar cambios
     }
   };
+  // ⭐ FUNCIÓN AUXILIAR: Recalcular totales de una PreFactura
+  const recalcularTotalesPreFactura = async (preFacturaId) => {
+    try {
+      const { getDetallesPreFactura } = await import("../api/detallePreFactura");
+      const { getPreFacturaPorId, actualizarPreFactura } = await import("../api/preFactura");
 
+      const preFactura = await getPreFacturaPorId(preFacturaId);
+      const detalles = await getDetallesPreFactura(preFacturaId);
+
+      const subtotalCalc = detalles.reduce(
+        (sum, det) =>
+          sum + (Number(det.cantidad) * Number(det.precioUnitario) || 0),
+        0,
+      );
+      const igvCalc = preFactura.esExoneradoAlIGV
+        ? 0
+        : subtotalCalc * (Number(preFactura.porcentajeIgv) / 100);
+      const totalCalc = subtotalCalc + igvCalc;
+
+      // Actualizar en BD
+      await actualizarPreFactura(preFacturaId, {
+        subtotal: subtotalCalc,
+        totalIGV: igvCalc,
+        total: totalCalc,
+      });
+
+      // Mostrar mensaje de éxito
+      const monedaSimbolo = preFactura.moneda?.simbolo || "";
+      toast.current?.show({
+        severity: "success",
+        summary: "Totales Actualizados",
+        detail: `Subtotal: ${monedaSimbolo} ${subtotalCalc.toFixed(2)} | IGV: ${monedaSimbolo} ${igvCalc.toFixed(2)} | Total: ${monedaSimbolo} ${totalCalc.toFixed(2)}`,
+        life: 4000,
+      });
+
+      return { subtotal: subtotalCalc, igv: igvCalc, total: totalCalc };
+    } catch (err) {
+      console.error("Error al recalcular totales:", err);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron actualizar los totales en la base de datos",
+        life: 5000,
+      });
+      throw err;
+    }
+  };
   const handleAprobarPreFactura = async (preFacturaId) => {
     if (!permisos.puedeEditar) {
       toast.current.show({
@@ -565,9 +611,10 @@ const PreFactura = ({ ruta }) => {
 
     setLoading(true);
     try {
+      // ⭐ RECALCULAR Y GUARDAR TOTALES ANTES DE APROBAR
+      await recalcularTotalesPreFactura(preFacturaId);
       const { aprobarPreFactura } = await import("../api/preFactura");
       const preFacturaAprobada = await aprobarPreFactura(preFacturaId);
-
       toast.current.show({
         severity: "success",
         summary: "Aprobado",

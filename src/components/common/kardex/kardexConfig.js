@@ -8,6 +8,7 @@ export const KARDEX_CONFIG = {
   ordenCompra: {
     tipoConceptoId: 1, // COMPRA (TipoConcepto)
     tipoMovimientoId: 2, // INGRESO (TipoMovimientoAlmacen)
+    tipoMovimiento: "INGRESO", // ⭐ AGREGAR
     tipoDocumentoAlmacen: 13, // Nota de Ingreso
     labelAlmacen: "Almacén Destino",
     placeholderAlmacen: "Seleccionar almacén de recepción...",
@@ -26,6 +27,7 @@ export const KARDEX_CONFIG = {
   preFactura: {
     tipoConceptoId: 2, // VENTA (TipoConcepto)
     tipoMovimientoId: 3, // SALIDA (TipoMovimientoAlmacen)
+    tipoMovimiento: "SALIDA", // ⭐ AGREGAR
     tipoDocumentoAlmacen: 14, // Nota de Salida
     labelAlmacen: "Almacén Origen",
     placeholderAlmacen: "Seleccionar almacén de salida...",
@@ -44,6 +46,7 @@ export const KARDEX_CONFIG = {
   notaCredito: {
     tipoConceptoId: 2, // VENTA (TipoConcepto) - Devolución de venta
     tipoMovimientoId: 2, // INGRESO (TipoMovimientoAlmacen)
+    tipoMovimiento: "INGRESO", // ⭐ AGREGAR
     tipoDocumentoAlmacen: 13, // Nota de Ingreso
     labelAlmacen: "Almacén Destino",
     placeholderAlmacen: "Seleccionar almacén de devolución...",
@@ -62,6 +65,7 @@ export const KARDEX_CONFIG = {
   notaDebito: {
     tipoConceptoId: 1, // COMPRA (TipoConcepto) - Devolución a proveedor
     tipoMovimientoId: 3, // SALIDA (TipoMovimientoAlmacen)
+    tipoMovimiento: "SALIDA", // ⭐ AGREGAR
     tipoDocumentoAlmacen: 14, // Nota de Salida
     labelAlmacen: "Almacén Origen",
     placeholderAlmacen: "Seleccionar almacén de devolución...",
