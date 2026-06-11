@@ -28,9 +28,9 @@ export async function generarDetalleUsoLineaCreditoPDF(data) {
     if (empresaA !== empresaB) {
       return empresaA.localeCompare(empresaB);
     }
-    const numA = a.numeroLinea || "";
-    const numB = b.numeroLinea || "";
-    return numA.localeCompare(numB);
+    const bancoA = a.banco?.nombre || "";
+    const bancoB = b.banco?.nombre || "";
+    return bancoA.localeCompare(bancoB);
   });
 
   let currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -123,7 +123,7 @@ export async function generarDetalleUsoLineaCreditoPDF(data) {
       borderWidth: 1,
     });
 
-    const lineaTitulo = `LÍNEA DE CRÉDITO: ${linea.numeroLinea || "N/A"}`;
+    const lineaTitulo = `LÍNEA DE CRÉDITO: ${linea.banco?.nombre || "N/A"} - ${linea.moneda?.codigoSunat || ""}`;
     currentPage.drawText(lineaTitulo, {
       x: margin + 5,
       y: yPos - 13,
@@ -300,7 +300,7 @@ export async function generarDetalleUsoLineaCreditoPDF(data) {
 
         yPos -= 11;
 
-                // FILA DE DATOS DE LA SUBLÍNEA
+        // FILA DE DATOS DE LA SUBLÍNEA
         const montoAsignado = parseFloat(sublinea.montoAsignado || 0);
         const montoUtilizado = parseFloat(sublinea.montoUtilizado || 0);
         const montoDisponible = parseFloat(sublinea.montoDisponible || 0);
@@ -328,7 +328,7 @@ export async function generarDetalleUsoLineaCreditoPDF(data) {
           { text: formatearNumero(montoAsignado, 2), align: "right" },
           { text: formatearNumero(montoUtilizado, 2), align: "right" },
           { text: formatearNumero(montoDisponible, 2), align: "right" },
-                   {
+          {
             text:
               totalSobregiros > 0 ? formatearNumero(totalSobregiros, 2) : "-",
             align: "right",

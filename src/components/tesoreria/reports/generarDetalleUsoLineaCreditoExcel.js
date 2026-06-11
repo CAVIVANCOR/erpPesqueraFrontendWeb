@@ -16,9 +16,9 @@ export async function generarDetalleUsoLineaCreditoExcel(data) {
     if (empresaA !== empresaB) {
       return empresaA.localeCompare(empresaB);
     }
-    const numA = a.numeroLinea || "";
-    const numB = b.numeroLinea || "";
-    return numA.localeCompare(numB);
+    const bancoA = a.banco?.nombre || "";
+    const bancoB = b.banco?.nombre || "";
+    return bancoA.localeCompare(bancoB);
   });
 
   const workbook = new ExcelJS.Workbook();
@@ -36,7 +36,7 @@ export async function generarDetalleUsoLineaCreditoExcel(data) {
   // CREAR UNA HOJA POR CADA LÍNEA DE CRÉDITO
   // ========================================
   itemsOrdenados.forEach((linea, lineaIndex) => {
-    const sheetName = `Línea ${linea.numeroLinea || lineaIndex + 1}`.substring(0, 31);
+    const sheetName = `${linea.banco?.nombre || 'Línea'} ${lineaIndex + 1}`.substring(0, 31);
     const worksheet = workbook.addWorksheet(sheetName);
     worksheet.views = [{ showGridLines: false }];
 
@@ -45,7 +45,7 @@ export async function generarDetalleUsoLineaCreditoExcel(data) {
     // ⭐ TÍTULO DE LA HOJA
     worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
     const tituloCell = worksheet.getCell(`A${currentRow}`);
-    tituloCell.value = `DETALLE DE USO - LÍNEA DE CRÉDITO: ${linea.numeroLinea || "N/A"}`;
+    tituloCell.value = `DETALLE DE USO - LÍNEA DE CRÉDITO: ${linea.banco?.nombre || "N/A"} - ${linea.moneda?.codigoSunat || ""}`;
     tituloCell.font = { bold: true, size: 14, color: { argb: "FF1A1A1A" } };
     tituloCell.alignment = { horizontal: "center", vertical: "middle" };
     tituloCell.fill = {
@@ -83,7 +83,6 @@ export async function generarDetalleUsoLineaCreditoExcel(data) {
     const infoLinea = [
       { label: "Empresa", value: linea.empresa?.razonSocial || "-" },
       { label: "Banco", value: linea.banco?.nombre || "-" },
-      { label: "Número de Línea", value: linea.numeroLinea || "-" },
       { label: "Moneda", value: linea.moneda?.codigo || "-" },
       { label: "Monto Aprobado", value: formatMonto(linea.montoAprobado) },
       { label: "Monto Utilizado", value: formatMonto(linea.montoUtilizado) },

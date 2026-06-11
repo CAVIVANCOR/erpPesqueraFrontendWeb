@@ -21,9 +21,10 @@ export async function generarLineaCreditoExcel(data) {
     if (empresaA !== empresaB) {
       return empresaA.localeCompare(empresaB);
     }
-    const numA = a.numeroLinea || "";
-    const numB = b.numeroLinea || "";
-    return numA.localeCompare(numB);
+    // Ordenar por banco si empresa es igual
+    const bancoA = a.banco?.nombre || "";
+    const bancoB = b.banco?.nombre || "";
+    return bancoA.localeCompare(bancoB);
   });
 
   // ⭐ AGRUPAR POR MONEDA

@@ -90,7 +90,7 @@ export default function ReporteLineasDisponibles() {
     try {
       const empresaData = empresas.find(e => Number(e.id) === Number(empresaSeleccionada));
       const pdfBytes = await generarPDFReporteLineasDisponibles(reporte, empresaData);
-      
+
       const nombreArchivo = `reporte-lineas-credito-${empresaData?.razonSocial || 'empresa'}.pdf`;
       descargarPDFReporte(pdfBytes, nombreArchivo);
 
@@ -179,7 +179,7 @@ export default function ReporteLineasDisponibles() {
           <>
             {/* SECCIÓN 1: RESUMEN SUPERIOR */}
             <h2 style={{ marginBottom: "1rem", color: "#2d3748" }}>📊 Resumen de Líneas de Crédito</h2>
-            
+
             <div
               style={{
                 display: "grid",
@@ -281,7 +281,7 @@ export default function ReporteLineasDisponibles() {
 
             {/* SECCIÓN 2: DETALLE POR BANCO */}
             <h2 style={{ marginTop: "2rem", marginBottom: "1rem", color: "#2d3748" }}>📋 Detalle por Banco</h2>
-            
+
             {reporte.detalle && reporte.detalle.map((banco, index) => (
               <div key={index} style={{ marginBottom: "2rem" }}>
                 <Card style={{ background: "#f8f9fa", marginBottom: "1rem" }}>
@@ -292,11 +292,9 @@ export default function ReporteLineasDisponibles() {
 
                 <DataTable
                   value={banco.lineas}
-                  responsiveLayout="scroll"
                   stripedRows
                   emptyMessage="No hay líneas de crédito"
                 >
-                  <Column field="numeroLinea" header="Número Línea" sortable />
                   <Column field="moneda" header="Moneda" sortable />
                   <Column
                     field="limite"
@@ -342,7 +340,7 @@ export default function ReporteLineasDisponibles() {
             {reporte.factoring && reporte.factoring.length > 0 && (
               <>
                 <h2 style={{ marginTop: "2rem", marginBottom: "1rem", color: "#2d3748" }}>💼 Factoring Indirecto</h2>
-                
+
                 {reporte.factoring.map((banco, index) => (
                   <div key={index} style={{ marginBottom: "2rem" }}>
                     <Card style={{ background: "#f8f9fa", marginBottom: "1rem" }}>

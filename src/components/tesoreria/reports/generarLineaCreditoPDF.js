@@ -28,9 +28,10 @@ export async function generarLineaCreditoPDF(data) {
     if (empresaA !== empresaB) {
       return empresaA.localeCompare(empresaB);
     }
-    const numA = a.numeroLinea || "";
-    const numB = b.numeroLinea || "";
-    return numA.localeCompare(numB);
+    // Ordenar por banco si empresa es igual
+    const bancoA = a.banco?.nombre || "";
+    const bancoB = b.banco?.nombre || "";
+    return bancoA.localeCompare(bancoB);
   });
 
   // ⭐ AGRUPAR POR MONEDA
@@ -383,7 +384,7 @@ export async function generarLineaCreditoPDF(data) {
 
   monedasKeys.forEach((moneda) => {
     const itemsMoneda = gruposPorMoneda[moneda];
-    
+
     // Calcular subtotales para esta moneda
     const subtotales = {
       limite: 0,
@@ -424,7 +425,7 @@ export async function generarLineaCreditoPDF(data) {
       yPos -= 10;
       yPos = dibujarEncabezadosTabla(currentPage, yPos, width);
     }
-    
+
     yPos = dibujarSubtotal(currentPage, yPos, pageWidth, moneda, subtotales);
     yPos -= 5;
   });

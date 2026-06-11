@@ -222,6 +222,11 @@ const LineaCredito = ({ ruta }) => {
     setVisible(true);
   };
 
+  const handleRowClick = (event) => {
+    if (permisos.puedeVer || permisos.puedeEditar) {
+      handleEdit(event.data);
+    }
+  };
   const handleSave = async (lineaId) => {
     // Recargar solo la línea editada para mantener el formulario abierto con datos actualizados
     if (lineaId) {
@@ -280,7 +285,7 @@ const LineaCredito = ({ ruta }) => {
 
   const confirmarEliminar = (linea) => {
     confirmDialog({
-      message: `¿Está seguro de eliminar la línea ${linea.numeroLinea}?`,
+      message: `¿Está seguro de eliminar la línea de crédito del banco ${linea.banco?.nombre || 'seleccionado'}?`,
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
       acceptLabel: "Sí",
@@ -380,9 +385,9 @@ const LineaCredito = ({ ruta }) => {
     const porcentaje =
       rowData.montoAprobado > 0
         ? (
-            ((rowData.montoUtilizado || 0) / rowData.montoAprobado) *
-            100
-          ).toFixed(2)
+          ((rowData.montoUtilizado || 0) / rowData.montoAprobado) *
+          100
+        ).toFixed(2)
         : 0;
 
     let severity = "success";
@@ -403,27 +408,13 @@ const LineaCredito = ({ ruta }) => {
   };
 
   const estadoBodyTemplate = (rowData) => {
-    const getSeverity = (estado) => {
-      switch (estado?.nombre) {
-        case "APROBADA":
-          return "info";
-        case "VIGENTE":
-          return "success";
-        case "VENCIDA":
-          return "danger";
-        case "CANCELADA":
-          return "warning";
-        case "SUSPENDIDA":
-          return "danger";
-        default:
-          return "secondary";
-      }
-    };
+    // Usar severity directamente de la base de datos
+    const severity = rowData.estado?.severity?.toLowerCase() || "secondary";
 
     return (
       <Tag
         value={rowData.estado?.nombre || ""}
-        severity={getSeverity(rowData.estado)}
+        severity={severity}
       />
     );
   };
@@ -691,27 +682,27 @@ const LineaCredito = ({ ruta }) => {
   // Template de carga personalizado
   const loadingTemplate = () => {
     return (
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
         justifyContent: 'center',
         padding: '3rem',
         gap: '1rem'
       }}>
-        <i 
-          className="pi pi-spin pi-spinner" 
+        <i
+          className="pi pi-spin pi-spinner"
           style={{ fontSize: '3rem', color: '#3b82f6' }}
         />
-        <div style={{ 
-          fontSize: '1.1rem', 
+        <div style={{
+          fontSize: '1.1rem',
           fontWeight: '600',
           color: '#64748b'
         }}>
           {loadingMessage || "Cargando datos..."}
         </div>
-        <div style={{ 
-          fontSize: '0.9rem', 
+        <div style={{
+          fontSize: '0.9rem',
           color: '#94a3b8',
           textAlign: 'center',
           maxWidth: '400px'
@@ -740,20 +731,17 @@ const LineaCredito = ({ ruta }) => {
         className="datatable-responsive"
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} líneas"
-        sortField="numeroLinea"
+        sortField="fechaAprobacion"
         sortOrder={-1}
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar
-            ? (e) => handleEdit(e.data)
+            ? handleRowClick
             : undefined
         }
         style={{
-          cursor:
-            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
           fontSize: getResponsiveFontSize(),
         }}
       >
-        <Column field="numeroLinea" header="Número" sortable />
         <Column body={empresaBodyTemplate} header="Empresa" sortable />
         <Column body={bancoBodyTemplate} header="Banco" sortable />
         <Column body={montoBodyTemplate} header="Límite" sortable />
@@ -813,7 +801,7 @@ const LineaCredito = ({ ruta }) => {
       >
         <ReporteLineasDisponibles />
       </Dialog>
-          {/* Selector de formato para Reporte Resumen */}
+      {/* Selector de formato para Reporte Resumen */}
       <ReportFormatSelector
         visible={showReportSelector}
         onHide={() => setShowReportSelector(false)}

@@ -35,7 +35,6 @@ const LineaCreditoForm = forwardRef(
     const [formData, setFormData] = useState({
       empresaId: null,
       bancoId: null,
-      numeroLinea: "",
       montoAprobado: 0,
       monedaId: null,
       tasaInteres: 0,
@@ -60,11 +59,10 @@ const LineaCreditoForm = forwardRef(
       if (lineaCredito) {
         // Modo edición: cargar datos de la línea existente
         setFormData({
-          empresaId: lineaCredito.empresaId || null,
-          bancoId: lineaCredito.bancoId,
-          numeroLinea: lineaCredito.numeroLinea || "",
+          empresaId: lineaCredito.empresaId ? Number(lineaCredito.empresaId) : null,
+          bancoId: lineaCredito.bancoId ? Number(lineaCredito.bancoId) : null,
           montoAprobado: parseFloat(lineaCredito.montoAprobado) || 0,
-          monedaId: lineaCredito.monedaId,
+          monedaId: lineaCredito.monedaId ? Number(lineaCredito.monedaId) : null,
           tasaInteres: parseFloat(lineaCredito.tasaInteres) || 0,
           fechaAprobacion: lineaCredito.fechaAprobacion
             ? new Date(lineaCredito.fechaAprobacion)
@@ -72,7 +70,7 @@ const LineaCreditoForm = forwardRef(
           fechaVencimiento: lineaCredito.fechaVencimiento
             ? new Date(lineaCredito.fechaVencimiento)
             : null,
-          estadoId: lineaCredito.estadoId,
+          estadoId: lineaCredito.estadoId ? Number(lineaCredito.estadoId) : null,
           observaciones: lineaCredito.observaciones || "",
           urlDocumentoPDF: lineaCredito.urlDocumentoPDF || "",
         });
@@ -118,7 +116,7 @@ const LineaCreditoForm = forwardRef(
       }
     };
 
-        const handleSubmit = async () => {
+    const handleSubmit = async () => {
       if (!validarFormulario()) return;
 
       setLoading(true);
@@ -179,15 +177,6 @@ const LineaCreditoForm = forwardRef(
           severity: "warn",
           summary: "Advertencia",
           detail: "Seleccione un banco",
-          life: 3000,
-        });
-        return false;
-      }
-      if (!formData.numeroLinea) {
-        toast.current?.show({
-          severity: "warn",
-          summary: "Advertencia",
-          detail: "Ingrese el número de línea",
           life: 3000,
         });
         return false;
@@ -275,17 +264,6 @@ const LineaCreditoForm = forwardRef(
               onChange={(e) => setFormData({ ...formData, bancoId: e.value })}
               placeholder="Seleccione un banco"
               filter
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="numeroLinea">Número de Línea *</label>
-            <InputText
-              id="numeroLinea"
-              value={formData.numeroLinea}
-              onChange={(e) =>
-                setFormData({ ...formData, numeroLinea: e.target.value })
-              }
-              placeholder="Ej: LC-2025-001"
             />
           </div>
           <div style={{ flex: 1 }}>
