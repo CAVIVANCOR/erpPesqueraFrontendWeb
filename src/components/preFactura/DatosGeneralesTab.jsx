@@ -435,7 +435,7 @@ export default function DatosGeneralesTab({
                 )
               }
               maxLength={40}
-              disabled={!puedeEditar || readOnly || formData.facturado}
+              disabled={!puedeEditarConPermiso}
               style={{ fontWeight: "bold" }}
             />
           </div>
