@@ -321,7 +321,7 @@ const LineaCreditoForm = forwardRef(
           }}
         >
           <div style={{ flex: 1 }}>
-            <label htmlFor="tasaInteres">Tasa de Interés (%) *</label>
+            <label htmlFor="tasaInteres">Tasa Interés Ref. (%) *</label>
             <InputNumber
               id="tasaInteres"
               value={formData.tasaInteres}

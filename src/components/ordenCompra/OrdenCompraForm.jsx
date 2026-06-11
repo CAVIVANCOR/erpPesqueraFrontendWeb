@@ -799,6 +799,7 @@ export default function OrdenCompraForm({
   };
 
   const formData = {
+    id: defaultValues?.id || null, // ⭐ AGREGAR ESTA LÍNEA
     empresaId,
     tipoDocumentoId,
     serieDocId,
@@ -806,8 +807,8 @@ export default function OrdenCompraForm({
     numCorreDoc,
     numeroDocumento,
     fechaDocumento,
-    fechaContable, // ← AGREGAR ESTA LÍNEA
-    periodoContableId, // ← AGREGAR ESTA LÍNEA
+    fechaContable,
+    periodoContableId,
     requerimientoCompraId,
     proveedorId,
     formaPagoId,
@@ -1052,12 +1053,12 @@ export default function OrdenCompraForm({
 
         <div style={{ flex: 1 }}>
           {/* Componente genérico de asientos contables */}
-          {isEdit && formData.id && (
+          {isEdit && defaultValues?.id && (
             <AsientoContableManager
-              documentoId={formData.id}
+              documentoId={defaultValues.id}
               documentoTipo="OrdenCompra"
-              empresaId={formData.empresaId}
-              periodoContableId={formData.periodoContableId}
+              empresaId={empresaId}
+              periodoContableId={periodoContableId}
               showAsButton={true}
               onBeforeGenerate={handleBeforeGenerateAsiento}
             />

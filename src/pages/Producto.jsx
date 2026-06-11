@@ -92,12 +92,15 @@ const Producto = ({ ruta }) => {
   const [estadosIniciales, setEstadosIniciales] = useState([]);
   const [unidadMetricaDefault, setUnidadMetricaDefault] = useState(null);
   const [especies, setEspecies] = useState([]);
+  const [especiesFiltradas, setEspeciesFiltradas] = useState([]);
+
 
   // Estados para los selectores de filtro
   const [selectedEmpresa, setSelectedEmpresa] = useState(null);
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [selectedFamilia, setSelectedFamilia] = useState(null);
   const [selectedSubfamilia, setSelectedSubfamilia] = useState(null);
+  const [selectedEspecie, setSelectedEspecie] = useState(null); // ⭐ AGREGAR
   const [selectedTipoAlmacenamiento, setSelectedTipoAlmacenamiento] =
     useState(null);
   const [selectedUnidadMedida, setSelectedUnidadMedida] = useState(null);
@@ -111,31 +114,21 @@ const Producto = ({ ruta }) => {
   const cargarCatalogos = async () => {
     try {
       const [
-        familiasData,
-        subfamiliasData,
         unidadesData,
         unidadesMetricasData,
         tiposMaterialData,
         coloresData,
-        empresasData,
-        entidadesData,
         estadosData,
-        tiposAlmacenamientoData,
         paisesData,
         marcasData,
         unidadMetricaDefaultData,
         especiesData,
       ] = await Promise.all([
-        getFamiliasProducto(),
-        getSubfamiliasProducto(),
         getUnidadesMedida(),
         getUnidadesMedidaMetricas(),
         getTiposMaterial(),
         getColores(),
-        getEmpresas(),
-        getEntidadesComerciales(),
         getEstadosMultiFuncionParaProductos(),
-        getTiposAlmacenamiento(),
         getPaises(),
         getMarcas(),
         getUnidadMetricaDefault(),
@@ -144,20 +137,18 @@ const Producto = ({ ruta }) => {
         }),
       ]);
 
-      setFamilias(familiasData);
-      setSubfamilias(subfamiliasData);
+      // Solo cargar catálogos que NO son filtros dinámicos
       setUnidadesMedida(unidadesData);
       setUnidadesMetricas(unidadesMetricasData);
       setTiposMaterial(tiposMaterialData);
       setColores(coloresData);
-      setEmpresas(empresasData);
-      setClientes(entidadesData.filter((e) => e.esCliente === true));
       setEstadosIniciales(estadosData);
-      setTiposAlmacenamiento(tiposAlmacenamientoData);
       setPaises(paisesData);
       setMarcas(marcasData);
       setUnidadMetricaDefault(unidadMetricaDefaultData);
       setEspecies(especiesData);
+
+      // Los filtros dinámicos se cargarán desde obtenerOpcionesDinamicas()
     } catch (error) {
       toast.current.show({
         severity: "error",
@@ -247,7 +238,12 @@ const Producto = ({ ruta }) => {
         (p) => Number(p.unidadMedidaId) === Number(selectedUnidadMedida.id)
       );
     }
-
+    // ⭐ AGREGAR FILTRO DE ESPECIE
+    if (selectedEspecie) {
+      resultado = resultado.filter(
+        (p) => Number(p.especieId) === Number(selectedEspecie.id)
+      );
+    }
     // Búsqueda global
     if (globalFilterValue) {
       const busqueda = globalFilterValue.toLowerCase();
@@ -264,6 +260,123 @@ const Producto = ({ ruta }) => {
     setProductosFiltrados(resultado);
   };
 
+  // Obtener opciones únicas de los productos filtrados
+  const obtenerOpcionesDinamicas = () => {
+    const productosParaOpciones = productosFiltrados.length > 0 ? productosFiltrados : productos;
+
+    // Empresas únicas
+    const empresasUnicas = [...new Map(
+      productosParaOpciones
+        .filter(p => p.empresa)
+        .map(p => [p.empresa.id, p.empresa])
+    ).values()];
+
+    // Clientes únicos (filtrados por empresa si hay una seleccionada)
+    let clientesUnicos = [...new Map(
+      productosParaOpciones
+        .filter(p => p.cliente)
+        .filter(p => !selectedEmpresa || Number(p.empresaId) === Number(selectedEmpresa.id))
+        .map(p => [p.cliente.id, p.cliente])
+    ).values()];
+
+    // Familias únicas
+    const familiasUnicas = [...new Map(
+      productosParaOpciones
+        .filter(p => p.familia)
+        .map(p => [p.familia.id, p.familia])
+    ).values()];
+
+    // Subfamilias únicas (filtradas por familia si hay una seleccionada)
+    const subfamiliasUnicas = [...new Map(
+      productosParaOpciones
+        .filter(p => p.subfamilia)
+        .filter(p => !selectedFamilia || Number(p.familiaId) === Number(selectedFamilia.id))
+        .map(p => [p.subfamilia.id, p.subfamilia])
+    ).values()];
+
+    // Especies únicas - Extraer de productos con fallback al catálogo
+    const especiesIdsUnicos = [...new Set(
+      productosParaOpciones
+        .filter(p => p.especieId)
+        .map(p => Number(p.especieId))
+    )];
+
+    const especiesUnicas = especiesIdsUnicos
+      .map(especieId => {
+        const especieCatalogo = especies.find(e => Number(e.id) === especieId);
+        if (especieCatalogo) {
+          return especieCatalogo;
+        }
+        // Fallback: crear objeto mínimo si no está en catálogo
+        return {
+          id: especieId,
+          nombre: `Especie ${especieId}`
+        };
+      })
+      .filter(e => e !== null);
+
+    // Tipos de almacenamiento únicos
+    const tiposAlmacenamientoUnicos = [...new Map(
+      productosParaOpciones
+        .filter(p => p.tipoAlmacenamiento)
+        .map(p => [p.tipoAlmacenamiento.id, p.tipoAlmacenamiento])
+    ).values()];
+
+    // Unidades de medida únicas
+    const unidadesMedidaUnicas = [...new Map(
+      productosParaOpciones
+        .filter(p => p.unidadMedida)
+        .map(p => [p.unidadMedida.id, p.unidadMedida])
+    ).values()];
+
+    return {
+      empresasUnicas,
+      clientesUnicos,
+      familiasUnicas,
+      subfamiliasUnicas,
+      especiesUnicas,
+      tiposAlmacenamientoUnicos,
+      unidadesMedidaUnicas
+    };
+  };
+
+  // Actualizar opciones de filtros basadas en productos visibles
+  useEffect(() => {
+    const opciones = obtenerOpcionesDinamicas();
+
+    // Actualizar estados con opciones dinámicas
+    setClientes(opciones.clientesUnicos);
+    setFamilias(opciones.familiasUnicas);
+    setSubfamilias(opciones.subfamiliasUnicas);
+    setEspeciesFiltradas(opciones.especiesUnicas);
+    setTiposAlmacenamiento(opciones.tiposAlmacenamientoUnicos);
+    setUnidadesMedida(opciones.unidadesMedidaUnicas);
+
+    // Limpiar selecciones que ya no existen en las opciones
+    if (selectedEmpresa && !opciones.empresasUnicas.find(e => Number(e.id) === Number(selectedEmpresa.id))) {
+      setSelectedEmpresa(null);
+    }
+    if (selectedCliente && !opciones.clientesUnicos.find(c => Number(c.id) === Number(selectedCliente.id))) {
+      setSelectedCliente(null);
+    }
+    if (selectedFamilia && !opciones.familiasUnicas.find(f => Number(f.id) === Number(selectedFamilia.id))) {
+      setSelectedFamilia(null);
+    }
+    if (selectedSubfamilia && !opciones.subfamiliasUnicas.find(s => Number(s.id) === Number(selectedSubfamilia.id))) {
+      setSelectedSubfamilia(null);
+    }
+    if (selectedEspecie && opciones.especiesUnicas.length > 0 && !opciones.especiesUnicas.find(e => Number(e.id) === Number(selectedEspecie.id))) {
+      setSelectedEspecie(null);
+    }
+    if (selectedTipoAlmacenamiento && !opciones.tiposAlmacenamientoUnicos.find(t => Number(t.id) === Number(selectedTipoAlmacenamiento.id))) {
+      setSelectedTipoAlmacenamiento(null);
+    }
+    if (selectedUnidadMedida && !opciones.unidadesMedidaUnicas.find(u => Number(u.id) === Number(selectedUnidadMedida.id))) {
+      setSelectedUnidadMedida(null);
+    }
+  }, [productosFiltrados, productos, selectedEmpresa, selectedFamilia, especies]);
+
+
   // Efecto para aplicar filtros cuando cambian los filtros o los productos
   useEffect(() => {
     if (productos.length > 0) {
@@ -275,67 +388,11 @@ const Producto = ({ ruta }) => {
     selectedCliente,
     selectedFamilia,
     selectedSubfamilia,
+    selectedEspecie,
     selectedTipoAlmacenamiento,
     selectedUnidadMedida,
     globalFilterValue,
   ]);
-
-  useEffect(() => {
-    const cargarSubfamilias = async () => {
-      if (selectedFamilia) {
-        try {
-          const subfamiliasData = await getSubfamiliasProducto(
-            selectedFamilia.id
-          );
-          setSubfamilias(subfamiliasData);
-        } catch (error) {
-          console.error("Error cargando subfamilias:", error);
-        }
-      } else {
-        setSubfamilias([]);
-        setSelectedSubfamilia(null);
-      }
-    };
-
-    cargarSubfamilias();
-  }, [selectedFamilia]);
-
-  useEffect(() => {
-    const cargarClientes = async () => {
-      if (selectedEmpresa) {
-        try {
-          const clientesData = await getEntidadesComerciales();
-          // Filtrar clientes por empresa seleccionada
-          const clientesFiltrados = clientesData.filter(
-            (e) =>
-              e.esCliente === true &&
-              Number(e.empresaId) === Number(selectedEmpresa.id)
-          );
-          setClientes(clientesFiltrados);
-          // Limpiar cliente seleccionado si no pertenece a la empresa
-          if (
-            selectedCliente &&
-            Number(selectedCliente.empresaId) !== Number(selectedEmpresa.id)
-          ) {
-            setSelectedCliente(null);
-          }
-        } catch (error) {
-          console.error("Error cargando clientes:", error);
-          toast.current?.show({
-            severity: "error",
-            summary: "Error",
-            detail: "Error al cargar clientes de la empresa",
-            life: 3000,
-          });
-        }
-      } else {
-        setClientes([]);
-        setSelectedCliente(null);
-      }
-    };
-
-    cargarClientes();
-  }, [selectedEmpresa]);
 
   const abrirDialogoNuevo = () => {
     // Pre-cargar empresa y cliente seleccionados en los filtros
@@ -352,6 +409,7 @@ const Producto = ({ ruta }) => {
     setSelectedCliente(null);
     setSelectedFamilia(null);
     setSelectedSubfamilia(null);
+    setSelectedEspecie(null);
     setSelectedTipoAlmacenamiento(null);
     setSelectedUnidadMedida(null);
     setGlobalFilterValue("");
@@ -457,33 +515,30 @@ const Producto = ({ ruta }) => {
   const onEmpresaFilterChange = (e) => {
     setSelectedEmpresa(e.value);
     setSelectedCliente(null);
-    aplicarFiltros();
   };
 
   const onClienteFilterChange = (e) => {
     setSelectedCliente(e.value);
-    aplicarFiltros();
   };
 
   const onFamiliaFilterChange = (e) => {
     setSelectedFamilia(e.value);
     setSelectedSubfamilia(null);
-    aplicarFiltros();
+    // El useEffect de líneas 268-281 aplicará los filtros automáticamente
   };
 
   const onSubfamiliaFilterChange = (e) => {
     setSelectedSubfamilia(e.value);
-    aplicarFiltros();
   };
 
   const onTipoAlmacenamientoFilterChange = (e) => {
     setSelectedTipoAlmacenamiento(e.value);
-    aplicarFiltros();
   };
-
+  const onEspecieFilterChange = (e) => {
+    setSelectedEspecie(e.value);
+  };
   const onUnidadMedidaFilterChange = (e) => {
     setSelectedUnidadMedida(e.value);
-    aplicarFiltros();
   };
 
   const descripcionTemplate = (rowData) => {
@@ -552,7 +607,7 @@ const Producto = ({ ruta }) => {
 
   const empresaTemplate = (rowData) => {
     return (
-      <span style={{  whiteSpace: "normal", wordWrap: "break-word", display: "block" }}>
+      <span style={{ whiteSpace: "normal", wordWrap: "break-word", display: "block" }}>
         {rowData.empresa?.razonSocial || "N/A"}
       </span>
     );
@@ -670,7 +725,7 @@ const Producto = ({ ruta }) => {
               onChange={onEmpresaFilterChange}
               className="w-15rem"
               filter
-              style={{fontWeight:"bold"}}
+              style={{ fontWeight: "bold" }}
             />
           </div>
           <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
@@ -684,7 +739,7 @@ const Producto = ({ ruta }) => {
               className="w-15rem"
               disabled={!selectedEmpresa}
               filter
-              style={{fontWeight:"bold"}}
+              style={{ fontWeight: "bold" }}
             />
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -702,8 +757,8 @@ const Producto = ({ ruta }) => {
                 !permisos.puedeCrear
                   ? "No tiene permisos para crear"
                   : !selectedEmpresa || !selectedCliente
-                  ? "Seleccione empresa y cliente para crear un producto"
-                  : "Crear nuevo producto"
+                    ? "Seleccione empresa y cliente para crear un producto"
+                    : "Crear nuevo producto"
               }
               tooltipOptions={{ position: "top" }}
             />
@@ -738,6 +793,7 @@ const Producto = ({ ruta }) => {
                 !selectedCliente &&
                 !selectedFamilia &&
                 !selectedSubfamilia &&
+                !selectedEspecie &&
                 !selectedTipoAlmacenamiento &&
                 !selectedUnidadMedida &&
                 !globalFilterValue
@@ -763,7 +819,7 @@ const Producto = ({ ruta }) => {
                 onChange={onGlobalFilterChange}
                 placeholder="Buscar..."
                 className="p-inputtext-sm"
-                style={{fontWeight:"bold"}}
+                style={{ fontWeight: "bold" }}
               />
             </span>
           </div>
@@ -777,7 +833,7 @@ const Producto = ({ ruta }) => {
               onChange={onFamiliaFilterChange}
               className="w-15rem"
               filter
-              style={{fontWeight:"bold"}}
+              style={{ fontWeight: "bold" }}
             />
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -791,7 +847,21 @@ const Producto = ({ ruta }) => {
               className="w-15rem"
               disabled={!selectedFamilia}
               filter
-              style={{fontWeight:"bold"}}
+              style={{ fontWeight: "bold" }}
+            />
+          </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <Dropdown
+              value={selectedEspecie}
+              options={especiesFiltradas.length > 0 ? especiesFiltradas : especies}
+              optionLabel="nombre"
+              placeholder="Especie"
+              showClear
+              onChange={onEspecieFilterChange}
+              className="w-15rem"
+              filter
+              style={{ fontWeight: "bold" }}
+              emptyMessage="No hay especies en los productos filtrados"
             />
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -804,7 +874,7 @@ const Producto = ({ ruta }) => {
               onChange={onTipoAlmacenamientoFilterChange}
               className="w-15rem"
               filter
-              style={{fontWeight:"bold"}}
+              style={{ fontWeight: "bold" }}
             />
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -817,9 +887,10 @@ const Producto = ({ ruta }) => {
               onChange={onUnidadMedidaFilterChange}
               className="w-15rem"
               filter
-              style={{fontWeight:"bold"}}
+              style={{ fontWeight: "bold" }}
             />
           </div>
+
         </div>
       </div>
     );
@@ -831,9 +902,8 @@ const Producto = ({ ruta }) => {
       <ConfirmDialog
         visible={confirmVisible}
         onHide={() => setConfirmVisible(false)}
-        message={`¿Está seguro de eliminar el producto "${
-          productoAEliminar?.descripcionBase || ""
-        }"?`}
+        message={`¿Está seguro de eliminar el producto "${productoAEliminar?.descripcionBase || ""
+          }"?`}
         header="Confirmar eliminación"
         icon="pi pi-exclamation-triangle"
         accept={eliminar}
@@ -877,20 +947,6 @@ const Producto = ({ ruta }) => {
           style={{ width: "60px", whiteSpace: "normal", wordWrap: "break-word" }}
         />
         <Column
-          field="descripcionArmada"
-          header="Descripción"
-          sortable
-          body={descripcionTemplate}
-          style={{ width: "200px", whiteSpace: "normal", wordWrap: "break-word" }}
-        />
-        <Column
-          field="unidadMedida.nombre"
-          header="Unidad Medida"
-          sortable
-          body={unidadMedidaTemplate}
-          style={{ width: "120px", whiteSpace: "normal", wordWrap: "break-word" }}
-        />
-        <Column
           field="cliente.razonSocial"
           header="Cliente"
           sortable
@@ -912,17 +968,32 @@ const Producto = ({ ruta }) => {
           style={{ width: "80px" }}
         />
         <Column
+          header="Especie"
+          body={especieTemplate}
+          style={{ width: "80px" }}
+        />
+        <Column
+          field="descripcionArmada"
+          header="Descripción"
+          sortable
+          body={descripcionTemplate}
+          style={{ width: "200px", whiteSpace: "normal", wordWrap: "break-word" }}
+        />
+        <Column
+          field="unidadMedida.nombre"
+          header="Unidad Medida"
+          sortable
+          body={unidadMedidaTemplate}
+          style={{ width: "120px", whiteSpace: "normal", wordWrap: "break-word" }}
+        />
+        <Column
           field="tipoAlmacenamiento.nombre"
           header="Almacena"
           sortable
           body={tipoAlmacenamientoTemplate}
           style={{ width: "60px" }}
         />
-        <Column
-          header="Especie"
-          body={especieTemplate}
-          style={{ width: "80px" }}
-        />
+
         <Column
           header="Estado"
           body={cesadoTemplate}

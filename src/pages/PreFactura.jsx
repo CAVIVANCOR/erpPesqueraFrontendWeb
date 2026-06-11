@@ -48,6 +48,7 @@ import { getPeriodosContables } from "../api/contabilidad/periodoContable";
 import { usePermissions } from "../hooks/usePermissions";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
+import { InputText } from "primereact/inputtext";
 import ColorTag from "../components/shared/ColorTag";
 import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
 import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
@@ -92,8 +93,10 @@ const PreFactura = ({ ruta }) => {
   const [filtroParticionadas, setFiltroParticionadas] = useState(null);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [productosUnicos, setProductosUnicos] = useState([]);
+  const [nroLiquidacionBusqueda, setNroLiquidacionBusqueda] = useState("");
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [clientesUnicos, setClientesUnicos] = useState([]);
+  const [estadosUnicos, setEstadosUnicos] = useState([]);
   const [preFacturas, setPreFacturas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -119,96 +122,6 @@ const PreFactura = ({ ruta }) => {
   useEffect(() => {
     cargarDatos();
   }, []);
-
-  // Extraer clientes únicos de las pre-facturas
-  useEffect(() => {
-    const clientesMap = new Map();
-    preFacturas.forEach((pf) => {
-      if (pf.cliente && pf.cliente.id) {
-        clientesMap.set(pf.cliente.id, pf.cliente);
-      }
-    });
-    const clientesArray = Array.from(clientesMap.values());
-    setClientesUnicos(clientesArray);
-  }, [preFacturas]);
-
-  // Extraer productos únicos de las PreFacturas filtradas (dinámico)
-  useEffect(() => {
-    const productosMap = new Map();
-
-    // Obtener productos de las PreFacturas que pasan los filtros actuales (excepto filtro de producto)
-    let preFacturasFiltradas = items;
-
-    // Aplicar filtros (excepto filtroProducto y productoSeleccionado)
-    if (empresaSeleccionada) {
-      preFacturasFiltradas = preFacturasFiltradas.filter(
-        (item) => Number(item.empresaId) === Number(empresaSeleccionada),
-      );
-    }
-
-    if (clienteSeleccionado) {
-      preFacturasFiltradas = preFacturasFiltradas.filter(
-        (item) => Number(item.clienteId) === Number(clienteSeleccionado),
-      );
-    }
-
-    if (rangoFechas && rangoFechas[0]) {
-      preFacturasFiltradas = preFacturasFiltradas.filter((item) => {
-        const fechaDoc = new Date(item.fechaDocumento);
-        const fechaIni = new Date(rangoFechas[0]);
-        fechaIni.setHours(0, 0, 0, 0);
-
-        if (rangoFechas[1]) {
-          const fechaFinDia = new Date(rangoFechas[1]);
-          fechaFinDia.setHours(23, 59, 59, 999);
-          return fechaDoc >= fechaIni && fechaDoc <= fechaFinDia;
-        }
-
-        return fechaDoc >= fechaIni;
-      });
-    }
-    if (estadoSeleccionado) {
-      preFacturasFiltradas = preFacturasFiltradas.filter(
-        (item) => Number(item.estadoId) === Number(estadoSeleccionado),
-      );
-    }
-
-    if (filtroParticionadas === "originales") {
-      preFacturasFiltradas = preFacturasFiltradas.filter((item) => item.esParticionada === true);
-    } else if (filtroParticionadas === "copias") {
-      preFacturasFiltradas = preFacturasFiltradas.filter(
-        (item) =>
-          item.preFacturaOrigenId !== null &&
-          item.preFacturaOrigenId !== undefined,
-      );
-    }
-
-    // Extraer productos únicos de los detalles
-    preFacturasFiltradas.forEach((pf) => {
-      if (pf.detalles && Array.isArray(pf.detalles)) {
-        pf.detalles.forEach((detalle) => {
-          if (detalle.producto && detalle.producto.id) {
-            productosMap.set(detalle.producto.id, {
-              id: detalle.producto.id,
-              descripcionArmada: detalle.producto.descripcionArmada || "Sin descripción",
-            });
-          }
-        });
-      }
-    });
-
-    const productosArray = Array.from(productosMap.values()).sort((a, b) =>
-      a.descripcionArmada.localeCompare(b.descripcionArmada)
-    );
-    setProductosUnicos(productosArray);
-  }, [
-    items,
-    empresaSeleccionada,
-    clienteSeleccionado,
-    rangoFechas,
-    estadoSeleccionado,
-    filtroParticionadas,
-  ]);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -315,9 +228,71 @@ const PreFactura = ({ ruta }) => {
     setLoading(false);
   };
 
+  // Obtener opciones únicas de los datos filtrados
+  const obtenerOpcionesDinamicas = () => {
+    const datosParaOpciones = itemsFiltrados.length > 0 ? itemsFiltrados : preFacturasFiltradas;
+    // Clientes únicos (filtrados por empresa si hay una seleccionada)
+    const clientesUnicos = [...new Map(
+      datosParaOpciones
+        .filter(pf => pf.cliente)
+        .filter(pf => !empresaSeleccionada || Number(pf.empresaId) === Number(empresaSeleccionada))
+        .map(pf => [pf.cliente.id, pf.cliente])
+    ).values()];
+    // Estados únicos
+    const estadosUnicos = [...new Map(
+      datosParaOpciones
+        .filter(pf => pf.estadoDoc)
+        .map(pf => [pf.estadoDoc.id, pf.estadoDoc])
+    ).values()];
+
+    // Productos únicos (de los detalles)
+    const productosMap = new Map();
+    datosParaOpciones.forEach((pf) => {
+      if (pf.detalles && Array.isArray(pf.detalles)) {
+        pf.detalles.forEach((detalle) => {
+          if (detalle.producto && detalle.producto.id) {
+            productosMap.set(detalle.producto.id, {
+              id: detalle.producto.id,
+              descripcionArmada: detalle.producto.descripcionArmada || "Sin descripción",
+            });
+          }
+        });
+      }
+    });
+    const productosUnicos = Array.from(productosMap.values()).sort((a, b) =>
+      a.descripcionArmada.localeCompare(b.descripcionArmada)
+    );
+
+    return {
+      clientesUnicos,
+      estadosUnicos,
+      productosUnicos
+    };
+  };
+
+
+  // Actualizar opciones de filtros basadas en datos visibles
+  useEffect(() => {
+    const opciones = obtenerOpcionesDinamicas();
+
+    setClientesUnicos(opciones.clientesUnicos);
+    setEstadosUnicos(opciones.estadosUnicos);
+    setProductosUnicos(opciones.productosUnicos);
+
+    // Limpiar selecciones que ya no existen
+    if (clienteSeleccionado && !opciones.clientesUnicos.find(c => Number(c.id) === Number(clienteSeleccionado))) {
+      setClienteSeleccionado(null);
+    }
+    if (estadoSeleccionado && !opciones.estadosUnicos.find(e => Number(e.id) === Number(estadoSeleccionado))) {
+      setEstadoSeleccionado(null);
+    }
+    if (productoSeleccionado && !opciones.productosUnicos.find(p => Number(p.id) === Number(productoSeleccionado))) {
+      setProductoSeleccionado(null);
+    }
+  }, [itemsFiltrados, preFacturasFiltradas, empresaSeleccionada]);
   // Filtrar items cuando cambien los filtros
   useEffect(() => {
-    let filtrados = items;
+    let filtrados = preFacturasFiltradas;
 
     // Filtro por empresa
     if (empresaSeleccionada) {
@@ -381,6 +356,16 @@ const PreFactura = ({ ruta }) => {
         return false;
       });
     }
+
+    // Filtro por número de liquidación de facturación
+    if (nroLiquidacionBusqueda && nroLiquidacionBusqueda.trim() !== "") {
+      const busqueda = nroLiquidacionBusqueda.toLowerCase().trim();
+      filtrados = filtrados.filter((item) => {
+        const nroLiquidacion = item.nroLiquidacionFacturacion || "";
+        return nroLiquidacion.toLowerCase().includes(busqueda);
+      });
+    }
+
     setItemsFiltrados(filtrados);
   }, [
     empresaSeleccionada,
@@ -389,6 +374,7 @@ const PreFactura = ({ ruta }) => {
     estadoSeleccionado,
     filtroParticionadas,
     productoSeleccionado,
+    nroLiquidacionBusqueda,
     items,
   ]);
   const handleIrAPreFacturaOrigen = async (preFacturaOrigenId) => {
@@ -1141,6 +1127,7 @@ const PreFactura = ({ ruta }) => {
     setEstadoSeleccionado(null);
     setFiltroParticionadas(null);
     setProductoSeleccionado(null);
+    setNroLiquidacionBusqueda("");
   };
 
   return (
@@ -1148,7 +1135,7 @@ const PreFactura = ({ ruta }) => {
       <Toast ref={toast} />
       <div className="card">
         <DataTable
-          value={preFacturasFiltradas}
+          value={itemsFiltrados}
           loading={loading}
           dataKey="id"
           paginator
@@ -1199,6 +1186,7 @@ const PreFactura = ({ ruta }) => {
                     optionLabel="label"
                     optionValue="value"
                     showClear
+                    filter
                     disabled={loading}
                   />
                 </div>
@@ -1260,6 +1248,7 @@ const PreFactura = ({ ruta }) => {
                     optionLabel="label"
                     optionValue="value"
                     showClear
+                    filter
                     disabled={loading}
                   />
                 </div>
@@ -1287,7 +1276,7 @@ const PreFactura = ({ ruta }) => {
                   <Dropdown
                     id="estadoFiltro"
                     value={estadoSeleccionado}
-                    options={estadosDoc.map((e) => ({
+                    options={estadosUnicos.map((e) => ({
                       label: e.descripcion,
                       value: Number(e.id),
                     }))}
@@ -1296,10 +1285,10 @@ const PreFactura = ({ ruta }) => {
                     optionLabel="label"
                     optionValue="value"
                     showClear
+                    filter
                     disabled={loading}
                   />
                 </div>
-
                 {/* Filtro por Producto - Dropdown */}
                 <div style={{ flex: 2 }}>
                   <label htmlFor="productoDropdown" style={{ fontWeight: "bold" }}>
@@ -1321,7 +1310,20 @@ const PreFactura = ({ ruta }) => {
                     emptyMessage="No hay productos en las PreFacturas filtradas"
                   />
                 </div>
-
+                {/* Filtro por Número de Liquidación */}
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="nroLiquidacionInput" style={{ fontWeight: "bold" }}>
+                    N° Referencia
+                  </label>
+                  <InputText
+                    id="nroLiquidacionInput"
+                    value={nroLiquidacionBusqueda}
+                    onChange={(e) => setNroLiquidacionBusqueda(e.target.value)}
+                    placeholder="Buscar x N° Referencia..."
+                    style={{ width: "100%" }}
+                    disabled={loading}
+                  />
+                </div>
                 {/* Filtro de Particionadas - Botón único que cicla */}
                 <div style={{ flex: 1 }}>
                   <Button
@@ -1411,7 +1413,12 @@ const PreFactura = ({ ruta }) => {
             style={{ width: 140, textAlign: "center", verticalAlign: "top" }}
             sortable
           />
-
+          <Column
+            field="nroLiquidacionFacturacion"
+            header="N° Referencia"
+            style={{ width: 140, textAlign: "center", verticalAlign: "top" }}
+            sortable
+          />
           <Column
             field="fechaDocumento"
             header="Fecha Documento"
@@ -1419,7 +1426,6 @@ const PreFactura = ({ ruta }) => {
             style={{ width: 120, textAlign: "center", verticalAlign: "top" }}
             sortable
           />
-
           <Column
             field="clienteId"
             header="Cliente"

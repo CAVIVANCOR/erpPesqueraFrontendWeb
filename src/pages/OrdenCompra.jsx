@@ -16,6 +16,7 @@ import RequerimientoCompraForm from "../components/requerimientoCompra/Requerimi
 import MovimientoAlmacenForm from "../components/movimientoAlmacen/MovimientoAlmacenForm";
 import {
   getOrdenesCompra,
+  getOrdenCompraPorId,
   crearOrdenCompra,
   actualizarOrdenCompra,
   eliminarOrdenCompra,
@@ -605,17 +606,24 @@ export default function OrdenCompra({ ruta }) {
       if (ordenActual.movIngresoAlmacenId) {
         // Ya tiene kardex - Mostrar confirmación de regeneración
         confirmDialog({
-          message:
-            "Esta orden ya tiene un kardex generado. ¿Desea regenerarlo? Esto eliminará el movimiento de almacén actual, recalculará todos los saldos y creará un nuevo movimiento con los datos actuales de la orden.",
+          message: "¿Desea regenerar el kardex con los datos actuales de la orden?\n\nEsto actualizará el movimiento de almacén y recalculará los saldos.",
           header: "Regenerar Kardex",
           icon: "pi pi-exclamation-triangle",
-          acceptLabel: "Sí, continuar",
+          acceptLabel: "Sí, regenerar",
           rejectLabel: "Cancelar",
           acceptClassName: "p-button-warning",
-          accept: () => {
-            // Abrir diálogo para seleccionar opciones
-            setShowKardexDialog(true);
+          style: { width: '450px' },
+          accept: async () => {
+            await handleProcesarRegeneracionKardex(ordenActual.id);
           },
+          reject: () => {
+            toast.current.show({
+              severity: 'info',
+              summary: 'Cancelado',
+              detail: 'Regeneración de kardex cancelada',
+              life: 2000
+            });
+          }
         });
       } else {
         // No tiene kardex - Abrir diálogo directamente
@@ -628,6 +636,40 @@ export default function OrdenCompra({ ruta }) {
         summary: "Error",
         detail: "Error al procesar la solicitud",
       });
+    }
+  };
+
+  const handleProcesarRegeneracionKardex = async (ordenId) => {
+    try {
+      setLoading(true);
+      // Regenerar kardex (backend usa datos actuales de la OrdenCompra)
+      const resultado = await regenerarKardexOrdenCompra(ordenId);
+      const movimientoId = resultado?.movimientoId;
+      toast.current.show({
+        severity: "success",
+        summary: "Kardex Regenerado Exitosamente",
+        detail: `Movimiento de almacén actualizado correctamente.`,
+        life: 5000,
+      });
+      // Limpiar estado
+      setKardexDocumentoActual(null);
+      // Recargar datos de la OrdenCompra actual en el formulario
+      if (ordenId) {
+        const ordenActualizada = await getOrdenCompraPorId(ordenId);
+        setEditing(ordenActualizada);
+      }
+      // Recargar lista en segundo plano
+      await cargarDatos();
+    } catch (error) {
+      console.error("Error al regenerar kardex:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.message || "Error al regenerar el kardex",
+        life: 5000,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -652,22 +694,25 @@ export default function OrdenCompra({ ruta }) {
 
       toast.current.show({
         severity: "success",
-        summary: "Éxito",
+        summary: esRegeneracion ? "Kardex Regenerado" : "Kardex Generado",
         detail: esRegeneracion
-          ? "Kardex regenerado correctamente"
-          : "Movimiento de almacén creado correctamente",
-        life: 3000,
+          ? "Movimiento actualizado correctamente con los datos actuales de la orden"
+          : `Movimiento de almacén creado correctamente. ID: ${movimientoId}`,
+        life: 5000,
       });
 
-      // Cerrar diálogo
+      // Cerrar diálogo de kardex
       setShowKardexDialog(false);
       setKardexDocumentoActual(null);
-      setShowDialog(false);
 
-      // Redirigir a edición del movimiento creado
-      if (movimientoId) {
-        navigate(`/movimientos-almacen/${movimientoId}/editar`);
+      // Recargar datos de la OrdenCompra actual en el formulario
+      if (ordenId) {
+        const ordenActualizada = await getOrdenCompraPorId(ordenId);
+        setEditing(ordenActualizada);
       }
+
+      // Recargar lista en segundo plano
+      cargarDatos();
     } catch (error) {
       console.error("Error al generar movimiento:", error);
 
@@ -774,7 +819,6 @@ export default function OrdenCompra({ ruta }) {
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
-      <ConfirmDialog />
       <ConfirmDialog
         visible={showConfirm}
         onHide={() => setShowConfirm(false)}
