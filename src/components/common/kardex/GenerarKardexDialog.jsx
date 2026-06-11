@@ -34,13 +34,16 @@ export default function GenerarKardexDialog({
   totalItems,
   empresaId,
   empresaEntidadComercialId, // ⭐ NUEVO: ID de entidad comercial de la empresa
+  fechaDocumento, // ⭐ NUEVO: Fecha del documento origen
   onGenerar,
   loading: externalLoading = false,
 }) {
   // Obtener configuración según tipo de documento
   const config = getKardexConfig(tipoDocumento);
-  console.log("GenerarKardexDialog config", config)
   // Cargar datos necesarios (almacenes, conceptos, estados, direcciones)
+  // Estado local para almacenId seleccionado
+  const [almacenSeleccionado, setAlmacenSeleccionado] = useState(null);
+
   const {
     almacenes,
     conceptos,
@@ -53,9 +56,10 @@ export default function GenerarKardexDialog({
     empresaId,
     config.tipoConceptoId,
     config.tipoMovimientoId,
-    config.tipoMovimiento, // "INGRESO" o "SALIDA"
-    entidadComercialId, // Proveedor o Cliente
-    empresaEntidadComercialId, // Mi empresa
+    config.tipoMovimiento,
+    entidadComercialId,
+    empresaEntidadComercialId,
+    almacenSeleccionado, // ⭐ Usar estado local
     visible
   );
 
@@ -63,16 +67,21 @@ export default function GenerarKardexDialog({
   const [formData, setFormData] = useState({
     almacenId: null,
     conceptoMovAlmacenId: null,
-    fechaDocumento: new Date(),
+    fechaDocumento: fechaDocumento ? new Date(fechaDocumento) : new Date(),
     dirOrigenId: null,
     dirDestinoId: null,
-    fechaIngreso: new Date(),
+    fechaIngreso: fechaDocumento ? new Date(fechaDocumento) : new Date(),
     fechaVencimiento: null,
     lote: "",
-    estadoId: 6, // Default: LIBERADO
-    estadoCalidadId: 10, // Default: CALIDAD A
-    observaciones: "",
+    estadoId: 6,
+    estadoCalidadId: 10,
+    observaciones: `${config.tipoMovimiento === "INGRESO" ? "Ingreso" : "Salida"} por ${numeroDocumento || "documento"}`,
   });
+
+  // Sincronizar almacén seleccionado con formData
+  useEffect(() => {
+    setAlmacenSeleccionado(formData.almacenId);
+  }, [formData.almacenId]);
 
   // Resetear formulario al abrir
   useEffect(() => {
@@ -80,10 +89,10 @@ export default function GenerarKardexDialog({
       setFormData({
         almacenId: null,
         conceptoMovAlmacenId: null,
-        fechaDocumento: new Date(),
+        fechaDocumento: fechaDocumento ? new Date(fechaDocumento) : new Date(),
         dirOrigenId: null,
         dirDestinoId: null,
-        fechaIngreso: new Date(),
+        fechaIngreso: fechaDocumento ? new Date(fechaDocumento) : new Date(),
         fechaVencimiento: null,
         lote: "",
         estadoId: 6, // LIBERADO
@@ -91,7 +100,7 @@ export default function GenerarKardexDialog({
         observaciones: `${config.tipoMovimiento === "INGRESO" ? "Ingreso" : "Salida"} por ${numeroDocumento || "documento"}`,
       });
     }
-  }, [visible, numeroDocumento, config.tipoMovimiento]);
+  }, [visible, numeroDocumento, config.tipoMovimiento, fechaDocumento]);
 
   // ⭐ PRESELECCIONAR estados cuando se cargan los datos
   useEffect(() => {
@@ -144,9 +153,10 @@ export default function GenerarKardexDialog({
     onGenerar({
       almacenId: formData.almacenId,
       conceptoMovAlmacenId: formData.conceptoMovAlmacenId,
+      tipoDocumentoAlmacen: config.tipoDocumentoAlmacen, // ⭐ AGREGAR: ID 14 (Nota de Salida)
       fechaDocumento: formData.fechaDocumento,
       dirOrigenId: formData.dirOrigenId,
-      dirDestinoId: formData.dirDestinoId,
+      dirDestinoId: formData.dirDestinoId || null, // ⭐ Permitir null para exportaciones
       fechaIngreso: formData.fechaIngreso,
       fechaVencimiento: formData.fechaVencimiento,
       lote: formData.lote || null,
@@ -293,7 +303,10 @@ export default function GenerarKardexDialog({
             id="almacen"
             value={formData.almacenId}
             options={almacenes}
-            onChange={(e) => handleChange("almacenId", e.value)}
+            onChange={(e) => {
+              handleChange("almacenId", e.value);
+              setAlmacenSeleccionado(e.value); // ⭐ Actualizar estado local
+            }}
             optionLabel="nombre"
             optionValue="id"
             placeholder={config.placeholderAlmacen}

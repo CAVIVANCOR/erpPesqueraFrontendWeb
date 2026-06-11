@@ -1160,60 +1160,67 @@ export default function PreFacturaForm({
   };
 
   // Handler para facturar negra (Caso 1: 100% Negro)
-  const handleFacturarNegraClick = async () => {
-    try {
-      const resultado = await facturarPreFacturaNegra(defaultValues.id);
+const handleFacturarNegraClick = async () => {
+  try {
+    const resultado = await facturarPreFacturaNegra(defaultValues.id);
 
-      toast?.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "CxC Negra (Gerencial) generada exitosamente",
-        life: 5000,
-      });
+    toast?.current?.show({
+      severity: "success",
+      summary: "Éxito",
+      detail: "CxC Negra generada exitosamente",
+      life: 5000,
+    });
 
-      // Cerrar formulario y recargar lista
-      onCancel?.(); // Esto recarga la lista en el padre
-    } catch (error) {
-      console.error("Error al facturar negra:", error);
-      toast?.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail:
-          error.response?.data?.mensaje ||
-          "No se pudo facturar la PreFactura negra",
-        life: 3000,
-      });
+    // ✅ RECARGAR DATOS DEL FORMULARIO (NO CERRAR)
+    if (defaultValues.id) {
+      const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
+      // Actualizar formData con los nuevos datos
+      setFormData(preFacturaActualizada);
     }
-  };
+  } catch (error) {
+    console.error("Error al facturar negra:", error);
+    toast?.current?.show({
+      severity: "error",
+      summary: "Error",
+      detail:
+        error.response?.data?.mensaje || "No se pudo generar la CxC Negra",
+      life: 3000,
+    });
+  }
+};
 
-  // Handler para facturar blanca (Caso 2: Comprobante SUNAT)
-  const handleFacturarBlancaClick = async () => {
-    try {
-      // ⭐ RECALCULAR Y GUARDAR TOTALES ANTES DE EMITIR
-      await recalcularYGuardarTotales(true);
+// Handler para facturar blanca (Caso 2: Comprobante SUNAT)
+const handleFacturarBlancaClick = async () => {
+  try {
+    // ⭐ RECALCULAR Y GUARDAR TOTALES ANTES DE EMITIR
+    await recalcularYGuardarTotales(true);
 
-      const resultado = await facturarPreFacturaBlanca(defaultValues.id);
+    const resultado = await facturarPreFacturaBlanca(defaultValues.id);
 
-      toast?.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "CxC Blanca y Comprobante Electrónico generados exitosamente",
-        life: 5000,
-      });
+    toast?.current?.show({
+      severity: "success",
+      summary: "Éxito",
+      detail: "CxC Blanca y Comprobante Electrónico generados exitosamente",
+      life: 5000,
+    });
 
-      // Cerrar formulario y recargar lista
-      onCancel?.(); // Esto recarga la lista en el padre
-    } catch (error) {
-      console.error("Error al facturar blanca:", error);
-      toast?.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail:
-          error.response?.data?.mensaje || "No se pudo emitir el comprobante",
-        life: 3000,
-      });
+    // ✅ RECARGAR DATOS DEL FORMULARIO (NO CERRAR)
+    if (defaultValues.id) {
+      const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
+      // Actualizar formData con los nuevos datos
+      setFormData(preFacturaActualizada);
     }
-  };
+  } catch (error) {
+    console.error("Error al facturar blanca:", error);
+    toast?.current?.show({
+      severity: "error",
+      summary: "Error",
+      detail:
+        error.response?.data?.mensaje || "No se pudo emitir el comprobante",
+      life: 3000,
+    });
+  }
+};
 
   // Estados del documento
   const estaPendiente = estadoId === 45 || !estadoId;

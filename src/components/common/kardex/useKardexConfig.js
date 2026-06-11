@@ -16,6 +16,7 @@ export const useKardexConfig = (
   tipoMovimiento, // "INGRESO" o "SALIDA"
   entidadComercialId, // Proveedor o Cliente
   empresaEntidadComercialId, // Mi empresa
+  almacenId, // ⭐ NUEVO: ID del almacén seleccionado
   enabled = true
 ) => {
   const [almacenes, setAlmacenes] = useState([]);
@@ -28,32 +29,43 @@ export const useKardexConfig = (
 
   useEffect(() => {
     if (!enabled || !empresaId) return;
-
     const cargarDatos = async () => {
       setLoading(true);
       try {
         // 1. Cargar almacenes (sin parámetro empresaId, se filtra después si es necesario)
         const almacenesData = await getAlmacenes();
         setAlmacenes(almacenesData || []);
-
-        // 2. Cargar conceptos (FILTRADO DOBLE: tipoConceptoId + tipoMovimientoId)
+        // 2. Cargar conceptos (FILTRADO: tipoConceptoId + tipoMovimientoId + almacén)
         const conceptosData = await getConceptosMovAlmacen();
-        const conceptosFiltrados = (conceptosData || []).filter(
-          (c) =>
-            c.tipoConceptoId === tipoConceptoId &&
-            c.tipoMovimientoId === tipoMovimientoId
+        let conceptosFiltrados = (conceptosData || []).filter(
+          (c) => {
+            const coincideTipoConcepto = Number(c.tipoConceptoId) === Number(tipoConceptoId);
+            const coincideTipoMovimiento = Number(c.tipoMovimientoId) === Number(tipoMovimientoId);
+            const estaActivo = c.activo === true;
+            return coincideTipoConcepto && coincideTipoMovimiento && estaActivo;
+          }
         );
+        // Filtrar por almacén si está seleccionado
+        if (almacenId) {
+          conceptosFiltrados = conceptosFiltrados.filter((c) => {
+            if (tipoMovimiento === "INGRESO") {
+              // Para INGRESO: almacenDestinoId debe coincidir o ser NULL (genérico)
+              return c.almacenDestinoId === null || Number(c.almacenDestinoId) === Number(almacenId);
+            } else if (tipoMovimiento === "SALIDA") {
+              // Para SALIDA: almacenOrigenId debe coincidir o ser NULL (genérico)
+              return c.almacenOrigenId === null || Number(c.almacenOrigenId) === Number(almacenId);
+            }
+            return true;
+          });
+        }
         setConceptos(conceptosFiltrados);
-
         // 3. Cargar estados de mercadería (tipoProvieneDeId = 2: PRODUCTOS)
         const { getEstadosMultiFuncionPorTipoProviene } = await import("../../../api/estadoMultiFuncion");
         const estadosMercaderiaData = await getEstadosMultiFuncionPorTipoProviene(2);
         setEstadosMercaderia(estadosMercaderiaData || []);
-
         // 4. Cargar estados de calidad (tipoProvieneDeId = 10: PRODUCTOS CALIDAD)
         const estadosCalidadData = await getEstadosMultiFuncionPorTipoProviene(10);
         setEstadosCalidad(estadosCalidadData || []);
-
         // 5. Cargar direcciones según tipo de movimiento
         if (tipoMovimiento === "INGRESO") {
           // INGRESO: Origen = Proveedor, Destino = Mi Empresa
@@ -63,7 +75,6 @@ export const useKardexConfig = (
             );
             setDireccionesOrigen(direccionesProveedorData || []);
           }
-
           if (empresaEntidadComercialId) {
             const direccionesEmpresaData = await obtenerDireccionesPorEntidad(
               empresaEntidadComercialId
@@ -107,6 +118,7 @@ export const useKardexConfig = (
     tipoMovimiento,
     entidadComercialId,
     empresaEntidadComercialId,
+    almacenId,
     enabled,
   ]);
 

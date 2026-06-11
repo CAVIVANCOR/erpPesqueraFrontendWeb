@@ -15,6 +15,7 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
 import { Badge } from "primereact/badge";
 import {
   getAllPreFactura,
+  getPreFacturaPorId,
   deletePreFactura,
   crearPreFactura,
   actualizarPreFactura,
@@ -86,10 +87,11 @@ const PreFactura = ({ ruta }) => {
   const [toDelete, setToDelete] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
-  const [fechaInicio, setFechaInicio] = useState(null);
-  const [fechaFin, setFechaFin] = useState(null);
+  const [rangoFechas, setRangoFechas] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [filtroParticionadas, setFiltroParticionadas] = useState(null);
+  const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+  const [productosUnicos, setProductosUnicos] = useState([]);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [clientesUnicos, setClientesUnicos] = useState([]);
   const [preFacturas, setPreFacturas] = useState([]);
@@ -121,14 +123,92 @@ const PreFactura = ({ ruta }) => {
   // Extraer clientes únicos de las pre-facturas
   useEffect(() => {
     const clientesMap = new Map();
-    preFacturas.forEach((preFactura) => {
-      if (preFactura.clienteId && preFactura.cliente) {
-        clientesMap.set(preFactura.clienteId, preFactura.cliente);
+    preFacturas.forEach((pf) => {
+      if (pf.cliente && pf.cliente.id) {
+        clientesMap.set(pf.cliente.id, pf.cliente);
       }
     });
     const clientesArray = Array.from(clientesMap.values());
     setClientesUnicos(clientesArray);
   }, [preFacturas]);
+
+  // Extraer productos únicos de las PreFacturas filtradas (dinámico)
+  useEffect(() => {
+    const productosMap = new Map();
+
+    // Obtener productos de las PreFacturas que pasan los filtros actuales (excepto filtro de producto)
+    let preFacturasFiltradas = items;
+
+    // Aplicar filtros (excepto filtroProducto y productoSeleccionado)
+    if (empresaSeleccionada) {
+      preFacturasFiltradas = preFacturasFiltradas.filter(
+        (item) => Number(item.empresaId) === Number(empresaSeleccionada),
+      );
+    }
+
+    if (clienteSeleccionado) {
+      preFacturasFiltradas = preFacturasFiltradas.filter(
+        (item) => Number(item.clienteId) === Number(clienteSeleccionado),
+      );
+    }
+
+    if (rangoFechas && rangoFechas[0]) {
+      preFacturasFiltradas = preFacturasFiltradas.filter((item) => {
+        const fechaDoc = new Date(item.fechaDocumento);
+        const fechaIni = new Date(rangoFechas[0]);
+        fechaIni.setHours(0, 0, 0, 0);
+
+        if (rangoFechas[1]) {
+          const fechaFinDia = new Date(rangoFechas[1]);
+          fechaFinDia.setHours(23, 59, 59, 999);
+          return fechaDoc >= fechaIni && fechaDoc <= fechaFinDia;
+        }
+
+        return fechaDoc >= fechaIni;
+      });
+    }
+    if (estadoSeleccionado) {
+      preFacturasFiltradas = preFacturasFiltradas.filter(
+        (item) => Number(item.estadoId) === Number(estadoSeleccionado),
+      );
+    }
+
+    if (filtroParticionadas === "originales") {
+      preFacturasFiltradas = preFacturasFiltradas.filter((item) => item.esParticionada === true);
+    } else if (filtroParticionadas === "copias") {
+      preFacturasFiltradas = preFacturasFiltradas.filter(
+        (item) =>
+          item.preFacturaOrigenId !== null &&
+          item.preFacturaOrigenId !== undefined,
+      );
+    }
+
+    // Extraer productos únicos de los detalles
+    preFacturasFiltradas.forEach((pf) => {
+      if (pf.detalles && Array.isArray(pf.detalles)) {
+        pf.detalles.forEach((detalle) => {
+          if (detalle.producto && detalle.producto.id) {
+            productosMap.set(detalle.producto.id, {
+              id: detalle.producto.id,
+              descripcionArmada: detalle.producto.descripcionArmada || "Sin descripción",
+            });
+          }
+        });
+      }
+    });
+
+    const productosArray = Array.from(productosMap.values()).sort((a, b) =>
+      a.descripcionArmada.localeCompare(b.descripcionArmada)
+    );
+    setProductosUnicos(productosArray);
+  }, [
+    items,
+    empresaSeleccionada,
+    clienteSeleccionado,
+    rangoFechas,
+    estadoSeleccionado,
+    filtroParticionadas,
+  ]);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -254,21 +334,21 @@ const PreFactura = ({ ruta }) => {
     }
 
     // Filtro por rango de fechas
-    if (fechaInicio) {
+    if (rangoFechas && rangoFechas[0]) {
       filtrados = filtrados.filter((item) => {
         const fechaDoc = new Date(item.fechaDocumento);
-        const fechaIni = new Date(fechaInicio);
+        const fechaIni = new Date(rangoFechas[0]);
         fechaIni.setHours(0, 0, 0, 0);
-        return fechaDoc >= fechaIni;
-      });
-    }
 
-    if (fechaFin) {
-      filtrados = filtrados.filter((item) => {
-        const fechaDoc = new Date(item.fechaDocumento);
-        const fechaFinDia = new Date(fechaFin);
-        fechaFinDia.setHours(23, 59, 59, 999);
-        return fechaDoc <= fechaFinDia;
+        // Si hay fecha fin
+        if (rangoFechas[1]) {
+          const fechaFinDia = new Date(rangoFechas[1]);
+          fechaFinDia.setHours(23, 59, 59, 999);
+          return fechaDoc >= fechaIni && fechaDoc <= fechaFinDia;
+        }
+
+        // Si solo hay fecha inicio
+        return fechaDoc >= fechaIni;
       });
     }
 
@@ -290,14 +370,25 @@ const PreFactura = ({ ruta }) => {
       );
     }
 
+    // Filtro por producto seleccionado (dropdown)
+    if (productoSeleccionado) {
+      filtrados = filtrados.filter((item) => {
+        if (item.detalles && Array.isArray(item.detalles)) {
+          return item.detalles.some((detalle) => {
+            return Number(detalle.producto?.id) === Number(productoSeleccionado);
+          });
+        }
+        return false;
+      });
+    }
     setItemsFiltrados(filtrados);
   }, [
     empresaSeleccionada,
     clienteSeleccionado,
-    fechaInicio,
-    fechaFin,
+    rangoFechas,
     estadoSeleccionado,
     filtroParticionadas,
+    productoSeleccionado,
     items,
   ]);
   const handleIrAPreFacturaOrigen = async (preFacturaOrigenId) => {
@@ -773,19 +864,26 @@ const PreFactura = ({ ruta }) => {
       setKardexDocumentoActual(preFacturaActual);
 
       if (preFacturaActual.movSalidaAlmacenId) {
-        // Ya tiene kardex - Mostrar confirmación de regeneración
+        // Ya tiene kardex - Mostrar confirmación nativa
         confirmDialog({
-          message:
-            "Esta pre-factura ya tiene un kardex generado. ¿Desea regenerarlo? Esto eliminará el movimiento de almacén actual, recalculará todos los saldos y creará un nuevo movimiento con los datos actuales de la pre-factura.",
-          header: "Regenerar Kardex",
-          icon: "pi pi-exclamation-triangle",
-          acceptLabel: "Sí, continuar",
-          rejectLabel: "Cancelar",
-          acceptClassName: "p-button-warning",
-          accept: () => {
-            // Abrir diálogo para seleccionar opciones
-            setShowKardexDialog(true);
+          message: '¿Desea regenerar el kardex con los datos actuales de la pre-factura?\n\nEsto actualizará el movimiento de almacén y recalculará los saldos.',
+          header: 'Regenerar Kardex',
+          icon: 'pi pi-exclamation-triangle',
+          acceptLabel: 'Sí, regenerar',
+          rejectLabel: 'Cancelar',
+          acceptClassName: 'p-button-warning',
+          style: { width: '450px' },
+          accept: async () => {
+            await handleProcesarRegeneracionKardex(preFacturaActual.id);
           },
+          reject: () => {
+            toast.current.show({
+              severity: 'info',
+              summary: 'Cancelado',
+              detail: 'Regeneración de kardex cancelada',
+              life: 2000
+            });
+          }
         });
       } else {
         // No tiene kardex - Abrir diálogo directamente
@@ -822,22 +920,25 @@ const PreFactura = ({ ruta }) => {
 
       toast.current.show({
         severity: "success",
-        summary: "Éxito",
+        summary: esRegeneracion ? "Kardex Regenerado" : "Kardex Generado",
         detail: esRegeneracion
-          ? "Kardex regenerado correctamente"
-          : "Movimiento de almacén creado correctamente",
-        life: 3000,
+          ? "Movimiento actualizado correctamente con los datos actuales de la pre-factura"
+          : `Movimiento de almacén creado correctamente. ID: ${movimientoId}`,
+        life: 5000,
       });
 
-      // Cerrar diálogo
+      // Cerrar diálogo de kardex
       setShowKardexDialog(false);
       setKardexDocumentoActual(null);
-      setShowDialog(false);
 
-      // Redirigir a edición del movimiento creado
-      if (movimientoId) {
-        navigate(`/movimientos-almacen/${movimientoId}/editar`);
+      // Recargar datos de la PreFactura actual en el formulario
+      if (preFacturaId) {
+        const preFacturaActualizada = await getPreFacturaPorId(preFacturaId);
+        setSelectedPreFactura(preFacturaActualizada);
       }
+
+      // Recargar lista en segundo plano
+      cargarDatos();
     } catch (error) {
       console.error("Error al generar movimiento:", error);
 
@@ -857,6 +958,45 @@ const PreFactura = ({ ruta }) => {
       setLoading(false);
     }
   };
+
+  const handleProcesarRegeneracionKardex = async (preFacturaId) => {
+    try {
+      setLoading(true);
+      // Regenerar kardex (backend usa datos actuales de la PreFactura)
+      const resultado = await regenerarKardexPreFactura(preFacturaId);
+      const movimientoId = resultado?.movimientoId;
+      toast.current.show({
+        severity: "success",
+        summary: "Kardex Regenerado Exitosamente",
+        detail: `Movimiento de almacén actualizado correctamente.`,
+        life: 5000,
+      });
+
+      // Limpiar estado
+      setKardexDocumentoActual(null);
+
+      // Recargar datos de la PreFactura actual en el formulario
+      if (preFacturaId) {
+        const preFacturaActualizada = await getPreFacturaPorId(preFacturaId);
+        setSelectedPreFactura(preFacturaActualizada);
+      }
+
+      // Recargar lista en segundo plano
+      await cargarDatos();
+    } catch (error) {
+      console.error("Error al regenerar kardex:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.message || "Error al regenerar el kardex",
+        life: 5000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   const onRowClick = (event) => {
     if (permisos.puedeVer || permisos.puedeEditar) {
       abrirDialogoEdicion(event.data);
@@ -997,16 +1137,15 @@ const PreFactura = ({ ruta }) => {
   const limpiarFiltros = () => {
     setEmpresaSeleccionada(null);
     setClienteSeleccionado(null);
-    setFechaInicio(null);
-    setFechaFin(null);
+    setRangoFechas(null);
     setEstadoSeleccionado(null);
     setFiltroParticionadas(null);
+    setProductoSeleccionado(null);
   };
 
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
-      <ConfirmDialog />
       <div className="card">
         <DataTable
           value={preFacturasFiltradas}
@@ -1124,34 +1263,21 @@ const PreFactura = ({ ruta }) => {
                     disabled={loading}
                   />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="fechaInicio" style={{ fontWeight: "bold" }}>
-                    Desde
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="rangoFechas" style={{ fontWeight: "bold" }}>
+                    Rango de Fechas
                   </label>
                   <Calendar
-                    id="fechaInicio"
-                    value={fechaInicio}
-                    onChange={(e) => setFechaInicio(e.value)}
-                    placeholder="Fecha inicio"
+                    id="rangoFechas"
+                    value={rangoFechas}
+                    onChange={(e) => setRangoFechas(e.value)}
+                    selectionMode="range"
                     dateFormat="dd/mm/yy"
                     showIcon
-                    showButtonBar
+                    placeholder="Seleccionar rango..."
+                    style={{ width: "100%" }}
                     disabled={loading}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="fechaFin" style={{ fontWeight: "bold" }}>
-                    Hasta
-                  </label>
-                  <Calendar
-                    id="fechaFin"
-                    value={fechaFin}
-                    onChange={(e) => setFechaFin(e.value)}
-                    placeholder="Fecha fin"
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    showButtonBar
-                    disabled={loading}
+                    readOnlyInput
                   />
                 </div>
                 <div style={{ flex: 2 }}>
@@ -1173,6 +1299,29 @@ const PreFactura = ({ ruta }) => {
                     disabled={loading}
                   />
                 </div>
+
+                {/* Filtro por Producto - Dropdown */}
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="productoDropdown" style={{ fontWeight: "bold" }}>
+                    Producto
+                  </label>
+                  <Dropdown
+                    id="productoDropdown"
+                    value={productoSeleccionado}
+                    options={productosUnicos.map((p) => ({
+                      label: p.descripcionArmada,
+                      value: p.id,
+                    }))}
+                    onChange={(e) => setProductoSeleccionado(e.value)}
+                    placeholder="Seleccionar producto..."
+                    filter
+                    showClear
+                    style={{ width: "100%" }}
+                    disabled={loading}
+                    emptyMessage="No hay productos en las PreFacturas filtradas"
+                  />
+                </div>
+
                 {/* Filtro de Particionadas - Botón único que cicla */}
                 <div style={{ flex: 1 }}>
                   <Button
@@ -1522,14 +1671,15 @@ const PreFactura = ({ ruta }) => {
             setKardexDocumentoActual(null);
           }}
           tipoDocumento="preFactura"
-          documentoId={kardexDocumentoActual.id}
-          numeroDocumento={kardexDocumentoActual.numeroDocumento}
-          serieDocumento={kardexDocumentoActual.serieDoc?.serie}
-          entidadComercial={kardexDocumentoActual.cliente?.razonSocial}
-          entidadComercialId={kardexDocumentoActual.clienteId}
-          totalItems={kardexDocumentoActual.detalles?.length || 0}
-          empresaId={kardexDocumentoActual.empresaId}
-          empresaEntidadComercialId={kardexDocumentoActual.empresa?.entidadComercialId}
+          documentoId={kardexDocumentoActual?.id}
+          numeroDocumento={kardexDocumentoActual?.numeroDocumento}
+          serieDocumento={kardexDocumentoActual?.serieDocumento}
+          entidadComercial={kardexDocumentoActual?.cliente?.razonSocial}
+          entidadComercialId={kardexDocumentoActual?.clienteId}
+          totalItems={kardexDocumentoActual?.detalles?.length || 0}
+          empresaId={kardexDocumentoActual?.empresaId}
+          empresaEntidadComercialId={kardexDocumentoActual?.empresa?.entidadComercialId}
+          fechaDocumento={kardexDocumentoActual?.fechaDocumento}
           onGenerar={handleProcesarGeneracionKardex}
           loading={loading}
         />
