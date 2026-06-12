@@ -31,7 +31,7 @@ export default function SaldoCuentaCorrienteForm({
 
   const [formData, setFormData] = useState({
     cuentaCorrienteId: defaultValues?.cuentaCorrienteId || null,
-    empresaId: defaultValues?.empresaId || null,
+    empresaId: defaultValues?.empresaId !== undefined ? Number(defaultValues.empresaId) : null,
     fecha: defaultValues?.fecha ? new Date(defaultValues.fecha) : new Date(),
     saldoAnterior: defaultValues?.saldoAnterior || 0,
     ingresos: defaultValues?.ingresos || 0,
@@ -52,7 +52,7 @@ export default function SaldoCuentaCorrienteForm({
       cuentaCorrienteId: defaultValues?.cuentaCorrienteId
         ? Number(defaultValues.cuentaCorrienteId)
         : null,
-      empresaId: defaultValues?.empresaId
+      empresaId: defaultValues?.empresaId !== undefined
         ? Number(defaultValues.empresaId)
         : null,
       fecha: defaultValues?.fecha ? new Date(defaultValues.fecha) : new Date(),
@@ -185,10 +185,11 @@ export default function SaldoCuentaCorrienteForm({
                   <CuentaCorrienteSelector
                     empresaIdPreseleccionada={formData.empresaId}
                     value={formData.cuentaCorrienteId}
-                    onChange={({ cuentaCorrienteId, bancoId, moneda }) => {
+                    onChange={({ cuentaCorrienteId, bancoId, empresaId, moneda }) => {
                       setFormData((prev) => ({
                         ...prev,
                         cuentaCorrienteId,
+                        empresaId, // ← ACTUALIZAR empresaId AUTOMÁTICAMENTE
                       }));
                       setMonedaSeleccionada(moneda); // ← GUARDAR MONEDA
                     }}

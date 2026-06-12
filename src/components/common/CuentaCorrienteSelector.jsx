@@ -5,14 +5,14 @@
  * Muestra una tabla con Empresa, Banco, Moneda y Número de Cuenta para facilitar la búsqueda
  * Incluye filtros por empresa con colores dinámicos
  * 
- * ⚠️ IMPORTANTE: Al seleccionar una cuenta corriente, automáticamente asigna el bancoId
- * El banco se asigna de forma TRANSPARENTE sin que el usuario lo vea
+  * ⚠️ IMPORTANTE: Al seleccionar una cuenta corriente, automáticamente asigna bancoId y empresaId
+ * El banco y la empresa se asignan de forma TRANSPARENTE sin que el usuario los vea
  * 
  * PATRÓN: Replica exactamente EntidadComercialSelector.jsx
  * - CARGA INTERNAMENTE todas las empresas, bancos y cuentas corrientes
  * - Filtra dinámicamente por empresa
  * - Excluye cuentas inactivas automáticamente
- * - Retorna { cuentaCorrienteId, bancoId } en el callback onChange
+ * - Retorna { cuentaCorrienteId, bancoId, empresaId, moneda } en el callback onChange
  * 
  * @author ERP Megui
  * @version 1.0.0
@@ -98,8 +98,8 @@ const getEmpresaNombre = (empresaId, empresas) => {
 /**
  * Componente CuentaCorrienteSelector
  * @param {number|string} props.value - ID de la cuenta corriente seleccionada
- * @param {Function} props.onChange - Callback cuando se selecciona una cuenta (recibe { cuentaCorrienteId, bancoId })
- * @param {number|string} props.empresaIdPreseleccionada - ID de empresa a preseleccionar
+ * @param {Function} props.onChange - Callback cuando se selecciona una cuenta (recibe { cuentaCorrienteId, bancoId, empresaId, moneda })
+ *  * @param {number|string} props.empresaIdPreseleccionada - ID de empresa a preseleccionar
  * @param {string} props.label - Etiqueta personalizada (por defecto "Cuenta Corriente")
  * @param {boolean} props.disabled - Si el selector está deshabilitado
  * @param {boolean} props.required - Si el campo es obligatorio
@@ -273,6 +273,7 @@ const CuentaCorrienteSelector = ({
       onChange({
         cuentaCorrienteId: Number(cuenta.id),
         bancoId: Number(cuenta.bancoId), // ← BANCO AUTOMÁTICO
+        empresaId: Number(cuenta.empresaId), // ← EMPRESA AUTOMÁTICA
         moneda: cuenta.moneda // ← MONEDA AUTOMÁTICA (incluye colorFondo)
       });
     }
