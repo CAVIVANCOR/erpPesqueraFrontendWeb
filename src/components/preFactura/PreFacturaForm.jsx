@@ -5,6 +5,8 @@ import { Button } from "primereact/button";
 import DatosGeneralesTab from "./DatosGeneralesTab";
 import VerImpresionPreFacturaPDF from "./VerImpresionPreFacturaPDF";
 import BotonesGeneracionComprobante from "./BotonesGeneracionComprobante";
+import { getMediosPago } from "../../api/medioPago";
+import { getAllCuentaCorriente } from "../../api/cuentaCorriente";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
 import { getSeriesDoc } from "../../api/preFactura";
 import { obtenerContactosPorEntidad } from "../../api/contactoEntidad";
@@ -611,16 +613,17 @@ export default function PreFacturaForm({
   useEffect(() => {
     const cargarCatalogosCxC = async () => {
       try {
-        // Cargar medios de pago (tipoProvieneDeId = 13)
-        const mediosPagoData = await getEstadosMultiFuncionPorTipoProviene(13);
+        // Cargar medios de pago
+        const mediosPagoData = await getMediosPago();
         setMediosPago(mediosPagoData);
 
-        // Cargar estados de CxC (tipoProvieneDeId = 20)
-        const estadosCxCData = await getEstadosMultiFuncionPorTipoProviene(20);
+        // Cargar estados de CxC (tipoProvieneDeId = 24)
+        const estadosCxCData = await getEstadosMultiFuncionPorTipoProviene(24);
         setEstadosCxC(estadosCxCData);
 
-        // Cuentas corrientes: por ahora vacío (se cargaría desde un endpoint específico)
-        setCuentasCorrientes([]);
+        // Cuentas corrientes
+        const CuentasCorrientesData = await getAllCuentaCorriente();
+        setCuentasCorrientes(CuentasCorrientesData);
       } catch (err) {
         console.error("Error al cargar catálogos de CxC:", err);
         setMediosPago([]);

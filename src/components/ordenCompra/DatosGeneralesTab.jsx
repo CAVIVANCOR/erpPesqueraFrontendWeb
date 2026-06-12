@@ -23,6 +23,8 @@ export default function DatosGeneralesTab({
   centrosCosto,
   unidadesNegocioOptions,
   tiposDocumentoOptions,
+  proveedoresOptions,
+  monedasOptions,
   seriesDocOptions,
   estadosOrdenOptions,
   periodosContables = [],
@@ -64,6 +66,10 @@ export default function DatosGeneralesTab({
   esParticionada,
   onEsParticionadaChange,
   onProveedorCreado, // ✅ NUEVO: callback para recargar proveedores
+  cuentasCorrientes = [],
+  estadosCxP = [],
+  mediosPago = [],
+  bancos = [],
 }) {
   // Helper para obtener código de moneda (ISO)
   const getCodigoMoneda = () => {
@@ -782,7 +788,7 @@ export default function DatosGeneralesTab({
               permisos={{}}
               toast={toast}
               showCxPId={true}
-              estadoIdMinimo={39}
+              estadoIdMinimo={113}
               severity="warning"
               outlined={true}
               icon="pi pi-arrow-right"

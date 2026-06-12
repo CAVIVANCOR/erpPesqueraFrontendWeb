@@ -62,7 +62,6 @@ const Producto = ({ ruta }) => {
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
-
   const [productos, setProductos] = useState([]);
   const [productosFiltrados, setProductosFiltrados] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +70,7 @@ const Producto = ({ ruta }) => {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [productoAEliminar, setProductoAEliminar] = useState(null);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
+  const [clientesCatalogo, setClientesCatalogo] = useState([]); // Catálogo completo
   const [filters, setFilters] = useState({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
     "empresa.id": { value: null, matchMode: FilterMatchMode.EQUALS },
@@ -182,13 +182,17 @@ const Producto = ({ ruta }) => {
 
   const cargarOpcionesFiltros = async () => {
     try {
-      const [familiasData, tiposAlmacenamientoData, unidadesMedidaData] =
+      const [empresasData, clientesData, familiasData, tiposAlmacenamientoData, unidadesMedidaData] =
         await Promise.all([
+          getEmpresas(),
+          getEntidadesComerciales(),
           getFamiliasProducto(),
           getTiposAlmacenamiento(),
           getUnidadesMedida(),
         ]);
 
+      setEmpresas(empresasData);
+      setClientesCatalogo(clientesData); // ← Guardar catálogo completo
       setFamilias(familiasData);
       setTiposAlmacenamiento(tiposAlmacenamientoData);
       setUnidadesMedida(unidadesMedidaData);
@@ -262,8 +266,7 @@ const Producto = ({ ruta }) => {
 
   // Obtener opciones únicas de los productos filtrados
   const obtenerOpcionesDinamicas = () => {
-    const productosParaOpciones = productosFiltrados.length > 0 ? productosFiltrados : productos;
-
+    const productosParaOpciones = productosFiltrados;
     // Empresas únicas
     const empresasUnicas = [...new Map(
       productosParaOpciones
@@ -345,18 +348,30 @@ const Producto = ({ ruta }) => {
     const opciones = obtenerOpcionesDinamicas();
 
     // Actualizar estados con opciones dinámicas
-    setClientes(opciones.clientesUnicos);
+    // ❌ NO actualizar empresas ni clientes (se cargan del catálogo completo)
+    // setEmpresas(opciones.empresasUnicas);  ← ELIMINAR
+    // setClientes(opciones.clientesUnicos);  ← ELIMINAR
     setFamilias(opciones.familiasUnicas);
     setSubfamilias(opciones.subfamiliasUnicas);
     setEspeciesFiltradas(opciones.especiesUnicas);
     setTiposAlmacenamiento(opciones.tiposAlmacenamientoUnicos);
     setUnidadesMedida(opciones.unidadesMedidaUnicas);
 
-    // Limpiar selecciones que ya no existen en las opciones
-    if (selectedEmpresa && !opciones.empresasUnicas.find(e => Number(e.id) === Number(selectedEmpresa.id))) {
-      setSelectedEmpresa(null);
+    // ⭐ Filtrar clientes por empresa seleccionada
+    if (selectedEmpresa) {
+      // Filtrar TODAS las entidades comerciales que pertenecen a la empresa seleccionada
+      // (sin importar si tienen productos o no)
+      const clientesFiltrados = clientesCatalogo.filter(
+        c => Number(c.empresaId) === Number(selectedEmpresa.id)
+      );
+      setClientes(clientesFiltrados);
+    } else {
+      // Si no hay empresa seleccionada, mostrar todos los clientes
+      setClientes(clientesCatalogo);
     }
-    if (selectedCliente && !opciones.clientesUnicos.find(c => Number(c.id) === Number(selectedCliente.id))) {
+
+    // Limpiar selecciones que ya no existen en las opciones
+    if (selectedCliente && !clientes.find(c => Number(c.id) === Number(selectedCliente.id))) {
       setSelectedCliente(null);
     }
     if (selectedFamilia && !opciones.familiasUnicas.find(f => Number(f.id) === Number(selectedFamilia.id))) {
@@ -374,7 +389,7 @@ const Producto = ({ ruta }) => {
     if (selectedUnidadMedida && !opciones.unidadesMedidaUnicas.find(u => Number(u.id) === Number(selectedUnidadMedida.id))) {
       setSelectedUnidadMedida(null);
     }
-  }, [productosFiltrados, productos, selectedEmpresa, selectedFamilia, especies]);
+  }, [productosFiltrados, productos, selectedEmpresa, selectedFamilia, especies, clientesCatalogo]);
 
 
   // Efecto para aplicar filtros cuando cambian los filtros o los productos
@@ -853,7 +868,7 @@ const Producto = ({ ruta }) => {
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <Dropdown
               value={selectedEspecie}
-              options={especiesFiltradas.length > 0 ? especiesFiltradas : especies}
+              options={especiesFiltradas}
               optionLabel="nombre"
               placeholder="Especie"
               showClear
@@ -914,8 +929,8 @@ const Producto = ({ ruta }) => {
       <DataTable
         value={productosFiltrados}
         paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50, 100, 200]}
+        rows={30}
+        rowsPerPageOptions={[30, 60, 120, 200, 300, 500]}
         loading={loading}
         header={renderHeader()}
         emptyMessage="No se encontraron productos"

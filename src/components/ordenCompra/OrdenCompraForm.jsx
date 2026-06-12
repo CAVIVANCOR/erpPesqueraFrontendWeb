@@ -13,6 +13,9 @@ import { obtenerContactosPorEntidad } from "../../api/contactoEntidad";
 import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 import { getSeriesDoc } from "../../api/preFactura";
 import AsientoContableManager from "../common/AsientoContableManager";
+import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
+import { getMediosPago } from "../../api/medioPago";
+import { getAllCuentaCorriente } from "../../api/cuentaCorriente";
 
 export default function OrdenCompraForm({
   isEdit,
@@ -26,6 +29,7 @@ export default function OrdenCompraForm({
   monedas,
   centrosCosto,
   unidadesNegocio = [],
+  bancos = [],
   tiposDocumento,
   seriesDoc,
   estadosOrden,
@@ -45,7 +49,6 @@ export default function OrdenCompraForm({
   readOnly = false,
   onRecargarRegistro,
   onProveedorCreado, // ✅ NUEVO: callback para recargar proveedores
-
 }) {
   const { usuario } = useAuthStore();
 
@@ -169,6 +172,10 @@ export default function OrdenCompraForm({
   const [datosAdicionalesCount, setDatosAdicionalesCount] = useState(0);
   const [totales, setTotales] = useState({ subtotal: 0, igv: 0, total: 0 });
   const [fechaDocumentoInicial, setFechaDocumentoInicial] = useState(null);
+  const [estadosCxP, setEstadosCxP] = useState([]);
+  const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
+  const [mediosPago, setMediosPago] = useState([]);
+
   useEffect(() => {
     if (proveedores && proveedores.length > 0 && empresaId) {
       const proveedoresPorEmpresa = proveedores.filter(
@@ -467,6 +474,30 @@ export default function OrdenCompraForm({
       throw err;
     }
   };
+  // Cargar catálogos para CxP (Medios de Pago, Estados CxP, Cuentas Corrientes)
+  useEffect(() => {
+    const cargarCatalogosCxP = async () => {
+      try {
+        // Cargar medios de pago
+        const mediosPagoData = await getMediosPago();
+        setMediosPago(mediosPagoData);
+
+        // Cargar estados de CxC (tipoProvieneDeId = 25)
+        const estadosCxPData = await getEstadosMultiFuncionPorTipoProviene(25);
+        setEstadosCxP(estadosCxPData);
+        // Cuentas corrientes
+        const CuentasCorrientesData = await getAllCuentaCorriente();
+        setCuentasCorrientes(CuentasCorrientesData);
+
+      } catch (err) {
+        console.error("Error al cargar catálogos de CxC:", err);
+        setMediosPago([]);
+        setEstadosCxP([]);
+        setCuentasCorrientes([]);
+      }
+    };
+    cargarCatalogosCxP();
+  }, []);
 
   // ⭐ CALLBACK para AsientoContableManager
   const handleBeforeGenerateAsiento = async () => {
@@ -837,6 +868,29 @@ export default function OrdenCompraForm({
   const puedeEditar = estaPendiente && !loading;
   const puedeEditarDatosAdicionales = !loading;
 
+
+  const proveedoresOptions = (proveedores || []).map((c) => ({
+    ...c,
+    id: Number(c.id),
+    label: `${c.tipoDocumento?.codigo || ""} - ${c.numeroDocumento} - ${c.razonSocial
+      }`,
+    value: Number(c.id),
+  }));
+
+  const monedasOptions = (monedas || []).map((m) => ({
+    ...m,
+    id: Number(m.id),
+    label: m.codigoSunat,
+    value: Number(m.id),
+  }));
+
+  const bancosOptions = (bancos || []).map((b) => ({
+    ...b,
+    id: Number(b.id),
+    label: b.nombre,
+    value: Number(b.id),
+  }));
+
   const tiposDocumentoOptions = (tiposDocumento || []).map((t) => ({
     ...t,
     id: Number(t.id),
@@ -880,11 +934,15 @@ export default function OrdenCompraForm({
             onSerieChange={handleSerieChange}
             empresas={empresas}
             proveedores={proveedores}
+            proveedoresOptions={proveedoresOptions}
             formasPago={formasPago}
             personalOptions={personalOptions}
             monedas={monedas}
+            monedasOptions={monedasOptions}
+            estadosCxP={estadosCxP}
             centrosCosto={centrosCosto}
             unidadesNegocioOptions={unidadesNegocioOptions}
+            bancos={bancosOptions}
             tiposDocumentoOptions={tiposDocumentoOptions}
             seriesDocOptions={seriesDocOptions}
             estadosOrdenOptions={estadosOrdenOptions}
@@ -900,6 +958,8 @@ export default function OrdenCompraForm({
             subtotal={totales.subtotal}
             totalIGV={totales.igv}
             total={totales.total}
+            cuentasCorrientes={cuentasCorrientes}
+            mediosPago={mediosPago}
             monedaOrden={defaultValues?.moneda}
             readOnly={readOnly}
             permisos={permisos}
