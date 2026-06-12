@@ -10,6 +10,7 @@ const PendientesTable = ({
   pendientes,
   loading,
   onRegistrarPago,
+  onEntregarFondos,
   permisos,
   tipo,
 }) => {
@@ -102,6 +103,21 @@ const PendientesTable = ({
   const accionesTemplate = (rowData) => {
     if (!permisos.puedeCrear) return null;
 
+    // Si es una asignación, mostrar botón "Entregar Fondos"
+    if (rowData.esAsignacion === true && rowData.origen === "Asignación a Rendir") {
+      return (
+        <Button
+          label="Entregar Fondos"
+          icon="pi pi-money-bill"
+          className="p-button-sm p-button-info"
+          onClick={() => onEntregarFondos(rowData)}
+          tooltip="Entregar fondos al responsable"
+          tooltipOptions={{ position: "left" }}
+        />
+      );
+    }
+
+    // Para el resto (CxC, CxP, Gastos Directos), mostrar botón normal
     return (
       <Button
         label="Registrar Pago"

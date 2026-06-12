@@ -105,7 +105,7 @@ const PendientesHeader = ({
 
       return (
         <div className="text-center" style={{ padding: "0.25rem 0" }}>
-          <div className="font-bold mb-2" style={{ fontSize: "0.95rem" }}>
+          <div className="font-bold mb-2" style={{ fontSize: "0.85rem" }}>
             {tipo.label}
           </div>
           <div
@@ -119,9 +119,9 @@ const PendientesHeader = ({
                   value={`${item.moneda?.simbolo} ${formatearNumero(item.total)}`}
                   style={{
                     ...style,
-                    fontSize: "0.85rem",
+                    fontSize: "0.75rem",
                     fontWeight: "600",
-                    padding: "0.4rem 0.75rem",
+                    padding: "0.3rem 0.6rem",
                     borderRadius: "6px",
                   }}
                 />
@@ -130,7 +130,7 @@ const PendientesHeader = ({
           </div>
           <div
             className="text-xs mt-2"
-            style={{ color: "#6c757d", fontWeight: "500" }}
+            style={{ color: "#6c757d", fontWeight: "500", fontSize: "0.7rem" }}
           >
             ({totalCobrar + totalPagar} docs)
           </div>
@@ -143,17 +143,32 @@ const PendientesHeader = ({
 
       return (
         <div className="text-center" style={{ padding: "0.25rem 0" }}>
-          <div className="font-bold mb-2" style={{ fontSize: "0.95rem" }}>
+          <div className="font-bold mb-2" style={{ fontSize: "0.85rem" }}>
             {tipo.label}
           </div>
           <div
             style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}
           >
-            {renderMonedaTags(resumen.porCobrar)}
+            {resumen.porCobrar?.map((item, idx) => {
+              const style = getMonedaTagStyle(item.moneda?.codigoSunat);
+              return (
+                <Tag
+                  key={idx}
+                  value={`${item.moneda?.simbolo} ${formatearNumero(item.total)}`}
+                  style={{
+                    ...style,
+                    fontSize: "0.75rem",
+                    fontWeight: "600",
+                    padding: "0.3rem 0.6rem",
+                    borderRadius: "6px",
+                  }}
+                />
+              );
+            })}
           </div>
           <div
             className="text-xs mt-2"
-            style={{ color: "#6c757d", fontWeight: "500" }}
+            style={{ color: "#6c757d", fontWeight: "500", fontSize: "0.7rem" }}
           >
             ({totalDocs} docs)
           </div>
@@ -166,17 +181,32 @@ const PendientesHeader = ({
 
       return (
         <div className="text-center" style={{ padding: "0.25rem 0" }}>
-          <div className="font-bold mb-2" style={{ fontSize: "0.95rem" }}>
+          <div className="font-bold mb-2" style={{ fontSize: "0.85rem" }}>
             {tipo.label}
           </div>
           <div
             style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}
           >
-            {renderMonedaTags(resumen.porPagar)}
+            {resumen.porPagar?.map((item, idx) => {
+              const style = getMonedaTagStyle(item.moneda?.codigoSunat);
+              return (
+                <Tag
+                  key={idx}
+                  value={`${item.moneda?.simbolo} ${formatearNumero(item.total)}`}
+                  style={{
+                    ...style,
+                    fontSize: "0.75rem",
+                    fontWeight: "600",
+                    padding: "0.3rem 0.6rem",
+                    borderRadius: "6px",
+                  }}
+                />
+              );
+            })}
           </div>
           <div
             className="text-xs mt-2"
-            style={{ color: "#6c757d", fontWeight: "500" }}
+            style={{ color: "#6c757d", fontWeight: "500", fontSize: "0.7rem" }}
           >
             ({totalDocs} docs)
           </div>
@@ -229,7 +259,7 @@ const PendientesHeader = ({
 
       return (
         <div className="text-center" style={{ padding: "0.25rem 0" }}>
-          <div className="font-bold mb-2" style={{ fontSize: "0.95rem" }}>
+          <div className="font-bold mb-2" style={{ fontSize: "0.85rem" }}>
             {venc.label}
           </div>
           <div
@@ -243,9 +273,9 @@ const PendientesHeader = ({
                   value={`${item.moneda?.simbolo} ${formatearNumero(item.total)}`}
                   style={{
                     ...style,
-                    fontSize: "0.85rem",
+                    fontSize: "0.75rem",
                     fontWeight: "600",
-                    padding: "0.4rem 0.75rem",
+                    padding: "0.3rem 0.6rem",
                     borderRadius: "6px",
                   }}
                 />
@@ -254,7 +284,7 @@ const PendientesHeader = ({
           </div>
           <div
             className="text-xs mt-2"
-            style={{ color: "#6c757d", fontWeight: "500" }}
+            style={{ color: "#6c757d", fontWeight: "500", fontSize: "0.7rem" }}
           >
             ({totalCobrar + totalPagar} docs)
           </div>
@@ -300,7 +330,7 @@ const PendientesHeader = ({
 
       return (
         <div className="text-center" style={{ padding: "0.25rem 0" }}>
-          <div className="font-bold mb-2" style={{ fontSize: "0.95rem" }}>
+          <div className="font-bold mb-2" style={{ fontSize: "0.85rem" }}>
             {venc.label}
           </div>
           <div
@@ -314,9 +344,9 @@ const PendientesHeader = ({
                   value={`${item.moneda?.simbolo} ${formatearNumero(item.total)}`}
                   style={{
                     ...style,
-                    fontSize: "0.85rem",
+                    fontSize: "0.75rem",
                     fontWeight: "600",
-                    padding: "0.4rem 0.75rem",
+                    padding: "0.3rem 0.6rem",
                     borderRadius: "6px",
                   }}
                 />
@@ -325,7 +355,7 @@ const PendientesHeader = ({
           </div>
           <div
             className="text-xs mt-2"
-            style={{ color: "#6c757d", fontWeight: "500" }}
+            style={{ color: "#6c757d", fontWeight: "500", fontSize: "0.7rem" }}
           >
             ({totalCobrar + totalPagar} docs)
           </div>
@@ -335,18 +365,81 @@ const PendientesHeader = ({
       // Estos no tienen datos específicos en el resumen actual
       return (
         <div className="text-center" style={{ padding: "0.25rem 0" }}>
-          <div className="font-bold" style={{ fontSize: "0.95rem" }}>
+          <div className="font-bold" style={{ fontSize: "0.85rem" }}>
             {venc.label}
           </div>
           <div
             className="text-xs mt-2"
-            style={{ color: "#6c757d", fontStyle: "italic" }}
+            style={{ color: "#6c757d", fontStyle: "italic", fontSize: "0.7rem" }}
           >
             (Filtrar para ver)
           </div>
         </div>
       );
     }
+  };
+
+  // 🆕 Función para obtener el label con datos del resumen para ENTREGAS
+  const getEntregasLabel = (tipo) => {
+    if (!resumen || loading) {
+      return (
+        <div className="text-center">
+          <div className="font-bold text-xs">{tipo.label}</div>
+        </div>
+      );
+    }
+
+    const datos =
+      tipo.value === "ASIGNACIONES"
+        ? resumen.asignaciones
+        : resumen.gastosDirectos;
+
+    if (!datos || datos.length === 0) {
+      return (
+        <div className="text-center" style={{ padding: "0.15rem 0" }}>
+          <div className="font-bold mb-1" style={{ fontSize: "0.75rem" }}>
+            {tipo.label}
+          </div>
+          <div className="text-xs" style={{ color: "#6c757d", fontSize: "0.65rem" }}>
+            (0 docs)
+          </div>
+        </div>
+      );
+    }
+
+    const totalDocs = datos.reduce((sum, item) => sum + item.cantidad, 0);
+
+    return (
+      <div className="text-center" style={{ padding: "0.15rem 0" }}>
+        <div className="font-bold mb-1" style={{ fontSize: "0.75rem" }}>
+          {tipo.label}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+          {datos.map((item, idx) => {
+            const style = getMonedaTagStyle(item.moneda?.codigoSunat);
+            return (
+              <Tag
+                key={idx}
+                value={`${item.moneda?.simbolo} ${formatearNumero(item.total)}`}
+                style={{
+                  ...style,
+                  fontSize: "0.7rem",
+                  fontWeight: "600",
+                  padding: "0.25rem 0.5rem",
+                  borderRadius: "4px",
+                }}
+              />
+            );
+          })}
+        </div>
+        <div
+          className="text-xs mt-1"
+          style={{ color: "#6c757d", fontWeight: "500", fontSize: "0.65rem" }}
+        >
+          ({totalDocs} {tipo.value === "ASIGNACIONES" ? "asig" : "gastos"})
+        </div>
+      </div>
+    );
   };
 
   // Opciones de tipo con configuración de color
@@ -363,6 +456,22 @@ const PendientesHeader = ({
       value: "PAGAR",
       severity: "danger",
       icon: "pi pi-arrow-up",
+    },
+  ];
+
+  // 🆕 Opciones de Entregas a Rendir (Asignaciones y Gastos Directos)
+  const entregasOptions = [
+    {
+      label: "Asignaciones",
+      value: "ASIGNACIONES",
+      severity: "info",
+      icon: "pi pi-money-bill",
+    },
+    {
+      label: "Gastos Directos",
+      value: "GASTOS_DIRECTOS",
+      severity: "warning",
+      icon: "pi pi-shopping-cart",
     },
   ];
 
@@ -401,15 +510,15 @@ const PendientesHeader = ({
         style={{
           display: "flex",
           alignItems: "end",
-          gap: 10,
+          gap: 6,
           fontSize: getResponsiveFontSize(),
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
         <div style={{ flex: 1 }}>
-          {/* Filtro Tipo - Botones de 3 estados */}
-          <label className="block mb-2 font-bold">Tipo de Documento</label>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {/* Filtro Tipo - Botones de 3 estados + 2 Entregas */}
+          <label className="block mb-2 font-bold text-sm">Tipo de Documento</label>
+          <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
             {tipoOptions.map((option) => (
               <Button
                 key={option.value || "todos"}
@@ -421,17 +530,40 @@ const PendientesHeader = ({
                 disabled={loading}
                 style={{
                   flex: 1,
-                  minWidth: "140px",
-                  minHeight: "110px",
-                  padding: "0.75rem",
+                  minWidth: "90px",
+                  minHeight: "85px",
+                  padding: "0.4rem",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: getResponsiveFontSize()
+                  fontSize: "0.75rem",
                 }}
               >
                 {getTipoLabel(option)}
+              </Button>
+            ))}
+            {/* 🆕 AGREGAR: Asignaciones y Gastos Directos */}
+            {entregasOptions.map((option) => (
+              <Button
+                key={option.value}
+                icon={option.icon}
+                severity={option.severity}
+                outlined
+                disabled={loading}
+                style={{
+                  flex: 1,
+                  minWidth: "90px",
+                  minHeight: "85px",
+                  padding: "0.4rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.75rem",
+                }}
+              >
+                {getEntregasLabel(option)}
               </Button>
             ))}
           </div>
@@ -439,8 +571,8 @@ const PendientesHeader = ({
 
         <div style={{ flex: 1 }}>
           {/* Filtro Vencimiento - Botones de 4 estados */}
-          <label className="block mb-2 font-bold">Estado de Vencimiento</label>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <label className="block mb-2 font-bold text-sm">Estado de Vencimiento</label>
+          <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
             {vencimientoOptions.map((option) => (
               <Button
                 key={option.value || "todos"}
@@ -452,14 +584,14 @@ const PendientesHeader = ({
                 disabled={loading}
                 style={{
                   flex: 1,
-                  minWidth: "110px",
-                  minHeight: "110px",
-                  padding: "0.75rem",
+                  minWidth: "80px",
+                  minHeight: "85px",
+                  padding: "0.4rem",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: getResponsiveFontSize()
+                  fontSize: "0.75rem",
                 }}
               >
                 {getVencimientoLabel(option)}
@@ -467,26 +599,26 @@ const PendientesHeader = ({
             ))}
           </div>
         </div>
-        <div style={{ flex: 0.25 }}>
-          <label className="block mb-2 font-bold">Limpiar Filtros</label>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ flex: 0.2 }}>
+          <label className="block mb-2 font-bold text-sm">Limpiar</label>
+          <div style={{ display: "flex", gap: 6 }}>
             <Button
               severity="secondary"
               icon="pi pi-filter-slash"
-              label="Limpiar Filtros"
+              label="Limpiar"
               outlined
               onClick={onLimpiarFiltros}
               disabled={loading}
               style={{
                 flex: 1,
-                minWidth: "110px",
-                minHeight: "110px",
-                padding: "0.75rem",
+                minWidth: "75px",
+                minHeight: "85px",
+                padding: "0.4rem",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: getResponsiveFontSize()
+                fontSize: "0.75rem",
               }}
             ></Button>
           </div>

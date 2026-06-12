@@ -10,7 +10,7 @@
  * 4. Usuario cierra y genera kardex con flujo profesional existente
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
@@ -19,8 +19,10 @@ import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Message } from "primereact/message";
 import { Divider } from "primereact/divider";
+import { Toast } from "primereact/toast";
 import { getKardexConfig } from "./kardexConfig";
 import { useKardexConfig } from "./useKardexConfig";
+import ValidadorStockMultiProducto from "../ValidadorStockMultiProducto";
 
 export default function GenerarKardexDialog({
   visible,
@@ -28,13 +30,14 @@ export default function GenerarKardexDialog({
   tipoDocumento,
   documentoId,
   numeroDocumento,
-  serieDocumento, // ⭐ NUEVO: Serie del documento origen
+  serieDocumento,
   entidadComercial,
-  entidadComercialId, // ⭐ NUEVO: ID de proveedor/cliente
+  entidadComercialId,
   totalItems,
   empresaId,
-  empresaEntidadComercialId, // ⭐ NUEVO: ID de entidad comercial de la empresa
-  fechaDocumento, // ⭐ NUEVO: Fecha del documento origen
+  empresaEntidadComercialId,
+  fechaDocumento,
+  detallesDocumento = [], // ⭐ NUEVO: Array de detalles del documento
   onGenerar,
   loading: externalLoading = false,
 }) {
@@ -78,6 +81,11 @@ export default function GenerarKardexDialog({
     observaciones: `${config.tipoMovimiento === "INGRESO" ? "Ingreso" : "Salida"} por ${numeroDocumento || "documento"}`,
   });
 
+  // Estados para validador de stock
+  const toast = useRef(null);
+  const [mostrarValidador, setMostrarValidador] = useState(false);
+  const [asignacionesLotes, setAsignacionesLotes] = useState(null);
+
   // Sincronizar almacén seleccionado con formData
   useEffect(() => {
     setAlmacenSeleccionado(formData.almacenId);
@@ -120,7 +128,7 @@ export default function GenerarKardexDialog({
   };
 
   const handleGenerar = () => {
-    // Validaciones
+    // Validaciones comunes
     if (!formData.almacenId) {
       return;
     }
@@ -137,32 +145,36 @@ export default function GenerarKardexDialog({
       return;
     }
 
-    if (!formData.fechaIngreso) {
-      return;
-    }
+    // Validaciones solo para INGRESO
+    if (config.tipoMovimiento === "INGRESO") {
+      if (!formData.fechaIngreso) {
+        return;
+      }
 
-    if (!formData.estadoId) {
-      return;
-    }
+      if (!formData.estadoId) {
+        return;
+      }
 
-    if (!formData.estadoCalidadId) {
-      return;
+      if (!formData.estadoCalidadId) {
+        return;
+      }
     }
 
     // Llamar callback con datos completos
     onGenerar({
       almacenId: formData.almacenId,
       conceptoMovAlmacenId: formData.conceptoMovAlmacenId,
-      tipoDocumentoAlmacen: config.tipoDocumentoAlmacen, // ⭐ AGREGAR: ID 14 (Nota de Salida)
+      tipoDocumentoAlmacen: config.tipoDocumentoAlmacen,
       fechaDocumento: formData.fechaDocumento,
       dirOrigenId: formData.dirOrigenId,
-      dirDestinoId: formData.dirDestinoId || null, // ⭐ Permitir null para exportaciones
+      dirDestinoId: formData.dirDestinoId || null,
       fechaIngreso: formData.fechaIngreso,
       fechaVencimiento: formData.fechaVencimiento,
       lote: formData.lote || null,
       estadoId: formData.estadoId,
       estadoCalidadId: formData.estadoCalidadId,
       observaciones: formData.observaciones,
+      asignacionesLotes: asignacionesLotes, // ⭐ NUEVO: Incluir asignaciones de lotes
     });
   };
 
@@ -225,9 +237,9 @@ export default function GenerarKardexDialog({
           !formData.conceptoMovAlmacenId ||
           !formData.fechaDocumento ||
           !formData.dirOrigenId ||
-          !formData.fechaIngreso ||
-          !formData.estadoId ||
-          !formData.estadoCalidadId ||
+          (config.tipoMovimiento === "INGRESO" && !formData.fechaIngreso) ||
+          (config.tipoMovimiento === "INGRESO" && !formData.estadoId) ||
+          (config.tipoMovimiento === "INGRESO" && !formData.estadoCalidadId) ||
           externalLoading ||
           loadingData
         }
@@ -455,150 +467,230 @@ export default function GenerarKardexDialog({
           </small>
         </div>
 
+        {/* Botón para validar stock (solo para SALIDAS) */}
+        {config.tipoMovimiento === "SALIDA" && detallesDocumento.length > 0 && (
+          <>
+            <Divider align="left">
+              <span style={{ fontWeight: "bold" }}>
+                3. Validación de Stock y Asignación de Lotes
+              </span>
+            </Divider>
+
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: asignacionesLotes ? "#d4edda" : "#fff3cd",
+                borderRadius: "8px",
+                border: `1px solid ${asignacionesLotes ? "#28a745" : "#ffc107"}`,
+              }}
+            >
+              <div style={{ marginBottom: "1rem" }}>
+                <strong>
+                  {asignacionesLotes
+                    ? "✅ Stock validado y lotes asignados"
+                    : "⚠️ Validación de stock pendiente"}
+                </strong>
+              </div>
+
+              {asignacionesLotes && (
+                <div style={{ fontSize: "0.9rem", marginBottom: "1rem" }}>
+                  <div>
+                    <strong>Productos procesados:</strong>{" "}
+                    {asignacionesLotes.length}
+                  </div>
+                  <div>
+                    <strong>Completos:</strong>{" "}
+                    {
+                      asignacionesLotes.filter((a) => a.esValido).length
+                    }{" "}
+                    | <strong>Incompletos:</strong>{" "}
+                    {
+                      asignacionesLotes.filter((a) => !a.esValido).length
+                    }
+                  </div>
+                </div>
+              )}
+
+              <Button
+                label={
+                  asignacionesLotes
+                    ? "Modificar Asignaciones"
+                    : "Validar Stock y Asignar Lotes"
+                }
+                icon={asignacionesLotes ? "pi pi-pencil" : "pi pi-check-square"}
+                onClick={() => setMostrarValidador(true)}
+                className={
+                  asignacionesLotes ? "p-button-success" : "p-button-warning"
+                }
+                disabled={loadingData || externalLoading}
+                style={{ width: "100%" }}
+              />
+
+              <small
+                style={{
+                  display: "block",
+                  marginTop: "0.5rem",
+                  color: "#6c757d",
+                  fontSize: "0.85em",
+                }}
+              >
+                Valide el stock disponible y asigne cantidades por lote usando FIFO
+              </small>
+            </div>
+          </>
+        )}
+
+        {/* Sección de Datos de Detalles - SOLO para INGRESOS */}
+        {config.tipoMovimiento === "INGRESO" && (
+          <>
+            <Divider align="left">
+              <span style={{ fontWeight: "bold" }}>
+                3. Datos de Detalles (se copian a TODOS los ítems)
+              </span>
+            </Divider>
+
+            {/* Fecha de Ingreso */}
+            <div>
+              <label
+                htmlFor="fechaIngreso"
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Fecha de Ingreso <span style={{ color: "red" }}>*</span>
+              </label>
+              <Calendar
+                id="fechaIngreso"
+                value={formData.fechaIngreso}
+                onChange={(e) => handleChange("fechaIngreso", e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                style={{ width: "100%" }}
+                disabled={externalLoading}
+              />
+              <small style={{ color: "#6c757d", fontSize: "0.85em" }}>
+                Se aplicará a todos los productos
+              </small>
+            </div>
+
+            {/* Fecha de Vencimiento */}
+            <div>
+              <label
+                htmlFor="fechaVencimiento"
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Fecha de Vencimiento (Opcional)
+              </label>
+              <Calendar
+                id="fechaVencimiento"
+                value={formData.fechaVencimiento}
+                onChange={(e) => handleChange("fechaVencimiento", e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                showButtonBar
+                style={{ width: "100%" }}
+                disabled={externalLoading}
+              />
+              <small style={{ color: "#6c757d", fontSize: "0.85em" }}>
+                Se aplicará a todos los productos (puede dejarse vacío)
+              </small>
+            </div>
+
+            {/* Lote */}
+            <div>
+              <label
+                htmlFor="lote"
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Lote (Opcional)
+              </label>
+              <InputText
+                id="lote"
+                value={formData.lote}
+                onChange={(e) => handleChange("lote", e.target.value.toUpperCase())}
+                style={{ width: "100%", textTransform: "uppercase" }}
+                placeholder="Ej: LOTE-2026-001"
+                disabled={externalLoading}
+              />
+              <small style={{ color: "#6c757d", fontSize: "0.85em" }}>
+                Se aplicará a todos los productos (puede dejarse vacío)
+              </small>
+            </div>
+
+            {/* Estado Mercadería */}
+            <div>
+              <label
+                htmlFor="estadoId"
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Estado Mercadería <span style={{ color: "red" }}>*</span>
+              </label>
+              <Dropdown
+                id="estadoId"
+                value={formData.estadoId}
+                options={estadosMercaderia}
+                onChange={(e) => handleChange("estadoId", e.value)}
+                optionLabel="descripcion"
+                optionValue="id"
+                placeholder="Seleccione estado"
+                style={{ width: "100%" }}
+                disabled={loadingData || externalLoading}
+                emptyMessage="No hay estados disponibles"
+              />
+              <small style={{ color: "#6c757d", fontSize: "0.85em" }}>
+                Se aplicará a todos los productos (default: LIBERADO)
+              </small>
+            </div>
+
+            {/* Estado Calidad */}
+            <div>
+              <label
+                htmlFor="estadoCalidadId"
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Estado Calidad <span style={{ color: "red" }}>*</span>
+              </label>
+              <Dropdown
+                id="estadoCalidadId"
+                value={formData.estadoCalidadId}
+                options={estadosCalidad}
+                onChange={(e) => handleChange("estadoCalidadId", e.value)}
+                optionLabel="descripcion"
+                optionValue="id"
+                placeholder="Seleccione calidad"
+                style={{ width: "100%" }}
+                disabled={loadingData || externalLoading}
+                emptyMessage="No hay estados de calidad disponibles"
+              />
+              <small style={{ color: "#6c757d", fontSize: "0.85em" }}>
+                Se aplicará a todos los productos (default: CALIDAD A)
+              </small>
+            </div>
+          </>
+        )}
+
         <Divider align="left">
           <span style={{ fontWeight: "bold" }}>
-            3. Datos de Detalles (se copian a TODOS los ítems)
+            {config.tipoMovimiento === "INGRESO" ? "4" : "3"}. Observaciones
           </span>
-        </Divider>
-
-        {/* Fecha de Ingreso */}
-        <div>
-          <label
-            htmlFor="fechaIngreso"
-            style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              fontWeight: "bold",
-            }}
-          >
-            Fecha de Ingreso <span style={{ color: "red" }}>*</span>
-          </label>
-          <Calendar
-            id="fechaIngreso"
-            value={formData.fechaIngreso}
-            onChange={(e) => handleChange("fechaIngreso", e.value)}
-            dateFormat="dd/mm/yy"
-            showIcon
-            style={{ width: "100%" }}
-            disabled={externalLoading}
-          />
-          <small style={{ color: "#6c757d", fontSize: "0.85em" }}>
-            Se aplicará a todos los productos
-          </small>
-        </div>
-
-        {/* Fecha de Vencimiento */}
-        <div>
-          <label
-            htmlFor="fechaVencimiento"
-            style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              fontWeight: "bold",
-            }}
-          >
-            Fecha de Vencimiento (Opcional)
-          </label>
-          <Calendar
-            id="fechaVencimiento"
-            value={formData.fechaVencimiento}
-            onChange={(e) => handleChange("fechaVencimiento", e.value)}
-            dateFormat="dd/mm/yy"
-            showIcon
-            showButtonBar
-            style={{ width: "100%" }}
-            disabled={externalLoading}
-          />
-          <small style={{ color: "#6c757d", fontSize: "0.85em" }}>
-            Se aplicará a todos los productos (puede dejarse vacío)
-          </small>
-        </div>
-
-        {/* Lote */}
-        <div>
-          <label
-            htmlFor="lote"
-            style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              fontWeight: "bold",
-            }}
-          >
-            Lote (Opcional)
-          </label>
-          <InputText
-            id="lote"
-            value={formData.lote}
-            onChange={(e) => handleChange("lote", e.target.value.toUpperCase())}
-            style={{ width: "100%", textTransform: "uppercase" }}
-            placeholder="Ej: LOTE-2026-001"
-            disabled={externalLoading}
-          />
-          <small style={{ color: "#6c757d", fontSize: "0.85em" }}>
-            Se aplicará a todos los productos (puede dejarse vacío)
-          </small>
-        </div>
-
-        {/* Estado Mercadería */}
-        <div>
-          <label
-            htmlFor="estadoId"
-            style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              fontWeight: "bold",
-            }}
-          >
-            Estado Mercadería <span style={{ color: "red" }}>*</span>
-          </label>
-          <Dropdown
-            id="estadoId"
-            value={formData.estadoId}
-            options={estadosMercaderia}
-            onChange={(e) => handleChange("estadoId", e.value)}
-            optionLabel="descripcion"
-            optionValue="id"
-            placeholder="Seleccione estado"
-            style={{ width: "100%" }}
-            disabled={loadingData || externalLoading}
-            emptyMessage="No hay estados disponibles"
-          />
-          <small style={{ color: "#6c757d", fontSize: "0.85em" }}>
-            Se aplicará a todos los productos (default: LIBERADO)
-          </small>
-        </div>
-
-        {/* Estado Calidad */}
-        <div>
-          <label
-            htmlFor="estadoCalidadId"
-            style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              fontWeight: "bold",
-            }}
-          >
-            Estado Calidad <span style={{ color: "red" }}>*</span>
-          </label>
-          <Dropdown
-            id="estadoCalidadId"
-            value={formData.estadoCalidadId}
-            options={estadosCalidad}
-            onChange={(e) => handleChange("estadoCalidadId", e.value)}
-            optionLabel="descripcion"
-            optionValue="id"
-            placeholder="Seleccione calidad"
-            style={{ width: "100%" }}
-            disabled={loadingData || externalLoading}
-            emptyMessage="No hay estados de calidad disponibles"
-          />
-          <small style={{ color: "#6c757d", fontSize: "0.85em" }}>
-            Se aplicará a todos los productos (default: CALIDAD A)
-          </small>
-        </div>
-
-        <Divider align="left">
-          <span style={{ fontWeight: "bold" }}>4. Observaciones</span>
         </Divider>
 
         {/* Observaciones */}
@@ -651,6 +743,32 @@ export default function GenerarKardexDialog({
           </ul>
         </div>
       </div>
+
+      {/* Toast para notificaciones */}
+      <Toast ref={toast} />
+
+      {/* Componente de validación de stock */}
+      {config.tipoMovimiento === "SALIDA" && (
+        <ValidadorStockMultiProducto
+          visible={mostrarValidador}
+          onHide={() => setMostrarValidador(false)}
+          empresaId={empresaId}
+          detalles={detallesDocumento.map((d) => ({
+            productoId: d.productoId,
+            cantidad: d.cantidad || d.cantidadSolicitada || 0,
+          }))}
+          onConfirmar={(asignaciones) => {
+            setAsignacionesLotes(asignaciones);
+            setMostrarValidador(false);
+            toast.current?.show({
+              severity: "success",
+              summary: "Asignaciones Confirmadas",
+              detail: `Se asignaron lotes para ${asignaciones.length} productos`,
+              life: 3000,
+            });
+          }}
+        />
+      )}
     </Dialog>
   );
 }

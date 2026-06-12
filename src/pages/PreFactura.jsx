@@ -1686,6 +1686,7 @@ const PreFactura = ({ ruta }) => {
           empresaId={kardexDocumentoActual?.empresaId}
           empresaEntidadComercialId={kardexDocumentoActual?.empresa?.entidadComercialId}
           fechaDocumento={kardexDocumentoActual?.fechaDocumento}
+          detallesDocumento={kardexDocumentoActual?.detalles || []}
           onGenerar={handleProcesarGeneracionKardex}
           loading={loading}
         />

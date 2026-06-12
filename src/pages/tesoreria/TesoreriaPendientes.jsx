@@ -10,11 +10,13 @@ import PendientesHeader from "./components/PendientesHeader";
 import PendientesTable from "./components/PendientesTable";
 import SaldosCuentasPanel from "./components/SaldosCuentasPanel";
 import PagoCuentaPorCobrarForm from "../../components/pagoCuentaPorCobrar/PagoCuentaPorCobrarForm";
+import EntregarFondosForm from "../../components/entregaFondos/EntregarFondosForm";
 
 // Hooks
 import usePendientesData from "./hooks/usePendientesData";
 import useSaldosCuentas from "./hooks/useSaldosCuentas";
 import useRegistrarPago from "./hooks/useRegistrarPago";
+import useEntregarFondos from "../../components/entregaFondos/useEntregarFondos";
 
 // APIs
 import { getAllMonedas } from "../../api/moneda";
@@ -35,6 +37,8 @@ const TesoreriaPendientes = () => {
   // Estados
   const [showPagoDialog, setShowPagoDialog] = useState(false);
   const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
+  const [showEntregaFondosDialog, setShowEntregaFondosDialog] = useState(false);
+  const [asignacionSeleccionada, setAsignacionSeleccionada] = useState(null);
   const [filtros, setFiltros] = useState({
     empresaId: null,
     tipo: null, // 'COBRAR' | 'PAGAR'
@@ -77,6 +81,18 @@ const TesoreriaPendientes = () => {
       recargarSaldos();
     },
   });
+
+
+  const { entregarFondos, loading: loadingEntrega } = useEntregarFondos({
+    toast,
+    onSuccess: () => {
+      setShowEntregaFondosDialog(false);
+      setAsignacionSeleccionada(null);
+      recargarPendientes();
+      recargarSaldos();
+    },
+  });
+
 
   // Verificar acceso
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
@@ -192,6 +208,21 @@ const TesoreriaPendientes = () => {
     setDocumentoSeleccionado(null);
   };
 
+
+  const handleEntregarFondos = (asignacion) => {
+    setAsignacionSeleccionada(asignacion);
+    setShowEntregaFondosDialog(true);
+  };
+
+  const handleGuardarEntrega = async (formData) => {
+    await entregarFondos(formData);
+  };
+
+  const handleCancelarEntrega = () => {
+    setShowEntregaFondosDialog(false);
+    setAsignacionSeleccionada(null);
+  };
+
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
@@ -218,6 +249,7 @@ const TesoreriaPendientes = () => {
           pendientes={pendientes}
           loading={loadingPendientes}
           onRegistrarPago={handleRegistrarPago}
+          onEntregarFondos={handleEntregarFondos}
           permisos={permisos}
         />
       </Card>
@@ -278,6 +310,27 @@ const TesoreriaPendientes = () => {
             toast={toast}
             empresaIdCuenta={documentoSeleccionado.empresa?.id}
             clienteIdCuenta={documentoSeleccionado.entidadComercial?.id}
+          />
+        </Dialog>
+      )}
+
+      {/* Diálogo para entregar fondos (Asignaciones) */}
+      {asignacionSeleccionada && (
+        <Dialog
+          header={`💵 Entregar Fondos - ${asignacionSeleccionada.entidadComercial?.razonSocial || 'N/A'}`}
+          visible={showEntregaFondosDialog}
+          style={{ width: "90vw", maxWidth: "900px" }}
+          onHide={handleCancelarEntrega}
+          modal
+          maximizable
+        >
+          <EntregarFondosForm
+            asignacion={asignacionSeleccionada}
+            cuentasCorrientes={saldosCuentas}
+            mediosPago={mediosPago}
+            onSubmit={handleGuardarEntrega}
+            onCancel={handleCancelarEntrega}
+            loading={loadingEntrega}
           />
         </Dialog>
       )}

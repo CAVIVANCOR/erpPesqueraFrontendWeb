@@ -27,7 +27,7 @@ import { InputText } from "primereact/inputtext";
 import { classNames } from "primereact/utils";
 import { getAllCuentaCorriente } from "../../api/cuentaCorriente";
 import { getAllEmpresas } from "../../api/empresa";
-import { getResponsiveFontSize } from "../../utils/utils";
+import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 
 /**
  * Paleta de colores infinita para empresas
@@ -346,6 +346,35 @@ const CuentaCorrienteSelector = ({
     );
   };
 
+  /**
+   * Template para el saldo actual con color de fondo según moneda
+   */
+  const saldoTemplate = (rowData) => {
+    const saldo = Number(rowData.saldoActual || 0);
+    const simbolo = rowData.moneda?.simbolo || "";
+    const colorFondo = rowData.moneda?.colorFondo;
+
+    return (
+      <span
+        style={{
+          backgroundColor: colorFondo || "transparent",
+          color: "#000",
+          padding: "6px 12px",
+          borderRadius: "4px",
+          fontSize: "0.875rem",
+          fontWeight: "700",
+          display: "inline-block",
+          whiteSpace: "nowrap",
+          textAlign: "right",
+          minWidth: "100px",
+          border: colorFondo ? `2px solid ${colorFondo}` : "none",
+          boxShadow: colorFondo ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+        }}
+      >
+        {simbolo} {formatearNumero(saldo, 2)}
+      </span>
+    );
+  };
 
   /**
    * Función para determinar la clase CSS de la fila
@@ -623,6 +652,13 @@ const CuentaCorrienteSelector = ({
                 sortable
                 filterField="numeroCuentaCCI"
                 style={{ minWidth: "200px" }}
+              />
+              <Column
+                field="saldoActual"
+                header="Saldo Actual"
+                body={saldoTemplate}
+                sortable
+                style={{ minWidth: "140px", textAlign: "right" }}
               />
             </DataTable>
 

@@ -1,5 +1,5 @@
-import React from "react";
-import { Card } from "primereact/card";
+import React, { useState } from "react";
+import { Panel } from "primereact/panel";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Skeleton } from "primereact/skeleton";
@@ -12,6 +12,9 @@ const SaldosCuentasPanel = ({
   loading,
   empresaId,
 }) => {
+  // Estado para controlar si el panel está colapsado
+  const [collapsed, setCollapsed] = useState(true);
+
   // Filtrar solo cuentas con saldo > 0
   const cuentasConSaldo = React.useMemo(() => {
     if (!saldosCuentas) return [];
@@ -69,32 +72,34 @@ const SaldosCuentasPanel = ({
     );
   };
 
-  // Template: Saldo con colores de fondo
+  // Template: Saldo con fondo de color según moneda
   const saldoTemplate = (rowData) => {
     const saldo = Number(rowData.saldoActual || 0);
-    const codigoMoneda = rowData.moneda?.codigoSunat;
     const simbolo = rowData.moneda?.simbolo || "";
+    const colorFondo = rowData.moneda?.colorFondo;
 
-    // ✅ OPTIMIZADO: Usar colorFondo dinámico desde base de datos
-    const colorFondo = rowData.moneda?.colorFondo || "#e2e3e5";
-    const estilo = {
-      backgroundColor: colorFondo,
-      color: "#000",
-      border: `1px solid ${colorFondo}`,
-    };
+    // 🔍 DEBUG: Ver qué está llegando
+    console.log("🔍 DEBUG MONEDA:", {
+      codigoSunat: rowData.moneda?.codigoSunat,
+      colorFondo: colorFondo,
+      monedaCompleta: rowData.moneda
+    });
 
     return (
       <span
         style={{
-          ...estilo,
-          padding: "4px 8px",
+          backgroundColor: colorFondo || "#FF0000", // ✅ ROJO si no hay color (para debug)
+          color: "#000",
+          padding: "6px 12px",
           borderRadius: "4px",
           fontSize: "0.875rem",
-          fontWeight: "600",
+          fontWeight: "700",
           display: "inline-block",
           whiteSpace: "nowrap",
           textAlign: "right",
-          minWidth: "100px",
+          minWidth: "120px",
+          border: colorFondo ? `2px solid ${colorFondo}` : "2px solid #FF0000",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
         }}
       >
         {simbolo} {formatearNumero(saldo, 2)}
@@ -103,7 +108,13 @@ const SaldosCuentasPanel = ({
   };
 
   return (
-    <Card title="💳 Saldos de Cuentas Corrientes">
+    <Panel
+      header="💳 Saldos de Cuentas Corrientes"
+      toggleable
+      collapsed={collapsed}
+      onToggle={(e) => setCollapsed(e.value)}
+      style={{ marginBottom: "1rem" }}
+    >
       {loading ? (
         <Skeleton height="200px" />
       ) : (
@@ -159,7 +170,7 @@ const SaldosCuentasPanel = ({
           />
         </DataTable>
       )}
-    </Card>
+    </Panel>
   );
 };
 
