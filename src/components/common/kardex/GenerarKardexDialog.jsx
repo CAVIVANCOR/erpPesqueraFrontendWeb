@@ -43,6 +43,7 @@ export default function GenerarKardexDialog({
 }) {
   // Obtener configuración según tipo de documento
   const config = getKardexConfig(tipoDocumento);
+  console.log("config",config)
   // Cargar datos necesarios (almacenes, conceptos, estados, direcciones)
   // Estado local para almacenId seleccionado
   const [almacenSeleccionado, setAlmacenSeleccionado] = useState(null);

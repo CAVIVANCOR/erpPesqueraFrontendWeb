@@ -654,8 +654,8 @@ export default function RequerimientoCompra({ ruta }) {
         size="small"
         showGridlines
         stripedRows
-        rows={5}
-        rowsPerPageOptions={[5, 10, 15, 20]}
+        rows={50}
+        rowsPerPageOptions={[50, 100, 150, 200]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} requerimientos"
         sortField="id"
