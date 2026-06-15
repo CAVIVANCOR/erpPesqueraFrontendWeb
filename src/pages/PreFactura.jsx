@@ -777,11 +777,8 @@ const PreFactura = ({ ruta }) => {
   };
 
   const confirmarEliminacion = (preFactura) => {
-    console.log("🔴 [FRONTEND] confirmarEliminacion - INICIO", { preFactura, permisos });
-
     // Validar permisos de eliminación
     if (!permisos.puedeEliminar) {
-      console.log("🔴 [FRONTEND] SIN PERMISOS para eliminar");
       toast.current.show({
         severity: "warn",
         summary: "Acceso Denegado",
@@ -791,7 +788,6 @@ const PreFactura = ({ ruta }) => {
       return;
     }
 
-    console.log("🔴 [FRONTEND] Mostrando confirmDialog");
     confirmDialog({
       message: `¿Está seguro de eliminar la pre-factura ${preFactura.id}?`,
       header: "Confirmar Eliminación",
@@ -800,19 +796,15 @@ const PreFactura = ({ ruta }) => {
       acceptLabel: "Eliminar",
       rejectLabel: "Cancelar",
       accept: () => {
-        console.log("🔴 [FRONTEND] Usuario confirmó eliminación");
         eliminarPreFactura(preFactura.id);
       },
     });
   };
 
   const eliminarPreFactura = async (id) => {
-    console.log("🔴 [FRONTEND] eliminarPreFactura - INICIO", { id });
 
     try {
-      console.log("🔴 [FRONTEND] Llamando a deletePreFactura API...");
       const resultado = await deletePreFactura(id);
-      console.log("🔴 [FRONTEND] Respuesta de API:", resultado);
 
       // Construir mensaje detallado con DATOS REALES del backend
       const { resultados } = resultado;
@@ -899,7 +891,6 @@ const PreFactura = ({ ruta }) => {
         mensajeCompleto += saldosRegenerados.join('\n');
       }
 
-      console.log("🔴 [FRONTEND] Mostrando toast de éxito con datos reales");
       toast.current?.show({
         severity: "success",
         summary: "✅ Eliminación Completa Exitosa",
@@ -907,12 +898,8 @@ const PreFactura = ({ ruta }) => {
         life: 12000, // 12 segundos para leer toda la información
       });
 
-      console.log("🔴 [FRONTEND] Recargando datos...");
       cargarDatos();
     } catch (error) {
-      console.error("🔴 [FRONTEND] ERROR en eliminarPreFactura:", error);
-      console.error("🔴 [FRONTEND] error.response:", error.response);
-      console.error("🔴 [FRONTEND] error.response?.data:", error.response?.data);
 
       const mensajeError = error.response?.data?.error || error.message || "Error desconocido";
 

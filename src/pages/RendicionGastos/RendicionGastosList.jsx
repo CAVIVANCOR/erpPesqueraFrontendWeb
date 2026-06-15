@@ -30,6 +30,7 @@ import { getTiposDocumento } from "../../api/tipoDocumento";
 import { getProductos } from "../../api/producto";
 import { getAllCategoriaTipoMovEntregaRendir } from "../../api/categoriaTipoMovEntregaRendir";
 import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
+import { ProgressBar } from "primereact/progressbar";
 
 export default function RendicionGastosList({ ruta }) {
   const toast = useRef(null);
@@ -71,6 +72,10 @@ export default function RendicionGastosList({ ruta }) {
   const [saldosARendir, setSaldosARendir] = useState({});
   const [calculandoSaldos, setCalculandoSaldos] = useState(false);
   const [recalculandoSaldos, setRecalculandoSaldos] = useState(false);
+  const [progresoRecalculo, setProgresoRecalculo] = useState(0);
+  const [totalRecalculo, setTotalRecalculo] = useState(0);
+  const [mostrarDialogoResultados, setMostrarDialogoResultados] = useState(false);
+  const [resultadosRecalculo, setResultadosRecalculo] = useState(null);
   // Cargar datos iniciales
   useEffect(() => {
     cargarDatos();
@@ -200,7 +205,7 @@ export default function RendicionGastosList({ ruta }) {
     }
   }, [movimientos]);
 
-  // 💰 CALCULAR SALDOS INICIAL Y FINAL POR RESPONSABLE (CRONOLÓGICO)
+  // 💰 CALCULAR SALDOS INICIAL Y FINAL POR RESPONSABLE (JERARQUÍA ASIGNACIÓN → GASTOS/DEVOLUCIONES)
   const calcularSaldosDetallados = useMemo(() => {
     const saldosDetallados = {};
 
@@ -226,8 +231,16 @@ export default function RendicionGastosList({ ruta }) {
     Object.keys(movimientosPorResponsable).forEach((responsableId) => {
       const movimientosResponsable = movimientosPorResponsable[responsableId];
 
-      // Ordenar cronológicamente (fecha + ID)
-      movimientosResponsable.sort((a, b) => {
+      // Separar asignaciones y gastos/devoluciones
+      const asignaciones = movimientosResponsable.filter(
+        (mov) =>
+          mov.asignacionOrigenId === null ||
+          mov.asignacionOrigenId === undefined ||
+          Number(mov.asignacionOrigenId) === 0
+      );
+
+      // Ordenar asignaciones por fecha
+      asignaciones.sort((a, b) => {
         const fechaA = new Date(a.fechaMovimiento);
         const fechaB = new Date(b.fechaMovimiento);
         if (fechaA.getTime() !== fechaB.getTime()) {
@@ -236,35 +249,67 @@ export default function RendicionGastosList({ ruta }) {
         return Number(a.id) - Number(b.id);
       });
 
-      // Calcular saldos secuencialmente
-      let saldoAcumulado = 0;
+      // Variables de control de saldo
+      let SaldoInicial = 0;
+      let SaldoFinal = 0;
 
-      movimientosResponsable.forEach((movimiento) => {
-        const movimientoId = Number(movimiento.id);
-        const esAsignacion =
-          movimiento.asignacionOrigenId === null ||
-          movimiento.asignacionOrigenId === undefined ||
-          Number(movimiento.asignacionOrigenId) === 0;
+      // Procesar cada asignación con sus gastos/devoluciones
+      asignaciones.forEach((asignacion) => {
+        const asignacionId = Number(asignacion.id);
 
-        const saldoInicial = saldoAcumulado;
-        let saldoFinal;
+        // Calcular saldos de la asignación
+        SaldoFinal = SaldoInicial + Number(asignacion.monto || 0);
 
-        if (esAsignacion) {
-          // ASIGNACIÓN: suma al saldo
-          saldoFinal = saldoAcumulado + Number(movimiento.monto || 0);
-        } else {
-          // GASTO: resta del saldo
-          saldoFinal = saldoAcumulado - Number(movimiento.monto || 0);
-        }
-
-        saldosDetallados[movimientoId] = {
-          saldoInicial: saldoInicial,
-          saldoFinal: saldoFinal,
+        saldosDetallados[asignacionId] = {
+          saldoInicial: SaldoInicial,
+          saldoFinal: SaldoFinal,
           responsableId: Number(responsableId),
-          esAsignacion: esAsignacion,
+          esAsignacion: true,
         };
 
-        saldoAcumulado = saldoFinal;
+        // Actualizar SaldoInicial para los gastos/devoluciones
+        SaldoInicial = SaldoFinal;
+
+        // Obtener gastos y devoluciones de esta asignación
+        const movimientosAsignacion = movimientosResponsable.filter(
+          (mov) => Number(mov.asignacionOrigenId) === asignacionId
+        );
+
+        // Ordenar por fecha
+        movimientosAsignacion.sort((a, b) => {
+          const fechaA = new Date(a.fechaMovimiento);
+          const fechaB = new Date(b.fechaMovimiento);
+          if (fechaA.getTime() !== fechaB.getTime()) {
+            return fechaA - fechaB;
+          }
+          return Number(a.id) - Number(b.id);
+        });
+
+        // Procesar cada gasto o devolución
+        movimientosAsignacion.forEach((movimiento) => {
+          const movimientoId = Number(movimiento.id);
+          const esDevolucion = Number(movimiento.tipoMovimientoId) === 28;
+
+          // Calcular saldos según tipo de movimiento
+          if (esDevolucion) {
+            // DEVOLUCIÓN: SUMA al saldo
+            SaldoFinal = SaldoInicial + Number(movimiento.monto || 0);
+          } else {
+            // GASTO: RESTA del saldo
+            SaldoFinal = SaldoInicial - Number(movimiento.monto || 0);
+          }
+
+          saldosDetallados[movimientoId] = {
+            saldoInicial: SaldoInicial,
+            saldoFinal: SaldoFinal,
+            responsableId: Number(responsableId),
+            esAsignacion: false,
+            esDevolucion: esDevolucion,
+          };
+
+          // Actualizar SaldoInicial para el siguiente
+          SaldoInicial = SaldoFinal;
+        });
       });
     });
 
@@ -274,6 +319,7 @@ export default function RendicionGastosList({ ruta }) {
   // 🔄 RECALCULAR Y GUARDAR SALDOS EN BASE DE DATOS
   const recalcularYGuardarSaldos = async () => {
     setRecalculandoSaldos(true);
+    setProgresoRecalculo(0);
 
     try {
       const saldosCalculados = calcularSaldosDetallados;
@@ -282,54 +328,131 @@ export default function RendicionGastosList({ ruta }) {
       // Preparar actualizaciones
       Object.keys(saldosCalculados).forEach((movimientoId) => {
         const saldos = saldosCalculados[movimientoId];
+        const movimientoOriginal = movimientos.find(m => Number(m.id) === Number(movimientoId));
+
         movimientosActualizar.push({
           id: Number(movimientoId),
           saldoInicialAsignacion: saldos.saldoInicial,
           saldoFinalAsignacion: saldos.saldoFinal,
+          formaParteCalculoEntregaARendir: movimientoOriginal?.formaParteCalculoEntregaARendir,
+          asignacionOrigenId: movimientoOriginal?.asignacionOrigenId,
+          tipoMovimientoId: movimientoOriginal?.tipoMovimientoId,
+          descripcion: movimientoOriginal?.descripcion,
+          monto: movimientoOriginal?.monto,
+          responsable: movimientoOriginal?.responsable?.nombreCompleto,
         });
       });
 
-      // Actualizar en lotes
-      let actualizados = 0;
-      let errores = 0;
+      setTotalRecalculo(movimientosActualizar.length);
 
-      for (const movimiento of movimientosActualizar) {
+      // Actualizar en lotes con progreso
+      let actualizados = 0;
+      const errores = [];
+
+      for (let i = 0; i < movimientosActualizar.length; i++) {
+        const movimiento = movimientosActualizar[i];
+
         try {
           await actualizarDetMovsEntregaRendir(movimiento.id, {
             saldoInicialAsignacion: movimiento.saldoInicialAsignacion,
             saldoFinalAsignacion: movimiento.saldoFinalAsignacion,
+            formaParteCalculoEntregaARendir: movimiento.formaParteCalculoEntregaARendir,
+            asignacionOrigenId: movimiento.asignacionOrigenId,
+            tipoMovimientoId: movimiento.tipoMovimientoId,
           });
           actualizados++;
         } catch (error) {
-          console.error(
-            `Error actualizando movimiento ${movimiento.id}:`,
-            error,
-          );
-          errores++;
+          errores.push({
+            id: movimiento.id,
+            descripcion: movimiento.descripcion,
+            monto: movimiento.monto,
+            responsable: movimiento.responsable,
+            error: error.response?.data?.message || error.message,
+          });
         }
+
+        // Actualizar progreso
+        setProgresoRecalculo(i + 1);
       }
 
       // Recargar datos
       await cargarDatos();
 
-      // Mostrar resultado
-      toast.current?.show({
-        severity: errores > 0 ? "warn" : "success",
-        summary: errores > 0 ? "Recálculo Parcial" : "Recálculo Exitoso",
-        detail: `${actualizados} movimientos actualizados${errores > 0 ? `, ${errores} errores` : ""}`,
-        life: 5000,
-      });
+      // Preparar resultados
+      const resultados = {
+        total: movimientosActualizar.length,
+        actualizados: actualizados,
+        errores: errores,
+        exitoso: errores.length === 0,
+      };
+
+      setResultadosRecalculo(resultados);
+      setMostrarDialogoResultados(true);
+
     } catch (error) {
-      console.error("Error en recálculo de saldos:", error);
+      console.error("❌ Error crítico en recálculo de saldos:", error);
       toast.current?.show({
         severity: "error",
-        summary: "Error",
-        detail: "Error al recalcular saldos",
-        life: 3000,
+        summary: "Error Crítico",
+        detail: "Error al recalcular saldos: " + (error.message || "Error desconocido"),
+        life: 5000,
       });
     } finally {
       setRecalculandoSaldos(false);
+      setProgresoRecalculo(0);
+      setTotalRecalculo(0);
     }
+  };
+
+  // 🔍 DETECTAR ERRORES EN GASTOS DE ENTREGA A RENDIR
+  const detectarErroresGastos = () => {
+    const erroresDetectados = [];
+
+    movimientos.forEach((mov) => {
+      // Solo validar movimientos que forman parte del cálculo
+      if (mov.formaParteCalculoEntregaARendir !== true) return;
+
+      // Verificar si es un gasto (tiene asignacionOrigenId)
+      const esGasto = mov.asignacionOrigenId !== null &&
+        mov.asignacionOrigenId !== undefined &&
+        Number(mov.asignacionOrigenId) !== 0;
+
+      if (esGasto) {
+        const erroresMovimiento = [];
+
+        // Validar asignacionOrigenId
+        if (!mov.asignacionOrigenId) {
+          erroresMovimiento.push("Falta asignación origen");
+        }
+
+        // Validar campos obligatorios
+        if (!mov.responsableId) erroresMovimiento.push("Falta responsable");
+        if (!mov.tipoMovimientoId) erroresMovimiento.push("Falta tipo de movimiento");
+        if (!mov.centroCostoId) erroresMovimiento.push("Falta centro de costo");
+        if (!mov.monto || mov.monto === 0) erroresMovimiento.push("Falta monto");
+        if (!mov.monedaId) erroresMovimiento.push("Falta moneda");
+
+        if (erroresMovimiento.length > 0) {
+          erroresDetectados.push({
+            id: mov.id,
+            descripcion: mov.descripcion,
+            monto: mov.monto,
+            responsable: mov.responsable?.nombreCompleto,
+            errores: erroresMovimiento,
+          });
+        }
+      }
+    });
+
+    // Mostrar resultados
+    setResultadosRecalculo({
+      total: movimientos.filter(m => m.formaParteCalculoEntregaARendir === true).length,
+      actualizados: 0,
+      errores: erroresDetectados,
+      exitoso: erroresDetectados.length === 0,
+      esDeteccion: true,
+    });
+    setMostrarDialogoResultados(true);
   };
 
   // 🔄 RECALCULAR SALDOS SOLO DEL RESPONSABLE AFECTADO (OPTIMIZADO)
@@ -344,10 +467,16 @@ export default function RendicionGastosList({ ruta }) {
       Object.keys(saldosCalculados).forEach((movimientoId) => {
         const saldos = saldosCalculados[movimientoId];
         if (Number(saldos.responsableId) === Number(responsableId)) {
+          const movimientoOriginal = movimientos.find(m => Number(m.id) === Number(movimientoId));
+
           movimientosActualizar.push({
             id: Number(movimientoId),
             saldoInicialAsignacion: saldos.saldoInicial,
             saldoFinalAsignacion: saldos.saldoFinal,
+            // ✅ Enviar información completa para validación correcta
+            formaParteCalculoEntregaARendir: movimientoOriginal?.formaParteCalculoEntregaARendir,
+            asignacionOrigenId: movimientoOriginal?.asignacionOrigenId,
+            tipoMovimientoId: movimientoOriginal?.tipoMovimientoId,
           });
         }
       });
@@ -358,6 +487,9 @@ export default function RendicionGastosList({ ruta }) {
           await actualizarDetMovsEntregaRendir(movimiento.id, {
             saldoInicialAsignacion: movimiento.saldoInicialAsignacion,
             saldoFinalAsignacion: movimiento.saldoFinalAsignacion,
+            formaParteCalculoEntregaARendir: movimiento.formaParteCalculoEntregaARendir,
+            asignacionOrigenId: movimiento.asignacionOrigenId,
+            tipoMovimientoId: movimiento.tipoMovimientoId,
           });
         } catch (error) {
           console.error(
@@ -441,7 +573,7 @@ export default function RendicionGastosList({ ruta }) {
         if (
           mov.asignacionOrigenId &&
           Number(mov.asignacionOrigenId) ===
-            Number(filtroAsignacionSeleccionada)
+          Number(filtroAsignacionSeleccionada)
         ) {
           return true;
         }
@@ -695,7 +827,7 @@ export default function RendicionGastosList({ ruta }) {
     filtroRangoFechas,
   ]);
 
-  // 🔄 OPCIONES DINÁMICAS PARA ASIGNACIONES
+  // 🔄 OPCIONES DINÁMICAS PARA ASIGNACIONES (FILTRADAS Y ORDENADAS)
   const obtenerAsignacionesDisponibles = useMemo(() => {
     const movimientosBase = obtenerMovimientosBase("asignacionSeleccionada");
 
@@ -703,18 +835,46 @@ export default function RendicionGastosList({ ruta }) {
       .filter((mov) => {
         const categoriaId =
           mov.tipoMovimiento?.categoria?.id || mov.tipoMovimiento?.categoriaId;
-        return (
+
+        // Validar que sea una asignación (categoría 17 y sin asignación origen)
+        const esAsignacion =
           categoriaId &&
           Number(categoriaId) === 17 &&
           (mov.asignacionOrigenId === null ||
             mov.asignacionOrigenId === undefined ||
-            Number(mov.asignacionOrigenId) === 0)
-        );
+            Number(mov.asignacionOrigenId) === 0);
+
+        if (!esAsignacion) return false;
+
+        // ✅ FILTRAR POR RESPONSABLE SI ESTÁ SELECCIONADO
+        if (filtroResponsable) {
+          return Number(mov.responsableId) === Number(filtroResponsable);
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        // ✅ ORDENAR POR FECHA DESCENDENTE (MÁS RECIENTES PRIMERO)
+        const fechaA = new Date(a.fechaMovimiento);
+        const fechaB = new Date(b.fechaMovimiento);
+
+        if (fechaB.getTime() !== fechaA.getTime()) {
+          return fechaB - fechaA; // Descendente
+        }
+
+        // Si las fechas son iguales, ordenar por ID descendente
+        return Number(b.id) - Number(a.id);
       })
       .map((asignacion) => {
         const moneda = monedas.find(
           (m) => Number(m.id) === Number(asignacion.monedaId),
         );
+
+        // Obtener nombre del responsable para mostrar en el dropdown
+        const responsable = personal.find(
+          (p) => Number(p.id) === Number(asignacion.responsableId),
+        );
+
         return {
           value: Number(asignacion.id),
           id: asignacion.id,
@@ -722,12 +882,14 @@ export default function RendicionGastosList({ ruta }) {
           monto: asignacion.monto,
           moneda: moneda,
           fechaMovimiento: asignacion.fechaMovimiento,
+          responsable: responsable, // ✅ NUEVO: Para mostrar en el template
         };
       });
   }, [
     movimientos,
     monedas,
     tiposMovimiento,
+    personal,
     filtroTipoMovimiento,
     filtroCentroCosto,
     filtroEntregaARendir,
@@ -739,7 +901,7 @@ export default function RendicionGastosList({ ruta }) {
     filtroRangoFechas,
   ]);
 
-  // 🎨 TEMPLATE PARA ITEMS DEL DROPDOWN DE ASIGNACIONES
+    // 🎨 TEMPLATE PARA ITEMS DEL DROPDOWN DE ASIGNACIONES
   const asignacionItemTemplate = (option) => {
     if (!option) return null;
 
@@ -750,6 +912,12 @@ export default function RendicionGastosList({ ruta }) {
       maximumFractionDigits: 2,
     }).format(option.monto);
 
+    const fechaFormateada = new Date(option.fechaMovimiento).toLocaleDateString("es-PE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
     return (
       <div
         style={{
@@ -759,6 +927,11 @@ export default function RendicionGastosList({ ruta }) {
           padding: "4px 0",
         }}
       >
+        <Badge
+          value={fechaFormateada}
+          severity="secondary"
+          style={{ minWidth: "90px", fontSize: "0.75rem" }}
+        />
         <Badge
           value={`ID: ${option.id}`}
           severity="info"
@@ -774,6 +947,13 @@ export default function RendicionGastosList({ ruta }) {
         >
           {option.descripcion || "Sin descripción"}
         </span>
+        {!filtroResponsable && option.responsable && (
+          <Badge
+            value={option.responsable.nombreCompleto || option.responsable.nombre}
+            severity="warning"
+            style={{ fontSize: "0.75rem" }}
+          />
+        )}
         <Badge
           value={montoFormateado}
           severity="success"
@@ -821,12 +1001,10 @@ export default function RendicionGastosList({ ruta }) {
       </div>
     );
   };
-
   // Función para obtener movimientos filtrados
   const obtenerMovimientosFiltrados = () => {
     return obtenerMovimientosBase(null);
   };
-
   // Funciones para filtros
   const limpiarFiltros = () => {
     setFiltroTipoMovimiento(null);
@@ -971,14 +1149,24 @@ export default function RendicionGastosList({ ruta }) {
       acceptClassName: "p-button-danger",
       accept: async () => {
         try {
+          // Guardar responsableId antes de eliminar
+          const responsableIdAfectado = movimiento.responsableId;
+
+          // Eliminar movimiento
           await eliminarDetMovsEntregaRendir(movimiento.id);
+
+          // Recargar datos para reflejar la eliminación
+          await cargarDatos();
+
+          // Recalcular saldos del responsable afectado
+          await recalcularSaldosAfectados(responsableIdAfectado);
+
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
             detail: "Movimiento eliminado correctamente",
             life: 3000,
           });
-          cargarDatos();
         } catch (error) {
           console.error("Error al eliminar movimiento:", error);
           toast.current?.show({
@@ -1462,7 +1650,7 @@ export default function RendicionGastosList({ ruta }) {
                     tooltipOptions={{ position: "top" }}
                   />
                 </div>
-                <div style={{ flex: 0.35 }}>
+                <div style={{ flex: 0.35, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <Button
                     label="Recalcular Saldos"
                     icon={
@@ -1482,6 +1670,28 @@ export default function RendicionGastosList({ ruta }) {
                         ? "No tiene permisos para recalcular"
                         : "Recalcular y guardar saldos en BD"
                     }
+                    tooltipOptions={{ position: "top" }}
+                  />
+                  {recalculandoSaldos && totalRecalculo > 0 && (
+                    <ProgressBar
+                      value={Math.round((progresoRecalculo / totalRecalculo) * 100)}
+                      style={{ height: '6px' }}
+                      showValue={false}
+                    />
+                  )}
+                </div>
+                <div style={{ flex: 0.25 }}>
+                  <Button
+                    label="Detectar Errores"
+                    icon="pi pi-exclamation-triangle"
+                    className="p-button-help"
+                    severity="help"
+                    onClick={detectarErroresGastos}
+                    disabled={recalculandoSaldos || !permisos?.puedeEditar}
+                    type="button"
+                    raised
+                    style={{ width: "100%" }}
+                    tooltip="Detectar errores en gastos"
                     tooltipOptions={{ position: "top" }}
                   />
                 </div>
@@ -1804,6 +2014,115 @@ export default function RendicionGastosList({ ruta }) {
           permisos={permisos}
         />
       </Dialog>
+
+
+
+
+      {/* Diálogo de Resultados del Recálculo */}
+      <Dialog
+        header={resultadosRecalculo?.esDeteccion ? "🔍 Detección de Errores" : "📊 Resultados del Recálculo"}
+        visible={mostrarDialogoResultados}
+        style={{ width: '50vw' }}
+        onHide={() => setMostrarDialogoResultados(false)}
+        footer={
+          <div>
+            <Button
+              label="Cerrar"
+              icon="pi pi-times"
+              onClick={() => setMostrarDialogoResultados(false)}
+              className="p-button-text"
+            />
+          </div>
+        }
+      >
+        {resultadosRecalculo && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Resumen */}
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'space-around' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3b82f6' }}>
+                  {resultadosRecalculo.total}
+                </div>
+                <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                  Total Movimientos
+                </div>
+              </div>
+              {!resultadosRecalculo.esDeteccion && (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981' }}>
+                    {resultadosRecalculo.actualizados}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                    Actualizados
+                  </div>
+                </div>
+              )}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: resultadosRecalculo.errores.length > 0 ? '#ef4444' : '#10b981' }}>
+                  {resultadosRecalculo.errores.length}
+                </div>
+                <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                  {resultadosRecalculo.esDeteccion ? 'Errores Detectados' : 'Errores'}
+                </div>
+              </div>
+            </div>
+
+            {/* Mensaje de éxito o error */}
+            {resultadosRecalculo.exitoso ? (
+              <div style={{ padding: '1rem', backgroundColor: '#d1fae5', borderRadius: '0.5rem', color: '#065f46' }}>
+                <i className="pi pi-check-circle" style={{ marginRight: '0.5rem' }}></i>
+                {resultadosRecalculo.esDeteccion
+                  ? '¡No se detectaron errores! Todos los gastos tienen la información completa.'
+                  : '¡Recálculo completado exitosamente! Todos los saldos fueron actualizados correctamente.'}
+              </div>
+            ) : (
+              <div style={{ padding: '1rem', backgroundColor: '#fee2e2', borderRadius: '0.5rem', color: '#991b1b' }}>
+                <i className="pi pi-exclamation-triangle" style={{ marginRight: '0.5rem' }}></i>
+                {resultadosRecalculo.esDeteccion
+                  ? `Se detectaron ${resultadosRecalculo.errores.length} movimientos con errores que deben corregirse.`
+                  : `Se encontraron ${resultadosRecalculo.errores.length} errores durante el recálculo.`}
+              </div>
+            )}
+
+            {/* Lista de errores */}
+            {resultadosRecalculo.errores.length > 0 && (
+              <div>
+                <h4 style={{ marginBottom: '0.5rem' }}>Detalle de Errores:</h4>
+                <DataTable
+                  value={resultadosRecalculo.errores}
+                  scrollable
+                  scrollHeight="300px"
+                  size="small"
+                  stripedRows
+                >
+                  <Column field="id" header="ID" style={{ width: '80px' }} />
+                  <Column field="descripcion" header="Descripción" />
+                  <Column
+                    field="monto"
+                    header="Monto"
+                    body={(rowData) => `S/ ${Number(rowData.monto || 0).toFixed(2)}`}
+                    style={{ width: '120px' }}
+                  />
+                  <Column field="responsable" header="Responsable" style={{ width: '200px' }} />
+                  <Column
+                    field={resultadosRecalculo.esDeteccion ? "errores" : "error"}
+                    header="Error"
+                    body={(rowData) => (
+                      <div style={{ color: '#dc2626', fontSize: '0.875rem' }}>
+                        {resultadosRecalculo.esDeteccion
+                          ? rowData.errores.join(', ')
+                          : rowData.error}
+                      </div>
+                    )}
+                  />
+                </DataTable>
+              </div>
+            )}
+          </div>
+        )}
+      </Dialog>
+
+
     </div>
   );
 }

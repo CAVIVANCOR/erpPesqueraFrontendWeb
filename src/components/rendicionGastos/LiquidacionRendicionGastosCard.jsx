@@ -36,12 +36,12 @@ const LiquidacionRendicionGastosCard = ({
   const urlLiquidacion = getValues("urlLiquidacionEntregaARendir");
   const rendicionGastosId = movimientoData?.documentoOrigenId;
 
-   // Usar valores locales si existen, sino usar movimientoData, sino formulario
+  // Usar valores locales si existen, sino usar movimientoData, sino formulario
   const saldoInicial = saldoInicialLocal || Number(movimientoData?.saldoInicialAsignacion || 0) || Number(getValues("saldoInicialAsignacion") || 0);
   const saldoFinal = saldoFinalLocal || Number(movimientoData?.saldoFinalAsignacion || 0) || Number(getValues("saldoFinalAsignacion") || 0);
   const fechaLiquidacion = fechaLiquidacionLocal || movimientoData?.fechaLiquidacionEntregaARendir || getValues("fechaLiquidacionEntregaARendir");
 
-    useEffect(() => {
+  useEffect(() => {
     if (urlLiquidacion) {
       setPdfUrl(urlLiquidacion);
     }
@@ -70,6 +70,75 @@ const LiquidacionRendicionGastosCard = ({
       setEstaLiquidadaLocal(true);
     }
   }, [estaLiquidada]);
+
+  // 🔄 ESTADO PARA SALDO FINAL REAL (después de todos los gastos)
+  const [saldoFinalReal, setSaldoFinalReal] = useState(null);
+
+  // 🔄 CARGAR SALDO FINAL REAL cuando está liquidada
+  useEffect(() => {
+    const cargarSaldoFinalReal = async () => {
+      // Solo cargar si está liquidada y tenemos detMovId
+      if (!(estaLiquidada || estaLiquidadaLocal) || !detMovId) {
+        setSaldoFinalReal(null);
+        return;
+      }
+
+      try {
+        // Obtener movimiento completo con gastos asociados
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir/${detMovId}/con-gastos`,
+          {
+            headers: {
+              Authorization: `Bearer ${useAuthStore.getState().token}`,
+            },
+          },
+        );
+
+        if (!response.ok) {
+          console.error("Error al obtener gastos asociados");
+          setSaldoFinalReal(saldoFinal);
+          return;
+        }
+
+        const movimientoCompleto = await response.json();
+        const gastosAsociados = movimientoCompleto.gastosAsociados || [];
+
+        // Si no hay gastos, el saldo final real es el de la asignación
+        if (gastosAsociados.length === 0) {
+          setSaldoFinalReal(saldoFinal);
+          return;
+        }
+
+        // Ordenar gastos por fecha e ID (ascendente)
+        const gastosOrdenados = [...gastosAsociados].sort((a, b) => {
+          const fechaA = new Date(a.fechaMovimiento);
+          const fechaB = new Date(b.fechaMovimiento);
+
+          if (fechaA.getTime() !== fechaB.getTime()) {
+            return fechaA - fechaB; // Ascendente
+          }
+
+          return Number(a.id) - Number(b.id); // Ascendente
+        });
+
+        // Obtener el último gasto
+        const ultimoGasto = gastosOrdenados[gastosOrdenados.length - 1];
+
+        // Establecer el saldo final del último gasto
+        setSaldoFinalReal(Number(ultimoGasto.saldoFinalAsignacion || 0));
+      } catch (error) {
+        console.error("Error al cargar saldo final real:", error);
+        setSaldoFinalReal(saldoFinal);
+      }
+    };
+
+    cargarSaldoFinalReal();
+  }, [estaLiquidada, estaLiquidadaLocal, detMovId, saldoFinal]);
+
+  // Valor a mostrar: saldoFinalReal si está cargado, sino saldoFinal
+  const valorSaldoFinalMostrar = saldoFinalReal !== null ? saldoFinalReal : saldoFinal;
+
+
   const generarPdfWrapper = async () => {
     if (!detMovId) {
       throw new Error(
@@ -354,7 +423,7 @@ const LiquidacionRendicionGastosCard = ({
                   💵 Saldo Final
                 </label>
                 <InputNumber
-                  value={saldoFinal}
+                  value={valorSaldoFinalMostrar}
                   mode="decimal"
                   minFractionDigits={2}
                   maxFractionDigits={2}
@@ -363,8 +432,8 @@ const LiquidacionRendicionGastosCard = ({
                   inputStyle={{
                     fontWeight: "bold",
                     fontSize: "1.1rem",
-                    backgroundColor: saldoFinal >= 0 ? "#e8f5e9" : "#ffebee",
-                    color: saldoFinal >= 0 ? "#2e7d32" : "#c62828",
+                    backgroundColor: valorSaldoFinalMostrar >= 0 ? "#e8f5e9" : "#ffebee",
+                    color: valorSaldoFinalMostrar >= 0 ? "#2e7d32" : "#c62828",
                     textAlign: "right",
                   }}
                   style={{ width: "100%" }}
@@ -387,12 +456,12 @@ const LiquidacionRendicionGastosCard = ({
                   value={
                     fechaLiquidacion
                       ? new Date(fechaLiquidacion).toLocaleString("es-PE", {
-                          year: "numeric",
-                          month: "2-digit",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
                       : "N/A"
                   }
                   disabled
