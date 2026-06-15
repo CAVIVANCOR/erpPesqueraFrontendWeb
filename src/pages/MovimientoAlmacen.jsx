@@ -45,7 +45,8 @@ import { usePermissions } from "../hooks/usePermissions";
 import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
 import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 import { Navigate } from "react-router-dom";
-import { getUbicacionesFisicas } from "../api/ubicacionFisica"; // ← AGREGAR AQUÍ
+import { getUbicacionesFisicas } from "../api/ubicacionFisica";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 
 /**
  * Pantalla profesional para gestión de Movimientos de Almacén.
@@ -92,6 +93,7 @@ export default function MovimientoAlmacen({ ruta }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [entidadComercialSeleccionada, setEntidadComercialSeleccionada] =
     useState(null);
   const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] =
@@ -127,7 +129,7 @@ export default function MovimientoAlmacen({ ruta }) {
 
   // Filtrar items cuando cambien los filtros
   useEffect(() => {
-    let filtrados = items;
+    let filtrados = movimientosFiltrados;
 
     // Filtro por empresa
     if (empresaSeleccionada) {
@@ -215,7 +217,7 @@ export default function MovimientoAlmacen({ ruta }) {
     conceptoMovAlmacenSeleccionado,
     almacenOrigenSeleccionado,
     almacenDestinoSeleccionado,
-    items,
+    movimientosFiltrados,
   ]);
 
   // Extraer entidades comerciales únicas de los movimientos
@@ -737,7 +739,7 @@ export default function MovimientoAlmacen({ ruta }) {
         reject={() => setShowConfirm(false)}
       />
       <DataTable
-        value={movimientosFiltrados}
+        value={itemsFiltrados}
         loading={loading}
         dataKey="id"
         paginator
@@ -775,22 +777,15 @@ export default function MovimientoAlmacen({ ruta }) {
                 <h2>Movimientos de Almacén</h2>
               </div>
               <div style={{ flex: 1.5 }}>
-                <label htmlFor="empresaFiltro" style={{ fontWeight: "bold" }}>
+                <label style={{ fontWeight: "bold" }}>
                   Empresa
                 </label>
-                <Dropdown
-                  id="empresaFiltro"
-                  value={empresaSeleccionada}
-                  options={empresas.map((e) => ({
-                    label: e.razonSocial,
-                    value: Number(e.id),
-                  }))}
-                  onChange={(e) => setEmpresaSeleccionada(e.value)}
-                  placeholder="Todas"
-                  optionLabel="label"
-                  optionValue="value"
-                  showClear
-                  disabled={loading}
+                <EmpresaSelector
+                  empresaId={usuario?.empresaId}
+                  onEmpresaChange={(id) => {
+                    setEmpresaIdSelector(id);
+                    setEmpresaSeleccionada(id);
+                  }}
                 />
               </div>
               <div style={{ flex: 0.5 }}>
@@ -802,12 +797,14 @@ export default function MovimientoAlmacen({ ruta }) {
                   raised
                   onClick={handleAdd}
                   disabled={
-                    loading || !empresaSeleccionada || !permisos.puedeCrear
+                    loading || !empresaIdSelector || !permisos.puedeCrear
                   }
                   tooltip={
-                    !permisos.puedeCrear
-                      ? "No tiene permisos para crear"
-                      : "Nuevo Movimiento"
+                    !empresaIdSelector
+                      ? "Seleccione una empresa primero"
+                      : !permisos.puedeCrear
+                        ? "No tiene permisos para crear"
+                        : "Nuevo Movimiento"
                   }
                 />
               </div>
@@ -819,7 +816,7 @@ export default function MovimientoAlmacen({ ruta }) {
                   severity="warning"
                   raised
                   onClick={() => setShowConsultaStock(true)}
-                  disabled={loading || !empresaSeleccionada}
+                  disabled={loading || !empresaIdSelector}
                 />
               </div>
 
@@ -1538,11 +1535,11 @@ export default function MovimientoAlmacen({ ruta }) {
           monedas={monedas}
           requerimientos={requerimientos}
           seriesDoc={seriesDoc}
-          onSubmit={() => {}}
+          onSubmit={() => { }}
           onCancel={() => setShowOrdenCompraDialog(false)}
-          onAprobar={() => {}}
-          onAnular={() => {}}
-          onGenerarKardex={() => {}}
+          onAprobar={() => { }}
+          onAnular={() => { }}
+          onGenerarKardex={() => { }}
           loading={false}
           toast={toast}
           permisos={{ puedeVer: true, puedeEditar: false }}
@@ -1573,11 +1570,11 @@ export default function MovimientoAlmacen({ ruta }) {
           tiposMovimiento={tiposMovimiento}
           monedas={monedas}
           seriesDoc={seriesDoc}
-          onSubmit={() => {}}
+          onSubmit={() => { }}
           onCancel={() => setShowPreFacturaDialog(false)}
-          onAprobar={() => {}}
-          onAnular={() => {}}
-          onGenerarKardex={() => {}}
+          onAprobar={() => { }}
+          onAnular={() => { }}
+          onGenerarKardex={() => { }}
           loading={false}
           toast={toast}
           permisos={{ puedeVer: true, puedeEditar: false }}

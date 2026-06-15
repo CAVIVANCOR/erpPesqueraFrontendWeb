@@ -374,10 +374,40 @@ export default function Dashboard() {
           key: "presupuesto-anual",
           icon: "pi-calendar",
         },
-        {
+               {
           label: "Ejecución Presupuestal",
           key: "ejecucion-presupuestal",
           icon: "pi-chart-bar",
+        },
+        {
+          label: "Deudas con el Personal",
+          key: "deudaConPersonal",
+          icon: "pi-money-bill",
+        },
+        {
+          label: "Deudas Tributarias",
+          key: "deudaTributaria",
+          icon: "pi-money-bill",
+        },
+        {
+          label: "Tipos Deuda de Personal",
+          key: "tipoDeudaPersonal",
+          icon: "pi-list",
+        },
+        {
+          label: "Pagos Deuda al Personal",
+          key: "pagoDeudaPersonal",
+          icon: "pi-money-bill",
+        },
+        {
+          label: "Tipos de Deuda Tributaria",
+          key: "tipoDeudaTributaria",
+          icon: "pi-money-bill",
+        },
+        {
+          label: "Pagos Deuda Tributaria",
+          key: "pagoDeudaTributaria",
+          icon: "pi-money-bill",
         },
       ],
     },

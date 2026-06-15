@@ -24,9 +24,12 @@ import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFunc
 import InversionFinancieraForm from "../../components/tesoreria/InversionFinancieraForm";
 import { usePermissions } from "../../hooks/usePermissions";
 import { getResponsiveFontSize } from "../../utils/utils";
+import EmpresaSelector from "../../components/common/EmpresaSelector";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 export default function InversionFinanciera({ ruta }) {
   const permisos = usePermissions(ruta);
+  const usuario = useAuthStore((state) => state.usuario);
 
   // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
@@ -49,6 +52,7 @@ export default function InversionFinanciera({ ruta }) {
   const [bancos, setBancos] = useState([]);
   const [estados, setEstados] = useState([]);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [bancoSeleccionado, setBancoSeleccionado] = useState(null);
   const [tipoInversionSeleccionado, setTipoInversionSeleccionado] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
@@ -179,7 +183,7 @@ export default function InversionFinanciera({ ruta }) {
           life: 3000,
         });
       }
-      
+
       await cargarDatos();
       hideDialog();
     } catch (error) {
@@ -254,23 +258,15 @@ export default function InversionFinanciera({ ruta }) {
           </small>
         </div>
         <div style={{ flex: 2 }}>
-          <label htmlFor="empresaFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+          <label style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
             Empresa *
           </label>
-          <Dropdown
-            id="empresaFiltro"
-            value={empresaSeleccionada}
-            options={empresas.map((e) => ({
-              label: e.razonSocial,
-              value: Number(e.id),
-            }))}
-            onChange={(e) => setEmpresaSeleccionada(e.value)}
-            placeholder="Seleccionar empresa para filtrar"
-            optionLabel="label"
-            optionValue="value"
-            showClear
-            disabled={loading}
-            style={{ width: "100%" }}
+          <EmpresaSelector
+            empresaId={usuario?.empresaId}
+            onEmpresaChange={(id) => {
+              setEmpresaIdSelector(id);
+              setEmpresaSeleccionada(id);
+            }}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -281,13 +277,13 @@ export default function InversionFinanciera({ ruta }) {
             severity="success"
             raised
             onClick={openNew}
-            disabled={!permisos.puedeCrear || loading || !empresaSeleccionada}
+            disabled={!permisos.puedeCrear || loading || !empresaIdSelector}
             tooltip={
               !permisos.puedeCrear
                 ? "No tiene permisos para crear"
-                : !empresaSeleccionada
-                ? "Seleccione una empresa primero"
-                : "Nueva Inversión Financiera"
+                : !empresaIdSelector
+                  ? "Seleccione una empresa primero"
+                  : "Nueva Inversión Financiera"
             }
             style={{ width: "100%" }}
           />

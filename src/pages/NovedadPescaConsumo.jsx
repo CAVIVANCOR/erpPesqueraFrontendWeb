@@ -35,6 +35,7 @@ import NovedadPescaConsumoForm from "../components/novedadPescaConsumo/NovedadPe
 import { getResponsiveFontSize } from "../utils/utils";
 import { getUnidadesNegocio } from "../api/unidadNegocio";
 import { abrirPdfEnNuevaPestana } from "../utils/pdfUtils";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 
 /**
  * Componente principal para gestión de Novedades de Pesca para Consumo
@@ -69,6 +70,7 @@ const NovedadPescaConsumo = ({ ruta }) => {
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [filtroEmpresa, setFiltroEmpresa] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState(null);
   const [fechaDesde, setFechaDesde] = useState(null);
   const [fechaHasta, setFechaHasta] = useState(null);
@@ -291,10 +293,10 @@ const NovedadPescaConsumo = ({ ruta }) => {
   /**
    * Actualizar datos del item en edición
    */
-     const actualizarEditingItem = async (novedadActualizada) => {
+  const actualizarEditingItem = async (novedadActualizada) => {
     if (novedadActualizada && editingItem?.id === novedadActualizada.id) {
       setEditingItem(novedadActualizada);
-    } 
+    }
   };
 
   /**
@@ -729,18 +731,12 @@ const NovedadPescaConsumo = ({ ruta }) => {
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <Dropdown
-                    value={filtroEmpresa}
-                    options={empresas}
-                    onChange={(e) => {
-                      setFiltroEmpresa(e.value);
+                  <EmpresaSelector
+                    empresaId={usuario?.empresaId}
+                    onEmpresaChange={(id) => {
+                      setEmpresaIdSelector(id);
+                      setFiltroEmpresa(id);
                     }}
-                    optionLabel="razonSocial"
-                    optionValue="id"
-                    placeholder="Filtrar por empresa"
-                    className="w-12rem"
-                    showClear
-                    filter
                   />
                 </div>
                 <div style={{ flex: 0.5 }}>
@@ -749,12 +745,12 @@ const NovedadPescaConsumo = ({ ruta }) => {
                     icon="pi pi-plus"
                     className="p-button-success"
                     onClick={openNew}
-                    disabled={!permisos.puedeCrear || !filtroEmpresa}
+                    disabled={!permisos.puedeCrear || !empresaIdSelector}
                     tooltip={
-                      !permisos.puedeCrear
-                        ? "No tiene permisos para crear novedades"
-                        : !filtroEmpresa
-                          ? "Seleccione una empresa para crear una nueva novedad"
+                      !empresaIdSelector
+                        ? "Seleccione una empresa para crear una nueva novedad"
+                        : !permisos.puedeCrear
+                          ? "No tiene permisos para crear novedades"
                           : "Crear nueva novedad"
                     }
                     tooltipOptions={{ position: "bottom" }}

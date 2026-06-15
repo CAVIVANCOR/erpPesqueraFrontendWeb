@@ -48,6 +48,7 @@ import { getPeriodosContables } from "../api/contabilidad/periodoContable";
 import { usePermissions } from "../hooks/usePermissions";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 import { InputText } from "primereact/inputtext";
 import ColorTag from "../components/shared/ColorTag";
 import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
@@ -60,7 +61,7 @@ import { generarMovimientoAlmacenPreFactura, regenerarKardexPreFactura } from ".
  */
 const PreFactura = ({ ruta }) => {
   const navigate = useNavigate();
-  const { usuario } = useAuthStore();
+  const usuario = useAuthStore((state) => state.usuario);
   const permisos = usePermissions(ruta);
   // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
@@ -87,6 +88,7 @@ const PreFactura = ({ ruta }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [rangoFechas, setRangoFechas] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
@@ -775,8 +777,11 @@ const PreFactura = ({ ruta }) => {
   };
 
   const confirmarEliminacion = (preFactura) => {
+    console.log("🔴 [FRONTEND] confirmarEliminacion - INICIO", { preFactura, permisos });
+
     // Validar permisos de eliminación
     if (!permisos.puedeEliminar) {
+      console.log("🔴 [FRONTEND] SIN PERMISOS para eliminar");
       toast.current.show({
         severity: "warn",
         summary: "Acceso Denegado",
@@ -785,6 +790,8 @@ const PreFactura = ({ ruta }) => {
       });
       return;
     }
+
+    console.log("🔴 [FRONTEND] Mostrando confirmDialog");
     confirmDialog({
       message: `¿Está seguro de eliminar la pre-factura ${preFactura.id}?`,
       header: "Confirmar Eliminación",
@@ -792,24 +799,128 @@ const PreFactura = ({ ruta }) => {
       acceptClassName: "p-button-danger",
       acceptLabel: "Eliminar",
       rejectLabel: "Cancelar",
-      accept: () => eliminarPreFactura(preFactura.id),
+      accept: () => {
+        console.log("🔴 [FRONTEND] Usuario confirmó eliminación");
+        eliminarPreFactura(preFactura.id);
+      },
     });
   };
 
   const eliminarPreFactura = async (id) => {
+    console.log("🔴 [FRONTEND] eliminarPreFactura - INICIO", { id });
+
     try {
-      await deletePreFactura(id);
+      console.log("🔴 [FRONTEND] Llamando a deletePreFactura API...");
+      const resultado = await deletePreFactura(id);
+      console.log("🔴 [FRONTEND] Respuesta de API:", resultado);
+
+      // Construir mensaje detallado con DATOS REALES del backend
+      const { resultados } = resultado;
+
+      // Calcular total de registros ELIMINADOS (no regenerados)
+      const totalEliminados =
+        resultados.preFacturas +
+        resultados.detallesPreFactura +
+        resultados.cuentasPorCobrar +
+        resultados.pagos +
+        resultados.movimientosAlmacen +
+        resultados.detallesMovAlmacen +
+        resultados.kardexEliminados +
+        resultados.comprobantesElectronicos +
+        resultados.preFacturasHijas;
+
+      // Construir mensaje con información REAL de la base de datos
+      const registrosEliminados = [];
+      const saldosRegenerados = [];
+      const otrosRegistros = [];
+
+      // REGISTROS PRINCIPALES ELIMINADOS
+      if (resultados.preFacturas > 0) {
+        registrosEliminados.push(`✅ Pre-Factura: ${resultados.preFacturas} eliminada`);
+      }
+      if (resultados.detallesPreFactura > 0) {
+        registrosEliminados.push(`📋 Detalles Pre-Factura: ${resultados.detallesPreFactura} eliminados`);
+      }
+
+      // REGISTROS FINANCIEROS
+      if (resultados.cuentasPorCobrar > 0) {
+        registrosEliminados.push(`🏦 Cuenta por Cobrar: ${resultados.cuentasPorCobrar} eliminada`);
+      }
+      if (resultados.pagos > 0) {
+        registrosEliminados.push(`💰 Pagos: ${resultados.pagos} eliminados`);
+      }
+
+      // COMPROBANTES ELECTRÓNICOS (SUNAT)
+      if (resultados.comprobantesElectronicos > 0) {
+        registrosEliminados.push(`📄 Comprobantes Electrónicos: ${resultados.comprobantesElectronicos} eliminados`);
+      }
+
+      // REGISTROS DE INVENTARIO
+      if (resultados.movimientosAlmacen > 0) {
+        registrosEliminados.push(`📦 Movimiento Almacén: ${resultados.movimientosAlmacen} eliminado`);
+      }
+      if (resultados.detallesMovAlmacen > 0) {
+        registrosEliminados.push(`📝 Detalles Mov. Almacén: ${resultados.detallesMovAlmacen} eliminados`);
+      }
+      if (resultados.kardexEliminados > 0) {
+        registrosEliminados.push(`📊 Kardex: ${resultados.kardexEliminados} eliminados`);
+      }
+
+      // PREFACTURAS HIJAS (PARTICIONADAS)
+      if (resultados.preFacturasHijas > 0) {
+        registrosEliminados.push(`🔗 Pre-Facturas Hijas: ${resultados.preFacturasHijas} eliminadas`);
+      }
+
+      // OTROS REGISTROS DESVINCULADOS (NO ELIMINADOS)
+      if (resultados.contratistasOT > 0) {
+        otrosRegistros.push(`🔧 Contratistas OT: ${resultados.contratistasOT} desvinculados`);
+      }
+
+      // SALDOS REGENERADOS (información crítica de inventario)
+      if (resultados.saldosDetRegenerados > 0) {
+        saldosRegenerados.push(`🔄 Saldos detallados: ${resultados.saldosDetRegenerados} recalculados`);
+      }
+      if (resultados.saldosGenRegenerados > 0) {
+        saldosRegenerados.push(`🔄 Saldos generales: ${resultados.saldosGenRegenerados} recalculados`);
+      }
+
+      // Construir mensaje final
+      let mensajeCompleto = `${resultado.mensaje}\n\n`;
+      mensajeCompleto += `📊 REGISTROS ELIMINADOS (${totalEliminados} total):\n`;
+      mensajeCompleto += registrosEliminados.join('\n');
+
+      if (otrosRegistros.length > 0) {
+        mensajeCompleto += `\n\n🔗 REGISTROS DESVINCULADOS:\n`;
+        mensajeCompleto += otrosRegistros.join('\n');
+      }
+
+      if (saldosRegenerados.length > 0) {
+        mensajeCompleto += `\n\n🔄 INVENTARIO ACTUALIZADO:\n`;
+        mensajeCompleto += saldosRegenerados.join('\n');
+      }
+
+      console.log("🔴 [FRONTEND] Mostrando toast de éxito con datos reales");
       toast.current?.show({
         severity: "success",
-        summary: "Éxito",
-        detail: "Pre-factura eliminada correctamente",
+        summary: "✅ Eliminación Completa Exitosa",
+        detail: mensajeCompleto,
+        life: 12000, // 12 segundos para leer toda la información
       });
+
+      console.log("🔴 [FRONTEND] Recargando datos...");
       cargarDatos();
     } catch (error) {
+      console.error("🔴 [FRONTEND] ERROR en eliminarPreFactura:", error);
+      console.error("🔴 [FRONTEND] error.response:", error.response);
+      console.error("🔴 [FRONTEND] error.response?.data:", error.response?.data);
+
+      const mensajeError = error.response?.data?.error || error.message || "Error desconocido";
+
       toast.current?.show({
         severity: "error",
-        summary: "Error",
-        detail: "Error al eliminar la pre-factura",
+        summary: "Error al Eliminar",
+        detail: `No se pudo eliminar la Pre-Factura.\n\n${mensajeError}\n\nTodos los cambios fueron revertidos (transacción atómica).`,
+        life: 6000,
       });
     }
   };
@@ -1133,6 +1244,7 @@ const PreFactura = ({ ruta }) => {
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
+      <ConfirmDialog />
       <div className="card">
         <DataTable
           value={itemsFiltrados}
@@ -1171,23 +1283,15 @@ const PreFactura = ({ ruta }) => {
                   <h2>Pre-Facturas</h2>
                 </div>
                 <div style={{ flex: 2 }}>
-                  <label htmlFor="empresaFiltro" style={{ fontWeight: "bold" }}>
+                  <label style={{ fontWeight: "bold" }}>
                     Empresa*
                   </label>
-                  <Dropdown
-                    id="empresaFiltro"
-                    value={empresaSeleccionada}
-                    options={empresas.map((e) => ({
-                      label: e.razonSocial,
-                      value: Number(e.id),
-                    }))}
-                    onChange={(e) => setEmpresaSeleccionada(e.value)}
-                    placeholder="Seleccionar empresa para filtrar"
-                    optionLabel="label"
-                    optionValue="value"
-                    showClear
-                    filter
-                    disabled={loading}
+                  <EmpresaSelector
+                    empresaId={usuario?.empresaId}
+                    onEmpresaChange={(id) => {
+                      setEmpresaIdSelector(id);
+                      setEmpresaSeleccionada(id);
+                    }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -1197,12 +1301,12 @@ const PreFactura = ({ ruta }) => {
                     onClick={abrirDialogoNuevo}
                     className="p-button-primary"
                     disabled={
-                      !permisos.puedeCrear || loading || !empresaSeleccionada
+                      !permisos.puedeCrear || loading || !empresaIdSelector
                     }
                     tooltip={
                       !permisos.puedeCrear
                         ? "No tiene permisos para crear"
-                        : !empresaSeleccionada
+                        : !empresaIdSelector
                           ? "Seleccione una empresa primero"
                           : "Nueva Pre-Factura"
                     }

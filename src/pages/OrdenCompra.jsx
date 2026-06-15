@@ -50,10 +50,11 @@ import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
 import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 import GenerarKardexDialog from "../components/common/kardex/GenerarKardexDialog";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
-  const { usuario } = useAuthStore();
+  const usuario = useAuthStore((state) => state.usuario);
   const permisos = usePermissions(ruta);
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
@@ -95,6 +96,7 @@ export default function OrdenCompra({ ruta }) {
   const [movimientoAlmacenOrigen, setMovimientoAlmacenOrigen] = useState(null);
   const [toDelete, setToDelete] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
   const [fechaInicio, setFechaInicio] = useState(null);
   const [fechaFin, setFechaFin] = useState(null);
@@ -867,22 +869,15 @@ export default function OrdenCompra({ ruta }) {
                 <h2>Órdenes de Compra</h2>
               </div>
               <div style={{ flex: 2 }}>
-                <label htmlFor="empresaFiltro" style={{ fontWeight: "bold" }}>
+                <label style={{ fontWeight: "bold" }}>
                   Empresa*
                 </label>
-                <Dropdown
-                  id="empresaFiltro"
-                  value={empresaSeleccionada}
-                  options={empresas.map((e) => ({
-                    label: e.razonSocial,
-                    value: Number(e.id),
-                  }))}
-                  onChange={(e) => setEmpresaSeleccionada(e.value)}
-                  placeholder="Seleccionar empresa para filtrar"
-                  optionLabel="label"
-                  optionValue="value"
-                  showClear
-                  disabled={loading}
+                <EmpresaSelector
+                  empresaId={usuario?.empresaId}
+                  onEmpresaChange={(id) => {
+                    setEmpresaIdSelector(id);
+                    setEmpresaSeleccionada(id);
+                  }}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -893,9 +888,9 @@ export default function OrdenCompra({ ruta }) {
                     setEditing(null);
                     setShowDialog(true);
                   }}
-                  disabled={!permisos.puedeCrear || !empresaSeleccionada}
+                  disabled={!permisos.puedeCrear || !empresaIdSelector}
                   tooltip={
-                    !empresaSeleccionada
+                    !empresaIdSelector
                       ? "Seleccione una empresa primero"
                       : !permisos.puedeCrear
                         ? "No tiene permisos para crear"

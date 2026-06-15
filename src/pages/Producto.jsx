@@ -52,6 +52,7 @@ import { getTiposAlmacenamiento } from "../api/tipoAlmacenamiento";
 import { getPaises } from "../api/pais";
 import { getMarcas } from "../api/marca";
 import { getEspecies } from "../api/especie";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 
 const Producto = ({ ruta }) => {
   const toast = useRef(null);
@@ -97,6 +98,7 @@ const Producto = ({ ruta }) => {
 
   // Estados para los selectores de filtro
   const [selectedEmpresa, setSelectedEmpresa] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [selectedFamilia, setSelectedFamilia] = useState(null);
   const [selectedSubfamilia, setSelectedSubfamilia] = useState(null);
@@ -731,16 +733,14 @@ const Producto = ({ ruta }) => {
           }}
         >
           <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
-            <Dropdown
-              value={selectedEmpresa}
-              options={empresas}
-              optionLabel="razonSocial"
-              placeholder="Empresa"
-              showClear
-              onChange={onEmpresaFilterChange}
-              className="w-15rem"
-              filter
-              style={{ fontWeight: "bold" }}
+            <EmpresaSelector
+              empresaId={usuario?.empresaId}
+              onEmpresaChange={(id) => {
+                setEmpresaIdSelector(id);
+                const empresaObj = empresas.find(e => Number(e.id) === Number(id));
+                setSelectedEmpresa(empresaObj || null);
+                setSelectedCliente(null);
+              }}
             />
           </div>
           <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>

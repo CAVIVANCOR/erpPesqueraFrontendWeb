@@ -29,6 +29,7 @@ import { Avatar } from "primereact/avatar";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 
 /**
  * Página de gestión de personal.
@@ -56,6 +57,7 @@ export default function PersonalPage({ ruta }) {
   const [toast, setToast] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const [empresaFilter, setEmpresaFilter] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [cargoFilter, setCargoFilter] = useState(null);
   const [filtroTipoPesca, setFiltroTipoPesca] = useState("todos");
   const [filtroEstado, setFiltroEstado] = useState("activos");
@@ -681,36 +683,36 @@ export default function PersonalPage({ ruta }) {
   // Incluye todos los campos nuevos para que el formulario los reciba correctamente
   const selectedPersonal = selected
     ? {
-        ...selected,
-        fechaNacimiento: selected.fechaNacimiento
-          ? new Date(selected.fechaNacimiento)
-          : null,
-        fechaIngreso: selected.fechaIngreso
-          ? new Date(selected.fechaIngreso)
-          : null,
-        telefono: selected.telefono || "",
-        correo: selected.correo || "",
-        urlFotoPersona: selected.urlFotoPersona || "",
-        tipoContratoId: selected.tipoContratoId
-          ? String(selected.tipoContratoId)
-          : "",
-        cargoId: selected.cargoId ? String(selected.cargoId) : "",
-        areaFisicaId: selected.areaFisicaId
-          ? String(selected.areaFisicaId)
-          : "",
-        sedeEmpresaId: selected.sedeEmpresaId
-          ? String(selected.sedeEmpresaId)
-          : "",
-        sexo: typeof selected.sexo === "boolean" ? selected.sexo : false,
-        paraTemporadaPesca:
-          typeof selected.paraTemporadaPesca === "boolean"
-            ? selected.paraTemporadaPesca
-            : false,
-        paraPescaConsumo:
-          typeof selected.paraPescaConsumo === "boolean"
-            ? selected.paraPescaConsumo
-            : false,
-      }
+      ...selected,
+      fechaNacimiento: selected.fechaNacimiento
+        ? new Date(selected.fechaNacimiento)
+        : null,
+      fechaIngreso: selected.fechaIngreso
+        ? new Date(selected.fechaIngreso)
+        : null,
+      telefono: selected.telefono || "",
+      correo: selected.correo || "",
+      urlFotoPersona: selected.urlFotoPersona || "",
+      tipoContratoId: selected.tipoContratoId
+        ? String(selected.tipoContratoId)
+        : "",
+      cargoId: selected.cargoId ? String(selected.cargoId) : "",
+      areaFisicaId: selected.areaFisicaId
+        ? String(selected.areaFisicaId)
+        : "",
+      sedeEmpresaId: selected.sedeEmpresaId
+        ? String(selected.sedeEmpresaId)
+        : "",
+      sexo: typeof selected.sexo === "boolean" ? selected.sexo : false,
+      paraTemporadaPesca:
+        typeof selected.paraTemporadaPesca === "boolean"
+          ? selected.paraTemporadaPesca
+          : false,
+      paraPescaConsumo:
+        typeof selected.paraPescaConsumo === "boolean"
+          ? selected.paraPescaConsumo
+          : false,
+    }
     : { cesado: false, paraTemporadaPesca: false, paraPescaConsumo: false };
 
   return (
@@ -788,17 +790,13 @@ export default function PersonalPage({ ruta }) {
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="razonSocial">Filtrar por Empresa</label>
-              <Dropdown
-                value={empresaFilter}
-                options={empresasLista}
-                optionLabel="razonSocial"
-                optionValue="id"
-                placeholder="Filtrar por empresa"
-                onChange={(e) => setEmpresaFilter(e.value)}
-                showClear
-                style={{ minWidth: "200px" }}
-                filter
+              <label>Filtrar por Empresa</label>
+              <EmpresaSelector
+                empresaId={usuario?.empresaId}
+                onEmpresaChange={(id) => {
+                  setEmpresaIdSelector(id);
+                  setEmpresaFilter(id);
+                }}
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -917,9 +915,8 @@ export default function PersonalPage({ ruta }) {
             const apellidos = row.apellidos || "";
             const nombreCompleto = `${nombres} ${apellidos}`.trim();
             const urlFoto = row.urlFotoPersona
-              ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${
-                  row.urlFotoPersona
-                }`
+              ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${row.urlFotoPersona
+              }`
               : undefined;
             // Si hay foto, muestra el avatar con imagen; si no, iniciales
             if (urlFoto) {

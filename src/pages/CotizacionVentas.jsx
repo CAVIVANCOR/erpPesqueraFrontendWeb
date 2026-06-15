@@ -55,13 +55,14 @@ import { usePermissions } from "../hooks/usePermissions";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import ColorTag from "../components/shared/ColorTag";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 
 /**
  * Componente CotizacionVentas
  * Gestión CRUD de cotizaciones de ventas con patrón profesional ERP Megui
  */
 const CotizacionVentas = ({ ruta }) => {
-  const { usuario } = useAuthStore();
+  const usuario = useAuthStore((state) => state.usuario);
   const permisos = usePermissions(ruta);
   // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
@@ -98,6 +99,7 @@ const CotizacionVentas = ({ ruta }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [fechaInicio, setFechaInicio] = useState(null);
   const [fechaFin, setFechaFin] = useState(null);
@@ -135,9 +137,8 @@ const CotizacionVentas = ({ ruta }) => {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: `Error al cargar cotizaciones: ${
-          error.response?.data?.message || error.message
-        }`,
+        detail: `Error al cargar cotizaciones: ${error.response?.data?.message || error.message
+          }`,
       });
     } finally {
       setLoading(false);
@@ -145,7 +146,7 @@ const CotizacionVentas = ({ ruta }) => {
   };
 
   // ✅ NUEVO: Función para recargar clientes después de crear uno nuevo
-   const recargarClientes = async () => {
+  const recargarClientes = async () => {
     try {
       const clientesData = await getEntidadesComerciales();
       setClientes(clientesData);
@@ -292,7 +293,7 @@ const CotizacionVentas = ({ ruta }) => {
 
   // Filtrar items cuando cambien los filtros
   useEffect(() => {
-    let filtrados = items;
+    let filtrados = cotizacionesFiltradas;
 
     // Filtro por empresa
     if (empresaSeleccionada) {
@@ -341,7 +342,7 @@ const CotizacionVentas = ({ ruta }) => {
     fechaInicio,
     fechaFin,
     estadoSeleccionado,
-    items,
+    cotizacionesFiltradas,
   ]);
 
   const abrirDialogoNuevo = async () => {
@@ -761,7 +762,7 @@ const CotizacionVentas = ({ ruta }) => {
         </div>
 
         <DataTable
-          value={cotizacionesFiltradas}
+          value={itemsFiltrados}
           loading={loading}
           dataKey="id"
           paginator
@@ -801,22 +802,15 @@ const CotizacionVentas = ({ ruta }) => {
                   <h2>Cotizaciones Venta</h2>
                 </div>
                 <div style={{ flex: 2 }}>
-                  <label htmlFor="empresaFiltro" style={{ fontWeight: "bold" }}>
+                  <label style={{ fontWeight: "bold" }}>
                     Empresa*
                   </label>
-                  <Dropdown
-                    id="empresaFiltro"
-                    value={empresaSeleccionada}
-                    options={empresas.map((e) => ({
-                      label: e.razonSocial,
-                      value: Number(e.id),
-                    }))}
-                    onChange={(e) => setEmpresaSeleccionada(e.value)}
-                    placeholder="Seleccionar empresa para filtrar"
-                    optionLabel="label"
-                    optionValue="value"
-                    showClear
-                    disabled={loading}
+                  <EmpresaSelector
+                    empresaId={usuario?.empresaId}
+                    onEmpresaChange={(id) => {
+                      setEmpresaIdSelector(id);
+                      setEmpresaSeleccionada(id);
+                    }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -826,13 +820,13 @@ const CotizacionVentas = ({ ruta }) => {
                     onClick={abrirDialogoNuevo}
                     className="p-button-primary"
                     disabled={
-                      !permisos.puedeCrear || loading || !empresaSeleccionada
+                      !permisos.puedeCrear || loading || !empresaIdSelector
                     }
                     tooltip={
-                      !permisos.puedeCrear
-                        ? "No tiene permisos para crear"
-                        : !empresaSeleccionada
-                          ? "Seleccione una empresa primero"
+                      !empresaIdSelector
+                        ? "Seleccione una empresa primero"
+                        : !permisos.puedeCrear
+                          ? "No tiene permisos para crear"
                           : "Nueva Cotización"
                     }
                   />

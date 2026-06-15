@@ -78,13 +78,6 @@ const SaldosCuentasPanel = ({
     const simbolo = rowData.moneda?.simbolo || "";
     const colorFondo = rowData.moneda?.colorFondo;
 
-    // 🔍 DEBUG: Ver qué está llegando
-    console.log("🔍 DEBUG MONEDA:", {
-      codigoSunat: rowData.moneda?.codigoSunat,
-      colorFondo: colorFondo,
-      monedaCompleta: rowData.moneda
-    });
-
     return (
       <span
         style={{

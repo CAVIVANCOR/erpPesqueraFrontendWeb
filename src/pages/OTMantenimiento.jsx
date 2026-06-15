@@ -46,6 +46,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import OTMantenimientoForm from "../components/oTMantenimiento/OTMantenimientoForm";
 import { formatearFecha } from "../utils/utils";
 import { getResponsiveFontSize } from "../utils/utils";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 
 /**
  * Componente OTMantenimiento
@@ -71,6 +72,7 @@ const OTMantenimiento = ({ ruta }) => {
 
   // Filtros específicos
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [tipoMantenimientoFiltro, setTipoMantenimientoFiltro] = useState(null);
   const [motivoFiltro, setMotivoFiltro] = useState(null);
   const [estadoFiltro, setEstadoFiltro] = useState(null);
@@ -616,22 +618,15 @@ const OTMantenimiento = ({ ruta }) => {
                   <h2>Órdenes de Trabajo</h2>
                 </div>
                 <div style={{ flex: 2 }}>
-                  <label htmlFor="empresaFiltro" style={{ fontWeight: "bold" }}>
+                  <label style={{ fontWeight: "bold" }}>
                     Empresa*
                   </label>
-                  <Dropdown
-                    id="empresaFiltro"
-                    value={empresaSeleccionada}
-                    options={empresas.map((e) => ({
-                      label: e.razonSocial,
-                      value: Number(e.id),
-                    }))}
-                    onChange={(e) => setEmpresaSeleccionada(e.value)}
-                    placeholder="Seleccionar empresa para filtrar"
-                    optionLabel="label"
-                    optionValue="value"
-                    showClear
-                    disabled={loading}
+                  <EmpresaSelector
+                    empresaId={usuario?.empresaId}
+                    onEmpresaChange={(id) => {
+                      setEmpresaIdSelector(id);
+                      setEmpresaSeleccionada(id);
+                    }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -641,13 +636,13 @@ const OTMantenimiento = ({ ruta }) => {
                     onClick={abrirDialogoNuevo}
                     className="p-button-primary"
                     disabled={
-                      !permisos.puedeCrear || loading || !empresaSeleccionada
+                      !permisos.puedeCrear || loading || !empresaIdSelector
                     }
                     tooltip={
-                      !permisos.puedeCrear
-                        ? "No tiene permisos para crear"
-                        : !empresaSeleccionada
-                          ? "Seleccione una empresa primero"
+                      !empresaIdSelector
+                        ? "Seleccione una empresa primero"
+                        : !permisos.puedeCrear
+                          ? "No tiene permisos para crear"
                           : "Nueva Orden de Trabajo"
                     }
                   />

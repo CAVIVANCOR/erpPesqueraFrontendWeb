@@ -35,6 +35,7 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
 import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 import {
   getTemporadasPesca,
   getTemporadaPescaPorId,
@@ -89,6 +90,7 @@ const TemporadaPesca = ({ ruta }) => {
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [filtroEmpresa, setFiltroEmpresa] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState(null);
   const [fechaDesde, setFechaDesde] = useState(null);
   const [fechaHasta, setFechaHasta] = useState(null);
@@ -857,16 +859,12 @@ const TemporadaPesca = ({ ruta }) => {
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <Dropdown
-                    value={filtroEmpresa}
-                    options={empresas}
-                    onChange={(e) => setFiltroEmpresa(e.value)}
-                    optionLabel="razonSocial"
-                    optionValue="id"
-                    placeholder="Filtrar por empresa"
-                    className="w-12rem"
-                    showClear
-                    filter
+                  <EmpresaSelector
+                    empresaId={usuario?.empresaId}
+                    onEmpresaChange={(id) => {
+                      setEmpresaIdSelector(id);
+                      setFiltroEmpresa(id);
+                    }}
                   />
                 </div>
                 <div style={{ flex: 0.5 }}>
@@ -875,12 +873,12 @@ const TemporadaPesca = ({ ruta }) => {
                     icon="pi pi-plus"
                     className="p-button-success"
                     onClick={openNew}
-                    disabled={!permisos.puedeCrear || !filtroEmpresa}
+                    disabled={!permisos.puedeCrear || !empresaIdSelector}
                     tooltip={
-                      !permisos.puedeCrear
-                        ? "No tiene permisos para crear temporadas"
-                        : !filtroEmpresa
-                          ? "Seleccione una empresa para crear una nueva temporada"
+                      !empresaIdSelector
+                        ? "Seleccione una empresa para crear una nueva temporada"
+                        : !permisos.puedeCrear
+                          ? "No tiene permisos para crear temporadas"
                           : "Crear nueva temporada"
                     }
                     tooltipOptions={{ position: "bottom" }}

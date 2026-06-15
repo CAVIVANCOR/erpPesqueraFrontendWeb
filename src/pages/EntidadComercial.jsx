@@ -36,6 +36,7 @@ import { InputText } from "primereact/inputtext";
 import { usePermissions } from "../hooks/usePermissions";
 import { Navigate } from "react-router-dom";
 import { useNavigateWithReturn } from "../shared/hooks/useNavigateWithReturn";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 
 const EntidadComercial = ({ ruta }) => {
   const permisos = usePermissions(ruta);
@@ -57,6 +58,7 @@ const EntidadComercial = ({ ruta }) => {
   const [tiposEntidad, setTiposEntidad] = useState([]);
   const [formasPago, setFormasPago] = useState([]);
   const [filtroEmpresa, setFiltroEmpresa] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [filtroTipoEntidad, setFiltroTipoEntidad] = useState(null);
   const [filtroFormaPago, setFiltroFormaPago] = useState(null);
   const [filtroAgenteRetencion, setFiltroAgenteRetencion] = useState(null);
@@ -380,17 +382,13 @@ const EntidadComercial = ({ ruta }) => {
           <h2>Entidades Comerciales</h2>
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="filtroEmpresa">Filtro por Empresa</label>
-          <Dropdown
-            value={filtroEmpresa}
-            onChange={(e) => setFiltroEmpresa(e.value)}
-            options={empresasOptions}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Filtrar por Empresa"
-            showClear
-            className="w-full"
-            filter
+          <label>Filtro por Empresa</label>
+          <EmpresaSelector
+            empresaId={usuario?.empresaId}
+            onEmpresaChange={(id) => {
+              setEmpresaIdSelector(id);
+              setFiltroEmpresa(id);
+            }}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -590,7 +588,7 @@ const EntidadComercial = ({ ruta }) => {
         }
         visible={dialogVisible}
         onHide={cerrarDialogo}
-        style={{ width:"1350px" }}
+        style={{ width: "1350px" }}
         modal
       >
         <EntidadComercialForm

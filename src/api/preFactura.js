@@ -99,11 +99,24 @@ export const updatePreFactura = actualizarPreFactura;
  * @returns {Promise<Object>} Confirmación de eliminación
  */
 export async function eliminarPreFactura(id) {
+  console.log("🟡 [API] eliminarPreFactura - INICIO", { id, url: `${API_URL}/${id}` });
+  
   try {
-    const response = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+    const headers = getAuthHeaders();
+    console.log("🟡 [API] Headers:", headers);
+    
+    console.log("🟡 [API] Enviando DELETE request...");
+    const response = await axios.delete(`${API_URL}/${id}`, { headers });
+    
+    console.log("🟡 [API] Response recibida:", response);
+    console.log("🟡 [API] Response.data:", response.data);
+    
     return response.data;
   } catch (error) {
-    console.error("Error al eliminar pre-factura:", error);
+    console.error("🟡 [API] ERROR en eliminarPreFactura:", error);
+    console.error("🟡 [API] error.response:", error.response);
+    console.error("🟡 [API] error.response?.status:", error.response?.status);
+    console.error("🟡 [API] error.response?.data:", error.response?.data);
     throw error;
   }
 }

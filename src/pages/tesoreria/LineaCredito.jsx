@@ -29,9 +29,12 @@ import { generarLineaCreditoPDF } from "../../components/tesoreria/reports/gener
 import { generarLineaCreditoExcel } from "../../components/tesoreria/reports/generarLineaCreditoExcel";
 import { generarDetalleUsoLineaCreditoPDF } from "../../components/tesoreria/reports/generarDetalleUsoLineaCreditoPDF";
 import { generarDetalleUsoLineaCreditoExcel } from "../../components/tesoreria/reports/generarDetalleUsoLineaCreditoExcel";
+import EmpresaSelector from "../../components/common/EmpresaSelector";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 const LineaCredito = ({ ruta }) => {
   const permisos = usePermissions(ruta);
+  const usuario = useAuthStore((state) => state.usuario);
 
   // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
@@ -55,6 +58,7 @@ const LineaCredito = ({ ruta }) => {
   const [estados, setEstados] = useState([]);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [bancoSeleccionado, setBancoSeleccionado] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -472,25 +476,16 @@ const LineaCredito = ({ ruta }) => {
         </div>
         <div style={{ flex: 2 }}>
           <label
-            htmlFor="empresaFiltro"
             style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
           >
             Empresa *
           </label>
-          <Dropdown
-            id="empresaFiltro"
-            value={empresaSeleccionada}
-            options={empresas.map((e) => ({
-              label: e.razonSocial,
-              value: Number(e.id),
-            }))}
-            onChange={(e) => setEmpresaSeleccionada(e.value)}
-            placeholder="Seleccionar empresa para filtrar"
-            optionLabel="label"
-            optionValue="value"
-            showClear
-            disabled={loading}
-            style={{ width: "100%" }}
+          <EmpresaSelector
+            empresaId={usuario?.empresaId}
+            onEmpresaChange={(id) => {
+              setEmpresaIdSelector(id);
+              setEmpresaSeleccionada(id);
+            }}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -501,7 +496,7 @@ const LineaCredito = ({ ruta }) => {
             severity="success"
             raised
             onClick={handleNew}
-            disabled={!permisos.puedeCrear || loading || !empresaSeleccionada}
+            disabled={!permisos.puedeCrear || loading || !empresaIdSelector}
             tooltip={
               !permisos.puedeCrear
                 ? "No tiene permisos para crear"
@@ -510,9 +505,10 @@ const LineaCredito = ({ ruta }) => {
                   : "Nueva Línea de Crédito"
             }
             style={{ width: "100%" }}
+            size="small"
           />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1.5 }}>
           <Button
             label="Reporte Líneas"
             icon="pi pi-file-pdf"
@@ -522,6 +518,7 @@ const LineaCredito = ({ ruta }) => {
             tooltipOptions={{ position: "top" }}
             style={{ width: "100%" }}
             disabled={lineasFiltradas.length === 0}
+            size="small"
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -534,9 +531,10 @@ const LineaCredito = ({ ruta }) => {
             tooltipOptions={{ position: "top" }}
             style={{ width: "100%" }}
             disabled={lineasFiltradas.length === 0}
+            size="small"
           />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1.5 }}>
           <Button
             label="Líneas Disponibles"
             icon="pi pi-chart-bar"
@@ -545,6 +543,7 @@ const LineaCredito = ({ ruta }) => {
             tooltip="Ver reporte de líneas disponibles"
             tooltipOptions={{ position: "top" }}
             style={{ width: "100%" }}
+            size="small"
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -570,6 +569,7 @@ const LineaCredito = ({ ruta }) => {
             tooltip="Actualizar datos y recalcular saldos"
             tooltipOptions={{ position: "top" }}
             style={{ width: "100%" }}
+            size="small"
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -581,6 +581,7 @@ const LineaCredito = ({ ruta }) => {
             onClick={limpiarFiltros}
             disabled={loading}
             style={{ width: "100%" }}
+            size="small"
           />
         </div>
       </div>
@@ -612,6 +613,7 @@ const LineaCredito = ({ ruta }) => {
             optionLabel="label"
             optionValue="value"
             showClear
+            filter
             disabled={loading}
             style={{ width: "100%" }}
           />
@@ -635,6 +637,7 @@ const LineaCredito = ({ ruta }) => {
             optionLabel="label"
             optionValue="value"
             showClear
+            filter
             disabled={loading}
             style={{ width: "100%" }}
           />
@@ -657,6 +660,7 @@ const LineaCredito = ({ ruta }) => {
             placeholder="Todas"
             optionLabel="label"
             optionValue="value"
+            filter
             showClear
             disabled={loading}
             style={{ width: "100%" }}

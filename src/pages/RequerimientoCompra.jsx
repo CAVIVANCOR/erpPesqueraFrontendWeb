@@ -42,6 +42,7 @@ import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
 import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 import { useNavigateWithReturn } from "../shared/hooks/useNavigateWithReturn";
 import { useModulo } from "../context/ModuloContext"; // ✅ AGREGAR ESTA LÍNEA
+import EmpresaSelector from "../components/common/EmpresaSelector";
 
 /**
  * Pantalla profesional para gestión de Requerimientos de Compra.
@@ -75,6 +76,7 @@ export default function RequerimientoCompra({ ruta }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
   const [fechaInicio, setFechaInicio] = useState(null);
   const [fechaFin, setFechaFin] = useState(null);
@@ -132,7 +134,7 @@ export default function RequerimientoCompra({ ruta }) {
 
   // Filtrar items cuando cambien los filtros
   useEffect(() => {
-    let filtrados = items;
+    let filtrados = requerimientosFiltrados;
 
     // Filtro por empresa
     if (empresaSeleccionada) {
@@ -189,7 +191,7 @@ export default function RequerimientoCompra({ ruta }) {
     fechaFin,
     tipoSeleccionado,
     estadoSeleccionado,
-    items,
+    requerimientosFiltrados,
   ]);
 
   // Extraer proveedores únicos de los requerimientos
@@ -647,7 +649,7 @@ export default function RequerimientoCompra({ ruta }) {
       {/* ConfirmDialog global para confirmDialog() de componentes hijos */}
       <ConfirmDialog />
       <DataTable
-        value={requerimientosFiltrados}
+        value={itemsFiltrados}
         loading={loading}
         dataKey="id"
         paginator
@@ -684,22 +686,15 @@ export default function RequerimientoCompra({ ruta }) {
                 <h2>Requerimientos de Compra</h2>
               </div>
               <div style={{ flex: 2 }}>
-                <label htmlFor="empresaFiltro" style={{ fontWeight: "bold" }}>
+                <label style={{ fontWeight: "bold" }}>
                   Empresa*
                 </label>
-                <Dropdown
-                  id="empresaFiltro"
-                  value={empresaSeleccionada}
-                  options={empresas.map((e) => ({
-                    label: e.razonSocial,
-                    value: Number(e.id),
-                  }))}
-                  onChange={(e) => setEmpresaSeleccionada(e.value)}
-                  placeholder="Seleccionar empresa para filtrar"
-                  optionLabel="label"
-                  optionValue="value"
-                  showClear
-                  disabled={loading}
+                <EmpresaSelector
+                  empresaId={usuario?.empresaId}
+                  onEmpresaChange={(id) => {
+                    setEmpresaIdSelector(id);
+                    setEmpresaSeleccionada(id);
+                  }}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -711,13 +706,13 @@ export default function RequerimientoCompra({ ruta }) {
                   raised
                   onClick={handleAdd}
                   disabled={
-                    !permisos.puedeCrear || loading || !empresaSeleccionada
+                    !permisos.puedeCrear || loading || !empresaIdSelector
                   }
                   tooltip={
-                    !permisos.puedeCrear
-                      ? "No tiene permisos para crear"
-                      : !empresaSeleccionada
-                        ? "Seleccione una empresa primero"
+                    !empresaIdSelector
+                      ? "Seleccione una empresa primero"
+                      : !permisos.puedeCrear
+                        ? "No tiene permisos para crear"
                         : "Nuevo Requerimiento"
                   }
                 />

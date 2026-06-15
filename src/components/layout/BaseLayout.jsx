@@ -86,6 +86,12 @@ import CuentaPorCobrar from "../../pages/CuentaPorCobrar";
 import PagoCuentaPorCobrar from "../../pages/PagoCuentaPorCobrar";
 import PagoCuentaPorPagar from "../../pages/PagoCuentaPorPagar";
 import TipoProducto from "../../pages/TipoProducto";
+import TipoDeudaPersonal from "../../pages/TipoDeudaPersonal";
+import DeudaConPersonal from "../../pages/DeudaConPersonal";
+import PagoDeudaPersonal from "../../pages/PagoDeudaPersonal";
+import TipoDeudaTributaria from "../../pages/TipoDeudaTributaria";
+import DeudaTributaria from "../../pages/DeudaTributaria";
+import PagoDeudaTributaria from "../../pages/PagoDeudaTributaria";
 import TipoEstadoProducto from "../../pages/TipoEstadoProducto";
 import DestinoProducto from "../../pages/DestinoProducto";
 import FormaPago from "../../pages/FormaPago";
@@ -252,6 +258,30 @@ export default function BaseLayout({ children, onLogout }) {
     pagoCuentaPorPagar: {
       label: "Pagos Cuentas por Pagar",
       componente: <PagoCuentaPorPagar ruta="pagoCuentaPorPagar" />,
+    },
+    tipoDeudaPersonal: {
+      label: "Tipos Deuda de Personal",
+      componente: <TipoDeudaPersonal ruta="tipoDeudaPersonal" />,
+    },
+    deudaConPersonal: {
+      label: "Deudas con el Personal",
+      componente: <DeudaConPersonal ruta="deudaConPersonal" />,
+    },
+    pagoDeudaPersonal: {
+      label: "Pagos Deuda al Personal",
+      componente: <PagoDeudaPersonal ruta="pagoDeudaPersonal" />,
+    },
+    tipoDeudaTributaria: {
+      label: "Tipos de Deuda Tributaria",
+      componente: <TipoDeudaTributaria ruta="tipoDeudaTributaria" />,
+    },
+    deudaTributaria: {
+      label: "Deudas Tributarias",
+      componente: <DeudaTributaria ruta="deudaTributaria" />,
+    },
+    pagoDeudaTributaria: {
+      label: "Pagos Deuda Tributaria",
+      componente: <PagoDeudaTributaria ruta="pagoDeudaTributaria" />,
     },
     tipoProducto: {
       label: "Tipo Producto",

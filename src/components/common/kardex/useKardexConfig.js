@@ -37,7 +37,6 @@ export const useKardexConfig = (
         setAlmacenes(almacenesData || []);
         // 2. Cargar conceptos (FILTRADO: tipoConceptoId + tipoMovimientoId + almacén)
         const conceptosData = await getConceptosMovAlmacen();
-        console.log("conceptosData",conceptosData)
         let conceptosFiltrados = (conceptosData || []).filter(
           (c) => {
             const coincideTipoConcepto = Number(c.tipoConceptoId) === Number(tipoConceptoId);

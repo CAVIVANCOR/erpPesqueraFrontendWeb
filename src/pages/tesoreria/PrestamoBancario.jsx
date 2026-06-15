@@ -28,9 +28,10 @@ import { getTipoPrestamo } from "../../api/tesoreria/tipoPrestamo";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import { getResponsiveFontSize } from "../../utils/utils";
+import EmpresaSelector from "../../components/common/EmpresaSelector";
 
 export default function PrestamoBancario({ ruta }) {
-  const { usuario } = useAuthStore();
+  const usuario = useAuthStore((state) => state.usuario);
   const permisos = usePermissions(ruta);
 
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
@@ -78,6 +79,7 @@ export default function PrestamoBancario({ ruta }) {
 
   // Estados para filtros
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [bancoSeleccionado, setBancoSeleccionado] = useState(null);
   const [lineaCreditoSeleccionada, setLineaCreditoSeleccionada] =
     useState(null);
@@ -703,7 +705,6 @@ export default function PrestamoBancario({ ruta }) {
               </div>
               <div style={{ flex: 1 }}>
                 <label
-                  htmlFor="empresaFiltro"
                   style={{
                     fontWeight: "bold",
                     display: "block",
@@ -712,20 +713,12 @@ export default function PrestamoBancario({ ruta }) {
                 >
                   Empresa *
                 </label>
-                <Dropdown
-                  id="empresaFiltro"
-                  value={empresaSeleccionada}
-                  options={empresas.map((e) => ({
-                    label: e.razonSocial,
-                    value: Number(e.id),
-                  }))}
-                  onChange={(e) => setEmpresaSeleccionada(e.value)}
-                  placeholder="Todas"
-                  optionLabel="label"
-                  optionValue="value"
-                  showClear
-                  disabled={loading}
-                  style={{ width: "100%" }}
+                <EmpresaSelector
+                  empresaId={usuario?.empresaId}
+                  onEmpresaChange={(id) => {
+                    setEmpresaIdSelector(id);
+                    setEmpresaSeleccionada(id);
+                  }}
                 />
               </div>
               <div style={{ flex: 0.5 }}>
@@ -734,9 +727,9 @@ export default function PrestamoBancario({ ruta }) {
                   icon="pi pi-plus"
                   className="p-button-success"
                   raised
-                  disabled={!permisos.puedeCrear || !empresaSeleccionada}
+                  disabled={!permisos.puedeCrear || !empresaIdSelector}
                   tooltip={
-                    !empresaSeleccionada
+                    !empresaIdSelector
                       ? "Seleccione una empresa primero"
                       : "Nuevo Préstamo Bancario"
                   }
@@ -1108,7 +1101,7 @@ export default function PrestamoBancario({ ruta }) {
           body={(rowData) => rowData.cuentaCorriente?.numeroCuenta || "N/A"}
         />
 
-               <Column
+        <Column
           field="montoAprobado"
           header="Monto Aprobado"
           body={montoTemplate}
