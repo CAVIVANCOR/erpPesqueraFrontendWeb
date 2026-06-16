@@ -25,7 +25,7 @@ import { getResponsiveFontSize } from "../utils/utils";
  * Documentado en español.
  */
 export default function SerieDoc() {
-  const { user } = useAuthStore();
+  const { usuario } = useAuthStore();
   const toast = useRef(null);
   const [items, setItems] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
@@ -153,7 +153,7 @@ export default function SerieDoc() {
 
   const handleDelete = (rowData) => {
     // Validar permisos
-    const canDelete = user?.rol === "superusuario" || user?.rol === "admin";
+    const canDelete = usuario?.esSuperUsuario || usuario?.esAdmin;
 
     if (!canDelete) {
       toast.current.show({
@@ -219,7 +219,7 @@ export default function SerieDoc() {
   );
 
   const actionBody = (rowData) => {
-    const canDelete = user?.rol === "superusuario" || user?.rol === "admin";
+    const canDelete = usuario?.esSuperUsuario || usuario?.esAdmin;
     return (
       <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
         <Button

@@ -97,7 +97,7 @@ export default function DatosGeneralesProductoForm({
   // Filtrar clientes por la empresa seleccionada
   // EntidadComercial.empresaId debe coincidir con Producto.empresaId
   const clienteIdActual = watch("clienteId");
-  
+
   const clientesOptions = clientes
     .filter((c) => {
       // Debe ser cliente
@@ -405,9 +405,8 @@ export default function DatosGeneralesProductoForm({
   // --- Gestión profesional de foto de producto ---
   const [fotoPreview, setFotoPreview] = useState(
     defaultValues.urlFotoProducto
-      ? `${import.meta.env.VITE_UPLOADS_URL}/productos/${
-          defaultValues.urlFotoProducto
-        }`
+      ? `${import.meta.env.VITE_UPLOADS_URL}/productos/${defaultValues.urlFotoProducto
+      }`
       : null
   );
 
@@ -423,9 +422,8 @@ export default function DatosGeneralesProductoForm({
     const urlFoto = defaultValues.urlFotoProducto
       ? defaultValues.urlFotoProducto.startsWith("http")
         ? defaultValues.urlFotoProducto
-        : `${import.meta.env.VITE_UPLOADS_URL}/productos/${
-            defaultValues.urlFotoProducto
-          }`
+        : `${import.meta.env.VITE_UPLOADS_URL}/productos/${defaultValues.urlFotoProducto
+        }`
       : null;
     setFotoPreview(urlFoto);
   }, [defaultValues]);
@@ -469,9 +467,8 @@ export default function DatosGeneralesProductoForm({
       const res = await subirFotoProducto(defaultValues.id, file);
       setValue("urlFotoProducto", res.foto, { shouldValidate: true });
       // Construye la URL profesional de la foto subida usando la variable general de uploads.
-      const urlBackend = `${import.meta.env.VITE_UPLOADS_URL}/productos/${
-        res.foto
-      }`;
+      const urlBackend = `${import.meta.env.VITE_UPLOADS_URL}/productos/${res.foto
+        }`;
       setFotoPreview(urlBackend);
       toastFoto.current?.show({
         severity: "success",
@@ -759,6 +756,81 @@ export default function DatosGeneralesProductoForm({
           </div>
         </div>
 
+        {/* 🌍 DESCRIPCIONES PARA EXPORTACIÓN */}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+            marginBottom: 10,
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label htmlFor="descripcionEspanolExportacion" className="font-bold">
+              Descripción Español (Exportación)
+            </label>
+            <Controller
+              name="descripcionEspanolExportacion"
+              control={control}
+              render={({ field, fieldState }) => (
+                <InputTextarea
+                  id="descripcionEspanolExportacion"
+                  {...field}
+                  rows={2}
+                  className={classNames({
+                    "p-invalid": fieldState.error,
+                  })}
+                  style={{
+                    textTransform: "uppercase",
+                    fontStyle: "italic",
+                    fontWeight: "bold",
+                    color: "green"
+                  }}
+                  placeholder="Descripción en español para ventas al exterior"
+                  disabled={readOnly}
+                />
+              )}
+            />
+            {errors.descripcionEspanolExportacion && (
+              <small className="p-error">
+                {errors.descripcionEspanolExportacion.message}
+              </small>
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="descripcionInglesExportacion" className="font-bold">
+              Descripción Inglés (Exportación)
+            </label>
+            <Controller
+              name="descripcionInglesExportacion"
+              control={control}
+              render={({ field, fieldState }) => (
+                <InputTextarea
+                  id="descripcionInglesExportacion"
+                  {...field}
+                  rows={2}
+                  className={classNames({
+                    "p-invalid": fieldState.error,
+                  })}
+                  style={{
+                    textTransform: "uppercase",
+                    fontStyle: "italic",
+                    fontWeight: "bold",
+                    color: "green"
+                  }}
+                  placeholder="English description for international sales"
+                  disabled={readOnly}
+                />
+              )}
+            />
+            {errors.descripcionInglesExportacion && (
+              <small className="p-error">
+                {errors.descripcionInglesExportacion.message}
+              </small>
+            )}
+          </div>
+        </div>
+
         <div
           style={{
             display: "flex",
@@ -939,10 +1011,10 @@ export default function DatosGeneralesProductoForm({
               <label htmlFor="porcentajeDetraccion" className="font-bold">
                 Detracción (%)
                 {porcentajeDetraccionWatch !== undefined && porcentajeDetraccionWatch !== null && (
-                  <Tag 
-                    value={porcentajeDetraccionWatch > 0 ? "SUJETO" : "NO SUJETO"} 
-                    severity={porcentajeDetraccionWatch > 0 ? "success" : "secondary"} 
-                    style={{ marginLeft: 8, fontSize: '0.75rem' }} 
+                  <Tag
+                    value={porcentajeDetraccionWatch > 0 ? "SUJETO" : "NO SUJETO"}
+                    severity={porcentajeDetraccionWatch > 0 ? "success" : "secondary"}
+                    style={{ marginLeft: 8, fontSize: '0.75rem' }}
                   />
                 )}
               </label>

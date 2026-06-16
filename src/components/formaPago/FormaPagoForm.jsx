@@ -37,6 +37,12 @@ const esquemaValidacion = yup.object().shape({
     .transform((value, originalValue) => {
       return originalValue === "" ? null : value;
     }),
+  descripcionIngles: yup
+    .string()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
   esCliente: yup
     .boolean()
     .default(false),
@@ -64,6 +70,7 @@ const FormaPagoForm = ({ formaPago, onGuardar, onCancelar, readOnly = false }) =
     defaultValues: {
       nombre: "",
       descripcion: "",
+      descripcionIngles: "",
       esCliente: false,
       esProveedor: false,
       activo: true,
@@ -75,6 +82,7 @@ const FormaPagoForm = ({ formaPago, onGuardar, onCancelar, readOnly = false }) =
     if (formaPago) {
       setValue("nombre", formaPago.nombre || "");
       setValue("descripcion", formaPago.descripcion || "");
+      setValue("descripcionIngles", formaPago.descripcionIngles || "");
       setValue("esCliente", formaPago.esCliente || false);
       setValue("esProveedor", formaPago.esProveedor || false);
       setValue("activo", formaPago.activo !== false); // Por defecto true
@@ -82,6 +90,7 @@ const FormaPagoForm = ({ formaPago, onGuardar, onCancelar, readOnly = false }) =
       reset({
         nombre: "",
         descripcion: "",
+        descripcionIngles: "",
         esCliente: false,
         esProveedor: false,
         activo: true,
@@ -100,6 +109,7 @@ const FormaPagoForm = ({ formaPago, onGuardar, onCancelar, readOnly = false }) =
       const datosNormalizados = {
         nombre: data.nombre.trim().toUpperCase(),
         descripcion: data.descripcion?.trim().toUpperCase() || null,
+        descripcionIngles: data.descripcionIngles?.trim().toUpperCase() || null,
         esCliente: data.esCliente,
         esProveedor: data.esProveedor,
         activo: data.activo,
@@ -181,6 +191,30 @@ const FormaPagoForm = ({ formaPago, onGuardar, onCancelar, readOnly = false }) =
           )}
         </div>
 
+        {/* Campo Descripción Inglés */}
+        <div className="p-col-12 p-field">
+          <label htmlFor="descripcionIngles" className="p-d-block">
+            🇬🇧 Descripción en Inglés
+          </label>
+          <Controller
+            name="descripcionIngles"
+            control={control}
+            render={({ field }) => (
+              <InputText
+                id="descripcionIngles"
+                {...field}
+                placeholder="English description (optional)"
+                className={getFieldClass("descripcionIngles")}
+                style={{ textTransform: 'uppercase' }}
+                disabled={readOnly}
+              />
+            )}
+          />
+          {errors.descripcionIngles && (
+            <small className="p-error p-d-block">{errors.descripcionIngles.message}</small>
+          )}
+        </div>
+
         {/* Checkboxes de configuración */}
         <div className="p-col-12 p-md-4 p-field">
           <Controller
@@ -254,7 +288,7 @@ const FormaPagoForm = ({ formaPago, onGuardar, onCancelar, readOnly = false }) =
           )}
         </div>
       </div>
-      
+
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
         <Button
           type="button"

@@ -35,7 +35,7 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - Documentación de la regla en el encabezado.
  */
 export default function ConceptoMovAlmacen({ ruta }) {
-  const { user } = useAuthStore();
+  const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
 
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
@@ -229,7 +229,7 @@ export default function ConceptoMovAlmacen({ ruta }) {
 
   const handleDelete = async (rowData) => {
     // Validar permisos
-    const canDelete = user?.rol === "superusuario" || user?.rol === "admin";
+    const canDelete = usuario?.esSuperUsuario || usuario?.esAdmin;
 
     if (!canDelete) {
       toast.current.show({

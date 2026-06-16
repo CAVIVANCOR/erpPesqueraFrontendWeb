@@ -22,7 +22,7 @@ import { usePermissions } from "../hooks/usePermissions";
  * - Documentación de la regla en el encabezado.
  */
 export default function Cala({ ruta }) {
-  const { user } = useAuthStore();
+  const usuario = useAuthStore(state => state.usuario);
   const permisos = usePermissions(ruta);
 
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
@@ -36,7 +36,6 @@ export default function Cala({ ruta }) {
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore(state => state.usuario);
 
   useEffect(() => {
     cargarItems();

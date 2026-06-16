@@ -38,6 +38,18 @@ const schema = yup.object().shape({
     .string()
     .required("Descripción armada es obligatoria")
     .transform((value) => toUpperCaseSafe(value)),
+  descripcionEspanolExportacion: yup
+    .string()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : toUpperCaseSafe(value);
+    }),
+  descripcionInglesExportacion: yup
+    .string()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : toUpperCaseSafe(value);
+    }),
   familiaId: yup
     .number()
     .required("Familia es obligatoria")
@@ -246,6 +258,8 @@ export default function ProductoForm({
       descripcionBase: producto?.descripcionBase || "",
       descripcionExtendida: producto?.descripcionExtendida || "",
       descripcionArmada: producto?.descripcionArmada || "",
+      descripcionEspanolExportacion: producto?.descripcionEspanolExportacion || "",
+      descripcionInglesExportacion: producto?.descripcionInglesExportacion || "",
       familiaId: producto?.familiaId ? Number(producto.familiaId) : null,
       subfamiliaId: producto?.subfamiliaId
         ? Number(producto.subfamiliaId)
@@ -263,12 +277,12 @@ export default function ProductoForm({
       estadoInicialId: producto?.estadoInicialId
         ? Number(producto.estadoInicialId)
         : Number(
-            estadosIniciales.find(
-              (e) =>
-                e.descripcion?.toUpperCase() === "LIBERADO" &&
-                e.tipoProvieneDe?.descripcion?.toUpperCase() === "PRODUCTOS",
-            )?.id,
-          ) || null,
+          estadosIniciales.find(
+            (e) =>
+              e.descripcion?.toUpperCase() === "LIBERADO" &&
+              e.tipoProvieneDe?.descripcion?.toUpperCase() === "PRODUCTOS",
+          )?.id,
+        ) || null,
       empresaId: producto?.empresaId ? Number(producto.empresaId) : null,
       clienteId: producto?.clienteId ? Number(producto.clienteId) : null,
       tipoMaterialId: producto?.tipoMaterialId
@@ -391,6 +405,8 @@ export default function ProductoForm({
         descripcionBase: data.descripcionBase,
         descripcionExtendida: data.descripcionExtendida,
         descripcionArmada: data.descripcionArmada,
+        descripcionEspanolExportacion: data.descripcionEspanolExportacion,
+        descripcionInglesExportacion: data.descripcionInglesExportacion,
         familiaId: Number(data.familiaId),
         subfamiliaId: Number(data.subfamiliaId),
         unidadMedidaId: Number(data.unidadMedidaId),
@@ -439,7 +455,7 @@ export default function ProductoForm({
           delete datosParaEnviar[key];
         }
       });
-      
+
       // Asegurar que los campos booleanos críticos siempre se envíen
       if (datosParaEnviar.exoneradoRetencion === undefined) {
         datosParaEnviar.exoneradoRetencion = false;
@@ -455,9 +471,8 @@ export default function ProductoForm({
       toast.current.show({
         severity: "success",
         summary: "Éxito",
-        detail: `Producto ${
-          modoEdicion ? "actualizado" : "creado"
-        } correctamente`,
+        detail: `Producto ${modoEdicion ? "actualizado" : "creado"
+          } correctamente`,
         life: 3000,
       });
     } catch (error) {

@@ -92,12 +92,12 @@ const FormaPago = ({ ruta }) => {
     toast.current.show({
       severity: "success",
       summary: "Éxito",
-      detail: formaPagoSeleccionada 
+      detail: formaPagoSeleccionada
         ? "Forma de pago actualizada correctamente"
         : "Forma de pago creada correctamente",
       life: 3000,
     });
-    
+
     cargarFormasPago();
     cerrarDialogo();
   };
@@ -151,6 +151,7 @@ const FormaPago = ({ ruta }) => {
       />
     );
   };
+
 
   // Template para mostrar si aplica para proveedores
   const proveedorTemplate = (rowData) => {
@@ -236,6 +237,16 @@ const FormaPago = ({ ruta }) => {
         <Column field="id" header="ID" sortable />
         <Column field="nombre" header="Nombre" sortable />
         <Column field="descripcion" header="Descripción" sortable />
+        <Column
+          field="descripcionIngles"
+          header="Descripcion (En Ingles)"
+          sortable
+          body={(rowData) => (
+            <span style={{ fontWeight: 'bold', fontStyle: 'italic', color: '#1e4902' }}>
+              {rowData.descripcionIngles}
+            </span>
+          )}
+        />
         <Column field="esCliente" header="Para Clientes" body={clienteTemplate} sortable />
         <Column field="esProveedor" header="Para Proveedores" body={proveedorTemplate} sortable />
         <Column field="activo" header="Estado" body={estadoTemplate} sortable />

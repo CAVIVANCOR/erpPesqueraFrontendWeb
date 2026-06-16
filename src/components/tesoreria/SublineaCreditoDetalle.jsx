@@ -34,7 +34,7 @@ const SublineaCreditoDetalle = ({
   onCancelar,
   toast,
 }) => {
-  const { user } = useAuthStore();
+  const { usuario } = useAuthStore();
   const [formData, setFormData] = useState({
     lineaCreditoId: lineaCreditoId,
     tipoPrestamoId: "",
@@ -256,8 +256,8 @@ const SublineaCreditoDetalle = ({
         ...sobregirosFormData,
         fechaSolicitud: sobregirosFormData.fechaSolicitud?.toISOString(),
         fechaAprobacion: sobregirosFormData.fechaAprobacion?.toISOString() || null,
-        creadoPor: user?.personalId ? Number(user.personalId) : null,
-        actualizadoPor: user?.personalId ? Number(user.personalId) : null,
+        creadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
+        actualizadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
       };
 
       if (sobregirosEditando) {
@@ -386,13 +386,13 @@ const SublineaCreditoDetalle = ({
       };
 
       if (sublinea) {
-        dataToSend.actualizadoPor = user?.personalId
-          ? Number(user.personalId)
+        dataToSend.actualizadoPor = usuario?.personalId
+          ? Number(usuario.personalId)
           : null;
         await updateSublineaCredito(sublinea.id, dataToSend);
       } else {
-        dataToSend.creadoPor = user?.personalId
-          ? Number(user.personalId)
+        dataToSend.creadoPor = usuario?.personalId
+          ? Number(usuario.personalId)
           : null;
         await createSublineaCredito(dataToSend);
       }
