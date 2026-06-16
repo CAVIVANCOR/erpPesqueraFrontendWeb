@@ -194,7 +194,7 @@ const FormaPagoForm = ({ formaPago, onGuardar, onCancelar, readOnly = false }) =
         {/* Campo Descripción Inglés */}
         <div className="p-col-12 p-field">
           <label htmlFor="descripcionIngles" className="p-d-block">
-            🇬🇧 Descripción en Inglés
+            Descripción en Inglés
           </label>
           <Controller
             name="descripcionIngles"

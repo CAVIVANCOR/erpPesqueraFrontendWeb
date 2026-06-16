@@ -378,7 +378,6 @@ export default function MotivoNotaCreditoDebito({ ruta }) {
         rowsPerPageOptions={[5, 10, 25, 50]}
         globalFilter={globalFilter}
         emptyMessage="No se encontraron motivos de NC/ND"
-        responsiveLayout="scroll"
         stripedRows
         size="small"
         onRowClick={
