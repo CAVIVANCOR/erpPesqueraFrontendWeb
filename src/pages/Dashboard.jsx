@@ -169,6 +169,11 @@ export default function Dashboard() {
         },
         { label: "Pre-Factura", key: "preFactura", icon: "pi-file" },
         {
+          label: "Motivos para NC y ND",
+          key: "motivoNotaCreditoDebito",
+          icon: "pi-list",
+        },
+        {
           label: "Comprobantes Electrónicos SUNAT",
           key: "comprobanteElectronico",
           icon: "pi-send",
@@ -374,7 +379,7 @@ export default function Dashboard() {
           key: "presupuesto-anual",
           icon: "pi-calendar",
         },
-               {
+        {
           label: "Ejecución Presupuestal",
           key: "ejecucion-presupuestal",
           icon: "pi-chart-bar",
@@ -857,11 +862,10 @@ export default function Dashboard() {
                         ? "rgba(15, 23, 42, 0.8)"
                         : "rgba(15, 23, 42, 0.6)",
                     backdropFilter: "blur(20px)",
-                    border: `1px solid ${
-                      hoveredCard === modulo.id || expandedCard === modulo.id
+                    border: `1px solid ${hoveredCard === modulo.id || expandedCard === modulo.id
                         ? modulo.color
                         : "rgba(51, 65, 85, 0.5)"
-                    }`,
+                      }`,
                     borderRadius: "12px",
                     padding: "10px",
                     minHeight: expandedCard === modulo.id ? "auto" : "180px",
@@ -882,20 +886,20 @@ export default function Dashboard() {
                   <AnimatePresence>
                     {(hoveredCard === modulo.id ||
                       expandedCard === modulo.id) && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        style={{
-                          position: "absolute",
-                          inset: "-2px",
-                          background: `radial-gradient(circle at 50% 0%, ${modulo.color}30, transparent 70%)`,
-                          borderRadius: "24px",
-                          zIndex: 0,
-                          pointerEvents: "none",
-                        }}
-                      />
-                    )}
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          style={{
+                            position: "absolute",
+                            inset: "-2px",
+                            background: `radial-gradient(circle at 50% 0%, ${modulo.color}30, transparent 70%)`,
+                            borderRadius: "24px",
+                            zIndex: 0,
+                            pointerEvents: "none",
+                          }}
+                        />
+                      )}
                   </AnimatePresence>
 
                   {/* Header de la card */}
@@ -913,9 +917,9 @@ export default function Dashboard() {
                       animate={
                         hoveredCard === modulo.id && !expandedCard
                           ? {
-                              rotate: [0, -10, 10, -10, 0],
-                              scale: [1, 1.1, 1.1, 1.1, 1],
-                            }
+                            rotate: [0, -10, 10, -10, 0],
+                            scale: [1, 1.1, 1.1, 1.1, 1],
+                          }
                           : {}
                       }
                       transition={{ duration: 0.5 }}
@@ -981,11 +985,10 @@ export default function Dashboard() {
                         <i className="pi pi-box" style={{ fontSize: "11px" }} />
                         <span>{modulo.modulos} módulos</span>
                         <motion.i
-                          className={`pi ${
-                            expandedCard === modulo.id
+                          className={`pi ${expandedCard === modulo.id
                               ? "pi-chevron-up"
                               : "pi-chevron-down"
-                          }`}
+                            }`}
                           style={{
                             fontSize: "12px",
                             marginLeft: "auto",

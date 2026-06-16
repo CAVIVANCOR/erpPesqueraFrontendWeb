@@ -99,6 +99,7 @@ import MedioPago from "../../pages/MedioPago";
 import ModoDespachoRecepcion from "../../pages/ModoDespachoRecepcion";
 import CotizacionVentas from "../../pages/CotizacionVentas";
 import PreFactura from "../../pages/PreFactura";
+import MotivoNotaCreditoDebito from "../../pages/ventas/MotivoNotaCreditoDebito";
 import ContratoServicio from "../../pages/ContratoServicio";
 import DocRequeridaVentas from "../../pages/DocRequeridaVentas";
 import RequisitoDocPorPais from "../../pages/RequisitoDocPorPais";
@@ -314,6 +315,10 @@ export default function BaseLayout({ children, onLogout }) {
     preFactura: {
       label: "Pre-Factura",
       componente: <PreFactura ruta="preFactura" />,
+    },
+    motivoNotaCreditoDebito: {
+      label: "Motivos para NC y ND",
+      componente: <MotivoNotaCreditoDebito ruta="motivoNotaCreditoDebito" />,
     },
     comprobanteElectronico: {
       label: "Comprobante Electronico SUNAT",
