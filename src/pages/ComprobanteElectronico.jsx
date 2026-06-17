@@ -21,6 +21,7 @@ import {
   anularComprobante,
   deleteComprobanteElectronico,
 } from "../api/facturacionElectronica/comprobanteElectronico";
+import { getMotivoNotaCreditoDebitoActivos } from "../api/ventas/motivoNotaCreditoDebito";
 import { getEmpresas } from "../api/empresa";
 import { getEntidadesComerciales } from "../api/entidadComercial";
 import AccionesSunatComprobante from "../components/comprobanteElectronico/AccionesSunatComprobante";
@@ -51,6 +52,7 @@ export default function ComprobanteElectronico({ ruta }) {
   const [estadoSunatSeleccionado, setEstadoSunatSeleccionado] = useState(null);
   const [comprobantesFiltrados, setComprobantesFiltrados] = useState([]);
   const [clientesUnicos, setClientesUnicos] = useState([]);
+  const [motivosNCND, setMotivosNCND] = useState([]);
 
   useEffect(() => {
     cargarDatos();
@@ -129,15 +131,17 @@ export default function ComprobanteElectronico({ ruta }) {
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const [comprobantesData, empresasData, clientesData] = await Promise.all([
+      const [comprobantesData, empresasData, clientesData, motivosNCNDData] = await Promise.all([
         getComprobanteElectronico(),
         getEmpresas(),
         getEntidadesComerciales(),
+        getMotivoNotaCreditoDebitoActivos(),
       ]);
 
       setComprobantes(comprobantesData);
       setEmpresas(empresasData);
       setClientes(clientesData);
+      setMotivosNCND(motivosNCNDData || []);
     } catch (err) {
       toast.current.show({
         severity: "error",

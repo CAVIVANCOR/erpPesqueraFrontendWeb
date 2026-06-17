@@ -51,6 +51,7 @@ import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
 import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 import GenerarKardexDialog from "../components/common/kardex/GenerarKardexDialog";
 import EmpresaSelector from "../components/common/EmpresaSelector";
+import { getMotivoNotaCreditoDebitoActivos } from "../api/ventas/motivoNotaCreditoDebito";
 
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
@@ -85,6 +86,7 @@ export default function OrdenCompra({ ruta }) {
   const [estadosCalidad, setEstadosCalidad] = useState([]);
   const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [periodosContables, setPeriodosContables] = useState([]);
+  const [motivosNCND, setMotivosNCND] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -192,7 +194,8 @@ export default function OrdenCompra({ ruta }) {
         tiposMovimientoData,
         conceptosMovAlmacenData,
         unidadesNegocioData,
-        periodosContablesData, // ✅ AGREGADO
+        periodosContablesData,
+        motivosNCNDData,
       ] = await Promise.all([
         getOrdenesCompra(),
         getEmpresas(),
@@ -213,6 +216,7 @@ export default function OrdenCompra({ ruta }) {
         getConceptosMovAlmacen(),
         getUnidadesNegocio({ activo: true }),
         getPeriodosContables(), // ✅ AGREGADO
+        getMotivoNotaCreditoDebitoActivos(),
       ]);
 
       setEmpresas(empresasData);
@@ -263,6 +267,7 @@ export default function OrdenCompra({ ruta }) {
       );
       setRequerimientos(requerimientosAprobados);
       setPeriodosContables(periodosContablesData || []);
+      setMotivosNCND(motivosNCNDData || []);
       if (unidadesNegocioData && Array.isArray(unidadesNegocioData)) {
         setUnidadesNegocio(
           unidadesNegocioData.map((un) => ({ ...un, id: Number(un.id) })),
@@ -1099,6 +1104,7 @@ export default function OrdenCompra({ ruta }) {
           centrosCosto={centrosCosto}
           unidadesNegocio={unidadesNegocio}
           periodosContables={periodosContables}
+          motivosNCND={motivosNCND}
           empresaFija={empresaSeleccionada}
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}

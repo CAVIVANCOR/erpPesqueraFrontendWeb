@@ -15,6 +15,7 @@ import { confirmDialog } from "primereact/confirmdialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { formatearNumero } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import BooleanToggleButton from "../common/BooleanToggleButton"
 import {
   getDeudaConPersonalById,
 } from "../../api/tesoreria/deudaConPersonal";
@@ -347,242 +348,283 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
       <TabView>
         {/* TAB 1: DATOS GENERALES */}
         <TabPanel header="Datos Generales" leftIcon="pi pi-file">
-          <div className="p-fluid formgrid grid">
-            {/* Empresa */}
-            <div className="field col-12 md:col-6">
-              <label htmlFor="empresaId">
-                Empresa <span className="text-red-500">*</span>
-              </label>
-              <Dropdown
-                id="empresaId"
-                value={empresaId}
-                options={empresas}
-                onChange={(e) => setEmpresaId(e.value)}
-                optionLabel="razonSocial"
-                optionValue="id"
-                placeholder="Seleccione empresa"
-                filter
-                disabled={readOnly || loading}
-              />
-            </div>
+          <div className="p-fluid">
 
-            {/* Personal */}
-            <div className="field col-12 md:col-6">
-              <label htmlFor="personalId">
-                Personal <span className="text-red-500">*</span>
-              </label>
-              <Dropdown
-                id="personalId"
-                value={personalId}
-                options={personal}
-                onChange={(e) => setPersonalId(e.value)}
-                optionLabel="nombreCompleto"
-                optionValue="id"
-                placeholder="Seleccione personal"
-                filter
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Tipo Deuda */}
-            <div className="field col-12 md:col-6">
-              <label htmlFor="tipoDeudaId">
-                Tipo de Deuda <span className="text-red-500">*</span>
-              </label>
-              <Dropdown
-                id="tipoDeudaId"
-                value={tipoDeudaId}
-                options={tiposDeuda}
-                onChange={(e) => setTipoDeudaId(e.value)}
-                optionLabel="nombre"
-                optionValue="id"
-                placeholder="Seleccione tipo de deuda"
-                filter
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Número Documento */}
-            <div className="field col-12 md:col-6">
-              <label htmlFor="numeroDocumento">Número de Documento</label>
-              <InputText
-                id="numeroDocumento"
-                value={numeroDocumento}
-                onChange={(e) => setNumeroDocumento(e.target.value)}
-                placeholder="Ej: 001-12345"
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Fecha */}
-            <div className="field col-12 md:col-4">
-              <label htmlFor="fecha">
-                Fecha <span className="text-red-500">*</span>
-              </label>
-              <Calendar
-                id="fecha"
-                value={fecha}
-                onChange={(e) => setFecha(e.value)}
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Fecha Vencimiento */}
-            <div className="field col-12 md:col-4">
-              <label htmlFor="fechaVencimiento">
-                Fecha Vencimiento <span className="text-red-500">*</span>
-              </label>
-              <Calendar
-                id="fechaVencimiento"
-                value={fechaVencimiento}
-                onChange={(e) => setFechaVencimiento(e.value)}
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Moneda */}
-            <div className="field col-12 md:col-4">
-              <label htmlFor="monedaId">
-                Moneda <span className="text-red-500">*</span>
-              </label>
-              <Dropdown
-                id="monedaId"
-                value={monedaId}
-                options={monedas}
-                onChange={(e) => setMonedaId(e.value)}
-                optionLabel="codigoSunat"
-                optionValue="id"
-                placeholder="Seleccione moneda"
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Monto Original */}
-            <div className="field col-12 md:col-4">
-              <label htmlFor="montoOriginal">
-                Monto Original <span className="text-red-500">*</span>
-              </label>
-              <InputNumber
-                id="montoOriginal"
-                value={montoOriginal}
-                onValueChange={(e) => setMontoOriginal(e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                disabled={readOnly || loading}
-                style={{ backgroundColor: getColorPorMoneda() }}
-              />
-            </div>
-
-            {/* Monto Pagado */}
-            <div className="field col-12 md:col-4">
-              <label htmlFor="montoPagado">Monto Pagado</label>
-              <InputNumber
-                id="montoPagado"
-                value={montoPagado}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                disabled
-                style={{ backgroundColor: getColorPorMoneda() }}
-              />
-            </div>
-
-            {/* Saldo Pendiente */}
-            <div className="field col-12 md:col-4">
-              <label htmlFor="saldoPendiente">Saldo Pendiente</label>
-              <InputNumber
-                id="saldoPendiente"
-                value={saldoPendiente}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                disabled
-                style={{ backgroundColor: getColorPorMoneda() }}
-              />
-            </div>
-
-            {/* Estado */}
-            <div className="field col-12 md:col-6">
-              <label htmlFor="estadoId">Estado</label>
-              <Dropdown
-                id="estadoId"
-                value={estadoId}
-                options={estados}
-                onChange={(e) => setEstadoId(e.value)}
-                optionLabel="descripcion"
-                optionValue="id"
-                placeholder="Seleccione estado"
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Período Contable */}
-            <div className="field col-12 md:col-6">
-              <label htmlFor="periodoContableId">Período Contable</label>
-              <Dropdown
-                id="periodoContableId"
-                value={periodoContableId}
-                options={periodosContables}
-                onChange={(e) => setPeriodoContableId(e.value)}
-                optionLabel="descripcion"
-                optionValue="id"
-                placeholder="Seleccione período"
-                filter
-                showClear
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Checkboxes */}
-            <div className="field col-12 md:col-6">
-              <div className="flex align-items-center">
-                <Checkbox
-                  inputId="esSaldoInicial"
-                  checked={esSaldoInicial}
-                  onChange={(e) => setEsSaldoInicial(e.checked)}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              {/* Empresa */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="empresaId">
+                  Empresa <span className="text-red-500">*</span>
+                </label>
+                <Dropdown
+                  id="empresaId"
+                  value={empresaId}
+                  options={empresas}
+                  onChange={(e) => setEmpresaId(e.value)}
+                  optionLabel="razonSocial"
+                  optionValue="id"
+                  placeholder="Seleccione empresa"
+                  filter
                   disabled={readOnly || loading}
                 />
-                <label htmlFor="esSaldoInicial" className="ml-2">
-                  Es Saldo Inicial
+              </div>
+
+              {/* Personal */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="personalId">
+                  Personal <span className="text-red-500">*</span>
                 </label>
+                <Dropdown
+                  id="personalId"
+                  value={personalId}
+                  options={personal}
+                  onChange={(e) => setPersonalId(e.value)}
+                  optionLabel="nombreCompleto"
+                  optionValue="id"
+                  placeholder="Seleccione personal"
+                  filter
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+            </div>
+
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              {/* Tipo Deuda */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="tipoDeudaId">
+                  Tipo de Deuda <span className="text-red-500">*</span>
+                </label>
+                <Dropdown
+                  id="tipoDeudaId"
+                  value={tipoDeudaId}
+                  options={tiposDeuda}
+                  onChange={(e) => setTipoDeudaId(e.value)}
+                  optionLabel="nombre"
+                  optionValue="id"
+                  placeholder="Seleccione tipo de deuda"
+                  filter
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+              {/* Número Documento */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="numeroDocumento">Número de Documento</label>
+                <InputText
+                  id="numeroDocumento"
+                  value={numeroDocumento}
+                  onChange={(e) => setNumeroDocumento(e.target.value)}
+                  placeholder="Ej: 001-12345"
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+              {/* Fecha */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fecha">
+                  Fecha <span className="text-red-500">*</span>
+                </label>
+                <Calendar
+                  id="fecha"
+                  value={fecha}
+                  onChange={(e) => setFecha(e.value)}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+              {/* Fecha Vencimiento */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaVencimiento">
+                  Fecha Vencimiento <span className="text-red-500">*</span>
+                </label>
+                <Calendar
+                  id="fechaVencimiento"
+                  value={fechaVencimiento}
+                  onChange={(e) => setFechaVencimiento(e.value)}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+
+              {/* Moneda */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="monedaId">
+                  Moneda <span className="text-red-500">*</span>
+                </label>
+                <Dropdown
+                  id="monedaId"
+                  value={monedaId}
+                  options={monedas}
+                  onChange={(e) => setMonedaId(e.value)}
+                  optionLabel="codigoSunat"
+                  optionValue="id"
+                  placeholder="Seleccione moneda"
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+              {/* Monto Original */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="montoOriginal">
+                  Monto Original <span className="text-red-500">*</span>
+                </label>
+                <InputNumber
+                  id="montoOriginal"
+                  value={montoOriginal}
+                  onValueChange={(e) => setMontoOriginal(e.value)}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  disabled={readOnly || loading}
+                  style={{ backgroundColor: getColorPorMoneda() }}
+                />
+              </div>
+
+              {/* Monto Pagado */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="montoPagado">Monto Pagado</label>
+                <InputNumber
+                  id="montoPagado"
+                  value={montoPagado}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  disabled
+                  style={{ backgroundColor: getColorPorMoneda() }}
+                />
+              </div>
+
+              {/* Saldo Pendiente */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="saldoPendiente">Saldo Pendiente</label>
+                <InputNumber
+                  id="saldoPendiente"
+                  value={saldoPendiente}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  disabled
+                  style={{ backgroundColor: getColorPorMoneda() }}
+                />
+              </div>
+
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "end",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              {/* Estado */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="estadoId">Estado</label>
+                <Dropdown
+                  id="estadoId"
+                  value={estadoId}
+                  options={estados}
+                  onChange={(e) => setEstadoId(e.value)}
+                  optionLabel="descripcion"
+                  optionValue="id"
+                  placeholder="Seleccione estado"
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+              {/* Período Contable */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="periodoContableId">Período Contable</label>
+                <Dropdown
+                  id="periodoContableId"
+                  value={periodoContableId}
+                  options={periodosContables}
+                  onChange={(e) => setPeriodoContableId(e.value)}
+                  optionLabel="descripcion"
+                  optionValue="id"
+                  placeholder="Seleccione período"
+                  filter
+                  showClear
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+              {/* Checkboxes */}
+              <div style={{ flex: 1 }}>
+                <BooleanToggleButton
+                  value={esSaldoInicial}
+                  onChange={(val) => setEsSaldoInicial(val)}
+                  labelTrue="SALDO INICIAL"
+                  labelFalse="SALDO INICIAL"
+                  severityTrue="primary"
+                  severityFalse="secondary"
+                  size="large"
+                />
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <BooleanToggleButton
+                  value={esGerencial}
+                  onChange={(val) => setEsGerencial(val)}
+                  labelTrue="GERENCIAL"
+                  labelFalse="FISCAL"
+                  severityTrue="success"
+                  severityFalse="info"
+                  size="large"
+                />
+
               </div>
             </div>
 
-            <div className="field col-12 md:col-6">
-              <div className="flex align-items-center">
-                <Checkbox
-                  inputId="esGerencial"
-                  checked={esGerencial}
-                  onChange={(e) => setEsGerencial(e.checked)}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "end",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              {/* Observaciones */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="observaciones">Observaciones</label>
+                <InputTextarea
+                  id="observaciones"
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value)}
+                  rows={2}
                   disabled={readOnly || loading}
                 />
-                <label htmlFor="esGerencial" className="ml-2">
-                  Es Gerencial
-                </label>
               </div>
-            </div>
-
-            {/* Observaciones */}
-            <div className="field col-12">
-              <label htmlFor="observaciones">Observaciones</label>
-              <InputTextarea
-                id="observaciones"
-                value={observaciones}
-                onChange={(e) => setObservaciones(e.target.value)}
-                rows={3}
-                disabled={readOnly || loading}
-              />
             </div>
           </div>
-        </TabPanel>
-
-        {/* TAB 2: PAGOS */}
-        <TabPanel header="Pagos" leftIcon="pi pi-money-bill" disabled={!isEdit}>
           <div className="mb-3">
             <Button
               label="Registrar Pago"
@@ -614,7 +656,14 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
       </TabView>
 
       {/* Botones de acción */}
-      <div className="flex justify-content-end gap-2 mt-4">
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          alignItems: "end",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         <Button
           label="Cancelar"
           icon="pi pi-times"

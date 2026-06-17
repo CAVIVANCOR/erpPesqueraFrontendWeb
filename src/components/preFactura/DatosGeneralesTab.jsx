@@ -15,10 +15,12 @@ import EntidadComercialSelector from "../common/EntidadComercialSelector";
 import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
 import { useAuthStore } from "../../shared/stores/useAuthStore"; // ← AGREGAR ESTA LÍNEA
 import IrACxCEditar from "../common/IrACxCEditar";
+import SelectorDocumentoAfecto from "../common/SelectorDocumentoAfecto";
 
 export default function DatosGeneralesTab({
   formData,
   onChange,
+  onCargarItemsDocAfecto,
   onSerieChange,
   onIrAPreFacturaOrigen, // Agregar después de onSerieChange
   onIrAMovimientoAlmacen, // Agregar después de onIrAPreFacturaOrigen
@@ -46,6 +48,7 @@ export default function DatosGeneralesTab({
   tiposContenedorOptions,
   agenteAduanasOptions,
   periodosContables = [],
+  motivosNCND = [],
   mediosPago = [],
   bancos = [],
   cuentasCorrientes = [],
@@ -525,6 +528,167 @@ export default function DatosGeneralesTab({
           )}
         </div>
       </Panel>
+
+      {/* ============================================ */}
+      {/* SECCIÓN 2: DATOS NOTA DE CRÉDITO/DÉBITO (CONDICIONAL) */}
+      {/* ============================================ */}
+      {(Number(formData.tipoDocumentoId) === 8 || Number(formData.tipoDocumentoId) === 9) && (
+        <Panel
+          header="📝 Datos de Nota de Crédito/Débito"
+          toggleable
+          style={{ marginTop: "1rem" }}
+        >
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+                htmlFor="motivoNotaCreditoDebitoId"
+              >
+                Motivo NC/ND*
+              </label>
+              <Dropdown
+                id="motivoNotaCreditoDebitoId"
+                value={
+                  formData.motivoNotaCreditoDebitoId
+                    ? Number(formData.motivoNotaCreditoDebitoId)
+                    : null
+                }
+                options={(() => {
+                  const tipoDocId = Number(formData.tipoDocumentoId);
+
+                  // Filtrar motivos según tipo de documento
+                  return motivosNCND
+                    .filter((m) => {
+                      if (!m.activo) return false;
+                      // Si es NC (ID=8), solo mostrar motivos NC (esNCND = false)
+                      if (tipoDocId === 8) return m.esNCND === false;
+                      // Si es ND (ID=9), solo mostrar motivos ND (esNCND = true)
+                      if (tipoDocId === 9) return m.esNCND === true;
+                      // Para otros tipos, mostrar todos
+                      return true;
+                    })
+                    .map((m) => ({
+                      label: `${m.codigoSunat} - ${m.descripcion}`,
+                      value: Number(m.id),
+                    }));
+                })()}
+                onChange={(e) => onChange("motivoNotaCreditoDebitoId", e.value)}
+                placeholder="Seleccionar motivo"
+                filter
+                showClear
+                disabled={!puedeEditarConPermiso}
+                style={{ fontWeight: "bold", textTransform: "uppercase" }}
+              />
+            </div>
+          </div>
+
+          {/* FILA 2: Selector de Documento Afectado */}
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              marginTop: "1rem",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <label
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+                htmlFor="documentoAfecto"
+              >
+                🔍 Buscar Documento Afectado (Opcional)
+              </label>
+              <SelectorDocumentoAfecto
+                empresaId={formData.empresaId}
+                clienteId={formData.clienteId}
+                fechaLimite={formData.fechaDocumento}
+                onSelect={(datos) => {
+                  // Actualizar campos del documento afecto
+                  onChange("dcmtoAfectoNCNDId", datos.preFacturaId);
+                  
+                  // Usar setTimeout para asegurar que los cambios se apliquen en orden
+                  setTimeout(() => {
+                    onChange("fechaDcmtoAfectoNCND", new Date(datos.fechaDocumento));
+                  }, 0);
+                  
+                  setTimeout(() => {
+                    onChange("numeroDcmtoAfectoNCND", datos.numeroDocumento);
+                  }, 10);
+
+                  // Cargar items automáticamente después de actualizar campos
+                  setTimeout(() => {
+                    if (onCargarItemsDocAfecto && datos.detalleItems && datos.detalleItems.length > 0) {
+                      onCargarItemsDocAfecto(datos.detalleItems);
+                    }
+                  }, 50);
+                }}
+                disabled={!puedeEditarConPermiso || !formData.empresaId || !formData.clienteId}
+                placeholder="Buscar en sistema..."
+                toast={toast}
+              />
+              <small style={{ color: "#666", display: "block", marginTop: "0.25rem" }}>
+                💡 Use este selector para documentos del 2026 en adelante
+              </small>
+            </div>
+          </div>
+
+          {/* FILA 3: Campos Manuales (para docs del 2025 o anteriores) */}
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              marginTop: "1rem",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 0.7 }}>
+              <label
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+                htmlFor="fechaDcmtoAfectoNCND"
+              >
+                Fecha Dcmto. Afectado
+              </label>
+              <Calendar
+                id="fechaDcmtoAfectoNCND"
+                value={formData.fechaDcmtoAfectoNCND}
+                onChange={(e) => onChange("fechaDcmtoAfectoNCND", e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled={!puedeEditarConPermiso}
+                inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+                htmlFor="numeroDcmtoAfectoNCND"
+              >
+                Número Dcmto. Afectado
+              </label>
+              <InputText
+                id="numeroDcmtoAfectoNCND"
+                value={formData.numeroDcmtoAfectoNCND || ""}
+                onChange={(e) =>
+                  onChange("numeroDcmtoAfectoNCND", e.target.value.toUpperCase())
+                }
+                maxLength={40}
+                disabled={!puedeEditarConPermiso}
+                style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                placeholder="Ej: F001-00000123"
+              />
+            </div>
+          </div>
+        </Panel>
+      )}
 
       {/* ============================================ */}
       {/* SECCIÓN 3: DATOS COMERCIALES */}

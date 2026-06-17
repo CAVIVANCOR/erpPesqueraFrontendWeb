@@ -6,6 +6,7 @@ import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { InputNumber } from "primereact/inputnumber";
 import { confirmDialog } from "primereact/confirmdialog";
+import { Checkbox } from "primereact/checkbox";
 import {
   ProductoSelectorDialog,
   ProductoSelectedDisplay,
@@ -55,10 +56,13 @@ export default function DetallesTab({
   const [dialogVisible, setDialogVisible] = useState(false);
   const [editando, setEditando] = useState(false);
   const [showProductoSelector, setShowProductoSelector] = useState(false); // ⭐ NUEVO
+  const [usarUnidadComercial, setUsarUnidadComercial] = useState(false); // ⭐ NUEVO - Unidades comerciales
   const [detalleActual, setDetalleActual] = useState({
     productoId: null,
     cantidad: 1,
     precioUnitario: 0,
+    cantidadVenta: null,
+    precioUnitarioVenta: null,
   });
 
   // Cargar detalles cuando cambie preFacturaId
@@ -107,28 +111,38 @@ export default function DetallesTab({
       productoId: null,
       cantidad: 1,
       precioUnitario: 0,
+      cantidadVenta: null,
+      precioUnitarioVenta: null,
     });
     setEditando(false);
+    setUsarUnidadComercial(false);
     setDialogVisible(true);
   };
 
   const abrirDialogoEditar = (detalle) => {
+    const tieneUnidadComercial = !!(detalle.cantidadVenta && detalle.precioUnitarioVenta);
     setDetalleActual({
       id: detalle.id,
       productoId: Number(detalle.productoId),
       cantidad: Number(detalle.cantidad),
       precioUnitario: Number(detalle.precioUnitario),
+      cantidadVenta: detalle.cantidadVenta ? Number(detalle.cantidadVenta) : null,
+      precioUnitarioVenta: detalle.precioUnitarioVenta ? Number(detalle.precioUnitarioVenta) : null,
     });
     setEditando(true);
+    setUsarUnidadComercial(tieneUnidadComercial);
     setDialogVisible(true);
   };
 
   const cerrarDialogo = () => {
     setDialogVisible(false);
+    setUsarUnidadComercial(false);
     setDetalleActual({
       productoId: null,
       cantidad: 1,
       precioUnitario: 0,
+      cantidadVenta: null,
+      precioUnitarioVenta: null,
     });
   };
 
@@ -156,24 +170,47 @@ export default function DetallesTab({
       return;
     }
 
-    if (!detalleActual.cantidad || detalleActual.cantidad <= 0) {
-      toast?.current?.show({
-        severity: "warn",
-        summary: "Validación",
-        detail: "La cantidad debe ser mayor a 0",
-        life: 3000,
-      });
-      return;
-    }
+    // Validar según modo
+    if (usarUnidadComercial) {
+      if (!detalleActual.cantidadVenta || detalleActual.cantidadVenta <= 0) {
+        toast?.current?.show({
+          severity: "warn",
+          summary: "Validación",
+          detail: "La cantidad de venta debe ser mayor a 0",
+          life: 3000,
+        });
+        return;
+      }
 
-    if (!detalleActual.precioUnitario || detalleActual.precioUnitario <= 0) {
-      toast?.current?.show({
-        severity: "warn",
-        summary: "Validación",
-        detail: "El precio unitario debe ser mayor a 0",
-        life: 3000,
-      });
-      return;
+      if (!detalleActual.precioUnitarioVenta || detalleActual.precioUnitarioVenta <= 0) {
+        toast?.current?.show({
+          severity: "warn",
+          summary: "Validación",
+          detail: "El precio unitario de venta debe ser mayor a 0",
+          life: 3000,
+        });
+        return;
+      }
+    } else {
+      if (!detalleActual.cantidad || detalleActual.cantidad <= 0) {
+        toast?.current?.show({
+          severity: "warn",
+          summary: "Validación",
+          detail: "La cantidad debe ser mayor a 0",
+          life: 3000,
+        });
+        return;
+      }
+
+      if (!detalleActual.precioUnitario || detalleActual.precioUnitario <= 0) {
+        toast?.current?.show({
+          severity: "warn",
+          summary: "Validación",
+          detail: "El precio unitario debe ser mayor a 0",
+          life: 3000,
+        });
+        return;
+      }
     }
 
     setLoading(true);
@@ -181,9 +218,16 @@ export default function DetallesTab({
       const data = {
         preFacturaId: Number(preFacturaId),
         productoId: Number(detalleActual.productoId),
-        cantidad: Number(detalleActual.cantidad),
-        precioUnitario: Number(detalleActual.precioUnitario),
       };
+
+      // Agregar datos según modo
+      if (usarUnidadComercial) {
+        data.cantidadVenta = Number(detalleActual.cantidadVenta);
+        data.precioUnitarioVenta = Number(detalleActual.precioUnitarioVenta);
+      } else {
+        data.cantidad = Number(detalleActual.cantidad);
+        data.precioUnitario = Number(detalleActual.precioUnitario);
+      }
 
       if (editando) {
         await actualizarDetallePreFactura(detalleActual.id, data);
@@ -288,8 +332,8 @@ export default function DetallesTab({
   const precioTemplate = (rowData) => {
     const simboloMoneda = getSimboloMoneda();
     return (
-      <div style={{ 
-        textAlign: "right", 
+      <div style={{
+        textAlign: "right",
         fontWeight: "bold",
         backgroundColor: getColorPorMoneda(),
         padding: "0.5rem"
@@ -307,9 +351,9 @@ export default function DetallesTab({
     const simboloMoneda = getSimboloMoneda();
     const subtotal = Number(rowData.cantidad) * Number(rowData.precioUnitario);
     return (
-      <div style={{ 
-        textAlign: "right", 
-        fontWeight: "bold", 
+      <div style={{
+        textAlign: "right",
+        fontWeight: "bold",
         color: "#2196F3",
         backgroundColor: getColorPorMoneda(),
         padding: "0.5rem"
@@ -531,16 +575,58 @@ export default function DetallesTab({
         />
         <Column
           field="cantidad"
-          header="Cantidad"
+          header="Cant. Almacén"
           body={cantidadTemplate}
           style={{ width: "100px", textAlign: "right" }}
           bodyStyle={{ textAlign: "right" }}
           alignHeader="center"
         />
         <Column
+          header="Cant. Venta"
+          body={(rowData) => {
+            if (!rowData.cantidadVenta) return "-";
+            const unidad = rowData.producto?.unidadMedidaComercial?.simbolo || "";
+            return (
+              <div style={{ textAlign: "right", fontWeight: "bold" }}>
+                {new Intl.NumberFormat("es-PE", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 3,
+                }).format(rowData.cantidadVenta)} {unidad}
+              </div>
+            );
+          }}
+          style={{ width: "120px", textAlign: "right" }}
+          bodyStyle={{ textAlign: "right" }}
+          alignHeader="center"
+        />
+        <Column
           field="precioUnitario"
-          header="Valor Unit. Venta"
+          header="Precio Almacén"
           body={precioTemplate}
+          style={{ width: "160px", textAlign: "right" }}
+          bodyStyle={{ textAlign: "right" }}
+          alignHeader="center"
+        />
+        <Column
+          header="Precio Venta"
+          body={(rowData) => {
+            if (!rowData.precioUnitarioVenta) return "-";
+            const simboloMoneda = getSimboloMoneda();
+            return (
+              <div style={{
+                textAlign: "right",
+                fontWeight: "bold",
+                backgroundColor: getColorPorMoneda(),
+                padding: "0.5rem"
+              }}>
+                {simboloMoneda}{" "}
+                {new Intl.NumberFormat("es-PE", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 6,
+                }).format(rowData.precioUnitarioVenta)}
+              </div>
+            );
+          }}
           style={{ width: "160px", textAlign: "right" }}
           bodyStyle={{ textAlign: "right" }}
           alignHeader="center"
@@ -582,6 +668,21 @@ export default function DetallesTab({
             label="Producto *"
           />
 
+          {/* Checkbox para usar unidad comercial */}
+          {detalleActual.productoId && productos.find(p => Number(p.id) === Number(detalleActual.productoId))?.unidadMedidaComercialId && (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+              <Checkbox
+                inputId="usarComercial"
+                checked={usarUnidadComercial}
+                onChange={(e) => setUsarUnidadComercial(e.checked)}
+                disabled={loading}
+              />
+              <label htmlFor="usarComercial" style={{ fontWeight: "bold" }}>
+                Usar Unidad Comercial ({productos.find(p => Number(p.id) === Number(detalleActual.productoId))?.unidadMedidaComercial?.simbolo})
+              </label>
+            </div>
+          )}
+
           <div
             style={{
               display: "flex",
@@ -589,149 +690,199 @@ export default function DetallesTab({
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
-            <div style={{ flex: 1 }}>
-              <label htmlFor="cantidad">Cantidad *</label>
-              <InputNumber
-                id="cantidad"
-                value={detalleActual.cantidad}
-                onValueChange={(e) =>
-                  setDetalleActual({ ...detalleActual, cantidad: e.value })
-                }
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={3}
-                min={0.001}
-                disabled={loading}
-                inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
-              />
-            </div>
+            {usarUnidadComercial ? (
+              <>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="cantidadVenta">
+                    Cantidad ({productos.find(p => Number(p.id) === Number(detalleActual.productoId))?.unidadMedidaComercial?.simbolo}) *
+                  </label>
+                  <InputNumber
+                    id="cantidadVenta"
+                    value={detalleActual.cantidadVenta}
+                    onValueChange={(e) =>
+                      setDetalleActual({ ...detalleActual, cantidadVenta: e.value })
+                    }
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={3}
+                    min={0.001}
+                    disabled={loading}
+                    inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+                  />
+                </div>
 
-            <div style={{ flex: 1 }}>
-              <label htmlFor="precioUnitario">Valor de Venta Unitario (Sin IGV) *</label>
-              <InputNumber
-                id="precioUnitario"
-                value={detalleActual.precioUnitario}
-                onValueChange={(e) =>
-                  setDetalleActual({
-                    ...detalleActual,
-                    precioUnitario: e.value,
-                  })
-                }
-                mode="currency"
-                currency={getCodigoMoneda()}
-                locale="es-PE"
-                minFractionDigits={2}
-                maxFractionDigits={6}
-                min={0}
-                disabled={loading}
-                inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
-              />
-            </div>
-            {/* Campo informativo: Precio de Venta Unitario (Con IGV) */}
-            {detalleActual.precioUnitario > 0 && (
-              <div style={{ marginTop: "0.5rem" }}>
-                <label htmlFor="precioConIGV" style={{ color: "#666", fontSize: "0.9rem" }}>
-                  Precio de Venta Unitario (Con IGV) - Informativo
-                </label>
-                <InputNumber
-                  id="precioConIGV"
-                  value={Number(detalleActual.precioUnitario) * (1 + (porcentajeIGV || 0) / 100)}
-                  mode="currency"
-                  currency={getCodigoMoneda()}
-                  locale="es-PE"
-                  minFractionDigits={2}
-                  disabled
-                  inputStyle={{
-                    fontWeight: "bold",
-                    backgroundColor: "#f0f0f0",
-                    color: "#666",
-                    textAlign: "right",
-                  }}
-                />
-              </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="precioUnitarioVenta">
+                    Precio Unitario ({productos.find(p => Number(p.id) === Number(detalleActual.productoId))?.unidadMedidaComercial?.simbolo}) *
+                  </label>
+                  <InputNumber
+                    id="precioUnitarioVenta"
+                    value={detalleActual.precioUnitarioVenta}
+                    onValueChange={(e) =>
+                      setDetalleActual({
+                        ...detalleActual,
+                        precioUnitarioVenta: e.value,
+                      })
+                    }
+                    mode="currency"
+                    currency={getCodigoMoneda()}
+                    locale="es-PE"
+                    minFractionDigits={2}
+                    maxFractionDigits={6}
+                    min={0}
+                    disabled={loading}
+                    inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="cantidad">Cantidad *</label>
+                  <InputNumber
+                    id="cantidad"
+                    value={detalleActual.cantidad}
+                    onValueChange={(e) =>
+                      setDetalleActual({ ...detalleActual, cantidad: e.value })
+                    }
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={3}
+                    min={0.001}
+                    disabled={loading}
+                    inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+                  />
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="precioUnitario">Valor de Venta Unitario (Sin IGV) *</label>
+                  <InputNumber
+                    id="precioUnitario"
+                    value={detalleActual.precioUnitario}
+                    onValueChange={(e) =>
+                      setDetalleActual({
+                        ...detalleActual,
+                        precioUnitario: e.value,
+                      })
+                    }
+                    mode="currency"
+                    currency={getCodigoMoneda()}
+                    locale="es-PE"
+                    minFractionDigits={2}
+                    maxFractionDigits={6}
+                    min={0}
+                    disabled={loading}
+                    inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+                  />
+                </div>
+                {/* Campo informativo: Precio de Venta Unitario (Con IGV) */}
+                {!usarUnidadComercial && detalleActual.precioUnitario > 0 && (
+                  <div style={{ marginTop: "0.5rem" }}>
+                    <label htmlFor="precioConIGV" style={{ color: "#666", fontSize: "0.9rem" }}>
+                      Precio de Venta Unitario (Con IGV) - Informativo
+                    </label>
+                    <InputNumber
+                      id="precioConIGV"
+                      value={Number(detalleActual.precioUnitario) * (1 + (porcentajeIGV || 0) / 100)}
+                      mode="currency"
+                      currency={getCodigoMoneda()}
+                      locale="es-PE"
+                      minFractionDigits={2}
+                      disabled
+                      inputStyle={{
+                        fontWeight: "bold",
+                        backgroundColor: "#f0f0f0",
+                        color: "#666",
+                        textAlign: "right",
+                      }}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
 
           {/* Mostrar resumen calculado */}
-          {detalleActual.cantidad > 0 && detalleActual.precioUnitario > 0 && (
-            <div
-              style={{
-                marginTop: "1rem",
-                padding: "1rem",
-                backgroundColor: "#f8f9fa",
-                borderRadius: "4px",
-                border: "1px solid #dee2e6",
-              }}
-            >
-              <div style={{ marginBottom: "0.5rem", fontWeight: "bold", color: "#495057" }}>
-                RESUMEN
-              </div>
+          {((usarUnidadComercial && detalleActual.cantidadVenta > 0 && detalleActual.precioUnitarioVenta > 0) ||
+            (!usarUnidadComercial && detalleActual.cantidad > 0 && detalleActual.precioUnitario > 0)) && (
               <div
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "1rem",
-                  marginBottom: "0.3rem",
+                  marginTop: "1rem",
+                  padding: "1rem",
+                  backgroundColor: "#f8f9fa",
+                  borderRadius: "4px",
+                  border: "1px solid #dee2e6",
                 }}
               >
-                <span>Valor Venta Total (Sin IGV):</span>
-                <span style={{ fontWeight: "bold" }}>
-                  {getSimboloMoneda()}{" "}
-                  {new Intl.NumberFormat("es-PE", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  }).format(
-                    Number(detalleActual.cantidad) *
-                    Number(detalleActual.precioUnitario),
-                  )}
-                </span>
+                <div style={{ marginBottom: "0.5rem", fontWeight: "bold", color: "#495057" }}>
+                  RESUMEN
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "1rem",
+                    marginBottom: "0.3rem",
+                  }}
+                >
+                  <span>Valor Venta Total (Sin IGV):</span>
+                  <span style={{ fontWeight: "bold" }}>
+                    {getSimboloMoneda()}{" "}
+                    {new Intl.NumberFormat("es-PE", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(
+                      Number(detalleActual.cantidad) *
+                      Number(detalleActual.precioUnitario),
+                    )}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "1rem",
+                    marginBottom: "0.3rem",
+                  }}
+                >
+                  <span>IGV ({porcentajeIGV || 0}%):</span>
+                  <span style={{ fontWeight: "bold" }}>
+                    {getSimboloMoneda()}{" "}
+                    {new Intl.NumberFormat("es-PE", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(
+                      Number(detalleActual.cantidad) *
+                      Number(detalleActual.precioUnitario) *
+                      ((porcentajeIGV || 0) / 100),
+                    )}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "1.1rem",
+                    fontWeight: "bold",
+                    paddingTop: "0.5rem",
+                    borderTop: "2px solid #dee2e6",
+                  }}
+                >
+                  <span style={{ color: "#2196F3" }}>Precio de Venta Total (Con IGV):</span>
+                  <span style={{ color: "#2196F3" }}>
+                    {getSimboloMoneda()}{" "}
+                    {new Intl.NumberFormat("es-PE", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(
+                      Number(detalleActual.cantidad) *
+                      Number(detalleActual.precioUnitario) *
+                      (1 + (porcentajeIGV || 0) / 100),
+                    )}
+                  </span>
+                </div>
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "1rem",
-                  marginBottom: "0.3rem",
-                }}
-              >
-                <span>IGV ({porcentajeIGV || 0}%):</span>
-                <span style={{ fontWeight: "bold" }}>
-                  {getSimboloMoneda()}{" "}
-                  {new Intl.NumberFormat("es-PE", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  }).format(
-                    Number(detalleActual.cantidad) *
-                    Number(detalleActual.precioUnitario) *
-                    ((porcentajeIGV || 0) / 100),
-                  )}
-                </span>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "1.1rem",
-                  fontWeight: "bold",
-                  paddingTop: "0.5rem",
-                  borderTop: "2px solid #dee2e6",
-                }}
-              >
-                <span style={{ color: "#2196F3" }}>Precio de Venta Total (Con IGV):</span>
-                <span style={{ color: "#2196F3" }}>
-                  {getSimboloMoneda()}{" "}
-                  {new Intl.NumberFormat("es-PE", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  }).format(
-                    Number(detalleActual.cantidad) *
-                    Number(detalleActual.precioUnitario) *
-                    (1 + (porcentajeIGV || 0) / 100),
-                  )}
-                </span>
-              </div>
-            </div>
-          )}
+            )}
         </div>
       </Dialog>
       {/* Selector de Productos Avanzado */}

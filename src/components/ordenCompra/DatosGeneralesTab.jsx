@@ -28,6 +28,15 @@ export default function DatosGeneralesTab({
   seriesDocOptions,
   estadosOrdenOptions,
   periodosContables = [],
+  motivosNCND = [],
+  motivoNotaCreditoDebitoId,
+  onMotivoNotaCreditoDebitoIdChange,
+  fechaDcmtoAfectoNCND,
+  onFechaDcmtoAfectoNCNDChange,
+  dcmtoAfectoNCNDId,
+  onDcmtoAfectoNCNDIdChange,
+  numeroDcmtoAfectoNCND,
+  onNumeroDcmtoAfectoNCNDChange,
   isEdit,
   puedeEditar,
   detallesCount = 0,
@@ -534,6 +543,104 @@ export default function DatosGeneralesTab({
           />
         </div>
       </div>
+
+      {/* ============================================ */}
+      {/* SECCIÓN: DATOS NOTA DE CRÉDITO/DÉBITO (CONDICIONAL) */}
+      {/* ============================================ */}
+      {motivoNotaCreditoDebitoId && (
+        <Panel
+          header="📝 Datos de Nota de Crédito/Débito"
+          toggleable
+          style={{ marginTop: "1rem" }}
+        >
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+                htmlFor="motivoNotaCreditoDebitoId"
+              >
+                Motivo NC/ND*
+              </label>
+              <Dropdown
+                id="motivoNotaCreditoDebitoId"
+                value={
+                  motivoNotaCreditoDebitoId
+                    ? Number(motivoNotaCreditoDebitoId)
+                    : null
+                }
+                options={(() => {
+                  const tipoDocId = Number(formData.tipoDocumentoId);
+
+                  // Filtrar motivos según tipo de documento
+                  return motivosNCND
+                    .filter((m) => {
+                      if (!m.activo) return false;
+                      // Si es NC (ID=8), solo mostrar motivos NC (esNCND = false)
+                      if (tipoDocId === 8) return m.esNCND === false;
+                      // Si es ND (ID=9), solo mostrar motivos ND (esNCND = true)
+                      if (tipoDocId === 9) return m.esNCND === true;
+                      // Para otros tipos, mostrar todos
+                      return true;
+                    })
+                    .map((m) => ({
+                      label: `${m.codigoSunat} - ${m.descripcion}`,
+                      value: Number(m.id),
+                    }));
+                })()}
+                onChange={(e) => onMotivoNotaCreditoDebitoIdChange(e.value)}
+                placeholder="Seleccionar motivo"
+                filter
+                showClear
+                disabled={!puedeEditar || readOnly}
+                style={{ fontWeight: "bold", textTransform: "uppercase" }}
+              />
+            </div>
+            <div style={{ flex: 0.7 }}>
+              <label
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+                htmlFor="fechaDcmtoAfectoNCND"
+              >
+                Fecha Dcmto. Afectado
+              </label>
+              <Calendar
+                id="fechaDcmtoAfectoNCND"
+                value={fechaDcmtoAfectoNCND}
+                onChange={(e) => onFechaDcmtoAfectoNCNDChange(e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled={!puedeEditar || readOnly}
+                inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+                htmlFor="numeroDcmtoAfectoNCND"
+              >
+                Número Dcmto. Afectado
+              </label>
+              <InputText
+                id="numeroDcmtoAfectoNCND"
+                value={numeroDcmtoAfectoNCND || ""}
+                onChange={(e) =>
+                  onNumeroDcmtoAfectoNCNDChange(e.target.value.toUpperCase())
+                }
+                maxLength={40}
+                disabled={!puedeEditar || readOnly}
+                style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                placeholder="Ej: F001-00000123"
+              />
+            </div>
+          </div>
+        </Panel>
+      )}
 
       <div
         style={{

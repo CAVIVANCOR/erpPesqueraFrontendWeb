@@ -9,6 +9,8 @@ import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { Toolbar } from "primereact/toolbar";
 import { Tag } from "primereact/tag";
+import { Dropdown } from "primereact/dropdown";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 import DeudaConPersonalForm from "../components/deudaConPersonal/DeudaConPersonalForm";
 import { getMediosPago } from "../api/medioPago";
 import {
@@ -27,6 +29,7 @@ import { getPeriodosContables } from "../api/contabilidad/periodoContable";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
+
 
 export default function DeudaConPersonal({ ruta }) {
   const { usuario } = useAuthStore();
@@ -47,6 +50,24 @@ export default function DeudaConPersonal({ ruta }) {
   const [periodosContables, setPeriodosContables] = useState([]);
   const [mediosPago, setMediosPago] = useState([]);
 
+  // Estados de filtros
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [personalSeleccionado, setPersonalSeleccionado] = useState(null);
+  const [tipoDeudaSeleccionado, setTipoDeudaSeleccionado] = useState(null);
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
+  const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
+  const [tipoPagoSeleccionado, setTipoPagoSeleccionado] = useState(null);
+  const [periodoContableSeleccionado, setPeriodoContableSeleccionado] = useState(null);
+
+  // Opciones dinámicas para filtros
+  const [deudasFiltradas, setDeudasFiltradas] = useState([]);
+  const [itemsFiltrados, setItemsFiltrados] = useState([]);
+  const [personalesUnicos, setPersonalesUnicos] = useState([]);
+  const [tiposDeudaUnicos, setTiposDeudaUnicos] = useState([]);
+  const [estadosUnicos, setEstadosUnicos] = useState([]);
+  const [monedasUnicas, setMonedasUnicas] = useState([]);
+  const [periodosUnicos, setPeriodosUnicos] = useState([]);
+
   const [selectedDeuda, setSelectedDeuda] = useState(null);
   const [deudaDialog, setDeudaDialog] = useState(false);
   const [deleteDeudaDialog, setDeleteDeudaDialog] = useState(false);
@@ -58,6 +79,95 @@ export default function DeudaConPersonal({ ruta }) {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Actualizar opciones de filtros basadas en datos visibles
+  useEffect(() => {
+    const opciones = obtenerOpcionesDinamicas();
+
+    setPersonalesUnicos(opciones.personalesUnicos);
+    setTiposDeudaUnicos(opciones.tiposDeudaUnicos);
+    setEstadosUnicos(opciones.estadosUnicos);
+    setMonedasUnicas(opciones.monedasUnicas);
+    setPeriodosUnicos(opciones.periodosUnicos);
+
+    // Limpiar selecciones que ya no existen
+    if (personalSeleccionado && !opciones.personalesUnicos.find(p => Number(p.id) === Number(personalSeleccionado))) {
+      setPersonalSeleccionado(null);
+    }
+    if (tipoDeudaSeleccionado && !opciones.tiposDeudaUnicos.find(t => Number(t.id) === Number(tipoDeudaSeleccionado))) {
+      setTipoDeudaSeleccionado(null);
+    }
+    if (estadoSeleccionado && !opciones.estadosUnicos.find(e => Number(e.id) === Number(estadoSeleccionado))) {
+      setEstadoSeleccionado(null);
+    }
+    if (monedaSeleccionada && !opciones.monedasUnicas.find(m => Number(m.id) === Number(monedaSeleccionada))) {
+      setMonedaSeleccionada(null);
+    }
+    if (periodoContableSeleccionado && !opciones.periodosUnicos.find(p => Number(p.id) === Number(periodoContableSeleccionado))) {
+      setPeriodoContableSeleccionado(null);
+    }
+  }, [itemsFiltrados, deudasFiltradas, empresaSeleccionada]);
+
+  // Filtrar items cuando cambien los filtros
+  useEffect(() => {
+    let filtrados = deudas;
+
+    // Filtro por empresa (nivel 1)
+    if (empresaSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.empresaId) === Number(empresaSeleccionada)
+      );
+    }
+    setDeudasFiltradas(filtrados);
+
+    // Filtros secundarios
+    if (personalSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.personalId) === Number(personalSeleccionado)
+      );
+    }
+
+    if (tipoDeudaSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.tipoDeudaId) === Number(tipoDeudaSeleccionado)
+      );
+    }
+
+    if (estadoSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.estadoId) === Number(estadoSeleccionado)
+      );
+    }
+
+    if (monedaSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.monedaId) === Number(monedaSeleccionada)
+      );
+    }
+
+    if (tipoPagoSeleccionado !== null) {
+      filtrados = filtrados.filter(
+        (item) => item.esGerencial === tipoPagoSeleccionado
+      );
+    }
+
+    if (periodoContableSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.periodoContableId) === Number(periodoContableSeleccionado)
+      );
+    }
+
+    setItemsFiltrados(filtrados);
+  }, [
+    empresaSeleccionada,
+    personalSeleccionado,
+    tipoDeudaSeleccionado,
+    estadoSeleccionado,
+    monedaSeleccionada,
+    tipoPagoSeleccionado,
+    periodoContableSeleccionado,
+    deudas,
+  ]);
 
   const loadData = async () => {
     try {
@@ -103,8 +213,59 @@ export default function DeudaConPersonal({ ruta }) {
     }
   };
 
+  // Generar opciones dinámicas basadas en datos filtrados
+  const obtenerOpcionesDinamicas = () => {
+    const datosParaOpciones = itemsFiltrados.length > 0 ? itemsFiltrados : deudasFiltradas;
+
+    // Personales únicos (filtrados por empresa si hay una seleccionada)
+    const personalesUnicos = [...new Map(
+      datosParaOpciones
+        .filter(d => d.personal)
+        .filter(d => !empresaSeleccionada || Number(d.empresaId) === Number(empresaSeleccionada))
+        .map(d => [d.personal.id, d.personal])
+    ).values()];
+
+    // Tipos de deuda únicos
+    const tiposDeudaUnicos = [...new Map(
+      datosParaOpciones
+        .filter(d => d.tipoDeuda)
+        .map(d => [d.tipoDeuda.id, d.tipoDeuda])
+    ).values()];
+
+    // Estados únicos
+    const estadosUnicos = [...new Map(
+      datosParaOpciones
+        .filter(d => d.estado)
+        .map(d => [d.estado.id, d.estado])
+    ).values()];
+
+    // Monedas únicas
+    const monedasUnicas = [...new Map(
+      datosParaOpciones
+        .filter(d => d.moneda)
+        .map(d => [d.moneda.id, d.moneda])
+    ).values()];
+
+    // Periodos únicos
+    const periodosUnicos = [...new Map(
+      datosParaOpciones
+        .filter(d => d.periodoContable)
+        .map(d => [d.periodoContable.id, d.periodoContable])
+    ).values()];
+
+    return {
+      personalesUnicos,
+      tiposDeudaUnicos,
+      estadosUnicos,
+      monedasUnicas,
+      periodosUnicos
+    };
+  };
+
   const openNew = () => {
-    setFormData({});
+    setFormData({
+      empresaId: empresaSeleccionada, // Precargar empresa seleccionada
+    });
     setSelectedDeuda(null);
     setIsEdit(false);
     setDeudaDialog(true);
@@ -276,6 +437,16 @@ export default function DeudaConPersonal({ ruta }) {
     setSelectedDeuda(null);
   };
 
+  const limpiarFiltros = () => {
+    setEmpresaSeleccionada(null);
+    setPersonalSeleccionado(null);
+    setTipoDeudaSeleccionado(null);
+    setEstadoSeleccionado(null);
+    setMonedaSeleccionada(null);
+    setTipoPagoSeleccionado(null);
+    setPeriodoContableSeleccionado(null);
+  };
+
   const empresaBodyTemplate = (rowData) => {
     const empresa = empresas.find(
       (e) => Number(e.id) === Number(rowData.empresaId)
@@ -400,42 +571,6 @@ export default function DeudaConPersonal({ ruta }) {
     );
   };
 
-  const leftToolbarTemplate = () => {
-    return (
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        <Button
-          label="Nuevo"
-          icon="pi pi-plus"
-          className="p-button-success"
-          onClick={openNew}
-          disabled={!permisos.puedeCrear || loading}
-          tooltip={!permisos.puedeCrear ? "No tiene permisos para crear" : ""}
-        />
-        <Button
-          label="Actualizar"
-          icon="pi pi-refresh"
-          className="p-button-info"
-          onClick={loadData}
-          loading={loading}
-        />
-      </div>
-    );
-  };
-
-  const rightToolbarTemplate = () => {
-    return (
-      <span className="p-input-icon-left">
-        <i className="pi pi-search" />
-        <InputText
-          type="search"
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          placeholder="Buscar..."
-        />
-      </span>
-    );
-  };
-
   const deleteDeudaDialogFooter = (
     <>
       <Button
@@ -457,20 +592,236 @@ export default function DeudaConPersonal({ ruta }) {
   return (
     <div className="card">
       <Toast ref={toast} />
-      <h2>Gestión de Deudas con Personal</h2>
-      <Toolbar
-        className="mb-4"
-        left={leftToolbarTemplate}
-        right={rightToolbarTemplate}
-      />
       <DataTable
-        value={deudas}
+        value={itemsFiltrados}
         loading={loading}
         globalFilter={globalFilter}
         emptyMessage="No se encontraron deudas con personal"
         stripedRows
         showGridlines
         paginator
+        header={
+          <div>
+            {/* Fila 1: Título, Empresa, Botones */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <h2>Gestión de Deudas con Personal</h2>
+              </div>
+              <div style={{ flex: 2 }}>
+                <label style={{ fontWeight: "bold" }}>Empresa*</label>
+                <EmpresaSelector
+                  empresaId={usuario?.empresaId}
+                  onEmpresaChange={(id) => {
+                    setEmpresaSeleccionada(id);
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Nuevo"
+                  icon="pi pi-plus"
+                  onClick={openNew}
+                  className="p-button-primary"
+                  disabled={!permisos.puedeCrear || loading || !empresaSeleccionada}
+                  tooltip={
+                    !permisos.puedeCrear
+                      ? "No tiene permisos para crear"
+                      : !empresaSeleccionada
+                        ? "Seleccione una empresa primero"
+                        : "Nueva Deuda con Personal"
+                  }
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Limpiar Filtros"
+                  icon="pi pi-filter-slash"
+                  className="p-button-secondary"
+                  outlined
+                  onClick={limpiarFiltros}
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Actualizar"
+                  icon="pi pi-refresh"
+                  className="p-button-info"
+                  onClick={loadData}
+                  loading={loading}
+                />
+              </div>
+            </div>
+
+            {/* Fila 2: Filtros principales */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <label htmlFor="personalFiltro" style={{ fontWeight: "bold" }}>
+                  Personal (Trabajador)
+                </label>
+                <Dropdown
+                  id="personalFiltro"
+                  value={personalSeleccionado}
+                  options={personalesUnicos.map((p) => ({
+                    label: p.nombreCompleto || `${p.nombres} ${p.apellidos}`,
+                    value: Number(p.id),
+                  }))}
+                  onChange={(e) => setPersonalSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  filter
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="tipoDeudaFiltro" style={{ fontWeight: "bold" }}>
+                  Tipo de Deuda
+                </label>
+                <Dropdown
+                  id="tipoDeudaFiltro"
+                  value={tipoDeudaSeleccionado}
+                  options={tiposDeudaUnicos.map((t) => ({
+                    label: t.nombre,
+                    value: Number(t.id),
+                  }))}
+                  onChange={(e) => setTipoDeudaSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  filter
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="estadoFiltro" style={{ fontWeight: "bold" }}>
+                  Estado
+                </label>
+                <Dropdown
+                  id="estadoFiltro"
+                  value={estadoSeleccionado}
+                  options={estadosUnicos.map((e) => ({
+                    label: e.descripcion,
+                    value: Number(e.id),
+                  }))}
+                  onChange={(e) => setEstadoSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  filter
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="monedaFiltro" style={{ fontWeight: "bold" }}>
+                  Moneda
+                </label>
+                <Dropdown
+                  id="monedaFiltro"
+                  value={monedaSeleccionada}
+                  options={monedasUnicas.map((m) => ({
+                    label: m.codigoSunat || m.codigo,
+                    value: Number(m.id),
+                  }))}
+                  onChange={(e) => setMonedaSeleccionada(e.value)}
+                  placeholder="Todas"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  filter
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Fila 3: Filtros adicionales */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <label htmlFor="tipoPagoFiltro" style={{ fontWeight: "bold" }}>
+                  Tipo de Pago
+                </label>
+                <Dropdown
+                  id="tipoPagoFiltro"
+                  value={tipoPagoSeleccionado}
+                  options={[
+                    { label: "Todos", value: null },
+                    { label: "Pago Blanco (Formal)", value: false },
+                    { label: "Pago Negro (Gerencial)", value: true },
+                  ]}
+                  onChange={(e) => setTipoPagoSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="periodoFiltro" style={{ fontWeight: "bold" }}>
+                  Periodo Contable
+                </label>
+                <Dropdown
+                  id="periodoFiltro"
+                  value={periodoContableSeleccionado}
+                  options={periodosUnicos.map((p) => ({
+                    label: p.nombre || `${p.anio} - ${p.mes}`,
+                    value: Number(p.id),
+                  }))}
+                  onChange={(e) => setPeriodoContableSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  filter
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="busquedaGlobal" style={{ fontWeight: "bold" }}>
+                  Búsqueda Global
+                </label>
+                <span className="p-input-icon-left" style={{ width: "100%" }}>
+                  <i className="pi pi-search" />
+                  <InputText
+                    id="busquedaGlobal"
+                    type="search"
+                    value={globalFilter}
+                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    placeholder="Buscar..."
+                    style={{ width: "100%" }}
+                  />
+                </span>
+              </div>
+              <div style={{ flex: 2 }}></div>
+            </div>
+          </div>
+        }
         rows={100}
         rowsPerPageOptions={[100, 200, 300, 500]}
         size="small"

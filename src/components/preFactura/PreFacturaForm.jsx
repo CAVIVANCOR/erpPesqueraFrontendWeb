@@ -22,6 +22,7 @@ import { Dialog } from "primereact/dialog";
 import { InputNumber } from "primereact/inputnumber";
 import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 import AsientoContableManager from "../common/AsientoContableManager";
+import { crearDetallePreFactura } from "../../api/detallePreFactura";
 
 export default function PreFacturaForm({
   isEdit,
@@ -42,7 +43,8 @@ export default function PreFacturaForm({
   puertos = [],
   tiposContenedor = [],
   agenteAduanas = [],
-  periodosContables = [], // ✅ AGREGADO
+  periodosContables = [],
+  motivosNCND = [],
   empresaFija,
   onSubmit,
   onCancel,
@@ -242,6 +244,16 @@ export default function PreFacturaForm({
       ? Number(defaultValues.actualizadoPor)
       : null,
     nroLiquidacionFacturacion: defaultValues?.nroLiquidacionFacturacion || "",
+    motivoNotaCreditoDebitoId: defaultValues?.motivoNotaCreditoDebitoId
+      ? Number(defaultValues.motivoNotaCreditoDebitoId)
+      : null,
+    fechaDcmtoAfectoNCND: defaultValues?.fechaDcmtoAfectoNCND
+      ? new Date(defaultValues.fechaDcmtoAfectoNCND)
+      : null,
+    dcmtoAfectoNCNDId: defaultValues?.dcmtoAfectoNCNDId
+      ? Number(defaultValues.dcmtoAfectoNCNDId)
+      : null,
+    numeroDcmtoAfectoNCND: defaultValues?.numeroDcmtoAfectoNCND || "",
   });
 
   // Handler genérico para cambios en cualquier campo
@@ -434,6 +446,16 @@ export default function PreFacturaForm({
           : null,
         nroLiquidacionFacturacion:
           defaultValues?.nroLiquidacionFacturacion || "",
+        motivoNotaCreditoDebitoId: defaultValues?.motivoNotaCreditoDebitoId
+          ? Number(defaultValues.motivoNotaCreditoDebitoId)
+          : null,
+        fechaDcmtoAfectoNCND: defaultValues?.fechaDcmtoAfectoNCND
+          ? new Date(defaultValues.fechaDcmtoAfectoNCND)
+          : null,
+        dcmtoAfectoNCNDId: defaultValues?.dcmtoAfectoNCNDId
+          ? Number(defaultValues.dcmtoAfectoNCNDId)
+          : null,
+        numeroDcmtoAfectoNCND: defaultValues?.numeroDcmtoAfectoNCND || "",
       });
     }
   }, [defaultValues, empresaFija]);
@@ -917,6 +939,73 @@ export default function PreFacturaForm({
     }
   }, [formData.porcentajeAdelanto, totales.total]);
 
+  // Función para cargar items del documento afecto
+  const handleCargarItemsDocumentoAfecto = async (detalleItems) => {
+    if (!defaultValues?.id) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe guardar la NC/ND antes de cargar items del documento afecto",
+        life: 5000,
+      });
+      return;
+    }
+
+    if (!detalleItems || detalleItems.length === 0) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Sin Items",
+        detail: "El documento seleccionado no tiene items para copiar",
+        life: 3000,
+      });
+      return;
+    }
+
+    try {
+      let itemsCargados = 0;
+
+      // Crear cada item del documento afecto en la NC/ND
+      for (const item of detalleItems) {
+        // Extraer valores de almacén (obligatorios)
+        const cantidad = Number(item.cantidad) || 0;
+        const precioUnitario = Number(item.precioUnitario) || 0;
+
+        // Extraer valores comerciales (opcionales)
+        const cantidadVenta = item.cantidadVenta ? Number(item.cantidadVenta) : null;
+        const precioUnitarioVenta = item.precioUnitarioVenta ? Number(item.precioUnitarioVenta) : null;
+
+        const nuevoDetalle = {
+          preFacturaId: defaultValues.id,
+          productoId: Number(item.productoId),
+          cantidad: cantidad,
+          precioUnitario: precioUnitario,
+          cantidadVenta: cantidadVenta,
+          precioUnitarioVenta: precioUnitarioVenta,
+        };
+        await crearDetallePreFactura(nuevoDetalle);
+        itemsCargados++;
+      }
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Items Cargados",
+        detail: `Se cargaron ${itemsCargados} items del documento afecto correctamente`,
+        life: 3000,
+      });
+
+      // Refrescar el conteo de detalles
+      setDetallesCount(itemsCargados);
+    } catch (error) {
+      console.error("Error al cargar items:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.message || "No se pudieron cargar los items del documento afecto",
+        life: 5000,
+      });
+    }
+  };
+
   const handleSubmit = () => {
     const data = {
       empresaId: formData.empresaId ? Number(formData.empresaId) : null,
@@ -1083,6 +1172,20 @@ export default function PreFacturaForm({
       });
       return;
     }
+
+    // ✅ VALIDACIÓN: Motivo obligatorio para NC (ID=8) y ND (ID=9)
+    const esNotaCreditoDebito =
+      Number(data.tipoDocumentoId) === 8 || Number(data.tipoDocumentoId) === 9;
+
+    if (esNotaCreditoDebito && !formData.motivoNotaCreditoDebitoId) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar un motivo para Nota de Crédito/Débito",
+      });
+      return;
+    }
+
     onSubmit(data);
   };
 
@@ -1163,67 +1266,67 @@ export default function PreFacturaForm({
   };
 
   // Handler para facturar negra (Caso 1: 100% Negro)
-const handleFacturarNegraClick = async () => {
-  try {
-    const resultado = await facturarPreFacturaNegra(defaultValues.id);
+  const handleFacturarNegraClick = async () => {
+    try {
+      const resultado = await facturarPreFacturaNegra(defaultValues.id);
 
-    toast?.current?.show({
-      severity: "success",
-      summary: "Éxito",
-      detail: "CxC Negra generada exitosamente",
-      life: 5000,
-    });
+      toast?.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "CxC Negra generada exitosamente",
+        life: 5000,
+      });
 
-    // ✅ RECARGAR DATOS DEL FORMULARIO (NO CERRAR)
-    if (defaultValues.id) {
-      const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
-      // Actualizar formData con los nuevos datos
-      setFormData(preFacturaActualizada);
+      // ✅ RECARGAR DATOS DEL FORMULARIO (NO CERRAR)
+      if (defaultValues.id) {
+        const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
+        // Actualizar formData con los nuevos datos
+        setFormData(preFacturaActualizada);
+      }
+    } catch (error) {
+      console.error("Error al facturar negra:", error);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.mensaje || "No se pudo generar la CxC Negra",
+        life: 3000,
+      });
     }
-  } catch (error) {
-    console.error("Error al facturar negra:", error);
-    toast?.current?.show({
-      severity: "error",
-      summary: "Error",
-      detail:
-        error.response?.data?.mensaje || "No se pudo generar la CxC Negra",
-      life: 3000,
-    });
-  }
-};
+  };
 
-// Handler para facturar blanca (Caso 2: Comprobante SUNAT)
-const handleFacturarBlancaClick = async () => {
-  try {
-    // ⭐ RECALCULAR Y GUARDAR TOTALES ANTES DE EMITIR
-    await recalcularYGuardarTotales(true);
+  // Handler para facturar blanca (Caso 2: Comprobante SUNAT)
+  const handleFacturarBlancaClick = async () => {
+    try {
+      // ⭐ RECALCULAR Y GUARDAR TOTALES ANTES DE EMITIR
+      await recalcularYGuardarTotales(true);
 
-    const resultado = await facturarPreFacturaBlanca(defaultValues.id);
+      const resultado = await facturarPreFacturaBlanca(defaultValues.id);
 
-    toast?.current?.show({
-      severity: "success",
-      summary: "Éxito",
-      detail: "CxC Blanca y Comprobante Electrónico generados exitosamente",
-      life: 5000,
-    });
+      toast?.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "CxC Blanca y Comprobante Electrónico generados exitosamente",
+        life: 5000,
+      });
 
-    // ✅ RECARGAR DATOS DEL FORMULARIO (NO CERRAR)
-    if (defaultValues.id) {
-      const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
-      // Actualizar formData con los nuevos datos
-      setFormData(preFacturaActualizada);
+      // ✅ RECARGAR DATOS DEL FORMULARIO (NO CERRAR)
+      if (defaultValues.id) {
+        const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
+        // Actualizar formData con los nuevos datos
+        setFormData(preFacturaActualizada);
+      }
+    } catch (error) {
+      console.error("Error al facturar blanca:", error);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.mensaje || "No se pudo emitir el comprobante",
+        life: 3000,
+      });
     }
-  } catch (error) {
-    console.error("Error al facturar blanca:", error);
-    toast?.current?.show({
-      severity: "error",
-      summary: "Error",
-      detail:
-        error.response?.data?.mensaje || "No se pudo emitir el comprobante",
-      life: 3000,
-    });
-  }
-};
+  };
 
   // Estados del documento
   const estaPendiente = estadoId === 45 || !estadoId;
@@ -1413,6 +1516,7 @@ const handleFacturarBlancaClick = async () => {
           <DatosGeneralesTab
             formData={formData}
             onChange={handleChange}
+            onCargarItemsDocAfecto={handleCargarItemsDocumentoAfecto}
             onSerieChange={handleSerieDocChange}
             empresasOptions={empresasOptions}
             tiposDocumentoOptions={tiposDocumentoOptions}
@@ -1433,6 +1537,7 @@ const handleFacturarBlancaClick = async () => {
             tiposContenedorOptions={tiposContenedorOptions}
             agenteAduanasOptions={agenteAduanasOptions}
             periodosContables={periodosContables}
+            motivosNCND={motivosNCND}
             contactosClienteOptions={contactosClienteOptions}
             direccionesClienteOptions={direccionesClienteOptions}
             mediosPago={mediosPago}

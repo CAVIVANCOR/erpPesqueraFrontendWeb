@@ -14,12 +14,13 @@ import { Tag } from "primereact/tag";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { Badge } from "primereact/badge";
 import {
-  getAllPreFactura,
+  getPreFacturas,
   getPreFacturaPorId,
-  deletePreFactura,
+  eliminarPreFactura,
   crearPreFactura,
   actualizarPreFactura,
 } from "../api/preFactura";
+import { getMotivoNotaCreditoDebitoActivos } from "../api/ventas/motivoNotaCreditoDebito";
 import PreFacturaForm from "../components/preFactura/PreFacturaForm";
 import CotizacionVentasForm from "../components/cotizacionVentas/CotizacionVentasForm"; // ⬅️ AGREGAR
 import MovimientoAlmacenForm from "../components/movimientoAlmacen/MovimientoAlmacenForm"; // ⬅️ AGREGAR
@@ -83,6 +84,7 @@ const PreFactura = ({ ruta }) => {
   const [personalOptions, setPersonalOptions] = useState([]);
   const [bancos, setBancos] = useState([]);
   const [periodosContables, setPeriodosContables] = useState([]);
+  const [motivosNCND, setMotivosNCND] = useState([]);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -95,6 +97,8 @@ const PreFactura = ({ ruta }) => {
   const [filtroParticionadas, setFiltroParticionadas] = useState(null);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [productosUnicos, setProductosUnicos] = useState([]);
+  const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState(null);
+  const [tiposDocumentoUnicos, setTiposDocumentoUnicos] = useState([]);
   const [nroLiquidacionBusqueda, setNroLiquidacionBusqueda] = useState("");
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [clientesUnicos, setClientesUnicos] = useState([]);
@@ -145,8 +149,9 @@ const PreFactura = ({ ruta }) => {
         personalData,
         bancosData,
         periodosContablesData, // ✅ AGREGADO
+        motivosNCNDData,
       ] = await Promise.all([
-        getAllPreFactura(),
+        getPreFacturas(),
         getEmpresas(),
         getTiposDocumento(),
         getEntidadesComerciales(),
@@ -162,6 +167,7 @@ const PreFactura = ({ ruta }) => {
         getPersonal(),
         getBancos(),
         getPeriodosContables(), // ✅ AGREGADO
+        getMotivoNotaCreditoDebitoActivos(),
       ]);
 
       setEmpresas(empresasData);
@@ -220,6 +226,7 @@ const PreFactura = ({ ruta }) => {
       setPersonalOptions(personalData);
       setBancos(bancosData);
       setPeriodosContables(periodosContablesData || []);
+      setMotivosNCND(motivosNCNDData || []);
     } catch (err) {
       toast.current?.show({
         severity: "error",
@@ -246,6 +253,12 @@ const PreFactura = ({ ruta }) => {
         .filter(pf => pf.estadoDoc)
         .map(pf => [pf.estadoDoc.id, pf.estadoDoc])
     ).values()];
+    // Tipos de Documento únicos
+    const tiposDocumentoUnicos = [...new Map(
+      datosParaOpciones
+        .filter(pf => pf.tipoDocumento)
+        .map(pf => [pf.tipoDocumento.id, pf.tipoDocumento])
+    ).values()];
 
     // Productos únicos (de los detalles)
     const productosMap = new Map();
@@ -268,7 +281,8 @@ const PreFactura = ({ ruta }) => {
     return {
       clientesUnicos,
       estadosUnicos,
-      productosUnicos
+      productosUnicos,
+      tiposDocumentoUnicos
     };
   };
 
@@ -280,6 +294,7 @@ const PreFactura = ({ ruta }) => {
     setClientesUnicos(opciones.clientesUnicos);
     setEstadosUnicos(opciones.estadosUnicos);
     setProductosUnicos(opciones.productosUnicos);
+    setTiposDocumentoUnicos(opciones.tiposDocumentoUnicos);
 
     // Limpiar selecciones que ya no existen
     if (clienteSeleccionado && !opciones.clientesUnicos.find(c => Number(c.id) === Number(clienteSeleccionado))) {
@@ -291,7 +306,11 @@ const PreFactura = ({ ruta }) => {
     if (productoSeleccionado && !opciones.productosUnicos.find(p => Number(p.id) === Number(productoSeleccionado))) {
       setProductoSeleccionado(null);
     }
+    if (tipoDocumentoSeleccionado && !opciones.tiposDocumentoUnicos.find(t => Number(t.id) === Number(tipoDocumentoSeleccionado))) {
+      setTipoDocumentoSeleccionado(null);
+    }
   }, [itemsFiltrados, preFacturasFiltradas, empresaSeleccionada]);
+
   // Filtrar items cuando cambien los filtros
   useEffect(() => {
     let filtrados = preFacturasFiltradas;
@@ -336,6 +355,13 @@ const PreFactura = ({ ruta }) => {
       );
     }
 
+    // Filtro por tipo de documento
+    if (tipoDocumentoSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.tipoDocumentoId) === Number(tipoDocumentoSeleccionado),
+      );
+    }
+
     // Filtro por tipo de particionadas
     if (filtroParticionadas === "originales") {
       filtrados = filtrados.filter((item) => item.esParticionada === true);
@@ -374,6 +400,7 @@ const PreFactura = ({ ruta }) => {
     clienteSeleccionado,
     rangoFechas,
     estadoSeleccionado,
+    tipoDocumentoSeleccionado,
     filtroParticionadas,
     productoSeleccionado,
     nroLiquidacionBusqueda,
@@ -796,15 +823,15 @@ const PreFactura = ({ ruta }) => {
       acceptLabel: "Eliminar",
       rejectLabel: "Cancelar",
       accept: () => {
-        eliminarPreFactura(preFactura.id);
+        handleEliminarPreFactura(preFactura.id);
       },
     });
   };
 
-  const eliminarPreFactura = async (id) => {
+  const handleEliminarPreFactura = async (id) => {
 
     try {
-      const resultado = await deletePreFactura(id);
+      const resultado = await eliminarPreFactura(id);
 
       // Construir mensaje detallado con DATOS REALES del backend
       const { resultados } = resultado;
@@ -1223,6 +1250,7 @@ const PreFactura = ({ ruta }) => {
     setClienteSeleccionado(null);
     setRangoFechas(null);
     setEstadoSeleccionado(null);
+    setTipoDocumentoSeleccionado(null);
     setFiltroParticionadas(null);
     setProductoSeleccionado(null);
     setNroLiquidacionBusqueda("");
@@ -1372,6 +1400,27 @@ const PreFactura = ({ ruta }) => {
                       value: Number(e.id),
                     }))}
                     onChange={(e) => setEstadoSeleccionado(e.value)}
+                    placeholder="Todos"
+                    optionLabel="label"
+                    optionValue="value"
+                    showClear
+                    filter
+                    disabled={loading}
+                  />
+                </div>
+                {/* Filtro por Tipo de Documento */}
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="tipoDocumentoFiltro" style={{ fontWeight: "bold" }}>
+                    Tipo Documento
+                  </label>
+                  <Dropdown
+                    id="tipoDocumentoFiltro"
+                    value={tipoDocumentoSeleccionado}
+                    options={tiposDocumentoUnicos.map((t) => ({
+                      label: t.descripcion,
+                      value: Number(t.id),
+                    }))}
+                    onChange={(e) => setTipoDocumentoSeleccionado(e.value)}
                     placeholder="Todos"
                     optionLabel="label"
                     optionValue="value"
@@ -1642,6 +1691,7 @@ const PreFactura = ({ ruta }) => {
           unidadesNegocio={unidadesNegocio}
           bancos={bancos}
           periodosContables={periodosContables}
+          motivosNCND={motivosNCND}
           incoterms={incoterms}
           tiposContenedor={tiposContenedor}
           empresaFija={empresaSeleccionada}

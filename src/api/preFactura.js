@@ -35,9 +35,6 @@ export async function getPreFacturas() {
   }
 }
 
-// Alias en inglés para compatibilidad
-export const getAllPreFactura = getPreFacturas;
-
 /**
  * Obtiene una pre-factura por ID
  * @param {number} id - ID de la pre-factura
@@ -52,9 +49,6 @@ export async function getPreFacturaPorId(id) {
     throw error;
   }
 }
-
-// Alias en inglés para compatibilidad
-export const getPreFacturaById = getPreFacturaPorId;
 
 /**
  * Crea una nueva pre-factura
@@ -71,8 +65,6 @@ export async function crearPreFactura(preFacturaData) {
   }
 }
 
-// Alias en inglés para compatibilidad
-export const createPreFactura = crearPreFactura;
 
 /**
  * Actualiza una pre-factura existente
@@ -90,8 +82,6 @@ export async function actualizarPreFactura(id, preFacturaData) {
   }
 }
 
-// Alias en inglés para compatibilidad
-export const updatePreFactura = actualizarPreFactura;
 
 /**
  * Elimina una pre-factura
@@ -111,9 +101,6 @@ export async function eliminarPreFactura(id) {
   }
 }
 
-// Alias en inglés para compatibilidad
-export const deletePreFactura = eliminarPreFactura;
-
 /**
  * Obtiene pre-facturas por cliente
  * @param {number} clienteId - ID del cliente
@@ -128,9 +115,6 @@ export async function getPreFacturasPorCliente(clienteId) {
     throw error;
   }
 }
-
-// Alias en inglés para compatibilidad
-export const getPreFacturasByCliente = getPreFacturasPorCliente;
 
 /**
  * Obtiene pre-facturas por estado
@@ -147,8 +131,6 @@ export async function getPreFacturasPorEstado(estado) {
   }
 }
 
-// Alias en inglés para compatibilidad
-export const getPreFacturasByEstado = getPreFacturasPorEstado;
 
 /**
  * Convierte una pre-factura a factura
@@ -165,8 +147,6 @@ export async function convertirPreFacturaAFactura(id) {
   }
 }
 
-// Alias en inglés para compatibilidad
-export const convertPreFacturaToFactura = convertirPreFacturaAFactura;
 
 /**
  * Obtiene series de documentos filtradas por empresaId y tipoDocumentoId
@@ -349,4 +329,29 @@ export async function regenerarKardexPreFactura(id) {
     { headers: getAuthHeaders() }
   );
   return res.data;
+}
+
+
+/**
+ * Obtiene pre-facturas filtradas por empresa, cliente y fecha límite (para NC/ND)
+ * @param {number} empresaId - ID de la empresa
+ * @param {number} clienteId - ID del cliente
+ * @param {string} fechaLimite - Fecha límite en formato ISO
+ * @returns {Promise<Array>} Lista de pre-facturas filtradas
+ */
+export async function getPreFacturasParaDocumentoAfecto(empresaId, clienteId, fechaLimite) {
+  try {
+    const params = new URLSearchParams();
+    if (empresaId) params.append('empresaId', empresaId);
+    if (clienteId) params.append('clienteId', clienteId);
+    if (fechaLimite) params.append('fechaLimite', fechaLimite);
+    
+    const response = await axios.get(`${API_URL}/por-cliente?${params.toString()}`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error al obtener pre-facturas para documento afecto:", error);
+    throw error;
+  }
 }

@@ -34,6 +34,7 @@ export default function OrdenCompraForm({
   seriesDoc,
   estadosOrden,
   periodosContables = [], // ✅ AGREGADO
+  motivosNCND = [],
   empresaFija,
   onSubmit,
   onCancel,
@@ -161,6 +162,20 @@ export default function OrdenCompraForm({
   );
   const [esParticionada, setEsParticionada] = useState(
     defaultValues?.esParticionada || false,
+  );
+  const [motivoNotaCreditoDebitoId, setMotivoNotaCreditoDebitoId] = useState(
+    defaultValues?.motivoNotaCreditoDebitoId || null,
+  );
+  const [fechaDcmtoAfectoNCND, setFechaDcmtoAfectoNCND] = useState(
+    defaultValues?.fechaDcmtoAfectoNCND
+      ? new Date(defaultValues.fechaDcmtoAfectoNCND)
+      : null,
+  );
+  const [dcmtoAfectoNCNDId, setDcmtoAfectoNCNDId] = useState(
+    defaultValues?.dcmtoAfectoNCNDId || null,
+  );
+  const [numeroDcmtoAfectoNCND, setNumeroDcmtoAfectoNCND] = useState(
+    defaultValues?.numeroDcmtoAfectoNCND || "",
   );
   const [direccionesEmpresa, setDireccionesEmpresa] = useState([]);
   const [contactosProveedor, setContactosProveedor] = useState([]);
@@ -306,6 +321,22 @@ export default function OrdenCompraForm({
           : null,
       );
       setEsParticionada(defaultValues.esParticionada || false);
+      setMotivoNotaCreditoDebitoId(
+        defaultValues.motivoNotaCreditoDebitoId
+          ? Number(defaultValues.motivoNotaCreditoDebitoId)
+          : null,
+      );
+      setFechaDcmtoAfectoNCND(
+        defaultValues.fechaDcmtoAfectoNCND
+          ? new Date(defaultValues.fechaDcmtoAfectoNCND)
+          : null,
+      );
+      setDcmtoAfectoNCNDId(
+        defaultValues.dcmtoAfectoNCNDId
+          ? Number(defaultValues.dcmtoAfectoNCNDId)
+          : null,
+      );
+      setNumeroDcmtoAfectoNCND(defaultValues.numeroDcmtoAfectoNCND || "");
     }
   }, [defaultValues, empresaFija]);
 
@@ -737,6 +768,14 @@ export default function OrdenCompraForm({
         ? Number(ordenCompraOrigenId)
         : null,
       esParticionada: esParticionada || false,
+      motivoNotaCreditoDebitoId: motivoNotaCreditoDebitoId
+        ? Number(motivoNotaCreditoDebitoId)
+        : null,
+      fechaDcmtoAfectoNCND: fechaDcmtoAfectoNCND,
+      dcmtoAfectoNCNDId: dcmtoAfectoNCNDId
+        ? Number(dcmtoAfectoNCNDId)
+        : null,
+      numeroDcmtoAfectoNCND: numeroDcmtoAfectoNCND,
     };
 
     if (!data.empresaId) {
@@ -762,6 +801,19 @@ export default function OrdenCompraForm({
         severity: "warn",
         summary: "Validación",
         detail: "Debe seleccionar un tipo de documento",
+      });
+      return;
+    }
+
+    // ✅ VALIDACIÓN: Motivo obligatorio para NC (ID=8) y ND (ID=9)
+    const esNotaCreditoDebito =
+      Number(data.tipoDocumentoId) === 8 || Number(data.tipoDocumentoId) === 9;
+
+    if (esNotaCreditoDebito && !motivoNotaCreditoDebitoId) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar un motivo para Nota de Crédito/Débito",
       });
       return;
     }
@@ -947,6 +999,15 @@ export default function OrdenCompraForm({
             seriesDocOptions={seriesDocOptions}
             estadosOrdenOptions={estadosOrdenOptions}
             periodosContables={periodosContables}
+            motivosNCND={motivosNCND}
+            motivoNotaCreditoDebitoId={motivoNotaCreditoDebitoId}
+            onMotivoNotaCreditoDebitoIdChange={setMotivoNotaCreditoDebitoId}
+            fechaDcmtoAfectoNCND={fechaDcmtoAfectoNCND}
+            onFechaDcmtoAfectoNCNDChange={setFechaDcmtoAfectoNCND}
+            dcmtoAfectoNCNDId={dcmtoAfectoNCNDId}
+            onDcmtoAfectoNCNDIdChange={setDcmtoAfectoNCNDId}
+            numeroDcmtoAfectoNCND={numeroDcmtoAfectoNCND}
+            onNumeroDcmtoAfectoNCNDChange={setNumeroDcmtoAfectoNCND}
             isEdit={isEdit}
             puedeEditar={puedeEditar}
             detallesCount={detallesCount}
