@@ -264,7 +264,7 @@ export default function DeudaConPersonal({ ruta }) {
 
   const openNew = () => {
     setFormData({
-      empresaId: empresaSeleccionada, // Precargar empresa seleccionada
+      empresaId: empresaSeleccionada,
     });
     setSelectedDeuda(null);
     setIsEdit(false);
@@ -924,6 +924,7 @@ export default function DeudaConPersonal({ ruta }) {
         onHide={hideDialog}
       >
         <DeudaConPersonalForm
+          key={`deuda-${selectedDeuda?.id || "new"}-${formData?.empresaId || ""}`}
           isEdit={isEdit}
           defaultValues={formData}
           empresas={empresas}
@@ -933,6 +934,7 @@ export default function DeudaConPersonal({ ruta }) {
           estados={estados}
           periodosContables={periodosContables}
           mediosPago={mediosPago}
+          empresaFija={empresaSeleccionada}
           onSubmit={saveDeuda}
           onCancel={hideDialog}
           loading={loading}

@@ -62,10 +62,6 @@ export default function SelectorDocumentoAfecto({
         numeroDocumento: preFacturaCompleta.numeroDocumento,
         detalleItems: preFacturaCompleta.detalles || [],
       };
-
-      console.log("📄 Documento seleccionado:", datosDocumento);
-      console.log("📦 Items a cargar:", datosDocumento.detalleItems.length);
-
       // Llamar al callback
       onSelect(datosDocumento);
 

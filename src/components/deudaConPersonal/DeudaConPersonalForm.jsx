@@ -27,6 +27,55 @@ import {
 } from "../../api/tesoreria/pagoDeudaPersonal";
 import PagoDeudaPersonalDialog from "./PagoDeudaPersonalDialog";
 
+// ════════════════════════════════════════════════════════════
+// CONSTANTES DE CONFIGURACIÓN - DEUDAS CON PERSONAL
+// ════════════════════════════════════════════════════════════
+
+/**
+ * ID del tipo "DEUDAS CON EL PERSONAL" en la tabla EstadoMultiFuncion
+ * Se usa para filtrar solo los estados válidos para este módulo
+ * Estados válidos:
+ * - 114: PENDIENTE (danger)
+ * - 115: PAGO PARCIAL (warning)
+ * - 116: PAGADO (success)
+ * - 117: VENCIDO (danger)
+ * - 118: ANULADO (secondary)
+ * - 119: CANJEADO (contrast)
+ */
+const TIPO_PROVIENE_DEUDAS_PERSONAL = 26;
+
+/**
+ * Estado por defecto para nuevas deudas con personal
+ * IMPORTANTE: Este ID corresponde al estado "PENDIENTE" en EstadoMultiFuncion
+ * donde tipoProvieneDeId = 26 (DEUDAS CON EL PERSONAL)
+ * 
+ * Estados disponibles (tipoProvieneDeId = 26):
+ * - 114: PENDIENTE (danger) ← DEFAULT
+ * - 115: PAGO PARCIAL (warning)
+ * - 116: PAGADO (success)
+ * - 117: VENCIDO (danger)
+ * - 118: ANULADO (secondary)
+ * - 119: CANJEADO (contrast)
+ */
+const ESTADO_DEFAULT_PENDIENTE = 114;
+
+/**
+ * IDs de estados específicos para deudas con personal
+ */
+const ESTADOS_DEUDA_PERSONAL = {
+  PENDIENTE: 114,      // Deuda sin pagos
+  PAGO_PARCIAL: 115,   // Deuda con pagos parciales
+  PAGADO: 116,         // Deuda totalmente pagada
+  VENCIDO: 117,        // Deuda vencida sin pagar
+  ANULADO: 118,        // Deuda anulada
+  CANJEADO: 119,       // Deuda canjeada por otro documento
+};
+
+/**
+ * Valores por defecto para montos
+ */
+const MONTO_DEFAULT = 0;
+
 const DeudaConPersonalForm = forwardRef((props, ref) => {
   const {
     isEdit,
@@ -38,6 +87,7 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
     estados,
     periodosContables,
     mediosPago,
+    empresaFija,
     onSubmit,
     onCancel,
     loading,
@@ -48,37 +98,41 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
 
   const { usuario } = useAuthStore();
 
-  // Estados principales
-  const [empresaId, setEmpresaId] = useState(defaultValues?.empresaId || null);
-  const [personalId, setPersonalId] = useState(defaultValues?.personalId || null);
-  const [tipoDeudaId, setTipoDeudaId] = useState(defaultValues?.tipoDeudaId || null);
-  const [numeroDocumento, setNumeroDocumento] = useState(defaultValues?.numeroDocumento || "");
-  const [fecha, setFecha] = useState(
-    defaultValues?.fecha ? new Date(defaultValues.fecha) : new Date()
-  );
-  const [fechaVencimiento, setFechaVencimiento] = useState(
-    defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : new Date()
-  );
-  const [monedaId, setMonedaId] = useState(defaultValues?.monedaId || null);
-  const [montoOriginal, setMontoOriginal] = useState(defaultValues?.montoOriginal || 0);
-  const [montoPagado, setMontoPagado] = useState(defaultValues?.montoPagado || 0);
-  const [saldoPendiente, setSaldoPendiente] = useState(defaultValues?.saldoPendiente || 0);
-  const [estadoId, setEstadoId] = useState(defaultValues?.estadoId || 100);
-  const [observaciones, setObservaciones] = useState(defaultValues?.observaciones || "");
-  const [esSaldoInicial, setEsSaldoInicial] = useState(defaultValues?.esSaldoInicial || false);
-  const [esGerencial, setEsGerencial] = useState(defaultValues?.esGerencial || false);
+  // 🔍 DEBUG TEMPORAL
+  console.log("🟢 [DeudaConPersonalForm] MONTAJE/RENDER");
+  console.log("  📌 defaultValues:", defaultValues);
+  console.log("  📌 empresaFija:", empresaFija);
+  console.log("  📌 isEdit:", isEdit);
 
-  // Estados contabilidad
-  const [fechaContable, setFechaContable] = useState(
-    defaultValues?.fechaContable ? new Date(defaultValues.fechaContable) : new Date()
-  );
-  const [periodoContableId, setPeriodoContableId] = useState(
-    defaultValues?.periodoContableId ? Number(defaultValues.periodoContableId) : null
-  );
+  // Estado único para todos los campos del formulario (patrón PreFactura)
+  const [formData, setFormData] = useState({
+    empresaId: defaultValues?.empresaId
+      ? Number(defaultValues.empresaId)
+      : empresaFija
+        ? Number(empresaFija)
+        : null,
+    personalId: defaultValues?.personalId ? Number(defaultValues.personalId) : null,
+    tipoDeudaId: defaultValues?.tipoDeudaId ? Number(defaultValues.tipoDeudaId) : null,
+    numeroDocumento: defaultValues?.numeroDocumento || "",
+    fecha: defaultValues?.fecha ? new Date(defaultValues.fecha) : new Date(),
+    fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : new Date(),
+    monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
+    montoOriginal: defaultValues?.montoOriginal || MONTO_DEFAULT,
+    montoPagado: defaultValues?.montoPagado || MONTO_DEFAULT,
+    saldoPendiente: defaultValues?.saldoPendiente || MONTO_DEFAULT,
+    estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : ESTADO_DEFAULT_PENDIENTE,
+    observaciones: defaultValues?.observaciones || "",
+    esGerencial: defaultValues?.esGerencial || false,
+    fechaContable: defaultValues?.fechaContable ? new Date(defaultValues.fechaContable) : new Date(),
+    periodoContableId: defaultValues?.periodoContableId ? Number(defaultValues.periodoContableId) : null,
+    creadoPor: defaultValues?.creadoPor || null,
+    actualizadoPor: defaultValues?.actualizadoPor || null,
+  });
 
-  // Estados auditoría
-  const [creadoPor, setCreadoPor] = useState(defaultValues?.creadoPor || null);
-  const [actualizadoPor, setActualizadoPor] = useState(defaultValues?.actualizadoPor || null);
+  // Función para actualizar campos individuales (patrón PreFactura)
+  const onChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   // Estados para CRUD de pagos
   const [pagos, setPagos] = useState([]);
@@ -94,10 +148,66 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
     }
   }, [isEdit, defaultValues?.id]);
 
+  // Filtrar personal por empresa seleccionada
+  const personalFiltrado = React.useMemo(() => {
+    if (!formData.empresaId || !personal) return [];
+    return personal
+      .filter((p) => Number(p.empresaId) === Number(formData.empresaId))
+      .map((p) => ({
+        ...p,
+        nombreCompleto: `${p.nombres} ${p.apellidos}`.trim(),
+      }));
+  }, [formData.empresaId, personal]);
+
+  // Filtrar períodos contables por empresa seleccionada
+  const periodosContablesFiltrados = React.useMemo(() => {
+    if (!periodosContables) return [];
+
+    return periodosContables
+      .filter((p) => {
+        // Filtrar por empresa O incluir el periodo seleccionado actualmente
+        const perteneceAEmpresa =
+          Number(p.empresaId) === Number(formData.empresaId);
+        const esPeriodoSeleccionado =
+          formData.periodoContableId &&
+          Number(p.id) === Number(formData.periodoContableId);
+
+        return perteneceAEmpresa || esPeriodoSeleccionado;
+      })
+      .sort((a, b) => {
+        // Ordenar por fecha de inicio descendente (más recientes primero)
+        return new Date(b.fechaInicio) - new Date(a.fechaInicio);
+      })
+      .map((p) => {
+        // Agregar indicador visual del estado
+        let estadoLabel = "";
+        const estadoId = Number(p.estadoId);
+
+        // IDs de estados para PERIODO CONTABLE:
+        // 73 = ABIERTO, 74 = CERRADO, 75 = BLOQUEADO
+        if (estadoId === 73) {
+          estadoLabel = "🟢 ABIERTO";
+        } else if (estadoId === 74) {
+          estadoLabel = "🔴 CERRADO";
+        } else if (estadoId === 75) {
+          estadoLabel = "🔒 BLOQUEADO";
+        } else {
+          estadoLabel = "⚪ SIN ESTADO";
+        }
+
+        return {
+          label: `${p.nombrePeriodo} - ${estadoLabel}`,
+          value: Number(p.id),
+          estadoId: estadoId,
+          disabled: estadoId !== 73 && !isEdit, // Deshabilitar si no está ABIERTO (solo en creación)
+        };
+      });
+  }, [formData.empresaId, formData.periodoContableId, periodosContables, isEdit]);
+
   // Obtener color de moneda
   const getColorPorMoneda = () => {
-    if (!monedaId) return "#ffffff";
-    const moneda = monedas?.find((m) => Number(m.id) === Number(monedaId));
+    if (!formData.monedaId) return "#ffffff";
+    const moneda = monedas?.find((m) => Number(m.id) === Number(formData.monedaId));
     return moneda?.colorFondo || "#ffffff";
   };
 
@@ -112,9 +222,21 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
       (sum, pago) => sum + Number(pago.montoAplicadoDeuda || 0),
       0
     );
-    setMontoPagado(totalPagado);
-    setSaldoPendiente(Number(montoOriginal) - totalPagado);
-  }, [pagos, montoOriginal]);
+    onChange("montoPagado", totalPagado);
+    onChange("saldoPendiente", Number(formData.montoOriginal) - totalPagado);
+  }, [pagos, formData.montoOriginal]);
+
+  // Calcular saldoPendiente cuando cambie montoOriginal o montoPagado
+  useEffect(() => {
+    const totalPagado = pagos.reduce(
+      (sum, pago) => sum + Number(pago.montoAplicadoDeuda || 0),
+      0
+    );
+    const nuevoSaldo = Number(formData.montoOriginal) - totalPagado;
+    if (nuevoSaldo !== formData.saldoPendiente) {
+      onChange("saldoPendiente", nuevoSaldo);
+    }
+  }, [formData.montoOriginal, pagos]);
 
   const cargarPagos = async () => {
     try {
@@ -139,10 +261,10 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
 
     try {
       const deudaActualizada = await getDeudaConPersonalById(defaultValues.id);
-      setMontoOriginal(deudaActualizada.montoOriginal || 0);
-      setMontoPagado(deudaActualizada.montoPagado || 0);
-      setSaldoPendiente(deudaActualizada.saldoPendiente || 0);
-      setEstadoId(deudaActualizada.estadoId || 100);
+      onChange("montoOriginal", deudaActualizada.montoOriginal || 0);
+      onChange("montoPagado", deudaActualizada.montoPagado || 0);
+      onChange("saldoPendiente", deudaActualizada.saldoPendiente || 0);
+      onChange("estadoId", deudaActualizada.estadoId || ESTADO_DEFAULT_PENDIENTE);
     } catch (error) {
       console.error("Error al recargar deuda desde backend:", error);
     }
@@ -154,23 +276,22 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
 
   const handleSubmit = () => {
     const data = {
-      empresaId: Number(empresaId),
-      personalId: Number(personalId),
-      tipoDeudaId: Number(tipoDeudaId),
-      numeroDocumento,
-      fecha,
-      fechaVencimiento,
-      monedaId: Number(monedaId),
-      montoOriginal: Number(montoOriginal),
-      montoPagado: Number(montoPagado),
-      saldoPendiente: Number(saldoPendiente),
-      estadoId: Number(estadoId),
-      observaciones,
-      esSaldoInicial,
-      esGerencial,
-      fechaContable,
-      periodoContableId: periodoContableId ? Number(periodoContableId) : null,
-      creadoPor: isEdit ? creadoPor : usuario?.personalId ? Number(usuario.personalId) : null,
+      empresaId: Number(formData.empresaId),
+      personalId: Number(formData.personalId),
+      tipoDeudaId: Number(formData.tipoDeudaId),
+      numeroDocumento: formData.numeroDocumento,
+      fecha: formData.fecha,
+      fechaVencimiento: formData.fechaVencimiento,
+      monedaId: Number(formData.monedaId),
+      montoOriginal: Number(formData.montoOriginal),
+      montoPagado: Number(formData.montoPagado),
+      saldoPendiente: Number(formData.saldoPendiente),
+      estadoId: Number(formData.estadoId),
+      observaciones: formData.observaciones,
+      esGerencial: formData.esGerencial,
+      fechaContable: formData.fechaContable,
+      periodoContableId: formData.periodoContableId ? Number(formData.periodoContableId) : null,
+      creadoPor: isEdit ? formData.creadoPor : usuario?.personalId ? Number(usuario.personalId) : null,
       actualizadoPor: isEdit && usuario?.personalId ? Number(usuario.personalId) : null,
     };
     onSubmit(data);
@@ -364,32 +485,34 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 </label>
                 <Dropdown
                   id="empresaId"
-                  value={empresaId}
-                  options={empresas}
-                  onChange={(e) => setEmpresaId(e.value)}
-                  optionLabel="razonSocial"
-                  optionValue="id"
+                  value={formData.empresaId}
+                  options={empresas?.map((e) => ({
+                    label: e.razonSocial,
+                    value: Number(e.id),
+                  })) || []}
+                  onChange={(e) => onChange("empresaId", e.value)}
                   placeholder="Seleccione empresa"
                   filter
-                  disabled={readOnly || loading}
+                  disabled={true}
                 />
               </div>
 
               {/* Personal */}
               <div style={{ flex: 1 }}>
                 <label htmlFor="personalId">
-                  Personal <span className="text-red-500">*</span>
+                  Personal (Trabajador) <span className="text-red-500">*</span>
                 </label>
                 <Dropdown
                   id="personalId"
-                  value={personalId}
-                  options={personal}
-                  onChange={(e) => setPersonalId(e.value)}
+                  value={formData.personalId}
+                  options={personalFiltrado}
+                  onChange={(e) => onChange("personalId", e.value)}
                   optionLabel="nombreCompleto"
                   optionValue="id"
                   placeholder="Seleccione personal"
                   filter
-                  disabled={readOnly || loading}
+                  disabled={readOnly || loading || !formData.empresaId}
+                  emptyMessage="Seleccione una empresa primero"
                 />
               </div>
 
@@ -410,9 +533,9 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 </label>
                 <Dropdown
                   id="tipoDeudaId"
-                  value={tipoDeudaId}
+                  value={formData.tipoDeudaId}
                   options={tiposDeuda}
-                  onChange={(e) => setTipoDeudaId(e.value)}
+                  onChange={(e) => onChange("tipoDeudaId", e.value)}
                   optionLabel="nombre"
                   optionValue="id"
                   placeholder="Seleccione tipo de deuda"
@@ -426,8 +549,8 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 <label htmlFor="numeroDocumento">Número de Documento</label>
                 <InputText
                   id="numeroDocumento"
-                  value={numeroDocumento}
-                  onChange={(e) => setNumeroDocumento(e.target.value)}
+                  value={formData.numeroDocumento}
+                  onChange={(e) => onChange("numeroDocumento", e.target.value)}
                   placeholder="Ej: 001-12345"
                   disabled={readOnly || loading}
                 />
@@ -440,8 +563,8 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 </label>
                 <Calendar
                   id="fecha"
-                  value={fecha}
-                  onChange={(e) => setFecha(e.value)}
+                  value={formData.fecha}
+                  onChange={(e) => onChange("fecha", e.value)}
                   dateFormat="dd/mm/yy"
                   showIcon
                   disabled={readOnly || loading}
@@ -455,8 +578,8 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 </label>
                 <Calendar
                   id="fechaVencimiento"
-                  value={fechaVencimiento}
-                  onChange={(e) => setFechaVencimiento(e.value)}
+                  value={formData.fechaVencimiento}
+                  onChange={(e) => onChange("fechaVencimiento", e.value)}
                   dateFormat="dd/mm/yy"
                   showIcon
                   disabled={readOnly || loading}
@@ -481,9 +604,9 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 </label>
                 <Dropdown
                   id="monedaId"
-                  value={monedaId}
+                  value={formData.monedaId}
                   options={monedas}
-                  onChange={(e) => setMonedaId(e.value)}
+                  onChange={(e) => onChange("monedaId", e.value)}
                   optionLabel="codigoSunat"
                   optionValue="id"
                   placeholder="Seleccione moneda"
@@ -498,8 +621,8 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 </label>
                 <InputNumber
                   id="montoOriginal"
-                  value={montoOriginal}
-                  onValueChange={(e) => setMontoOriginal(e.value)}
+                  value={formData.montoOriginal}
+                  onValueChange={(e) => onChange("montoOriginal", e.value)}
                   mode="decimal"
                   minFractionDigits={2}
                   maxFractionDigits={2}
@@ -508,12 +631,12 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 />
               </div>
 
-              {/* Monto Pagado */}
+              {/* Monto Pagado - Siempre deshabilitado (se calcula automáticamente) */}
               <div style={{ flex: 1 }}>
                 <label htmlFor="montoPagado">Monto Pagado</label>
                 <InputNumber
                   id="montoPagado"
-                  value={montoPagado}
+                  value={formData.montoPagado}
                   mode="decimal"
                   minFractionDigits={2}
                   maxFractionDigits={2}
@@ -527,7 +650,7 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 <label htmlFor="saldoPendiente">Saldo Pendiente</label>
                 <InputNumber
                   id="saldoPendiente"
-                  value={saldoPendiente}
+                  value={formData.saldoPendiente}
                   mode="decimal"
                   minFractionDigits={2}
                   maxFractionDigits={2}
@@ -550,13 +673,16 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 <label htmlFor="estadoId">Estado</label>
                 <Dropdown
                   id="estadoId"
-                  value={estadoId}
-                  options={estados}
-                  onChange={(e) => setEstadoId(e.value)}
-                  optionLabel="descripcion"
-                  optionValue="id"
-                  placeholder="Seleccione estado"
-                  disabled={readOnly || loading}
+                  value={formData.estadoId}
+                  options={estados
+                    .filter((e) => Number(e.tipoProvieneDeId) === TIPO_PROVIENE_DEUDAS_PERSONAL)
+                    .map((e) => ({
+                      label: e.descripcion,
+                      value: Number(e.id),
+                    }))}
+                  onChange={(e) => onChange("estadoId", e.value)}
+                  placeholder="Estado (automático)"
+                  disabled={true}
                 />
               </div>
 
@@ -565,11 +691,10 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 <label htmlFor="periodoContableId">Período Contable</label>
                 <Dropdown
                   id="periodoContableId"
-                  value={periodoContableId}
-                  options={periodosContables}
-                  onChange={(e) => setPeriodoContableId(e.value)}
-                  optionLabel="descripcion"
-                  optionValue="id"
+                  value={formData.periodoContableId}
+                  options={periodosContablesFiltrados || []}
+                  optionDisabled={(option) => option.disabled}
+                  onChange={(e) => onChange("periodoContableId", e.value)}
                   placeholder="Seleccione período"
                   filter
                   showClear
@@ -578,29 +703,17 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
               </div>
 
               {/* Checkboxes */}
+              {/* Tipo de pago */}
               <div style={{ flex: 1 }}>
                 <BooleanToggleButton
-                  value={esSaldoInicial}
-                  onChange={(val) => setEsSaldoInicial(val)}
-                  labelTrue="SALDO INICIAL"
-                  labelFalse="SALDO INICIAL"
-                  severityTrue="primary"
-                  severityFalse="secondary"
-                  size="large"
-                />
-              </div>
-
-              <div style={{ flex: 1 }}>
-                <BooleanToggleButton
-                  value={esGerencial}
-                  onChange={(val) => setEsGerencial(val)}
+                  value={formData.esGerencial}
+                  onChange={(val) => onChange("esGerencial", val)}
                   labelTrue="GERENCIAL"
                   labelFalse="FISCAL"
                   severityTrue="success"
                   severityFalse="info"
                   size="large"
                 />
-
               </div>
             </div>
 
@@ -617,8 +730,8 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 <label htmlFor="observaciones">Observaciones</label>
                 <InputTextarea
                   id="observaciones"
-                  value={observaciones}
-                  onChange={(e) => setObservaciones(e.target.value)}
+                  value={formData.observaciones}
+                  onChange={(e) => onChange("observaciones", e.target.value)}
                   rows={2}
                   disabled={readOnly || loading}
                 />
@@ -693,8 +806,8 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
         <PagoDeudaPersonalDialog
           pago={pagoSeleccionado}
           deudaId={defaultValues?.id}
-          monedaDeudaId={monedaId}
-          saldoPendiente={saldoPendiente}
+          monedaDeudaId={formData.monedaId}
+          saldoPendiente={formData.saldoPendiente}
           monedas={monedas}
           mediosPago={mediosPago}
           onSubmit={handleSubmitPago}
