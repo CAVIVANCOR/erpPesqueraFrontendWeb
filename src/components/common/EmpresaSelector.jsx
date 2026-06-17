@@ -84,8 +84,7 @@ export default function EmpresaSelector({ empresaId, onEmpresaChange }) {
                 onClick={() => setDialogVisible(true)}
                 className="p-button-outlined"
                 style={{
-                    width: "300px",
-                    height: "50px",
+                    width: "100%",
                     justifyContent: "flex-start",
                     paddingLeft: "1rem",
                 }}

@@ -117,11 +117,13 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
     fecha: defaultValues?.fecha ? new Date(defaultValues.fecha) : new Date(),
     fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : new Date(),
     monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
+    montoPagadoAnterior: defaultValues?.montoPagadoAnterior || MONTO_DEFAULT,
     montoOriginal: defaultValues?.montoOriginal || MONTO_DEFAULT,
     montoPagado: defaultValues?.montoPagado || MONTO_DEFAULT,
     saldoPendiente: defaultValues?.saldoPendiente || MONTO_DEFAULT,
     estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : ESTADO_DEFAULT_PENDIENTE,
     observaciones: defaultValues?.observaciones || "",
+    esSaldoInicial: defaultValues?.esSaldoInicial || false,
     esGerencial: defaultValues?.esGerencial || false,
     fechaContable: defaultValues?.fechaContable ? new Date(defaultValues.fechaContable) : new Date(),
     periodoContableId: defaultValues?.periodoContableId ? Number(defaultValues.periodoContableId) : null,
@@ -226,17 +228,76 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
     onChange("saldoPendiente", Number(formData.montoOriginal) - totalPagado);
   }, [pagos, formData.montoOriginal]);
 
-  // Calcular saldoPendiente cuando cambie montoOriginal o montoPagado
+  // Calcular saldoPendiente cuando cambie montoOriginal, montoPagadoAnterior o pagos
   useEffect(() => {
-    const totalPagado = pagos.reduce(
+    const totalPagadoSistema = pagos.reduce(
       (sum, pago) => sum + Number(pago.montoAplicadoDeuda || 0),
       0
     );
-    const nuevoSaldo = Number(formData.montoOriginal) - totalPagado;
+
+    // Fórmula: Saldo = Original - Pagado Anterior - Pagado Sistema
+    const nuevoSaldo =
+      Number(formData.montoOriginal) -
+      Number(formData.montoPagadoAnterior || 0) -
+      totalPagadoSistema;
+
     if (nuevoSaldo !== formData.saldoPendiente) {
       onChange("saldoPendiente", nuevoSaldo);
     }
-  }, [formData.montoOriginal, pagos]);
+
+    // También actualizar montoPagado con el total del sistema
+    if (totalPagadoSistema !== formData.montoPagado) {
+      onChange("montoPagado", totalPagadoSistema);
+    }
+  }, [formData.montoOriginal, formData.montoPagadoAnterior, pagos]);
+
+  // Calcular estado automáticamente según pagos y fecha de vencimiento
+  useEffect(() => {
+    // No calcular estado en modo edición si ya tiene un estado manual
+    if (isEdit && formData.estadoId === ESTADOS_DEUDA_PERSONAL.ANULADO) {
+      return; // No cambiar estados ANULADO
+    }
+
+    const montoOriginal = Number(formData.montoOriginal || 0);
+    const montoPagadoAnterior = Number(formData.montoPagadoAnterior || 0);
+    const montoPagado = Number(formData.montoPagado || 0);
+    const totalPagado = montoPagadoAnterior + montoPagado;
+    const saldoPendiente = Number(formData.saldoPendiente || 0);
+    const fechaVencimiento = formData.fechaVencimiento ? new Date(formData.fechaVencimiento) : null;
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0); // Resetear horas para comparar solo fechas
+
+    let nuevoEstadoId = formData.estadoId;
+
+    // 1. Si está totalmente pagado → PAGADO (prioridad máxima)
+    if (montoOriginal > 0 && saldoPendiente <= 0) {
+      nuevoEstadoId = ESTADOS_DEUDA_PERSONAL.PAGADO;
+    }
+    // 2. Si está vencido y tiene saldo pendiente → VENCIDO (predomina sobre pago parcial)
+    else if (fechaVencimiento && fechaVencimiento < hoy && saldoPendiente > 0) {
+      nuevoEstadoId = ESTADOS_DEUDA_PERSONAL.VENCIDO;
+    }
+    // 3. Si tiene pagos parciales y no está vencido → PAGO_PARCIAL
+    else if (totalPagado > 0 && saldoPendiente > 0) {
+      nuevoEstadoId = ESTADOS_DEUDA_PERSONAL.PAGO_PARCIAL;
+    }
+    // 4. Si no tiene pagos y no está vencido → PENDIENTE
+    else if (totalPagado === 0 && saldoPendiente > 0) {
+      nuevoEstadoId = ESTADOS_DEUDA_PERSONAL.PENDIENTE;
+    }
+
+    // Actualizar estado solo si cambió
+    if (nuevoEstadoId !== formData.estadoId) {
+      onChange("estadoId", nuevoEstadoId);
+    }
+  }, [
+    formData.montoOriginal,
+    formData.montoPagadoAnterior,
+    formData.montoPagado,
+    formData.saldoPendiente,
+    formData.fechaVencimiento,
+    isEdit,
+  ]);
 
   const cargarPagos = async () => {
     try {
@@ -283,11 +344,13 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
       fecha: formData.fecha,
       fechaVencimiento: formData.fechaVencimiento,
       monedaId: Number(formData.monedaId),
+      montoPagadoAnterior: Number(formData.montoPagadoAnterior || 0),
       montoOriginal: Number(formData.montoOriginal),
       montoPagado: Number(formData.montoPagado),
       saldoPendiente: Number(formData.saldoPendiente),
       estadoId: Number(formData.estadoId),
       observaciones: formData.observaciones,
+      esSaldoInicial: formData.esSaldoInicial,
       esGerencial: formData.esGerencial,
       fechaContable: formData.fechaContable,
       periodoContableId: formData.periodoContableId ? Number(formData.periodoContableId) : null,
@@ -622,7 +685,7 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 <InputNumber
                   id="montoOriginal"
                   value={formData.montoOriginal}
-                  onValueChange={(e) => onChange("montoOriginal", e.value)}
+                  onValueChange={(e) => onChange("montoOriginal", e.value || 0)}
                   mode="decimal"
                   minFractionDigits={2}
                   maxFractionDigits={2}
@@ -630,6 +693,25 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                   style={{ backgroundColor: getColorPorMoneda() }}
                 />
               </div>
+
+              {/* Monto Pagado Anterior - Solo visible si es saldo inicial */}
+              {formData.esSaldoInicial && (
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="montoPagadoAnterior">
+                    Pagado Anterior (Histórico) <span className="text-red-500">*</span>
+                  </label>
+                  <InputNumber
+                    id="montoPagadoAnterior"
+                    value={formData.montoPagadoAnterior}
+                    onValueChange={(e) => onChange("montoPagadoAnterior", e.value || 0)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled={readOnly || loading}
+                    style={{ backgroundColor: getColorPorMoneda() }}
+                  />
+                </div>
+              )}
 
               {/* Monto Pagado - Siempre deshabilitado (se calcula automáticamente) */}
               <div style={{ flex: 1 }}>
@@ -703,6 +785,20 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
               </div>
 
               {/* Checkboxes */}
+              {/* Saldo Inicial */}
+              <div style={{ flex: 1 }}>
+                <BooleanToggleButton
+                  value={formData.esSaldoInicial}
+                  onChange={(val) => onChange("esSaldoInicial", val)}
+                  labelTrue="SALDO INICIAL"
+                  labelFalse="DEUDA NUEVA"
+                  severityTrue="primary"
+                  severityFalse="secondary"
+                  size="large"
+                  disabled={readOnly || loading}
+                />
+              </div>
+
               {/* Tipo de pago */}
               <div style={{ flex: 1 }}>
                 <BooleanToggleButton
@@ -713,6 +809,7 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                   severityTrue="success"
                   severityFalse="info"
                   size="large"
+                  disabled={readOnly || loading}
                 />
               </div>
             </div>

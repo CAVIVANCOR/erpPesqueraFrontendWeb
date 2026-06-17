@@ -458,7 +458,7 @@ export default function DeudaConPersonal({ ruta }) {
     const pers = personal.find(
       (p) => Number(p.id) === Number(rowData.personalId)
     );
-    return pers?.nombreCompleto || "-";
+    return pers?.nombres +" "+ pers?.apellidos || "-";
   };
 
   const tipoDeudaBodyTemplate = (rowData) => {
@@ -492,6 +492,15 @@ export default function DeudaConPersonal({ ruta }) {
       >
         {moneda?.codigoSunat || "-"}
       </span>
+    );
+  };
+
+  const saldoInicialBodyTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.esSaldoInicial ? "SI" : "NO"}
+        severity={rowData.esSaldoInicial ? "info" : "secondary"}
+      />
     );
   };
 
@@ -611,10 +620,10 @@ export default function DeudaConPersonal({ ruta }) {
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <div style={{ flex: 2 }}>
+              <div style={{ flex: 1 }}>
                 <h2>Gestión de Deudas con Personal</h2>
               </div>
-              <div style={{ flex: 2 }}>
+              <div style={{ flex: 1 }}>
                 <label style={{ fontWeight: "bold" }}>Empresa*</label>
                 <EmpresaSelector
                   empresaId={usuario?.empresaId}
@@ -629,6 +638,7 @@ export default function DeudaConPersonal({ ruta }) {
                   icon="pi pi-plus"
                   onClick={openNew}
                   className="p-button-primary"
+                  style={{ width: "100%" }}
                   disabled={!permisos.puedeCrear || loading || !empresaSeleccionada}
                   tooltip={
                     !permisos.puedeCrear
@@ -639,24 +649,40 @@ export default function DeudaConPersonal({ ruta }) {
                   }
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.25 }}>
                 <Button
-                  label="Limpiar Filtros"
                   icon="pi pi-filter-slash"
                   className="p-button-secondary"
                   outlined
                   onClick={limpiarFiltros}
                   disabled={loading}
+                  style={{ width: "100%" }}
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.25 }}>
                 <Button
-                  label="Actualizar"
                   icon="pi pi-refresh"
                   className="p-button-info"
                   onClick={loadData}
                   loading={loading}
+                  style={{ width: "100%" }}
                 />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="busquedaGlobal" style={{ fontWeight: "bold" }}>
+                  Búsqueda Global
+                </label>
+                <span className="p-input-icon-left" style={{ width: "100%" }}>
+                  <i className="pi pi-search" />
+                  <InputText
+                    id="busquedaGlobal"
+                    type="search"
+                    value={globalFilter}
+                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    placeholder="Buscar..."
+                    style={{ width: "100%" }}
+                  />
+                </span>
               </div>
             </div>
 
@@ -688,6 +714,7 @@ export default function DeudaConPersonal({ ruta }) {
                   showClear
                   filter
                   disabled={loading}
+                  style={{ width: "100%" }}
                 />
               </div>
               <div style={{ flex: 2 }}>
@@ -708,6 +735,7 @@ export default function DeudaConPersonal({ ruta }) {
                   showClear
                   filter
                   disabled={loading}
+                  style={{ width: "100%" }}
                 />
               </div>
               <div style={{ flex: 2 }}>
@@ -728,6 +756,7 @@ export default function DeudaConPersonal({ ruta }) {
                   showClear
                   filter
                   disabled={loading}
+                  style={{ width: "100%" }}
                 />
               </div>
               <div style={{ flex: 2 }}>
@@ -748,20 +777,9 @@ export default function DeudaConPersonal({ ruta }) {
                   showClear
                   filter
                   disabled={loading}
+                  style={{ width: "100%" }}
                 />
               </div>
-            </div>
-
-            {/* Fila 3: Filtros adicionales */}
-            <div
-              style={{
-                alignItems: "end",
-                display: "flex",
-                gap: 10,
-                marginTop: 10,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
               <div style={{ flex: 2 }}>
                 <label htmlFor="tipoPagoFiltro" style={{ fontWeight: "bold" }}>
                   Tipo de Pago
@@ -780,6 +798,7 @@ export default function DeudaConPersonal({ ruta }) {
                   optionValue="value"
                   showClear
                   disabled={loading}
+                  style={{ width: "100%" }}
                 />
               </div>
               <div style={{ flex: 2 }}>
@@ -800,30 +819,16 @@ export default function DeudaConPersonal({ ruta }) {
                   showClear
                   filter
                   disabled={loading}
+                  style={{ width: "100%" }}
                 />
               </div>
-              <div style={{ flex: 2 }}>
-                <label htmlFor="busquedaGlobal" style={{ fontWeight: "bold" }}>
-                  Búsqueda Global
-                </label>
-                <span className="p-input-icon-left" style={{ width: "100%" }}>
-                  <i className="pi pi-search" />
-                  <InputText
-                    id="busquedaGlobal"
-                    type="search"
-                    value={globalFilter}
-                    onChange={(e) => setGlobalFilter(e.target.value)}
-                    placeholder="Buscar..."
-                    style={{ width: "100%" }}
-                  />
-                </span>
-              </div>
-              <div style={{ flex: 2 }}></div>
             </div>
           </div>
         }
         rows={100}
         rowsPerPageOptions={[100, 200, 300, 500]}
+        sortField="id"
+        sortOrder={-1}
         size="small"
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar
@@ -886,10 +891,28 @@ export default function DeudaConPersonal({ ruta }) {
           style={{ minWidth: "120px", textAlign: "right" }}
         />
         <Column
+          header="Pagado Anterior"
+          body={(rowData) => montoBodyTemplate(rowData, "montoPagadoAnterior")}
+          sortable
+          style={{ minWidth: "120px", textAlign: "right" }}
+        />
+        <Column
+          header="Monto Pagado"
+          body={(rowData) => montoBodyTemplate(rowData, "montoPagado")}
+          sortable
+          style={{ minWidth: "120px", textAlign: "right" }}
+        />
+        <Column
           header="Saldo Pend."
           body={(rowData) => montoBodyTemplate(rowData, "saldoPendiente")}
           sortable
           style={{ minWidth: "120px", textAlign: "right" }}
+        />
+        <Column
+          header="Saldo Inicial"
+          body={saldoInicialBodyTemplate}
+          sortable
+          style={{ minWidth: "100px", textAlign: "center" }}
         />
         <Column
           header="Estado"
