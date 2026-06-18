@@ -84,6 +84,42 @@ const TipoDeudaPersonalForm = ({
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="p-fluid">
+       <div className="field mt-4">
+        <label
+          htmlFor="categoriaId"
+          className={classNames("font-medium", {
+            "p-error": errors.categoriaId,
+          })}
+        >
+          Categoría
+        </label>
+        <Controller
+          name="categoriaId"
+          control={control}
+          render={({ field, fieldState }) => (
+            <div className="p-inputgroup">
+              <span className="p-inputgroup-addon">
+                <i className="pi pi-folder" />
+              </span>
+              <Dropdown
+                id={field.name}
+                value={field.value}
+                options={categorias}
+                optionLabel="nombre"
+                optionValue="id"
+                onChange={(e) => field.onChange(e.value)}
+                placeholder="Seleccione una categoría"
+                className={classNames({ "p-invalid": fieldState.error })}
+                disabled={loading || loadingCategorias}
+                filter
+                showClear
+                emptyMessage="No hay categorías disponibles"
+              />
+            </div>
+          )}
+        />
+        {getFormErrorMessage("categoriaId")}
+      </div>
       <div className="field">
         <label
           htmlFor="nombre"
@@ -146,7 +182,7 @@ const TipoDeudaPersonalForm = ({
                 onChange={field.onChange}
                 className={classNames({ "p-invalid": fieldState.error })}
                 disabled={loading}
-                rows={3}
+                rows={4}
                 placeholder="Descripción detallada del tipo de deuda"
               />
             </div>
@@ -155,42 +191,7 @@ const TipoDeudaPersonalForm = ({
         {getFormErrorMessage("descripcion")}
       </div>
 
-      <div className="field mt-4">
-        <label
-          htmlFor="categoriaId"
-          className={classNames("font-medium", {
-            "p-error": errors.categoriaId,
-          })}
-        >
-          Categoría
-        </label>
-        <Controller
-          name="categoriaId"
-          control={control}
-          render={({ field, fieldState }) => (
-            <div className="p-inputgroup">
-              <span className="p-inputgroup-addon">
-                <i className="pi pi-folder" />
-              </span>
-              <Dropdown
-                id={field.name}
-                value={field.value}
-                options={categorias}
-                optionLabel="nombre"
-                optionValue="id"
-                onChange={(e) => field.onChange(e.value)}
-                placeholder="Seleccione una categoría"
-                className={classNames({ "p-invalid": fieldState.error })}
-                disabled={loading || loadingCategorias}
-                filter
-                showClear
-                emptyMessage="No hay categorías disponibles"
-              />
-            </div>
-          )}
-        />
-        {getFormErrorMessage("categoriaId")}
-      </div>
+     
 
       <div className="field mt-4">
         <label htmlFor="activo" className="font-medium">

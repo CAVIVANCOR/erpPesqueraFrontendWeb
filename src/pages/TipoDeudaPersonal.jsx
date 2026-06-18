@@ -20,10 +20,14 @@ import {
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
+import { Dropdown } from "primereact/dropdown";
+import { getCategoriaTipoDeudaPersonal } from "../api/tesoreria/categoriaTipoDeudaPersonal";
 
 export default function TipoDeudaPersonal({ ruta }) {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
+  const [categorias, setCategorias] = useState([]);
+  const [selectedCategoria, setSelectedCategoria] = useState(null);
 
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
@@ -41,7 +45,17 @@ export default function TipoDeudaPersonal({ ruta }) {
 
   useEffect(() => {
     loadData();
+    loadCategorias();
   }, []);
+
+  const loadCategorias = async () => {
+    try {
+      const categoriasData = await getCategoriaTipoDeudaPersonal();
+      setCategorias(categoriasData || []);
+    } catch (error) {
+      console.error("Error al cargar categorías:", error);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -60,6 +74,14 @@ export default function TipoDeudaPersonal({ ruta }) {
       setLoading(false);
     }
   };
+
+  const tiposFiltrados = tipos.filter((tipo) => {
+    if (!selectedCategoria) return true;
+    if (selectedCategoria === "sin-categoria") {
+      return !tipo.categoriaId;
+    }
+    return tipo.categoriaId === selectedCategoria;
+  });
 
   const openNew = () => {
     setFormData({});
@@ -253,32 +275,94 @@ export default function TipoDeudaPersonal({ ruta }) {
     );
   };
 
-  const leftToolbarTemplate = () => {
-    return (
-      <div className="flex flex-wrap gap-2">
-        <Button
-          label="Nuevo"
-          icon="pi pi-plus"
-          severity="success"
-          onClick={openNew}
-          disabled={!permisos.puedeCrear}
-        />
-      </div>
-    );
-  };
+  const headerTemplate = () => {
+    const hasFilters = selectedCategoria !== null || globalFilter !== "";
+    const clearFilters = () => {
+      setSelectedCategoria(null);
+      setGlobalFilter("");
+    };
 
-  const rightToolbarTemplate = () => {
+    // Obtener categorías únicas de los datos actuales
+    const categoriasEnDatos = tipos.reduce((acc, tipo) => {
+      if (tipo.categoria && !acc.find(c => c.id === tipo.categoria.id)) {
+        acc.push(tipo.categoria);
+      }
+      return acc;
+    }, []);
+
+    // Verificar si hay tipos sin categoría
+    const haySinCategoria = tipos.some(tipo => !tipo.categoriaId);
+
     return (
-      <span className="p-input-icon-left">
-        <i className="pi pi-search" />
-        <InputText
-          type="search"
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          placeholder="Buscar..."
-          style={{ width: "300px" }}
-        />
-      </span>
+      <div
+        style={{
+          alignItems: "end",
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <h2>
+            Tipos de Deuda Personal
+          </h2>
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            label="Nuevo"
+            icon="pi pi-plus"
+            severity="success"
+            onClick={openNew}
+            disabled={!permisos.puedeCrear}
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Dropdown
+            value={selectedCategoria}
+            options={[
+              { label: "Todas las categorías", value: null },
+              ...categoriasEnDatos
+                .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                .map((cat) => ({
+                  label: cat.nombre,
+                  value: cat.id,
+                })),
+              ...(haySinCategoria ? [{ label: "Sin categoría", value: "sin-categoria" }] : []),
+            ]}
+            onChange={(e) => setSelectedCategoria(e.value)}
+            placeholder="Filtrar por categoría"
+            showClear
+            filter
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <span className="p-input-icon-left">
+            <i className="pi pi-search" />
+            <InputText
+              type="search"
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              placeholder="Buscar..."
+              style={{ width: "100%" }}
+            />
+          </span>
+        </div>
+        {hasFilters && (
+          <div style={{ flex: 1 }}>
+            <Button
+              icon="pi pi-filter-slash"
+              label="Limpiar"
+              outlined
+              onClick={clearFilters}
+              tooltip="Limpiar todos los filtros"
+              tooltipOptions={{ position: "top" }}
+              style={{ width: "100%" }}
+            />
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -302,27 +386,21 @@ export default function TipoDeudaPersonal({ ruta }) {
   return (
     <div className="card">
       <Toast ref={toast} />
-      <h2 style={{ fontSize: getResponsiveFontSize() }}>
-        Tipos de Deuda Personal
-      </h2>
-
-      <Toolbar
-        className="mb-4"
-        left={leftToolbarTemplate}
-        right={rightToolbarTemplate}
-      />
-
       <DataTable
-        value={tipos}
+        value={tiposFiltrados}
         loading={loading}
         globalFilter={globalFilter}
         emptyMessage="No se encontraron tipos de deuda personal"
         paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
+        rows={20}
+        rowsPerPageOptions={[20, 40, 80, 150]}
         size="small"
         stripedRows
         showGridlines
+        onRowClick={(e) => editTipo(e.data)}
+        selectionMode="single"
+        style={{ fontSize: getResponsiveFontSize(), cursor: "pointer" }}
+        header={headerTemplate}
       >
         <Column
           field="id"

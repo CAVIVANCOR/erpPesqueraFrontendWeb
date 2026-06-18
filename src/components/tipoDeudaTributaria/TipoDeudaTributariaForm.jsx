@@ -346,7 +346,7 @@ const TipoDeudaTributariaForm = ({
                 onChange={(e) => field.onChange(e.value)}
                 options={cuentasContables}
                 optionLabel={(option) =>
-                  `${option.codigo} - ${option.nombre}`
+                  `${option.codigoCuenta} - ${option.nombreCuenta}`
                 }
                 optionValue="id"
                 placeholder="Seleccione cuenta contable"
