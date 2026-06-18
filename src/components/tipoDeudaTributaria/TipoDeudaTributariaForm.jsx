@@ -6,16 +6,20 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
 import { classNames } from "primereact/utils";
 import { useForm, Controller } from "react-hook-form";
+import { getEntidadesComerciales } from "../../api/entidadComercial";
+import { getPlanCuentasContable } from "../../api/contabilidad/planCuentasContable";
 
 const TipoDeudaTributariaForm = ({
   isEdit,
   defaultValues,
-  entidades,
-  cuentasContables,
   onSubmit,
   onCancel,
   loading,
 }) => {
+  const [entidades, setEntidades] = useState([]);
+  const [cuentasContables, setCuentasContables] = useState([]);
+  const [loadingData, setLoadingData] = useState(false);
+
   const periodicidadOptions = [
     { label: "Diario", value: "DIARIO" },
     { label: "Semanal", value: "SEMANAL" },
@@ -23,8 +27,10 @@ const TipoDeudaTributariaForm = ({
     { label: "Mensual", value: "MENSUAL" },
     { label: "Bimestral", value: "BIMESTRAL" },
     { label: "Trimestral", value: "TRIMESTRAL" },
+    { label: "Cuatrimestral", value: "CUATRIMESTRAL" },
     { label: "Semestral", value: "SEMESTRAL" },
     { label: "Anual", value: "ANUAL" },
+    { label: "Único", value: "UNICO" },
   ];
 
   const {
@@ -44,6 +50,26 @@ const TipoDeudaTributariaForm = ({
     },
     mode: "onChange",
   });
+
+  // Cargar entidades y cuentas contables
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoadingData(true);
+        const [entidadesData, cuentasData] = await Promise.all([
+          getEntidadesComerciales(),
+          getPlanCuentasContable(),
+        ]);
+        setEntidades(entidadesData || []);
+        setCuentasContables(cuentasData || []);
+      } catch (error) {
+        console.error("Error al cargar datos del formulario:", error);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    loadData();
+  }, []);
 
   useEffect(() => {
     if (defaultValues) {
@@ -192,7 +218,7 @@ const TipoDeudaTributariaForm = ({
                 optionValue="id"
                 placeholder="Seleccione entidad recaudadora"
                 className={classNames({ "p-invalid": fieldState.error })}
-                disabled={loading}
+                disabled={loading || loadingData}
                 filter
                 showClear
                 emptyMessage="No hay entidades disponibles"
@@ -261,12 +287,12 @@ const TipoDeudaTributariaForm = ({
                 onChange={(e) => field.onChange(e.value)}
                 options={cuentasContables}
                 optionLabel={(option) =>
-                  `${option.codigo} - ${option.descripcion}`
+                  `${option.codigo} - ${option.nombre}`
                 }
                 optionValue="id"
                 placeholder="Seleccione cuenta contable"
                 className={classNames({ "p-invalid": fieldState.error })}
-                disabled={loading}
+                disabled={loading || loadingData}
                 filter
                 showClear
                 emptyMessage="No hay cuentas contables disponibles"

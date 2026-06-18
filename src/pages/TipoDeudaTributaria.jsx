@@ -1,4 +1,6 @@
+// src/pages/TipoDeudaTributaria.jsx
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -7,215 +9,225 @@ import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { Toolbar } from "primereact/toolbar";
 import { Tag } from "primereact/tag";
-import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
-import { useAuthStore } from "../shared/stores/useAuthStore";
-import { usePermissions } from "../hooks/usePermissions";
+import TipoDeudaTributariaForm from "../components/tipoDeudaTributaria/TipoDeudaTributariaForm";
 import {
   getTiposDeudaTributaria,
   getTipoDeudaTributariaById,
+  createTipoDeudaTributaria,
+  updateTipoDeudaTributaria,
   deleteTipoDeudaTributaria,
 } from "../api/tesoreria/tipoDeudaTributaria";
-import TipoDeudaTributariaForm from "../components/tipoDeudaTributaria/TipoDeudaTributariaForm";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import { getResponsiveFontSize } from "../utils/utils";
+import { usePermissions } from "../hooks/usePermissions";
 
-export default function TipoDeudaTributaria() {
-  const [tipos, setTipos] = useState([]);
-  const [tipoDialog, setTipoDialog] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [loading, setLoading] = useState(false);
+export default function TipoDeudaTributaria({ ruta }) {
+  const { usuario } = useAuthStore();
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const toast = useRef(null);
-  const dt = useRef(null);
-  const user = useAuthStore((state) => state.user);
-
-  const { canCreate, canEdit, canDelete } = usePermissions(
-    "TIPO_DEUDA_TRIBUTARIA"
-  );
+  const [tipos, setTipos] = useState([]);
+  const [selectedTipo, setSelectedTipo] = useState(null);
+  const [tipoDialog, setTipoDialog] = useState(false);
+  const [deleteTipoDialog, setDeleteTipoDialog] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [formData, setFormData] = useState({});
 
   useEffect(() => {
-    cargarDatos();
+    loadData();
   }, []);
 
-  const cargarDatos = async () => {
-    setLoading(true);
+  const loadData = async () => {
     try {
-      const data = await getTiposDeudaTributaria();
-      setTipos(data);
+      setLoading(true);
+      const tiposData = await getTiposDeudaTributaria();
+      setTipos(tiposData || []);
     } catch (error) {
       console.error("Error al cargar tipos de deuda tributaria:", error);
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudieron cargar los tipos de deuda tributaria",
+        detail: "Error al cargar tipos de deuda tributaria",
         life: 3000,
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const openNew = () => {
-    if (!canCreate) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Sin permisos",
-        detail: "No tiene permisos para crear tipos de deuda tributaria",
-        life: 3000,
-      });
-      return;
-    }
-    setEditing(null);
+    setFormData({});
+    setSelectedTipo(null);
+    setIsEdit(false);
     setTipoDialog(true);
   };
 
   const hideDialog = () => {
     setTipoDialog(false);
-    setEditing(null);
+    setFormData({});
+    setSelectedTipo(null);
   };
 
   const editTipo = async (tipo) => {
-    if (!canEdit) {
-      toast.current.show({
+    try {
+      setLoading(true);
+      const tipoCompleto = await getTipoDeudaTributariaById(tipo.id);
+      setFormData(tipoCompleto);
+      setSelectedTipo(tipo);
+      setIsEdit(true);
+      setTipoDialog(true);
+    } catch (error) {
+      console.error("Error al cargar tipo de deuda tributaria:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar tipo de deuda tributaria",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveTipo = async (data) => {
+    const esEdicion = isEdit && selectedTipo;
+
+    if (esEdicion && !permisos.puedeEditar) {
+      toast.current?.show({
         severity: "warn",
-        summary: "Sin permisos",
-        detail: "No tiene permisos para editar tipos de deuda tributaria",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para editar",
         life: 3000,
       });
       return;
     }
-    try {
-      const tipoCompleto = await getTipoDeudaTributariaById(tipo.id);
-      setEditing(tipoCompleto);
-      setTipoDialog(true);
-    } catch (error) {
-      console.error("Error al cargar tipo de deuda tributaria:", error);
-      toast.current.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cargar el tipo de deuda tributaria",
+    if (!esEdicion && !permisos.puedeCrear) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear",
         life: 3000,
       });
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const dataConAuditoria = {
+        ...data,
+        creadoPor: esEdicion
+          ? data.creadoPor
+          : usuario?.personalId
+            ? Number(usuario.personalId)
+            : null,
+        actualizadoPor:
+          esEdicion && usuario?.personalId
+            ? Number(usuario.personalId)
+            : null,
+      };
+
+      if (esEdicion) {
+        await updateTipoDeudaTributaria(selectedTipo.id, dataConAuditoria);
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Tipo de deuda tributaria actualizado correctamente",
+          life: 3000,
+        });
+      } else {
+        await createTipoDeudaTributaria(dataConAuditoria);
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Tipo de deuda tributaria creado correctamente",
+          life: 3000,
+        });
+      }
+
+      hideDialog();
+      loadData();
+    } catch (error) {
+      console.error("Error al guardar tipo de deuda tributaria:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.message ||
+          "Error al guardar tipo de deuda tributaria",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   const confirmDeleteTipo = (tipo) => {
-    if (!canDelete) {
-      toast.current.show({
+    if (!permisos.puedeEliminar) {
+      toast.current?.show({
         severity: "warn",
-        summary: "Sin permisos",
-        detail: "No tiene permisos para eliminar tipos de deuda tributaria",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar",
         life: 3000,
       });
       return;
     }
-
-    confirmDialog({
-      message: `¿Está seguro de eliminar el tipo "${tipo.nombre}"?`,
-      header: "Confirmar Eliminación",
-      icon: "pi pi-exclamation-triangle",
-      acceptLabel: "Sí",
-      rejectLabel: "No",
-      accept: () => deleteTipo(tipo.id),
-    });
+    setSelectedTipo(tipo);
+    setDeleteTipoDialog(true);
   };
 
-  const deleteTipo = async (id) => {
-    setLoading(true);
+  const deleteTipoConfirmed = async () => {
     try {
-      await deleteTipoDeudaTributaria(id);
-      toast.current.show({
+      setLoading(true);
+      await deleteTipoDeudaTributaria(selectedTipo.id);
+
+      toast.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: "Tipo de deuda tributaria eliminado",
+        detail: "Tipo de deuda tributaria eliminado correctamente",
         life: 3000,
       });
-      cargarDatos();
+
+      setDeleteTipoDialog(false);
+      setSelectedTipo(null);
+      loadData();
     } catch (error) {
       console.error("Error al eliminar tipo de deuda tributaria:", error);
-      const errorMsg =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        "No se pudo eliminar el tipo de deuda tributaria";
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: errorMsg,
-        life: 5000,
+        detail:
+          error.response?.data?.message ||
+          "Error al eliminar tipo de deuda tributaria",
+        life: 3000,
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleSave = () => {
-    hideDialog();
-    cargarDatos();
-    toast.current.show({
-      severity: "success",
-      summary: "Éxito",
-      detail: editing
-        ? "Tipo de deuda tributaria actualizado"
-        : "Tipo de deuda tributaria creado",
-      life: 3000,
-    });
-  };
-
-  const leftToolbarTemplate = () => {
-    return (
-      <div className="flex flex-wrap gap-2">
-        <Button
-          label="Nuevo"
-          icon="pi pi-plus"
-          className="p-button-success"
-          onClick={openNew}
-          disabled={!canCreate}
-        />
-      </div>
-    );
-  };
-
-  const rightToolbarTemplate = () => {
-    return (
-      <Button
-        label="Exportar"
-        icon="pi pi-upload"
-        className="p-button-help"
-        onClick={() => dt.current.exportCSV()}
-      />
-    );
-  };
-
-  const actionBodyTemplate = (rowData) => {
-    return (
-      <div className="flex gap-2">
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-rounded p-button-info p-button-sm"
-          onClick={() => editTipo(rowData)}
-          disabled={!canEdit}
-          tooltip="Editar"
-          tooltipOptions={{ position: "top" }}
-        />
-        <Button
-          icon="pi pi-trash"
-          className="p-button-rounded p-button-danger p-button-sm"
-          onClick={() => confirmDeleteTipo(rowData)}
-          disabled={!canDelete}
-          tooltip="Eliminar"
-          tooltipOptions={{ position: "top" }}
-        />
-      </div>
-    );
+  const hideDeleteTipoDialog = () => {
+    setDeleteTipoDialog(false);
+    setSelectedTipo(null);
   };
 
   const activoBodyTemplate = (rowData) => {
     return (
       <Tag
-        value={rowData.activo ? "Activo" : "Inactivo"}
+        value={rowData.activo ? "ACTIVO" : "INACTIVO"}
         severity={rowData.activo ? "success" : "danger"}
       />
     );
   };
 
-  const entidadBodyTemplate = (rowData) => {
-    return rowData.entidadRecaudadora?.nombre || "-";
+  const entidadRecaudadoraBodyTemplate = (rowData) => {
+    return rowData.entidadRecaudadora?.razonSocial || "-";
   };
 
   const cuentaContableBodyTemplate = (rowData) => {
@@ -226,8 +238,13 @@ export default function TipoDeudaTributaria() {
 
   const periodicidadBodyTemplate = (rowData) => {
     const periodicidades = {
+      DIARIO: "Diario",
+      SEMANAL: "Semanal",
+      QUINCENAL: "Quincenal",
       MENSUAL: "Mensual",
+      BIMESTRAL: "Bimestral",
       TRIMESTRAL: "Trimestral",
+      CUATRIMESTRAL: "Cuatrimestral",
       SEMESTRAL: "Semestral",
       ANUAL: "Anual",
       UNICO: "Único",
@@ -235,135 +252,196 @@ export default function TipoDeudaTributaria() {
     return periodicidades[rowData.periodicidad] || rowData.periodicidad;
   };
 
-  const header = (
-    <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
-      <h4 className="m-0">Gestión de Tipos de Deuda Tributaria</h4>
+  const actionBodyTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          rounded
+          outlined
+          className="p-button-warning"
+          onClick={() => editTipo(rowData)}
+          disabled={!permisos.puedeEditar}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+        />
+        <Button
+          icon="pi pi-trash"
+          rounded
+          outlined
+          severity="danger"
+          onClick={() => confirmDeleteTipo(rowData)}
+          disabled={!permisos.puedeEliminar}
+          tooltip="Eliminar"
+          tooltipOptions={{ position: "top" }}
+        />
+      </div>
+    );
+  };
+
+  const leftToolbarTemplate = () => {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Button
+          label="Nuevo"
+          icon="pi pi-plus"
+          severity="success"
+          onClick={openNew}
+          disabled={!permisos.puedeCrear}
+        />
+      </div>
+    );
+  };
+
+  const rightToolbarTemplate = () => {
+    return (
       <span className="p-input-icon-left">
         <i className="pi pi-search" />
         <InputText
           type="search"
-          onInput={(e) => setGlobalFilter(e.target.value)}
+          value={globalFilter}
+          onChange={(e) => setGlobalFilter(e.target.value)}
           placeholder="Buscar..."
+          style={{ width: "300px" }}
         />
       </span>
-    </div>
-  );
+    );
+  };
 
-  const dialogFooter = (
-    <div>
+  const deleteDialogFooter = (
+    <>
       <Button
-        label="Cancelar"
+        label="No"
         icon="pi pi-times"
-        className="p-button-text"
-        onClick={hideDialog}
+        outlined
+        onClick={hideDeleteTipoDialog}
       />
-    </div>
+      <Button
+        label="Sí"
+        icon="pi pi-check"
+        severity="danger"
+        onClick={deleteTipoConfirmed}
+      />
+    </>
   );
 
   return (
-    <div className="datatable-crud-demo">
+    <div className="card">
       <Toast ref={toast} />
-      <ConfirmDialog />
+      <h2 style={{ fontSize: getResponsiveFontSize() }}>
+        Tipos de Deuda Tributaria
+      </h2>
 
-      <div className="card">
-        <Toolbar
-          className="mb-4"
-          left={leftToolbarTemplate}
-          right={rightToolbarTemplate}
+      <Toolbar
+        className="mb-4"
+        left={leftToolbarTemplate}
+        right={rightToolbarTemplate}
+      />
+
+      <DataTable
+        value={tipos}
+        loading={loading}
+        globalFilter={globalFilter}
+        emptyMessage="No se encontraron tipos de deuda tributaria"
+        paginator
+        rows={10}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        size="small"
+        stripedRows
+        showGridlines
+      >
+        <Column
+          field="id"
+          header="ID"
+          sortable
+          style={{ width: "80px" }}
         />
-
-        <DataTable
-          ref={dt}
-          value={tipos}
-          dataKey="id"
-          paginator
-          rows={10}
-          rowsPerPageOptions={[5, 10, 25, 50]}
-          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} tipos"
-          globalFilter={globalFilter}
-          header={header}
-          loading={loading}
-          emptyMessage="No se encontraron tipos de deuda tributaria"
-          responsiveLayout="scroll"
-          stripedRows
-        >
-          <Column
-            field="id"
-            header="ID"
-            sortable
-            style={{ minWidth: "4rem" }}
-          />
-          <Column
-            field="nombre"
-            header="Nombre"
-            sortable
-            style={{ minWidth: "12rem" }}
-          />
-          <Column
-            field="descripcion"
-            header="Descripción"
-            sortable
-            style={{ minWidth: "15rem" }}
-          />
-          <Column
-            header="Entidad Recaudadora"
-            body={entidadBodyTemplate}
-            sortable
-            style={{ minWidth: "12rem" }}
-          />
-          <Column
-            header="Cuenta Contable"
-            body={cuentaContableBodyTemplate}
-            sortable
-            style={{ minWidth: "15rem" }}
-          />
-          <Column
-            header="Periodicidad"
-            body={periodicidadBodyTemplate}
-            sortable
-            style={{ minWidth: "10rem" }}
-          />
-          <Column
-            field="diasVencimiento"
-            header="Días Venc."
-            sortable
-            style={{ minWidth: "8rem" }}
-          />
-          <Column
-            header="Estado"
-            body={activoBodyTemplate}
-            sortable
-            style={{ minWidth: "8rem" }}
-          />
-          <Column
-            body={actionBodyTemplate}
-            exportable={false}
-            style={{ minWidth: "8rem" }}
-            header="Acciones"
-          />
-        </DataTable>
-      </div>
+        <Column
+          field="nombre"
+          header="Nombre"
+          sortable
+          filter
+          filterPlaceholder="Buscar por nombre"
+        />
+        <Column
+          field="descripcion"
+          header="Descripción"
+          sortable
+        />
+        <Column
+          header="Entidad Recaudadora"
+          body={entidadRecaudadoraBodyTemplate}
+          sortable
+          style={{ minWidth: "200px" }}
+        />
+        <Column
+          header="Cuenta Contable"
+          body={cuentaContableBodyTemplate}
+          sortable
+          style={{ minWidth: "250px" }}
+        />
+        <Column
+          header="Periodicidad"
+          body={periodicidadBodyTemplate}
+          sortable
+          style={{ width: "150px" }}
+        />
+        <Column
+          field="activo"
+          header="Estado"
+          body={activoBodyTemplate}
+          sortable
+          style={{ width: "120px" }}
+        />
+        <Column
+          body={actionBodyTemplate}
+          exportable={false}
+          style={{ width: "120px" }}
+          header="Acciones"
+        />
+      </DataTable>
 
       <Dialog
         visible={tipoDialog}
-        style={{ width: "600px" }}
+        style={{ width: "800px" }}
         header={
-          editing
+          isEdit
             ? "Editar Tipo de Deuda Tributaria"
             : "Nuevo Tipo de Deuda Tributaria"
         }
         modal
         className="p-fluid"
-        footer={dialogFooter}
         onHide={hideDialog}
       >
         <TipoDeudaTributariaForm
-          defaultValues={editing}
-          onSave={handleSave}
+          isEdit={isEdit}
+          defaultValues={formData}
+          onSubmit={saveTipo}
           onCancel={hideDialog}
-          toast={toast}
+          loading={loading}
         />
+      </Dialog>
+
+      <Dialog
+        visible={deleteTipoDialog}
+        style={{ width: "450px" }}
+        header="Confirmar"
+        modal
+        footer={deleteDialogFooter}
+        onHide={hideDeleteTipoDialog}
+      >
+        <div className="confirmation-content">
+          <i
+            className="pi pi-exclamation-triangle mr-3"
+            style={{ fontSize: "2rem" }}
+          />
+          {selectedTipo && (
+            <span>
+              ¿Está seguro de eliminar el tipo de deuda tributaria{" "}
+              <b>{selectedTipo.nombre}</b>?
+            </span>
+          )}
+        </div>
       </Dialog>
     </div>
   );

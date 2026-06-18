@@ -9,6 +9,8 @@ import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { Toolbar } from "primereact/toolbar";
 import { Tag } from "primereact/tag";
+import { Dropdown } from "primereact/dropdown";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 import DeudaTributariaForm from "../components/deudaTributaria/DeudaTributariaForm";
 import { getMediosPago } from "../api/medioPago";
 import {
@@ -26,6 +28,7 @@ import { getPeriodosContables } from "../api/contabilidad/periodoContable";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
+
 
 export default function DeudaTributaria({ ruta }) {
   const { usuario } = useAuthStore();
@@ -45,6 +48,23 @@ export default function DeudaTributaria({ ruta }) {
   const [periodosContables, setPeriodosContables] = useState([]);
   const [mediosPago, setMediosPago] = useState([]);
 
+  // Estados de filtros
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [tipoDeudaSeleccionado, setTipoDeudaSeleccionado] = useState(null);
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
+  const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
+  const [tipoPagoSeleccionado, setTipoPagoSeleccionado] = useState("TODOS"); // "TODOS" | "FISCAL" | "GERENCIAL"
+  const [periodoContableSeleccionado, setPeriodoContableSeleccionado] = useState(null);
+  const [periodosContablesFiltrados, setPeriodosContablesFiltrados] = useState([]);
+
+  // Opciones dinámicas para filtros
+  const [deudasFiltradas, setDeudasFiltradas] = useState([]);
+  const [itemsFiltrados, setItemsFiltrados] = useState([]);
+  const [tiposDeudaUnicos, setTiposDeudaUnicos] = useState([]);
+  const [estadosUnicos, setEstadosUnicos] = useState([]);
+  const [monedasUnicas, setMonedasUnicas] = useState([]);
+  const [periodosUnicos, setPeriodosUnicos] = useState([]);
+
   const [selectedDeuda, setSelectedDeuda] = useState(null);
   const [deudaDialog, setDeudaDialog] = useState(false);
   const [deleteDeudaDialog, setDeleteDeudaDialog] = useState(false);
@@ -56,6 +76,98 @@ export default function DeudaTributaria({ ruta }) {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Actualizar opciones de filtros basadas en datos visibles
+  useEffect(() => {
+    const opciones = obtenerOpcionesDinamicas();
+
+    setTiposDeudaUnicos(opciones.tiposDeudaUnicos);
+    setEstadosUnicos(opciones.estadosUnicos);
+    setMonedasUnicas(opciones.monedasUnicas);
+    setPeriodosUnicos(opciones.periodosUnicos);
+
+    // Limpiar selecciones que ya no existen
+    if (tipoDeudaSeleccionado && !opciones.tiposDeudaUnicos.find(t => Number(t.id) === Number(tipoDeudaSeleccionado))) {
+      setTipoDeudaSeleccionado(null);
+    }
+    if (estadoSeleccionado && !opciones.estadosUnicos.find(e => Number(e.id) === Number(estadoSeleccionado))) {
+      setEstadoSeleccionado(null);
+    }
+    if (monedaSeleccionada && !opciones.monedasUnicas.find(m => Number(m.id) === Number(monedaSeleccionada))) {
+      setMonedaSeleccionada(null);
+    }
+    if (periodoContableSeleccionado && !opciones.periodosUnicos.find(p => Number(p.id) === Number(periodoContableSeleccionado))) {
+      setPeriodoContableSeleccionado(null);
+    }
+  }, [itemsFiltrados, deudasFiltradas, empresaSeleccionada]);
+
+  // Filtrar períodos contables por empresa seleccionada
+  useEffect(() => {
+    if (empresaSeleccionada) {
+      const periodosDeLaEmpresa = periodosContables.filter(
+        (p) => Number(p.empresaId) === Number(empresaSeleccionada)
+      );
+      setPeriodosContablesFiltrados(periodosDeLaEmpresa);
+    } else {
+      setPeriodosContablesFiltrados(periodosContables);
+    }
+  }, [empresaSeleccionada, periodosContables]);
+
+  // Aplicar filtros a las deudas
+  // Filtrar items cuando cambien los filtros
+  useEffect(() => {
+    let filtrados = deudas;
+
+    // Filtro por empresa (nivel 1)
+    if (empresaSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.empresaId) === Number(empresaSeleccionada)
+      );
+    }
+    setDeudasFiltradas(filtrados);
+
+    // Filtros secundarios
+    if (tipoDeudaSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.tipoDeudaId) === Number(tipoDeudaSeleccionado)
+      );
+    }
+
+    if (estadoSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.estadoId) === Number(estadoSeleccionado)
+      );
+    }
+
+    if (monedaSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.monedaId) === Number(monedaSeleccionada)
+      );
+    }
+
+    if (tipoPagoSeleccionado === "FISCAL") {
+      filtrados = filtrados.filter((item) => item.esGerencial === false);
+    } else if (tipoPagoSeleccionado === "GERENCIAL") {
+      filtrados = filtrados.filter((item) => item.esGerencial === true);
+    }
+    // Si es "TODOS", no filtra
+
+    if (periodoContableSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.periodoContableId) === Number(periodoContableSeleccionado)
+      );
+    }
+
+    setItemsFiltrados(filtrados);
+  }, [
+    empresaSeleccionada,
+    tipoDeudaSeleccionado,
+    estadoSeleccionado,
+    monedaSeleccionada,
+    tipoPagoSeleccionado,
+    periodoContableSeleccionado,
+    deudas,
+  ]);
 
   const loadData = async () => {
     try {
@@ -98,8 +210,50 @@ export default function DeudaTributaria({ ruta }) {
     }
   };
 
+  // Generar opciones dinámicas basadas en datos filtrados
+  const obtenerOpcionesDinamicas = () => {
+    const datosParaOpciones = itemsFiltrados.length > 0 ? itemsFiltrados : deudasFiltradas;
+
+    // Tipos de deuda únicos
+    const tiposDeudaUnicos = [...new Map(
+      datosParaOpciones
+        .filter(d => d.tipoDeuda)
+        .map(d => [d.tipoDeuda.id, d.tipoDeuda])
+    ).values()];
+
+    // Estados únicos
+    const estadosUnicos = [...new Map(
+      datosParaOpciones
+        .filter(d => d.estado)
+        .map(d => [d.estado.id, d.estado])
+    ).values()];
+
+    // Monedas únicas
+    const monedasUnicas = [...new Map(
+      datosParaOpciones
+        .filter(d => d.moneda)
+        .map(d => [d.moneda.id, d.moneda])
+    ).values()];
+
+    // Periodos únicos
+    const periodosUnicos = [...new Map(
+      datosParaOpciones
+        .filter(d => d.periodoContable)
+        .map(d => [d.periodoContable.id, d.periodoContable])
+    ).values()];
+
+    return {
+      tiposDeudaUnicos,
+      estadosUnicos,
+      monedasUnicas,
+      periodosUnicos
+    };
+  };
+
   const openNew = () => {
-    setFormData({});
+    setFormData({
+      empresaId: empresaSeleccionada,
+    });
     setSelectedDeuda(null);
     setIsEdit(false);
     setDeudaDialog(true);
@@ -212,7 +366,8 @@ export default function DeudaTributaria({ ruta }) {
         severity: "error",
         summary: "Error",
         detail:
-          error.response?.data?.message || "Error al guardar deuda tributaria",
+          error.response?.data?.message ||
+          "Error al guardar deuda tributaria",
         life: 3000,
       });
     } finally {
@@ -269,6 +424,15 @@ export default function DeudaTributaria({ ruta }) {
     setSelectedDeuda(null);
   };
 
+  const limpiarFiltros = () => {
+    setEmpresaSeleccionada(null);
+    setTipoDeudaSeleccionado(null);
+    setEstadoSeleccionado(null);
+    setMonedaSeleccionada(null);
+    setTipoPagoSeleccionado("TODOS");
+    setPeriodoContableSeleccionado(null);
+  };
+
   const empresaBodyTemplate = (rowData) => {
     const empresa = empresas.find(
       (e) => Number(e.id) === Number(rowData.empresaId)
@@ -307,6 +471,15 @@ export default function DeudaTributaria({ ruta }) {
       >
         {moneda?.codigoSunat || "-"}
       </span>
+    );
+  };
+
+  const saldoInicialBodyTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.esSaldoInicial ? "SI" : "NO"}
+        severity={rowData.esSaldoInicial ? "info" : "secondary"}
+      />
     );
   };
 
@@ -386,42 +559,6 @@ export default function DeudaTributaria({ ruta }) {
     );
   };
 
-  const leftToolbarTemplate = () => {
-    return (
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        <Button
-          label="Nuevo"
-          icon="pi pi-plus"
-          className="p-button-success"
-          onClick={openNew}
-          disabled={!permisos.puedeCrear || loading}
-          tooltip={!permisos.puedeCrear ? "No tiene permisos para crear" : ""}
-        />
-        <Button
-          label="Actualizar"
-          icon="pi pi-refresh"
-          className="p-button-info"
-          onClick={loadData}
-          loading={loading}
-        />
-      </div>
-    );
-  };
-
-  const rightToolbarTemplate = () => {
-    return (
-      <span className="p-input-icon-left">
-        <i className="pi pi-search" />
-        <InputText
-          type="search"
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          placeholder="Buscar..."
-        />
-      </span>
-    );
-  };
-
   const deleteDeudaDialogFooter = (
     <>
       <Button
@@ -443,22 +580,221 @@ export default function DeudaTributaria({ ruta }) {
   return (
     <div className="card">
       <Toast ref={toast} />
-      <h2>Gestión de Deudas Tributarias</h2>
-      <Toolbar
-        className="mb-4"
-        left={leftToolbarTemplate}
-        right={rightToolbarTemplate}
-      />
       <DataTable
-        value={deudas}
+        value={itemsFiltrados}
         loading={loading}
         globalFilter={globalFilter}
         emptyMessage="No se encontraron deudas tributarias"
         stripedRows
         showGridlines
         paginator
+        header={
+          <div>
+            {/* Fila 1: Título, Empresa, Botones */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <h2>Gestión de Deudas Tributarias</h2>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold" }}>Empresa*</label>
+                <EmpresaSelector
+                  empresaId={usuario?.empresaId}
+                  onEmpresaChange={(id) => {
+                    setEmpresaSeleccionada(id);
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Nuevo"
+                  icon="pi pi-plus"
+                  onClick={openNew}
+                  className="p-button-primary"
+                  style={{ width: "100%" }}
+                  disabled={!permisos.puedeCrear || loading || !empresaSeleccionada}
+                  tooltip={
+                    !permisos.puedeCrear
+                      ? "No tiene permisos para crear"
+                      : !empresaSeleccionada
+                        ? "Seleccione una empresa primero"
+                        : "Nueva Deuda Tributaria"
+                  }
+                />
+              </div>
+              <div style={{ flex: 0.25 }}>
+                <Button
+                  icon="pi pi-filter-slash"
+                  className="p-button-secondary"
+                  outlined
+                  onClick={limpiarFiltros}
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 0.25 }}>
+                <Button
+                  icon="pi pi-refresh"
+                  className="p-button-info"
+                  onClick={loadData}
+                  loading={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="busquedaGlobal" style={{ fontWeight: "bold" }}>
+                  Búsqueda Global
+                </label>
+                <span className="p-input-icon-left" style={{ width: "100%" }}>
+                  <i className="pi pi-search" />
+                  <InputText
+                    id="busquedaGlobal"
+                    type="search"
+                    value={globalFilter}
+                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    placeholder="Buscar..."
+                    style={{ width: "100%" }}
+                  />
+                </span>
+              </div>
+            </div>
+
+            {/* Fila 2: Filtros principales */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <label htmlFor="tipoDeudaFiltro" style={{ fontWeight: "bold" }}>
+                  Tipo de Deuda
+                </label>
+                <Dropdown
+                  id="tipoDeudaFiltro"
+                  value={tipoDeudaSeleccionado}
+                  options={tiposDeudaUnicos.map((t) => ({
+                    label: t.nombre,
+                    value: Number(t.id),
+                  }))}
+                  onChange={(e) => setTipoDeudaSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  filter
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="estadoFiltro" style={{ fontWeight: "bold" }}>
+                  Estado
+                </label>
+                <Dropdown
+                  id="estadoFiltro"
+                  value={estadoSeleccionado}
+                  options={estadosUnicos.map((e) => ({
+                    label: e.descripcion,
+                    value: Number(e.id),
+                  }))}
+                  onChange={(e) => setEstadoSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  filter
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="monedaFiltro" style={{ fontWeight: "bold" }}>
+                  Moneda
+                </label>
+                <Dropdown
+                  id="monedaFiltro"
+                  value={monedaSeleccionada}
+                  options={monedasUnicas.map((m) => ({
+                    label: m.codigoSunat || m.codigo,
+                    value: Number(m.id),
+                  }))}
+                  onChange={(e) => setMonedaSeleccionada(e.value)}
+                  placeholder="Todas"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  filter
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="tipoPagoFiltro" style={{ fontWeight: "bold" }}>
+                  Tipo de Pago
+                </label>
+                <Button
+                  label={
+                    tipoPagoSeleccionado === "TODOS"
+                      ? "TODOS"
+                      : tipoPagoSeleccionado === "FISCAL"
+                        ? "FISCAL"
+                        : "GERENCIAL"
+                  }
+                  severity={
+                    tipoPagoSeleccionado === "TODOS"
+                      ? "secondary"
+                      : tipoPagoSeleccionado === "FISCAL"
+                        ? "info"
+                        : "success"
+                  }
+                  onClick={() => {
+                    if (tipoPagoSeleccionado === "TODOS") {
+                      setTipoPagoSeleccionado("FISCAL");
+                    } else if (tipoPagoSeleccionado === "FISCAL") {
+                      setTipoPagoSeleccionado("GERENCIAL");
+                    } else {
+                      setTipoPagoSeleccionado("TODOS");
+                    }
+                  }}
+                  disabled={loading}
+                  style={{ width: "100%", marginTop: "0.25rem" }}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="periodoFiltro" style={{ fontWeight: "bold" }}>
+                  Periodo Contable
+                </label>
+                <Dropdown
+                  id="periodoFiltro"
+                  value={periodoContableSeleccionado}
+                  options={periodosContablesFiltrados.map((p) => ({
+                    label: p.nombrePeriodo,
+                    value: Number(p.id),
+                  }))}
+                  onChange={(e) => setPeriodoContableSeleccionado(e.value)}
+                  placeholder="Todos"
+                  showClear
+                  filter
+                  style={{ width: "100%", minWidth: "200px" }}
+                />
+              </div>
+            </div>
+          </div>
+        }
         rows={100}
         rowsPerPageOptions={[100, 200, 300, 500]}
+        sortField="id"
+        sortOrder={-1}
         size="small"
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar
@@ -521,10 +857,28 @@ export default function DeudaTributaria({ ruta }) {
           style={{ minWidth: "120px", textAlign: "right" }}
         />
         <Column
+          header="Pagado Anterior"
+          body={(rowData) => montoBodyTemplate(rowData, "montoPagadoAnterior")}
+          sortable
+          style={{ minWidth: "120px", textAlign: "right" }}
+        />
+        <Column
+          header="Monto Pagado"
+          body={(rowData) => montoBodyTemplate(rowData, "montoPagado")}
+          sortable
+          style={{ minWidth: "120px", textAlign: "right" }}
+        />
+        <Column
           header="Saldo Pend."
           body={(rowData) => montoBodyTemplate(rowData, "saldoPendiente")}
           sortable
           style={{ minWidth: "120px", textAlign: "right" }}
+        />
+        <Column
+          header="Saldo Inicial"
+          body={saldoInicialBodyTemplate}
+          sortable
+          style={{ minWidth: "100px", textAlign: "center" }}
         />
         <Column
           header="Estado"
@@ -533,10 +887,10 @@ export default function DeudaTributaria({ ruta }) {
           style={{ minWidth: "120px" }}
         />
         <Column
-          header="Saldo Inicial"
-          body={(rowData) => booleanBodyTemplate(rowData, "esSaldoInicial")}
+          header="Gerencial"
+          body={(rowData) => booleanBodyTemplate(rowData, "esGerencial")}
           sortable
-          style={{ minWidth: "120px", textAlign: "center" }}
+          style={{ minWidth: "100px", textAlign: "center" }}
         />
         <Column
           header="Acciones"
@@ -551,12 +905,15 @@ export default function DeudaTributaria({ ruta }) {
         style={{ width: "1300px" }}
         maximizable
         maximized={true}
-        header={isEdit ? "Editar Deuda Tributaria" : "Nueva Deuda Tributaria"}
+        header={
+          isEdit ? "Editar Deuda Tributaria" : "Nueva Deuda Tributaria"
+        }
         modal
         className="p-fluid"
         onHide={hideDialog}
       >
         <DeudaTributariaForm
+          key={`deuda-${selectedDeuda?.id || "new"}-${formData?.empresaId || ""}`}
           isEdit={isEdit}
           defaultValues={formData}
           empresas={empresas}
@@ -565,6 +922,7 @@ export default function DeudaTributaria({ ruta }) {
           estados={estados}
           periodosContables={periodosContables}
           mediosPago={mediosPago}
+          empresaFija={empresaSeleccionada}
           onSubmit={saveDeuda}
           onCancel={hideDialog}
           loading={loading}

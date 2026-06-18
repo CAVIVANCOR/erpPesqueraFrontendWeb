@@ -56,8 +56,9 @@ export default function DeudaConPersonal({ ruta }) {
   const [tipoDeudaSeleccionado, setTipoDeudaSeleccionado] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
-  const [tipoPagoSeleccionado, setTipoPagoSeleccionado] = useState(null);
+  const [tipoPagoSeleccionado, setTipoPagoSeleccionado] = useState("TODOS"); // "TODOS" | "FISCAL" | "GERENCIAL"
   const [periodoContableSeleccionado, setPeriodoContableSeleccionado] = useState(null);
+  const [periodosContablesFiltrados, setPeriodosContablesFiltrados] = useState([]);
 
   // Opciones dinámicas para filtros
   const [deudasFiltradas, setDeudasFiltradas] = useState([]);
@@ -108,6 +109,19 @@ export default function DeudaConPersonal({ ruta }) {
     }
   }, [itemsFiltrados, deudasFiltradas, empresaSeleccionada]);
 
+  // Filtrar períodos contables por empresa seleccionada
+  useEffect(() => {
+    if (empresaSeleccionada) {
+      const periodosDeLaEmpresa = periodosContables.filter(
+        (p) => Number(p.empresaId) === Number(empresaSeleccionada)
+      );
+      setPeriodosContablesFiltrados(periodosDeLaEmpresa);
+    } else {
+      setPeriodosContablesFiltrados(periodosContables);
+    }
+  }, [empresaSeleccionada, periodosContables]);
+
+  // Aplicar filtros a las deudas
   // Filtrar items cuando cambien los filtros
   useEffect(() => {
     let filtrados = deudas;
@@ -145,11 +159,12 @@ export default function DeudaConPersonal({ ruta }) {
       );
     }
 
-    if (tipoPagoSeleccionado !== null) {
-      filtrados = filtrados.filter(
-        (item) => item.esGerencial === tipoPagoSeleccionado
-      );
+    if (tipoPagoSeleccionado === "FISCAL") {
+      filtrados = filtrados.filter((item) => item.esGerencial === false);
+    } else if (tipoPagoSeleccionado === "GERENCIAL") {
+      filtrados = filtrados.filter((item) => item.esGerencial === true);
     }
+    // Si es "TODOS", no filtra
 
     if (periodoContableSeleccionado) {
       filtrados = filtrados.filter(
@@ -443,7 +458,7 @@ export default function DeudaConPersonal({ ruta }) {
     setTipoDeudaSeleccionado(null);
     setEstadoSeleccionado(null);
     setMonedaSeleccionada(null);
-    setTipoPagoSeleccionado(null);
+    setTipoPagoSeleccionado("TODOS");
     setPeriodoContableSeleccionado(null);
   };
 
@@ -458,7 +473,7 @@ export default function DeudaConPersonal({ ruta }) {
     const pers = personal.find(
       (p) => Number(p.id) === Number(rowData.personalId)
     );
-    return pers?.nombres +" "+ pers?.apellidos || "-";
+    return pers?.nombres + " " + pers?.apellidos || "-";
   };
 
   const tipoDeudaBodyTemplate = (rowData) => {
@@ -784,21 +799,32 @@ export default function DeudaConPersonal({ ruta }) {
                 <label htmlFor="tipoPagoFiltro" style={{ fontWeight: "bold" }}>
                   Tipo de Pago
                 </label>
-                <Dropdown
-                  id="tipoPagoFiltro"
-                  value={tipoPagoSeleccionado}
-                  options={[
-                    { label: "Todos", value: null },
-                    { label: "Pago Blanco (Formal)", value: false },
-                    { label: "Pago Negro (Gerencial)", value: true },
-                  ]}
-                  onChange={(e) => setTipoPagoSeleccionado(e.value)}
-                  placeholder="Todos"
-                  optionLabel="label"
-                  optionValue="value"
-                  showClear
+                <Button
+                  label={
+                    tipoPagoSeleccionado === "TODOS"
+                      ? "TODOS"
+                      : tipoPagoSeleccionado === "FISCAL"
+                        ? "FISCAL"
+                        : "GERENCIAL"
+                  }
+                  severity={
+                    tipoPagoSeleccionado === "TODOS"
+                      ? "secondary"
+                      : tipoPagoSeleccionado === "FISCAL"
+                        ? "info"
+                        : "success"
+                  }
+                  onClick={() => {
+                    if (tipoPagoSeleccionado === "TODOS") {
+                      setTipoPagoSeleccionado("FISCAL");
+                    } else if (tipoPagoSeleccionado === "FISCAL") {
+                      setTipoPagoSeleccionado("GERENCIAL");
+                    } else {
+                      setTipoPagoSeleccionado("TODOS");
+                    }
+                  }}
                   disabled={loading}
-                  style={{ width: "100%" }}
+                  style={{ width: "100%", marginTop: "0.25rem" }}
                 />
               </div>
               <div style={{ flex: 2 }}>
@@ -808,18 +834,15 @@ export default function DeudaConPersonal({ ruta }) {
                 <Dropdown
                   id="periodoFiltro"
                   value={periodoContableSeleccionado}
-                  options={periodosUnicos.map((p) => ({
-                    label: p.nombre || `${p.anio} - ${p.mes}`,
+                  options={periodosContablesFiltrados.map((p) => ({
+                    label: p.nombrePeriodo,
                     value: Number(p.id),
                   }))}
                   onChange={(e) => setPeriodoContableSeleccionado(e.value)}
                   placeholder="Todos"
-                  optionLabel="label"
-                  optionValue="value"
                   showClear
                   filter
-                  disabled={loading}
-                  style={{ width: "100%" }}
+                  style={{ width: "100%", minWidth: "200px" }}
                 />
               </div>
             </div>

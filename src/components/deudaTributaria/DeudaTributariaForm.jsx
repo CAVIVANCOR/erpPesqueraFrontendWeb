@@ -15,6 +15,7 @@ import { confirmDialog } from "primereact/confirmdialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { formatearNumero } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import BooleanToggleButton from "../common/BooleanToggleButton"
 import {
   getDeudaTributariaById,
 } from "../../api/tesoreria/deudaTributaria";
@@ -26,6 +27,55 @@ import {
 } from "../../api/tesoreria/pagoDeudaTributaria";
 import PagoDeudaTributariaDialog from "./PagoDeudaTributariaDialog";
 
+// ════════════════════════════════════════════════════════════
+// CONSTANTES DE CONFIGURACIÓN - DEUDAS TRIBUTARIAS
+// ════════════════════════════════════════════════════════════
+
+/**
+ * ID del tipo "DEUDAS TRIBUTARIAS" en la tabla EstadoMultiFuncion
+ * Se usa para filtrar solo los estados válidos para este módulo
+ * Estados válidos:
+ * - 120: PENDIENTE (danger)
+ * - 121: PAGO PARCIAL (warning)
+ * - 122: PAGADO (success)
+ * - 123: VENCIDO (danger)
+ * - 124: ANULADO (secondary)
+ * - 125: CANJEADO (contrast)
+ */
+const TIPO_PROVIENE_DEUDAS_TRIBUTARIAS = 27;
+
+/**
+ * Estado por defecto para nuevas deudas tributarias
+ * IMPORTANTE: Este ID corresponde al estado "PENDIENTE" en EstadoMultiFuncion
+ * donde tipoProvieneDeId = 27 (DEUDAS TRIBUTARIAS)
+ * 
+ * Estados disponibles (tipoProvieneDeId = 27):
+ * - 120: PENDIENTE (danger) ← DEFAULT
+ * - 121: PAGO PARCIAL (warning)
+ * - 122: PAGADO (success)
+ * - 123: VENCIDO (danger)
+ * - 124: ANULADO (secondary)
+ * - 125: CANJEADO (contrast)
+ */
+const ESTADO_DEFAULT_PENDIENTE = 120;
+
+/**
+ * IDs de estados específicos para deudas tributarias
+ */
+const ESTADOS_DEUDA_TRIBUTARIA = {
+  PENDIENTE: 120,      // Deuda sin pagos
+  PAGO_PARCIAL: 121,   // Deuda con pagos parciales
+  PAGADO: 122,         // Deuda totalmente pagada
+  VENCIDO: 123,        // Deuda vencida sin pagar
+  ANULADO: 124,        // Deuda anulada
+  CANJEADO: 125,       // Deuda canjeada por otro documento
+};
+
+/**
+ * Valores por defecto para montos
+ */
+const MONTO_DEFAULT = 0;
+
 const DeudaTributariaForm = forwardRef((props, ref) => {
   const {
     isEdit,
@@ -36,6 +86,7 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
     estados,
     periodosContables,
     mediosPago,
+    empresaFija,
     onSubmit,
     onCancel,
     loading,
@@ -46,36 +97,42 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
 
   const { usuario } = useAuthStore();
 
-  // Estados principales
-  const [empresaId, setEmpresaId] = useState(defaultValues?.empresaId || null);
-  const [tipoDeudaId, setTipoDeudaId] = useState(defaultValues?.tipoDeudaId || null);
-  const [periodo, setPeriodo] = useState(defaultValues?.periodo || "");
-  const [numeroDeclaracion, setNumeroDeclaracion] = useState(defaultValues?.numeroDeclaracion || "");
-  const [fechaGeneracion, setFechaGeneracion] = useState(
-    defaultValues?.fechaGeneracion ? new Date(defaultValues.fechaGeneracion) : new Date()
-  );
-  const [fechaVencimiento, setFechaVencimiento] = useState(
-    defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : new Date()
-  );
-  const [monedaId, setMonedaId] = useState(defaultValues?.monedaId || null);
-  const [montoOriginal, setMontoOriginal] = useState(defaultValues?.montoOriginal || 0);
-  const [montoPagado, setMontoPagado] = useState(defaultValues?.montoPagado || 0);
-  const [saldoPendiente, setSaldoPendiente] = useState(defaultValues?.saldoPendiente || 0);
-  const [estadoId, setEstadoId] = useState(defaultValues?.estadoId || 100);
-  const [observaciones, setObservaciones] = useState(defaultValues?.observaciones || "");
-  const [esSaldoInicial, setEsSaldoInicial] = useState(defaultValues?.esSaldoInicial || false);
+  // 🔍 DEBUG TEMPORAL
+  console.log("🟢 [DeudaTributariaForm] MONTAJE/RENDER");
+  console.log("  📌 defaultValues:", defaultValues);
+  console.log("  📌 empresaFija:", empresaFija);
+  console.log("  📌 isEdit:", isEdit);
 
-  // Estados contabilidad
-  const [fechaContable, setFechaContable] = useState(
-    defaultValues?.fechaContable ? new Date(defaultValues.fechaContable) : new Date()
-  );
-  const [periodoContableId, setPeriodoContableId] = useState(
-    defaultValues?.periodoContableId ? Number(defaultValues.periodoContableId) : null
-  );
+  // Estado único para todos los campos del formulario (patrón PreFactura)
+  const [formData, setFormData] = useState({
+    empresaId: defaultValues?.empresaId
+      ? Number(defaultValues.empresaId)
+      : empresaFija
+        ? Number(empresaFija)
+        : null,
+    tipoDeudaId: defaultValues?.tipoDeudaId ? Number(defaultValues.tipoDeudaId) : null,
+    periodo: defaultValues?.periodo || "",
+    numeroDeclaracion: defaultValues?.numeroDeclaracion || "",
+    fechaGeneracion: defaultValues?.fechaGeneracion ? new Date(defaultValues.fechaGeneracion) : new Date(),
+    fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : new Date(),
+    monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
+    montoPagadoAnterior: defaultValues?.montoPagadoAnterior || MONTO_DEFAULT,
+    montoOriginal: defaultValues?.montoOriginal || MONTO_DEFAULT,
+    montoPagado: defaultValues?.montoPagado || MONTO_DEFAULT,
+    saldoPendiente: defaultValues?.saldoPendiente || MONTO_DEFAULT,
+    estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : ESTADO_DEFAULT_PENDIENTE,
+    observaciones: defaultValues?.observaciones || "",
+    esSaldoInicial: defaultValues?.esSaldoInicial || false,
+    fechaContable: defaultValues?.fechaContable ? new Date(defaultValues.fechaContable) : new Date(),
+    periodoContableId: defaultValues?.periodoContableId ? Number(defaultValues.periodoContableId) : null,
+    creadoPor: defaultValues?.creadoPor || null,
+    actualizadoPor: defaultValues?.actualizadoPor || null,
+  });
 
-  // Estados auditoría
-  const [creadoPor, setCreadoPor] = useState(defaultValues?.creadoPor || null);
-  const [actualizadoPor, setActualizadoPor] = useState(defaultValues?.actualizadoPor || null);
+  // Función para actualizar campos individuales (patrón PreFactura)
+  const onChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   // Estados para CRUD de pagos
   const [pagos, setPagos] = useState([]);
@@ -91,10 +148,55 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
     }
   }, [isEdit, defaultValues?.id]);
 
+  // Filtrar períodos contables por empresa seleccionada
+  const periodosContablesFiltrados = React.useMemo(() => {
+    if (!periodosContables) return [];
+
+    return periodosContables
+      .filter((p) => {
+        // Filtrar por empresa O incluir el periodo seleccionado actualmente
+        const perteneceAEmpresa =
+          Number(p.empresaId) === Number(formData.empresaId);
+        const esPeriodoSeleccionado =
+          formData.periodoContableId &&
+          Number(p.id) === Number(formData.periodoContableId);
+
+        return perteneceAEmpresa || esPeriodoSeleccionado;
+      })
+      .sort((a, b) => {
+        // Ordenar por fecha de inicio descendente (más recientes primero)
+        return new Date(b.fechaInicio) - new Date(a.fechaInicio);
+      })
+      .map((p) => {
+        // Agregar indicador visual del estado
+        let estadoLabel = "";
+        const estadoId = Number(p.estadoId);
+
+        // IDs de estados para PERIODO CONTABLE:
+        // 73 = ABIERTO, 74 = CERRADO, 75 = BLOQUEADO
+        if (estadoId === 73) {
+          estadoLabel = "🟢 ABIERTO";
+        } else if (estadoId === 74) {
+          estadoLabel = "🔴 CERRADO";
+        } else if (estadoId === 75) {
+          estadoLabel = "🔒 BLOQUEADO";
+        } else {
+          estadoLabel = "⚪ SIN ESTADO";
+        }
+
+        return {
+          label: `${p.nombrePeriodo} - ${estadoLabel}`,
+          value: Number(p.id),
+          estadoId: estadoId,
+          disabled: estadoId !== 73 && !isEdit, // Deshabilitar si no está ABIERTO (solo en creación)
+        };
+      });
+  }, [formData.empresaId, formData.periodoContableId, periodosContables, isEdit]);
+
   // Obtener color de moneda
   const getColorPorMoneda = () => {
-    if (!monedaId) return "#ffffff";
-    const moneda = monedas?.find((m) => Number(m.id) === Number(monedaId));
+    if (!formData.monedaId) return "#ffffff";
+    const moneda = monedas?.find((m) => Number(m.id) === Number(formData.monedaId));
     return moneda?.colorFondo || "#ffffff";
   };
 
@@ -106,12 +208,83 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
   // Recalcular montoPagado y saldoPendiente cuando cambien los pagos
   useEffect(() => {
     const totalPagado = pagos.reduce(
-      (sum, pago) => sum + Number(pago.montoAplicadoDeuda || 0),
+      (sum, pago) => sum + Number(pago.montoPago || 0),
       0
     );
-    setMontoPagado(totalPagado);
-    setSaldoPendiente(Number(montoOriginal) - totalPagado);
-  }, [pagos, montoOriginal]);
+    onChange("montoPagado", totalPagado);
+    onChange("saldoPendiente", Number(formData.montoOriginal) - totalPagado);
+  }, [pagos, formData.montoOriginal]);
+
+  // Calcular saldoPendiente cuando cambie montoOriginal, montoPagadoAnterior o pagos
+  useEffect(() => {
+    const totalPagadoSistema = pagos.reduce(
+      (sum, pago) => sum + Number(pago.montoPago || 0),
+      0
+    );
+
+    // Fórmula: Saldo = Original - Pagado Anterior - Pagado Sistema
+    const nuevoSaldo =
+      Number(formData.montoOriginal) -
+      Number(formData.montoPagadoAnterior || 0) -
+      totalPagadoSistema;
+
+    if (nuevoSaldo !== formData.saldoPendiente) {
+      onChange("saldoPendiente", nuevoSaldo);
+    }
+
+    // También actualizar montoPagado con el total del sistema
+    if (totalPagadoSistema !== formData.montoPagado) {
+      onChange("montoPagado", totalPagadoSistema);
+    }
+  }, [formData.montoOriginal, formData.montoPagadoAnterior, pagos]);
+
+  // Calcular estado automáticamente según pagos y fecha de vencimiento
+  useEffect(() => {
+    // No calcular estado en modo edición si ya tiene un estado manual
+    if (isEdit && formData.estadoId === ESTADOS_DEUDA_TRIBUTARIA.ANULADO) {
+      return; // No cambiar estados ANULADO
+    }
+
+    const montoOriginal = Number(formData.montoOriginal || 0);
+    const montoPagadoAnterior = Number(formData.montoPagadoAnterior || 0);
+    const montoPagado = Number(formData.montoPagado || 0);
+    const totalPagado = montoPagadoAnterior + montoPagado;
+    const saldoPendiente = Number(formData.saldoPendiente || 0);
+    const fechaVencimiento = formData.fechaVencimiento ? new Date(formData.fechaVencimiento) : null;
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0); // Resetear horas para comparar solo fechas
+
+    let nuevoEstadoId = formData.estadoId;
+
+    // 1. Si está totalmente pagado → PAGADO (prioridad máxima)
+    if (montoOriginal > 0 && saldoPendiente <= 0) {
+      nuevoEstadoId = ESTADOS_DEUDA_TRIBUTARIA.PAGADO;
+    }
+    // 2. Si está vencido y tiene saldo pendiente → VENCIDO (predomina sobre pago parcial)
+    else if (fechaVencimiento && fechaVencimiento < hoy && saldoPendiente > 0) {
+      nuevoEstadoId = ESTADOS_DEUDA_TRIBUTARIA.VENCIDO;
+    }
+    // 3. Si tiene pagos parciales y no está vencido → PAGO_PARCIAL
+    else if (totalPagado > 0 && saldoPendiente > 0) {
+      nuevoEstadoId = ESTADOS_DEUDA_TRIBUTARIA.PAGO_PARCIAL;
+    }
+    // 4. Si no tiene pagos y no está vencido → PENDIENTE
+    else if (totalPagado === 0 && saldoPendiente > 0) {
+      nuevoEstadoId = ESTADOS_DEUDA_TRIBUTARIA.PENDIENTE;
+    }
+
+    // Actualizar estado solo si cambió
+    if (nuevoEstadoId !== formData.estadoId) {
+      onChange("estadoId", nuevoEstadoId);
+    }
+  }, [
+    formData.montoOriginal,
+    formData.montoPagadoAnterior,
+    formData.montoPagado,
+    formData.saldoPendiente,
+    formData.fechaVencimiento,
+    isEdit,
+  ]);
 
   const cargarPagos = async () => {
     try {
@@ -136,10 +309,10 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
 
     try {
       const deudaActualizada = await getDeudaTributariaById(defaultValues.id);
-      setMontoOriginal(deudaActualizada.montoOriginal || 0);
-      setMontoPagado(deudaActualizada.montoPagado || 0);
-      setSaldoPendiente(deudaActualizada.saldoPendiente || 0);
-      setEstadoId(deudaActualizada.estadoId || 100);
+      onChange("montoOriginal", deudaActualizada.montoOriginal || 0);
+      onChange("montoPagado", deudaActualizada.montoPagado || 0);
+      onChange("saldoPendiente", deudaActualizada.saldoPendiente || 0);
+      onChange("estadoId", deudaActualizada.estadoId || ESTADO_DEFAULT_PENDIENTE);
     } catch (error) {
       console.error("Error al recargar deuda desde backend:", error);
     }
@@ -151,22 +324,23 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
 
   const handleSubmit = () => {
     const data = {
-      empresaId: Number(empresaId),
-      tipoDeudaId: Number(tipoDeudaId),
-      periodo,
-      numeroDeclaracion,
-      fechaGeneracion,
-      fechaVencimiento,
-      monedaId: Number(monedaId),
-      montoOriginal: Number(montoOriginal),
-      montoPagado: Number(montoPagado),
-      saldoPendiente: Number(saldoPendiente),
-      estadoId: Number(estadoId),
-      observaciones,
-      esSaldoInicial,
-      fechaContable,
-      periodoContableId: periodoContableId ? Number(periodoContableId) : null,
-      creadoPor: isEdit ? creadoPor : usuario?.personalId ? Number(usuario.personalId) : null,
+      empresaId: Number(formData.empresaId),
+      tipoDeudaId: Number(formData.tipoDeudaId),
+      periodo: formData.periodo,
+      numeroDeclaracion: formData.numeroDeclaracion,
+      fechaGeneracion: formData.fechaGeneracion,
+      fechaVencimiento: formData.fechaVencimiento,
+      monedaId: Number(formData.monedaId),
+      montoPagadoAnterior: Number(formData.montoPagadoAnterior || 0),
+      montoOriginal: Number(formData.montoOriginal),
+      montoPagado: Number(formData.montoPagado),
+      saldoPendiente: Number(formData.saldoPendiente),
+      estadoId: Number(formData.estadoId),
+      observaciones: formData.observaciones,
+      esSaldoInicial: formData.esSaldoInicial,
+      fechaContable: formData.fechaContable,
+      periodoContableId: formData.periodoContableId ? Number(formData.periodoContableId) : null,
+      creadoPor: isEdit ? formData.creadoPor : usuario?.personalId ? Number(usuario.personalId) : null,
       actualizadoPor: isEdit && usuario?.personalId ? Number(usuario.personalId) : null,
     };
     onSubmit(data);
@@ -288,24 +462,6 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
     );
   };
 
-  const montoAplicadoTemplate = (rowData) => {
-    return (
-      <span
-        style={{
-          backgroundColor: getColorPorMoneda(),
-          padding: "0.25rem 0.5rem",
-          borderRadius: "4px",
-          fontWeight: "bold",
-          display: "inline-block",
-          width: "100%",
-          textAlign: "right",
-        }}
-      >
-        {formatearNumero(rowData.montoAplicadoDeuda || rowData.montoPagado, 2)}
-      </span>
-    );
-  };
-
   const fechaPagoTemplate = (rowData) => {
     return rowData.fechaPago
       ? new Date(rowData.fechaPago).toLocaleDateString("es-PE")
@@ -344,224 +500,291 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
       <TabView>
         {/* TAB 1: DATOS GENERALES */}
         <TabPanel header="Datos Generales" leftIcon="pi pi-file">
-          <div className="p-fluid formgrid grid">
-            {/* Empresa */}
-            <div className="field col-12 md:col-6">
-              <label htmlFor="empresaId">
-                Empresa <span className="text-red-500">*</span>
-              </label>
-              <Dropdown
-                id="empresaId"
-                value={empresaId}
-                options={empresas}
-                onChange={(e) => setEmpresaId(e.value)}
-                optionLabel="razonSocial"
-                optionValue="id"
-                placeholder="Seleccione empresa"
-                filter
-                disabled={readOnly || loading}
-              />
-            </div>
+          <div className="p-fluid">
 
-            {/* Tipo Deuda */}
-            <div className="field col-12 md:col-6">
-              <label htmlFor="tipoDeudaId">
-                Tipo de Deuda Tributaria <span className="text-red-500">*</span>
-              </label>
-              <Dropdown
-                id="tipoDeudaId"
-                value={tipoDeudaId}
-                options={tiposDeuda}
-                onChange={(e) => setTipoDeudaId(e.value)}
-                optionLabel="nombre"
-                optionValue="id"
-                placeholder="Seleccione tipo de deuda"
-                filter
-                disabled={readOnly || loading}
-              />
-            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              {/* Empresa */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="empresaId">
+                  Empresa <span className="text-red-500">*</span>
+                </label>
+                <Dropdown
+                  id="empresaId"
+                  value={formData.empresaId}
+                  options={empresas?.map((e) => ({
+                    label: e.razonSocial,
+                    value: Number(e.id),
+                  })) || []}
+                  onChange={(e) => onChange("empresaId", e.value)}
+                  placeholder="Seleccione empresa"
+                  filter
+                  disabled={true}
+                />
+              </div>
 
-            {/* Período */}
-            <div className="field col-12 md:col-4">
-              <label htmlFor="periodo">
-                Período <span className="text-red-500">*</span>
-              </label>
-              <InputText
-                id="periodo"
-                value={periodo}
-                onChange={(e) => setPeriodo(e.target.value)}
-                placeholder="Ej: 202401, 2024-Q1"
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Número Declaración */}
-            <div className="field col-12 md:col-4">
-              <label htmlFor="numeroDeclaracion">Número de Declaración</label>
-              <InputText
-                id="numeroDeclaracion"
-                value={numeroDeclaracion}
-                onChange={(e) => setNumeroDeclaracion(e.target.value)}
-                placeholder="Ej: 001-2024-001"
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Moneda */}
-            <div className="field col-12 md:col-4">
-              <label htmlFor="monedaId">
-                Moneda <span className="text-red-500">*</span>
-              </label>
-              <Dropdown
-                id="monedaId"
-                value={monedaId}
-                options={monedas}
-                onChange={(e) => setMonedaId(e.value)}
-                optionLabel="codigoSunat"
-                optionValue="id"
-                placeholder="Seleccione moneda"
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Fecha Generación */}
-            <div className="field col-12 md:col-6">
-              <label htmlFor="fechaGeneracion">
-                Fecha Generación <span className="text-red-500">*</span>
-              </label>
-              <Calendar
-                id="fechaGeneracion"
-                value={fechaGeneracion}
-                onChange={(e) => setFechaGeneracion(e.value)}
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Fecha Vencimiento */}
-            <div className="field col-12 md:col-6">
-              <label htmlFor="fechaVencimiento">
-                Fecha Vencimiento <span className="text-red-500">*</span>
-              </label>
-              <Calendar
-                id="fechaVencimiento"
-                value={fechaVencimiento}
-                onChange={(e) => setFechaVencimiento(e.value)}
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Monto Original */}
-            <div className="field col-12 md:col-4">
-              <label htmlFor="montoOriginal">
-                Monto Original <span className="text-red-500">*</span>
-              </label>
-              <InputNumber
-                id="montoOriginal"
-                value={montoOriginal}
-                onValueChange={(e) => setMontoOriginal(e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                disabled={readOnly || loading}
-                style={{ backgroundColor: getColorPorMoneda() }}
-              />
-            </div>
-
-            {/* Monto Pagado */}
-            <div className="field col-12 md:col-4">
-              <label htmlFor="montoPagado">Monto Pagado</label>
-              <InputNumber
-                id="montoPagado"
-                value={montoPagado}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                disabled
-                style={{ backgroundColor: getColorPorMoneda() }}
-              />
-            </div>
-
-            {/* Saldo Pendiente */}
-            <div className="field col-12 md:col-4">
-              <label htmlFor="saldoPendiente">Saldo Pendiente</label>
-              <InputNumber
-                id="saldoPendiente"
-                value={saldoPendiente}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                disabled
-                style={{ backgroundColor: getColorPorMoneda() }}
-              />
-            </div>
-
-            {/* Estado */}
-            <div className="field col-12 md:col-6">
-              <label htmlFor="estadoId">Estado</label>
-              <Dropdown
-                id="estadoId"
-                value={estadoId}
-                options={estados}
-                onChange={(e) => setEstadoId(e.value)}
-                optionLabel="descripcion"
-                optionValue="id"
-                placeholder="Seleccione estado"
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Período Contable */}
-            <div className="field col-12 md:col-6">
-              <label htmlFor="periodoContableId">Período Contable</label>
-              <Dropdown
-                id="periodoContableId"
-                value={periodoContableId}
-                options={periodosContables}
-                onChange={(e) => setPeriodoContableId(e.value)}
-                optionLabel="descripcion"
-                optionValue="id"
-                placeholder="Seleccione período"
-                filter
-                showClear
-                disabled={readOnly || loading}
-              />
-            </div>
-
-            {/* Checkbox Saldo Inicial */}
-            <div className="field col-12">
-              <div className="flex align-items-center">
-                <Checkbox
-                  inputId="esSaldoInicial"
-                  checked={esSaldoInicial}
-                  onChange={(e) => setEsSaldoInicial(e.checked)}
+              {/* Tipo Deuda */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="tipoDeudaId">
+                  Tipo de Deuda Tributaria <span className="text-red-500">*</span>
+                </label>
+                <Dropdown
+                  id="tipoDeudaId"
+                  value={formData.tipoDeudaId}
+                  options={tiposDeuda}
+                  onChange={(e) => onChange("tipoDeudaId", e.value)}
+                  optionLabel="nombre"
+                  optionValue="id"
+                  placeholder="Seleccione tipo de deuda"
+                  filter
                   disabled={readOnly || loading}
                 />
-                <label htmlFor="esSaldoInicial" className="ml-2">
-                  Es Saldo Inicial
+              </div>
+
+            </div>
+
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              {/* Período */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="periodo">
+                  Período <span className="text-red-500">*</span>
                 </label>
+                <InputText
+                  id="periodo"
+                  value={formData.periodo}
+                  onChange={(e) => onChange("periodo", e.target.value)}
+                  placeholder="Ej: 202401, 2024-Q1"
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+              {/* Número Declaración */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="numeroDeclaracion">Número de Declaración</label>
+                <InputText
+                  id="numeroDeclaracion"
+                  value={formData.numeroDeclaracion}
+                  onChange={(e) => onChange("numeroDeclaracion", e.target.value)}
+                  placeholder="Ej: 001-2024-001"
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+              {/* Fecha Generación */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaGeneracion">
+                  Fecha Generación <span className="text-red-500">*</span>
+                </label>
+                <Calendar
+                  id="fechaGeneracion"
+                  value={formData.fechaGeneracion}
+                  onChange={(e) => onChange("fechaGeneracion", e.value)}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+              {/* Fecha Vencimiento */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaVencimiento">
+                  Fecha Vencimiento <span className="text-red-500">*</span>
+                </label>
+                <Calendar
+                  id="fechaVencimiento"
+                  value={formData.fechaVencimiento}
+                  onChange={(e) => onChange("fechaVencimiento", e.value)}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+
+              {/* Moneda */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="monedaId">
+                  Moneda <span className="text-red-500">*</span>
+                </label>
+                <Dropdown
+                  id="monedaId"
+                  value={formData.monedaId}
+                  options={monedas}
+                  onChange={(e) => onChange("monedaId", e.value)}
+                  optionLabel="codigoSunat"
+                  optionValue="id"
+                  placeholder="Seleccione moneda"
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+              {/* Monto Original */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="montoOriginal">
+                  Monto Original <span className="text-red-500">*</span>
+                </label>
+                <InputNumber
+                  id="montoOriginal"
+                  value={formData.montoOriginal}
+                  onValueChange={(e) => onChange("montoOriginal", e.value || 0)}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  disabled={readOnly || loading}
+                  style={{ backgroundColor: getColorPorMoneda() }}
+                />
+              </div>
+
+              {/* Monto Pagado Anterior - Solo visible si es saldo inicial */}
+              {formData.esSaldoInicial && (
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="montoPagadoAnterior">
+                    Pagado Anterior (Histórico) <span className="text-red-500">*</span>
+                  </label>
+                  <InputNumber
+                    id="montoPagadoAnterior"
+                    value={formData.montoPagadoAnterior}
+                    onValueChange={(e) => onChange("montoPagadoAnterior", e.value || 0)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled={readOnly || loading}
+                    style={{ backgroundColor: getColorPorMoneda() }}
+                  />
+                </div>
+              )}
+
+              {/* Monto Pagado - Siempre deshabilitado (se calcula automáticamente) */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="montoPagado">Monto Pagado</label>
+                <InputNumber
+                  id="montoPagado"
+                  value={formData.montoPagado}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  disabled
+                  style={{ backgroundColor: getColorPorMoneda() }}
+                />
+              </div>
+
+              {/* Saldo Pendiente */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="saldoPendiente">Saldo Pendiente</label>
+                <InputNumber
+                  id="saldoPendiente"
+                  value={formData.saldoPendiente}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  disabled
+                  style={{ backgroundColor: getColorPorMoneda() }}
+                />
+              </div>
+
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "end",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              {/* Estado */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="estadoId">Estado</label>
+                <Dropdown
+                  id="estadoId"
+                  value={formData.estadoId}
+                  options={estados
+                    .filter((e) => Number(e.tipoProvieneDeId) === TIPO_PROVIENE_DEUDAS_TRIBUTARIAS)
+                    .map((e) => ({
+                      label: e.descripcion,
+                      value: Number(e.id),
+                    }))}
+                  onChange={(e) => onChange("estadoId", e.value)}
+                  placeholder="Estado (automático)"
+                  disabled={true}
+                />
+              </div>
+
+              {/* Período Contable */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="periodoContableId">Período Contable</label>
+                <Dropdown
+                  id="periodoContableId"
+                  value={formData.periodoContableId}
+                  options={periodosContablesFiltrados || []}
+                  optionDisabled={(option) => option.disabled}
+                  onChange={(e) => onChange("periodoContableId", e.value)}
+                  placeholder="Seleccione período"
+                  filter
+                  showClear
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+              {/* Checkboxes */}
+              {/* Saldo Inicial */}
+              <div style={{ flex: 1 }}>
+                <BooleanToggleButton
+                  value={formData.esSaldoInicial}
+                  onChange={(val) => onChange("esSaldoInicial", val)}
+                  labelTrue="SALDO INICIAL"
+                  labelFalse="DEUDA NUEVA"
+                  severityTrue="primary"
+                  severityFalse="secondary"
+                  size="large"
+                  disabled={readOnly || loading}
+                />
+              </div>
+
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "end",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              {/* Observaciones */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="observaciones">Observaciones</label>
+                <InputTextarea
+                  id="observaciones"
+                  value={formData.observaciones}
+                  onChange={(e) => onChange("observaciones", e.target.value)}
+                  rows={2}
+                  disabled={readOnly || loading}
+                />
               </div>
             </div>
-
-            {/* Observaciones */}
-            <div className="field col-12">
-              <label htmlFor="observaciones">Observaciones</label>
-              <InputTextarea
-                id="observaciones"
-                value={observaciones}
-                onChange={(e) => setObservaciones(e.target.value)}
-                rows={3}
-                disabled={readOnly || loading}
-              />
-            </div>
           </div>
-        </TabPanel>
-
-        {/* TAB 2: PAGOS */}
-        <TabPanel header="Pagos" leftIcon="pi pi-money-bill" disabled={!isEdit}>
           <div className="mb-3">
             <Button
               label="Registrar Pago"
@@ -585,7 +808,6 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
             <Column header="Medio Pago" body={medioPagoTemplate} />
             <Column header="Moneda Pago" body={monedaPagoTemplate} />
             <Column header="Monto Pagado" body={montoTemplate} />
-            <Column header="Monto Aplicado" body={montoAplicadoTemplate} />
             <Column field="numeroOperacion" header="N° Operación" />
             <Column header="Acciones" body={accionesTemplate} style={{ width: "120px" }} />
           </DataTable>
@@ -593,7 +815,14 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
       </TabView>
 
       {/* Botones de acción */}
-      <div className="flex justify-content-end gap-2 mt-4">
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          alignItems: "end",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         <Button
           label="Cancelar"
           icon="pi pi-times"
@@ -623,8 +852,8 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
         <PagoDeudaTributariaDialog
           pago={pagoSeleccionado}
           deudaId={defaultValues?.id}
-          monedaDeudaId={monedaId}
-          saldoPendiente={saldoPendiente}
+          monedaDeudaId={formData.monedaId}
+          saldoPendiente={formData.saldoPendiente}
           monedas={monedas}
           mediosPago={mediosPago}
           onSubmit={handleSubmitPago}
