@@ -1,23 +1,18 @@
-// src/components/tipoDeudaPersonal/TipoDeudaPersonalForm.jsx
+// src/components/categoriaTipoDeudaPersonal/CategoriaTipoDeudaPersonalForm.jsx
 import React, { useState, useEffect } from "react";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
-import { Dropdown } from "primereact/dropdown";
 import { classNames } from "primereact/utils";
 import { useForm, Controller } from "react-hook-form";
-import { getCategoriaTipoDeudaPersonalActivos } from "../../api/tesoreria/categoriaTipoDeudaPersonal";
 
-const TipoDeudaPersonalForm = ({
+const CategoriaTipoDeudaPersonalForm = ({
   isEdit,
   defaultValues,
   onSubmit,
   onCancel,
   loading,
 }) => {
-  const [categorias, setCategorias] = useState([]);
-  const [loadingCategorias, setLoadingCategorias] = useState(false);
-
   const {
     control,
     handleSubmit,
@@ -28,39 +23,20 @@ const TipoDeudaPersonalForm = ({
     defaultValues: {
       nombre: "",
       descripcion: "",
-      categoriaId: null,
       activo: true,
     },
     mode: "onChange",
   });
 
-  // Cargar categorías
-  useEffect(() => {
-    const loadCategorias = async () => {
-      try {
-        setLoadingCategorias(true);
-        const categoriasData = await getCategoriaTipoDeudaPersonalActivos();
-        setCategorias(categoriasData || []);
-      } catch (error) {
-        console.error("Error al cargar categorías:", error);
-      } finally {
-        setLoadingCategorias(false);
-      }
-    };
-    loadCategorias();
-  }, []);
-
   useEffect(() => {
     if (defaultValues) {
       setValue("nombre", defaultValues.nombre || "");
       setValue("descripcion", defaultValues.descripcion || "");
-      setValue("categoriaId", defaultValues.categoriaId || null);
       setValue("activo", defaultValues.activo !== undefined ? defaultValues.activo : true);
     } else {
       reset({
         nombre: "",
         descripcion: "",
-        categoriaId: null,
         activo: true,
       });
     }
@@ -70,7 +46,6 @@ const TipoDeudaPersonalForm = ({
     const datosNormalizados = {
       nombre: data.nombre.trim(),
       descripcion: data.descripcion?.trim() || null,
-      categoriaId: data.categoriaId ? Number(data.categoriaId) : null,
       activo: Boolean(data.activo),
     };
     onSubmit(datosNormalizados);
@@ -115,7 +90,7 @@ const TipoDeudaPersonalForm = ({
                 className={classNames({ "p-invalid": fieldState.error })}
                 disabled={loading}
                 maxLength={100}
-                placeholder="Ej: Sueldos, Gratificaciones, CTS"
+                placeholder="Ej: Remuneraciones, Beneficios Sociales"
               />
             </div>
           )}
@@ -147,49 +122,12 @@ const TipoDeudaPersonalForm = ({
                 className={classNames({ "p-invalid": fieldState.error })}
                 disabled={loading}
                 rows={3}
-                placeholder="Descripción detallada del tipo de deuda"
+                placeholder="Descripción detallada de la categoría"
               />
             </div>
           )}
         />
         {getFormErrorMessage("descripcion")}
-      </div>
-
-      <div className="field mt-4">
-        <label
-          htmlFor="categoriaId"
-          className={classNames("font-medium", {
-            "p-error": errors.categoriaId,
-          })}
-        >
-          Categoría
-        </label>
-        <Controller
-          name="categoriaId"
-          control={control}
-          render={({ field, fieldState }) => (
-            <div className="p-inputgroup">
-              <span className="p-inputgroup-addon">
-                <i className="pi pi-folder" />
-              </span>
-              <Dropdown
-                id={field.name}
-                value={field.value}
-                options={categorias}
-                optionLabel="nombre"
-                optionValue="id"
-                onChange={(e) => field.onChange(e.value)}
-                placeholder="Seleccione una categoría"
-                className={classNames({ "p-invalid": fieldState.error })}
-                disabled={loading || loadingCategorias}
-                filter
-                showClear
-                emptyMessage="No hay categorías disponibles"
-              />
-            </div>
-          )}
-        />
-        {getFormErrorMessage("categoriaId")}
       </div>
 
       <div className="field mt-4">
@@ -250,4 +188,4 @@ const TipoDeudaPersonalForm = ({
   );
 };
 
-export default TipoDeudaPersonalForm;
+export default CategoriaTipoDeudaPersonalForm;

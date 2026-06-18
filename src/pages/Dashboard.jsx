@@ -395,6 +395,11 @@ export default function Dashboard() {
           icon: "pi-money-bill",
         },
         {
+          label: "Categorias Tipos Deuda con el Personal",
+          key: "categoriaTipoDeudaPersonal",
+          icon: "pi-folder",
+        },
+        {
           label: "Tipos Deuda de Personal",
           key: "tipoDeudaPersonal",
           icon: "pi-list",
@@ -403,6 +408,11 @@ export default function Dashboard() {
           label: "Pagos Deuda al Personal",
           key: "pagoDeudaPersonal",
           icon: "pi-money-bill",
+        },
+        {
+          label: "Categorias Tipos Deudas Tributarias",
+          key: "categoriaTipoDeudaTributaria",
+          icon: "pi-folder",
         },
         {
           label: "Tipos de Deuda Tributaria",
@@ -863,8 +873,8 @@ export default function Dashboard() {
                         : "rgba(15, 23, 42, 0.6)",
                     backdropFilter: "blur(20px)",
                     border: `1px solid ${hoveredCard === modulo.id || expandedCard === modulo.id
-                        ? modulo.color
-                        : "rgba(51, 65, 85, 0.5)"
+                      ? modulo.color
+                      : "rgba(51, 65, 85, 0.5)"
                       }`,
                     borderRadius: "12px",
                     padding: "10px",
@@ -986,8 +996,8 @@ export default function Dashboard() {
                         <span>{modulo.modulos} módulos</span>
                         <motion.i
                           className={`pi ${expandedCard === modulo.id
-                              ? "pi-chevron-up"
-                              : "pi-chevron-down"
+                            ? "pi-chevron-up"
+                            : "pi-chevron-down"
                             }`}
                           style={{
                             fontSize: "12px",

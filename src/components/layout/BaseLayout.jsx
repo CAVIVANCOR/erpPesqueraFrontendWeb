@@ -92,6 +92,8 @@ import PagoDeudaPersonal from "../../pages/PagoDeudaPersonal";
 import TipoDeudaTributaria from "../../pages/TipoDeudaTributaria";
 import DeudaTributaria from "../../pages/DeudaTributaria";
 import PagoDeudaTributaria from "../../pages/PagoDeudaTributaria";
+import CategoriaTipoDeudaPersonal from "../../pages/CategoriaTipoDeudaPersonal";
+import CategoriaTipoDeudaTributaria from "../../pages/CategoriaTipoDeudaTributaria";
 import TipoEstadoProducto from "../../pages/TipoEstadoProducto";
 import DestinoProducto from "../../pages/DestinoProducto";
 import FormaPago from "../../pages/FormaPago";
@@ -283,6 +285,14 @@ export default function BaseLayout({ children, onLogout }) {
     pagoDeudaTributaria: {
       label: "Pagos Deuda Tributaria",
       componente: <PagoDeudaTributaria ruta="pagoDeudaTributaria" />,
+    },
+    categoriaTipoDeudaPersonal: {
+      label: "Categorias Tipos Deuda con el Personal",
+      componente: <CategoriaTipoDeudaPersonal ruta="categoriaTipoDeudaPersonal" />,
+    },
+    categoriaTipoDeudaTributaria: {
+      label: "Categorias Tipos Deudas Tributarias",
+      componente: <CategoriaTipoDeudaTributaria ruta="categoriaTipoDeudaTributaria" />,
     },
     tipoProducto: {
       label: "Tipo Producto",

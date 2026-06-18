@@ -357,6 +357,13 @@ export default function TipoDeudaTributaria({ ruta }) {
           style={{ width: "80px" }}
         />
         <Column
+          field="categoria.nombre"
+          header="Categoría"
+          sortable
+          body={(rowData) => rowData.categoria?.nombre || "Sin categoría"}
+          style={{ width: "200px" }}
+        />
+        <Column
           field="nombre"
           header="Nombre"
           sortable

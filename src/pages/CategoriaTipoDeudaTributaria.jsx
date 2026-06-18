@@ -1,4 +1,4 @@
-// src/pages/TipoDeudaPersonal.jsx
+// src/pages/CategoriaTipoDeudaTributaria.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
@@ -9,19 +9,19 @@ import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { Toolbar } from "primereact/toolbar";
 import { Tag } from "primereact/tag";
-import TipoDeudaPersonalForm from "../components/tipoDeudaPersonal/TipoDeudaPersonalForm";
+import CategoriaTipoDeudaTributariaForm from "../components/categoriaTipoDeudaTributaria/CategoriaTipoDeudaTributariaForm";
 import {
-  getTiposDeudaPersonal,
-  getTipoDeudaPersonalById,
-  createTipoDeudaPersonal,
-  updateTipoDeudaPersonal,
-  deleteTipoDeudaPersonal,
-} from "../api/tesoreria/tipoDeudaPersonal";
+  getCategoriaTipoDeudaTributaria,
+  getCategoriaTipoDeudaTributariaById,
+  createCategoriaTipoDeudaTributaria,
+  updateCategoriaTipoDeudaTributaria,
+  deleteCategoriaTipoDeudaTributaria,
+} from "../api/tesoreria/categoriaTipoDeudaTributaria";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
 
-export default function TipoDeudaPersonal({ ruta }) {
+export default function CategoriaTipoDeudaTributaria({ ruta }) {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
 
@@ -30,10 +30,10 @@ export default function TipoDeudaPersonal({ ruta }) {
   }
 
   const toast = useRef(null);
-  const [tipos, setTipos] = useState([]);
-  const [selectedTipo, setSelectedTipo] = useState(null);
-  const [tipoDialog, setTipoDialog] = useState(false);
-  const [deleteTipoDialog, setDeleteTipoDialog] = useState(false);
+  const [categorias, setCategorias] = useState([]);
+  const [selectedCategoria, setSelectedCategoria] = useState(null);
+  const [categoriaDialog, setCategoriaDialog] = useState(false);
+  const [deleteCategoriaDialog, setDeleteCategoriaDialog] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [loading, setLoading] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -46,14 +46,14 @@ export default function TipoDeudaPersonal({ ruta }) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const tiposData = await getTiposDeudaPersonal();
-      setTipos(tiposData || []);
+      const categoriasData = await getCategoriaTipoDeudaTributaria();
+      setCategorias(categoriasData || []);
     } catch (error) {
-      console.error("Error al cargar tipos de deuda personal:", error);
+      console.error("Error al cargar categorías de tipo de deuda tributaria:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar tipos de deuda personal",
+        detail: "Error al cargar categorías de tipo de deuda tributaria",
         life: 3000,
       });
     } finally {
@@ -63,31 +63,31 @@ export default function TipoDeudaPersonal({ ruta }) {
 
   const openNew = () => {
     setFormData({});
-    setSelectedTipo(null);
+    setSelectedCategoria(null);
     setIsEdit(false);
-    setTipoDialog(true);
+    setCategoriaDialog(true);
   };
 
   const hideDialog = () => {
-    setTipoDialog(false);
+    setCategoriaDialog(false);
     setFormData({});
-    setSelectedTipo(null);
+    setSelectedCategoria(null);
   };
 
-  const editTipo = async (tipo) => {
+  const editCategoria = async (categoria) => {
     try {
       setLoading(true);
-      const tipoCompleto = await getTipoDeudaPersonalById(tipo.id);
-      setFormData(tipoCompleto);
-      setSelectedTipo(tipo);
+      const categoriaCompleta = await getCategoriaTipoDeudaTributariaById(categoria.id);
+      setFormData(categoriaCompleta);
+      setSelectedCategoria(categoria);
       setIsEdit(true);
-      setTipoDialog(true);
+      setCategoriaDialog(true);
     } catch (error) {
-      console.error("Error al cargar tipo de deuda personal:", error);
+      console.error("Error al cargar categoría de tipo de deuda tributaria:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar tipo de deuda personal",
+        detail: "Error al cargar categoría de tipo de deuda tributaria",
         life: 3000,
       });
     } finally {
@@ -95,8 +95,8 @@ export default function TipoDeudaPersonal({ ruta }) {
     }
   };
 
-  const saveTipo = async (data) => {
-    const esEdicion = isEdit && selectedTipo;
+  const saveCategoria = async (data) => {
+    const esEdicion = isEdit && selectedCategoria;
 
     if (esEdicion && !permisos.puedeEditar) {
       toast.current?.show({
@@ -134,19 +134,19 @@ export default function TipoDeudaPersonal({ ruta }) {
       };
 
       if (esEdicion) {
-        await updateTipoDeudaPersonal(selectedTipo.id, dataConAuditoria);
+        await updateCategoriaTipoDeudaTributaria(selectedCategoria.id, dataConAuditoria);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
-          detail: "Tipo de deuda personal actualizado correctamente",
+          detail: "Categoría de tipo de deuda tributaria actualizada correctamente",
           life: 3000,
         });
       } else {
-        await createTipoDeudaPersonal(dataConAuditoria);
+        await createCategoriaTipoDeudaTributaria(dataConAuditoria);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
-          detail: "Tipo de deuda personal creado correctamente",
+          detail: "Categoría de tipo de deuda tributaria creada correctamente",
           life: 3000,
         });
       }
@@ -154,13 +154,13 @@ export default function TipoDeudaPersonal({ ruta }) {
       hideDialog();
       loadData();
     } catch (error) {
-      console.error("Error al guardar tipo de deuda personal:", error);
+      console.error("Error al guardar categoría de tipo de deuda tributaria:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
         detail:
           error.response?.data?.message ||
-          "Error al guardar tipo de deuda personal",
+          "Error al guardar categoría de tipo de deuda tributaria",
         life: 3000,
       });
     } finally {
@@ -168,7 +168,7 @@ export default function TipoDeudaPersonal({ ruta }) {
     }
   };
 
-  const confirmDeleteTipo = (tipo) => {
+  const confirmDeleteCategoria = (categoria) => {
     if (!permisos.puedeEliminar) {
       toast.current?.show({
         severity: "warn",
@@ -178,33 +178,33 @@ export default function TipoDeudaPersonal({ ruta }) {
       });
       return;
     }
-    setSelectedTipo(tipo);
-    setDeleteTipoDialog(true);
+    setSelectedCategoria(categoria);
+    setDeleteCategoriaDialog(true);
   };
 
-  const deleteTipoConfirmed = async () => {
+  const deleteCategoriaConfirmed = async () => {
     try {
       setLoading(true);
-      await deleteTipoDeudaPersonal(selectedTipo.id);
+      await deleteCategoriaTipoDeudaTributaria(selectedCategoria.id);
 
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: "Tipo de deuda personal eliminado correctamente",
+        detail: "Categoría de tipo de deuda tributaria eliminada correctamente",
         life: 3000,
       });
 
-      setDeleteTipoDialog(false);
-      setSelectedTipo(null);
+      setDeleteCategoriaDialog(false);
+      setSelectedCategoria(null);
       loadData();
     } catch (error) {
-      console.error("Error al eliminar tipo de deuda personal:", error);
+      console.error("Error al eliminar categoría de tipo de deuda tributaria:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
         detail:
           error.response?.data?.message ||
-          "Error al eliminar tipo de deuda personal",
+          "Error al eliminar categoría de tipo de deuda tributaria",
         life: 3000,
       });
     } finally {
@@ -212,9 +212,9 @@ export default function TipoDeudaPersonal({ ruta }) {
     }
   };
 
-  const hideDeleteTipoDialog = () => {
-    setDeleteTipoDialog(false);
-    setSelectedTipo(null);
+  const hideDeleteCategoriaDialog = () => {
+    setDeleteCategoriaDialog(false);
+    setSelectedCategoria(null);
   };
 
   const activoBodyTemplate = (rowData) => {
@@ -234,7 +234,7 @@ export default function TipoDeudaPersonal({ ruta }) {
           rounded
           outlined
           className="p-button-warning"
-          onClick={() => editTipo(rowData)}
+          onClick={() => editCategoria(rowData)}
           disabled={!permisos.puedeEditar}
           tooltip="Editar"
           tooltipOptions={{ position: "top" }}
@@ -244,7 +244,7 @@ export default function TipoDeudaPersonal({ ruta }) {
           rounded
           outlined
           severity="danger"
-          onClick={() => confirmDeleteTipo(rowData)}
+          onClick={() => confirmDeleteCategoria(rowData)}
           disabled={!permisos.puedeEliminar}
           tooltip="Eliminar"
           tooltipOptions={{ position: "top" }}
@@ -288,13 +288,13 @@ export default function TipoDeudaPersonal({ ruta }) {
         label="No"
         icon="pi pi-times"
         outlined
-        onClick={hideDeleteTipoDialog}
+        onClick={hideDeleteCategoriaDialog}
       />
       <Button
         label="Sí"
         icon="pi pi-check"
         severity="danger"
-        onClick={deleteTipoConfirmed}
+        onClick={deleteCategoriaConfirmed}
       />
     </>
   );
@@ -303,7 +303,7 @@ export default function TipoDeudaPersonal({ ruta }) {
     <div className="card">
       <Toast ref={toast} />
       <h2 style={{ fontSize: getResponsiveFontSize() }}>
-        Tipos de Deuda Personal
+        Categorías de Tipo de Deuda Tributaria
       </h2>
 
       <Toolbar
@@ -313,10 +313,10 @@ export default function TipoDeudaPersonal({ ruta }) {
       />
 
       <DataTable
-        value={tipos}
+        value={categorias}
         loading={loading}
         globalFilter={globalFilter}
-        emptyMessage="No se encontraron tipos de deuda personal"
+        emptyMessage="No se encontraron categorías de tipo de deuda tributaria"
         paginator
         rows={10}
         rowsPerPageOptions={[5, 10, 25, 50]}
@@ -329,13 +329,6 @@ export default function TipoDeudaPersonal({ ruta }) {
           header="ID"
           sortable
           style={{ width: "80px" }}
-        />
-        <Column
-          field="categoria.nombre"
-          header="Categoría"
-          sortable
-          body={(rowData) => rowData.categoria?.nombre || "Sin categoría"}
-          style={{ width: "200px" }}
         />
         <Column
           field="nombre"
@@ -365,43 +358,43 @@ export default function TipoDeudaPersonal({ ruta }) {
       </DataTable>
 
       <Dialog
-        visible={tipoDialog}
+        visible={categoriaDialog}
         style={{ width: "600px" }}
         header={
           isEdit
-            ? "Editar Tipo de Deuda Personal"
-            : "Nuevo Tipo de Deuda Personal"
+            ? "Editar Categoría de Tipo de Deuda Tributaria"
+            : "Nueva Categoría de Tipo de Deuda Tributaria"
         }
         modal
         className="p-fluid"
         onHide={hideDialog}
       >
-        <TipoDeudaPersonalForm
+        <CategoriaTipoDeudaTributariaForm
           isEdit={isEdit}
           defaultValues={formData}
-          onSubmit={saveTipo}
+          onSubmit={saveCategoria}
           onCancel={hideDialog}
           loading={loading}
         />
       </Dialog>
 
       <Dialog
-        visible={deleteTipoDialog}
+        visible={deleteCategoriaDialog}
         style={{ width: "450px" }}
         header="Confirmar"
         modal
         footer={deleteDialogFooter}
-        onHide={hideDeleteTipoDialog}
+        onHide={hideDeleteCategoriaDialog}
       >
         <div className="confirmation-content">
           <i
             className="pi pi-exclamation-triangle mr-3"
             style={{ fontSize: "2rem" }}
           />
-          {selectedTipo && (
+          {selectedCategoria && (
             <span>
-              ¿Está seguro de eliminar el tipo de deuda personal{" "}
-              <b>{selectedTipo.nombre}</b>?
+              ¿Está seguro de eliminar la categoría de tipo de deuda tributaria{" "}
+              <b>{selectedCategoria.nombre}</b>?
             </span>
           )}
         </div>

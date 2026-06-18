@@ -8,6 +8,7 @@ import { classNames } from "primereact/utils";
 import { useForm, Controller } from "react-hook-form";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
 import { getPlanCuentasContable } from "../../api/contabilidad/planCuentasContable";
+import { getCategoriaTipoDeudaTributariaActivos } from "../../api/tesoreria/categoriaTipoDeudaTributaria";
 
 const TipoDeudaTributariaForm = ({
   isEdit,
@@ -19,6 +20,8 @@ const TipoDeudaTributariaForm = ({
   const [entidades, setEntidades] = useState([]);
   const [cuentasContables, setCuentasContables] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
+  const [categorias, setCategorias] = useState([]);
+  const [loadingCategorias, setLoadingCategorias] = useState(false);
 
   const periodicidadOptions = [
     { label: "Diario", value: "DIARIO" },
@@ -43,6 +46,7 @@ const TipoDeudaTributariaForm = ({
     defaultValues: {
       nombre: "",
       descripcion: "",
+      categoriaId: null,
       entidadRecaudadoraId: null,
       periodicidad: "MENSUAL",
       cuentaContableId: null,
@@ -50,6 +54,22 @@ const TipoDeudaTributariaForm = ({
     },
     mode: "onChange",
   });
+
+  // Cargar categorías
+  useEffect(() => {
+    const loadCategorias = async () => {
+      try {
+        setLoadingCategorias(true);
+        const categoriasData = await getCategoriaTipoDeudaTributariaActivos();
+        setCategorias(categoriasData || []);
+      } catch (error) {
+        console.error("Error al cargar categorías:", error);
+      } finally {
+        setLoadingCategorias(false);
+      }
+    };
+    loadCategorias();
+  }, []);
 
   // Cargar entidades y cuentas contables
   useEffect(() => {
@@ -75,6 +95,7 @@ const TipoDeudaTributariaForm = ({
     if (defaultValues) {
       setValue("nombre", defaultValues.nombre || "");
       setValue("descripcion", defaultValues.descripcion || "");
+      setValue("categoriaId", defaultValues.categoriaId || null);
       setValue(
         "entidadRecaudadoraId",
         defaultValues.entidadRecaudadoraId || null
@@ -89,6 +110,7 @@ const TipoDeudaTributariaForm = ({
       reset({
         nombre: "",
         descripcion: "",
+        categoriaId: null,
         entidadRecaudadoraId: null,
         periodicidad: "MENSUAL",
         cuentaContableId: null,
@@ -101,6 +123,7 @@ const TipoDeudaTributariaForm = ({
     const datosNormalizados = {
       nombre: data.nombre.trim(),
       descripcion: data.descripcion?.trim() || null,
+      categoriaId: data.categoriaId ? Number(data.categoriaId) : null,
       entidadRecaudadoraId: data.entidadRecaudadoraId
         ? Number(data.entidadRecaudadoraId)
         : null,
@@ -121,6 +144,42 @@ const TipoDeudaTributariaForm = ({
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="p-fluid">
+      <div className="field mt-4">
+        <label
+          htmlFor="categoriaId"
+          className={classNames("font-medium", {
+            "p-error": errors.categoriaId,
+          })}
+        >
+          Categoría
+        </label>
+        <Controller
+          name="categoriaId"
+          control={control}
+          render={({ field, fieldState }) => (
+            <div className="p-inputgroup">
+              <span className="p-inputgroup-addon">
+                <i className="pi pi-folder" />
+              </span>
+              <Dropdown
+                id={field.name}
+                value={field.value}
+                options={categorias}
+                optionLabel="nombre"
+                optionValue="id"
+                onChange={(e) => field.onChange(e.value)}
+                placeholder="Seleccione una categoría"
+                className={classNames({ "p-invalid": fieldState.error })}
+                disabled={loading || loadingCategorias}
+                filter
+                showClear
+                emptyMessage="No hay categorías disponibles"
+              />
+            </div>
+          )}
+        />
+        {getFormErrorMessage("categoriaId")}
+      </div>
       <div className="field">
         <label
           htmlFor="nombre"
