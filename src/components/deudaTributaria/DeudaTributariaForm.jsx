@@ -323,23 +323,27 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
   }));
 
   const handleSubmit = () => {
+    if (loading) return; // Prevenir múltiples clics
+
     const data = {
       empresaId: Number(formData.empresaId),
       tipoDeudaId: Number(formData.tipoDeudaId),
+      moduloOrigenId: formData.moduloOrigenId ? Number(formData.moduloOrigenId) : null,
+      origenId: formData.origenId ? Number(formData.origenId) : null,
       periodo: formData.periodo,
-      numeroDeclaracion: formData.numeroDeclaracion,
       fechaGeneracion: formData.fechaGeneracion,
       fechaVencimiento: formData.fechaVencimiento,
-      monedaId: Number(formData.monedaId),
-      montoPagadoAnterior: Number(formData.montoPagadoAnterior || 0),
+      numeroDeclaracion: formData.numeroDeclaracion || null,
+      montoPagadoAnterior: Number(formData.montoPagadoAnterior) || MONTO_DEFAULT,
       montoOriginal: Number(formData.montoOriginal),
-      montoPagado: Number(formData.montoPagado),
+      montoPagado: Number(formData.montoPagado) || MONTO_DEFAULT,
       saldoPendiente: Number(formData.saldoPendiente),
+      monedaId: Number(formData.monedaId),
       estadoId: Number(formData.estadoId),
-      observaciones: formData.observaciones,
-      esSaldoInicial: formData.esSaldoInicial,
-      fechaContable: formData.fechaContable,
+      esSaldoInicial: formData.esSaldoInicial || false,
+      fechaContable: formData.fechaContable || null,
       periodoContableId: formData.periodoContableId ? Number(formData.periodoContableId) : null,
+      observaciones: formData.observaciones || null,
       creadoPor: isEdit ? formData.creadoPor : usuario?.personalId ? Number(usuario.personalId) : null,
       actualizadoPor: isEdit && usuario?.personalId ? Number(usuario.personalId) : null,
     };
@@ -790,6 +794,7 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
               label="Registrar Pago"
               icon="pi pi-plus"
               className="p-button-success"
+              type="button"
               onClick={handleRegistrarPago}
               disabled={readOnly || !permisos?.puedeCrear || loading}
             />
@@ -832,6 +837,7 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
           outlined
         />
         <Button
+          type="button"
           label={isEdit ? "Actualizar" : "Guardar"}
           icon="pi pi-check"
           className="p-button-success"

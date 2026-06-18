@@ -357,6 +357,7 @@ export default function DeudaTributaria({ ruta }) {
           detail: "Deuda tributaria creada correctamente",
           life: 3000,
         });
+        hideDialog(); // ✅ CERRAR DIÁLOGO DESPUÉS DE CREAR
       }
 
       loadData();

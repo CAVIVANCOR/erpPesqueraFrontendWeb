@@ -385,6 +385,7 @@ export default function DeudaConPersonal({ ruta }) {
           detail: "Deuda con personal creada correctamente",
           life: 3000,
         });
+        hideDialog(); // ✅ CERRAR DIÁLOGO DESPUÉS DE CREAR
       }
 
       loadData();

@@ -336,23 +336,25 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
   }));
 
   const handleSubmit = () => {
+    if (loading) return; // Prevenir múltiples clics
+
     const data = {
       empresaId: Number(formData.empresaId),
       personalId: Number(formData.personalId),
       tipoDeudaId: Number(formData.tipoDeudaId),
-      numeroDocumento: formData.numeroDocumento,
+      numeroDocumento: formData.numeroDocumento || null,
       fecha: formData.fecha,
       fechaVencimiento: formData.fechaVencimiento,
       monedaId: Number(formData.monedaId),
-      montoPagadoAnterior: Number(formData.montoPagadoAnterior || 0),
+      montoPagadoAnterior: Number(formData.montoPagadoAnterior) || MONTO_DEFAULT,
       montoOriginal: Number(formData.montoOriginal),
-      montoPagado: Number(formData.montoPagado),
+      montoPagado: Number(formData.montoPagado) || MONTO_DEFAULT,
       saldoPendiente: Number(formData.saldoPendiente),
       estadoId: Number(formData.estadoId),
-      observaciones: formData.observaciones,
-      esSaldoInicial: formData.esSaldoInicial,
-      esGerencial: formData.esGerencial,
-      fechaContable: formData.fechaContable,
+      observaciones: formData.observaciones || null,
+      esSaldoInicial: formData.esSaldoInicial || false,
+      esGerencial: formData.esGerencial || false,
+      fechaContable: formData.fechaContable || null,
       periodoContableId: formData.periodoContableId ? Number(formData.periodoContableId) : null,
       creadoPor: isEdit ? formData.creadoPor : usuario?.personalId ? Number(usuario.personalId) : null,
       actualizadoPor: isEdit && usuario?.personalId ? Number(usuario.personalId) : null,
@@ -837,6 +839,7 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
           </div>
           <div className="mb-3">
             <Button
+              type="button"
               label="Registrar Pago"
               icon="pi pi-plus"
               className="p-button-success"
@@ -883,6 +886,7 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
           outlined
         />
         <Button
+          type="button"
           label={isEdit ? "Actualizar" : "Guardar"}
           icon="pi pi-check"
           className="p-button-success"
