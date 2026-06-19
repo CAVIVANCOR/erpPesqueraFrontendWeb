@@ -14,6 +14,8 @@ export default function Dashboard() {
   const [hoveredCard, setHoveredCard] = useState(null);
   const [expandedCard, setExpandedCard] = useState(null);
   const [reorderedModulos, setReorderedModulos] = useState(null);
+  const [activeTab, setActiveTab] = useState({}); // ← NUEVO: { moduloId: 'operaciones' | 'tablas' | 'maestros' }
+
   const containerRef = useRef(null);
 
   // Configuración de módulos con colores del logo Megui y sus submenús
@@ -64,51 +66,97 @@ export default function Dashboard() {
           label: "Pesca Industrial",
           key: "temporadaPesca",
           icon: "pi-chart-line",
+          tab: "operaciones",
         },
         {
           label: "Pesca de Consumo",
           key: "novedadPescaConsumo",
           icon: "pi-shopping-bag",
+          tab: "operaciones",
         },
         {
           label: "Katana Tripulación",
           key: "katanaTripulacion",
           icon: "pi-users",
+          tab: "tablas",
         },
-        { label: "Especies", key: "especie", icon: "pi-star" },
+        {
+          label: "Especies",
+          key: "especie",
+          icon: "pi-star",
+          tab: "tablas",
+        },
         {
           label: "Detalle Cuotas Pesca",
           key: "detCuotaPesca",
           icon: "pi-percentage",
+          tab: "tablas",
         },
         {
           label: "Acciones Previas",
           key: "accionesPreviasFaena",
           icon: "pi-list",
+          tab: "tablas",
         },
-        { label: "Embarcaciones", key: "embarcacion", icon: "pi-compass" },
-        { label: "Tipo Embarcación", key: "tipoEmbarcacion", icon: "pi-tag" },
-        { label: "Boliche de Red", key: "bolicheRed", icon: "pi-circle" },
+        {
+          label: "Embarcaciones",
+          key: "embarcacion",
+          icon: "pi-compass",
+          tab: "tablas",
+        },
+        {
+          label: "Tipo Embarcación",
+          key: "tipoEmbarcacion",
+          icon: "pi-tag",
+          tab: "tablas",
+        },
+        {
+          label: "Boliche de Red",
+          key: "bolicheRed",
+          icon: "pi-circle",
+          tab: "tablas",
+        },
         {
           label: "Documentación Pesca",
           key: "documentoPesca",
           icon: "pi-file",
+          tab: "tablas",
         },
         {
           label: "Documentación Embarcación",
           key: "documentacionEmbarcacion",
           icon: "pi-file-edit",
+          tab: "tablas",
         },
         {
           label: "Documentación Personal",
           key: "documentacionPersonal",
           icon: "pi-id-card",
+          tab: "tablas",
         },
-        { label: "Puerto de Pesca", key: "puertoPesca", icon: "pi-map-marker" },
+        {
+          label: "Puerto de Pesca",
+          key: "puertoPesca",
+          icon: "pi-map-marker",
+          tab: "tablas",
+        },
         {
           label: "Motivos sin Faena",
           key: "motivoSinFaena",
           icon: "pi-map",
+          tab: "tablas",
+        },
+        {
+          label: "Entidad Comercial",
+          key: "entidadComercial",
+          icon: "pi-building",
+          tab: "maestros",
+        },
+        {
+          label: "Personal",
+          key: "personal",
+          icon: "pi-users",
+          tab: "maestros",
         },
       ],
     },
@@ -117,40 +165,74 @@ export default function Dashboard() {
       titulo: "COMPRAS",
       descripcion: "Gestión de compras, proveedores y órdenes",
       icono: "pi-shopping-cart",
-      modulos: 8,
+      modulos: 11,
       color: "#1E8449",
       submenu: [
         {
           label: "Requerimiento Compra",
           key: "requerimientoCompra",
           icon: "pi-file-edit",
+          tab: "operaciones",
         },
         {
           label: "Orden de Compra",
           key: "ordenCompra",
           icon: "pi-shopping-cart",
+          tab: "operaciones",
         },
         {
           label: "Rendición de Gastos",
           key: "rendicionGastos",
           icon: "pi-money-bill",
+          tab: "operaciones",
         },
-        { label: "Tipo Producto", key: "tipoProducto", icon: "pi-tag" },
+        {
+          label: "Tipo Producto",
+          key: "tipoProducto",
+          icon: "pi-tag",
+          tab: "tablas",
+        },
         {
           label: "Tipo Estado Producto",
           key: "tipoEstadoProducto",
           icon: "pi-circle",
+          tab: "tablas",
         },
         {
           label: "Destino Producto",
           key: "destinoProducto",
           icon: "pi-map-marker",
+          tab: "tablas",
         },
-        { label: "Forma de Pago", key: "formaPago", icon: "pi-credit-card" },
+        {
+          label: "Forma de Pago",
+          key: "formaPago",
+          icon: "pi-credit-card",
+          tab: "tablas",
+        },
         {
           label: "Modo Despacho/Recepción",
           key: "modoDespachoRecepcion",
           icon: "pi-truck",
+          tab: "tablas",
+        },
+        {
+          label: "Entidad Comercial",
+          key: "entidadComercial",
+          icon: "pi-building",
+          tab: "maestros",
+        },
+        {
+          label: "Producto",
+          key: "producto",
+          icon: "pi-box",
+          tab: "maestros",
+        },
+        {
+          label: "Personal",
+          key: "personal",
+          icon: "pi-users",
+          tab: "maestros",
         },
       ],
     },
@@ -159,46 +241,86 @@ export default function Dashboard() {
       titulo: "VENTAS",
       descripcion: "Control de ventas, cotizaciones y contratos",
       icono: "pi-dollar",
-      modulos: 8,
+      modulos: 13,
       color: "#5DADE2",
       submenu: [
         {
           label: "Cotización Ventas",
           key: "cotizacionVentas",
           icon: "pi-file-edit",
-        },
-        { label: "Pre-Factura", key: "preFactura", icon: "pi-file" },
-        {
-          label: "Motivos para NC y ND",
-          key: "motivoNotaCreditoDebito",
-          icon: "pi-list",
+          tab: "operaciones",
         },
         {
-          label: "Comprobantes Electrónicos SUNAT",
-          key: "comprobanteElectronico",
-          icon: "pi-send",
+          label: "Pre-Factura",
+          key: "preFactura",
+          icon: "pi-file",
+          tab: "operaciones",
         },
         {
           label: "Contratos de Servicios",
           key: "contratoServicio",
           icon: "pi-briefcase",
+          tab: "operaciones",
         },
-        { label: "Incoterms", key: "incoterm", icon: "pi-globe" },
+        {
+          label: "Motivos para NC y ND",
+          key: "motivoNotaCreditoDebito",
+          icon: "pi-list",
+          tab: "tablas",
+        },
+        {
+          label: "Comprobantes Electrónicos SUNAT",
+          key: "comprobanteElectronico",
+          icon: "pi-send",
+          tab: "tablas",
+        },
+        {
+          label: "Incoterms",
+          key: "incoterm",
+          icon: "pi-globe",
+          tab: "tablas",
+        },
         {
           label: "Documentos Requeridos Ventas",
           key: "docRequeridaVentas",
           icon: "pi-file-check",
+          tab: "tablas",
         },
         {
           label: "Requisitos Doc. por País",
           key: "requisitoDocPorPais",
           icon: "pi-flag",
+          tab: "tablas",
         },
-        { label: "Tipo Contenedor", key: "tipoContenedor", icon: "pi-box" },
+        {
+          label: "Tipo Contenedor",
+          key: "tipoContenedor",
+          icon: "pi-box",
+          tab: "tablas",
+        },
         {
           label: "Formas Transacción",
           key: "formaTransaccion",
           icon: "pi-credit-card",
+          tab: "tablas",
+        },
+        {
+          label: "Entidad Comercial",
+          key: "entidadComercial",
+          icon: "pi-building",
+          tab: "maestros",
+        },
+        {
+          label: "Producto",
+          key: "producto",
+          icon: "pi-box",
+          tab: "maestros",
+        },
+        {
+          label: "Personal",
+          key: "personal",
+          icon: "pi-users",
+          tab: "maestros",
         },
       ],
     },
@@ -207,40 +329,93 @@ export default function Dashboard() {
       titulo: "INVENTARIOS",
       descripcion: "Gestión de almacenes, kardex y movimientos",
       icono: "pi-box",
-      modulos: 13,
+      modulos: 14,
       color: "#2874A6",
       submenu: [
         {
           label: "Movimientos Almacén",
           key: "movimientoAlmacen",
           icon: "pi-arrows-h",
+          tab: "operaciones",
         },
-
         {
           label: "Conceptos Movimientos",
           key: "conceptoMovAlmacen",
           icon: "pi-tags",
+          tab: "tablas",
         },
-        { label: "Tipos de Documento", key: "tipoDocumento", icon: "pi-file" },
-        { label: "Tipos de Concepto", key: "tipoConcepto", icon: "pi-tag" },
+        {
+          label: "Tipos de Documento",
+          key: "tipoDocumento",
+          icon: "pi-file",
+          tab: "tablas",
+        },
+        {
+          label: "Tipos de Concepto",
+          key: "tipoConcepto",
+          icon: "pi-tag",
+          tab: "tablas",
+        },
         {
           label: "Tipos de Movimiento",
           key: "tipoMovimientoAlmacen",
           icon: "pi-arrows-h",
+          tab: "tablas",
         },
-        { label: "Tipos de Almacén", key: "tipoAlmacen", icon: "pi-building" },
+        {
+          label: "Tipos de Almacén",
+          key: "tipoAlmacen",
+          icon: "pi-building",
+          tab: "tablas",
+        },
         {
           label: "Centros de Almacén",
           key: "centrosAlmacen",
           icon: "pi-sitemap",
+          tab: "tablas",
         },
-        { label: "Almacenes", key: "almacen", icon: "pi-warehouse" },
+        {
+          label: "Almacenes",
+          key: "almacen",
+          icon: "pi-warehouse",
+          tab: "tablas",
+        },
         {
           label: "Ubicaciones Físicas",
           key: "ubicacionFisica",
           icon: "pi-map-marker",
+          tab: "tablas",
         },
-        { label: "Series de Documento", key: "serieDoc", icon: "pi-hashtag" },
+        {
+          label: "Series de Documento",
+          key: "serieDoc",
+          icon: "pi-hashtag",
+          tab: "tablas",
+        },
+        {
+          label: "Entidad Comercial",
+          key: "entidadComercial",
+          icon: "pi-building",
+          tab: "maestros",
+        },
+        {
+          label: "Producto",
+          key: "producto",
+          icon: "pi-box",
+          tab: "maestros",
+        },
+        {
+          label: "Personal",
+          key: "personal",
+          icon: "pi-users",
+          tab: "maestros",
+        },
+        {
+          label: "Unidades de Medida",
+          key: "unidadMedida",
+          icon: "pi-calculator",
+          tab: "maestros",
+        },
       ],
     },
     {
@@ -281,148 +456,187 @@ export default function Dashboard() {
           label: "Movimientos de Caja",
           key: "movimientoCaja",
           icon: "pi-money-bill",
+          tab: "operaciones", // ← NUEVO
         },
         {
-          label: "Tesorería Pendientes", // ← AGREGAR AQUÍ
+          label: "Tesorería Pendientes",
           key: "tesoreriaPendientes",
           icon: "pi-money-bill",
-        },
-        {
-          label: "Cuenta Corriente",
-          key: "cuentaCorriente",
-          icon: "pi-credit-card",
-        },
-        {
-          label: "Categoría Tipo Movimiento caja",
-          key: "categoriaTipoMovimientoCaja",
-          icon: "pi-money-bill",
-        },
-        {
-          label: "Tipos de Movimiento Caja",
-          key: "tipoMovEntregaRendir",
-          icon: "pi-send",
-        },
-        {
-          label: "Asientos Contables",
-          key: "asientoContableInterfaz",
-          icon: "pi-book",
-        },
-        { label: "Centros de Costo", key: "centroCosto", icon: "pi-sitemap" },
-        {
-          label: "Categorías Centro Costo",
-          key: "categoriaCCosto",
-          icon: "pi-tags",
-        },
-        {
-          label: "Empresas por Centro Costo",
-          key: "empresaCentroCosto",
-          icon: "pi-building",
-        },
-        {
-          label: "Tipo Cuenta Corriente",
-          key: "tipoCuentaCorriente",
-          icon: "pi-list",
-        },
-        {
-          label: "Tipo Referencia",
-          key: "tipoReferenciaMovimientoCaja",
-          icon: "pi-tag",
-        },
-        { label: "Bancos", key: "banco", icon: "pi-credit-card" },
-        {
-          label: "Saldos Cuentas Corrientes",
-          key: "saldoCuentaCorriente",
-          icon: "pi-list",
-        },
-        {
-          label: "Letra de Cambio",
-          key: "letra-cambio",
-          icon: "pi-file",
-        },
-        {
-          label: "Endoso Letra de Cambio",
-          key: "endoso-letra-cambio",
-          icon: "pi-sync",
-        },
-        {
-          label: "Pago Letra de Cambio",
-          key: "pago-letra-cambio",
-          icon: "pi-money-bill",
-        },
-        {
-          label: "Ubicación de Letra",
-          key: "ubicacion-letra",
-          icon: "pi-map-marker",
-        },
-        {
-          label: "Retención",
-          key: "retencion",
-          icon: "pi-minus-circle",
-        },
-        {
-          label: "Percepción",
-          key: "percepcion",
-          icon: "pi-plus-circle",
-        },
-        {
-          label: "Tipo Retención/Percepción",
-          key: "tipo-retencion-percepcion",
-          icon: "pi-percentage",
-        },
-        {
-          label: "Flujo de Caja Proyectado",
-          key: "flujo-caja-proyectado",
-          icon: "pi-chart-line",
-        },
-        {
-          label: "Presupuesto Anual",
-          key: "presupuesto-anual",
-          icon: "pi-calendar",
-        },
-        {
-          label: "Ejecución Presupuestal",
-          key: "ejecucion-presupuestal",
-          icon: "pi-chart-bar",
+          tab: "operaciones", // ← NUEVO
         },
         {
           label: "Deudas con el Personal",
           key: "deudaConPersonal",
           icon: "pi-money-bill",
+          tab: "operaciones", // ← NUEVO
         },
         {
           label: "Deudas Tributarias",
           key: "deudaTributaria",
           icon: "pi-money-bill",
-        },
-        {
-          label: "Categorias Tipos Deuda con el Personal",
-          key: "categoriaTipoDeudaPersonal",
-          icon: "pi-folder",
-        },
-        {
-          label: "Tipos Deuda de Personal",
-          key: "tipoDeudaPersonal",
-          icon: "pi-list",
+          tab: "operaciones", // ← NUEVO
         },
         {
           label: "Pagos Deuda al Personal",
           key: "pagoDeudaPersonal",
           icon: "pi-money-bill",
-        },
-        {
-          label: "Categorias Tipos Deudas Tributarias",
-          key: "categoriaTipoDeudaTributaria",
-          icon: "pi-folder",
-        },
-        {
-          label: "Tipos de Deuda Tributaria",
-          key: "tipoDeudaTributaria",
-          icon: "pi-money-bill",
+          tab: "operaciones", // ← NUEVO
         },
         {
           label: "Pagos Deuda Tributaria",
           key: "pagoDeudaTributaria",
           icon: "pi-money-bill",
+          tab: "operaciones", // ← NUEVO
+        },
+        {
+          label: "Retención",
+          key: "retencion",
+          icon: "pi-minus-circle",
+          tab: "operaciones", // ← NUEVO
+        },
+        {
+          label: "Percepción",
+          key: "percepcion",
+          icon: "pi-plus-circle",
+          tab: "operaciones", // ← NUEVO
+        },
+        {
+          label: "Flujo de Caja Proyectado",
+          key: "flujo-caja-proyectado",
+          icon: "pi-chart-line",
+          tab: "operaciones", // ← NUEVO
+        },
+        {
+          label: "Cuenta Corriente",
+          key: "cuentaCorriente",
+          icon: "pi-credit-card",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Categoría Tipo Movimiento caja",
+          key: "categoriaTipoMovimientoCaja",
+          icon: "pi-money-bill",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Tipos de Movimiento Caja",
+          key: "tipoMovEntregaRendir",
+          icon: "pi-send",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Centros de Costo",
+          key: "centroCosto",
+          icon: "pi-sitemap",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Categorías Centro Costo",
+          key: "categoriaCCosto",
+          icon: "pi-tags",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Tipo Cuenta Corriente",
+          key: "tipoCuentaCorriente",
+          icon: "pi-list",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Tipo Referencia",
+          key: "tipoReferenciaMovimientoCaja",
+          icon: "pi-tag",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Bancos",
+          key: "banco",
+          icon: "pi-credit-card",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Saldos Cuentas Corrientes",
+          key: "saldoCuentaCorriente",
+          icon: "pi-list",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Letra de Cambio",
+          key: "letra-cambio",
+          icon: "pi-file",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Endoso Letra de Cambio",
+          key: "endoso-letra-cambio",
+          icon: "pi-sync",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Pago Letra de Cambio",
+          key: "pago-letra-cambio",
+          icon: "pi-money-bill",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Ubicación de Letra",
+          key: "ubicacion-letra",
+          icon: "pi-map-marker",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Tipo Retención/Percepción",
+          key: "tipo-retencion-percepcion",
+          icon: "pi-percentage",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Presupuesto Anual",
+          key: "presupuesto-anual",
+          icon: "pi-calendar",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Ejecución Presupuestal",
+          key: "ejecucion-presupuestal",
+          icon: "pi-chart-bar",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Categorias Tipos Deuda con el Personal",
+          key: "categoriaTipoDeudaPersonal",
+          icon: "pi-folder",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Tipos Deuda de Personal",
+          key: "tipoDeudaPersonal",
+          icon: "pi-list",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Categorias Tipos Deudas Tributarias",
+          key: "categoriaTipoDeudaTributaria",
+          icon: "pi-folder",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Tipos de Deuda Tributaria",
+          key: "tipoDeudaTributaria",
+          icon: "pi-money-bill",
+          tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Entidad Comercial",
+          key: "entidadComercial",
+          icon: "pi-building",
+          tab: "maestros", // ← NUEVO
+        },
+        {
+          label: "Producto",
+          key: "producto",
+          icon: "pi-box",
+          tab: "maestros", // ← NUEVO
         },
       ],
     },
@@ -431,54 +645,74 @@ export default function Dashboard() {
       titulo: "FINANZAS",
       descripcion: "Tesorería Avanzada: Préstamos, Créditos e Inversiones",
       icono: "pi-wallet",
-      modulos: 10,
+      modulos: 11,
       color: "#8E44AD",
       submenu: [
         {
           label: "Cuenta Por Cobrar",
           key: "cuentaPorCobrar",
           icon: "pi-money-bill",
+          tab: "operaciones",
         },
         {
           label: "Cuenta Por Pagar",
           key: "cuentaPorPagar",
           icon: "pi-credit-card",
+          tab: "operaciones",
         },
         {
           label: "Pagos Cuentas por Pagar",
           key: "pagoCuentaPorPagar",
           icon: "pi-shopping-cart",
+          tab: "operaciones",
         },
         {
           label: "Pagos Cuentas Por Cobrar",
           key: "pagoCuentaPorCobrar",
           icon: "pi-shopping-cart",
+          tab: "operaciones",
         },
-        {
-          label: "Medios de Pago",
-          key: "medioPago",
-          icon: "pi-wallet",
-        },
-        { label: "Tipos de Préstamo", key: "tipoPrestamo", icon: "pi-tags" },
         {
           label: "Préstamo Bancario",
           key: "prestamoBancario",
           icon: "pi-briefcase",
+          tab: "operaciones",
         },
         {
           label: "Línea de Crédito",
           key: "lineaCredito",
           icon: "pi-credit-card",
+          tab: "operaciones",
+        },
+        {
+          label: "Medios de Pago",
+          key: "medioPago",
+          icon: "pi-wallet",
+          tab: "tablas",
+        },
+        {
+          label: "Tipos de Préstamo",
+          key: "tipoPrestamo",
+          icon: "pi-tags",
+          tab: "tablas",
         },
         {
           label: "Inversión Financiera",
           key: "inversionFinanciera",
           icon: "pi-chart-pie",
+          tab: "tablas",
         },
         {
-          label: "Reporte Líneas Disponibles",
-          key: "reporteLineasDisponibles",
-          icon: "pi-chart-bar",
+          label: "Entidad Comercial",
+          key: "entidadComercial",
+          icon: "pi-building",
+          tab: "maestros",
+        },
+        {
+          label: "Bancos",
+          key: "banco",
+          icon: "pi-credit-card",
+          tab: "maestros",
         },
       ],
     },
@@ -487,32 +721,74 @@ export default function Dashboard() {
       titulo: "CONTABILIDAD",
       descripcion: "Plan Contable, Asientos, Períodos y Activos Fijos",
       icono: "pi-calculator",
-      modulos: 8,
+      modulos: 11,
       color: "#E74C3C",
       submenu: [
-        { label: "Plan Contable", key: "planCuentasContable", icon: "pi-list" },
         {
-          label: "Período Contable",
-          key: "periodoContable",
-          icon: "pi-calendar",
+          label: "Plan Contable",
+          key: "planCuentasContable",
+          icon: "pi-list",
+          tab: "operaciones",
         },
-        { label: "Asiento Contable", key: "asientoContable", icon: "pi-book" },
         {
-          label: "Configuración Cuenta Contable",
-          key: "configuracionCuentaContable",
-          icon: "pi-cog",
-        },
-        { label: "Activos", key: "activo", icon: "pi-server" },
-        { label: "Tipos de Activo", key: "tipoActivo", icon: "pi-tag" },
-        {
-          label: "Tipos de Movimiento Activo Fijo",
-          key: "tipoMovActivo",
-          icon: "pi-arrows-h",
+          label: "Asiento Contable",
+          key: "asientoContable",
+          icon: "pi-book",
+          tab: "operaciones",
         },
         {
           label: "Movimientos Activo Fijo",
           key: "movActivoFijo",
           icon: "pi-chart-line",
+          tab: "operaciones",
+        },
+        {
+          label: "Período Contable",
+          key: "periodoContable",
+          icon: "pi-calendar",
+          tab: "tablas",
+        },
+        {
+          label: "Configuración Cuenta Contable",
+          key: "configuracionCuentaContable",
+          icon: "pi-cog",
+          tab: "tablas",
+        },
+        {
+          label: "Activos",
+          key: "activo",
+          icon: "pi-server",
+          tab: "tablas",
+        },
+        {
+          label: "Tipos de Activo",
+          key: "tipoActivo",
+          icon: "pi-tag",
+          tab: "tablas",
+        },
+        {
+          label: "Tipos de Movimiento Activo Fijo",
+          key: "tipoMovActivo",
+          icon: "pi-arrows-h",
+          tab: "tablas",
+        },
+        {
+          label: "Entidad Comercial",
+          key: "entidadComercial",
+          icon: "pi-building",
+          tab: "maestros",
+        },
+        {
+          label: "Producto",
+          key: "producto",
+          icon: "pi-box",
+          tab: "maestros",
+        },
+        {
+          label: "Personal",
+          key: "personal",
+          icon: "pi-users",
+          tab: "maestros",
         },
       ],
     },
@@ -1029,6 +1305,54 @@ export default function Dashboard() {
                           borderTop: `1px solid ${modulo.color}30`,
                         }}
                       >
+                        {/* ✅ TABS: Solo para módulos que tienen propiedad 'tab' en submenu */}
+                        {modulo.submenu.some(item => item.tab) && (
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "8px",
+                              marginBottom: "16px",
+                              borderBottom: "1px solid rgba(255,255,255,0.1)",
+                              paddingBottom: "8px",
+                            }}
+                          >
+                            {["operaciones", "tablas", "maestros"].map((tab) => {
+                              const hasItems = modulo.submenu.some(item => item.tab === tab);
+                              if (!hasItems) return null;
+
+                              const isActive = (activeTab[modulo.id] || "operaciones") === tab;
+                              const tabLabels = {
+                                operaciones: "Operaciones Principales",
+                                tablas: "Tablas Relacionadas",
+                                maestros: "Maestros"
+                              };
+
+                              return (
+                                <button
+                                  key={tab}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveTab(prev => ({ ...prev, [modulo.id]: tab }));
+                                  }}
+                                  style={{
+                                    padding: "6px 16px",
+                                    background: isActive ? modulo.color : "rgba(15, 23, 42, 0.4)",
+                                    border: `1px solid ${isActive ? modulo.color : 'rgba(255,255,255,0.1)'}`,
+                                    borderRadius: "6px",
+                                    color: isActive ? "#0f172a" : "#cbd5e1",
+                                    fontSize: "0.75rem",
+                                    fontWeight: isActive ? "600" : "400",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s ease",
+                                  }}
+                                >
+                                  {tabLabels[tab]}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
                         <div
                           style={{
                             display: "grid",
@@ -1037,45 +1361,55 @@ export default function Dashboard() {
                             gap: "8px",
                           }}
                         >
-                          {modulo.submenu.map((item, idx) => (
-                            <motion.button
-                              key={item.key}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.3 + idx * 0.03 }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSubmenuClick(item.key, item.label);
-                              }}
-                              whileHover={{
-                                x: 4,
-                                backgroundColor: "rgba(15, 23, 42, 0.8)",
-                              }}
-                              style={{
-                                padding: "8px 12px",
-                                background: "rgba(15, 23, 42, 0.4)",
-                                border: `1px solid ${modulo.color}20`,
-                                borderRadius: "8px",
-                                color: "#cbd5e1",
-                                fontSize: "0.75rem",
-                                textAlign: "left",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "12px",
-                                transition: "all 0.2s ease",
-                              }}
-                            >
-                              <i
-                                className={`pi ${item.icon}`}
-                                style={{
-                                  color: modulo.color,
-                                  fontSize: "14px",
+                          {modulo.submenu
+                            .filter(item => {
+                              // Si el módulo tiene tabs, filtrar por tab activo
+                              if (modulo.submenu.some(i => i.tab)) {
+                                const currentTab = activeTab[modulo.id] || "operaciones";
+                                return item.tab === currentTab;
+                              }
+                              // Si no tiene tabs, mostrar todos
+                              return true;
+                            })
+                            .map((item, idx) => (
+                              <motion.button
+                                key={item.key}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.3 + idx * 0.03 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSubmenuClick(item.key, item.label);
                                 }}
-                              />
-                              <span>{item.label}</span>
-                            </motion.button>
-                          ))}
+                                whileHover={{
+                                  x: 4,
+                                  backgroundColor: "rgba(15, 23, 42, 0.8)",
+                                }}
+                                style={{
+                                  padding: "8px 12px",
+                                  background: "rgba(15, 23, 42, 0.4)",
+                                  border: `1px solid ${modulo.color}20`,
+                                  borderRadius: "8px",
+                                  color: "#cbd5e1",
+                                  fontSize: "0.75rem",
+                                  textAlign: "left",
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "12px",
+                                  transition: "all 0.2s ease",
+                                }}
+                              >
+                                <i
+                                  className={`pi ${item.icon}`}
+                                  style={{
+                                    color: modulo.color,
+                                    fontSize: "14px",
+                                  }}
+                                />
+                                <span>{item.label}</span>
+                              </motion.button>
+                            ))}
                         </div>
                       </motion.div>
                     )}
