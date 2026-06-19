@@ -954,7 +954,6 @@ export default function DatosGeneralesProductoForm({
                     className={classNames({
                       "p-invalid": fieldState.error,
                     })}
-                    showClear
                     filter
                     disabled={readOnly}
                   />
@@ -1006,6 +1005,40 @@ export default function DatosGeneralesProductoForm({
                   {errors.unidadMedidaId.message}
                 </small>
               )}
+            </div>
+            <div style={{ flex: 2 }}>
+              <label htmlFor="unidadMedidaComercialId" style={{fontWeight:"bold", color:"green"}}>
+                Unidad Comercial
+              </label>
+              <Controller
+                name="unidadMedidaComercialId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Dropdown
+                    id="unidadMedidaComercialId"
+                    {...field}
+                    value={field.value || null}
+                    onChange={(e) => field.onChange(e.value || null)}
+                    options={unidadesMedidaOptions}
+                    placeholder="Por defecto usa Unidad de Almacén"
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    showClear
+                    filter
+                    disabled={readOnly}
+                    style={{fontWeight:"bold"}}
+                  />
+                )}
+              />
+              {errors.unidadMedidaComercialId && (
+                <small className="p-error">
+                  {errors.unidadMedidaComercialId.message}
+                </small>
+              )}
+              <small className="p-text-secondary" style={{ display: 'block', marginTop: '4px' }}>
+                Si no se define, se usará automáticamente la Unidad de Almacén
+              </small>
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="porcentajeDetraccion" className="font-bold">

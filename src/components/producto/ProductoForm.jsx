@@ -68,6 +68,13 @@ const schema = yup.object().shape({
     .transform((value, originalValue) => {
       return originalValue === "" ? null : value;
     }),
+  unidadMedidaComercialId: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      // Convertir vacío o 0 a null (backend lo igualará a unidadMedidaId)
+      return originalValue === "" || originalValue === 0 ? null : value;
+    }),
   tipoAlmacenamientoId: yup
     .number()
     .required("Tipo de almacenamiento es obligatorio")
@@ -267,6 +274,9 @@ export default function ProductoForm({
       unidadMedidaId: producto?.unidadMedidaId
         ? Number(producto.unidadMedidaId)
         : null,
+      unidadMedidaComercialId: producto?.unidadMedidaComercialId
+        ? Number(producto.unidadMedidaComercialId)
+        : null,
       tipoAlmacenamientoId: producto?.tipoAlmacenamientoId
         ? Number(producto.tipoAlmacenamientoId)
         : 1,
@@ -410,6 +420,7 @@ export default function ProductoForm({
         familiaId: Number(data.familiaId),
         subfamiliaId: Number(data.subfamiliaId),
         unidadMedidaId: Number(data.unidadMedidaId),
+        unidadMedidaComercialId: data.unidadMedidaComercialId ? Number(data.unidadMedidaComercialId) : null,
         tipoAlmacenamientoId: Number(data.tipoAlmacenamientoId),
         procedenciaId: Number(data.procedenciaId),
         marcaId: Number(data.marcaId),

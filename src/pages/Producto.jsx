@@ -78,23 +78,30 @@ const Producto = ({ ruta }) => {
     "cliente.id": { value: null, matchMode: FilterMatchMode.EQUALS },
   });
 
-  // Estados para catálogos
+  // Estados para catálogos (FILTROS de la lista)
   const [familias, setFamilias] = useState([]);
   const [subfamilias, setSubfamilias] = useState([]);
   const [unidadesMedida, setUnidadesMedida] = useState([]);
-  const [unidadesMetricas, setUnidadesMetricas] = useState([]);
-  const [tiposMaterial, setTiposMaterial] = useState([]);
-  const [colores, setColores] = useState([]);
-  const [empresas, setEmpresas] = useState([]);
-  const [clientes, setClientes] = useState([]);
   const [tiposAlmacenamiento, setTiposAlmacenamiento] = useState([]);
-  const [paises, setPaises] = useState([]);
-  const [marcas, setMarcas] = useState([]);
-  const [estadosIniciales, setEstadosIniciales] = useState([]);
-  const [unidadMetricaDefault, setUnidadMetricaDefault] = useState(null);
-  const [especies, setEspecies] = useState([]);
   const [especiesFiltradas, setEspeciesFiltradas] = useState([]);
 
+  // Estados para catálogos COMPLETOS (FORMULARIO)
+  const [familiasCatalogo, setFamiliasCatalogo] = useState([]);
+  const [subfamiliasCatalogo, setSubfamiliasCatalogo] = useState([]);
+  const [unidadesMedidaCatalogo, setUnidadesMedidaCatalogo] = useState([]);
+  const [tiposAlmacenamientoCatalogo, setTiposAlmacenamientoCatalogo] = useState([]);
+  const [especiesCatalogo, setEspeciesCatalogo] = useState([]);
+  const [tiposMaterialCatalogo, setTiposMaterialCatalogo] = useState([]);
+  const [coloresCatalogo, setColoresCatalogo] = useState([]);
+  const [paisesCatalogo, setPaisesCatalogo] = useState([]);
+  const [marcasCatalogo, setMarcasCatalogo] = useState([]);
+
+  // Estados para catálogos que NO se filtran
+  const [unidadesMetricas, setUnidadesMetricas] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [estadosIniciales, setEstadosIniciales] = useState([]);
+  const [unidadMetricaDefault, setUnidadMetricaDefault] = useState(null);
 
   // Estados para los selectores de filtro
   const [selectedEmpresa, setSelectedEmpresa] = useState(null);
@@ -139,16 +146,16 @@ const Producto = ({ ruta }) => {
         }),
       ]);
 
-      // Solo cargar catálogos que NO son filtros dinámicos
-      setUnidadesMedida(unidadesData);
+      // Guardar catálogos COMPLETOS para el formulario
+      setUnidadesMedidaCatalogo(unidadesData);
       setUnidadesMetricas(unidadesMetricasData);
-      setTiposMaterial(tiposMaterialData);
-      setColores(coloresData);
+      setTiposMaterialCatalogo(tiposMaterialData);
+      setColoresCatalogo(coloresData);
       setEstadosIniciales(estadosData);
-      setPaises(paisesData);
-      setMarcas(marcasData);
+      setPaisesCatalogo(paisesData);
+      setMarcasCatalogo(marcasData);
       setUnidadMetricaDefault(unidadMetricaDefaultData);
-      setEspecies(especiesData);
+      setEspeciesCatalogo(especiesData);
 
       // Los filtros dinámicos se cargarán desde obtenerOpcionesDinamicas()
     } catch (error) {
@@ -194,10 +201,11 @@ const Producto = ({ ruta }) => {
         ]);
 
       setEmpresas(empresasData);
-      setClientesCatalogo(clientesData); // ← Guardar catálogo completo
-      setFamilias(familiasData);
-      setTiposAlmacenamiento(tiposAlmacenamientoData);
-      setUnidadesMedida(unidadesMedidaData);
+      setClientesCatalogo(clientesData);
+      setFamiliasCatalogo(familiasData);
+      setTiposAlmacenamientoCatalogo(tiposAlmacenamientoData);
+      setUnidadesMedidaCatalogo(unidadesMedidaData);
+      setSubfamiliasCatalogo(await getSubfamiliasProducto());
     } catch (error) {
       console.error("Error cargando opciones de filtros:", error);
     }
@@ -308,7 +316,7 @@ const Producto = ({ ruta }) => {
 
     const especiesUnicas = especiesIdsUnicos
       .map(especieId => {
-        const especieCatalogo = especies.find(e => Number(e.id) === especieId);
+        const especieCatalogo = especiesCatalogo.find(e => Number(e.id) === especieId);
         if (especieCatalogo) {
           return especieCatalogo;
         }
@@ -353,11 +361,13 @@ const Producto = ({ ruta }) => {
     // ❌ NO actualizar empresas ni clientes (se cargan del catálogo completo)
     // setEmpresas(opciones.empresasUnicas);  ← ELIMINAR
     // setClientes(opciones.clientesUnicos);  ← ELIMINAR
+    // ✅ SOLO actualizar filtros de la lista (NO catálogos del formulario)
     setFamilias(opciones.familiasUnicas);
     setSubfamilias(opciones.subfamiliasUnicas);
     setEspeciesFiltradas(opciones.especiesUnicas);
     setTiposAlmacenamiento(opciones.tiposAlmacenamientoUnicos);
     setUnidadesMedida(opciones.unidadesMedidaUnicas);
+    // ❌ NO tocar los catálogos completos (familiasCatalogo, subfamiliasCatalogo, etc.)
 
     // ⭐ Filtrar clientes por empresa seleccionada
     if (selectedEmpresa) {
@@ -391,8 +401,7 @@ const Producto = ({ ruta }) => {
     if (selectedUnidadMedida && !opciones.unidadesMedidaUnicas.find(u => Number(u.id) === Number(selectedUnidadMedida.id))) {
       setSelectedUnidadMedida(null);
     }
-  }, [productosFiltrados, productos, selectedEmpresa, selectedFamilia, especies, clientesCatalogo]);
-
+  }, [productosFiltrados, productos, selectedEmpresa, selectedFamilia, especiesCatalogo, clientesCatalogo]);
 
   // Efecto para aplicar filtros cuando cambian los filtros o los productos
   useEffect(() => {
@@ -612,7 +621,7 @@ const Producto = ({ ruta }) => {
   };
 
   const especieTemplate = (rowData) => {
-    const especie = especies.find(
+    const especie = especiesCatalogo.find(
       (e) => Number(e.id) === Number(rowData.especieId)
     );
     return (
@@ -1039,20 +1048,20 @@ const Producto = ({ ruta }) => {
           modoEdicion={!!(productoSeleccionado && productoSeleccionado.id)}
           loading={loading}
           setLoading={setLoading}
-          familias={familias}
-          subfamilias={subfamilias}
-          unidadesMedida={unidadesMedida}
+          familias={familiasCatalogo}
+          subfamilias={subfamiliasCatalogo}
+          unidadesMedida={unidadesMedidaCatalogo}
           unidadesMetricas={unidadesMetricas}
-          tiposMaterial={tiposMaterial}
-          colores={colores}
+          tiposMaterial={tiposMaterialCatalogo}
+          colores={coloresCatalogo}
           empresas={empresas}
-          clientes={clientes}
-          tiposAlmacenamiento={tiposAlmacenamiento}
-          paises={paises}
-          marcas={marcas}
+          clientes={clientesCatalogo}
+          tiposAlmacenamiento={tiposAlmacenamientoCatalogo}
+          paises={paisesCatalogo}
+          marcas={marcasCatalogo}
           estadosIniciales={estadosIniciales}
           unidadMetricaDefault={unidadMetricaDefault}
-          especies={especies}
+          especies={especiesCatalogo}
           permisos={permisos}
           readOnly={!!productoSeleccionado && !!productoSeleccionado.id && !permisos.puedeEditar}
         />
