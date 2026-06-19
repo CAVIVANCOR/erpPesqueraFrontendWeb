@@ -404,7 +404,7 @@ export default function DatosGeneralesTab({
             </label>
             <Button
               id="esGerencial"
-              label={formData.esGerencial ? "GERENCIAL" : "NO GERENCIAL"}
+              label={formData.esGerencial ? "GERENCIAL" : "FISCAL"}
               icon={
                 formData.esGerencial
                   ? "pi pi-times-circle"
@@ -426,7 +426,7 @@ export default function DatosGeneralesTab({
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="nroLiquidacionFacturacion"
             >
-              Referencia (N°Liquidación)
+              N° Dcmto Ref.
             </label>
             <InputText
               id="nroLiquidacionFacturacion"

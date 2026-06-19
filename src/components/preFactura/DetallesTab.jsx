@@ -320,7 +320,7 @@ export default function DetallesTab({
 
   const cantidadTemplate = (rowData) => {
     return (
-      <div style={{ textAlign: "right", fontWeight: "bold" }}>
+      <div style={{ textAlign: "right" }}>
         {new Intl.NumberFormat("es-PE", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
@@ -575,23 +575,29 @@ export default function DetallesTab({
         />
         <Column
           field="cantidad"
-          header="Cant. Almacén"
+          header="Cant. Kardex"
           body={cantidadTemplate}
           style={{ width: "100px", textAlign: "right" }}
           bodyStyle={{ textAlign: "right" }}
           alignHeader="center"
         />
         <Column
+          header="U.M. Kardex"
+          body={(rowData) => rowData.producto?.unidadMedida?.simbolo || "-"}
+          style={{ width: "250px", textAlign: "left" }}
+          bodyStyle={{ textAlign: "center" }}
+          alignHeader="center"
+        />
+        <Column
           header="Cant. Venta"
           body={(rowData) => {
             if (!rowData.cantidadVenta) return "-";
-            const unidad = rowData.producto?.unidadMedidaComercial?.simbolo || "";
             return (
               <div style={{ textAlign: "right", fontWeight: "bold" }}>
                 {new Intl.NumberFormat("es-PE", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 3,
-                }).format(rowData.cantidadVenta)} {unidad}
+                }).format(rowData.cantidadVenta)}
               </div>
             );
           }}
@@ -600,15 +606,15 @@ export default function DetallesTab({
           alignHeader="center"
         />
         <Column
-          field="precioUnitario"
-          header="Precio Almacén"
-          body={precioTemplate}
-          style={{ width: "160px", textAlign: "right" }}
-          bodyStyle={{ textAlign: "right" }}
+          header="U.M. Venta"
+          body={(rowData) => rowData.producto?.unidadMedidaComercial?.simbolo || "-"}
+          style={{ width: "250px", textAlign: "left", fontWeight:"bold" }}
+          bodyStyle={{ textAlign: "center" }}
           alignHeader="center"
         />
+
         <Column
-          header="Precio Venta"
+          header="Precio Venta Unit."
           body={(rowData) => {
             if (!rowData.precioUnitarioVenta) return "-";
             const simboloMoneda = getSimboloMoneda();
@@ -632,7 +638,7 @@ export default function DetallesTab({
           alignHeader="center"
         />
         <Column
-          header="Valor Venta"
+          header="Valor Venta Total"
           body={subtotalTemplate}
           style={{ width: "160px", textAlign: "right" }}
           bodyStyle={{ textAlign: "right" }}
