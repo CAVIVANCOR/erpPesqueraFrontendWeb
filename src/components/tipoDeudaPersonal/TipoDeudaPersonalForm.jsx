@@ -7,6 +7,8 @@ import { Dropdown } from "primereact/dropdown";
 import { classNames } from "primereact/utils";
 import { useForm, Controller } from "react-hook-form";
 import { getCategoriaTipoDeudaPersonalActivos } from "../../api/tesoreria/categoriaTipoDeudaPersonal";
+import { getPlanCuentasContable } from "../../api/contabilidad/planCuentasContable";
+import { FRECUENCIA_PAGO_OPTIONS } from "../../utils/utils";
 
 const TipoDeudaPersonalForm = ({
   isEdit,
@@ -17,6 +19,8 @@ const TipoDeudaPersonalForm = ({
 }) => {
   const [categorias, setCategorias] = useState([]);
   const [loadingCategorias, setLoadingCategorias] = useState(false);
+  const [cuentasContables, setCuentasContables] = useState([]);
+  const [loadingData, setLoadingData] = useState(false);
 
   const {
     control,
@@ -29,6 +33,8 @@ const TipoDeudaPersonalForm = ({
       nombre: "",
       descripcion: "",
       categoriaId: null,
+      cuentaContableId: null,
+      periodicidad: null,
       activo: true,
     },
     mode: "onChange",
@@ -50,17 +56,37 @@ const TipoDeudaPersonalForm = ({
     loadCategorias();
   }, []);
 
+  // Cargar cuentas contables
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoadingData(true);
+        const cuentasData = await getPlanCuentasContable();
+        setCuentasContables(cuentasData || []);
+      } catch (error) {
+        console.error("Error al cargar cuentas contables:", error);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    loadData();
+  }, []);
+
   useEffect(() => {
     if (defaultValues) {
       setValue("nombre", defaultValues.nombre || "");
       setValue("descripcion", defaultValues.descripcion || "");
       setValue("categoriaId", defaultValues.categoriaId || null);
+      setValue("cuentaContableId", defaultValues.cuentaContableId || null);
+      setValue("periodicidad", defaultValues.periodicidad || null);
       setValue("activo", defaultValues.activo !== undefined ? defaultValues.activo : true);
     } else {
       reset({
         nombre: "",
         descripcion: "",
         categoriaId: null,
+        cuentaContableId: null,
+        periodicidad: null,
         activo: true,
       });
     }
@@ -71,6 +97,8 @@ const TipoDeudaPersonalForm = ({
       nombre: data.nombre.trim(),
       descripcion: data.descripcion?.trim() || null,
       categoriaId: data.categoriaId ? Number(data.categoriaId) : null,
+      cuentaContableId: data.cuentaContableId ? Number(data.cuentaContableId) : null,
+      periodicidad: data.periodicidad || null,
       activo: Boolean(data.activo),
     };
     onSubmit(datosNormalizados);
@@ -84,7 +112,7 @@ const TipoDeudaPersonalForm = ({
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="p-fluid">
-       <div className="field mt-4">
+      <div className="field mt-4">
         <label
           htmlFor="categoriaId"
           className={classNames("font-medium", {
@@ -191,8 +219,83 @@ const TipoDeudaPersonalForm = ({
         {getFormErrorMessage("descripcion")}
       </div>
 
-     
 
+      {/* Cuenta Contable */}
+      <div className="field">
+        <label
+          htmlFor="cuentaContableId"
+          className={classNames("font-medium", {
+            "p-error": errors.cuentaContableId,
+          })}
+        >
+          Cuenta Contable
+        </label>
+        <Controller
+          name="cuentaContableId"
+          control={control}
+          render={({ field, fieldState }) => (
+            <div className="p-inputgroup">
+              <span className="p-inputgroup-addon">
+                <i className="pi pi-book" />
+              </span>
+              <Dropdown
+                id={field.name}
+                value={field.value}
+                options={cuentasContables}
+                optionLabel={(option) =>
+                  `${option.codigoCuenta} - ${option.nombreCuenta}`
+                }
+                optionValue="id"
+                onChange={(e) => field.onChange(e.value)}
+                placeholder="Seleccione una cuenta contable"
+                className={classNames({ "p-invalid": fieldState.error })}
+                disabled={loading || loadingData}
+                filter
+                showClear
+                emptyMessage="No hay cuentas contables disponibles"
+              />
+            </div>
+          )}
+        />
+        {getFormErrorMessage("cuentaContableId")}
+      </div>
+
+      {/* Periodicidad */}
+      <div className="field">
+        <label
+          htmlFor="periodicidad"
+          className={classNames("font-medium", {
+            "p-error": errors.periodicidad,
+          })}
+        >
+          Periodicidad
+        </label>
+        <Controller
+          name="periodicidad"
+          control={control}
+          render={({ field, fieldState }) => (
+            <div className="p-inputgroup">
+              <span className="p-inputgroup-addon">
+                <i className="pi pi-calendar" />
+              </span>
+              <Dropdown
+                id={field.name}
+                value={field.value}
+                options={FRECUENCIA_PAGO_OPTIONS}
+                optionLabel="label"
+                optionValue="value"
+                onChange={(e) => field.onChange(e.value)}
+                placeholder="Seleccione periodicidad"
+                className={classNames({ "p-invalid": fieldState.error })}
+                disabled={loading}
+                showClear
+                emptyMessage="No hay opciones disponibles"
+              />
+            </div>
+          )}
+        />
+        {getFormErrorMessage("periodicidad")}
+      </div>
       <div className="field mt-4">
         <label htmlFor="activo" className="font-medium">
           Estado

@@ -7,7 +7,7 @@ import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
-import { Toolbar } from "primereact/toolbar";
+import { getFrecuenciaPagoLabel } from "../utils/utils";
 import { Tag } from "primereact/tag";
 import TipoDeudaTributariaForm from "../components/tipoDeudaTributaria/TipoDeudaTributariaForm";
 import {
@@ -258,21 +258,8 @@ export default function TipoDeudaTributaria({ ruta }) {
       : "-";
   };
 
-  const periodicidadBodyTemplate = (rowData) => {
-    const periodicidades = {
-      DIARIO: "Diario",
-      SEMANAL: "Semanal",
-      QUINCENAL: "Quincenal",
-      MENSUAL: "Mensual",
-      BIMESTRAL: "Bimestral",
-      TRIMESTRAL: "Trimestral",
-      CUATRIMESTRAL: "Cuatrimestral",
-      SEMESTRAL: "Semestral",
-      ANUAL: "Anual",
-      UNICO: "Único",
-    };
-    return periodicidades[rowData.periodicidad] || rowData.periodicidad;
-  };
+const periodicidadBodyTemplate = (rowData) => getFrecuenciaPagoLabel(rowData.periodicidad);
+
 
   const actionBodyTemplate = (rowData) => {
     return (

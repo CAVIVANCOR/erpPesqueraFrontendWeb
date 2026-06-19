@@ -7,7 +7,7 @@ import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
-import { Toolbar } from "primereact/toolbar";
+import { getFrecuenciaPagoLabel } from "../utils/utils";
 import { Tag } from "primereact/tag";
 import TipoDeudaPersonalForm from "../components/tipoDeudaPersonal/TipoDeudaPersonalForm";
 import {
@@ -248,6 +248,15 @@ export default function TipoDeudaPersonal({ ruta }) {
     );
   };
 
+  const cuentaContableBodyTemplate = (rowData) => {
+    return rowData.cuentaContable
+      ? `${rowData.cuentaContable.codigoCuenta} - ${rowData.cuentaContable.nombreCuenta}`
+      : "-";
+  };
+
+const periodicidadBodyTemplate = (rowData) => getFrecuenciaPagoLabel(rowData.periodicidad);
+
+
   const actionBodyTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
@@ -426,6 +435,18 @@ export default function TipoDeudaPersonal({ ruta }) {
           field="descripcion"
           header="Descripción"
           sortable
+        />
+        <Column
+          header="Cuenta Contable"
+          body={cuentaContableBodyTemplate}
+          sortable
+          style={{ minWidth: "250px" }}
+        />
+        <Column
+          header="Periodicidad"
+          body={periodicidadBodyTemplate}
+          sortable
+          style={{ width: "150px" }}
         />
         <Column
           field="activo"

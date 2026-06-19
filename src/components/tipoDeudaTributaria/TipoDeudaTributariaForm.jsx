@@ -9,6 +9,7 @@ import { useForm, Controller } from "react-hook-form";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
 import { getPlanCuentasContable } from "../../api/contabilidad/planCuentasContable";
 import { getCategoriaTipoDeudaTributariaActivos } from "../../api/tesoreria/categoriaTipoDeudaTributaria";
+import { FRECUENCIA_PAGO_OPTIONS } from "../../utils/utils";
 
 const TipoDeudaTributariaForm = ({
   isEdit,
@@ -22,19 +23,6 @@ const TipoDeudaTributariaForm = ({
   const [loadingData, setLoadingData] = useState(false);
   const [categorias, setCategorias] = useState([]);
   const [loadingCategorias, setLoadingCategorias] = useState(false);
-
-  const periodicidadOptions = [
-    { label: "Diario", value: "DIARIO" },
-    { label: "Semanal", value: "SEMANAL" },
-    { label: "Quincenal", value: "QUINCENAL" },
-    { label: "Mensual", value: "MENSUAL" },
-    { label: "Bimestral", value: "BIMESTRAL" },
-    { label: "Trimestral", value: "TRIMESTRAL" },
-    { label: "Cuatrimestral", value: "CUATRIMESTRAL" },
-    { label: "Semestral", value: "SEMESTRAL" },
-    { label: "Anual", value: "ANUAL" },
-    { label: "Único", value: "UNICO" },
-  ];
 
   const {
     control,
@@ -311,11 +299,14 @@ const TipoDeudaTributariaForm = ({
               <Dropdown
                 id={field.name}
                 value={field.value}
+                options={FRECUENCIA_PAGO_OPTIONS}
+                optionLabel="label"
+                optionValue="value"
                 onChange={(e) => field.onChange(e.value)}
-                options={periodicidadOptions}
                 placeholder="Seleccione periodicidad"
                 className={classNames({ "p-invalid": fieldState.error })}
                 disabled={loading}
+                emptyMessage="No hay opciones disponibles"
               />
             </div>
           )}

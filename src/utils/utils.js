@@ -327,3 +327,373 @@ export const ESTADOS_SUNAT = {
   BAJA: 62,             // Comprobante en proceso de baja
   BAJA_ACEPTADA: 63     // Baja aceptada por SUNAT
 };
+
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// ENUMS DEL SCHEMA PRISMA
+// ════════════════════════════════════════════════════════════════════════════
+// IMPORTANTE: Estos valores deben coincidir EXACTAMENTE con los ENUMs definidos
+// en prisma/schema.prisma. Cualquier cambio en el Schema debe reflejarse aqui.
+// ════════════════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════════════════
+// MODULO: PESCA
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Zonas de pesca reconocidas
+ * Schema: enum ZonaPesca
+ */
+export const ZONA_PESCA_OPTIONS = [
+  { label: "NORTE", value: "NORTE" },
+  { label: "SUR", value: "SUR" },
+];
+
+// ════════════════════════════════════════════════════════════════════════════
+// MODULO: REUNIONES Y VIDEOCONFERENCIAS
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Estados de reunion
+ * Schema: enum EstadoReunion
+ */
+export const ESTADO_REUNION_OPTIONS = [
+  { label: "PROGRAMADA", value: "PROGRAMADA" },
+  { label: "EN CURSO", value: "EN_CURSO" },
+  { label: "FINALIZADA", value: "FINALIZADA" },
+  { label: "CANCELADA", value: "CANCELADA" },
+];
+
+/**
+ * Roles de participantes en reuniones
+ * Schema: enum RolParticipante
+ */
+export const ROL_PARTICIPANTE_OPTIONS = [
+  { label: "MODERADOR", value: "MODERADOR" },
+  { label: "PARTICIPANTE", value: "PARTICIPANTE" },
+  { label: "INVITADO", value: "INVITADO" },
+];
+
+/**
+ * Tipos de notificacion
+ * Schema: enum TipoNotificacion
+ */
+export const TIPO_NOTIFICACION_OPTIONS = [
+  { label: "INVITACION A VIDEOCONFERENCIA", value: "VIDEOCONFERENCIA_INVITACION" },
+  { label: "RECORDATORIO 24 HORAS", value: "VIDEOCONFERENCIA_RECORDATORIO_24H" },
+  { label: "RECORDATORIO 1 HORA", value: "VIDEOCONFERENCIA_RECORDATORIO_1H" },
+];
+
+// ════════════════════════════════════════════════════════════════════════════
+// MODULO: CONTABILIDAD - PLAN DE CUENTAS
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Niveles de cuenta contable segun PCGE
+ * Schema: enum NivelCuentaContable
+ */
+export const NIVEL_CUENTA_CONTABLE_OPTIONS = [
+  { label: "CLASE (NIVEL 1)", value: "CLASE" },
+  { label: "CUENTA (NIVEL 2)", value: "CUENTA" },
+  { label: "SUBCUENTA (NIVEL 3)", value: "SUBCUENTA" },
+  { label: "DIVISIONARIA (NIVEL 4)", value: "DIVISIONARIA" },
+  { label: "SUBDIVISIONARIA (NIVEL 5)", value: "SUBDIVISIONARIA" },
+];
+
+/**
+ * Naturaleza de la cuenta contable
+ * Schema: enum NaturalezaCuenta
+ */
+export const NATURALEZA_CUENTA_OPTIONS = [
+  { label: "DEUDORA (AUMENTA CON DEBE)", value: "DEUDORA" },
+  { label: "ACREEDORA (AUMENTA CON HABER)", value: "ACREEDORA" },
+];
+
+/**
+ * Tipo de cuenta contable segun clasificacion financiera
+ * Schema: enum TipoCuentaContable
+ */
+export const TIPO_CUENTA_CONTABLE_OPTIONS = [
+  { label: "ACTIVO", value: "ACTIVO" },
+  { label: "PASIVO", value: "PASIVO" },
+  { label: "PATRIMONIO", value: "PATRIMONIO" },
+  { label: "INGRESO", value: "INGRESO" },
+  { label: "GASTO", value: "GASTO" },
+];
+
+// ════════════════════════════════════════════════════════════════════════════
+// MODULO: CONTABILIDAD - ASIENTOS CONTABLES
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Tipo de libro contable
+ * Schema: enum TipoLibroContable
+ */
+export const TIPO_LIBRO_CONTABLE_OPTIONS = [
+  { label: "FISCAL (SUNAT)", value: "FISCAL" },
+  { label: "GERENCIAL (INTERNO)", value: "GERENCIAL" },
+];
+
+/**
+ * Origen del asiento contable
+ * Schema: enum OrigenAsiento
+ */
+export const ORIGEN_ASIENTO_OPTIONS = [
+  { label: "MANUAL", value: "MANUAL" },
+  { label: "AUTOMATICO", value: "AUTOMATICO" },
+];
+
+// ════════════════════════════════════════════════════════════════════════════
+// MODULO: TESORERIA - LETRAS DE CAMBIO
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Tipos de endoso de letra de cambio
+ * Schema: enum TipoEndosoLetra
+ */
+export const TIPO_ENDOSO_LETRA_OPTIONS = [
+  { label: "PLENO (EN PROPIEDAD)", value: "PLENO" },
+  { label: "PROCURACION (PARA COBRANZA)", value: "PROCURACION" },
+  { label: "GARANTIA", value: "GARANTIA" },
+];
+
+// ════════════════════════════════════════════════════════════════════════════
+// MODULO: TESORERIA - GESTION FINANCIERA
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Frecuencia de pago
+ * Schema: enum FrecuenciaPago
+ * IMPORTANTE: Usado en TipoDeudaPersonal y TipoDeudaTributaria
+ */
+export const FRECUENCIA_PAGO_OPTIONS = [
+  { label: "DIARIO", value: "DIAS" },
+  { label: "MENSUAL", value: "MENSUAL" },
+  { label: "BIMESTRAL", value: "BIMESTRAL" },
+  { label: "TRIMESTRAL", value: "TRIMESTRAL" },
+  { label: "CUATRIMESTRAL", value: "CUATRIMESTRAL" },
+  { label: "SEMESTRAL", value: "SEMESTRAL" },
+  { label: "ANUAL", value: "ANUAL" },
+];
+
+/**
+ * Tipo de amortizacion de prestamos
+ * Schema: enum TipoAmortizacion
+ */
+export const TIPO_AMORTIZACION_OPTIONS = [
+  { label: "FRANCES (CUOTAS FIJAS)", value: "FRANCES" },
+  { label: "ALEMAN (AMORTIZACION CONSTANTE)", value: "ALEMAN" },
+  { label: "AMERICANO (SOLO INTERESES)", value: "AMERICANO" },
+];
+
+/**
+ * Tipo de garantia
+ * Schema: enum TipoGarantia
+ */
+export const TIPO_GARANTIA_OPTIONS = [
+  { label: "HIPOTECARIA", value: "HIPOTECARIA" },
+  { label: "PRENDARIA", value: "PRENDARIA" },
+  { label: "FIANZA", value: "FIANZA" },
+  { label: "SIN GARANTIA", value: "SIN_GARANTIA" },
+];
+
+/**
+ * Estado de pago de cuota
+ * Schema: enum EstadoPagoCuota
+ */
+export const ESTADO_PAGO_CUOTA_OPTIONS = [
+  { label: "PENDIENTE", value: "PENDIENTE" },
+  { label: "PAGADO", value: "PAGADO" },
+  { label: "VENCIDO", value: "VENCIDO" },
+  { label: "PARCIAL", value: "PARCIAL" },
+];
+
+/**
+ * Tipo de linea de credito
+ * Schema: enum TipoLineaCredito
+ */
+export const TIPO_LINEA_CREDITO_OPTIONS = [
+  { label: "REVOLVENTE", value: "REVOLVENTE" },
+  { label: "CARTA DE CREDITO", value: "CARTA_CREDITO" },
+  { label: "GARANTIA BANCARIA", value: "GARANTIA_BANCARIA" },
+  { label: "SOBREGIRO", value: "SOBREGIRO" },
+];
+
+/**
+ * Tipo de inversion
+ * Schema: enum TipoInversion
+ */
+export const TIPO_INVERSION_OPTIONS = [
+  { label: "PLAZO FIJO", value: "PLAZO_FIJO" },
+  { label: "FONDO MUTUO", value: "FONDO_MUTUO" },
+  { label: "BONOS", value: "BONOS" },
+  { label: "ACCIONES", value: "ACCIONES" },
+  { label: "CTS", value: "CTS" },
+];
+
+/**
+ * Tipo de movimiento de inversion
+ * Schema: enum TipoMovimientoInversion
+ */
+export const TIPO_MOVIMIENTO_INVERSION_OPTIONS = [
+  { label: "INVERSION", value: "INVERSION" },
+  { label: "RENDIMIENTO", value: "RENDIMIENTO" },
+  { label: "RETIRO", value: "RETIRO" },
+  { label: "RENOVACION", value: "RENOVACION" },
+  { label: "LIQUIDACION", value: "LIQUIDACION" },
+];
+
+/**
+ * Tipo de tasa de interes
+ * Schema: enum TipoTasa
+ */
+export const TIPO_TASA_OPTIONS = [
+  { label: "EFECTIVA ANUAL (TEA)", value: "EFECTIVA_ANUAL" },
+  { label: "NOMINAL ANUAL (TNA)", value: "NOMINAL_ANUAL" },
+  { label: "EFECTIVA MENSUAL (TEM)", value: "EFECTIVA_MENSUAL" },
+  { label: "NOMINAL MENSUAL (TNM)", value: "NOMINAL_MENSUAL" },
+  { label: "EFECTIVA DIARIA (TED)", value: "EFECTIVA_DIARIA" },
+];
+
+/**
+ * Periodicidad de rendimiento
+ * Schema: enum PeriodicidadRendimiento
+ */
+export const PERIODICIDAD_RENDIMIENTO_OPTIONS = [
+  { label: "AL VENCIMIENTO", value: "VENCIMIENTO" },
+  { label: "DIARIA", value: "DIARIA" },
+  { label: "SEMANAL", value: "SEMANAL" },
+  { label: "QUINCENAL", value: "QUINCENAL" },
+  { label: "MENSUAL", value: "MENSUAL" },
+  { label: "BIMESTRAL", value: "BIMESTRAL" },
+  { label: "TRIMESTRAL", value: "TRIMESTRAL" },
+  { label: "SEMESTRAL", value: "SEMESTRAL" },
+  { label: "ANUAL", value: "ANUAL" },
+];
+
+/**
+ * Tipo de desembolso
+ * Schema: enum TipoDesembolso
+ */
+export const TIPO_DESEMBOLSO_OPTIONS = [
+  { label: "TOTAL", value: "TOTAL" },
+  { label: "PARCIAL", value: "PARCIAL" },
+  { label: "PROGRAMADO", value: "PROGRAMADO" },
+];
+
+/**
+ * Tipo de garantia real
+ * Schema: enum TipoGarantiaReal
+ */
+export const TIPO_GARANTIA_REAL_OPTIONS = [
+  { label: "INMUEBLE", value: "INMUEBLE" },
+  { label: "VEHICULO", value: "VEHICULO" },
+  { label: "MAQUINARIA", value: "MAQUINARIA" },
+  { label: "INVENTARIO", value: "INVENTARIO" },
+  { label: "CUENTAS POR COBRAR", value: "CUENTAS_POR_COBRAR" },
+  { label: "VALORES", value: "VALORES" },
+  { label: "OTROS", value: "OTROS" },
+];
+
+/**
+ * Estado de garantia
+ * Schema: enum EstadoGarantia
+ */
+export const ESTADO_GARANTIA_OPTIONS = [
+  { label: "VIGENTE", value: "VIGENTE" },
+  { label: "LIBERADA", value: "LIBERADA" },
+  { label: "EJECUTADA", value: "EJECUTADA" },
+  { label: "VENCIDA", value: "VENCIDA" },
+  { label: "RENOVADA", value: "RENOVADA" },
+];
+
+/**
+ * Tipo de cobro
+ * Schema: enum TipoCobro
+ */
+export const TIPO_COBRO_OPTIONS = [
+  { label: "CUOTA NORMAL", value: "CUOTA_NORMAL" },
+  { label: "PREPAGO PARCIAL", value: "PREPAGO_PARCIAL" },
+  { label: "PREPAGO TOTAL", value: "PREPAGO_TOTAL" },
+  { label: "MORA", value: "MORA" },
+  { label: "COMISION", value: "COMISION" },
+  { label: "SEGURO", value: "SEGURO" },
+];
+
+/**
+ * Metodo de pago
+ * Schema: enum MetodoPago
+ */
+export const METODO_PAGO_OPTIONS = [
+  { label: "EFECTIVO", value: "EFECTIVO" },
+  { label: "TRANSFERENCIA", value: "TRANSFERENCIA" },
+  { label: "CHEQUE", value: "CHEQUE" },
+  { label: "DEPOSITO", value: "DEPOSITO" },
+  { label: "TARJETA DE CREDITO", value: "TARJETA_CREDITO" },
+  { label: "TARJETA DE DEBITO", value: "TARJETA_DEBITO" },
+];
+
+/**
+ * Estado de desembolso
+ * Schema: enum EstadoDesembolso
+ */
+export const ESTADO_DESEMBOLSO_OPTIONS = [
+  { label: "PENDIENTE", value: "PENDIENTE" },
+  { label: "PROCESADO", value: "PROCESADO" },
+  { label: "CONFIRMADO", value: "CONFIRMADO" },
+  { label: "RECHAZADO", value: "RECHAZADO" },
+  { label: "ANULADO", value: "ANULADO" },
+];
+
+/**
+ * Tipo de renovacion
+ * Schema: enum TipoRenovacion
+ */
+export const TIPO_RENOVACION_OPTIONS = [
+  { label: "AUTOMATICA", value: "AUTOMATICA" },
+  { label: "MANUAL", value: "MANUAL" },
+  { label: "SIN RENOVACION", value: "SIN_RENOVACION" },
+];
+
+// ════════════════════════════════════════════════════════════════════════════
+// HELPERS PARA OBTENER LABELS
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Funcion helper generica para obtener el label de un valor de enum
+ * @param {Array} options - Array de opciones del enum
+ * @param {string} value - Valor a buscar
+ * @returns {string} Label correspondiente o el valor original si no se encuentra
+ */
+export const getEnumLabel = (options, value) => {
+  const option = options.find(opt => opt.value === value);
+  return option ? option.label : value;
+};
+
+/**
+ * Funcion helper para obtener el label de frecuencia de pago
+ * @param {string} value - Valor del enum FrecuenciaPago
+ * @returns {string} Label correspondiente
+ */
+export const getFrecuenciaPagoLabel = (value) => {
+  return getEnumLabel(FRECUENCIA_PAGO_OPTIONS, value);
+};
+
+/**
+ * Funcion helper para obtener el label de tipo de cuenta contable
+ * @param {string} value - Valor del enum TipoCuentaContable
+ * @returns {string} Label correspondiente
+ */
+export const getTipoCuentaContableLabel = (value) => {
+  return getEnumLabel(TIPO_CUENTA_CONTABLE_OPTIONS, value);
+};
+
+/**
+ * Funcion helper para obtener el label de naturaleza de cuenta
+ * @param {string} value - Valor del enum NaturalezaCuenta
+ * @returns {string} Label correspondiente
+ */
+export const getNaturalezaCuentaLabel = (value) => {
+  return getEnumLabel(NATURALEZA_CUENTA_OPTIONS, value);
+};
