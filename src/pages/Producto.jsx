@@ -620,6 +620,14 @@ const Producto = ({ ruta }) => {
     );
   };
 
+  const unidadMedidaComercialTemplate = (rowData) => {
+    return (
+      <span style={{ fontWeight: "bold", whiteSpace: "normal", wordWrap: "break-word", display: "block" }}>
+        {rowData.unidadMedidaComercial?.nombre || "-"}
+      </span>
+    );
+  };
+
   const especieTemplate = (rowData) => {
     const especie = especiesCatalogo.find(
       (e) => Number(e.id) === Number(rowData.especieId)
@@ -1005,10 +1013,17 @@ const Producto = ({ ruta }) => {
         />
         <Column
           field="unidadMedida.nombre"
-          header="Unidad Medida"
+          header="Unidad Medida Kardex"
           sortable
           body={unidadMedidaTemplate}
-          style={{ width: "120px", whiteSpace: "normal", wordWrap: "break-word" }}
+          style={{ width: "150px", whiteSpace: "normal", wordWrap: "break-word" }}
+        />
+        <Column
+          field="unidadMedidaComercial.nombre"
+          header="U.M. Comercial"
+          sortable
+          body={unidadMedidaComercialTemplate}
+          style={{ width: "150px", whiteSpace: "normal", wordWrap: "break-word" }}
         />
         <Column
           field="tipoAlmacenamiento.nombre"
