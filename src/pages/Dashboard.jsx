@@ -797,86 +797,195 @@ export default function Dashboard() {
       titulo: "MAESTROS",
       descripcion: "Configuración de empresas, personal, productos y entidades",
       icono: "pi-database",
-      modulos: 32,
+      modulos: 31,
       color: "#2874A6",
       submenu: [
-        { label: "Empresas", key: "empresas", icon: "pi-building" },
-        { label: "Sedes Empresa", key: "sedesEmpresa", icon: "pi-map-marker" },
         {
-          label: "Áreas Físicas Sede",
-          key: "areasFisicasSede",
-          icon: "pi-th-large",
-        },
-        { label: "Personal", key: "personal", icon: "pi-users" },
-        {
-          label: "Cargos Personal",
-          key: "cargosPersonal",
-          icon: "pi-briefcase",
-        },
-        { label: "Tipo Contrato", key: "tipoContrato", icon: "pi-file" },
-        {
-          label: "Aprobadores",
-          key: "parametroAprobador",
-          icon: "pi-check-circle",
-        },
-        {
-          label: "Tipos Documento Identidad",
-          key: "tiposDocIdentidad",
-          icon: "pi-id-card",
+          label: "Personal",
+          key: "personal",
+          icon: "pi-users",
+          tab: "principales",
         },
         {
           label: "Entidad Comercial",
           key: "entidadComercial",
           icon: "pi-briefcase",
-        },
-        { label: "Tipo Entidad", key: "tipoEntidad", icon: "pi-tag" },
-        {
-          label: "Agrupaciones Entidad",
-          key: "agrupacionEntidad",
-          icon: "pi-sitemap",
-        },
-        { label: "Productos y Servicios", key: "producto", icon: "pi-box" },
-        { label: "Familia Producto", key: "familiaProducto", icon: "pi-tags" },
-        {
-          label: "Subfamilia Producto",
-          key: "subfamiliaProducto",
-          icon: "pi-tag",
+          tab: "principales",
         },
         {
-          label: "Tipo Almacenamiento",
-          key: "tipoAlmacenamiento",
-          icon: "pi-warehouse",
-        },
-        { label: "Marca", key: "marca", icon: "pi-bookmark" },
-        { label: "Unidad Medida", key: "unidadMedida", icon: "pi-chart-bar" },
-        { label: "Tipo Material", key: "tipoMaterial", icon: "pi-box" },
-        { label: "Color", key: "color", icon: "pi-palette" },
-        { label: "Tipo Vehículos", key: "tipoVehiculo", icon: "pi-car" },
-        { label: "País", key: "pais", icon: "pi-globe" },
-        { label: "Departamento", key: "departamento", icon: "pi-map" },
-        { label: "Provincia", key: "provincia", icon: "pi-map-marker" },
-        { label: "Ubigeo", key: "ubigeo", icon: "pi-map" },
-        {
-          label: "Detalle Permiso Activo",
-          key: "detallePermisoActivo",
-          icon: "pi-lock",
-        },
-        {
-          label: "Permiso Autorización",
-          key: "permisoAutorizacion",
-          icon: "pi-shield",
+          label: "Productos y Servicios",
+          key: "producto",
+          icon: "pi-box",
+          tab: "principales",
         },
         {
           label: "Estado Multi Función",
           key: "estadoMultiFuncion",
           icon: "pi-circle",
+          tab: "principales",
+        },
+        {
+          label: "Empresas",
+          key: "empresas",
+          icon: "pi-building",
+          tab: "configuracion",
+        },
+        {
+          label: "Sedes Empresa",
+          key: "sedesEmpresa",
+          icon: "pi-map-marker",
+          tab: "configuracion",
+        },
+        {
+          label: "Áreas Físicas Sede",
+          key: "areasFisicasSede",
+          icon: "pi-th-large",
+          tab: "configuracion",
+        },
+        {
+          label: "Cargos Personal",
+          key: "cargosPersonal",
+          icon: "pi-briefcase",
+          tab: "configuracion",
+        },
+        {
+          label: "Tipo Contrato",
+          key: "tipoContrato",
+          icon: "pi-file",
+          tab: "configuracion",
+        },
+        {
+          label: "Aprobadores",
+          key: "parametroAprobador",
+          icon: "pi-check-circle",
+          tab: "configuracion",
+        },
+        {
+          label: "Tipos Documento Identidad",
+          key: "tiposDocIdentidad",
+          icon: "pi-id-card",
+          tab: "configuracion",
+        },
+        {
+          label: "Tipo Entidad",
+          key: "tipoEntidad",
+          icon: "pi-tag",
+          tab: "configuracion",
+        },
+        {
+          label: "Agrupaciones Entidad",
+          key: "agrupacionEntidad",
+          icon: "pi-sitemap",
+          tab: "configuracion",
+        },
+        {
+          label: "Familia Producto",
+          key: "familiaProducto",
+          icon: "pi-tags",
+          tab: "configuracion",
+        },
+        {
+          label: "Subfamilia Producto",
+          key: "subfamiliaProducto",
+          icon: "pi-tag",
+          tab: "configuracion",
+        },
+        {
+          label: "Tipo Almacenamiento",
+          key: "tipoAlmacenamiento",
+          icon: "pi-warehouse",
+          tab: "configuracion",
+        },
+        {
+          label: "Marca",
+          key: "marca",
+          icon: "pi-bookmark",
+          tab: "configuracion",
+        },
+        {
+          label: "Unidad Medida",
+          key: "unidadMedida",
+          icon: "pi-chart-bar",
+          tab: "configuracion",
+        },
+        {
+          label: "Tipo Material",
+          key: "tipoMaterial",
+          icon: "pi-box",
+          tab: "configuracion",
+        },
+        {
+          label: "Color",
+          key: "color",
+          icon: "pi-palette",
+          tab: "configuracion",
+        },
+        {
+          label: "Tipo Vehículos",
+          key: "tipoVehiculo",
+          icon: "pi-car",
+          tab: "configuracion",
+        },
+        {
+          label: "País",
+          key: "pais",
+          icon: "pi-globe",
+          tab: "configuracion",
+        },
+        {
+          label: "Departamento",
+          key: "departamento",
+          icon: "pi-map",
+          tab: "configuracion",
+        },
+        {
+          label: "Provincia",
+          key: "provincia",
+          icon: "pi-map-marker",
+          tab: "configuracion",
+        },
+        {
+          label: "Ubigeo",
+          key: "ubigeo",
+          icon: "pi-map",
+          tab: "configuracion",
+        },
+        {
+          label: "Detalle Permiso Activo",
+          key: "detallePermisoActivo",
+          icon: "pi-lock",
+          tab: "configuracion",
+        },
+        {
+          label: "Permiso Autorización",
+          key: "permisoAutorizacion",
+          icon: "pi-shield",
+          tab: "configuracion",
         },
         {
           label: "Tipo Proviene De",
           key: "tipoProvieneDe",
           icon: "pi-arrow-right",
+          tab: "configuracion",
         },
-        { label: "Monedas", key: "monedas", icon: "pi-dollar" },
+        {
+          label: "Monedas",
+          key: "monedas",
+          icon: "pi-dollar",
+          tab: "configuracion",
+        },
+        {
+          label: "Tipo Documento",
+          key: "tipoDocumento",
+          icon: "pi-file",
+          tab: "configuracion",
+        },
+        {
+          label: "Serie Documento",
+          key: "serieDoc",
+          icon: "pi-hashtag",
+          tab: "configuracion",
+        },
       ],
     },
     {
@@ -1316,15 +1425,18 @@ export default function Dashboard() {
                               paddingBottom: "8px",
                             }}
                           >
-                            {["operaciones", "tablas", "maestros"].map((tab) => {
+                            {["operaciones", "tablas", "maestros", "principales", "configuracion"].map((tab) => {
                               const hasItems = modulo.submenu.some(item => item.tab === tab);
                               if (!hasItems) return null;
 
-                              const isActive = (activeTab[modulo.id] || "operaciones") === tab;
+                              const defaultTab = modulo.id === "maestros" ? "principales" : "operaciones";
+                              const isActive = (activeTab[modulo.id] || defaultTab) === tab;
                               const tabLabels = {
                                 operaciones: "Operaciones Principales",
                                 tablas: "Tablas Relacionadas",
-                                maestros: "Maestros"
+                                maestros: "Maestros",
+                                principales: "Maestros Principales",
+                                configuracion: "Configuración y Tablas"
                               };
 
                               return (
@@ -1365,7 +1477,8 @@ export default function Dashboard() {
                             .filter(item => {
                               // Si el módulo tiene tabs, filtrar por tab activo
                               if (modulo.submenu.some(i => i.tab)) {
-                                const currentTab = activeTab[modulo.id] || "operaciones";
+                                const defaultTab = modulo.id === "maestros" ? "principales" : "operaciones";
+                                const currentTab = activeTab[modulo.id] || defaultTab;
                                 return item.tab === currentTab;
                               }
                               // Si no tiene tabs, mostrar todos
