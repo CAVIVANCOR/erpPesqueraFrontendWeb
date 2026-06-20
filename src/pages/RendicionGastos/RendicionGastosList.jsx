@@ -455,25 +455,89 @@ export default function RendicionGastosList({ ruta }) {
     setMostrarDialogoResultados(true);
   };
 
+
+  // 🔄 CALCULAR SALDOS DESDE ARRAY DE MOVIMIENTOS (para usar con datos frescos de BD)
+  const calcularSaldosDetalladosDesdeMovimientos = (movimientosArray) => {
+    const saldosPorMovimiento = {};
+
+    movimientosArray.forEach((mov) => {
+      const responsableId = Number(mov.responsableId);
+      const asignacionId = mov.asignacionOrigenId ? Number(mov.asignacionOrigenId) : null;
+      const esAsignacion = asignacionId === null || asignacionId === 0;
+
+      if (!saldosPorMovimiento[mov.id]) {
+        saldosPorMovimiento[mov.id] = {
+          responsableId: responsableId,
+          asignacionId: asignacionId,
+          saldoInicial: 0,
+          saldoFinal: 0,
+        };
+      }
+    });
+
+    // Ordenar movimientos por fecha
+    const movimientosOrdenados = [...movimientosArray].sort(
+      (a, b) => new Date(a.fechaMovimiento) - new Date(b.fechaMovimiento)
+    );
+
+    // Calcular saldos acumulados
+    const saldosPorAsignacion = {};
+
+    movimientosOrdenados.forEach((mov) => {
+      const asignacionId = mov.asignacionOrigenId ? Number(mov.asignacionOrigenId) : null;
+      const esAsignacion = asignacionId === null || asignacionId === 0;
+      const monto = Number(mov.monto) || 0;
+
+      if (!saldosPorAsignacion[asignacionId]) {
+        saldosPorAsignacion[asignacionId] = 0;
+      }
+
+      const saldoInicial = saldosPorAsignacion[asignacionId];
+      const saldoFinal = esAsignacion
+        ? saldoInicial + monto
+        : saldoInicial - monto;
+
+      saldosPorMovimiento[mov.id] = {
+        responsableId: Number(mov.responsableId),
+        asignacionId: asignacionId,
+        saldoInicial: saldoInicial,
+        saldoFinal: saldoFinal,
+      };
+
+      saldosPorAsignacion[asignacionId] = saldoFinal;
+    });
+
+    return saldosPorMovimiento;
+  };
+
+
+
   // 🔄 RECALCULAR SALDOS SOLO DEL RESPONSABLE AFECTADO (OPTIMIZADO)
   const recalcularSaldosAfectados = async (responsableId) => {
     try {
       if (!responsableId) return;
 
-      const saldosCalculados = calcularSaldosDetallados;
+      // ✅ FUENTE ÚNICA DE VERDAD: Leer movimientos FRESCOS desde BD
+      const todosMovimientosBD = await getAllDetMovsEntregaRendir();
+      const movimientosFrescosBD = todosMovimientosBD.filter(
+        m => Number(m.responsableId) === Number(responsableId)
+      );
+
+      // Calcular saldos usando los datos FRESCOS de BD
+      const saldosCalculados = calcularSaldosDetalladosDesdeMovimientos(movimientosFrescosBD);
       const movimientosActualizar = [];
 
       // Filtrar solo movimientos del responsable afectado
       Object.keys(saldosCalculados).forEach((movimientoId) => {
         const saldos = saldosCalculados[movimientoId];
         if (Number(saldos.responsableId) === Number(responsableId)) {
-          const movimientoOriginal = movimientos.find(m => Number(m.id) === Number(movimientoId));
+          const movimientoOriginal = movimientosFrescosBD.find(m => Number(m.id) === Number(movimientoId));
 
           movimientosActualizar.push({
             id: Number(movimientoId),
             saldoInicialAsignacion: saldos.saldoInicial,
             saldoFinalAsignacion: saldos.saldoFinal,
-            // ✅ Enviar información completa para validación correcta
+            // ✅ Usar datos FRESCOS de BD
             formaParteCalculoEntregaARendir: movimientoOriginal?.formaParteCalculoEntregaARendir,
             asignacionOrigenId: movimientoOriginal?.asignacionOrigenId,
             tipoMovimientoId: movimientoOriginal?.tipoMovimientoId,
@@ -500,7 +564,7 @@ export default function RendicionGastosList({ ruta }) {
         }
       }
 
-      // Recargar datos para reflejar cambios
+      // Recargar datos para reflejar cambios en UI
       await cargarDatos();
     } catch (error) {
       console.error("Error al recalcular saldos afectados:", error);
@@ -901,7 +965,7 @@ export default function RendicionGastosList({ ruta }) {
     filtroRangoFechas,
   ]);
 
-    // 🎨 TEMPLATE PARA ITEMS DEL DROPDOWN DE ASIGNACIONES
+  // 🎨 TEMPLATE PARA ITEMS DEL DROPDOWN DE ASIGNACIONES
   const asignacionItemTemplate = (option) => {
     if (!option) return null;
 
@@ -1094,12 +1158,10 @@ export default function RendicionGastosList({ ruta }) {
         // ═══════════════════════════════════════════════════════
         await actualizarDetMovsEntregaRendir(editingMovimiento.id, data);
 
-        // Recargar datos para obtener estado actualizado
-        await cargarDatos();
-
-        // Recalcular saldos de todos los movimientos afectados
+        // ✅ Recalcular saldos (lee FRESCO de BD, no del estado)
         await recalcularSaldosAfectados(editingMovimiento.responsableId);
 
+        // Recargar datos para actualizar UI (ya se hace dentro de recalcularSaldosAfectados)
         toast.current?.show({
           severity: "success",
           summary: "Éxito",

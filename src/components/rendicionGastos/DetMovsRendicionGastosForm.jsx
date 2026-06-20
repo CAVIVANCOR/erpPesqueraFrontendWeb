@@ -626,10 +626,10 @@ const DetMovsRendicionGastosForm = ({
       // Formato de fecha corta
       const fecha = mov.fechaMovimiento
         ? new Date(mov.fechaMovimiento).toLocaleDateString("es-PE", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "2-digit",
-          })
+          day: "2-digit",
+          month: "2-digit",
+          year: "2-digit",
+        })
         : "S/F";
 
       return {
@@ -786,7 +786,6 @@ const DetMovsRendicionGastosForm = ({
   const onSubmit = async (data, event) => {
     event?.preventDefault();
     event?.stopPropagation();
-
     try {
       if (!data.monto || data.monto <= 0) {
         toast.current?.show({
@@ -1331,74 +1330,74 @@ const DetMovsRendicionGastosForm = ({
               (formaParteCalculoEntregaARendir === true &&
                 (asignacionOrigenId > 0 ||
                   !esTipoMovimientoCategoria17()))) && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  marginBottom: "0.5rem",
-                  alignItems: "end",
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              >
-                <div style={{ flex: 2 }}>
-                  <Controller
-                    name="entidadComercialId"
-                    control={control}
-                    rules={{ required: "La entidad comercial es obligatoria" }}
-                    render={({ field }) => (
-                      <EntidadComercialSelector
-                        empresaIdPreseleccionada={watch("empresaId")}
-                        value={field.value}
-                        onChange={(value) => {
-                          field.onChange(value);
-                        }}
-                        disabled={formularioDeshabilitado}
-                        required={true}
-                        error={!!errors.entidadComercialId}
-                        errorMessage={errors.entidadComercialId?.message}
-                        placeholder="Seleccione una entidad comercial"
-                        refreshTrigger={refreshEntidadesComerciales}
-                      />
-                    )}
-                  />
-                </div>
-                <div style={{ flex: 0.5 }}>
-                  <CrearEntidadComercialButton
-                    empresaId={getValues("empresaId")}
-                    tipoEntidad="proveedor"
-                    onEntidadCreada={handleEntidadCreada}
-                    label="Crear Proveedor"
-                    icon="pi pi-building"
-                    severity="info"
-                    outlined={true}
-                    disabled={formularioDeshabilitado}
-                    className="w-full mt-2"
-                    toast={toast}
-                  />
-                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    marginBottom: "0.5rem",
+                    alignItems: "end",
+                    flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  }}
+                >
+                  <div style={{ flex: 2 }}>
+                    <Controller
+                      name="entidadComercialId"
+                      control={control}
+                      rules={{ required: "La entidad comercial es obligatoria" }}
+                      render={({ field }) => (
+                        <EntidadComercialSelector
+                          empresaIdPreseleccionada={watch("empresaId")}
+                          value={field.value}
+                          onChange={(value) => {
+                            field.onChange(value);
+                          }}
+                          disabled={formularioDeshabilitado}
+                          required={true}
+                          error={!!errors.entidadComercialId}
+                          errorMessage={errors.entidadComercialId?.message}
+                          placeholder="Seleccione una entidad comercial"
+                          refreshTrigger={refreshEntidadesComerciales}
+                        />
+                      )}
+                    />
+                  </div>
+                  <div style={{ flex: 0.5 }}>
+                    <CrearEntidadComercialButton
+                      empresaId={getValues("empresaId")}
+                      tipoEntidad="proveedor"
+                      onEntidadCreada={handleEntidadCreada}
+                      label="Crear Proveedor"
+                      icon="pi pi-building"
+                      severity="info"
+                      outlined={true}
+                      disabled={formularioDeshabilitado}
+                      className="w-full mt-2"
+                      toast={toast}
+                    />
+                  </div>
 
-                <div style={{ flex: 2 }}>
-                  <Controller
-                    name="productoId"
-                    control={control}
-                    render={({ field }) => (
-                      <ProductoSelector
-                        empresaIdPreseleccionada={watch("empresaId")}
-                        value={field.value}
-                        onChange={(value) => {
-                          field.onChange(value);
-                        }}
-                        disabled={formularioDeshabilitado}
-                        required={false}
-                        error={!!errors.productoId}
-                        errorMessage={errors.productoId?.message}
-                        placeholder="Buscar producto (gasto)..."
-                      />
-                    )}
-                  />
+                  <div style={{ flex: 2 }}>
+                    <Controller
+                      name="productoId"
+                      control={control}
+                      render={({ field }) => (
+                        <ProductoSelector
+                          empresaIdPreseleccionada={watch("empresaId")}
+                          value={field.value}
+                          onChange={(value) => {
+                            field.onChange(value);
+                          }}
+                          disabled={formularioDeshabilitado}
+                          required={false}
+                          error={!!errors.productoId}
+                          errorMessage={errors.productoId?.message}
+                          placeholder="Buscar producto (gasto)..."
+                        />
+                      )}
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             <div
               style={{
@@ -1879,13 +1878,13 @@ const DetMovsRendicionGastosForm = ({
                       value={
                         field.value
                           ? new Date(field.value).toLocaleString("es-PE", {
-                              year: "numeric",
-                              month: "2-digit",
-                              day: "2-digit",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: false,
-                            })
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          })
                           : ""
                       }
                       placeholder="Pendiente"
@@ -1905,8 +1904,8 @@ const DetMovsRendicionGastosForm = ({
                   value={
                     movimiento?.actualizadoEn
                       ? new Date(movimiento.actualizadoEn).toLocaleString(
-                          "es-PE",
-                        )
+                        "es-PE",
+                      )
                       : ""
                   }
                   readOnly

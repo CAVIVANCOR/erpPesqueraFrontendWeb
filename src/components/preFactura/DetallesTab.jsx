@@ -1,11 +1,12 @@
 // src/components/preFactura/DetallesTab.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { InputNumber } from "primereact/inputnumber";
 import { confirmDialog } from "primereact/confirmdialog";
+import { Tag } from "primereact/tag";
 import { Checkbox } from "primereact/checkbox";
 import {
   ProductoSelectorDialog,
@@ -17,6 +18,8 @@ import {
   actualizarDetallePreFactura,
   eliminarDetallePreFactura,
 } from "../../api/detallePreFactura";
+import AsignarStockDialog from '../common/kardex/asignar-stock/AsignarStockDialog';
+import ConfigurarMovimientosDialog from '../common/kardex/configurar-movimientos/ConfigurarMovimientosDialog';
 
 export default function DetallesTab({
   preFacturaId,
@@ -64,7 +67,17 @@ export default function DetallesTab({
     cantidadVenta: null,
     precioUnitarioVenta: null,
   });
-
+  // ⭐ ESTADOS PARA ASIGNACIÓN DE STOCK (FASE 1 y FASE 2)
+  const [asignacionesStock, setAsignacionesStock] = useState({});
+  const [estadoGlobalAsignacion, setEstadoGlobalAsignacion] = useState({
+    estaCompleto: false,
+    itemsAsignados: 0,
+    itemsTotales: 0,
+    movimientosAGenerar: []
+  });
+  const [showAsignarStock, setShowAsignarStock] = useState(false);
+  const [showConfigurarMovimientos, setShowConfigurarMovimientos] = useState(false);
+  const [detalleParaAsignar, setDetalleParaAsignar] = useState(null);
   // Cargar detalles cuando cambie preFacturaId
   useEffect(() => {
     if (preFacturaId) {
@@ -95,6 +108,11 @@ export default function DetallesTab({
       setLoading(false);
     }
   };
+
+
+
+
+
 
   const abrirDialogoNuevo = () => {
     if (!preFacturaId) {
@@ -262,6 +280,85 @@ export default function DetallesTab({
     }
   };
 
+  // ⭐ HANDLER: Abrir diálogo de asignación de stock
+  const handleAsignarStock = (detalle) => {
+    setDetalleParaAsignar(detalle);
+    setShowAsignarStock(true);
+  };
+
+  // ⭐ HANDLER: Confirmar asignación de stock (FASE 1)
+  const handleConfirmarAsignacion = (asignacion) => {
+    setAsignacionesStock(prev => ({
+      ...prev,
+      [detalleParaAsignar.id]: {
+        estaAsignado: true,
+        lotes: asignacion.lotes,
+        cantidadAsignada: asignacion.cantidadAsignada,
+        fechaAsignacion: new Date()
+      }
+    }));
+
+    setShowAsignarStock(false);
+    setDetalleParaAsignar(null);
+
+    toast.current?.show({
+      severity: 'success',
+      summary: 'Stock Asignado',
+      detail: `Stock asignado correctamente para ${asignacion.productoNombre}`,
+      life: 3000
+    });
+  };
+
+  // ⭐ HANDLER: Generar Kardex (FASE 2)
+  const handleGenerarKardex = () => {
+    if (!estadoGlobalAsignacion.estaCompleto) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Asignación Incompleta',
+        detail: `Debe asignar stock a todos los productos (${estadoGlobalAsignacion.itemsAsignados}/${estadoGlobalAsignacion.itemsTotales} completados)`,
+        life: 4000
+      });
+      return;
+    }
+
+    setShowConfigurarMovimientos(true);
+  };
+
+  // ⭐ HANDLER: Confirmar movimientos (FASE 2)
+  const handleConfirmarMovimientos = async (movimientosConfigurados) => {
+    try {
+      // TODO: Llamar al backend para crear MovimientoAlmacen
+      // await crearMovimientosAlmacen(preFacturaId, movimientosConfigurados);
+
+      setShowConfigurarMovimientos(false);
+
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Kardex Generado',
+        detail: `Se crearon ${movimientosConfigurados.length} movimientos de almacén`,
+        life: 3000
+      });
+
+      // Limpiar asignaciones
+      setAsignacionesStock({});
+      setEstadoGlobalAsignacion({
+        estaCompleto: false,
+        itemsAsignados: 0,
+        itemsTotales: 0,
+        movimientosAGenerar: []
+      });
+
+    } catch (error) {
+      console.error('Error al generar kardex:', error);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo generar el kardex',
+        life: 3000
+      });
+    }
+  };
+
   const confirmarEliminar = (detalle) => {
     confirmDialog({
       message: `¿Está seguro de eliminar el producto "${detalle.producto?.nombre || "N/A"}"?`,
@@ -273,6 +370,67 @@ export default function DetallesTab({
     });
   };
 
+  // ⭐ FUNCIÓN: Actualizar estado global de asignación
+  const actualizarEstadoGlobalAsignacion = useCallback(() => {
+    const itemsAsignados = detalles.filter(det =>
+      asignacionesStock[det.id]?.estaAsignado === true
+    ).length;
+
+    const itemsTotales = detalles.length;
+    const estaCompleto = itemsTotales > 0 && itemsAsignados === itemsTotales;
+
+    let movimientosAGenerar = [];
+    if (estaCompleto) {
+      const todosLosLotes = [];
+      detalles.forEach(det => {
+        const asignacion = asignacionesStock[det.id];
+        if (asignacion?.lotes) {
+          todosLosLotes.push(...asignacion.lotes);
+        }
+      });
+
+      const lotesPorAlmacen = todosLosLotes.reduce((acc, lote) => {
+        if (!acc[lote.almacenId]) {
+          acc[lote.almacenId] = {
+            almacenId: lote.almacenId,
+            almacenNombre: lote.almacenNombre,
+            lotes: []
+          };
+        }
+        acc[lote.almacenId].lotes.push(lote);
+        return acc;
+      }, {});
+
+      movimientosAGenerar = Object.values(lotesPorAlmacen).map(grupo => ({
+        almacenId: grupo.almacenId,
+        almacenNombre: grupo.almacenNombre,
+        cantidadTotal: grupo.lotes.reduce((sum, l) => sum + l.cantidad, 0),
+        pesoTotal: grupo.lotes.reduce((sum, l) => sum + l.peso, 0),
+        numLotes: grupo.lotes.length,
+        lotes: grupo.lotes,
+        conceptoMovAlmacenId: null,
+        dirOrigenId: null,
+        dirDestinoId: null,
+        observaciones: ""
+      }));
+    }
+
+    setEstadoGlobalAsignacion({
+      estaCompleto,
+      itemsAsignados,
+      itemsTotales,
+      movimientosAGenerar
+    });
+  }, [detalles, asignacionesStock]);
+
+
+    // ⭐ EFECTO: Actualizar estado global cuando cambian detalles o asignaciones
+  useEffect(() => {
+    actualizarEstadoGlobalAsignacion();
+  }, [actualizarEstadoGlobalAsignacion]);
+
+
+  
   const handleEliminar = async (detalleId) => {
     setLoading(true);
     try {
@@ -329,24 +487,6 @@ export default function DetallesTab({
     );
   };
 
-  const precioTemplate = (rowData) => {
-    const simboloMoneda = getSimboloMoneda();
-    return (
-      <div style={{
-        textAlign: "right",
-        fontWeight: "bold",
-        backgroundColor: getColorPorMoneda(),
-        padding: "0.5rem"
-      }}>
-        {simboloMoneda}{" "}
-        {new Intl.NumberFormat("es-PE", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }).format(rowData.precioUnitario)}
-      </div>
-    );
-  };
-
   const subtotalTemplate = (rowData) => {
     const simboloMoneda = getSimboloMoneda();
     const subtotal = Number(rowData.cantidad) * Number(rowData.precioUnitario);
@@ -364,6 +504,41 @@ export default function DetallesTab({
           maximumFractionDigits: 2,
         }).format(subtotal)}
       </div>
+    );
+  };
+
+  // ⭐ TEMPLATE: Columna de asignación de stock
+  const stockTemplate = (rowData) => {
+    const asignacion = asignacionesStock[rowData.id];
+
+    if (asignacion?.estaAsignado) {
+      return (
+        <div className="flex flex-column align-items-center gap-2">
+          <Tag severity="success" value="Asignado" icon="pi pi-check" />
+          <small className="text-600">
+            {asignacion.lotes?.length || 0} lotes
+          </small>
+          <Button
+            label="Ver/Editar"
+            icon="pi pi-eye"
+            size="small"
+            outlined
+            onClick={() => handleAsignarStock(rowData)}
+            disabled={readOnly}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <Button
+        label="Asignar Stock"
+        icon="pi pi-box"
+        size="small"
+        severity="warning"
+        onClick={() => handleAsignarStock(rowData)}
+        disabled={readOnly || !rowData.productoId}
+      />
     );
   };
 
@@ -468,6 +643,22 @@ export default function DetallesTab({
             }
           />
         </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            label="Generar Kardex"
+            icon="pi pi-file-export"
+            severity="success"
+            onClick={handleGenerarKardex}
+            disabled={!estadoGlobalAsignacion.estaCompleto || readOnly}
+            tooltip={
+              estadoGlobalAsignacion.estaCompleto
+                ? "Generar movimientos de almacén y kardex"
+                : `Asignación incompleta: ${estadoGlobalAsignacion.itemsAsignados}/${estadoGlobalAsignacion.itemsTotales} items`
+            }
+            tooltipOptions={{ position: 'top' }}
+          />
+        </div>
+
         {/* PAGOS PREVIOS SI - Solo para Saldos Iniciales */}
         {esSaldoInicial && (
           <div style={{ flex: 1 }}>
@@ -608,7 +799,7 @@ export default function DetallesTab({
         <Column
           header="U.M. Venta"
           body={(rowData) => rowData.producto?.unidadMedidaComercial?.simbolo || "-"}
-          style={{ width: "250px", textAlign: "left", fontWeight:"bold" }}
+          style={{ width: "250px", textAlign: "left", fontWeight: "bold" }}
           bodyStyle={{ textAlign: "center" }}
           alignHeader="center"
         />
@@ -643,6 +834,11 @@ export default function DetallesTab({
           style={{ width: "160px", textAlign: "right" }}
           bodyStyle={{ textAlign: "right" }}
           alignHeader="center"
+        />
+        <Column
+          header="Stock"
+          body={stockTemplate}
+          style={{ width: "150px", textAlign: "center" }}
         />
         <Column
           header="Acciones"
@@ -907,6 +1103,31 @@ export default function DetallesTab({
         fechaDocumento={fechaDocumento}
         buscarPrecioVenta={true}
         onSelect={handleProductoSeleccionado}
+      />
+
+      {/* ⭐ DIÁLOGO: Asignar Stock (FASE 1) */}
+      <AsignarStockDialog
+        visible={showAsignarStock}
+        onHide={() => {
+          setShowAsignarStock(false);
+          setDetalleParaAsignar(null);
+        }}
+        empresaId={empresaId}
+        productoId={detalleParaAsignar?.productoId}
+        productoNombre={detalleParaAsignar?.producto?.nombre}
+        cantidadRequerida={detalleParaAsignar?.cantidad}
+        unidadMedida={detalleParaAsignar?.producto?.unidadMedida?.simbolo}
+        clienteId={clienteId}
+        onConfirmar={handleConfirmarAsignacion}
+      />
+
+      {/* ⭐ DIÁLOGO: Configurar Movimientos (FASE 2) */}
+      <ConfigurarMovimientosDialog
+        visible={showConfigurarMovimientos}
+        onHide={() => setShowConfigurarMovimientos(false)}
+        empresaId={empresaId}
+        asignacionesLotes={estadoGlobalAsignacion.movimientosAGenerar}
+        onConfirmar={handleConfirmarMovimientos}
       />
     </div>
   );

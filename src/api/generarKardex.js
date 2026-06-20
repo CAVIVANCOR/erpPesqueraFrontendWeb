@@ -20,5 +20,14 @@ function getAuthHeaders() {
  */
 export async function generarKardex(movimientoAlmacenId) {
   const res = await axios.post(`${API_URL}/${movimientoAlmacenId}`, {}, { headers: getAuthHeaders() });
-  return res.data.data; // Retornar solo la data, no el wrapper
+  return res.data.data;
+}
+
+/**
+ * Regenera Kardex completo usando sistema SAP
+ * Elimina kardex anterior y recalcula saldos desde cero
+ */
+export async function regenerarKardexSAP(movimientoAlmacenId) {
+  const res = await axios.post(`${API_URL}/${movimientoAlmacenId}/regenerar-sap`, {}, { headers: getAuthHeaders() });
+  return res.data.data;
 }

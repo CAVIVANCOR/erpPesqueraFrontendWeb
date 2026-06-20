@@ -24,7 +24,7 @@ import {
   anularMovimientoAlmacen,
   reactivarDocumentoAlmacen,
 } from "../api/movimientoAlmacen";
-import { generarKardex } from "../api/generarKardex";
+import { generarKardex, regenerarKardexSAP } from "../api/generarKardex";
 import { getEmpresas } from "../api/empresa";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getEntidadesComerciales } from "../api/entidadComercial";
@@ -373,18 +373,40 @@ export default function MovimientoAlmacen({ ruta }) {
     if (!toDelete) return;
     setLoading(true);
     try {
-      await eliminarMovimientoAlmacen(toDelete.id);
+      const resultado = await eliminarMovimientoAlmacen(toDelete.id);
+
+      // Mostrar resumen detallado de la eliminación con regeneración SAP
+      const mensajeDetalle = `
+      Movimiento eliminado exitosamente:
+      - Kardex eliminados: ${resultado.resultados?.kardexEliminados || 0}
+      - Detalles eliminados: ${resultado.resultados?.detallesEliminados || 0}
+      - Productos afectados: ${resultado.resultados?.productosAfectados?.length || 0}
+      - Saldos detallados regenerados: ${resultado.resultados?.saldosDetRegenerados || 0}
+      - Saldos generales regenerados: ${resultado.resultados?.saldosGenRegenerados || 0}
+      
+      ✅ Kardex y saldos regenerados correctamente (Sistema SAP)
+    `;
+
       toast.current.show({
         severity: "success",
-        summary: "Eliminado",
-        detail: "Movimiento de almacén eliminado correctamente.",
+        summary: "Movimiento Eliminado",
+        detail: mensajeDetalle,
+        life: 6000,
       });
+
       cargarDatos();
     } catch (err) {
+      const errorMsg =
+        err.response?.data?.mensaje ||
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "No se pudo eliminar el movimiento.";
       toast.current.show({
         severity: "error",
-        summary: "Error",
-        detail: "No se pudo eliminar.",
+        summary: "Error al Eliminar",
+        detail: errorMsg,
+        life: 5000,
       });
     }
     setLoading(false);
@@ -527,7 +549,27 @@ export default function MovimientoAlmacen({ ruta }) {
   const handleGenerarKardex = async (id) => {
     setLoading(true);
     try {
-      const resultado = await generarKardex(id);
+      const resultado = await regenerarKardexSAP(id);
+
+      // Mostrar resumen detallado de la regeneración SAP
+      const mensajeDetalle = `
+        Kardex regenerado exitosamente (Sistema SAP):
+        - Kardex anteriores eliminados: ${resultado.kardexEliminados || 0}
+        - Kardex nuevos creados: ${resultado.kardexCreados || 0}
+        - Saldos detallados actualizados: ${resultado.saldosDetActualizados || 0}
+        - Saldos generales actualizados: ${resultado.saldosGenActualizados || 0}
+        - Productos afectados: ${resultado.productosAfectados || 0}
+        
+        ✅ Saldos recalculados correctamente desde cero
+      `;
+
+      toast.current.show({
+        severity: "success",
+        summary: "Kardex Regenerado (SAP)",
+        detail: mensajeDetalle,
+        life: 6000,
+      });
+
       // Guardar resultado y mostrar diálogo
       setKardexResultData(resultado);
       setShowKardexResult(true);
@@ -539,10 +581,10 @@ export default function MovimientoAlmacen({ ruta }) {
         err.response?.data?.message ||
         err.response?.data?.error ||
         err.message ||
-        "No se pudo generar el kardex.";
+        "No se pudo regenerar el kardex.";
       toast.current.show({
         severity: "error",
-        summary: "Error al Generar Kardex",
+        summary: "Error al Regenerar Kardex",
         detail: errorMsg,
         life: 5000,
       });

@@ -95,15 +95,7 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
     permisos,
     toast,
   } = props;
-
   const { usuario } = useAuthStore();
-
-  // 🔍 DEBUG TEMPORAL
-  console.log("🟢 [DeudaConPersonalForm] MONTAJE/RENDER");
-  console.log("  📌 defaultValues:", defaultValues);
-  console.log("  📌 empresaFija:", empresaFija);
-  console.log("  📌 isEdit:", isEdit);
-
   // Estado único para todos los campos del formulario (patrón PreFactura)
   const [formData, setFormData] = useState({
     empresaId: defaultValues?.empresaId
