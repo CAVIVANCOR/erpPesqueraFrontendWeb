@@ -242,6 +242,19 @@ export async function facturarPreFacturaBlanca(preFacturaId) {
 }
 
 /**
+ * Generar Comprobante Electrónico desde PreFactura EMITIDA
+ */
+export async function generarComprobanteElectronico(preFacturaId) {
+  try {
+    const response = await axios.put(`${API_URL}/${preFacturaId}/generar-comprobante`, {}, { headers: getAuthHeaders() });
+    return response.data;
+  } catch (error) {
+    console.error('Error al generar comprobante electrónico:', error);
+    throw error;
+  }
+}
+
+/**
  * Aprobar una pre-factura
  * @param {number} id - ID de la pre-factura
  * @returns {Promise<Object>} Pre-factura aprobada
@@ -252,6 +265,21 @@ export async function aprobarPreFactura(id) {
     return response.data;
   } catch (error) {
     console.error("Error al aprobar pre-factura:", error);
+    throw error;
+  }
+}
+
+/**
+ * Reactiva un documento de PreFactura (cambia estado a PENDIENTE)
+ * @param {number} id - ID de la pre-factura
+ * @returns {Promise<Object>} Resultado con estadísticas
+ */
+export async function reactivarDocumentoPreFactura(id) {
+  try {
+    const response = await axios.put(`${API_URL}/${id}/reactivar`, {}, { headers: getAuthHeaders() });
+    return response.data;
+  } catch (error) {
+    console.error("Error al reactivar pre-factura:", error);
     throw error;
   }
 }

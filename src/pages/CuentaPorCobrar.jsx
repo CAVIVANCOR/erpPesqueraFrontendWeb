@@ -506,8 +506,8 @@ export default function CuentaPorCobrar({ ruta }) {
         stripedRows
         showGridlines
         paginator
-        rows={100}
-        rowsPerPageOptions={[100, 200, 300, 500]}
+        rows={25}
+        rowsPerPageOptions={[25, 50, 100, 150]}
         size="small"
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar

@@ -803,6 +803,102 @@ const PreFactura = ({ ruta }) => {
     });
   };
 
+
+  const handleReactivarPreFactura = async (preFacturaId) => {
+    if (!permisos.puedeEditar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para reactivar pre-facturas.",
+        life: 3000,
+      });
+      return;
+    }
+
+    confirmDialog({
+      message:
+        "¿Está seguro de reactivar esta pre-factura? " +
+        "Si tiene movimiento de almacén, el kardex será eliminado y los saldos recalculados. " +
+        "Si tiene Cuenta por Cobrar sin pagos, será eliminada.",
+      header: "Confirmar Reactivación",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-warning",
+      acceptLabel: "Sí, reactivar",
+      rejectLabel: "Cancelar",
+      accept: async () => {
+        setLoading(true);
+        try {
+          const { reactivarDocumentoPreFactura } = await import("../api/preFactura");
+          const resultado = await reactivarDocumentoPreFactura(preFacturaId);
+
+          // Mostrar resumen detallado de la reactivación (siguiendo patrón de MovimientoAlmacen)
+          const mensajeDetalle = `
+            PreFactura reactivada exitosamente:
+            - Kardex eliminados: ${resultado.kardexEliminados || 0}
+            - Productos afectados: ${resultado.productosAfectados || 0}
+            - Saldos detallados actualizados: ${resultado.saldosDetActualizados || 0}
+            - Saldos generales actualizados: ${resultado.saldosGenActualizados || 0}
+            ${resultado.cuentaPorCobrarEliminada ? '- Cuenta por Cobrar eliminada' : ''}
+            
+            Ahora puede editar el documento.
+          `;
+
+          toast.current.show({
+            severity: "success",
+            summary: "PreFactura Reactivada",
+            detail: mensajeDetalle,
+            life: 5000,
+          });
+
+          cargarDatos();
+          cerrarDialogo();
+        } catch (err) {
+          console.error("Error al reactivar pre-factura:", err);
+          const errorMsg =
+            err.response?.data?.mensaje ||
+            err.response?.data?.message ||
+            err.response?.data?.error ||
+            err.message ||
+            "No se pudo reactivar la pre-factura.";
+          toast.current.show({
+            severity: "error",
+            summary: "Error al Reactivar",
+            detail: errorMsg,
+            life: 5000,
+          });
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
+
+  /**
+   * Recargar datos de la PreFactura actual sin cerrar el diálogo
+   */
+  const handleActualizarPreFactura = async () => {
+    if (!selectedPreFactura?.id) return;
+
+    try {
+      setLoading(true);
+      const preFacturaActualizada = await getPreFacturaPorId(selectedPreFactura.id);
+      setSelectedPreFactura(preFacturaActualizada);
+      setRefreshKey((prev) => prev + 1); // Forzar re-render del formulario
+    } catch (err) {
+      console.error("Error al actualizar pre-factura:", err);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo actualizar la pre-factura",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   const confirmarEliminacion = (preFactura) => {
     // Validar permisos de eliminación
     if (!permisos.puedeEliminar) {
@@ -1259,7 +1355,6 @@ const PreFactura = ({ ruta }) => {
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
-      <ConfirmDialog />
       <div className="card">
         <DataTable
           value={itemsFiltrados}
@@ -1269,8 +1364,8 @@ const PreFactura = ({ ruta }) => {
           size="small"
           showGridlines
           stripedRows
-          rows={50}
-          rowsPerPageOptions={[50, 100, 200, 500]}
+          rows={25}
+          rowsPerPageOptions={[25, 50, 100, 150]}
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} pre-facturas"
           sortField="id"
@@ -1668,6 +1763,8 @@ const PreFactura = ({ ruta }) => {
           onCancel={cerrarDialogo}
           onAprobar={handleAprobarPreFactura}
           onAnular={handleAnularPreFactura}
+          onReactivar={handleReactivarPreFactura}
+          onActualizar={handleActualizarPreFactura}
           onClienteCreado={handleClienteCreado}
           onIrAPreFacturaOrigen={handleIrAPreFacturaOrigen}
           loading={loading}

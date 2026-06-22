@@ -17,6 +17,7 @@ import {
   partirPreFactura,
   facturarPreFacturaNegra,
   facturarPreFacturaBlanca,
+  generarComprobanteElectronico,
 } from "../../api/preFactura";
 import { Dialog } from "primereact/dialog";
 import { InputNumber } from "primereact/inputnumber";
@@ -50,6 +51,7 @@ export default function PreFacturaForm({
   onCancel,
   onAprobar,
   onAnular,
+  onReactivar, // ⭐ NUEVO
   onClienteCreado, // ← NUEVO
   onGenerarKardex, // ⭐ AGREGAR ESTA LÍNEA
   loading,
@@ -1226,6 +1228,22 @@ export default function PreFacturaForm({
     onAnular(defaultValues.id);
   };
 
+  const handleReactivarClick = () => {
+    // Validación de permisos
+    if (!permisos.puedeEditar && !tienePermisoEspecial) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para reactivar documentos.",
+        life: 3000,
+      });
+      return;
+    }
+
+    onReactivar(defaultValues.id);
+  };
+
+
   // Handler para particionar PreFactura (Clona en 2 copias idénticas)
   const [showPartirDialog, setShowPartirDialog] = useState(false);
 
@@ -1273,23 +1291,21 @@ export default function PreFacturaForm({
       toast?.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: "CxC Negra generada exitosamente",
+        detail: "CxC Gerencial generada exitosamente",
         life: 5000,
       });
 
-      // ✅ RECARGAR DATOS DEL FORMULARIO (NO CERRAR)
-      if (defaultValues.id) {
-        const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
-        // Actualizar formData con los nuevos datos
-        setFormData(preFacturaActualizada);
+      // ✅ CERRAR VENTANA Y VOLVER A LA LISTA
+      if (onCancel) {
+        onCancel(); // Cierra el diálogo y refresca la lista
       }
     } catch (error) {
-      console.error("Error al facturar negra:", error);
+      console.error("Error al facturar Gerencial:", error);
       toast?.current?.show({
         severity: "error",
         summary: "Error",
         detail:
-          error.response?.data?.mensaje || "No se pudo generar la CxC Negra",
+          error.response?.data?.mensaje || "No se pudo generar la CxC Gerencial",
         life: 3000,
       });
     }
@@ -1306,15 +1322,13 @@ export default function PreFacturaForm({
       toast?.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: "CxC Blanca y Comprobante Electrónico generados exitosamente",
+        detail: "CxC Fiscal generada exitosamente. Genere el Comprobante Electrónico desde el TAB Facturación",
         life: 5000,
       });
 
-      // ✅ RECARGAR DATOS DEL FORMULARIO (NO CERRAR)
-      if (defaultValues.id) {
-        const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
-        // Actualizar formData con los nuevos datos
-        setFormData(preFacturaActualizada);
+      // ✅ CERRAR VENTANA Y VOLVER A LA LISTA
+      if (onCancel) {
+        onCancel(); // Cierra el diálogo y refresca la lista
       }
     } catch (error) {
       console.error("Error al facturar blanca:", error);
@@ -1323,6 +1337,36 @@ export default function PreFacturaForm({
         summary: "Error",
         detail:
           error.response?.data?.mensaje || "No se pudo emitir el comprobante",
+        life: 3000,
+      });
+    }
+  };
+
+
+  // Handler para generar comprobante electrónico
+  const handleGenerarComprobanteClick = async () => {
+    try {
+      const resultado = await generarComprobanteElectronico(defaultValues.id);
+
+      toast?.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Comprobante Electrónico generado exitosamente",
+        life: 5000,
+      });
+
+      // ✅ RECARGAR DATOS DEL FORMULARIO
+      if (defaultValues.id) {
+        const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
+        setFormData(preFacturaActualizada);
+      }
+    } catch (error) {
+      console.error("Error al generar comprobante:", error);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.mensaje || "No se pudo generar el Comprobante Electrónico",
         life: 3000,
       });
     }
@@ -1584,12 +1628,11 @@ export default function PreFacturaForm({
           <BotonesGeneracionComprobante
             preFacturaId={defaultValues?.id}
             empresaId={empresaId}
-            facturado={formData.facturado}
+            tipoDocumentoId={formData.tipoDocumentoId}
+            esGerencial={formData.esGerencial}
+            estadoId={formData.estadoId}
             toast={toast}
-            onComprobanteGenerado={(resultado) => {
-              handleChange("facturado", true);
-              handleChange("fechaFacturacion", new Date());
-            }}
+            onGenerarComprobante={handleGenerarComprobanteClick}
           />
         </TabPanel>
       </TabView>
@@ -1668,6 +1711,29 @@ export default function PreFacturaForm({
               }
             />
           )}
+          {/* Botón Reactivar Documento - Visible si está APROBADA, FACTURADA o EMITIDA */}
+          {(estaAprobada || estaFacturada || estaEmitida) && isEdit && (
+            <Button
+              label="Reactivar Documento"
+              icon="pi pi-replay"
+              className="p-button-warning"
+              onClick={handleReactivarClick}
+              disabled={
+                tienePermisoEspecial
+                  ? (readOnly || loading || estaAnulada)
+                  : (readOnly || loading || !permisos.puedeEditar)
+              }
+              tooltip={
+                estaAnulada
+                  ? "No se puede reactivar un documento anulado"
+                  : readOnly
+                    ? "Modo solo lectura"
+                    : !permisos.puedeEditar && !tienePermisoEspecial
+                      ? "No tiene permisos para reactivar"
+                      : "Reactivar documento a estado PENDIENTE (elimina kardex y CxC sin pagos)"
+              }
+            />
+          )}
           {/* Botón Generar Venta (Negra) - Visible si está APROBADA o EMITIDA (con permiso de reactivar) y ES GERENCIAL */}
           {(estaAprobada ||
             ((estaEmitida || estaComprobanteGenerado || estaValidadoSunat) &&
@@ -1677,8 +1743,8 @@ export default function PreFacturaForm({
               <Button
                 label={
                   estaEmitida || estaComprobanteGenerado || estaValidadoSunat
-                    ? "Regenerar CxC Negra"
-                    : "Facturar Negra"
+                    ? "Regenerar CxC Gerencial"
+                    : "Facturar Gerencial"
                 }
                 icon="pi pi-file"
                 className="p-button-help"
@@ -1692,8 +1758,8 @@ export default function PreFacturaForm({
                   estaAnulada
                     ? "No se puede facturar un documento anulado"
                     : estaEmitida || estaComprobanteGenerado || estaValidadoSunat
-                      ? "Regenerar CxC Negra (Gerencial) sin comprobante (elimina y recrea)"
-                      : "Generar CxC Negra (Gerencial) sin comprobante"
+                      ? "Regenerar CxC (Gerencial) sin comprobante (elimina y recrea)"
+                      : "Generar CxC (Gerencial) sin comprobante"
                 }
               />
             )}
@@ -1706,8 +1772,8 @@ export default function PreFacturaForm({
               <Button
                 label={
                   estaEmitida || estaComprobanteGenerado || estaValidadoSunat
-                    ? "Regenerar CxC Blanca"
-                    : "Facturar Blanca"
+                    ? "Regenerar CxC Fiscal"
+                    : "Facturar Fiscal"
                 }
                 icon="pi pi-file-check"
                 className="p-button-success"
@@ -1721,8 +1787,8 @@ export default function PreFacturaForm({
                   estaAnulada
                     ? "No se puede facturar un documento anulado"
                     : estaEmitida || estaComprobanteGenerado || estaValidadoSunat
-                      ? "Regenerar CxC Blanca y Comprobante Electrónico SUNAT (elimina y recrea)"
-                      : "Generar CxC Blanca y Comprobante Electrónico SUNAT"
+                      ? "Regenerar CxC Fiscal y Comprobante Electrónico SUNAT (elimina y recrea)"
+                      : "Generar CxC Fiscal y Comprobante Electrónico SUNAT"
                 }
               />
             )}

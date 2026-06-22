@@ -638,11 +638,22 @@ export default function MovimientoAlmacen({ ruta }) {
     try {
       const resultado = await reactivarDocumentoAlmacen(id);
 
+      // Mostrar resumen detallado de la reactivación (siguiendo patrón de anularMovimiento)
+      const mensajeDetalle = `
+        Documento reactivado exitosamente:
+        - Kardex eliminados: ${resultado.kardexEliminados || 0}
+        - Productos afectados: ${resultado.productosAfectados || 0}
+        - Saldos detallados actualizados: ${resultado.saldosDetActualizados || 0}
+        - Saldos generales actualizados: ${resultado.saldosGenActualizados || 0}
+        
+        Ahora puede editar el documento.
+      `;
+
       toast.current.show({
         severity: "success",
         summary: "Documento Reactivado",
-        detail: "El documento se reactivó exitosamente. Ahora puede editarlo.",
-        life: 3000,
+        detail: mensajeDetalle,
+        life: 5000,
       });
 
       // Recargar el documento actual para actualizar el estado en el formulario
@@ -668,6 +679,7 @@ export default function MovimientoAlmacen({ ruta }) {
     setLoading(false);
   };
 
+  
   const handleIrAOrdenCompra = async (ordenCompraId) => {
     try {
       const { getOrdenCompraPorId } = await import("../api/ordenCompra");

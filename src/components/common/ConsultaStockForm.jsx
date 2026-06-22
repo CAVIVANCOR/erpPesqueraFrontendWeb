@@ -362,7 +362,7 @@ export default function ConsultaStockForm({
         visible={visible}
         onHide={onHide}
         header="Consulta de Stock"
-        style={{ width: "95vw", maxWidth: "1400px" }}
+        style={{ width: "1800px" }}
         maximizable
         modal
       >

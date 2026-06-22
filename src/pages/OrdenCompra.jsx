@@ -841,8 +841,8 @@ export default function OrdenCompra({ ruta }) {
         loading={loading}
         dataKey="id"
         paginator
-        rows={50}
-        rowsPerPageOptions={[50, 100, 200, 500]}
+        rows={25}
+        rowsPerPageOptions={[25, 50, 100, 150]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} órdenes"
         size="small"

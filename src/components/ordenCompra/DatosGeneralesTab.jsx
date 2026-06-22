@@ -847,7 +847,7 @@ export default function DatosGeneralesTab({
           </label>
           <Button
             id="esGerencial"
-            label={esGerencial ? "GERENCIAL" : "GERENCIAL"}
+            label={esGerencial ? "GERENCIAL" : "FISCAL"}
             icon={esGerencial ? "pi pi-check-circle" : "pi pi-times-circle"}
             severity={esGerencial ? "success" : "secondary"}
             onClick={() =>
