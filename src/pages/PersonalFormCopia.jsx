@@ -21,8 +21,6 @@ import { getSedes } from "../../api/sedes"; // API profesional de sedes
 import { getAreasFisicas } from "../../api/areasFisicas"; // API profesional de áreas físicas
 import { subirFotoPersonal, subirFirmaPersonal } from "../../api/personal"; // API profesional de subida de foto personal
 import { getEntidadesComerciales } from "../../api/entidadComercial"; // API profesional de entidades comerciales
-import CentroCostoSelector from "../common/CentroCostoSelector"; // ⭐ NUEVO - Selector de Centro de Costo
-
 // Esquema de validación profesional con Yup
 const schema = Yup.object().shape({
   empresaId: Yup.number().required("La empresa es obligatoria"),
@@ -45,7 +43,6 @@ const schema = Yup.object().shape({
   correo: Yup.string().nullable(),
   tipoContratoId: Yup.number(),
   cargoId: Yup.number(),
-  centroCostoId: Yup.number().nullable(), // ⭐ NUEVO - Centro de Costo
   areaFisicaId: Yup.number(),
   sedeEmpresaId: Yup.number(),
   enlaceEntidadComercialId: Yup.number().nullable(),
@@ -86,7 +83,6 @@ export default function PersonalForm({
       ? Number(defaultValues.tipoContratoId)
       : null,
     cargoId: defaultValues.cargoId ? Number(defaultValues.cargoId) : null,
-    centroCostoId: defaultValues.centroCostoId ? Number(defaultValues.centroCostoId) : null,  // ⭐ NUEVO
     areaFisicaId: defaultValues.areaFisicaId
       ? Number(defaultValues.areaFisicaId)
       : null,
@@ -166,7 +162,7 @@ export default function PersonalForm({
   // Reset profesional y actualización de preview de foto al abrir en modo edición o alta
   useEffect(() => {
     reset({
-      ...normalizedDefaults,
+      ...defaultValues,
       sexo: typeof defaultValues.sexo === "boolean" ? defaultValues.sexo : null,
       marcaAsistencia:
         typeof defaultValues.marcaAsistencia === "boolean"
@@ -184,16 +180,18 @@ export default function PersonalForm({
     const urlFoto = defaultValues.urlFotoPersona
       ? defaultValues.urlFotoPersona.startsWith("http")
         ? defaultValues.urlFotoPersona
-        : `${import.meta.env.VITE_UPLOADS_URL}/personal/${defaultValues.urlFotoPersona
-        }`
+        : `${import.meta.env.VITE_UPLOADS_URL}/personal/${
+            defaultValues.urlFotoPersona
+          }`
       : null;
     setFotoPreview(urlFoto);
     // ⭐ AGREGAR ACTUALIZACIÓN DE FIRMA
     const urlFirma = defaultValues.urlFirma
       ? defaultValues.urlFirma.startsWith("http")
         ? defaultValues.urlFirma
-        : `${import.meta.env.VITE_UPLOADS_URL}/personal-firmas/${defaultValues.urlFirma
-        }`
+        : `${import.meta.env.VITE_UPLOADS_URL}/personal-firmas/${
+            defaultValues.urlFirma
+          }`
       : null;
     setFirmaPreview(urlFirma);
   }, [defaultValues, isEdit, reset]);
@@ -237,8 +235,9 @@ export default function PersonalForm({
       const res = await subirFotoPersonal(defaultValues.id, file);
 
       // Construye la URL profesional de la foto subida usando la variable general de uploads.
-      const urlBackend = `${import.meta.env.VITE_UPLOADS_URL}/personal/${res.foto
-        }`;
+      const urlBackend = `${import.meta.env.VITE_UPLOADS_URL}/personal/${
+        res.foto
+      }`;
 
       // Actualizar el preview con la URL del backend y agregar timestamp para forzar recarga
       const urlConTimestamp = `${urlBackend}?t=${new Date().getTime()}`;
@@ -509,69 +508,70 @@ export default function PersonalForm({
         const empresasData =
           empresasRes.status === "fulfilled"
             ? empresasRes.value.map((e) => ({
-              ...e,
-              id: Number(e.id),
-              label: e.razonSocial,
-            }))
+                ...e,
+                id: Number(e.id),
+                label: e.razonSocial,
+              }))
             : [];
         setEmpresas(empresasData);
         // Normalización profesional: todos los ids de combos a number para evitar bugs de selección
         const tiposDocumentoData =
           tiposDocRes.status === "fulfilled"
             ? tiposDocRes.value.map((e) => ({
-              ...e,
-              id: Number(e.id),
-              label: e.codigo,
-            }))
+                ...e,
+                id: Number(e.id),
+                label: e.codigo,
+              }))
             : [];
         setTiposDocumento(tiposDocumentoData);
         // Normalización profesional para combo: id numérico y label descriptivo
         const cargosData =
           cargosRes.status === "fulfilled"
             ? cargosRes.value.map((e) => ({
-              ...e,
-              id: Number(e.id),
-              label: e.descripcion,
-            }))
+                ...e,
+                id: Number(e.id),
+                label: e.descripcion,
+              }))
             : [];
         setCargos(cargosData);
         const tiposContratoData =
           tiposContratoRes.status === "fulfilled"
             ? tiposContratoRes.value.map((e) => ({
-              ...e,
-              id: Number(e.id),
-              label: e.nombre,
-            }))
+                ...e,
+                id: Number(e.id),
+                label: e.nombre,
+              }))
             : [];
         setTiposContrato(tiposContratoData);
         const areasFisicasData =
           areasFisicasRes.status === "fulfilled"
             ? areasFisicasRes.value.map((e) => ({
-              ...e,
-              id: Number(e.id),
-              label: e.descripcion,
-            }))
+                ...e,
+                id: Number(e.id),
+                label: e.descripcion,
+              }))
             : [];
         setAreasFisicas(areasFisicasData);
         const sedesEmpresaData =
           sedesRes.status === "fulfilled"
             ? sedesRes.value.map((e) => ({
-              ...e,
-              id: Number(e.id),
-              label: e.nombre,
-            }))
+                ...e,
+                id: Number(e.id),
+                label: e.nombre,
+              }))
             : [];
         setSedesEmpresa(sedesEmpresaData);
         const entidadesComercialesData =
           entidadesComercialesRes.status === "fulfilled"
             ? entidadesComercialesRes.value.map((e) => ({
-              ...e,
-              id: Number(e.id),
-              label: e.razonSocial || e.nombreComercial,
-            }))
+                ...e,
+                id: Number(e.id),
+                label: e.razonSocial || e.nombreComercial,
+              }))
             : [];
         setEntidadesComerciales(entidadesComercialesData);
-        reset({ ...normalizedDefaults });
+
+        reset({ ...defaultValues });
       } catch (err) {
         setEmpresas([]);
         setTiposDocumento([]);
@@ -713,7 +713,6 @@ export default function PersonalForm({
       sexo: typeof data.sexo === "boolean" ? data.sexo : false,
       tipoContratoId: data.tipoContratoId ? Number(data.tipoContratoId) : null,
       cargoId: data.cargoId ? Number(data.cargoId) : null,
-      centroCostoId: data.centroCostoId ? Number(data.centroCostoId) : null,  // ⭐ NUEVO
       areaFisicaId: data.areaFisicaId ? Number(data.areaFisicaId) : null,
       sedeEmpresaId: data.sedeEmpresaId ? Number(data.sedeEmpresaId) : null,
       enlaceEntidadComercialId: data.enlaceEntidadComercialId
@@ -810,7 +809,7 @@ export default function PersonalForm({
                   <label style={{ fontWeight: "bold", fontSize: 13, color: "#4caf50" }}>
                     FOTO DE LA PERSONA
                   </label>
-
+                  
                   {/* Fila 1: Input URL */}
                   <InputText
                     {...register("urlFotoPersona")}
@@ -904,7 +903,7 @@ export default function PersonalForm({
                   <label style={{ fontWeight: "bold", fontSize: 13, color: "#2196f3" }}>
                     FIRMA DIGITAL
                   </label>
-
+                  
                   {/* Fila 1: Input URL */}
                   <InputText
                     {...register("urlFirma")}
@@ -949,7 +948,7 @@ export default function PersonalForm({
 
           {/* ==================== MARCA ASISTENCIA Y TIPO PERSONAL ==================== */}
           <div className="p-field">
-
+            
           </div>
           {/* Empresa */}
           <div
@@ -1168,34 +1167,34 @@ export default function PersonalForm({
               />
               <small className="p-error">{errors.fechaIngreso?.message}</small>
             </div>
-            {/* Campo condicional: Fecha de Cese (solo visible cuando cesado = true) */}
-            {watch("cesado") && (
-              <div style={{ flex: 1 }}>
-                <label
-                  htmlFor="fechaCese"
-                  style={{ fontWeight: 500, color: "#d32f2f" }}
-                >
-                  Fecha Cese *
-                </label>
-                <Controller
-                  name="fechaCese"
-                  control={control}
-                  render={({ field }) => (
-                    <Calendar
-                      {...field}
-                      id="fechaCese"
-                      showIcon
-                      dateFormat="dd/mm/yy"
-                      placeholder="Seleccione la fecha de cese"
-                      className={errors.fechaCese ? "p-invalid" : ""}
-                      disabled={readOnly || loading}
-                      style={{ width: "100%" }}
-                    />
-                  )}
-                />
-                <small className="p-error">{errors.fechaCese?.message}</small>
-              </div>
-            )}
+                      {/* Campo condicional: Fecha de Cese (solo visible cuando cesado = true) */}
+          {watch("cesado") && (
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="fechaCese"
+                style={{ fontWeight: 500, color: "#d32f2f" }}
+              >
+                Fecha Cese *
+              </label>
+              <Controller
+                name="fechaCese"
+                control={control}
+                render={({ field }) => (
+                  <Calendar
+                    {...field}
+                    id="fechaCese"
+                    showIcon
+                    dateFormat="dd/mm/yy"
+                    placeholder="Seleccione la fecha de cese"
+                    className={errors.fechaCese ? "p-invalid" : ""}
+                    disabled={readOnly || loading}
+                    style={{ width: "100%" }}
+                  />
+                )}
+              />
+              <small className="p-error">{errors.fechaCese?.message}</small>
+            </div>
+          )}
           </div>
 
           {/* Teléfono yCorreo Electronico en una sola línea, con proporción 1:2 */}
@@ -1288,26 +1287,6 @@ export default function PersonalForm({
                 )}
               />
               <small className="p-error">{errors.cargoId?.message}</small>
-            </div>
-            {/* ⭐ NUEVO - Centro de Costo */}
-            <div style={{ flex: 1 }}>
-              <Controller
-                name="centroCostoId"
-                control={control}
-                render={({ field }) => (
-                  <CentroCostoSelector
-                    value={field.value ? Number(field.value) : null}
-                    onChange={(id) => field.onChange(id)}
-                    label="Centro de Costo"
-                    placeholder="Elegir Centro de Costo"
-                    disabled={readOnly || loading}
-                    required={false}
-                    error={!!errors.centroCostoId}
-                    errorMessage={errors.centroCostoId?.message}
-                    showClearButton={true}
-                  />
-                )}
-              />
             </div>
             {/* Entidad Comercial Enlazada */}
             <div style={{ flex: 1 }}>
@@ -1450,54 +1429,54 @@ export default function PersonalForm({
               }}
             >
               {/* ⭐ NUEVO - Marca Asistencia */}
-              <Controller
-                name="marcaAsistencia"
-                control={control}
-                render={({ field }) => (
-                  <ToggleButton
-                    id="marcaAsistencia"
-                    onLabel="Marca Asistencia"
-                    offLabel="No Marca Asistencia"
-                    onIcon="pi pi-check-circle"
-                    offIcon="pi pi-times-circle"
-                    checked={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    disabled={readOnly}
-                    className={
-                      field.value ? "p-button-success" : "p-button-secondary"
-                    }
-                    tooltip="Indica si el personal debe marcar asistencia"
-                    tooltipOptions={{ position: "top" }}
-                  />
-                )}
-              />
-              {/* ⭐ NUEVO - Es Administrativo */}
-              <Controller
-                name="esAdministrativo"
-                control={control}
-                render={({ field }) => (
-                  <ToggleButton
-                    id="esAdministrativo"
-                    onLabel="Horario Rígido (Administrativo)"
-                    offLabel="Horario Flexible (Operativo)"
-                    onIcon="pi pi-clock"
-                    offIcon="pi pi-users"
-                    checked={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    disabled={readOnly}
-                    className={
-                      field.value ? "p-button-info" : "p-button-warning"
-                    }
-                    tooltip={
-                      field.value
-                        ? "Personal administrativo con horario rígido"
-                        : "Personal operativo con horario flexible"
-                    }
-                    tooltipOptions={{ position: "top" }}
-                  />
-                )}
-              />
-            </div>
+                <Controller
+                  name="marcaAsistencia"
+                  control={control}
+                  render={({ field }) => (
+                    <ToggleButton
+                      id="marcaAsistencia"
+                      onLabel="Marca Asistencia"
+                      offLabel="No Marca Asistencia"
+                      onIcon="pi pi-check-circle"
+                      offIcon="pi pi-times-circle"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      disabled={readOnly}
+                      className={
+                        field.value ? "p-button-success" : "p-button-secondary"
+                      }
+                      tooltip="Indica si el personal debe marcar asistencia"
+                      tooltipOptions={{ position: "top" }}
+                    />
+                  )}
+                />
+                {/* ⭐ NUEVO - Es Administrativo */}
+                <Controller
+                  name="esAdministrativo"
+                  control={control}
+                  render={({ field }) => (
+                    <ToggleButton
+                      id="esAdministrativo"
+                      onLabel="Horario Rígido (Administrativo)"
+                      offLabel="Horario Flexible (Operativo)"
+                      onIcon="pi pi-clock"
+                      offIcon="pi pi-users"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      disabled={readOnly}
+                      className={
+                        field.value ? "p-button-info" : "p-button-warning"
+                      }
+                      tooltip={
+                        field.value
+                          ? "Personal administrativo con horario rígido"
+                          : "Personal operativo con horario flexible"
+                      }
+                      tooltipOptions={{ position: "top" }}
+                    />
+                  )}
+                />
+              </div>
           </div>
 
           {/* Botones de acción */}

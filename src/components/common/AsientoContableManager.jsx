@@ -111,6 +111,18 @@ const AsientoContableManager = ({
       guardarEndpoint: "guardar-asiento",
       eliminarEndpoint: "asiento", // /asiento/:asientoId
     },
+
+    
+    // ⭐ NUEVO - Deudas con Personal (CTS, Gratificaciones, etc.)
+    DeudaConPersonal: {
+      baseUrl: "/api/deudas-personal",
+      borradorEndpoint: "borrador-asiento",
+      borradorMethod: "GET",
+      guardarEndpoint: "guardar-asiento",
+      eliminarEndpoint: "asiento", // /asiento/:asientoId
+    },
+
+    
   };
 
   const config = configuraciones[documentoTipo];

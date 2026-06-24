@@ -16,6 +16,7 @@ import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
 import { useAuthStore } from "../../shared/stores/useAuthStore"; // ← AGREGAR ESTA LÍNEA
 import IrACxCEditar from "../common/IrACxCEditar";
 import SelectorDocumentoAfecto from "../common/SelectorDocumentoAfecto";
+import AuditoriaDialog from "../common/AuditoriaDialog";
 
 export default function DatosGeneralesTab({
   formData,
@@ -54,6 +55,7 @@ export default function DatosGeneralesTab({
   cuentasCorrientes = [],
   estadosCxC = [],
   isEdit,
+  esSuperUsuario = false, // ← AGREGAR ESTA LÍNEA
   puedeEditar,
   puedeEditarDetalles,
   detallesCount = 0,
@@ -613,12 +615,12 @@ export default function DatosGeneralesTab({
                 onSelect={(datos) => {
                   // Actualizar campos del documento afecto
                   onChange("dcmtoAfectoNCNDId", datos.preFacturaId);
-                  
+
                   // Usar setTimeout para asegurar que los cambios se apliquen en orden
                   setTimeout(() => {
                     onChange("fechaDcmtoAfectoNCND", new Date(datos.fechaDocumento));
                   }, 0);
-                  
+
                   setTimeout(() => {
                     onChange("numeroDcmtoAfectoNCND", datos.numeroDocumento);
                   }, 10);
@@ -1642,6 +1644,33 @@ export default function DatosGeneralesTab({
             marginTop: "1rem",
           }}
         >
+          {/* ⭐ SECCIÓN DE AUDITORÍA (solo en edición) */}
+          {isEdit && (
+            <div style={{ flex: 1 }}>
+              <AuditoriaDialog
+                data={formData}
+                fieldMapping={{
+                  fechaCreacion: "fechaCreacion",
+                  creadoPor: "creadoPor",
+                  fechaActualizacion: "fechaActualizacion",
+                  actualizadoPor: "actualizadoPor",
+                }}
+                usuarios={personalOptions}
+                esSuperUsuario={esSuperUsuario}
+                onSave={(datosCorregidos) => {
+                  onChange("creadoPor", datosCorregidos.creadoPor);
+                  onChange("actualizadoPor", datosCorregidos.actualizadoPor);
+                  onChange("fechaCreacion", datosCorregidos.fechaCreacion);
+                  onChange("fechaActualizacion", datosCorregidos.fechaActualizacion);
+                }}
+                buttonProps={{
+                  label: esSuperUsuario ? "Auditoría" : "Ver Auditoría",
+                  className: "p-button-info",
+                  style: { width: "100%" },
+                }}
+              />
+            </div>
+          )}
           {formData.fechaAprobacion && (
             <div style={{ flex: 1 }}>
               <label

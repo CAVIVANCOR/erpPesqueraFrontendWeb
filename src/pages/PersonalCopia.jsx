@@ -23,7 +23,6 @@ import {
 import { getEmpresas } from "../api/empresa";
 import { Dialog } from "primereact/dialog";
 import { getCargosPersonal } from "../api/cargosPersonal";
-import { getCentrosCosto } from "../api/centroCosto"; // ⭐ NUEVO - API de Centros de Costo
 import { getSedes } from "../api/sedes";
 import { getAreasFisicas } from "../api/areasFisicas";
 import { Avatar } from "primereact/avatar";
@@ -60,7 +59,6 @@ export default function PersonalPage({ ruta }) {
   const [empresaFilter, setEmpresaFilter] = useState(null);
   const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [cargoFilter, setCargoFilter] = useState(null);
-  const [centroCostoFilter, setCentroCostoFilter] = useState(null); // ⭐ NUEVO - Filtro por Centro de Costo
   const [filtroTipoPesca, setFiltroTipoPesca] = useState("todos");
   const [filtroEstado, setFiltroEstado] = useState("activos");
   const [filteredPersonales, setFilteredPersonales] = useState([]);
@@ -87,39 +85,9 @@ export default function PersonalPage({ ruta }) {
       });
     }
   };
-
-
   const getCargoDescripcion = (id) => {
     const cargo = cargosLista.find((c) => Number(c.id) === Number(id));
     return cargo ? cargo.descripcion : "";
-  };
-
-  /**
-   * ⭐ NUEVO - Carga los centros de costo desde el backend.
-   * Utiliza la función getCentrosCosto para obtener los datos.
-   * Si hay un error, muestra un toast con el mensaje de error.
-   */
-  const [centrosCostoLista, setCentrosCostoLista] = useState([]);
-  useEffect(() => {
-    loadCentrosCosto();
-  }, []);
-
-  const loadCentrosCosto = async () => {
-    try {
-      const data = await getCentrosCosto();
-      setCentrosCostoLista(data);
-    } catch (err) {
-      toast?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cargar los centros de costo",
-      });
-    }
-  };
-
-  const getCentroCostoInfo = (id) => {
-    const centro = centrosCostoLista.find((c) => Number(c.id) === Number(id));
-    return centro ? { codigo: centro.Codigo, nombre: centro.Nombre } : null;
   };
 
   /**
@@ -199,7 +167,6 @@ export default function PersonalPage({ ruta }) {
   useEffect(() => {
     loadPersonal();
     loadCargos();
-    loadCentrosCosto(); // ⭐ NUEVO
     loadEmpresas();
     loadSedes();
     loadAreasFisicas();
@@ -223,7 +190,7 @@ export default function PersonalPage({ ruta }) {
 
   useEffect(() => {
     aplicarFiltros();
-  }, [personales, filtroTipoPesca, filtroEstado, empresaFilter, cargoFilter, centroCostoFilter]); // ⭐ NUEVO - Agregar centroCostoFilter
+  }, [personales, filtroTipoPesca, filtroEstado, empresaFilter, cargoFilter]);
 
   const aplicarFiltros = () => {
     let personalesFiltrados = [...personales];
@@ -242,12 +209,6 @@ export default function PersonalPage({ ruta }) {
       );
     }
 
-    // ⭐ NUEVO - Filtrar por centro de costo
-    if (centroCostoFilter) {
-      personalesFiltrados = personalesFiltrados.filter(
-        (personal) => Number(personal.centroCostoId) === Number(centroCostoFilter),
-      );
-    }
     // Filtrar por estado (cesado)
     if (filtroEstado === "activos") {
       personalesFiltrados = personalesFiltrados.filter(
@@ -658,7 +619,6 @@ export default function PersonalPage({ ruta }) {
           ? Number(data.tipoContratoId)
           : null,
         cargoId: data.cargoId ? Number(data.cargoId) : null,
-        centroCostoId: data.centroCostoId ? Number(data.centroCostoId) : null, // ⭐ NUEVO
         sedeEmpresaId: data.sedeEmpresaId ? Number(data.sedeEmpresaId) : null,
         areaFisicaId: data.areaFisicaId ? Number(data.areaFisicaId) : null,
         sexo: typeof data.sexo === "boolean" ? data.sexo : false,
@@ -734,16 +694,15 @@ export default function PersonalPage({ ruta }) {
       correo: selected.correo || "",
       urlFotoPersona: selected.urlFotoPersona || "",
       tipoContratoId: selected.tipoContratoId
-        ? Number(selected.tipoContratoId)  // ✅ Number
-        : null,
-      cargoId: selected.cargoId ? Number(selected.cargoId) : null,  // ✅ Number
-      centroCostoId: selected.centroCostoId ? Number(selected.centroCostoId) : null, // ✅ Number
+        ? String(selected.tipoContratoId)
+        : "",
+      cargoId: selected.cargoId ? String(selected.cargoId) : "",
       areaFisicaId: selected.areaFisicaId
-        ? Number(selected.areaFisicaId)  // ✅ Number
-        : null,
+        ? String(selected.areaFisicaId)
+        : "",
       sedeEmpresaId: selected.sedeEmpresaId
-        ? Number(selected.sedeEmpresaId)  // ✅ Number
-        : null,
+        ? String(selected.sedeEmpresaId)
+        : "",
       sexo: typeof selected.sexo === "boolean" ? selected.sexo : false,
       paraTemporadaPesca:
         typeof selected.paraTemporadaPesca === "boolean"
@@ -853,21 +812,6 @@ export default function PersonalPage({ ruta }) {
                 style={{ minWidth: "200px" }}
                 filter
                 filterBy="descripcion"
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="centroCosto">Filtrar por Centro de Costo</label>
-              <Dropdown
-                value={centroCostoFilter}
-                options={centrosCostoLista}
-                optionLabel="Nombre"
-                optionValue="id"
-                placeholder="Filtrar por centro de costo"
-                onChange={(e) => setCentroCostoFilter(e.value)}
-                showClear
-                style={{ minWidth: "200px" }}
-                filter
-                filterBy="Nombre,Codigo"
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -1017,25 +961,6 @@ export default function PersonalPage({ ruta }) {
         <Column
           header="Cargo"
           body={(row) => getCargoDescripcion(row.cargoId)}
-          sortable
-        />
-        <Column
-          header="Centro de Costo"
-          body={(row) => {
-            const info = getCentroCostoInfo(row.centroCostoId);
-            return info ? (
-              <Tag
-                value={`${info.codigo} - ${info.nombre}`}
-                severity="info"
-                style={{
-                  fontSize: "0.75rem",
-                  padding: "0.25rem 0.5rem",
-                }}
-              />
-            ) : (
-              <span style={{ color: "#999", fontStyle: "italic" }}>Sin asignar</span>
-            );
-          }}
           sortable
         />
         <Column

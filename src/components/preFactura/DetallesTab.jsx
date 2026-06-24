@@ -19,7 +19,6 @@ import {
   eliminarDetallePreFactura,
 } from "../../api/detallePreFactura";
 import AsignarStockDialog from '../common/kardex/asignar-stock/AsignarStockDialog';
-import ConfigurarMovimientosDialog from '../common/kardex/configurar-movimientos/ConfigurarMovimientosDialog';
 
 export default function DetallesTab({
   preFacturaId,
@@ -40,6 +39,7 @@ export default function DetallesTab({
   tipoDocumentoId = null,
   tiposDocumentoOptions = [],
   onChange = () => { },
+  onEstadoAsignacionChange = () => { },
   // ⭐ NUEVOS PROPS PARA PRECIO AUTOMÁTICO
   clienteId = null,
   fechaDocumento = null,
@@ -76,7 +76,6 @@ export default function DetallesTab({
     movimientosAGenerar: []
   });
   const [showAsignarStock, setShowAsignarStock] = useState(false);
-  const [showConfigurarMovimientos, setShowConfigurarMovimientos] = useState(false);
   const [detalleParaAsignar, setDetalleParaAsignar] = useState(null);
   // Cargar detalles cuando cambie preFacturaId
   useEffect(() => {
@@ -108,11 +107,6 @@ export default function DetallesTab({
       setLoading(false);
     }
   };
-
-
-
-
-
 
   const abrirDialogoNuevo = () => {
     if (!preFacturaId) {
@@ -280,12 +274,6 @@ export default function DetallesTab({
     }
   };
 
-  // ⭐ HANDLER: Abrir diálogo de asignación de stock
-  const handleAsignarStock = (detalle) => {
-    setDetalleParaAsignar(detalle);
-    setShowAsignarStock(true);
-  };
-
   // ⭐ HANDLER: Confirmar asignación de stock (FASE 1)
   const handleConfirmarAsignacion = (asignacion) => {
     setAsignacionesStock(prev => ({
@@ -309,54 +297,10 @@ export default function DetallesTab({
     });
   };
 
-  // ⭐ HANDLER: Generar Kardex (FASE 2)
-  const handleGenerarKardex = () => {
-    if (!estadoGlobalAsignacion.estaCompleto) {
-      toast.current?.show({
-        severity: 'warn',
-        summary: 'Asignación Incompleta',
-        detail: `Debe asignar stock a todos los productos (${estadoGlobalAsignacion.itemsAsignados}/${estadoGlobalAsignacion.itemsTotales} completados)`,
-        life: 4000
-      });
-      return;
-    }
-
-    setShowConfigurarMovimientos(true);
-  };
-
-  // ⭐ HANDLER: Confirmar movimientos (FASE 2)
-  const handleConfirmarMovimientos = async (movimientosConfigurados) => {
-    try {
-      // TODO: Llamar al backend para crear MovimientoAlmacen
-      // await crearMovimientosAlmacen(preFacturaId, movimientosConfigurados);
-
-      setShowConfigurarMovimientos(false);
-
-      toast.current?.show({
-        severity: 'success',
-        summary: 'Kardex Generado',
-        detail: `Se crearon ${movimientosConfigurados.length} movimientos de almacén`,
-        life: 3000
-      });
-
-      // Limpiar asignaciones
-      setAsignacionesStock({});
-      setEstadoGlobalAsignacion({
-        estaCompleto: false,
-        itemsAsignados: 0,
-        itemsTotales: 0,
-        movimientosAGenerar: []
-      });
-
-    } catch (error) {
-      console.error('Error al generar kardex:', error);
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'No se pudo generar el kardex',
-        life: 3000
-      });
-    }
+  // ⭐ HANDLER: Abrir dialog de asignación de stock
+  const handleAbrirAsignarStock = (detalle) => {
+    setDetalleParaAsignar(detalle);
+    setShowAsignarStock(true);
   };
 
   const confirmarEliminar = (detalle) => {
@@ -424,13 +368,18 @@ export default function DetallesTab({
   }, [detalles, asignacionesStock]);
 
 
-    // ⭐ EFECTO: Actualizar estado global cuando cambian detalles o asignaciones
+  // ⭐ EFECTO: Actualizar estado global cuando cambian detalles o asignaciones
   useEffect(() => {
     actualizarEstadoGlobalAsignacion();
   }, [actualizarEstadoGlobalAsignacion]);
 
+  // ⭐ EFECTO: Notificar cambios de estado global al padre
+  useEffect(() => {
+    if (onEstadoAsignacionChange) {
+      onEstadoAsignacionChange(estadoGlobalAsignacion);
+    }
+  }, [estadoGlobalAsignacion, onEstadoAsignacionChange]);
 
-  
   const handleEliminar = async (detalleId) => {
     setLoading(true);
     try {
@@ -507,44 +456,18 @@ export default function DetallesTab({
     );
   };
 
-  // ⭐ TEMPLATE: Columna de asignación de stock
-  const stockTemplate = (rowData) => {
-    const asignacion = asignacionesStock[rowData.id];
-
-    if (asignacion?.estaAsignado) {
-      return (
-        <div className="flex flex-column align-items-center gap-2">
-          <Tag severity="success" value="Asignado" icon="pi pi-check" />
-          <small className="text-600">
-            {asignacion.lotes?.length || 0} lotes
-          </small>
-          <Button
-            label="Ver/Editar"
-            icon="pi pi-eye"
-            size="small"
-            outlined
-            onClick={() => handleAsignarStock(rowData)}
-            disabled={readOnly}
-          />
-        </div>
-      );
-    }
-
-    return (
-      <Button
-        label="Asignar Stock"
-        icon="pi pi-box"
-        size="small"
-        severity="warning"
-        onClick={() => handleAsignarStock(rowData)}
-        disabled={readOnly || !rowData.productoId}
-      />
-    );
-  };
 
   const accionesTemplate = (rowData) => {
     return (
-      <div style={{ display: "flex", gap: "0.5rem" }}>
+      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+        <Button
+          icon="pi pi-box"
+          label="Asignar"
+          className="p-button-sm p-button-info"
+          onClick={() => handleAbrirAsignarStock(rowData)}
+          disabled={readOnly}
+          tooltip="Asignar stock desde almacenes"
+        />
         <Button
           icon="pi pi-pencil"
           className="p-button-rounded p-button-text p-button-warning"
@@ -641,21 +564,6 @@ export default function DetallesTab({
                   ? "Modo solo lectura"
                   : ""
             }
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <Button
-            label="Generar Kardex"
-            icon="pi pi-file-export"
-            severity="success"
-            onClick={handleGenerarKardex}
-            disabled={!estadoGlobalAsignacion.estaCompleto || readOnly}
-            tooltip={
-              estadoGlobalAsignacion.estaCompleto
-                ? "Generar movimientos de almacén y kardex"
-                : `Asignación incompleta: ${estadoGlobalAsignacion.itemsAsignados}/${estadoGlobalAsignacion.itemsTotales} items`
-            }
-            tooltipOptions={{ position: 'top' }}
           />
         </div>
 
@@ -836,14 +744,27 @@ export default function DetallesTab({
           alignHeader="center"
         />
         <Column
-          header="Stock"
-          body={stockTemplate}
-          style={{ width: "150px", textAlign: "center" }}
+          header="Cant Asignada"
+          body={(rowData) => {
+            const asignacion = asignacionesStock[rowData.id];
+            if (!asignacion || !asignacion.estaAsignado) {
+              return (
+                <Tag severity="warning" value="Sin asignar" icon="pi pi-exclamation-triangle" />
+              );
+            }
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Tag severity="success" value={`${asignacion.cantidadAsignada} ${rowData.producto?.unidadMedida?.simbolo || ''}`} icon="pi pi-check" />
+                <small style={{ color: '#6c757d' }}>({asignacion.lotes?.length || 0} lotes)</small>
+              </div>
+            );
+          }}
+          style={{ minWidth: "180px" }}
         />
         <Column
           header="Acciones"
           body={accionesTemplate}
-          style={{ width: "120px" }}
+          style={{ minWidth: "220px" }}
         />
       </DataTable>
 
@@ -1119,15 +1040,6 @@ export default function DetallesTab({
         unidadMedida={detalleParaAsignar?.producto?.unidadMedida?.simbolo}
         clienteId={clienteId}
         onConfirmar={handleConfirmarAsignacion}
-      />
-
-      {/* ⭐ DIÁLOGO: Configurar Movimientos (FASE 2) */}
-      <ConfigurarMovimientosDialog
-        visible={showConfigurarMovimientos}
-        onHide={() => setShowConfigurarMovimientos(false)}
-        empresaId={empresaId}
-        asignacionesLotes={estadoGlobalAsignacion.movimientosAGenerar}
-        onConfirmar={handleConfirmarMovimientos}
       />
     </div>
   );

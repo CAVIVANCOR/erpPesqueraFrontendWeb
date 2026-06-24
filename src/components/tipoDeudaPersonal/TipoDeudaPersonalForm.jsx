@@ -7,7 +7,7 @@ import { Dropdown } from "primereact/dropdown";
 import { classNames } from "primereact/utils";
 import { useForm, Controller } from "react-hook-form";
 import { getCategoriaTipoDeudaPersonalActivos } from "../../api/tesoreria/categoriaTipoDeudaPersonal";
-import { getPlanCuentasContable } from "../../api/contabilidad/planCuentasContable";
+import PlanCuentaContableSelector from "../common/PlanCuentaContableSelector";
 import { FRECUENCIA_PAGO_OPTIONS } from "../../utils/utils";
 
 const TipoDeudaPersonalForm = ({
@@ -19,9 +19,6 @@ const TipoDeudaPersonalForm = ({
 }) => {
   const [categorias, setCategorias] = useState([]);
   const [loadingCategorias, setLoadingCategorias] = useState(false);
-  const [cuentasContables, setCuentasContables] = useState([]);
-  const [loadingData, setLoadingData] = useState(false);
-
   const {
     control,
     handleSubmit,
@@ -54,22 +51,6 @@ const TipoDeudaPersonalForm = ({
       }
     };
     loadCategorias();
-  }, []);
-
-  // Cargar cuentas contables
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoadingData(true);
-        const cuentasData = await getPlanCuentasContable();
-        setCuentasContables(cuentasData || []);
-      } catch (error) {
-        console.error("Error al cargar cuentas contables:", error);
-      } finally {
-        setLoadingData(false);
-      }
-    };
-    loadData();
   }, []);
 
   useEffect(() => {
@@ -219,45 +200,25 @@ const TipoDeudaPersonalForm = ({
         {getFormErrorMessage("descripcion")}
       </div>
 
-
       {/* Cuenta Contable */}
       <div className="field">
-        <label
-          htmlFor="cuentaContableId"
-          className={classNames("font-medium", {
-            "p-error": errors.cuentaContableId,
-          })}
-        >
-          Cuenta Contable
-        </label>
         <Controller
           name="cuentaContableId"
           control={control}
-          render={({ field, fieldState }) => (
-            <div className="p-inputgroup">
-              <span className="p-inputgroup-addon">
-                <i className="pi pi-book" />
-              </span>
-              <Dropdown
-                id={field.name}
-                value={field.value}
-                options={cuentasContables}
-                optionLabel={(option) =>
-                  `${option.codigoCuenta} - ${option.nombreCuenta}`
-                }
-                optionValue="id"
-                onChange={(e) => field.onChange(e.value)}
-                placeholder="Seleccione una cuenta contable"
-                className={classNames({ "p-invalid": fieldState.error })}
-                disabled={loading || loadingData}
-                filter
-                showClear
-                emptyMessage="No hay cuentas contables disponibles"
-              />
-            </div>
+          render={({ field }) => (
+            <PlanCuentaContableSelector
+              value={field.value ? Number(field.value) : null}
+              onChange={(id) => field.onChange(id)}
+              label="Cuenta Contable"
+              placeholder="Elegir Cuenta Contable"
+              disabled={loading}
+              required={false}
+              error={!!errors.cuentaContableId}
+              errorMessage={errors.cuentaContableId?.message}
+              showClearButton={true}
+            />
           )}
         />
-        {getFormErrorMessage("cuentaContableId")}
       </div>
 
       {/* Periodicidad */}

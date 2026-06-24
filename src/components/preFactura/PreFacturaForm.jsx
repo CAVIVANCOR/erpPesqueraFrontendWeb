@@ -238,12 +238,18 @@ export default function PreFacturaForm({
       ? Number(defaultValues.movSalidaAlmacenId)
       : null,
 
-    // Sistema
+    // Sistema y Auditoría
     creadoPor: defaultValues?.creadoPor
       ? Number(defaultValues.creadoPor)
       : null,
     actualizadoPor: defaultValues?.actualizadoPor
       ? Number(defaultValues.actualizadoPor)
+      : null,
+    fechaCreacion: defaultValues?.fechaCreacion
+      ? new Date(defaultValues.fechaCreacion)
+      : null,
+    fechaActualizacion: defaultValues?.fechaActualizacion
+      ? new Date(defaultValues.fechaActualizacion)
       : null,
     nroLiquidacionFacturacion: defaultValues?.nroLiquidacionFacturacion || "",
     motivoNotaCreditoDebitoId: defaultValues?.motivoNotaCreditoDebitoId
@@ -439,12 +445,18 @@ export default function PreFacturaForm({
           ? Number(defaultValues.movSalidaAlmacenId)
           : null,
 
-        // Sistema
+        // Sistema y Auditoría
         creadoPor: defaultValues?.creadoPor
           ? Number(defaultValues.creadoPor)
           : null,
         actualizadoPor: defaultValues?.actualizadoPor
           ? Number(defaultValues.actualizadoPor)
+          : null,
+        fechaCreacion: defaultValues?.fechaCreacion
+          ? new Date(defaultValues.fechaCreacion)
+          : null,
+        fechaActualizacion: defaultValues?.fechaActualizacion
+          ? new Date(defaultValues.fechaActualizacion)
           : null,
         nroLiquidacionFacturacion:
           defaultValues?.nroLiquidacionFacturacion || "",
@@ -1104,9 +1116,18 @@ export default function PreFacturaForm({
         ? Number(formData.movSalidaAlmacenId)
         : null,
       esGerencial: formData.esGerencial || false,
-      creadoPor: formData.creadoPor ? Number(formData.creadoPor) : null,
-      actualizadoPor: formData.actualizadoPor
-        ? Number(formData.actualizadoPor)
+      // ════════════════════════════════════════════════════════════
+      // AUDITORÍA - TRAZABILIDAD COMPLETA
+      // En CREACIÓN: creadoPor y actualizadoPor = usuario actual
+      // En EDICIÓN: creadoPor se mantiene, actualizadoPor = usuario actual
+      // Las fechas las asigna automáticamente el backend con @default(now()) y @updatedAt
+      // ════════════════════════════════════════════════════════════
+      creadoPor: !isEdit && usuario?.personalId
+        ? Number(usuario.personalId)  // CREACIÓN: asignar usuario actual
+        : (formData.creadoPor ? Number(formData.creadoPor) : null), // EDICIÓN: mantener original
+
+      actualizadoPor: usuario?.personalId
+        ? Number(usuario.personalId)  // SIEMPRE asignar usuario actual (creación Y edición)
         : null,
       nroLiquidacionFacturacion:
         formData.nroLiquidacionFacturacion?.trim() || null,

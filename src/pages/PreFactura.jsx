@@ -2,6 +2,11 @@
 // Pantalla CRUD profesional para PreFactura. Cumple regla transversal ERP Megui:
 // - Edición por clic en fila, borrado seguro con roles, ConfirmDialog, Toast
 // - Autenticación JWT desde Zustand, normalización de IDs, documentación en español
+// ════════════════════════════════════════════════════════════
+// CONSTANTES DE MÓDULOS DEL SISTEMA
+// Usadas para obtener ParametroAprobador por módulo
+// ════════════════════════════════════════════════════════════
+const MODULO_VENTAS = 5; // Módulo de Ventas - usado para obtener respVentasId desde ParametroAprobador
 import React, { useRef, useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
@@ -56,6 +61,9 @@ import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
 import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 import GenerarKardexDialog from "../components/common/kardex/GenerarKardexDialog";
 import { generarMovimientoAlmacenPreFactura, regenerarKardexPreFactura } from "../api/preFactura";
+import { useDashboardStore } from "../shared/stores/useDashboardStore";
+import AuditoriaDialog from "../components/common/AuditoriaDialog";
+
 /**
  * Componente PreFactura
  * Gestión CRUD de pre-facturas con patrón profesional ERP Megui
@@ -516,10 +524,65 @@ const PreFactura = ({ ruta }) => {
       console.error("Error al recargar clientes:", error);
     }
   };
+
   const abrirDialogoNuevo = async () => {
     try {
-      // Crear objeto inicial
-      const preFacturaInicial = {};
+      // ════════════════════════════════════════════════════════════
+      // PRESELECCIÓN AUTOMÁTICA DE RESPONSABLE DE VENTAS
+      // Busca en ParametroAprobador el responsable vigente del módulo VENTAS
+      // para la empresa seleccionada
+      // ════════════════════════════════════════════════════════════
+      let respVentasId = null;
+
+      if (empresaIdSelector) {
+        const { getParametrosAprobadorPorModulo } = await import("../api/parametroAprobador");
+
+        try {
+          const parametros = await getParametrosAprobadorPorModulo(
+            empresaIdSelector,
+            MODULO_VENTAS
+          );
+
+          // Filtrar por activo (cesado=false) y vigencia
+          const hoy = new Date();
+          const parametroVigente = parametros.find((p) => {
+            // Debe estar activo (no cesado)
+            if (p.cesado !== false) return false;
+
+            // Debe estar vigente
+            const vigenteDesde = new Date(p.vigenteDesde);
+            const vigenteHasta = p.vigenteHasta ? new Date(p.vigenteHasta) : null;
+
+            const estaVigente = hoy >= vigenteDesde && (!vigenteHasta || hoy <= vigenteHasta);
+
+            return estaVigente;
+          });
+
+          if (parametroVigente) {
+            respVentasId = parametroVigente.personalRespId;
+          } else {
+            console.warn(
+              `[PreFactura] No se encontró ParametroAprobador vigente para empresa ${empresaIdSelector}, módulo VENTAS (${MODULO_VENTAS})`
+            );
+          }
+        } catch (error) {
+          console.error("[PreFactura] Error al obtener ParametroAprobador:", error);
+          // Continuar sin respVentasId si hay error
+        }
+      }
+
+      // ════════════════════════════════════════════════════════════
+      // PRESELECCIÓN AUTOMÁTICA DE UNIDAD DE NEGOCIO
+      // Si viene desde Dashboard Unidades, preseleccionar la unidad activa
+      // ════════════════════════════════════════════════════════════
+      const { unidadSeleccionada } = useDashboardStore.getState();
+      const unidadNegocioId = unidadSeleccionada?.id ? Number(unidadSeleccionada.id) : null;
+
+      // Crear objeto inicial con campos preseleccionados
+      const preFacturaInicial = {
+        respVentasId,
+        unidadNegocioId,
+      };
 
       setSelectedPreFactura(preFacturaInicial);
       setIsEditing(false);
@@ -531,7 +594,6 @@ const PreFactura = ({ ruta }) => {
       setDialogVisible(true);
     }
   };
-
   const abrirDialogoEdicion = (preFactura) => {
     setNavigationStack([]); // Limpiar el stack al abrir desde la lista
     setSelectedPreFactura(preFactura);
@@ -900,6 +962,7 @@ const PreFactura = ({ ruta }) => {
 
 
   const confirmarEliminacion = (preFactura) => {
+    console.log("confirmarEliminacion preFactura:", preFactura, "permisos:", permisos)
     // Validar permisos de eliminación
     if (!permisos.puedeEliminar) {
       toast.current.show({
@@ -910,6 +973,7 @@ const PreFactura = ({ ruta }) => {
       });
       return;
     }
+    console.log("Si Tiene Derecho a Eliminar, confirmarEliminacion preFactura:", preFactura, "permisos:", permisos)
 
     confirmDialog({
       message: `¿Está seguro de eliminar la pre-factura ${preFactura.id}?`,
@@ -1210,6 +1274,45 @@ const PreFactura = ({ ruta }) => {
     }
   };
 
+
+  const actionBodyTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          rounded
+          outlined
+          className="p-button-warning"
+          onClick={() => abrirDialogoEdicion(rowData)}
+          disabled={!permisos.puedeEditar}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+        />
+        <Button
+          icon="pi pi-trash"
+          rounded
+          outlined
+          severity="danger"
+          onClick={() => confirmarEliminacion(rowData)}
+          disabled={!permisos.puedeEliminar}
+          tooltip="Eliminar"
+          tooltipOptions={{ position: "top" }}
+        />
+        {/* ⭐ NUEVO: Botón de Auditoría */}
+        <AuditoriaDialog
+          data={rowData}
+          fieldMapping={{
+            fechaCreacion: "fechaCreacion",
+            creadoPor: "creadoPor",
+            fechaActualizacion: "fechaActualizacion",
+            actualizadoPor: "actualizadoPor",
+          }}
+          usuarios={personalOptions}
+        />
+      </div>
+    );
+  };
+
   const empresaTemplate = (rowData) => {
     if (!rowData.empresa) return "N/A";
 
@@ -1284,22 +1387,10 @@ const PreFactura = ({ ruta }) => {
   };
 
   const montosTemplate = (rowData) => {
-    const subtotal = (rowData.detalles || []).reduce((sum, det) => {
-      const cantidad = Number(det.cantidad) || 0;
-      const precio = Number(det.precioUnitario) || 0;
-      return sum + cantidad * precio;
-    }, 0);
-    const pagosPrevios = Number(rowData.pagosPreviosSI) || 0;
-    const porcentajeIGV = Number(rowData.porcentajeIGV) || 0;
-    // Restar pagos previos del SUBTOTAL (no del total)
-    const subtotalNeto = subtotal - pagosPrevios;
-    // Calcular IGV sobre el subtotal NETO
-    const igv = rowData.esExoneradoAlIGV
-      ? 0
-      : subtotalNeto * (porcentajeIGV / 100);
-    // Calcular total
-    const total = subtotalNeto + igv;
+    // Mostrar directamente el campo total de PreFactura (Precio de Venta Incluido IGV)
+    const total = Number(rowData.total) || 0;
     const simboloMoneda = rowData.moneda?.simbolo || "";
+
     return (
       <div style={{ textAlign: "right" }}>
         <Tag
@@ -1313,7 +1404,6 @@ const PreFactura = ({ ruta }) => {
       </div>
     );
   };
-
   const accionesTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
@@ -1735,6 +1825,12 @@ const PreFactura = ({ ruta }) => {
             sortable
           />
           <Column
+            body={actionBodyTemplate}
+            exportable={false}
+            style={{ width: "180px" }}
+            header="Acciones"
+          />
+          <Column
             body={accionesTemplate}
             header="Acciones"
             style={{ width: 120, textAlign: "center", verticalAlign: "top" }}
@@ -1929,7 +2025,7 @@ const PreFactura = ({ ruta }) => {
           loading={loading}
         />
       )}
-
+      <ConfirmDialog />
     </div>
   );
 };

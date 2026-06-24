@@ -49,6 +49,7 @@ export default function ConsultaStockForm({
   );
   const [filtroCliente2, setFiltroCliente2] = useState(null);
   const [filtroAlmacen2, setFiltroAlmacen2] = useState(null);
+  const [filtroUbicacionFisica2, setFiltroUbicacionFisica2] = useState(null);
   const [filtroCustodia2, setFiltroCustodia2] = useState(false);
 
   // Datos de las tablas
@@ -62,6 +63,9 @@ export default function ConsultaStockForm({
   // Almacenes dinámicos
   const [almacenesDisponibles1, setAlmacenesDisponibles1] = useState([]);
   const [almacenesDisponibles2, setAlmacenesDisponibles2] = useState([]);
+
+  // Ubicaciones físicas dinámicas
+  const [ubicacionesFisicasDisponibles2, setUbicacionesFisicasDisponibles2] = useState([]);
 
   // Estados para Kardex
   const [showKardex, setShowKardex] = useState(false);
@@ -201,8 +205,39 @@ export default function ConsultaStockForm({
         almacenesUnicos.sort((a, b) => a.descripcion.localeCompare(b.descripcion))
       );
 
+      // Extraer ubicaciones físicas únicas
+      const ubicacionesUnicas = [];
+      const idsUbicacionesVistos = new Set();
+      data.forEach((item) => {
+        if (item.ubicacionFisicaId && !idsUbicacionesVistos.has(Number(item.ubicacionFisicaId))) {
+          idsUbicacionesVistos.add(Number(item.ubicacionFisicaId));
+          ubicacionesUnicas.push({
+            id: item.ubicacionFisicaId,
+            descripcion:
+              item.ubicacionFisica?.nombre ||
+              item.ubicacionFisica?.descripcion ||
+              `Ubicación ${item.ubicacionFisicaId}`,
+          });
+        }
+      });
+      // Agregar opción "Sin ubicación" si hay registros sin ubicacionFisicaId
+      const tieneSinUbicacion = data.some(item => !item.ubicacionFisicaId);
+      if (tieneSinUbicacion) {
+        ubicacionesUnicas.push({
+          id: 0,
+          descripcion: "Sin ubicación",
+        });
+      }
+      setUbicacionesFisicasDisponibles2(
+        ubicacionesUnicas.sort((a, b) => {
+          if (a.id === null) return 1; // "Sin ubicación" al final
+          if (b.id === null) return -1;
+          return a.descripcion.localeCompare(b.descripcion);
+        })
+      );
+
       // Aplicar filtro inicial
-      aplicarFiltroLocal2(data, filtroAlmacen2);
+      aplicarFiltroLocal2(data, filtroAlmacen2, filtroUbicacionFisica2);
     } catch (error) {
       console.error("Error al cargar saldos detallados:", error);
       toast.current?.show({
@@ -225,15 +260,31 @@ export default function ConsultaStockForm({
     }
   };
 
-  const aplicarFiltroLocal2 = (datos, almacenId) => {
-    if (!almacenId) {
-      setSaldosDetalladosFiltrados(datos);
-    } else {
-      const filtrados = datos.filter(
+  const aplicarFiltroLocal2 = (datos, almacenId, ubicacionFisicaId) => {
+    let filtrados = datos;
+
+    // Filtrar por almacén
+    if (almacenId) {
+      filtrados = filtrados.filter(
         (item) => Number(item.almacenId) === Number(almacenId)
       );
-      setSaldosDetalladosFiltrados(filtrados);
     }
+
+    // Filtrar por ubicación física
+    if (ubicacionFisicaId !== null && ubicacionFisicaId !== undefined) {
+      if (ubicacionFisicaId === 0) {
+        // Usuario seleccionó "Sin ubicación" (valor centinela 0)
+        filtrados = filtrados.filter((item) => !item.ubicacionFisicaId);
+      } else {
+        // Usuario seleccionó una ubicación física específica
+        filtrados = filtrados.filter(
+          (item) => Number(item.ubicacionFisicaId) === Number(ubicacionFisicaId)
+        );
+      }
+    }
+    // Si ubicacionFisicaId es null: no filtrar (mostrar todos)
+
+    setSaldosDetalladosFiltrados(filtrados);
   };
 
   const limpiarFiltros1 = () => {
@@ -246,6 +297,7 @@ export default function ConsultaStockForm({
   const limpiarFiltros2 = () => {
     setFiltroCliente2(null);
     setFiltroAlmacen2(null);
+    setFiltroUbicacionFisica2(null);
     setFiltroCustodia2(false);
     setSaldosDetalladosFiltrados(saldosDetallados);
   };
@@ -354,6 +406,16 @@ export default function ConsultaStockForm({
   const estadoTemplate = (rowData) => rowData.estado?.descripcion || "-";
   const estadoCalidadTemplate = (rowData) =>
     rowData.estadoCalidad?.descripcion || "-";
+
+  const ubicacionFisicaTemplate = (rowData) => {
+    return (
+      rowData.ubicacionFisica?.nombre ||
+      rowData.ubicacionFisica?.descripcion ||
+      rowData.UbicacionFisica?.nombre ||
+      rowData.UbicacionFisica?.descripcion ||
+      (rowData.ubicacionFisicaId ? `Ubicación ${rowData.ubicacionFisicaId}` : "-")
+    );
+  };
 
   return (
     <>
@@ -611,9 +673,29 @@ export default function ConsultaStockForm({
                     }))}
                     onChange={(e) => {
                       setFiltroAlmacen2(e.value);
-                      aplicarFiltroLocal2(saldosDetallados, e.value);
+                      aplicarFiltroLocal2(saldosDetallados, e.value, filtroUbicacionFisica2);
                     }}
                     placeholder="Todos los almacenes"
+                    optionLabel="label"
+                    optionValue="value"
+                    showClear
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="ubicacionFisica2">Ubicación Física</label>
+                  <Dropdown
+                    id="ubicacionFisica2"
+                    value={filtroUbicacionFisica2}
+                    options={ubicacionesFisicasDisponibles2.map((u) => ({
+                      label: u.descripcion,
+                      value: u.id,
+                    }))}
+                    onChange={(e) => {
+                      setFiltroUbicacionFisica2(e.value);
+                      aplicarFiltroLocal2(saldosDetallados, filtroAlmacen2, e.value);
+                    }}
+                    placeholder="Todas las ubicaciones"
                     optionLabel="label"
                     optionValue="value"
                     showClear
@@ -659,6 +741,8 @@ export default function ConsultaStockForm({
                 paginator
                 rows={20}
                 dataKey="id"
+                stripedRows
+                showGridlines
                 style={{ fontSize: getResponsiveFontSize() }}
                 emptyMessage="No hay datos para mostrar"
                 scrollable
@@ -687,6 +771,13 @@ export default function ConsultaStockForm({
                   sortable
                 />
                 <Column
+                  field="ubicacionFisica"
+                  header="Ubicación"
+                  body={ubicacionFisicaTemplate}
+                  sortable
+                  style={{ minWidth: "150px" }}
+                />
+                <Column
                   field="producto"
                   header="Producto"
                   body={productoTemplate}
@@ -701,13 +792,13 @@ export default function ConsultaStockForm({
                 <Column field="lote" header="Lote" sortable />
                 <Column
                   field="fechaVencimiento"
-                  header="F. Vencimiento"
+                  header="F. Vence"
                   body={(rowData) => fechaTemplate(rowData, "fechaVencimiento")}
                   sortable
                 />
                 <Column
                   field="fechaProduccion"
-                  header="F. Producción"
+                  header="F. Prod."
                   body={(rowData) => fechaTemplate(rowData, "fechaProduccion")}
                   sortable
                 />

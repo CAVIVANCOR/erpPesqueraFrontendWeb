@@ -9,11 +9,13 @@ import {
   crearCentroCosto,
   actualizarCentroCosto,
 } from "../../api/centroCosto";
+import PlanCuentaContableSelector from "../common/PlanCuentaContableSelector";  // ⭐ NUEVO
 
 export default function CentroCostoForm({
   isEdit = false,
   defaultValues = {},
   categorias = [],
+  // cuentasContables = [],  // ⭐ ELIMINADO - Ya no se necesita
   onSubmit,
   onCancel,
   loading = false,
@@ -30,6 +32,9 @@ export default function CentroCostoForm({
       ? Number(defaultValues.CategoriaID)
       : null,
     ParentCentroID: defaultValues?.ParentCentroID || "",
+    cuentaContableId: defaultValues?.cuentaContableId
+      ? Number(defaultValues.cuentaContableId)
+      : null,  // ⭐ NUEVO
   });
 
   useEffect(() => {
@@ -41,41 +46,47 @@ export default function CentroCostoForm({
         ? Number(defaultValues.CategoriaID)
         : null,
       ParentCentroID: (defaultValues?.ParentCentroID || "").toUpperCase(),
+      cuentaContableId: defaultValues?.cuentaContableId
+        ? Number(defaultValues.cuentaContableId)
+        : null,  // ⭐ NUEVO
     });
   }, [defaultValues]);
 
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!formData.Codigo.trim()) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "El código es obligatorio",
+        life: 3000,
+      });
+      return;
+    }
+
+    if (!formData.Nombre.trim()) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "El nombre es obligatorio",
+        life: 3000,
+      });
+      return;
+    }
+
     if (!formData.CategoriaID) {
       toast.current?.show({
         severity: "warn",
         summary: "Validación",
-        detail: "Debe seleccionar una categoría",
-        life: 3000,
-      });
-      return;
-    }
-
-    if (!formData.Codigo) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Validación",
-        detail: "Debe ingresar un código",
-        life: 3000,
-      });
-      return;
-    }
-
-    if (!formData.Nombre) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Validación",
-        detail: "Debe ingresar un nombre",
+        detail: "La categoría es obligatoria",
         life: 3000,
       });
       return;
@@ -84,11 +95,16 @@ export default function CentroCostoForm({
     const dataToSend = {
       Codigo: formData.Codigo.toUpperCase(),
       Nombre: formData.Nombre.toUpperCase(),
-      Descripcion: formData.Descripcion.toUpperCase(),
+      Descripcion: formData.Descripcion
+        ? formData.Descripcion.toUpperCase()
+        : null,
       CategoriaID: Number(formData.CategoriaID),
       ParentCentroID: formData.ParentCentroID
         ? formData.ParentCentroID.toUpperCase()
         : null,
+      cuentaContableId: formData.cuentaContableId
+        ? Number(formData.cuentaContableId)
+        : null,  // ⭐ NUEVO
     };
 
     setGuardando(true);
@@ -118,6 +134,14 @@ export default function CentroCostoForm({
     value: Number(c.id),
   }));
 
+  // ⭐ ELIMINADO - Ya no se necesita cuentasContablesOptions
+  // const cuentasContablesOptions = cuentasContables
+  //   .filter((c) => c.codigo?.startsWith("94"))
+  //   .map((c) => ({
+  //     label: `${c.codigo} - ${c.descripcion}`,
+  //     value: Number(c.id),
+  //   }));
+
   return (
     <>
       <Toast ref={toast} />
@@ -139,20 +163,9 @@ export default function CentroCostoForm({
               options={categoriasOptions}
               onChange={(e) => handleChange("CategoriaID", e.value)}
               placeholder="Seleccionar categoría"
-              disabled={readOnly || loading || guardando}
               required
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="ParentCentroID">Centro Padre</label>
-            <InputText
-              id="ParentCentroID"
-              value={formData.ParentCentroID}
-              onChange={(e) =>
-                handleChange("ParentCentroID", e.target.value.toUpperCase())
-              }
               disabled={readOnly || loading || guardando}
-              maxLength={20}
+              filter
             />
           </div>
         </div>
@@ -176,9 +189,10 @@ export default function CentroCostoForm({
               }
               required
               disabled={readOnly || loading || guardando}
-              maxLength={20}
+              maxLength={50}
             />
           </div>
+
           <div style={{ flex: 1 }}>
             <label htmlFor="Nombre" style={{ fontWeight: "bold" }}>
               Nombre <span style={{ color: "red" }}>*</span>
@@ -217,15 +231,41 @@ export default function CentroCostoForm({
           </div>
         </div>
 
-        <div className="flex justify-content-end gap-2 mt-4">
+        {/* ⭐ REEMPLAZADO: Dropdown por PlanCuentaContableSelector */}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <PlanCuentaContableSelector
+              value={formData.cuentaContableId}
+              onChange={(id) => handleChange("cuentaContableId", id)}
+              label="Cuenta Contable (Clase 94 - Centros de Costo)"
+              placeholder="Elegir Cuenta Contable Clase 94"
+              disabled={readOnly || loading || guardando}
+              required={false}
+              showClearButton={true}
+            />
+          </div>
+        </div>
+
+        {/* Botones de acción */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 8,
+            marginTop: 18,
+          }}
+        >
           <Button
             label="Cancelar"
             icon="pi pi-times"
-            className="p-button-secondary"
             severity="secondary"
-            size="small"
             raised
-            outlined
             onClick={onCancel}
             type="button"
             disabled={loading || guardando}
@@ -236,11 +276,8 @@ export default function CentroCostoForm({
             type="submit"
             loading={loading || guardando}
             disabled={readOnly || loading || guardando}
-            className="p-button-success"
             severity="success"
             raised
-            size="small"
-            outlined
           />
         </div>
       </form>

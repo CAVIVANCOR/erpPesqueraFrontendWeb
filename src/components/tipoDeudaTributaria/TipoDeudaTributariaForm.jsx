@@ -6,8 +6,8 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
 import { classNames } from "primereact/utils";
 import { useForm, Controller } from "react-hook-form";
-import { getEntidadesComerciales } from "../../api/entidadComercial";
-import { getPlanCuentasContable } from "../../api/contabilidad/planCuentasContable";
+import EntidadComercialSelector from "../common/EntidadComercialSelector";
+import PlanCuentaContableSelector from "../common/PlanCuentaContableSelector";
 import { getCategoriaTipoDeudaTributariaActivos } from "../../api/tesoreria/categoriaTipoDeudaTributaria";
 import { FRECUENCIA_PAGO_OPTIONS } from "../../utils/utils";
 
@@ -18,9 +18,6 @@ const TipoDeudaTributariaForm = ({
   onCancel,
   loading,
 }) => {
-  const [entidades, setEntidades] = useState([]);
-  const [cuentasContables, setCuentasContables] = useState([]);
-  const [loadingData, setLoadingData] = useState(false);
   const [categorias, setCategorias] = useState([]);
   const [loadingCategorias, setLoadingCategorias] = useState(false);
 
@@ -57,26 +54,6 @@ const TipoDeudaTributariaForm = ({
       }
     };
     loadCategorias();
-  }, []);
-
-  // Cargar entidades y cuentas contables
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoadingData(true);
-        const [entidadesData, cuentasData] = await Promise.all([
-          getEntidadesComerciales(),
-          getPlanCuentasContable(),
-        ]);
-        setEntidades(entidadesData || []);
-        setCuentasContables(cuentasData || []);
-      } catch (error) {
-        console.error("Error al cargar datos del formulario:", error);
-      } finally {
-        setLoadingData(false);
-      }
-    };
-    loadData();
   }, []);
 
   useEffect(() => {
@@ -240,40 +217,23 @@ const TipoDeudaTributariaForm = ({
       </div>
 
       <div className="field mt-4">
-        <label
-          htmlFor="entidadRecaudadoraId"
-          className={classNames("font-medium", {
-            "p-error": errors.entidadRecaudadoraId,
-          })}
-        >
-          Entidad Recaudadora
-        </label>
         <Controller
           name="entidadRecaudadoraId"
           control={control}
-          render={({ field, fieldState }) => (
-            <div className="p-inputgroup">
-              <span className="p-inputgroup-addon">
-                <i className="pi pi-building" />
-              </span>
-              <Dropdown
-                id={field.name}
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                options={entidades}
-                optionLabel="razonSocial"
-                optionValue="id"
-                placeholder="Seleccione entidad recaudadora"
-                className={classNames({ "p-invalid": fieldState.error })}
-                disabled={loading || loadingData}
-                filter
-                showClear
-                emptyMessage="No hay entidades disponibles"
-              />
-            </div>
+          render={({ field }) => (
+            <EntidadComercialSelector
+              value={field.value ? Number(field.value) : null}
+              onChange={(id) => field.onChange(id)}
+              label="Entidad Recaudadora (SUNAT, ESSALUD, ONP, etc.)"
+              placeholder="Elegir Entidad Recaudadora"
+              disabled={loading}
+              required={false}
+              error={!!errors.entidadRecaudadoraId}
+              errorMessage={errors.entidadRecaudadoraId?.message}
+              showClearButton={true}
+            />
           )}
         />
-        {getFormErrorMessage("entidadRecaudadoraId")}
       </div>
 
       <div className="field mt-4">
@@ -315,42 +275,23 @@ const TipoDeudaTributariaForm = ({
       </div>
 
       <div className="field mt-4">
-        <label
-          htmlFor="cuentaContableId"
-          className={classNames("font-medium", {
-            "p-error": errors.cuentaContableId,
-          })}
-        >
-          Cuenta Contable
-        </label>
         <Controller
           name="cuentaContableId"
           control={control}
-          render={({ field, fieldState }) => (
-            <div className="p-inputgroup">
-              <span className="p-inputgroup-addon">
-                <i className="pi pi-book" />
-              </span>
-              <Dropdown
-                id={field.name}
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                options={cuentasContables}
-                optionLabel={(option) =>
-                  `${option.codigoCuenta} - ${option.nombreCuenta}`
-                }
-                optionValue="id"
-                placeholder="Seleccione cuenta contable"
-                className={classNames({ "p-invalid": fieldState.error })}
-                disabled={loading || loadingData}
-                filter
-                showClear
-                emptyMessage="No hay cuentas contables disponibles"
-              />
-            </div>
+          render={({ field }) => (
+            <PlanCuentaContableSelector
+              value={field.value ? Number(field.value) : null}
+              onChange={(id) => field.onChange(id)}
+              label="Cuenta Contable"
+              placeholder="Elegir Cuenta Contable"
+              disabled={loading}
+              required={false}
+              error={!!errors.cuentaContableId}
+              errorMessage={errors.cuentaContableId?.message}
+              showClearButton={true}
+            />
           )}
         />
-        {getFormErrorMessage("cuentaContableId")}
       </div>
 
       <div className="field mt-4">

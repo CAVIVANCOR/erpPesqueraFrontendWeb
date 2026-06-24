@@ -158,6 +158,8 @@ const SaldosDetProductoCliente = () => {
           paginator
           rows={10}
           rowsPerPageOptions={[5, 10, 25]}
+          stripedRows
+          showGridlines
           onRowClick={onRowClick}
           selectionMode="single"
           className="datatable-responsive"

@@ -26,7 +26,7 @@ import {
   deletePagoDeudaPersonal,
 } from "../../api/tesoreria/pagoDeudaPersonal";
 import PagoDeudaPersonalDialog from "./PagoDeudaPersonalDialog";
-
+import AsientoContableManager from "../common/AsientoContableManager";  // ⭐ NUEVO
 // ════════════════════════════════════════════════════════════
 // CONSTANTES DE CONFIGURACIÓN - DEUDAS CON PERSONAL
 // ════════════════════════════════════════════════════════════
@@ -134,6 +134,9 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
   const [showPagoDialog, setShowPagoDialog] = useState(false);
   const [pagoSeleccionado, setPagoSeleccionado] = useState(null);
   const [isEditPago, setIsEditPago] = useState(false);
+
+  // Estado para gestión de asientos contables (⭐ NUEVO)
+  const [asientosActualizados, setAsientosActualizados] = useState(0);
 
   // Cargar pagos si es edición
   useEffect(() => {
@@ -306,6 +309,21 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
       });
     } finally {
       setLoadingPagos(false);
+    }
+  };
+
+
+  /**
+   * Callback cuando se genera/modifica un asiento contable
+   * Refresca la vista de asientos
+   */
+  const handleAsientoChange = () => {
+    setAsientosActualizados((prev) => prev + 1);
+
+    // Si es necesario, recargar la deuda completa
+    if (isEdit && defaultValues?.id) {
+      // Opcional: recargar datos de la deuda
+      // cargarDeuda();
     }
   };
 
@@ -858,6 +876,84 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
             <Column header="Acciones" body={accionesTemplate} style={{ width: "120px" }} />
           </DataTable>
         </TabPanel>
+
+
+        {/* TAB 3: ASIENTOS CONTABLES ⭐ NUEVO */}
+        <TabPanel
+          header="Asientos Contables"
+          leftIcon="pi pi-book"
+          disabled={!isEdit || !defaultValues?.id}
+        >
+          <div className="p-fluid">
+            {/* Mensaje informativo */}
+            {!isEdit || !defaultValues?.id ? (
+              <div className="p-message p-message-info" style={{ marginBottom: "1rem" }}>
+                <div className="p-message-wrapper">
+                  <span className="p-message-icon pi pi-info-circle"></span>
+                  <div className="p-message-text">
+                    Debe guardar la deuda primero para poder generar asientos contables.
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Información de la deuda */}
+                <div
+                  style={{
+                    background: "#f8f9fa",
+                    padding: "1rem",
+                    borderRadius: "8px",
+                    marginBottom: "1rem",
+                    border: "1px solid #dee2e6"
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
+                    <div>
+                      <strong>Tipo:</strong>{" "}
+                      {formData.esSaldoInicial ? (
+                        <span className="p-tag p-tag-info">Saldo Inicial</span>
+                      ) : (
+                        <span className="p-tag p-tag-success">Provisión Mensual</span>
+                      )}
+                    </div>
+                    <div>
+                      <strong>Monto:</strong> {formatearNumero(formData.montoOriginal)}
+                    </div>
+                    <div>
+                      <strong>Tipo Libro:</strong>{" "}
+                      {formData.esGerencial ? (
+                        <span className="p-tag p-tag-warning">GERENCIAL</span>
+                      ) : (
+                        <span className="p-tag">FISCAL</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Información de asientos esperados */}
+                  <div style={{ marginTop: "0.5rem", fontSize: "0.9rem", color: "#6c757d" }}>
+                    <i className="pi pi-info-circle" style={{ marginRight: "0.5rem" }}></i>
+                    {formData.esSaldoInicial ? (
+                      <span>Se generará 1 asiento: 39.1 (Saldos Iniciales) vs 41.x (CTS por Pagar)</span>
+                    ) : (
+                      <span>Se generarán 2 asientos: (1) 62.1 vs 41.x (Provisión), (2) 94.x vs 79.1 (Destino)</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Componente de gestión de asientos */}
+                <AsientoContableManager
+                  documentoTipo="DeudaConPersonal"
+                  documentoId={defaultValues?.id}
+                  periodoContableId={formData.periodoContableId}
+                  showAsButton={false}
+                  onAsientoChange={handleAsientoChange}
+                  key={`asientos-${asientosActualizados}`}
+                />
+              </>
+            )}
+          </div>
+        </TabPanel>
+
       </TabView>
 
       {/* Botones de acción */}

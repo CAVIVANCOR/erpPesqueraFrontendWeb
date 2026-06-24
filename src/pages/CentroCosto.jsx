@@ -9,6 +9,7 @@ import { InputText } from "primereact/inputtext";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
+import { Tag } from "primereact/tag";  // ⭐ NUEVO
 import CentroCostoForm from "../components/centroCosto/CentroCostoForm";
 import { getCentrosCosto, eliminarCentroCosto } from "../api/centroCosto";
 import { getAllCategoriaCCosto } from "../api/categoriaCCosto";
@@ -28,6 +29,7 @@ export default function CentroCosto({ ruta }) {
   const toast = useRef(null);
   const [items, setItems] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  // ⭐ ELIMINADO: const [cuentasContables, setCuentasContables] = useState([]);
   const [categoriaFilter, setCategoriaFilter] = useState(null);
   const [centroPadreFilter, setCentroPadreFilter] = useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
@@ -52,12 +54,14 @@ export default function CentroCosto({ ruta }) {
   const cargarDatos = async () => {
     setLoading(true);
     try {
+      // ⭐ MODIFICADO: Solo cargar centros y categorías
       const [centrosData, categoriasData] = await Promise.all([
         getCentrosCosto(),
         getAllCategoriaCCosto(),
       ]);
       setItems(centrosData);
       setCategorias(categoriasData);
+      // ⭐ ELIMINADO: setCuentasContables(cuentasData);
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -212,6 +216,26 @@ export default function CentroCosto({ ruta }) {
       (c) => Number(c.id) === Number(rowData.CategoriaID),
     );
     return categoria ? categoria.nombre : "-";
+  };
+
+  // ⭐ NUEVO: Template para mostrar la cuenta contable
+  const cuentaContableBodyTemplate = (rowData) => {
+    if (!rowData.cuentaContable) {
+      return <span style={{ color: "#999", fontStyle: "italic" }}>Sin asignar</span>;
+    }
+
+    return (
+      <div style={{ display: "flex", gap: "0.25rem", alignItems: "center", flexWrap: "wrap" }}>
+        <Tag
+          value={rowData.cuentaContable.codigoCuenta}
+          severity="info"
+          style={{ fontSize: "0.75rem" }}
+        />
+        <span style={{ fontSize: "0.85rem" }}>
+          {rowData.cuentaContable.nombreCuenta}
+        </span>
+      </div>
+    );
   };
 
   const actionBodyTemplate = (rowData) => {
@@ -418,18 +442,26 @@ export default function CentroCosto({ ruta }) {
           </div>
         }
       >
-        <Column field="id" header="ID" sortable />
+        <Column field="id" header="ID" sortable style={{ width: "80px" }} />
         <Column
           field="CategoriaID"
           header="Categoría"
           body={categoriaNombreBodyTemplate}
           sortable
+          style={{ minWidth: "150px" }}
         />
-        <Column field="Codigo" header="Código" sortable />
-        <Column field="Nombre" header="Nombre" sortable />
-        <Column field="Descripcion" header="Descripción" sortable />
-        <Column field="ParentCentroID" header="Centro Padre" sortable />
-        <Column body={actionBodyTemplate} header="Acciones" />
+        <Column field="Codigo" header="Código" sortable style={{ minWidth: "120px" }} />
+        <Column field="Nombre" header="Nombre" sortable style={{ minWidth: "200px" }} />
+        <Column field="Descripcion" header="Descripción" sortable style={{ minWidth: "200px" }} />
+        {/* ⭐ NUEVA COLUMNA: Cuenta Contable */}
+        <Column
+          field="cuentaContable.codigoCuenta"
+          header="Cuenta Contable (Clase 94)"
+          body={cuentaContableBodyTemplate}
+          sortable
+          style={{ minWidth: "250px" }}
+        />
+        <Column body={actionBodyTemplate} header="Acciones" style={{ width: "120px" }} />
       </DataTable>
       <Dialog
         header={

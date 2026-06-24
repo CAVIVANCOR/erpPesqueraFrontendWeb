@@ -55,6 +55,7 @@ export default function KardexProductoDialog({
   const [filtroAlmacenes, setFiltroAlmacenes] = useState(null);
   const [filtroEstadosMercaderia, setFiltroEstadosMercaderia] = useState([]);
   const [filtroEstadosCalidad, setFiltroEstadosCalidad] = useState([]);
+  const [filtroUbicacionesFisicas, setFiltroUbicacionesFisicas] = useState([]);
 
   useEffect(() => {
     if (visible && empresaId && almacenId && productoId) {
@@ -138,6 +139,29 @@ export default function KardexProductoDialog({
       .map(([id, descripcion]) => ({ label: descripcion, value: descripcion }));
   }, [kardex]);
 
+  // Obtener opciones dinámicas de ubicaciones físicas
+  const opcionesUbicacionesFisicas = useMemo(() => {
+    const ubicaciones = new Set();
+    kardex.forEach((item) => {
+      if (item.ubicacionFisica?.nombre) {
+        ubicaciones.add(item.ubicacionFisica.nombre);
+      } else if (item.ubicacionFisica?.descripcion) {
+        ubicaciones.add(item.ubicacionFisica.descripcion);
+      }
+    });
+    // Agregar opción "Sin ubicación" si hay registros sin ubicacionFisicaId
+    const tieneSinUbicacion = kardex.some(item => !item.ubicacionFisicaId);
+    const resultado = Array.from(ubicaciones)
+      .sort()
+      .map((ubicacion) => ({ label: ubicacion, value: ubicacion }));
+
+    if (tieneSinUbicacion) {
+      resultado.push({ label: "Sin ubicación", value: "SIN_UBICACION" });
+    }
+
+    return resultado;
+  }, [kardex]);
+
   // Opciones para filtro de vencimiento
   const opcionesVencimiento = [
     { label: "Todos", value: null },
@@ -210,6 +234,18 @@ export default function KardexProductoDialog({
       );
     }
 
+    // Filtro por ubicaciones físicas
+    if (filtroUbicacionesFisicas.length > 0) {
+      resultado = resultado.filter((item) => {
+        const ubicacionNombre = item.ubicacionFisica?.nombre || item.ubicacionFisica?.descripcion;
+        if (filtroUbicacionesFisicas.includes("SIN_UBICACION")) {
+          // Incluir registros sin ubicación O con ubicación seleccionada
+          return !item.ubicacionFisicaId || filtroUbicacionesFisicas.includes(ubicacionNombre);
+        }
+        return filtroUbicacionesFisicas.includes(ubicacionNombre);
+      });
+    }
+
     return resultado;
   };
 
@@ -248,9 +284,10 @@ export default function KardexProductoDialog({
     filtroFechaDesde,
     filtroFechaHasta,
     filtroVencimiento,
-    filtroAlmacenes, // ← AGREGAR ESTA LÍNEA
+    filtroAlmacenes,
     filtroEstadosMercaderia,
     filtroEstadosCalidad,
+    filtroUbicacionesFisicas,
   ]);
 
   // KARDEX POR VARIABLES: Ordenamiento completo (almacén, fecha, tipo, variables, ID)
@@ -356,6 +393,7 @@ export default function KardexProductoDialog({
     filtroAlmacenes,
     filtroEstadosMercaderia,
     filtroEstadosCalidad,
+    filtroUbicacionesFisicas,
   ]);
 
   // Función para limpiar todos los filtros
@@ -366,6 +404,7 @@ export default function KardexProductoDialog({
     setFiltroAlmacenes(null);
     setFiltroEstadosMercaderia([]);
     setFiltroEstadosCalidad([]);
+    setFiltroUbicacionesFisicas([]);
   };
 
   const numberTemplate = (value) => {
@@ -416,9 +455,8 @@ export default function KardexProductoDialog({
     <Dialog
       visible={visible}
       onHide={onHide}
-      header={`Kardex ${
-        esCustodia ? "Custodia" : "Propio"
-      } - ${productoNombre}`}
+      header={`Kardex ${esCustodia ? "Custodia" : "Propio"
+        } - ${productoNombre}`}
       style={{ width: "95vw", maxWidth: "1600px" }}
       modal
       maximizable
@@ -575,6 +613,29 @@ export default function KardexProductoDialog({
                   display="chip"
                   style={{ width: "100%" }}
                   disabled={opcionesEstadosCalidad.length === 0}
+                />
+              </div>
+
+              <div style={{ flex: "1 1 200px", minWidth: "200px" }}>
+                <label
+                  htmlFor="ubicacionFisica"
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontSize: "12px",
+                  }}
+                >
+                  Ubicación Física
+                </label>
+                <MultiSelect
+                  id="ubicacionFisica"
+                  value={filtroUbicacionesFisicas}
+                  options={opcionesUbicacionesFisicas}
+                  onChange={(e) => setFiltroUbicacionesFisicas(e.value)}
+                  placeholder="Todas"
+                  display="chip"
+                  style={{ width: "100%" }}
+                  disabled={opcionesUbicacionesFisicas.length === 0}
                 />
               </div>
 
@@ -822,6 +883,19 @@ export default function KardexProductoDialog({
                     width: "120px",
                     maxWidth: "120px",
                   }}
+                />
+                <Column
+                  field="ubicacionFisica"
+                  header="Ubicación"
+                  body={(row) => row.ubicacionFisica?.nombre || row.ubicacionFisica?.descripcion || "-"}
+                  style={{
+                    minWidth: "120px",
+                    width: "120px",
+                    maxWidth: "120px",
+                    textAlign: "center",
+                    fontWeight: "bold",
+                  }}
+                  headerStyle={{ textAlign: "center" }}
                 />
                 <Column
                   field="numDocCompleto"
