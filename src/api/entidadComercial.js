@@ -54,8 +54,16 @@ export async function actualizarEntidadComercial(id, data) {
 }
 
 export async function eliminarEntidadComercial(id) {
-  const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
-  return res.data;
+  try {
+    const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+    return res.data; // { success: true, mensaje, resultados }
+  } catch (error) {
+    // Si el backend retorna 409 (Conflict), extraer el detalle de uso
+    if (error.response?.status === 409) {
+      throw error.response.data; // { success: false, mensaje, detalleUso, totalOperaciones }
+    }
+    throw error;
+  }
 }
 
 /**

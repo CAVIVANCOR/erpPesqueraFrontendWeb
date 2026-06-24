@@ -34,7 +34,6 @@ import { getResponsiveFontSize } from "../../utils/utils";
  *     { productoId: 102, cantidad: 500 }
  *   ]}
  *   onConfirmar={(asignaciones) => {
- *     console.log('Asignaciones:', asignaciones);
  *   }}
  * />
  */

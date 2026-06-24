@@ -109,11 +109,7 @@ export default function OrdenCompra({ ruta }) {
   const [kardexDocumentoActual, setKardexDocumentoActual] = useState(null);
 
   useEffect(() => {
-    cargarDatos();
-  }, []);
-
-  useEffect(() => {
-    let filtrados = items;
+    let filtrados = ordenesFiltradas;
 
     if (empresaSeleccionada) {
       filtrados = filtrados.filter(
@@ -158,19 +154,19 @@ export default function OrdenCompra({ ruta }) {
     fechaInicio,
     fechaFin,
     estadoSeleccionado,
-    items,
+    ordenesFiltradas,
   ]);
 
   useEffect(() => {
     const proveedoresMap = new Map();
-    items.forEach((item) => {
+    ordenesFiltradas.forEach((item) => {
       if (item.proveedorId && item.proveedor) {
         proveedoresMap.set(item.proveedorId, item.proveedor);
       }
     });
     const proveedoresArray = Array.from(proveedoresMap.values());
     setProveedoresUnicos(proveedoresArray);
-  }, [items]);
+  }, [ordenesFiltradas]);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -837,7 +833,7 @@ export default function OrdenCompra({ ruta }) {
         reject={() => setShowConfirm(false)}
       />
       <DataTable
-        value={ordenesFiltradas}
+        value={itemsFiltrados}
         loading={loading}
         dataKey="id"
         paginator

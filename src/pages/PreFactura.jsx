@@ -962,7 +962,6 @@ const PreFactura = ({ ruta }) => {
 
 
   const confirmarEliminacion = (preFactura) => {
-    console.log("confirmarEliminacion preFactura:", preFactura, "permisos:", permisos)
     // Validar permisos de eliminación
     if (!permisos.puedeEliminar) {
       toast.current.show({
@@ -973,8 +972,6 @@ const PreFactura = ({ ruta }) => {
       });
       return;
     }
-    console.log("Si Tiene Derecho a Eliminar, confirmarEliminacion preFactura:", preFactura, "permisos:", permisos)
-
     confirmDialog({
       message: `¿Está seguro de eliminar la pre-factura ${preFactura.id}?`,
       header: "Confirmar Eliminación",

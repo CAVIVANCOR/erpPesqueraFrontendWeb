@@ -37,6 +37,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { Navigate } from "react-router-dom";
 import { useNavigateWithReturn } from "../shared/hooks/useNavigateWithReturn";
 import EmpresaSelector from "../components/common/EmpresaSelector";
+import { confirmDialog } from "primereact/confirmdialog";
 
 const EntidadComercial = ({ ruta }) => {
   const permisos = usePermissions(ruta);
@@ -48,8 +49,6 @@ const EntidadComercial = ({ ruta }) => {
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [entidadSeleccionada, setEntidadSeleccionada] = useState(null);
-  const [confirmVisible, setConfirmVisible] = useState(false);
-  const [entidadAEliminar, setEntidadAEliminar] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
 
@@ -218,34 +217,131 @@ const EntidadComercial = ({ ruta }) => {
   };
 
   const confirmarEliminacion = (entidad) => {
-    setEntidadAEliminar(entidad);
-    setConfirmVisible(true);
+    // Validar permisos de eliminación
+    if (!permisos.puedeEliminar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar registros.",
+        life: 3000,
+      });
+      return;
+    }
+
+    confirmDialog({
+      message: `¿Está seguro de eliminar la entidad comercial "${entidad.razonSocial}"?\n\nSe eliminarán también: contactos, direcciones, precios, vehículos, líneas de crédito y cuentas corrientes asociadas.`,
+      header: "Confirmar Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
+      acceptLabel: "Eliminar",
+      rejectLabel: "Cancelar",
+      accept: () => {
+        handleEliminarEntidadComercial(entidad.id);
+      },
+    });
   };
 
-  const eliminar = async () => {
+  const handleEliminarEntidadComercial = async (id) => {
     try {
-      await eliminarEntidadComercial(entidadAEliminar.id);
-      setEntidadesComerciales(
-        entidadesComerciales.filter(
-          (e) => Number(e.id) !== Number(entidadAEliminar.id),
-        ),
-      );
-      toast.current.show({
+      const resultado = await eliminarEntidadComercial(id);
+
+      // Construir mensaje detallado con DATOS REALES del backend
+      const { resultados } = resultado;
+
+      let mensajeDetalle = "Registros eliminados:\n";
+      if (resultados.contactos > 0) mensajeDetalle += `• ${resultados.contactos} contacto(s)\n`;
+      if (resultados.direcciones > 0) mensajeDetalle += `• ${resultados.direcciones} dirección(es)\n`;
+      if (resultados.precios > 0) mensajeDetalle += `• ${resultados.precios} precio(s)\n`;
+      if (resultados.vehiculos > 0) mensajeDetalle += `• ${resultados.vehiculos} vehículo(s)\n`;
+      if (resultados.lineasCredito > 0) mensajeDetalle += `• ${resultados.lineasCredito} línea(s) de crédito\n`;
+      if (resultados.ctaCteEntidad > 0) mensajeDetalle += `• ${resultados.ctaCteEntidad} cuenta(s) corriente(s)\n`;
+      mensajeDetalle += `• ${resultados.entidadComercial} entidad comercial`;
+
+      // Recargar datos
+      await cargarEntidadesComerciales();
+
+      toast.current?.show({
         severity: "success",
-        summary: "Éxito",
-        detail: "Entidad comercial eliminada correctamente",
-        life: 3000,
+        summary: "Eliminación Exitosa",
+        detail: mensajeDetalle,
+        life: 6000,
       });
+
     } catch (error) {
-      toast.current.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Error al eliminar entidad comercial",
-        life: 3000,
-      });
-    } finally {
-      setConfirmVisible(false);
-      setEntidadAEliminar(null);
+      console.error("Error al eliminar entidad comercial:", error);
+
+      // Si el error tiene detalleUso, significa que tiene operaciones
+      if (error.detalleUso && error.totalOperaciones > 0) {
+        const { detalleUso, totalOperaciones, mensaje } = error;
+
+        let mensajeDetalle = `${mensaje}\n\n📦 REGISTROS OPERACIONALES (${totalOperaciones}):\n\n`;
+
+        // 🔍 ALMACÉN E INVENTARIO
+        if (detalleUso.movimientosAlmacen) mensajeDetalle += `• ${detalleUso.movimientosAlmacen} Movimiento(s) de Almacén\n`;
+        if (detalleUso.kardexAlmacenes) mensajeDetalle += `• ${detalleUso.kardexAlmacenes} Registro(s) de Kardex\n`;
+        if (detalleUso.saldosDetProductoCliente) mensajeDetalle += `• ${detalleUso.saldosDetProductoCliente} Saldo(s) Detallado(s) Producto-Cliente\n`;
+        if (detalleUso.saldosProductoCliente) mensajeDetalle += `• ${detalleUso.saldosProductoCliente} Saldo(s) Producto-Cliente\n`;
+
+        // 🔍 COMPRAS
+        if (detalleUso.requerimientosCompra) mensajeDetalle += `• ${detalleUso.requerimientosCompra} Requerimiento(s) de Compra\n`;
+        if (detalleUso.detallesReqCompra) mensajeDetalle += `• ${detalleUso.detallesReqCompra} Detalle(s) de Requerimiento de Compra\n`;
+        if (detalleUso.cotizacionesProveedores) mensajeDetalle += `• ${detalleUso.cotizacionesProveedores} Cotización(es) de Proveedor\n`;
+        if (detalleUso.ordenesCompra) mensajeDetalle += `• ${detalleUso.ordenesCompra} Orden(es) de Compra\n`;
+
+        // 🔍 VENTAS Y EXPORTACIÓN
+        if (detalleUso.cotizacionesVentas) mensajeDetalle += `• ${detalleUso.cotizacionesVentas} Cotización(es) de Venta\n`;
+        if (detalleUso.preFacturas) mensajeDetalle += `• ${detalleUso.preFacturas} Pre-Factura(s)\n`;
+        if (detalleUso.costosExportacionCotizacion) mensajeDetalle += `• ${detalleUso.costosExportacionCotizacion} Costo(s) Exportación en Cotización\n`;
+        if (detalleUso.costosExportacionPorIncoterm) mensajeDetalle += `• ${detalleUso.costosExportacionPorIncoterm} Costo(s) Exportación por Incoterm\n`;
+
+        // 🔍 CAJA Y TESORERÍA
+        if (detalleUso.movimientosCaja) mensajeDetalle += `• ${detalleUso.movimientosCaja} Movimiento(s) de Caja\n`;
+        if (detalleUso.detalleMovsEntregaRendir) mensajeDetalle += `• ${detalleUso.detalleMovsEntregaRendir} Detalle(s) Movimiento Entregar/Rendir\n`;
+
+        // 🔍 PESCA
+        if (detalleUso.descargasFaenaPesca) mensajeDetalle += `• ${detalleUso.descargasFaenaPesca} Descarga(s) de Faena Pesca\n`;
+        if (detalleUso.descargasFaenaConsumo) mensajeDetalle += `• ${detalleUso.descargasFaenaConsumo} Descarga(s) de Faena Consumo\n`;
+        if (detalleUso.comisionesFidelizacion) mensajeDetalle += `• ${detalleUso.comisionesFidelizacion} Comisión(es) de Fidelización\n`;
+        if (detalleUso.detCuotasPesca) mensajeDetalle += `• ${detalleUso.detCuotasPesca} Detalle(s) Cuota de Pesca\n`;
+        if (detalleUso.temporadasPesca) mensajeDetalle += `• ${detalleUso.temporadasPesca} Temporada(s) de Pesca\n`;
+
+        // 🔍 MÓDULO FINANCIERO
+        if (detalleUso.comprobantesElectronicos) mensajeDetalle += `• ${detalleUso.comprobantesElectronicos} Comprobante(s) Electrónico(s)\n`;
+        if (detalleUso.cuentasPorCobrar) mensajeDetalle += `• ${detalleUso.cuentasPorCobrar} Cuenta(s) por Cobrar\n`;
+        if (detalleUso.cuentasPorPagar) mensajeDetalle += `• ${detalleUso.cuentasPorPagar} Cuenta(s) por Pagar\n`;
+        if (detalleUso.letrasCambio) mensajeDetalle += `• ${detalleUso.letrasCambio} Letra(s) de Cambio\n`;
+        if (detalleUso.endososLetra) mensajeDetalle += `• ${detalleUso.endososLetra} Endoso(s) de Letra\n`;
+        if (detalleUso.retenciones) mensajeDetalle += `• ${detalleUso.retenciones} Retención(es)\n`;
+        if (detalleUso.percepciones) mensajeDetalle += `• ${detalleUso.percepciones} Percepción(es)\n`;
+        if (detalleUso.detallesAsientos) mensajeDetalle += `• ${detalleUso.detallesAsientos} Detalle(s) de Asiento Contable\n`;
+        if (detalleUso.tiposDeudaTributaria) mensajeDetalle += `• ${detalleUso.tiposDeudaTributaria} Tipo(s) de Deuda Tributaria\n`;
+
+        // 🔍 OTROS MÓDULOS
+        if (detalleUso.contratosServicio) mensajeDetalle += `• ${detalleUso.contratosServicio} Contrato(s) de Servicio\n`;
+        if (detalleUso.accesosInstalacion) mensajeDetalle += `• ${detalleUso.accesosInstalacion} Acceso(s) a Instalación\n`;
+        if (detalleUso.personalEnlazado) mensajeDetalle += `• ${detalleUso.personalEnlazado} Personal Enlazado\n`;
+        if (detalleUso.tarifasRutaProveedor) mensajeDetalle += `• ${detalleUso.tarifasRutaProveedor} Tarifa(s) de Ruta Proveedor\n`;
+        if (detalleUso.detContratistasOT) mensajeDetalle += `• ${detalleUso.detContratistasOT} Detalle(s) Contratista OT\n`;
+
+        mensajeDetalle += `\n💡 Debe eliminar estos registros primero para poder eliminar la Entidad Comercial.`;
+
+        toast.current?.show({
+          severity: "warn",
+          summary: "No se puede eliminar",
+          detail: mensajeDetalle,
+          life: 15000,
+        });
+      } else {
+        // Error genérico
+        const mensajeError = error.mensaje || error.message || "Error desconocido al eliminar";
+
+        toast.current?.show({
+          severity: "error",
+          summary: "Error al Eliminar",
+          detail: `No se pudo eliminar la Entidad Comercial.\n\n${mensajeError}`,
+          life: 6000,
+        });
+      }
     }
   };
 
@@ -605,19 +701,7 @@ const EntidadComercial = ({ ruta }) => {
           permisos={permisos}
         />
       </Dialog>
-
-      <ConfirmDialog
-        visible={confirmVisible}
-        onHide={() => setConfirmVisible(false)}
-        message={`¿Está seguro de eliminar la entidad comercial "${entidadAEliminar?.razonSocial}"?`}
-        header="Confirmar Eliminación"
-        icon="pi pi-exclamation-triangle"
-        accept={eliminar}
-        reject={() => setConfirmVisible(false)}
-        acceptLabel="Sí, Eliminar"
-        rejectLabel="Cancelar"
-        acceptClassName="p-button-danger"
-      />
+      <ConfirmDialog />
     </div>
   );
 };
