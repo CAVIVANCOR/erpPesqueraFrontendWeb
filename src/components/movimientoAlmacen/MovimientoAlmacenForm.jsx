@@ -69,6 +69,7 @@ export default function MovimientoAlmacenForm({
   permisos = {}, // Permisos del usuario
   readOnly = false, // Modo solo lectura
 }) {
+  
   // Estados de la cabecera - Conforme al modelo MovimientoAlmacen
   const [empresaId, setEmpresaId] = useState(defaultValues.empresaId || null);
   const [tipoDocumentoId, setTipoDocumentoId] = useState(

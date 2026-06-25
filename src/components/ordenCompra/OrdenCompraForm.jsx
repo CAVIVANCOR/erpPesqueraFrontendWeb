@@ -52,6 +52,7 @@ export default function OrdenCompraForm({
   onProveedorCreado, // ✅ NUEVO: callback para recargar proveedores
 }) {
   const { usuario } = useAuthStore();
+console.log("OrdenCompraForm empresas:",empresas)
 
   const [empresaId, setEmpresaId] = useState(
     defaultValues?.empresaId || empresaFija || null,

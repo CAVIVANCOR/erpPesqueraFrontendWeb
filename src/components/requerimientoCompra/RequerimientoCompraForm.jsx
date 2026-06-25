@@ -45,7 +45,6 @@ export default function RequerimientoCompraForm({
   onProveedorCreado, // ✅ AGREGAR ESTA LÍNEA
 }) {
   const { usuario } = useAuthStore();
-
   // Estado único para todos los campos del formulario (patrón eficiente)
   const [formData, setFormData] = useState({
     // Datos básicos

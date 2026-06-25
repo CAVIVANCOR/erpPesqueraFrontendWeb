@@ -80,6 +80,7 @@ export default function DatosGeneralesTab({
   mediosPago = [],
   bancos = [],
 }) {
+  console.log("formData.empresaId :", formData.empresaId, "empresas:", empresas)
   // Helper para obtener código de moneda (ISO)
   const getCodigoMoneda = () => {
     // Prioridad 1: Usar la relación directa de la orden (más eficiente)
@@ -170,7 +171,7 @@ export default function DatosGeneralesTab({
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
-        <div style={{ flex: 1.5 }}>
+        <div style={{ flex: 1 }}>
           {/* EMPRESA */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -180,7 +181,7 @@ export default function DatosGeneralesTab({
           </label>
           <Dropdown
             id="empresaId"
-            value={formData.empresaId}
+            value={formData.empresaId ? Number(formData.empresaId) : null}
             style={{ fontWeight: "bold", textTransform: "uppercase" }}
             options={empresas.map((e) => ({
               label: e.razonSocial,
@@ -191,7 +192,7 @@ export default function DatosGeneralesTab({
             disabled={isEdit || !puedeEditar || readOnly}
           />
         </div>
-        <div style={{ flex: 0.6 }}>
+        <div style={{ flex: 0.7 }}>
           {/* FECHA DOCUMENTO */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -209,50 +210,8 @@ export default function DatosGeneralesTab({
             inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
-        <div style={{ flex: 0.6 }}>
-          {/* FECHA CONTABLE */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="fechaContable"
-          >
-            Fecha Contable*
-          </label>
-          <Calendar
-            id="fechaContable"
-            value={formData.fechaContable}
-            onChange={(e) => onChange("fechaContable", e.value)}
-            dateFormat="dd/mm/yy"
-            showIcon
-            disabled={!puedeEditar || readOnly}
-            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          {/* PERIODO CONTABLE */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="periodoContableId"
-          >
-            Periodo Contable
-          </label>
-          <Dropdown
-            id="periodoContableId"
-            value={
-              formData.periodoContableId
-                ? Number(formData.periodoContableId)
-                : null
-            }
-            options={periodosContablesFiltrados || []}
-            optionDisabled={(option) => option.disabled}
-            onChange={(e) => onChange("periodoContableId", e.value)}
-            placeholder="Seleccione periodo contable"
-            showClear
-            filter
-            disabled={!puedeEditar || readOnly}
-            style={{ fontSize: getResponsiveFontSize() }}
-          />
-        </div>
-        <div style={{ flex: 0.75 }}>
+       
+        <div style={{ flex: 0.8 }}>
           {/* TIPO DOCUMENTO - Siempre ID 17: ORDEN DE COMPRA */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -278,7 +237,7 @@ export default function DatosGeneralesTab({
             }}
           />
         </div>
-        <div style={{ flex: 0.75 }}>
+        <div style={{ flex: 0.8 }}>
           {/* NÚMERO DOCUMENTO */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -296,7 +255,7 @@ export default function DatosGeneralesTab({
             }}
           />
         </div>
-        <div style={{ flex: 0.6 }}>
+        <div style={{ flex: 0.7 }}>
           {/* FECHA ENTREGA */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -314,7 +273,7 @@ export default function DatosGeneralesTab({
             inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
-        <div style={{ flex: 0.6 }}>
+        <div style={{ flex: 0.7 }}>
           {/* FECHA VENCIMIENTO */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -359,29 +318,7 @@ export default function DatosGeneralesTab({
             disabled={!puedeEditar || readOnly}
           />
         </div>
-        <div style={{ flex: 0.5 }}>
-          {/* ESTADO */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="estadoId"
-          >
-            Estado*
-          </label>
-          <Dropdown
-            id="estadoId"
-            value={formData.estadoId ? Number(formData.estadoId) : null}
-            options={estadosOrdenOptions || []}
-            onChange={(e) => onChange("estadoId", e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar estado"
-            disabled={true}
-            style={{
-              fontWeight: "bold",
-              backgroundColor: "#f0f0f0",
-            }}
-          />
-        </div>
+
       </div>
 
       <div
@@ -878,6 +815,29 @@ export default function DatosGeneralesTab({
             style={{ width: "100%" }}
           />
         </div>
+        <div style={{ flex: 0.5 }}>
+          {/* ESTADO */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="estadoId"
+          >
+            Estado*
+          </label>
+          <Dropdown
+            id="estadoId"
+            value={formData.estadoId ? Number(formData.estadoId) : null}
+            options={estadosOrdenOptions || []}
+            onChange={(e) => onChange("estadoId", e.value)}
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccionar estado"
+            disabled={true}
+            style={{
+              fontWeight: "bold",
+              backgroundColor: "#f0f0f0",
+            }}
+          />
+        </div>
         {/* BOTÓN EDITAR CxP - Aparece solo si existe CxP asociada */}
         {isEdit && formData.id && (
           <div style={{ flex: 0.5, display: "flex", alignItems: "flex-end", marginTop: "1rem" }}>
@@ -913,7 +873,50 @@ export default function DatosGeneralesTab({
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
-        <div style={{ flex: 2 }}>
+         <div style={{ flex: 0.7 }}>
+          {/* FECHA CONTABLE */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="fechaContable"
+          >
+            Fecha Contable*
+          </label>
+          <Calendar
+            id="fechaContable"
+            value={formData.fechaContable}
+            onChange={(e) => onChange("fechaContable", e.value)}
+            dateFormat="dd/mm/yy"
+            showIcon
+            disabled={!puedeEditar || readOnly}
+            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          {/* PERIODO CONTABLE */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="periodoContableId"
+          >
+            Periodo Contable
+          </label>
+          <Dropdown
+            id="periodoContableId"
+            value={
+              formData.periodoContableId
+                ? Number(formData.periodoContableId)
+                : null
+            }
+            options={periodosContablesFiltrados || []}
+            optionDisabled={(option) => option.disabled}
+            onChange={(e) => onChange("periodoContableId", e.value)}
+            placeholder="Seleccione periodo contable"
+            showClear
+            filter
+            disabled={!puedeEditar || readOnly}
+            style={{ fontSize: getResponsiveFontSize() }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
           {/* OBSERVACIONES */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}

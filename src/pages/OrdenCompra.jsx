@@ -108,6 +108,13 @@ export default function OrdenCompra({ ruta }) {
   const [showKardexDialog, setShowKardexDialog] = useState(false);
   const [kardexDocumentoActual, setKardexDocumentoActual] = useState(null);
 
+  // ========================================
+  // 🆕 CARGAR DATOS AL MONTAR EL COMPONENTE
+  // ========================================
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
   useEffect(() => {
     let filtrados = ordenesFiltradas;
 
@@ -214,7 +221,7 @@ export default function OrdenCompra({ ruta }) {
         getPeriodosContables(), // ✅ AGREGADO
         getMotivoNotaCreditoDebitoActivos(),
       ]);
-
+      console.log("OrdenCompra cargarDatos empresasData", empresasData)
       setEmpresas(empresasData);
       setProveedores(proveedoresData);
       setFormasPago(formasPagoData);
