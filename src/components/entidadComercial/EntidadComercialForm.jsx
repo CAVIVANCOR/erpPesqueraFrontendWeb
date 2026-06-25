@@ -91,6 +91,7 @@ const validationSchema = yup.object().shape({
 
 const EntidadComercialForm = ({
   entidadComercial,
+  empresaIdForzada = null,
   onGuardar,
   onCancelar,
   toast: toastProp,
@@ -142,7 +143,7 @@ const EntidadComercialForm = ({
   } = useForm({
     resolver: yupResolver(validationSchema),
     defaultValues: {
-      empresaId: null,
+      empresaId: empresaIdForzada || 1, // Siempre MEGUI (id=1)
       tipoDocumentoId: null,
       tipoEntidadId: null,
       formaPagoId: null,
@@ -209,7 +210,12 @@ const EntidadComercialForm = ({
       });
     }
   };
-
+  // Forzar empresaId a MEGUI cuando es nueva entidad
+  useEffect(() => {
+    if (!entidadComercial && empresaIdForzada) {
+      setValue("empresaId", empresaIdForzada);
+    }
+  }, [entidadComercial, empresaIdForzada, setValue]);
   // Cargar catálogos al montar el componente
   useEffect(() => {
     const cargarDatosIniciales = async () => {
@@ -1088,26 +1094,6 @@ const EntidadComercialForm = ({
             marginTop: 10,
           }}
         >
-          {/* Botón Clonar a Empresas - lado izquierdo */}
-          <div>
-            {modoEdicion && entidadComercial?.id && (
-              <Button
-                type="button"
-                label="Clonar a Empresas"
-                icon="pi pi-clone"
-                className="p-button-info"
-                severity="info"
-                onClick={handleClonarAEmpresas}
-                disabled={loading || readOnly}
-                loading={loading}
-                raised
-                size="small"
-                tooltip="Clona esta entidad y sus datos relacionados a todas las empresas del grupo"
-                tooltipOptions={{ position: "top" }}
-              />
-            )}
-          </div>
-
           {/* Botones principales - lado derecho */}
           <div
             style={{

@@ -36,8 +36,8 @@ import { InputText } from "primereact/inputtext";
 import { usePermissions } from "../hooks/usePermissions";
 import { Navigate } from "react-router-dom";
 import { useNavigateWithReturn } from "../shared/hooks/useNavigateWithReturn";
-import EmpresaSelector from "../components/common/EmpresaSelector";
 import { confirmDialog } from "primereact/confirmdialog";
+import { Message } from "primereact/message";
 
 const EntidadComercial = ({ ruta }) => {
   const permisos = usePermissions(ruta);
@@ -56,8 +56,8 @@ const EntidadComercial = ({ ruta }) => {
   const [empresas, setEmpresas] = useState([]);
   const [tiposEntidad, setTiposEntidad] = useState([]);
   const [formasPago, setFormasPago] = useState([]);
-  const [filtroEmpresa, setFiltroEmpresa] = useState(null);
-  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
+  const [filtroEmpresa, setFiltroEmpresa] = useState(1); // Siempre filtrar por MEGUI
+  const [empresaIdSelector] = useState(1); // Siempre MEGUI (id=1)
   const [filtroTipoEntidad, setFiltroTipoEntidad] = useState(null);
   const [filtroFormaPago, setFiltroFormaPago] = useState(null);
   const [filtroAgenteRetencion, setFiltroAgenteRetencion] = useState(null);
@@ -468,36 +468,25 @@ const EntidadComercial = ({ ruta }) => {
     <div>
       <div
         style={{
-          alignItems: "center",
           display: "flex",
+          alignItems:"end",
           gap: 10,
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
-        <div style={{ flex: 2 }}>
-          <h2>Entidades Comerciales</h2>
-        </div>
         <div style={{ flex: 1 }}>
-          <label>Filtro por Empresa</label>
-          <EmpresaSelector
-            empresaId={usuario?.empresaId}
-            onEmpresaChange={(id) => {
-              setEmpresaIdSelector(id);
-              setFiltroEmpresa(id);
-            }}
-          />
+          <h2>Entidades Comerciales</h2>
         </div>
         <div style={{ flex: 1 }}>
           <Button
             label="Nuevo"
             icon="pi pi-plus"
-            size="small"
-            outlined
             raised
             tooltip="Nueva Entidad Comercial"
             className="p-button-success"
             onClick={abrirDialogoNuevo}
             disabled={!permisos.puedeCrear}
+            style={{ width: "100%" }}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -505,14 +494,12 @@ const EntidadComercial = ({ ruta }) => {
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
             placeholder="Buscar..."
-            className="w-full"
+            style={{ width: "100%" }}
           />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 0.25 }}>
           <Button
             icon="pi pi-refresh"
-            className="p-button-outlined p-button-info"
-            size="small"
             onClick={async () => {
               await cargarDatosIniciales();
               toast.current?.show({
@@ -524,29 +511,18 @@ const EntidadComercial = ({ ruta }) => {
             }}
             loading={loading}
             tooltip="Actualizar todos los datos desde el servidor"
+            style={{ width: "100%" }}
           />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 0.25 }}>
           <Button
-            label="Limpiar Filtros"
             icon="pi pi-filter-slash"
-            size="small"
-            outlined
             onClick={limpiarFiltros}
+            style={{ width: "100%" }}
           />
         </div>
-      </div>
-
-      <div
-        style={{
-          alignItems: "center",
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
         <div style={{ flex: 1 }}>
-          <label htmlFor="filtroTipoEntidad">Filtro por Tipo Entidad</label>
+          <label htmlFor="filtroTipoEntidad">Filtro Tipo Entidad</label>
           <Dropdown
             value={filtroTipoEntidad}
             onChange={(e) => setFiltroTipoEntidad(e.value)}
@@ -555,12 +531,12 @@ const EntidadComercial = ({ ruta }) => {
             optionValue="value"
             placeholder="Filtrar por Tipo Entidad"
             showClear
-            className="w-full"
             filter
+            style={{ width: "100%" }}
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="filtroFormaPago">Filtro por Forma Pago</label>
+          <label htmlFor="filtroFormaPago">Filtro Forma Pago</label>
           <Dropdown
             value={filtroFormaPago}
             onChange={(e) => setFiltroFormaPago(e.value)}
@@ -569,21 +545,45 @@ const EntidadComercial = ({ ruta }) => {
             optionValue="value"
             placeholder="Filtrar por Forma Pago"
             showClear
-            className="w-full"
+            style={{ width: "100%" }}
             filter
           />
         </div>
-        <div style={{ flex: 1, alignItems: "center", flexDirection: "column" }}>
-          <label htmlFor="filtroAgenteRetencion">Agente Retención</label>
-          <Dropdown
-            value={filtroAgenteRetencion}
-            onChange={(e) => setFiltroAgenteRetencion(e.value)}
-            options={agenteRetencionOptions}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Agente Retención"
-            className="w-full"
-            filter
+                <div style={{ flex: 1, alignItems: "center", flexDirection: "column" }}>
+          <label>Agente Retención</label>
+          <Button
+            label={
+              filtroAgenteRetencion === null
+                ? "Todos"
+                : filtroAgenteRetencion === true
+                ? "A/Retención"
+                : "No A/Retención"
+            }
+            icon={
+              filtroAgenteRetencion === null
+                ? "pi pi-list"
+                : filtroAgenteRetencion === true
+                ? "pi pi-check-circle"
+                : "pi pi-times-circle"
+            }
+            severity={
+              filtroAgenteRetencion === null
+                ? "secondary"
+                : filtroAgenteRetencion === true
+                ? "success"
+                : "danger"
+            }
+            onClick={() => {
+              if (filtroAgenteRetencion === null) {
+                setFiltroAgenteRetencion(true);
+              } else if (filtroAgenteRetencion === true) {
+                setFiltroAgenteRetencion(false);
+              } else {
+                setFiltroAgenteRetencion(null);
+              }
+            }}
+            style={{ width: "100%", fontWeight: "bold" }}
+            raised
           />
         </div>
       </div>
@@ -689,6 +689,7 @@ const EntidadComercial = ({ ruta }) => {
       >
         <EntidadComercialForm
           entidadComercial={entidadSeleccionada}
+          empresaIdForzada={empresaIdSelector}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
           toast={toast}
