@@ -45,7 +45,7 @@ import L from "leaflet";
 import PanelMapaGeografico from "../shared/PanelMapaGeografico";
 import PDFDocumentManager from "../pdf/PDFDocumentManager";
 import PuntoGPSInput from "../shared/PuntoGPSInput";
-
+import EntidadComercialSelector from "../common/EntidadComercialSelector";
 
 /**
  * Formulario DescargaFaenaPescaForm
@@ -71,7 +71,6 @@ import PuntoGPSInput from "../shared/PuntoGPSInput";
 export default function DescargaFaenaPescaForm({
   detalle,
   puertos = [],
-  clientes = [],
   especies = [],
   bahiaId = null,
   motoristaId = null,
@@ -1243,8 +1242,8 @@ export default function DescargaFaenaPescaForm({
         };
 
         analizarCoordenadasExistentes();
-      } 
-    } 
+      }
+    }
   }, [watch("latitud"), watch("longitud")]);
 
   /**
@@ -1280,8 +1279,8 @@ export default function DescargaFaenaPescaForm({
         };
 
         analizarCoordenadasFondeoExistentes();
-      } 
-    } 
+      }
+    }
   }, [watch("latitudFondeo"), watch("longitudFondeo")]);
 
   /**
@@ -1320,7 +1319,7 @@ export default function DescargaFaenaPescaForm({
           };
 
           analizarCoordenadasPlataformaExistentes();
-        } 
+        }
       }
     }
   }, [watch("plataformaRecepcionPescaId"), plataformasRecepcion]);
@@ -1871,7 +1870,7 @@ export default function DescargaFaenaPescaForm({
               />
             </div>
 
-                      {/* Columna 2: GPS Fondeo */}
+            {/* Columna 2: GPS Fondeo */}
             <div
               style={{
                 flex: 1,
@@ -2079,30 +2078,27 @@ export default function DescargaFaenaPescaForm({
               )}
             </div>
             <div style={{ flex: 2 }}>
-              <label htmlFor="clienteId">Cliente*</label>
               <Controller
                 name="clienteId"
                 control={control}
                 rules={{ required: "El cliente es obligatorio" }}
                 render={({ field }) => (
-                  <Dropdown
-                    id="clienteId"
+                  <EntidadComercialSelector
+                    empresaIdPreseleccionada={temporadaData?.empresa?.id}
+                    tipoEntidadFiltro="CLIENTE"
                     value={field.value}
-                    onChange={(e) => handleClienteChange(e.value)}
-                    options={clientes}
-                    optionLabel="label"
-                    optionValue="value"
-                    filter
-                    style={{ fontWeight: "bold" }}
-                    placeholder="Seleccione cliente"
+                    onChange={(value) => {
+                      handleClienteChange(value);
+                    }}
                     disabled={loading}
-                    className={classNames({ "p-invalid": errors.clienteId })}
+                    required={true}
+                    error={!!errors.clienteId}
+                    errorMessage={errors.clienteId?.message}
+                    placeholder="Seleccione cliente"
+                    label="Cliente*"
                   />
                 )}
               />
-              {errors.clienteId && (
-                <Message severity="error" text={errors.clienteId.message} />
-              )}
             </div>
             <div style={{ flex: 2 }}>
               <label htmlFor="plataformaRecepcionPescaId">Plataforma de Recepción</label>

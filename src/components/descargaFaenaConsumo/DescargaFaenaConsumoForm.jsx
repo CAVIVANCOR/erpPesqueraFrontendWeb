@@ -49,6 +49,7 @@ import { getPrecioCombustibleVigente } from "../../api/precioCombustible";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 import { formatearNumero } from "../../utils/utils";
 import PDFDocumentManager from "../pdf/PDFDocumentManager";
+import EntidadComercialSelector from "../common/EntidadComercialSelector";
 /**
  * Formulario DescargaFaenaConsumoForm
  *
@@ -62,7 +63,6 @@ import PDFDocumentManager from "../pdf/PDFDocumentManager";
  *
  * Props esperadas desde el componente padre:
  * - puertos: Array de puertos (todos los puertos disponibles)
- * - clientes: Array de clientes filtrados por EntidadComercial (empresaId, tipoEntidadId=8, esCliente=true, estado=true)
  * - especies: Array de especies (con precioPorKg y cubetaPesoKg)
  * - katanasTripulacion: Array de rangos de katana tripulación filtrados por empresaId
  * - empresaData: Objeto con datos de la empresa (opcional, para futuras funcionalidades)
@@ -75,7 +75,6 @@ import PDFDocumentManager from "../pdf/PDFDocumentManager";
 export default function DescargaFaenaConsumoForm({
   detalle,
   puertos = [],
-  clientes = [],
   especies = [],
   katanasTripulacion = [],
   empresaData = null,
@@ -657,11 +656,6 @@ export default function DescargaFaenaConsumoForm({
   const puertosNormalizados = puertos.map((p) => ({
     label: p.nombre || p.label,
     value: Number(p.id || p.value),
-  }));
-
-  const clientesNormalizados = clientes.map((c) => ({
-    label: c.razonSocial || c.label,
-    value: Number(c.id || c.value),
   }));
 
   const especiesNormalizadas = especies.map((e) => ({
@@ -2501,31 +2495,27 @@ export default function DescargaFaenaConsumoForm({
               )}
             </div>
             <div style={{ flex: 2 }}>
-              <label htmlFor="clienteId">Cliente*</label>
               <Controller
                 name="clienteId"
                 control={control}
                 rules={{ required: "El cliente es obligatorio" }}
                 render={({ field }) => (
-                  <Dropdown
-                    id="clienteId"
-                    {...field}
+                  <EntidadComercialSelector
+                    empresaIdPreseleccionada={empresaData?.id}
+                    tipoEntidadFiltro="CLIENTE"
                     value={field.value}
-                    options={clientesNormalizados}
-                    filter
-                    optionLabel="label"
-                    optionValue="value"
-                    style={{ fontWeight: "bold" }}
-                    placeholder="Seleccione cliente"
+                    onChange={(value) => {
+                      handleClienteChange(value);
+                    }}
                     disabled={loading}
-                    className={classNames({ "p-invalid": errors.clienteId })}
-                    onChange={(e) => handleClienteChange(e.value)}
+                    required={true}
+                    error={!!errors.clienteId}
+                    errorMessage={errors.clienteId?.message}
+                    placeholder="Seleccione cliente"
+                    label="Cliente*"
                   />
                 )}
               />
-              {errors.clienteId && (
-                <Message severity="error" text={errors.clienteId.message} />
-              )}
             </div>
 
             <div style={{ flex: 2 }}>

@@ -27,6 +27,7 @@ import { getVehiculosEntidad } from "../../api/vehiculoEntidad";
 import { getEstadosMultiFuncion } from "../../api/estadoMultiFuncion";
 import { getParametrosAprobador } from "../../api/parametroAprobador";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import EntidadComercialSelector from "../common/EntidadComercialSelector";
 
 export default function MovimientoAlmacenForm({
   isEdit,
@@ -723,13 +724,6 @@ export default function MovimientoAlmacenForm({
       value: Number(t.id),
     }));
 
-  const entidadesOptions = entidadesFiltradas.map((e) => ({
-    ...e,
-    id: Number(e.id),
-    label: e.razonSocial,
-    value: Number(e.id),
-  }));
-
   const conceptosMovAlmacenOptions = conceptosMovAlmacen.map((c) => ({
     ...c,
     id: Number(c.id),
@@ -963,6 +957,7 @@ export default function MovimientoAlmacenForm({
                 placeholder="Seleccionar concepto"
                 disabled={readOnly || loading || detalles.length > 0}
                 required
+                filter
                 style={{
                   fontWeight: "bold",
                   textTransform: "uppercase",
@@ -1034,97 +1029,97 @@ export default function MovimientoAlmacenForm({
           {/* Información de Almacenes del Concepto */}
           {((almacenOrigenInfo && almacenOrigenInfo.nombre) ||
             (almacenDestinoInfo && almacenDestinoInfo.nombre)) && (
-            <div>
-              <div
-                style={{
-                  alignItems: "end",
-                  display: "flex",
-                  gap: 10,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                  marginTop: 10,
-                }}
-              >
-                {almacenOrigenInfo && almacenOrigenInfo.nombre && (
-                  <div style={{ flex: 4 }}>
-                    <label style={{ fontWeight: "bold", color: "#1976d2" }}>
-                      Almacen Origen
-                    </label>
-                    <div
-                      style={{ display: "flex", gap: 8, alignItems: "center" }}
-                    >
-                      <InputText
-                        value={almacenOrigenInfo.nombre}
+              <div>
+                <div
+                  style={{
+                    alignItems: "end",
+                    display: "flex",
+                    gap: 10,
+                    flexDirection: window.innerWidth < 768 ? "column" : "row",
+                    marginTop: 10,
+                  }}
+                >
+                  {almacenOrigenInfo && almacenOrigenInfo.nombre && (
+                    <div style={{ flex: 4 }}>
+                      <label style={{ fontWeight: "bold", color: "#1976d2" }}>
+                        Almacen Origen
+                      </label>
+                      <div
+                        style={{ display: "flex", gap: 8, alignItems: "center" }}
+                      >
+                        <InputText
+                          value={almacenOrigenInfo.nombre}
+                          disabled
+                          style={{
+                            backgroundColor: "#e3f2fd",
+                            fontWeight: "bold",
+                            color: "#0d47a1",
+                            textTransform: "uppercase",
+                            flex: 1,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {almacenOrigenInfo && almacenOrigenInfo.nombre && (
+                    <div style={{ flex: 0.5 }}>
+                      <label>Kardex</label>
+                      <Button
+                        type="button"
+                        label={llevaKardexOrigen ? "SI" : "NO"}
+                        className={
+                          llevaKardexOrigen
+                            ? "p-button-success"
+                            : "p-button-secondary"
+                        }
+                        disabled
+                        style={{ fontWeight: "bold" }}
+                      />
+                    </div>
+                  )}
+                  {almacenDestinoInfo && almacenDestinoInfo.nombre && (
+                    <div style={{ flex: 4 }}>
+                      <label style={{ fontWeight: "bold", color: "#388e3c" }}>
+                        Almacen Destino
+                      </label>
+                      <div
+                        style={{ display: "flex", gap: 8, alignItems: "center" }}
+                      >
+                        <InputText
+                          value={almacenDestinoInfo.nombre}
+                          disabled
+                          style={{
+                            backgroundColor: "#e8f5e9",
+                            fontWeight: "bold",
+                            color: "#1b5e20",
+                            textTransform: "uppercase",
+                            flex: 1,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {almacenDestinoInfo && almacenDestinoInfo.nombre && (
+                    <div style={{ flex: 0.5 }}>
+                      <label>Kardex</label>
+                      <Button
+                        type="button"
+                        label={llevaKardexDestino ? "SI" : "NO"}
+                        className={
+                          llevaKardexDestino
+                            ? "p-button-success"
+                            : "p-button-secondary"
+                        }
                         disabled
                         style={{
-                          backgroundColor: "#e3f2fd",
                           fontWeight: "bold",
-                          color: "#0d47a1",
-                          textTransform: "uppercase",
-                          flex: 1,
                         }}
                       />
                     </div>
-                  </div>
-                )}
-                {almacenOrigenInfo && almacenOrigenInfo.nombre && (
-                  <div style={{ flex: 0.5 }}>
-                    <label>Kardex</label>
-                    <Button
-                      type="button"
-                      label={llevaKardexOrigen ? "SI" : "NO"}
-                      className={
-                        llevaKardexOrigen
-                          ? "p-button-success"
-                          : "p-button-secondary"
-                      }
-                      disabled
-                      style={{ fontWeight: "bold" }}
-                    />
-                  </div>
-                )}
-                {almacenDestinoInfo && almacenDestinoInfo.nombre && (
-                  <div style={{ flex: 4 }}>
-                    <label style={{ fontWeight: "bold", color: "#388e3c" }}>
-                      Almacen Destino
-                    </label>
-                    <div
-                      style={{ display: "flex", gap: 8, alignItems: "center" }}
-                    >
-                      <InputText
-                        value={almacenDestinoInfo.nombre}
-                        disabled
-                        style={{
-                          backgroundColor: "#e8f5e9",
-                          fontWeight: "bold",
-                          color: "#1b5e20",
-                          textTransform: "uppercase",
-                          flex: 1,
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-                {almacenDestinoInfo && almacenDestinoInfo.nombre && (
-                  <div style={{ flex: 0.5 }}>
-                    <label>Kardex</label>
-                    <Button
-                      type="button"
-                      label={llevaKardexDestino ? "SI" : "NO"}
-                      className={
-                        llevaKardexDestino
-                          ? "p-button-success"
-                          : "p-button-secondary"
-                      }
-                      disabled
-                      style={{
-                        fontWeight: "bold",
-                      }}
-                    />
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           <div
             style={{
@@ -1136,21 +1131,18 @@ export default function MovimientoAlmacenForm({
             }}
           >
             <div style={{ flex: 1 }}>
-              <label htmlFor="entidadComercialId">Entidad Comercial</label>
-              <Dropdown
-                id="entidadComercialId"
-                value={entidadComercialId ? Number(entidadComercialId) : null}
-                options={entidadesOptions}
-                onChange={(e) => setEntidadComercialId(e.value)}
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Seleccionar entidad"
-                filter
-                disabled={loading || detalles.length > 0}
-                style={{
-                  fontWeight: "bold",
-                  textTransform: "uppercase",
+              <EntidadComercialSelector
+                empresaIdPreseleccionada={empresaId}
+                value={entidadComercialId}
+                onChange={(value) => {
+                  setEntidadComercialId(value);
                 }}
+                disabled={loading || detalles.length > 0}
+                required={false}
+                error={false}
+                errorMessage=""
+                placeholder="Seleccionar entidad comercial"
+                label="Entidad Comercial"
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -1480,9 +1472,8 @@ export default function MovimientoAlmacenForm({
                   id="vehiculoId"
                   value={vehiculoId ? Number(vehiculoId) : null}
                   options={(vehiculosFiltrados || []).map((v) => ({
-                    label: `${v.placa || ""} - ${v.marca || ""} ${
-                      v.modelo || ""
-                    }`,
+                    label: `${v.placa || ""} - ${v.marca || ""} ${v.modelo || ""
+                      }`,
                     value: Number(v.id),
                   }))}
                   onChange={(e) => setVehiculoId(e.value)}
@@ -1698,9 +1689,8 @@ export default function MovimientoAlmacenForm({
 
         {/* TAB 4: ENTREGAS A RENDIR */}
         <TabPanel
-          header={`Entregas a Rendir ${
-            entregasCount > 0 ? `(${entregasCount})` : ""
-          }`}
+          header={`Entregas a Rendir ${entregasCount > 0 ? `(${entregasCount})` : ""
+            }`}
           leftIcon="pi pi-money-bill"
           disabled={!isEdit}
         >
