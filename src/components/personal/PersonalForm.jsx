@@ -22,6 +22,7 @@ import { getAreasFisicas } from "../../api/areasFisicas"; // API profesional de 
 import { subirFotoPersonal, subirFirmaPersonal } from "../../api/personal"; // API profesional de subida de foto personal
 import { getEntidadesComerciales } from "../../api/entidadComercial"; // API profesional de entidades comerciales
 import CentroCostoSelector from "../common/CentroCostoSelector"; // ⭐ NUEVO - Selector de Centro de Costo
+import EntidadComercialSelector from "../common/EntidadComercialSelector"; // ⭐ NUEVO - Selector de Entidad Comercial
 
 // Esquema de validación profesional con Yup
 const schema = Yup.object().shape({
@@ -1311,35 +1312,25 @@ export default function PersonalForm({
             </div>
             {/* Entidad Comercial Enlazada */}
             <div style={{ flex: 1 }}>
-              <label>Facturar a (Comisiones Pesca Industrial)</label>
               <Controller
                 name="enlaceEntidadComercialId"
                 control={control}
                 render={({ field }) => (
-                  <Dropdown
-                    id="enlaceEntidadComercialId"
-                    value={field.value ? Number(field.value) : null}
-                    options={entidadesComercialesFiltradas.map((e) => ({
-                      ...e,
-                      id: Number(e.id),
-                    }))}
-                    optionLabel="label"
-                    optionValue="id"
-                    placeholder="Seleccione una entidad comercial"
-                    className={
-                      errors.enlaceEntidadComercialId ? "p-invalid" : ""
-                    }
-                    style={{ fontWeight: "bold" }}
-                    filter
-                    showClear
-                    onChange={(e) => field.onChange(e.value)}
+                  <EntidadComercialSelector
+                    empresaIdPreseleccionada={watch("empresaId")}
+                    value={field.value}
+                    onChange={(value) => {
+                      field.onChange(value);
+                    }}
                     disabled={readOnly || loading}
+                    required={false}
+                    error={!!errors.enlaceEntidadComercialId}
+                    errorMessage={errors.enlaceEntidadComercialId?.message}
+                    placeholder="Seleccione entidad comercial"
+                    label="Facturar a (Comisiones Pesca Industrial)"
                   />
                 )}
               />
-              <small className="p-error">
-                {errors.enlaceEntidadComercialId?.message}
-              </small>
             </div>
           </div>
 

@@ -23,6 +23,7 @@ import { Toast } from "primereact/toast";
 import { useRef } from "react";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import EntidadComercialSelector from "../common/EntidadComercialSelector";
 
 // Esquema de validación profesional con Yup alineado al modelo Empresa de Prisma
 const schema = Yup.object().shape({
@@ -53,7 +54,7 @@ const schema = Yup.object().shape({
     .test(
       'margen-minimo-menor-objetivo',
       'El margen mínimo debe ser menor o igual al margen objetivo',
-      function(value) {
+      function (value) {
         const { margenUtilidadObjetivo } = this.parent;
         if (value == null || margenUtilidadObjetivo == null) return true;
         return value <= margenUtilidadObjetivo;
@@ -74,7 +75,7 @@ const schema = Yup.object().shape({
   nubefactUrl: Yup.string()
     .nullable()
     .max(255, "La URL no puede exceder 255 caracteres")
-    .test('url-format', 'Debe ser una URL válida (http:// o https://)', function(value) {
+    .test('url-format', 'Debe ser una URL válida (http:// o https://)', function (value) {
       if (!value) return true;
       return value.startsWith('http://') || value.startsWith('https://');
     }),
@@ -116,6 +117,7 @@ export default function EmpresaForm({
     reset,
     control,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: yupResolver(schema),
@@ -154,9 +156,8 @@ export default function EmpresaForm({
     // Mapea a formato profesional para combos
     return data.map((p) => ({
       id: p.id,
-      nombreCompleto: `${p.nombres} ${p.apellidos}${
-        p.cargo?.nombre || "" ? " (" + p.cargo?.nombre + ")" : ""
-      }`.trim(),
+      nombreCompleto: `${p.nombres} ${p.apellidos}${p.cargo?.nombre || "" ? " (" + p.cargo?.nombre + ")" : ""
+        }`.trim(),
     }));
   };
 
@@ -189,10 +190,7 @@ export default function EmpresaForm({
         if (defaultValues.id) {
           // Obtener todas las entidades comerciales y filtrar por empresaId
           const todasEntidades = await getEntidadesComerciales();
-          const entidadesFiltradas = todasEntidades.filter(
-            (e) => Number(e.empresaId) === Number(defaultValues.id)
-          );
-          setEntidadesComerciales(entidadesFiltradas);
+          setEntidadesComerciales(todasEntidades);
         } else {
           setEntidadesComerciales([]);
         }
@@ -229,9 +227,9 @@ export default function EmpresaForm({
     cargarMonedas();
   }, []);
 
-   // Reset al abrir en modo edición o alta
-    useEffect(() => {
-    reset({ 
+  // Reset al abrir en modo edición o alta
+  useEffect(() => {
+    reset({
       ...defaultValues,
       razonSocial: defaultValues.razonSocial ?? "",
       nombreComercial: defaultValues.nombreComercial ?? "",
@@ -307,9 +305,8 @@ export default function EmpresaForm({
       /**
        * Construye la URL profesional del logo subido usando la variable general de uploads.
        */
-      const urlBackend = `${import.meta.env.VITE_UPLOADS_URL}/logos/${
-        res.logo
-      }`;
+      const urlBackend = `${import.meta.env.VITE_UPLOADS_URL}/logos/${res.logo
+        }`;
       setLogoPreview(urlBackend);
       toast.current?.show({
         severity: "success",
@@ -622,37 +619,25 @@ export default function EmpresaForm({
               )}
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="entidadComercialId">Entidad Comercial</label>
-              {/* Combo profesional de entidad comercial filtrada por empresaId */}
               <Controller
                 name="entidadComercialId"
                 control={control}
                 render={({ field }) => (
-                  <Dropdown
-                    id="entidadComercialId"
-                    value={field.value ?? null}
-                    options={entidadesComerciales}
-                    optionLabel="razonSocial"
-                    optionValue="id"
-                    placeholder={
-                      loadingEntidades
-                        ? "Cargando..."
-                        : "Seleccione entidad comercial"
-                    }
-                    className={errors.entidadComercialId ? "p-invalid" : ""}
-                    onChange={(e) => field.onChange(e.value)}
-                    disabled={readOnly || loadingEntidades || !defaultValues.id}
-                    filter
-                    showClear
-                    style={{ fontWeight: "bold" }}
+                  <EntidadComercialSelector
+                    empresaIdPreseleccionada={watch("id")}
+                    value={field.value}
+                    onChange={(value) => {
+                      field.onChange(value);
+                    }}
+                    disabled={readOnly || !defaultValues.id}
+                    required={false}
+                    error={!!errors.entidadComercialId}
+                    errorMessage={errors.entidadComercialId?.message}
+                    placeholder="Seleccione una entidad comercial"
+                    label="Entidad Comercial"
                   />
                 )}
               />
-              {errors.entidadComercialId && (
-                <small className="p-error">
-                  {errors.entidadComercialId.message}
-                </small>
-              )}
               {!defaultValues.id && (
                 <small
                   className="p-d-block"
@@ -1296,7 +1281,7 @@ export default function EmpresaForm({
                   className={errors.nubefactUrl ? "p-invalid" : ""}
                   placeholder="https://api.nubefact.com/api/v1"
                   disabled={readOnly || !esSuperUsuario}
-                  style={{ 
+                  style={{
                     fontWeight: "bold",
                     backgroundColor: !esSuperUsuario ? "#f5f5f5" : undefined,
                     cursor: !esSuperUsuario ? "not-allowed" : undefined
@@ -1322,7 +1307,7 @@ export default function EmpresaForm({
                   className={errors.nubefactToken ? "p-invalid" : ""}
                   placeholder="Token de Nubefact"
                   disabled={readOnly || !esSuperUsuario}
-                  style={{ 
+                  style={{
                     fontWeight: "bold",
                     backgroundColor: !esSuperUsuario ? "#f5f5f5" : undefined,
                     cursor: !esSuperUsuario ? "not-allowed" : undefined
