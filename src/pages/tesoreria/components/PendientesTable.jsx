@@ -11,6 +11,7 @@ const PendientesTable = ({
   loading,
   onRegistrarPago,
   onEntregarFondos,
+  onPagarDeudaPersonal,  // AGREGAR ESTA LÍNEA
   permisos,
   tipo,
 }) => {
@@ -116,7 +117,20 @@ const PendientesTable = ({
         />
       );
     }
-
+    // AGREGAR ESTE BLOQUE DESPUÉS DE LA ASIGNACIÓN
+    // Si es una deuda personal, mostrar botón específico
+    if (rowData.origen === "Deuda Personal") {
+      return (
+        <Button
+          label="Pagar Deuda"
+          icon="pi pi-user"
+          className="p-button-sm p-button-warning"
+          onClick={() => onPagarDeudaPersonal(rowData)}
+          tooltip="Pagar deuda al personal"
+          tooltipOptions={{ position: "left" }}
+        />
+      );
+    }
     // Para el resto (CxC, CxP, Gastos Directos), mostrar botón normal
     return (
       <Button

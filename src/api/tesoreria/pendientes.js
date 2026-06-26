@@ -14,6 +14,7 @@ function getAuthHeaders() {
 /**
  * Obtener lista de documentos pendientes con filtros
  * @param {Object} filtros - { empresaId, tipo, vencimiento, monedaId }
+ * @param {String} filtros.tipo - 'COBRAR' | 'PAGAR' | 'ASIGNACIONES' | 'GASTOS_DIRECTOS' | 'DEUDAS_PERSONAL'
  * @returns {Promise<Array>} Lista de documentos pendientes
  */
 export async function getPendientes(filtros = {}) {
@@ -23,7 +24,8 @@ export async function getPendientes(filtros = {}) {
   if (filtros.tipo) params.append('tipo', filtros.tipo);
   if (filtros.vencimiento) params.append('vencimiento', filtros.vencimiento);
   if (filtros.monedaId) params.append('monedaId', filtros.monedaId);
-  
+  if (filtros.tipoDeuda) params.append('tipoDeuda', filtros.tipoDeuda);
+
   const url = params.toString() ? `${API_URL}?${params.toString()}` : API_URL;
   const res = await axios.get(url, { headers: getAuthHeaders() });
   return res.data;

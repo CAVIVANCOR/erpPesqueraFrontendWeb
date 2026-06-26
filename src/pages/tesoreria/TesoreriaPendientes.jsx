@@ -11,12 +11,15 @@ import PendientesTable from "./components/PendientesTable";
 import SaldosCuentasPanel from "./components/SaldosCuentasPanel";
 import PagoCuentaPorCobrarForm from "../../components/pagoCuentaPorCobrar/PagoCuentaPorCobrarForm";
 import EntregarFondosForm from "../../components/entregaFondos/EntregarFondosForm";
+import PagarDeudaPersonalDialog from "../../components/tesoreria/PagarDeudaPersonalDialog";
+import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ AGREGAR
 
 // Hooks
 import usePendientesData from "./hooks/usePendientesData";
 import useSaldosCuentas from "./hooks/useSaldosCuentas";
 import useRegistrarPago from "./hooks/useRegistrarPago";
 import useEntregarFondos from "../../components/entregaFondos/useEntregarFondos";
+import usePagarDeudaPersonal from "./hooks/usePagarDeudaPersonal";
 
 // APIs
 import { getAllMonedas } from "../../api/moneda";
@@ -24,6 +27,7 @@ import { getMediosPago } from "../../api/medioPago";
 import { getAllBancos } from "../../api/banco";
 import { getEstadosMultiFuncion } from "../../api/estadoMultiFuncion";
 import { getPeriodosContables } from "../../api/contabilidad/periodoContable";
+import { getAllEmpresas } from "../../api/empresa";  // ✅ AGREGAR AL INICIO
 
 // Utils
 import { formatearNumero } from "../../utils/utils";
@@ -39,11 +43,21 @@ const TesoreriaPendientes = () => {
   const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
   const [showEntregaFondosDialog, setShowEntregaFondosDialog] = useState(false);
   const [asignacionSeleccionada, setAsignacionSeleccionada] = useState(null);
+  const [showPagoDeudaPersonalDialog, setShowPagoDeudaPersonalDialog] = useState(false);
+  const [deudaPersonalSeleccionada, setDeudaPersonalSeleccionada] = useState(null);
+  // 🆕 Estados para diálogos de operaciones
+  const [showTransferenciaInternaDialog, setShowTransferenciaInternaDialog] = useState(false);
+  const [showPagoProveedorDialog, setShowPagoProveedorDialog] = useState(false);
+  const [showRetiroDineroDialog, setShowRetiroDineroDialog] = useState(false);
+  const [showIngresoDineroDialog, setShowIngresoDineroDialog] = useState(false);
+  const [showGastoUrgenteDialog, setShowGastoUrgenteDialog] = useState(false);
+
   const [filtros, setFiltros] = useState({
-    empresaId: null,
-    tipo: null, // 'COBRAR' | 'PAGAR'
-    vencimiento: null, // 'VENCIDOS' | 'HOY' | 'SEMANA'
+    empresaId: usuario?.empresaId || null,
+    tipo: null,
+    vencimiento: null,
     monedaId: null,
+    tipoDeuda: null,
   });
 
   // Estados para catálogos
@@ -52,6 +66,7 @@ const TesoreriaPendientes = () => {
   const [bancos, setBancos] = useState([]);
   const [estados, setEstados] = useState([]);
   const [periodosContables, setPeriodosContables] = useState([]);
+  const [empresas, setEmpresas] = useState([]);  // ✅ AGREGAR
   const [loadingCatalogos, setLoadingCatalogos] = useState(true);
 
   // Hooks personalizados
@@ -93,6 +108,16 @@ const TesoreriaPendientes = () => {
     },
   });
 
+  // Línea 95 - AGREGAR
+  const { pagarDeuda, loading: loadingPagoDeuda } = usePagarDeudaPersonal({
+    toast,
+    onSuccess: () => {
+      setShowPagoDeudaPersonalDialog(false);
+      setDeudaPersonalSeleccionada(null);
+      recargarPendientes();
+      recargarSaldos();
+    },
+  });
 
   // Verificar acceso
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
@@ -110,18 +135,21 @@ const TesoreriaPendientes = () => {
           bancosData,
           estadosData,
           periodosData,
+          empresasData,  // ✅ AGREGAR AQUÍ
         ] = await Promise.all([
           getAllMonedas(),
           getMediosPago(),
           getAllBancos(),
           getEstadosMultiFuncion(),
           getPeriodosContables(),
+          getAllEmpresas(),
         ]);
         setMonedas(monedasData);
         setMediosPago(mediosPagoData);
         setBancos(bancosData);
         setEstados(estadosData);
         setPeriodosContables(periodosData);
+        setEmpresas(empresasData || []);  // ✅ CAMBIAR empresasRes → empresasData
       } catch (error) {
         console.error("Error al cargar catálogos:", error);
         toast.current?.show({
@@ -222,11 +250,67 @@ const TesoreriaPendientes = () => {
     setShowEntregaFondosDialog(false);
     setAsignacionSeleccionada(null);
   };
+  // Línea 225 - AGREGAR
+  const handlePagarDeudaPersonal = (deuda) => {
+    setDeudaPersonalSeleccionada(deuda);
+    setShowPagoDeudaPersonalDialog(true);
+  };
+
+  const handleGuardarPagoDeuda = async (formData) => {
+    await pagarDeuda(deudaPersonalSeleccionada.origenId, formData);
+  };
+
+  const handleCancelarPagoDeuda = () => {
+    setShowPagoDeudaPersonalDialog(false);
+    setDeudaPersonalSeleccionada(null);
+  };
+
+  // 🆕 Handler para operaciones
+  const handleOperacion = (tipoOperacion) => {
+    switch (tipoOperacion) {
+      case 'TRANSFERENCIA_INTERNA':
+        setShowTransferenciaInternaDialog(true);
+        break;
+      case 'PAGO_PROVEEDOR':
+        setShowPagoProveedorDialog(true);
+        break;
+      case 'RETIRO_DINERO':
+        setShowRetiroDineroDialog(true);
+        break;
+      case 'INGRESO_DINERO':
+        setShowIngresoDineroDialog(true);
+        break;
+      case 'GASTO_URGENTE':
+        setShowGastoUrgenteDialog(true);
+        break;
+      default:
+        toast.current?.show({
+          severity: 'info',
+          summary: 'Próximamente',
+          detail: 'Esta funcionalidad estará disponible pronto',
+          life: 3000,
+        });
+    }
+  };
 
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
       <ConfirmDialog />
+      {/* ✅ AGREGAR: Selector de Empresa */}
+      <Card className="mb-3">
+        <div className="p-fluid">
+          <div className="field">
+            <label htmlFor="empresa" className="font-bold">
+              🏢 Empresa
+            </label>
+            <EmpresaSelector
+              empresaId={usuario?.empresaId}
+              onEmpresaChange={(id) => handleFiltroChange("empresaId", id)}
+            />
+          </div>
+        </div>
+      </Card>
       {/* Panel de Saldos de Cuentas Corrientes */}
       <SaldosCuentasPanel
         saldosCuentas={saldosCuentas}
@@ -242,6 +326,7 @@ const TesoreriaPendientes = () => {
         resumen={resumen}
         loading={loadingPendientes}
         permisos={permisos}
+        onOperacion={handleOperacion} // ✅ NUEVO
       />
       {/* Tabla de Pendientes */}
       <Card title="📋 Documentos Pendientes">
@@ -250,6 +335,7 @@ const TesoreriaPendientes = () => {
           loading={loadingPendientes}
           onRegistrarPago={handleRegistrarPago}
           onEntregarFondos={handleEntregarFondos}
+          onPagarDeudaPersonal={handlePagarDeudaPersonal}  // AGREGAR ESTA LÍNEA
           permisos={permisos}
         />
       </Card>
@@ -334,6 +420,99 @@ const TesoreriaPendientes = () => {
           />
         </Dialog>
       )}
+
+      {/* Diálogo para pagar deuda personal */}
+      {deudaPersonalSeleccionada && (
+        <Dialog
+          header={`💵 Pagar Deuda Personal - ${deudaPersonalSeleccionada.entidadComercial?.razonSocial || 'N/A'}`}
+          visible={showPagoDeudaPersonalDialog}
+          style={{ width: "90vw", maxWidth: "900px" }}
+          onHide={handleCancelarPagoDeuda}
+          modal
+          maximizable
+        >
+          <PagarDeudaPersonalDialog
+            deuda={{
+              ...deudaPersonalSeleccionada,
+              empresaId: deudaPersonalSeleccionada.empresa?.id,
+              personalId: deudaPersonalSeleccionada.entidadComercial?.id,
+              personal: {
+                nombres: deudaPersonalSeleccionada.entidadComercial?.razonSocial?.split(' ')[0] || '',
+                apellidoPaterno: deudaPersonalSeleccionada.entidadComercial?.razonSocial?.split(' ')[1] || '',
+                apellidoMaterno: deudaPersonalSeleccionada.entidadComercial?.razonSocial?.split(' ')[2] || '',
+              },
+              tipoDeuda: {
+                nombre: deudaPersonalSeleccionada.tipoMovimiento?.nombre || 'N/A',
+              },
+              montoOriginal: deudaPersonalSeleccionada.montoTotal,
+              montoPagado: deudaPersonalSeleccionada.montoPagado || 0,
+              saldoPendiente: deudaPersonalSeleccionada.saldoPendiente,
+              moneda: deudaPersonalSeleccionada.moneda,
+              estado: deudaPersonalSeleccionada.estado,
+            }}
+            cuentasCorrientes={saldosCuentas}
+            mediosPago={mediosPago}
+            onSubmit={handleGuardarPagoDeuda}
+            onCancel={handleCancelarPagoDeuda}
+            loading={loadingPagoDeuda}
+            toast={toast}
+          />
+        </Dialog>
+      )}
+
+
+      {/* 🆕 Diálogos de Operaciones (Placeholders) */}
+      <Dialog
+        header="🔄 Transferencia Interna"
+        visible={showTransferenciaInternaDialog}
+        style={{ width: "90vw", maxWidth: "800px" }}
+        onHide={() => setShowTransferenciaInternaDialog(false)}
+        modal
+      >
+        <p>Funcionalidad en desarrollo...</p>
+      </Dialog>
+
+      <Dialog
+        header="💸 Pago a Proveedor"
+        visible={showPagoProveedorDialog}
+        style={{ width: "90vw", maxWidth: "800px" }}
+        onHide={() => setShowPagoProveedorDialog(false)}
+        modal
+      >
+        <p>Funcionalidad en desarrollo...</p>
+      </Dialog>
+
+      <Dialog
+        header="💵 Retiro de Dinero"
+        visible={showRetiroDineroDialog}
+        style={{ width: "90vw", maxWidth: "700px" }}
+        onHide={() => setShowRetiroDineroDialog(false)}
+        modal
+      >
+        <p>Funcionalidad en desarrollo...</p>
+      </Dialog>
+
+      <Dialog
+        header="💰 Ingreso de Dinero"
+        visible={showIngresoDineroDialog}
+        style={{ width: "90vw", maxWidth: "700px" }}
+        onHide={() => setShowIngresoDineroDialog(false)}
+        modal
+      >
+        <p>Funcionalidad en desarrollo...</p>
+      </Dialog>
+
+      <Dialog
+        header="🚨 Gasto Directo Urgente"
+        visible={showGastoUrgenteDialog}
+        style={{ width: "90vw", maxWidth: "900px" }}
+        onHide={() => setShowGastoUrgenteDialog(false)}
+        modal
+      >
+        <p>Funcionalidad en desarrollo...</p>
+      </Dialog>
+
+
     </div>
   );
 };

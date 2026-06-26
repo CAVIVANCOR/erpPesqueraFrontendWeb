@@ -13,6 +13,7 @@ const PendientesHeader = ({
   resumen,
   loading,
   permisos,
+  onOperacion, // ✅ NUEVO: Callback para operaciones
 }) => {
   // Función para obtener el estilo de tag según la moneda
   const getMonedaTagStyle = (codigoMoneda) => {
@@ -442,6 +443,70 @@ const PendientesHeader = ({
     );
   };
 
+  // 🆕 Función para obtener el label con datos del resumen para DEUDAS
+  const getDeudasLabel = (tipo) => {
+    if (!resumen || loading) {
+      return (
+        <div className="text-center">
+          <div className="font-bold text-xs">{tipo.label}</div>
+        </div>
+      );
+    }
+
+    const datos =
+      tipo.value === "DEUDAS_PERSONAL"
+        ? resumen.deudasPersonales
+        : resumen.deudasTributarias;
+
+    if (!datos || datos.length === 0) {
+      return (
+        <div className="text-center" style={{ padding: "0.15rem 0" }}>
+          <div className="font-bold mb-1" style={{ fontSize: "0.75rem" }}>
+            {tipo.label}
+          </div>
+          <div className="text-xs" style={{ color: "#6c757d", fontSize: "0.65rem" }}>
+            (0 docs)
+          </div>
+        </div>
+      );
+    }
+
+    const totalDocs = datos.reduce((sum, item) => sum + item.cantidad, 0);
+
+    return (
+      <div className="text-center" style={{ padding: "0.15rem 0" }}>
+        <div className="font-bold mb-1" style={{ fontSize: "0.75rem" }}>
+          {tipo.label}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+          {datos.map((item, idx) => {
+            const style = getMonedaTagStyle(item.moneda?.codigoSunat);
+            return (
+              <Tag
+                key={idx}
+                value={`${item.moneda?.simbolo} ${formatearNumero(item.total)}`}
+                style={{
+                  ...style,
+                  fontSize: "0.7rem",
+                  fontWeight: "600",
+                  padding: "0.25rem 0.5rem",
+                  borderRadius: "4px",
+                }}
+              />
+            );
+          })}
+        </div>
+        <div
+          className="text-xs mt-1"
+          style={{ color: "#6c757d", fontWeight: "500", fontSize: "0.65rem" }}
+        >
+          ({totalDocs} {tipo.value === "DEUDAS_PERSONAL" ? "deudas" : "tributos"})
+        </div>
+      </div>
+    );
+  };
+
+
   // Opciones de tipo con configuración de color
   const tipoOptions = [
     { label: "Todos", value: null, severity: "secondary", icon: "pi pi-list" },
@@ -475,6 +540,72 @@ const PendientesHeader = ({
     },
   ];
 
+
+  // 🆕 Opciones de Deudas (Personal y Tributaria)
+  const deudasOptions = [
+    {
+      label: "Deudas Personal",
+      value: "DEUDAS_PERSONAL",
+      severity: "help",
+      icon: "pi pi-users",
+    },
+    {
+      label: "Deudas Tributarias",
+      value: "DEUDAS_TRIBUTARIAS",
+      severity: "contrast",
+      icon: "pi pi-building",
+    },
+  ];
+
+  // 🆕 Opciones de Operaciones
+  const operacionesOptions = [
+    {
+      label: "Transfer. Interna",
+      value: "TRANSFERENCIA_INTERNA",
+      severity: "info",
+      icon: "pi pi-arrow-right-arrow-left",
+      descripcion: "Transferencia entre nuestras cuentas",
+    },
+    {
+      label: "Pago Proveedor",
+      value: "PAGO_PROVEEDOR",
+      severity: "warning",
+      icon: "pi pi-send",
+      descripcion: "Pago a cuenta externa de proveedor",
+    },
+    {
+      label: "Retiro Dinero",
+      value: "RETIRO_DINERO",
+      severity: "danger",
+      icon: "pi pi-minus-circle",
+      descripcion: "Retiro de efectivo",
+    },
+    {
+      label: "Ingreso Dinero",
+      value: "INGRESO_DINERO",
+      severity: "success",
+      icon: "pi pi-plus-circle",
+      descripcion: "Depósito de efectivo",
+    },
+    {
+      label: "Gasto Urgente",
+      value: "GASTO_URGENTE",
+      severity: "danger",
+      icon: "pi pi-bolt",
+      descripcion: "Provisión + Pago inmediato",
+    },
+  ];
+
+  // Función para manejar clic en operaciones
+  const handleOperacionClick = (operacion) => {
+    if (onOperacion) {
+      onOperacion(operacion);
+    }
+  };
+
+  // ========================================
+
+
   // Opciones de vencimiento con configuración de color
   const vencimientoOptions = [
     {
@@ -504,73 +635,230 @@ const PendientesHeader = ({
   ];
 
   return (
-    <Card title="💰 Tesorería - Documentos Pendientes" className="mb-3">
-      {/* Filtros */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "end",
-          gap: 6,
-          fontSize: getResponsiveFontSize(),
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          {/* Filtro Tipo - Botones de 3 estados + 2 Entregas */}
-          <label className="block mb-2 font-bold text-sm">Tipo de Documento</label>
-          <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
-            {tipoOptions.map((option) => (
-              <Button
-                key={option.value || "todos"}
-                icon={option.icon}
-                severity={option.severity}
-                outlined={filtros.tipo !== option.value}
-                raised={filtros.tipo === option.value}
-                onClick={() => onFiltroChange("tipo", option.value)}
-                disabled={loading}
-                style={{
-                  flex: 1,
-                  minWidth: "90px",
-                  minHeight: "85px",
-                  padding: "0.4rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.75rem",
-                }}
-              >
-                {getTipoLabel(option)}
-              </Button>
-            ))}
-            {/* 🆕 AGREGAR: Asignaciones y Gastos Directos */}
-            {entregasOptions.map((option) => (
-              <Button
-                key={option.value}
-                icon={option.icon}
-                severity={option.severity}
-                outlined
-                disabled={loading}
-                style={{
-                  flex: 1,
-                  minWidth: "90px",
-                  minHeight: "85px",
-                  padding: "0.4rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.75rem",
-                }}
-              >
-                {getEntregasLabel(option)}
-              </Button>
-            ))}
-          </div>
+    <Card
+      title="🎛️ PANEL DE CONTROL - TESORERÍA"
+      className="mb-3"
+      style={{ backgroundColor: "#f8f9fa" }}
+    >
+      {/* ========================================
+          FILA 1: ATENCIONES
+          ======================================== */}
+      <div className="mb-4">
+        <div
+          style={{
+            backgroundColor: "#e3f2fd",
+            padding: "0.5rem 1rem",
+            borderRadius: "6px",
+            marginBottom: "0.75rem",
+          }}
+        >
+          <h3
+            style={{
+              margin: 0,
+              fontSize: "0.95rem",
+              fontWeight: "bold",
+              color: "#1976d2",
+            }}
+          >
+            📌 ATENCIONES
+          </h3>
         </div>
 
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {/* Botones de Tipo (Todos, Por Cobrar, Por Pagar) */}
+          {tipoOptions.map((option) => (
+            <Button
+              key={option.value || "todos"}
+              icon={option.icon}
+              severity={option.severity}
+              outlined={filtros.tipo !== option.value}
+              raised={filtros.tipo === option.value}
+              onClick={() => onFiltroChange("tipo", option.value)}
+              disabled={loading}
+              style={{
+                flex: "1 1 calc(12.5% - 8px)",
+                minWidth: "90px",
+                minHeight: "85px",
+                padding: "0.4rem",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.75rem",
+              }}
+            >
+              {getTipoLabel(option)}
+            </Button>
+          ))}
+
+          {/* Botones de Entregas (Asignaciones, Gastos Directos) */}
+          {entregasOptions.map((option) => (
+            <Button
+              key={option.value}
+              icon={option.icon}
+              severity={option.severity}
+              outlined
+              disabled={loading}
+              style={{
+                flex: "1 1 calc(12.5% - 8px)",
+                minWidth: "90px",
+                minHeight: "85px",
+                padding: "0.4rem",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.75rem",
+              }}
+            >
+              {getEntregasLabel(option)}
+            </Button>
+          ))}
+
+          {/* Botones de Deudas (Personal, Tributarias) */}
+          {deudasOptions.map((option) => (
+            <Button
+              key={option.value}
+              icon={option.icon}
+              severity={option.severity}
+              outlined
+              onClick={() => onFiltroChange("tipoDeuda", option.value)}
+              disabled={loading}
+              style={{
+                flex: "1 1 calc(12.5% - 8px)",
+                minWidth: "90px",
+                minHeight: "85px",
+                padding: "0.4rem",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.75rem",
+              }}
+            >
+              {getDeudasLabel(option)}
+            </Button>
+          ))}
+
+          {/* Botones de Financieros (Placeholder por ahora) */}
+          <Button
+            icon="pi pi-money-bill"
+            severity="success"
+            outlined
+            disabled
+            style={{
+              flex: "1 1 calc(12.5% - 8px)",
+              minWidth: "90px",
+              minHeight: "85px",
+              padding: "0.4rem",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.75rem",
+            }}
+          >
+            <div className="text-center">
+              <div className="font-bold mb-1" style={{ fontSize: "0.75rem" }}>
+                Financ. Ingresos
+              </div>
+              <div className="text-xs" style={{ color: "#6c757d", fontSize: "0.65rem" }}>
+                (Próximamente)
+              </div>
+            </div>
+          </Button>
+
+          <Button
+            icon="pi pi-wallet"
+            severity="danger"
+            outlined
+            disabled
+            style={{
+              flex: "1 1 calc(12.5% - 8px)",
+              minWidth: "90px",
+              minHeight: "85px",
+              padding: "0.4rem",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.75rem",
+            }}
+          >
+            <div className="text-center">
+              <div className="font-bold mb-1" style={{ fontSize: "0.75rem" }}>
+                Financ. Pagos
+              </div>
+              <div className="text-xs" style={{ color: "#6c757d", fontSize: "0.65rem" }}>
+                (Próximamente)
+              </div>
+            </div>
+          </Button>
+        </div>
+      </div>
+
+      {/* ========================================
+          FILA 2: OPERACIONES
+          ======================================== */}
+      <div className="mb-3">
+        <div
+          style={{
+            backgroundColor: "#fff3e0",
+            padding: "0.5rem 1rem",
+            borderRadius: "6px",
+            marginBottom: "0.75rem",
+          }}
+        >
+          <h3
+            style={{
+              margin: 0,
+              fontSize: "0.95rem",
+              fontWeight: "bold",
+              color: "#f57c00",
+            }}
+          >
+            🔄 OPERACIONES
+          </h3>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {operacionesOptions.map((option) => (
+            <Button
+              key={option.value}
+              icon={option.icon}
+              severity={option.severity}
+              outlined
+              onClick={() => handleOperacionClick(option.value)}
+              disabled={loading}
+              tooltip={option.descripcion}
+              tooltipOptions={{ position: "top" }}
+              style={{
+                flex: "1 1 calc(20% - 8px)",
+                minWidth: "110px",
+                minHeight: "85px",
+                padding: "0.4rem",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.75rem",
+              }}
+            >
+              <div className="text-center">
+                <div className="font-bold mb-1" style={{ fontSize: "0.75rem" }}>
+                  {option.label}
+                </div>
+              </div>
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* ========================================
+          FILTROS ADICIONALES (Vencimiento, Limpiar)
+          ======================================== */}
+      <div style={{ display: "flex", gap: 12, marginTop: "1rem" }}>
         <div style={{ flex: 1 }}>
-          {/* Filtro Vencimiento - Botones de 4 estados */}
           <label className="block mb-2 font-bold text-sm">Estado de Vencimiento</label>
           <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
             {vencimientoOptions.map((option) => (

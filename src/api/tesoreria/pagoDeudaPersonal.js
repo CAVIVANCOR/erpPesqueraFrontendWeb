@@ -40,3 +40,10 @@ export async function getPagosDeudaPersonalByDeuda(deudaId) {
   const res = await axios.get(`${API_URL}/deuda/${deudaId}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+export async function pagarDeudaPersonal(deudaId, data) {
+  const res = await axios.post(`${API_URL}/${deudaId}/pagar`, data, { 
+    headers: getAuthHeaders() 
+  });
+  return res.data;
+}
