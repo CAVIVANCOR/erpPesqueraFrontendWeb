@@ -168,6 +168,20 @@ export default function CentroCostoForm({
               filter
             />
           </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="ParentCentroID" style={{ fontWeight: "bold" }}>
+              SubCategoría
+            </label>
+            <InputText
+              id="ParentCentroID"
+              value={formData.ParentCentroID}
+              onChange={(e) =>
+                handleChange("ParentCentroID", e.target.value.toUpperCase())
+              }
+              disabled={readOnly || loading || guardando}
+              maxLength={80}
+            />
+          </div>
         </div>
 
         <div

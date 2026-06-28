@@ -13,14 +13,14 @@ import PagoCuentaPorCobrarForm from "../../components/pagoCuentaPorCobrar/PagoCu
 import EntregarFondosForm from "../../components/entregaFondos/EntregarFondosForm";
 import PagarDeudaPersonalDialog from "../../components/tesoreria/PagarDeudaPersonalDialog";
 import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ AGREGAR
-
+import PagarDeudaTributariaDialog from "../../components/tesoreria/PagarDeudaTributariaDialog";
 // Hooks
 import usePendientesData from "./hooks/usePendientesData";
 import useSaldosCuentas from "./hooks/useSaldosCuentas";
 import useRegistrarPago from "./hooks/useRegistrarPago";
 import useEntregarFondos from "../../components/entregaFondos/useEntregarFondos";
 import usePagarDeudaPersonal from "./hooks/usePagarDeudaPersonal";
-
+import usePagarDeudaTributaria from "./hooks/usePagarDeudaTributaria";
 // APIs
 import { getAllMonedas } from "../../api/moneda";
 import { getMediosPago } from "../../api/medioPago";
@@ -28,7 +28,12 @@ import { getAllBancos } from "../../api/banco";
 import { getEstadosMultiFuncion } from "../../api/estadoMultiFuncion";
 import { getPeriodosContables } from "../../api/contabilidad/periodoContable";
 import { getAllEmpresas } from "../../api/empresa";  // ✅ AGREGAR AL INICIO
-
+import {
+  TIPO_FILTRO_TESORERIA,
+  TIPO_DEUDA_TESORERIA,
+  TIPO_VENCIMIENTO_TESORERIA,
+  TIPO_OPERACION_TESORERIA,
+} from "../../utils/tesoreria.constants";
 // Utils
 import { formatearNumero } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
@@ -45,6 +50,8 @@ const TesoreriaPendientes = () => {
   const [asignacionSeleccionada, setAsignacionSeleccionada] = useState(null);
   const [showPagoDeudaPersonalDialog, setShowPagoDeudaPersonalDialog] = useState(false);
   const [deudaPersonalSeleccionada, setDeudaPersonalSeleccionada] = useState(null);
+  const [showPagoDeudaTributariaDialog, setShowPagoDeudaTributariaDialog] = useState(false);
+  const [deudaTributariaSeleccionada, setDeudaTributariaSeleccionada] = useState(null);
   // 🆕 Estados para diálogos de operaciones
   const [showTransferenciaInternaDialog, setShowTransferenciaInternaDialog] = useState(false);
   const [showPagoProveedorDialog, setShowPagoProveedorDialog] = useState(false);
@@ -54,12 +61,11 @@ const TesoreriaPendientes = () => {
 
   const [filtros, setFiltros] = useState({
     empresaId: usuario?.empresaId || null,
-    tipo: null,
-    vencimiento: null,
+    tipo: TIPO_FILTRO_TESORERIA.TODOS,
+    vencimiento: TIPO_VENCIMIENTO_TESORERIA.TODOS,
     monedaId: null,
-    tipoDeuda: null,
+    tipoDeuda: TIPO_DEUDA_TESORERIA.NINGUNO,
   });
-
   // Estados para catálogos
   const [monedas, setMonedas] = useState([]);
   const [mediosPago, setMediosPago] = useState([]);
@@ -114,6 +120,16 @@ const TesoreriaPendientes = () => {
     onSuccess: () => {
       setShowPagoDeudaPersonalDialog(false);
       setDeudaPersonalSeleccionada(null);
+      recargarPendientes();
+      recargarSaldos();
+    },
+  });
+
+  const { pagarDeuda: pagarDeudaTributaria, loading: loadingPagoDeudaTributaria } = usePagarDeudaTributaria({
+    toast,
+    onSuccess: () => {
+      setShowPagoDeudaTributariaDialog(false);
+      setDeudaTributariaSeleccionada(null);
       recargarPendientes();
       recargarSaldos();
     },
@@ -199,11 +215,34 @@ const TesoreriaPendientes = () => {
 
   const handleLimpiarFiltros = () => {
     setFiltros({
-      empresaId: null,
-      tipo: null,
-      vencimiento: null,
+      empresaId: usuario?.empresaId || null,
+      tipo: TIPO_FILTRO_TESORERIA.TODOS,
+      vencimiento: TIPO_VENCIMIENTO_TESORERIA.TODOS,
       monedaId: null,
+      tipoDeuda: TIPO_DEUDA_TESORERIA.NINGUNO,
     });
+  };
+
+
+  const handlePagarDeudaTributaria = (deuda) => {
+    setDeudaTributariaSeleccionada(deuda);
+    setShowPagoDeudaTributariaDialog(true);
+  };
+
+  const handleGuardarPagoDeudaTributaria = async (formData) => {
+    try {
+      await pagarDeudaTributaria(deudaTributariaSeleccionada.id, {
+        ...formData,
+        usuarioId: usuario?.id,
+      });
+    } catch (error) {
+      console.error("Error al guardar pago deuda tributaria:", error);
+    }
+  };
+
+  const handleCancelarPagoDeudaTributaria = () => {
+    setShowPagoDeudaTributariaDialog(false);
+    setDeudaTributariaSeleccionada(null);
   };
 
   const handleRegistrarPago = (documento) => {
@@ -266,30 +305,25 @@ const TesoreriaPendientes = () => {
   };
 
   // 🆕 Handler para operaciones
-  const handleOperacion = (tipoOperacion) => {
-    switch (tipoOperacion) {
-      case 'TRANSFERENCIA_INTERNA':
+  const handleOperacion = (operacion) => {
+    switch (operacion) {
+      case TIPO_OPERACION_TESORERIA.TRANSFERENCIA_INTERNA:
         setShowTransferenciaInternaDialog(true);
         break;
-      case 'PAGO_PROVEEDOR':
+      case TIPO_OPERACION_TESORERIA.PAGO_PROVEEDOR:
         setShowPagoProveedorDialog(true);
         break;
-      case 'RETIRO_DINERO':
+      case TIPO_OPERACION_TESORERIA.RETIRO_DINERO:
         setShowRetiroDineroDialog(true);
         break;
-      case 'INGRESO_DINERO':
+      case TIPO_OPERACION_TESORERIA.INGRESO_DINERO:
         setShowIngresoDineroDialog(true);
         break;
-      case 'GASTO_URGENTE':
+      case TIPO_OPERACION_TESORERIA.GASTO_URGENTE:
         setShowGastoUrgenteDialog(true);
         break;
       default:
-        toast.current?.show({
-          severity: 'info',
-          summary: 'Próximamente',
-          detail: 'Esta funcionalidad estará disponible pronto',
-          life: 3000,
-        });
+        console.warn("Operación no reconocida:", operacion);
     }
   };
 
@@ -336,6 +370,7 @@ const TesoreriaPendientes = () => {
           onRegistrarPago={handleRegistrarPago}
           onEntregarFondos={handleEntregarFondos}
           onPagarDeudaPersonal={handlePagarDeudaPersonal}  // AGREGAR ESTA LÍNEA
+          onPagarDeudaTributaria={handlePagarDeudaTributaria}
           permisos={permisos}
         />
       </Card>
@@ -459,7 +494,27 @@ const TesoreriaPendientes = () => {
           />
         </Dialog>
       )}
-
+      {/* Diálogo para pagar deuda tributaria */}
+      {deudaTributariaSeleccionada && (
+        <Dialog
+          header={`🏛️ Pagar Deuda Tributaria - ${deudaTributariaSeleccionada.tipoDeuda?.nombre || 'N/A'}`}
+          visible={showPagoDeudaTributariaDialog}
+          style={{ width: "90vw", maxWidth: "900px" }}
+          onHide={handleCancelarPagoDeudaTributaria}
+          modal
+          maximizable
+        >
+          <PagarDeudaTributariaDialog
+            deuda={deudaTributariaSeleccionada}
+            cuentasCorrientes={saldosCuentas}
+            mediosPago={mediosPago}
+            onSubmit={handleGuardarPagoDeudaTributaria}
+            onCancel={handleCancelarPagoDeudaTributaria}
+            loading={loadingPagoDeudaTributaria}
+            toast={toast}
+          />
+        </Dialog>
+      )}
 
       {/* 🆕 Diálogos de Operaciones (Placeholders) */}
       <Dialog

@@ -697,3 +697,51 @@ export const getTipoCuentaContableLabel = (value) => {
 export const getNaturalezaCuentaLabel = (value) => {
   return getEnumLabel(NATURALEZA_CUENTA_OPTIONS, value);
 };
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// NOTA IMPORTANTE: CONSTANTES DE TESORERÍA
+// ════════════════════════════════════════════════════════════════════════════
+/**
+ * Las constantes de Tesorería han sido movidas a un archivo dedicado para
+ * mantener UNA SOLA FUENTE DE VERDAD compartida entre frontend y backend.
+ * 
+ * ⚠️ PROHIBIDO: Hardcodear valores de tesorería en cualquier archivo.
+ * ✅ OBLIGATORIO: Importar siempre desde el archivo de constantes.
+ * 
+ * UBICACIÓN DE LA FUENTE DE VERDAD:
+ * - Frontend: src/utils/tesoreria.constants.js
+ * - Backend:  src/utils/tesoreria.constants.js
+ * 
+ * EJEMPLO DE IMPORTACIÓN:
+ * ```javascript
+ * import {
+ *   TIPO_FILTRO_TESORERIA,
+ *   TIPO_DEUDA_TESORERIA,
+ *   TIPO_VENCIMIENTO_TESORERIA,
+ *   TIPO_OPERACION_TESORERIA,
+ *   ORIGEN_DOCUMENTO_TESORERIA,
+ *   TIPO_ENTREGA_TESORERIA,
+ *   LABELS_TIPO_FILTRO,
+ *   LABELS_TIPO_DEUDA,
+ *   LABELS_TIPO_ENTREGA,
+ *   LABELS_TIPO_VENCIMIENTO,
+ *   LABELS_TIPO_OPERACION,
+ * } from '../utils/tesoreria.constants';
+ * ```
+ * 
+ * CONSTANTES DISPONIBLES:
+ * - TIPO_FILTRO_TESORERIA: Filtros principales (TODOS, COBRAR, PAGAR)
+ * - TIPO_DEUDA_TESORERIA: Filtros de deudas (NINGUNO, DEUDAS_PERSONAL, DEUDAS_TRIBUTARIAS)
+ * - TIPO_VENCIMIENTO_TESORERIA: Filtros de vencimiento (TODOS, VENCIDOS, HOY, SEMANA)
+ * - TIPO_ENTREGA_TESORERIA: Tipos de entregas (ASIGNACIONES, GASTOS_DIRECTOS)
+ * - TIPO_OPERACION_TESORERIA: Operaciones especiales (TRANSFERENCIA_INTERNA, etc.)
+ * - ORIGEN_DOCUMENTO_TESORERIA: Orígenes de documentos (CUENTAS_POR_COBRAR, etc.)
+ * - LABELS_TIPO_FILTRO: Labels y configuración UI para filtros
+ * - LABELS_TIPO_DEUDA: Labels y configuración UI para deudas
+ * - LABELS_TIPO_ENTREGA: Labels y configuración UI para entregas
+ * - LABELS_TIPO_VENCIMIENTO: Labels y configuración UI para vencimiento
+ * - LABELS_TIPO_OPERACION: Labels y configuración UI para operaciones
+ * 
+ * ════════════════════════════════════════════════════════════════════════════
+ */

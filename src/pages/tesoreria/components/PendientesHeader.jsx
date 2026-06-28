@@ -5,6 +5,19 @@ import { Tag } from "primereact/tag";
 import { Skeleton } from "primereact/skeleton";
 import { formatearNumero } from "../../../utils/utils";
 import { getResponsiveFontSize } from "../../../utils/utils";
+import {
+  TIPO_FILTRO_TESORERIA,
+  TIPO_DEUDA_TESORERIA,
+  TIPO_VENCIMIENTO_TESORERIA,
+  TIPO_ENTREGA_TESORERIA,
+  TIPO_OPERACION_TESORERIA,
+  LABELS_TIPO_FILTRO,
+  LABELS_TIPO_DEUDA,
+  LABELS_TIPO_ENTREGA,
+  LABELS_TIPO_VENCIMIENTO,
+  LABELS_TIPO_OPERACION,
+  LABELS_TEXTO_ENTREGAS,
+} from "../../../utils/tesoreria.constants";
 
 const PendientesHeader = ({
   filtros,
@@ -72,7 +85,7 @@ const PendientesHeader = ({
       );
     }
 
-    if (tipo.value === null) {
+    if (tipo.value === TIPO_FILTRO_TESORERIA.TODOS) {
       // Todos - mostrar total combinado
       const totalCobrar =
         resumen.porCobrar?.reduce((sum, item) => sum + item.cantidad, 0) || 0;
@@ -137,7 +150,7 @@ const PendientesHeader = ({
           </div>
         </div>
       );
-    } else if (tipo.value === "COBRAR") {
+    } else if (tipo.value === TIPO_FILTRO_TESORERIA.COBRAR) {
       // Por Cobrar
       const totalDocs =
         resumen.porCobrar?.reduce((sum, item) => sum + item.cantidad, 0) || 0;
@@ -175,7 +188,7 @@ const PendientesHeader = ({
           </div>
         </div>
       );
-    } else if (tipo.value === "PAGAR") {
+    } else if (tipo.value === TIPO_FILTRO_TESORERIA.PAGAR) {
       // Por Pagar
       const totalDocs =
         resumen.porPagar?.reduce((sum, item) => sum + item.cantidad, 0) || 0;
@@ -213,6 +226,110 @@ const PendientesHeader = ({
           </div>
         </div>
       );
+
+    } else if (tipo.value === TIPO_FILTRO_TESORERIA.ASIGNACIONES) {
+      // Asignaciones
+      const datos = resumen.asignaciones || [];
+      const totalDocs = datos.reduce((sum, item) => sum + item.cantidad, 0);
+
+      if (totalDocs === 0) {
+        return (
+          <div className="text-center" style={{ padding: "0.25rem 0" }}>
+            <div className="font-bold mb-2" style={{ fontSize: "0.85rem" }}>
+              {tipo.label}
+            </div>
+            <div className="text-xs" style={{ color: "#6c757d", fontSize: "0.7rem" }}>
+              (0 docs)
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="text-center" style={{ padding: "0.25rem 0" }}>
+          <div className="font-bold mb-2" style={{ fontSize: "0.85rem" }}>
+            {tipo.label}
+          </div>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}
+          >
+            {datos.map((item, idx) => {
+              const style = getMonedaTagStyle(item.moneda?.codigoSunat);
+              return (
+                <Tag
+                  key={idx}
+                  value={`${item.moneda?.simbolo} ${formatearNumero(item.total)}`}
+                  style={{
+                    ...style,
+                    fontSize: "0.75rem",
+                    fontWeight: "600",
+                    padding: "0.3rem 0.6rem",
+                    borderRadius: "6px",
+                  }}
+                />
+              );
+            })}
+          </div>
+          <div
+            className="text-xs mt-2"
+            style={{ color: "#6c757d", fontWeight: "500", fontSize: "0.7rem" }}
+          >
+            ({totalDocs} asig)
+          </div>
+        </div>
+      );
+    } else if (tipo.value === TIPO_FILTRO_TESORERIA.GASTOS_DIRECTOS) {
+      // Gastos Directos
+      const datos = resumen.gastosDirectos || [];
+      const totalDocs = datos.reduce((sum, item) => sum + item.cantidad, 0);
+
+      if (totalDocs === 0) {
+        return (
+          <div className="text-center" style={{ padding: "0.25rem 0" }}>
+            <div className="font-bold mb-2" style={{ fontSize: "0.85rem" }}>
+              {tipo.label}
+            </div>
+            <div className="text-xs" style={{ color: "#6c757d", fontSize: "0.7rem" }}>
+              (0 docs)
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="text-center" style={{ padding: "0.25rem 0" }}>
+          <div className="font-bold mb-2" style={{ fontSize: "0.85rem" }}>
+            {tipo.label}
+          </div>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}
+          >
+            {datos.map((item, idx) => {
+              const style = getMonedaTagStyle(item.moneda?.codigoSunat);
+              return (
+                <Tag
+                  key={idx}
+                  value={`${item.moneda?.simbolo} ${formatearNumero(item.total)}`}
+                  style={{
+                    ...style,
+                    fontSize: "0.75rem",
+                    fontWeight: "600",
+                    padding: "0.3rem 0.6rem",
+                    borderRadius: "6px",
+                  }}
+                />
+              );
+            })}
+          </div>
+          <div
+            className="text-xs mt-2"
+            style={{ color: "#6c757d", fontWeight: "500", fontSize: "0.7rem" }}
+          >
+            ({totalDocs} gastos)
+          </div>
+        </div>
+      );
+
     }
   };
 
@@ -226,7 +343,7 @@ const PendientesHeader = ({
       );
     }
 
-    if (venc.value === null) {
+    if (venc.value === TIPO_VENCIMIENTO_TESORERIA.TODOS) {
       // Todos
       const totalCobrar =
         resumen.porCobrar?.reduce((sum, item) => sum + item.cantidad, 0) || 0;
@@ -291,7 +408,7 @@ const PendientesHeader = ({
           </div>
         </div>
       );
-    } else if (venc.value === "VENCIDOS") {
+    } else if (venc.value === TIPO_VENCIMIENTO_TESORERIA.VENCIDOS) {
       // Vencidos - mostrar por cobrar y por pagar
       const totalCobrar =
         resumen.vencidos?.cobrar?.reduce(
@@ -362,7 +479,7 @@ const PendientesHeader = ({
           </div>
         </div>
       );
-    } else if (venc.value === "HOY" || venc.value === "SEMANA") {
+    } else if (venc.value === TIPO_VENCIMIENTO_TESORERIA.HOY || venc.value === TIPO_VENCIMIENTO_TESORERIA.SEMANA) {
       // Estos no tienen datos específicos en el resumen actual
       return (
         <div className="text-center" style={{ padding: "0.25rem 0" }}>
@@ -380,68 +497,6 @@ const PendientesHeader = ({
     }
   };
 
-  // 🆕 Función para obtener el label con datos del resumen para ENTREGAS
-  const getEntregasLabel = (tipo) => {
-    if (!resumen || loading) {
-      return (
-        <div className="text-center">
-          <div className="font-bold text-xs">{tipo.label}</div>
-        </div>
-      );
-    }
-
-    const datos =
-      tipo.value === "ASIGNACIONES"
-        ? resumen.asignaciones
-        : resumen.gastosDirectos;
-
-    if (!datos || datos.length === 0) {
-      return (
-        <div className="text-center" style={{ padding: "0.15rem 0" }}>
-          <div className="font-bold mb-1" style={{ fontSize: "0.75rem" }}>
-            {tipo.label}
-          </div>
-          <div className="text-xs" style={{ color: "#6c757d", fontSize: "0.65rem" }}>
-            (0 docs)
-          </div>
-        </div>
-      );
-    }
-
-    const totalDocs = datos.reduce((sum, item) => sum + item.cantidad, 0);
-
-    return (
-      <div className="text-center" style={{ padding: "0.15rem 0" }}>
-        <div className="font-bold mb-1" style={{ fontSize: "0.75rem" }}>
-          {tipo.label}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
-          {datos.map((item, idx) => {
-            const style = getMonedaTagStyle(item.moneda?.codigoSunat);
-            return (
-              <Tag
-                key={idx}
-                value={`${item.moneda?.simbolo} ${formatearNumero(item.total)}`}
-                style={{
-                  ...style,
-                  fontSize: "0.7rem",
-                  fontWeight: "600",
-                  padding: "0.25rem 0.5rem",
-                  borderRadius: "4px",
-                }}
-              />
-            );
-          })}
-        </div>
-        <div
-          className="text-xs mt-1"
-          style={{ color: "#6c757d", fontWeight: "500", fontSize: "0.65rem" }}
-        >
-          ({totalDocs} {tipo.value === "ASIGNACIONES" ? "asig" : "gastos"})
-        </div>
-      </div>
-    );
-  };
 
   // 🆕 Función para obtener el label con datos del resumen para DEUDAS
   const getDeudasLabel = (tipo) => {
@@ -454,7 +509,7 @@ const PendientesHeader = ({
     }
 
     const datos =
-      tipo.value === "DEUDAS_PERSONAL"
+      tipo.value === TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL
         ? resumen.deudasPersonales
         : resumen.deudasTributarias;
 
@@ -500,7 +555,7 @@ const PendientesHeader = ({
           className="text-xs mt-1"
           style={{ color: "#6c757d", fontWeight: "500", fontSize: "0.65rem" }}
         >
-          ({totalDocs} {tipo.value === "DEUDAS_PERSONAL" ? "deudas" : "tributos"})
+          ({totalDocs} {tipo.value === TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL ? "deudas" : "tributos"})
         </div>
       </div>
     );
@@ -508,35 +563,27 @@ const PendientesHeader = ({
 
 
   // Opciones de tipo con configuración de color
+  // Opciones de tipo con configuración de color
   const tipoOptions = [
-    { label: "Todos", value: null, severity: "secondary", icon: "pi pi-list" },
     {
-      label: "Por Cobrar",
-      value: "COBRAR",
-      severity: "success",
-      icon: "pi pi-arrow-down",
+      ...LABELS_TIPO_FILTRO[TIPO_FILTRO_TESORERIA.TODOS],
+      value: TIPO_FILTRO_TESORERIA.TODOS,
     },
     {
-      label: "Por Pagar",
-      value: "PAGAR",
-      severity: "danger",
-      icon: "pi pi-arrow-up",
-    },
-  ];
-
-  // 🆕 Opciones de Entregas a Rendir (Asignaciones y Gastos Directos)
-  const entregasOptions = [
-    {
-      label: "Asignaciones",
-      value: "ASIGNACIONES",
-      severity: "info",
-      icon: "pi pi-money-bill",
+      ...LABELS_TIPO_FILTRO[TIPO_FILTRO_TESORERIA.COBRAR],
+      value: TIPO_FILTRO_TESORERIA.COBRAR,
     },
     {
-      label: "Gastos Directos",
-      value: "GASTOS_DIRECTOS",
-      severity: "warning",
-      icon: "pi pi-shopping-cart",
+      ...LABELS_TIPO_FILTRO[TIPO_FILTRO_TESORERIA.PAGAR],
+      value: TIPO_FILTRO_TESORERIA.PAGAR,
+    },
+    {
+      ...LABELS_TIPO_FILTRO[TIPO_FILTRO_TESORERIA.ASIGNACIONES],
+      value: TIPO_FILTRO_TESORERIA.ASIGNACIONES,
+    },
+    {
+      ...LABELS_TIPO_FILTRO[TIPO_FILTRO_TESORERIA.GASTOS_DIRECTOS],
+      value: TIPO_FILTRO_TESORERIA.GASTOS_DIRECTOS,
     },
   ];
 
@@ -544,58 +591,38 @@ const PendientesHeader = ({
   // 🆕 Opciones de Deudas (Personal y Tributaria)
   const deudasOptions = [
     {
-      label: "Deudas Personal",
-      value: "DEUDAS_PERSONAL",
-      severity: "help",
-      icon: "pi pi-users",
+      ...LABELS_TIPO_DEUDA[TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL],
+      value: TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL,
     },
     {
-      label: "Deudas Tributarias",
-      value: "DEUDAS_TRIBUTARIAS",
-      severity: "contrast",
-      icon: "pi pi-building",
+      ...LABELS_TIPO_DEUDA[TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS],
+      value: TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS,
     },
   ];
 
   // 🆕 Opciones de Operaciones
   const operacionesOptions = [
     {
-      label: "Transfer. Interna",
-      value: "TRANSFERENCIA_INTERNA",
-      severity: "info",
-      icon: "pi pi-arrow-right-arrow-left",
-      descripcion: "Transferencia entre nuestras cuentas",
+      ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.TRANSFERENCIA_INTERNA],
+      value: TIPO_OPERACION_TESORERIA.TRANSFERENCIA_INTERNA,
     },
     {
-      label: "Pago Proveedor",
-      value: "PAGO_PROVEEDOR",
-      severity: "warning",
-      icon: "pi pi-send",
-      descripcion: "Pago a cuenta externa de proveedor",
+      ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.PAGO_PROVEEDOR],
+      value: TIPO_OPERACION_TESORERIA.PAGO_PROVEEDOR,
     },
     {
-      label: "Retiro Dinero",
-      value: "RETIRO_DINERO",
-      severity: "danger",
-      icon: "pi pi-minus-circle",
-      descripcion: "Retiro de efectivo",
+      ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.RETIRO_DINERO],
+      value: TIPO_OPERACION_TESORERIA.RETIRO_DINERO,
     },
     {
-      label: "Ingreso Dinero",
-      value: "INGRESO_DINERO",
-      severity: "success",
-      icon: "pi pi-plus-circle",
-      descripcion: "Depósito de efectivo",
+      ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.INGRESO_DINERO],
+      value: TIPO_OPERACION_TESORERIA.INGRESO_DINERO,
     },
     {
-      label: "Gasto Urgente",
-      value: "GASTO_URGENTE",
-      severity: "danger",
-      icon: "pi pi-bolt",
-      descripcion: "Provisión + Pago inmediato",
+      ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.GASTO_URGENTE],
+      value: TIPO_OPERACION_TESORERIA.GASTO_URGENTE,
     },
   ];
-
   // Función para manejar clic en operaciones
   const handleOperacionClick = (operacion) => {
     if (onOperacion) {
@@ -609,28 +636,20 @@ const PendientesHeader = ({
   // Opciones de vencimiento con configuración de color
   const vencimientoOptions = [
     {
-      label: "Todos",
-      value: null,
-      severity: "secondary",
-      icon: "pi pi-calendar",
+      ...LABELS_TIPO_VENCIMIENTO[TIPO_VENCIMIENTO_TESORERIA.TODOS],
+      value: TIPO_VENCIMIENTO_TESORERIA.TODOS,
     },
     {
-      label: "Vencidos",
-      value: "VENCIDOS",
-      severity: "danger",
-      icon: "pi pi-exclamation-triangle",
+      ...LABELS_TIPO_VENCIMIENTO[TIPO_VENCIMIENTO_TESORERIA.VENCIDOS],
+      value: TIPO_VENCIMIENTO_TESORERIA.VENCIDOS,
     },
     {
-      label: "Vencen Hoy",
-      value: "HOY",
-      severity: "warning",
-      icon: "pi pi-clock",
+      ...LABELS_TIPO_VENCIMIENTO[TIPO_VENCIMIENTO_TESORERIA.HOY],
+      value: TIPO_VENCIMIENTO_TESORERIA.HOY,
     },
     {
-      label: "Vencen esta Semana",
-      value: "SEMANA",
-      severity: "info",
-      icon: "pi pi-calendar-plus",
+      ...LABELS_TIPO_VENCIMIENTO[TIPO_VENCIMIENTO_TESORERIA.SEMANA],
+      value: TIPO_VENCIMIENTO_TESORERIA.SEMANA,
     },
   ];
 
@@ -691,29 +710,6 @@ const PendientesHeader = ({
             </Button>
           ))}
 
-          {/* Botones de Entregas (Asignaciones, Gastos Directos) */}
-          {entregasOptions.map((option) => (
-            <Button
-              key={option.value}
-              icon={option.icon}
-              severity={option.severity}
-              outlined
-              disabled={loading}
-              style={{
-                flex: "1 1 calc(12.5% - 8px)",
-                minWidth: "90px",
-                minHeight: "85px",
-                padding: "0.4rem",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "0.75rem",
-              }}
-            >
-              {getEntregasLabel(option)}
-            </Button>
-          ))}
 
           {/* Botones de Deudas (Personal, Tributarias) */}
           {deudasOptions.map((option) => (

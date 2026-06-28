@@ -413,7 +413,7 @@ export default function CentroCosto({ ruta }) {
               </div>
               <div style={{ flex: 1 }}>
                 <label htmlFor="centroPadreFilter">
-                  Filtrar por Centro Padre
+                  Filtrar por SubCategoría
                 </label>
                 <Dropdown
                   id="centroPadreFilter"
@@ -450,6 +450,7 @@ export default function CentroCosto({ ruta }) {
           sortable
           style={{ minWidth: "150px" }}
         />
+        <Column field="ParentCentroID" header="SubCategoria" sortable style={{ minWidth: "120px" }} />
         <Column field="Codigo" header="Código" sortable style={{ minWidth: "120px" }} />
         <Column field="Nombre" header="Nombre" sortable style={{ minWidth: "200px" }} />
         <Column field="Descripcion" header="Descripción" sortable style={{ minWidth: "200px" }} />

@@ -5,6 +5,7 @@ import { Button } from "primereact/button";
 import { Tag } from "primereact/tag";
 import { formatearNumero, formatearFecha } from "../../../utils/utils";
 import { getResponsiveFontSize } from "../../../utils/utils";
+import { ORIGEN_DOCUMENTO_TESORERIA } from "../../../utils/tesoreria.constants";
 
 const PendientesTable = ({
   pendientes,
@@ -12,6 +13,7 @@ const PendientesTable = ({
   onRegistrarPago,
   onEntregarFondos,
   onPagarDeudaPersonal,  // AGREGAR ESTA LÍNEA
+  onPagarDeudaTributaria,
   permisos,
   tipo,
 }) => {
@@ -105,7 +107,7 @@ const PendientesTable = ({
     if (!permisos.puedeCrear) return null;
 
     // Si es una asignación, mostrar botón "Entregar Fondos"
-    if (rowData.esAsignacion === true && rowData.origen === "Asignación a Rendir") {
+   if (rowData.esAsignacion === true && rowData.origen === ORIGEN_DOCUMENTO_TESORERIA.ASIGNACION_RENDIR) {
       return (
         <Button
           label="Entregar Fondos"
@@ -119,7 +121,7 @@ const PendientesTable = ({
     }
     // AGREGAR ESTE BLOQUE DESPUÉS DE LA ASIGNACIÓN
     // Si es una deuda personal, mostrar botón específico
-    if (rowData.origen === "Deuda Personal") {
+    if (rowData.origen === ORIGEN_DOCUMENTO_TESORERIA.DEUDA_PERSONAL) {
       return (
         <Button
           label="Pagar Deuda"
@@ -127,6 +129,19 @@ const PendientesTable = ({
           className="p-button-sm p-button-warning"
           onClick={() => onPagarDeudaPersonal(rowData)}
           tooltip="Pagar deuda al personal"
+          tooltipOptions={{ position: "left" }}
+        />
+      );
+    }
+    // Si es una deuda tributaria, mostrar botón específico
+    if (rowData.origen === ORIGEN_DOCUMENTO_TESORERIA.DEUDA_TRIBUTARIA) {
+      return (
+        <Button
+          label="Pagar Deuda"
+          icon="pi pi-building"
+          className="p-button-sm p-button-warning"
+          onClick={() => onPagarDeudaTributaria(rowData)}
+          tooltip="Pagar deuda tributaria"
           tooltipOptions={{ position: "left" }}
         />
       );
