@@ -84,6 +84,19 @@ export const PDF_MODULES_CONFIG = {
     },
   },
 
+  "orden-compra-comprobante-proveedor": {
+    uploadPath: "uploads/pdf-system/orden-compra-comprobante-proveedor",
+    oldPaths: [],
+    apiEndpoint: "/pdf/orden-compra-comprobante-proveedor",
+    maxFileSize: 20 * 1024 * 1024,
+    allowedTypes: ["application/pdf", "image/jpeg", "image/png"],
+    maxFiles: 20,
+    database: {
+      table: "OrdenCompra",
+      field: "urlDocumentoRef",
+    },
+  },
+
   "cotizacion-ventas": {
     uploadPath: "uploads/pdf-system/cotizaciones-ventas",
     oldPaths: [],
@@ -108,7 +121,7 @@ export const PDF_MODULES_CONFIG = {
       field: "urlDatosCala",
     },
   },
-    "detalle-cala-pesca-consumo": {
+  "detalle-cala-pesca-consumo": {
     uploadPath: "uploads/pdf-system/detalle-cala-pesca-consumo",
     oldPaths: [],
     apiEndpoint: "/api/pdf/detalle-cala-pesca-consumo",
@@ -120,7 +133,7 @@ export const PDF_MODULES_CONFIG = {
       field: "urlDatosCala",
     },
   },
-  
+
   "pre-factura": {
     uploadPath: "uploads/pdf-system/pre-facturas",
     oldPaths: [],
@@ -536,7 +549,7 @@ export const PDF_MODULES_CONFIG = {
     },
   },
 
-    "liquidacion-entrega-rendir-pesca-industrial": {
+  "liquidacion-entrega-rendir-pesca-industrial": {
     uploadPath: "uploads/pdf-system/liquidacion-entrega-rendir-pesca-industrial",
     oldPaths: [],
     apiEndpoint: "/pdf/liquidacion-entrega-rendir-pesca-industrial",
@@ -548,7 +561,7 @@ export const PDF_MODULES_CONFIG = {
       field: "urlLiquidacionEntregaARendir",
     },
   },
-  
+
 
   "det-movs-entrega-rendir-reqcompras-comprobante": {
     uploadPath: "uploads/pdf-system/det-movs-entrega-rendir-reqcompras-comprobante",
@@ -628,7 +641,7 @@ export const PDF_MODULES_CONFIG = {
     },
   },
 
-    "faena-pesca-reporte-calas": {
+  "faena-pesca-reporte-calas": {
     uploadPath: "uploads/pdf-system/faena-pesca-reporte-calas",
     oldPaths: [],
     apiEndpoint: "/pdf/faena-pesca-reporte-calas",
@@ -691,7 +704,7 @@ export const PDF_MODULES_CONFIG = {
 
 
 
-    "det-movs-entrega-rendir-mov-almacen-comprobante": {
+  "det-movs-entrega-rendir-mov-almacen-comprobante": {
     uploadPath: "uploads/pdf-system/det-movs-entrega-rendir-mov-almacen-comprobante",
     oldPaths: [],
     apiEndpoint: "/pdf/det-movs-entrega-rendir-mov-almacen-comprobante",
@@ -730,7 +743,7 @@ export const PDF_MODULES_CONFIG = {
     },
   },
 
-   "movimiento-caja-operacion": {
+  "movimiento-caja-operacion": {
     uploadPath: "uploads/pdf-system/movimiento-caja-operacion",
     oldPaths: [],
     apiEndpoint: "/pdf/movimiento-caja-operacion",
@@ -743,7 +756,7 @@ export const PDF_MODULES_CONFIG = {
     },
   },
 
-   "descarga-faena-pesca-comprobante-wincha": {
+  "descarga-faena-pesca-comprobante-wincha": {
     uploadPath: "uploads/pdf-system/descarga-faena-pesca-comprobante-wincha",
     oldPaths: [],
     apiEndpoint: "/pdf/descarga-faena-pesca-comprobante-wincha",
@@ -768,7 +781,7 @@ export const PDF_MODULES_CONFIG = {
       field: "urlComprobanteWincha",
     },
   },
-  
+
 };
 
 export function getModuleConfig(moduleName) {

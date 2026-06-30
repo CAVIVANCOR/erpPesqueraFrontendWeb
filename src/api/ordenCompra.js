@@ -82,3 +82,37 @@ export async function regenerarKardexOrdenCompra(id) {
   );
   return res.data;
 }
+
+/**
+ * Generar Cuenta Por Pagar desde Orden de Compra
+ * Crea una CxP y actualiza el estado de la OC a FACTURADA (113)
+ * 
+ * @param {number} id - ID de la orden de compra
+ * @returns {Promise<Object>} Resultado con ordenCompra y cuentaPorPagar
+ */
+export async function generarCuentaPorPagar(id) {
+  const res = await axios.post(
+    `${API_URL}/${id}/generar-cxp`,
+    {},
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
+
+/**
+ * Reactivar Orden de Compra
+ * Devuelve una OrdenCompra APROBADA al estado PENDIENTE
+ * Elimina kardex, CuentaPorPagar (sin pagos) y AsientosContables
+ * 
+ * @param {number} id - ID de la orden de compra
+ * @returns {Promise<Object>} Resultado con estadísticas
+ */
+export async function reactivarDocumentoOrdenCompra(id) {
+  try {
+    const response = await axios.put(`${API_URL}/${id}/reactivar`, {}, { headers: getAuthHeaders() });
+    return response.data;
+  } catch (error) {
+    console.error("Error al reactivar orden de compra:", error);
+    throw error;
+  }
+}

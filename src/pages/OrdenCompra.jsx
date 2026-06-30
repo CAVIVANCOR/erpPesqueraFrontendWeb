@@ -513,6 +513,77 @@ export default function OrdenCompra({ ruta }) {
     setLoading(false);
   };
 
+  const handleReactivar = async (ordenCompraId) => {
+    if (!permisos.puedeEditar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para reactivar órdenes de compra.",
+        life: 3000,
+      });
+      return;
+    }
+
+    confirmDialog({
+      message:
+        "¿Está seguro de reactivar esta orden de compra? " +
+        "Si tiene movimiento de almacén, el kardex será eliminado y los saldos recalculados. " +
+        "Si tiene Cuenta por Pagar sin pagos, será eliminada. " +
+        "Los asientos contables asociados también serán eliminados.",
+      header: "Confirmar Reactivación",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-warning",
+      acceptLabel: "Sí, reactivar",
+      rejectLabel: "Cancelar",
+      accept: async () => {
+        setLoading(true);
+        try {
+          const { reactivarDocumentoOrdenCompra } = await import("../api/ordenCompra");
+          const resultado = await reactivarDocumentoOrdenCompra(ordenCompraId);
+
+          // Mostrar resumen detallado de la reactivación
+          const mensajeDetalle = `
+            Orden de Compra reactivada exitosamente:
+            - Kardex eliminados: ${resultado.kardexEliminados || 0}
+            - Productos afectados: ${resultado.productosAfectados || 0}
+            - Saldos detallados actualizados: ${resultado.saldosDetActualizados || 0}
+            - Saldos generales actualizados: ${resultado.saldosGenActualizados || 0}
+            ${resultado.cuentaPorPagarEliminada ? '- Cuenta por Pagar eliminada' : ''}
+            ${resultado.asientosEliminados ? `- Asientos contables eliminados: ${resultado.asientosEliminados}` : ''}
+            
+            Ahora puede editar el documento.
+          `;
+
+          toast.current.show({
+            severity: "success",
+            summary: "Orden de Compra Reactivada",
+            detail: mensajeDetalle,
+            life: 5000,
+          });
+
+          cargarDatos();
+          setShowDialog(false);
+        } catch (err) {
+          console.error("Error al reactivar orden de compra:", err);
+          const errorMsg =
+            err.response?.data?.mensaje ||
+            err.response?.data?.message ||
+            err.response?.data?.error ||
+            err.message ||
+            "No se pudo reactivar la orden de compra.";
+          toast.current.show({
+            severity: "error",
+            summary: "Error al Reactivar",
+            detail: errorMsg,
+            life: 5000,
+          });
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
   const handleIrAlOrigen = async (requerimientoId) => {
     try {
       const { getRequerimientoCompraPorId } =
@@ -641,6 +712,106 @@ export default function OrdenCompra({ ruta }) {
       }
     } catch (error) {
       console.error("Error en handleGenerarKardex:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al procesar la solicitud",
+      });
+    }
+  };
+
+  const handleGenerarCxP = async (id) => {
+    try {
+      const ordenActual = items.find((item) => Number(item.id) === Number(id));
+
+      if (!ordenActual) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se encontró la orden de compra",
+        });
+        return;
+      }
+
+      // ✅ VALIDAR ESTADOS PERMITIDOS (>= APROBADA)
+      const estadoId = Number(ordenActual.estadoId);
+
+      if (estadoId < 39) {
+        toast.current.show({
+          severity: "warn",
+          summary: "Acción no permitida",
+          detail: "La orden debe estar APROBADA para generar la Cuenta por Pagar",
+          life: 5000,
+        });
+        return;
+      }
+
+      if (estadoId === 40) {
+        toast.current.show({
+          severity: "warn",
+          summary: "Acción no permitida",
+          detail: "No se puede generar CxP de una orden ANULADA",
+          life: 5000,
+        });
+        return;
+      }
+
+      // ✅ VALIDAR QUE NO ESTÉ YA FACTURADA
+      if (ordenActual.facturado) {
+        toast.current.show({
+          severity: "warn",
+          summary: "Acción no permitida",
+          detail: "Esta orden ya tiene una Cuenta por Pagar generada",
+          life: 5000,
+        });
+        return;
+      }
+
+
+      // Mostrar confirmación
+      confirmDialog({
+        message: "¿Está seguro de generar la Cuenta por Pagar?\n\nEsto creará la deuda con el proveedor y cambiará el estado de la orden a FACTURADA.",
+        header: "Confirmar Generación de CxP",
+        icon: "pi pi-exclamation-triangle",
+        acceptLabel: "Sí, generar",
+        rejectLabel: "Cancelar",
+        acceptClassName: "p-button-success",
+        accept: async () => {
+          setLoading(true);
+          try {
+            const { generarCuentaPorPagar } = await import("../api/ordenCompra");
+            const resultado = await generarCuentaPorPagar(id);
+
+            toast.current.show({
+              severity: "success",
+              summary: "Cuenta por Pagar Generada",
+              detail: `CxP ${resultado.ordenCompra.esGerencial ? 'NEGRA' : 'BLANCA'} generada exitosamente. Monto: ${Number(resultado.cuentaPorPagar.montoTotal).toFixed(2)}`,
+              life: 5000,
+            });
+
+            cargarDatos();
+            setShowDialog(false);
+          } catch (err) {
+            console.error("Error al generar CxP:", err);
+            const errorMsg =
+              err.response?.data?.mensaje ||
+              err.response?.data?.message ||
+              err.response?.data?.error ||
+              err.message ||
+              "No se pudo generar la Cuenta por Pagar.";
+            toast.current.show({
+              severity: "error",
+              summary: "Error al Generar CxP",
+              detail: errorMsg,
+              life: 5000,
+            });
+          } finally {
+            setLoading(false);
+          }
+        },
+      });
+    } catch (error) {
+      console.error("Error en handleGenerarCxP:", error);
       toast.current.show({
         severity: "error",
         summary: "Error",
@@ -1113,7 +1284,9 @@ export default function OrdenCompra({ ruta }) {
           onCancel={() => setShowDialog(false)}
           onAprobar={handleAprobar}
           onAnular={handleAnular}
+          onReactivar={handleReactivar}
           onGenerarKardex={handleGenerarKardex}
+          onGenerarCxP={handleGenerarCxP}
           onGenerarDesdeRequerimiento={handleGenerarDesdeRequerimiento}
           onIrAlOrigen={handleIrAlOrigen}
           onIrAMovimientoAlmacen={handleIrAMovimientoAlmacen}

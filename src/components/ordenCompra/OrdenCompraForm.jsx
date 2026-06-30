@@ -16,6 +16,8 @@ import AsientoContableManager from "../common/AsientoContableManager";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
 import { getMediosPago } from "../../api/medioPago";
 import { getAllCuentaCorriente } from "../../api/cuentaCorriente";
+import PdfComprobanteProveedorCard from "./PdfComprobanteProveedorCard";
+import { useForm } from "react-hook-form";
 
 export default function OrdenCompraForm({
   isEdit,
@@ -40,7 +42,9 @@ export default function OrdenCompraForm({
   onCancel,
   onAprobar,
   onAnular,
+  onReactivar,
   onGenerarKardex,
+  onGenerarCxP,
   onGenerarDesdeRequerimiento,
   onIrAlOrigen,
   onIrAMovimientoAlmacen,
@@ -52,7 +56,23 @@ export default function OrdenCompraForm({
   onProveedorCreado, // ✅ NUEVO: callback para recargar proveedores
 }) {
   const { usuario } = useAuthStore();
-console.log("OrdenCompraForm empresas:",empresas)
+
+
+  // ════════════════════════════════════════════════════════════
+  // REACT HOOK FORM: Solo para componentes PDF
+  // ════════════════════════════════════════════════════════════
+  const {
+    control,
+    setValue: setValueRHF,
+    getValues: getValuesRHF,
+    formState: { errors: errorsRHF },
+    watch: watchRHF,
+  } = useForm({
+    defaultValues: {
+      urlDocumentoRef: defaultValues?.urlDocumentoRef || "",
+    },
+  });
+
 
   const [empresaId, setEmpresaId] = useState(
     defaultValues?.empresaId || empresaFija || null,
@@ -164,6 +184,27 @@ console.log("OrdenCompraForm empresas:",empresas)
   const [esParticionada, setEsParticionada] = useState(
     defaultValues?.esParticionada || false,
   );
+  // ⭐ ESTADOS: COMPROBANTE DEL PROVEEDOR
+  const [tipoDocumentoFinalId, setTipoDocumentoFinalId] = useState(
+    defaultValues?.tipoDocumentoFinalId || null,
+  );
+  const [numeroDocumentoFinal, setNumeroDocumentoFinal] = useState(
+    defaultValues?.numeroDocumentoFinal || "",
+  );
+  const [numSerieDocFinal, setNumSerieDocFinal] = useState(
+    defaultValues?.numSerieDocFinal || "",
+  );
+  const [numCorreDocFinal, setNumCorreDocFinal] = useState(
+    defaultValues?.numCorreDocFinal || "",
+  );
+  const [comprobanteRecibido, setComprobanteRecibido] = useState(
+    defaultValues?.comprobanteRecibido || false,
+  );
+  const [fechaRecepcionComprobante, setFechaRecepcionComprobante] = useState(
+    defaultValues?.fechaRecepcionComprobante
+      ? new Date(defaultValues.fechaRecepcionComprobante)
+      : null,
+  );
   const [motivoNotaCreditoDebitoId, setMotivoNotaCreditoDebitoId] = useState(
     defaultValues?.motivoNotaCreditoDebitoId || null,
   );
@@ -191,6 +232,18 @@ console.log("OrdenCompraForm empresas:",empresas)
   const [estadosCxP, setEstadosCxP] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [mediosPago, setMediosPago] = useState([]);
+
+  // ════════════════════════════════════════════════════════════
+  // EFECTO: CONCATENAR NÚMERO DOCUMENTO FINAL
+  // ════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (numSerieDocFinal && numCorreDocFinal) {
+      const numeroCompleto = `${numSerieDocFinal}-${numCorreDocFinal}`;
+      setNumeroDocumentoFinal(numeroCompleto);
+    } else {
+      setNumeroDocumentoFinal("");
+    }
+  }, [numSerieDocFinal, numCorreDocFinal]);
 
   useEffect(() => {
     if (proveedores && proveedores.length > 0 && empresaId) {
@@ -338,8 +391,35 @@ console.log("OrdenCompraForm empresas:",empresas)
           : null,
       );
       setNumeroDcmtoAfectoNCND(defaultValues.numeroDcmtoAfectoNCND || "");
+
+      setTipoDocumentoFinalId(
+        defaultValues.tipoDocumentoFinalId
+          ? Number(defaultValues.tipoDocumentoFinalId)
+          : null,
+      );
+      setNumeroDocumentoFinal(defaultValues.numeroDocumentoFinal || "");
+      setNumSerieDocFinal(defaultValues.numSerieDocFinal || "");
+      setNumCorreDocFinal(defaultValues.numCorreDocFinal || "");
+      setComprobanteRecibido(defaultValues.comprobanteRecibido || false);
+      setFechaRecepcionComprobante(
+        defaultValues.fechaRecepcionComprobante
+          ? new Date(defaultValues.fechaRecepcionComprobante)
+          : null,
+      );
     }
   }, [defaultValues, empresaFija]);
+
+  // ════════════════════════════════════════════════════════════
+  // EFECTO: Sincronizar urlDocumentoRef con React Hook Form
+  // ════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (defaultValues?.urlDocumentoRef) {
+      const currentValue = getValuesRHF("urlDocumentoRef");
+      if (defaultValues.urlDocumentoRef !== currentValue) {
+        setValueRHF("urlDocumentoRef", defaultValues.urlDocumentoRef);
+      }
+    }
+  }, [defaultValues?.urlDocumentoRef, setValueRHF, getValuesRHF]);
 
   useEffect(() => {
     if (!isEdit && usuario?.personalId && !solicitanteId) {
@@ -398,14 +478,12 @@ console.log("OrdenCompraForm empresas:",empresas)
         console.error("Error al cargar tipo de cambio SUNAT:", error);
       }
     };
-
     cargarTipoCambio();
   }, [fechaDocumento, fechaDocumentoInicial]);
 
   useEffect(() => {
     const calcularTotales = async () => {
       if (!defaultValues?.id || !isEdit) return;
-
       try {
         const { getDetallesOrdenCompra } =
           await import("../../api/detalleOrdenCompra");
@@ -420,13 +498,11 @@ console.log("OrdenCompraForm empresas:",empresas)
           ? 0
           : subtotalSinIGV * (Number(porcentajeIGV) / 100);
         const totalCalc = subtotalSinIGV + igvCalc;
-
         setTotales({
           subtotal: subtotalSinIGV,
           igv: igvCalc,
           total: totalCalc
         });
-
         // ⭐ ACTUALIZAR TOTALES EN EL BACKEND (sin mostrar toast aquí)
         if (defaultValues?.id) {
           const { actualizarOrdenCompra } = await import("../../api/ordenCompra");
@@ -441,7 +517,6 @@ console.log("OrdenCompraForm empresas:",empresas)
         setTotales({ subtotal: 0, igv: 0, total: 0 });
       }
     };
-
     calcularTotales();
   }, [
     detallesCount,
@@ -456,7 +531,6 @@ console.log("OrdenCompraForm empresas:",empresas)
     if (!defaultValues?.id) {
       return { subtotal: 0, igv: 0, total: 0 };
     }
-
     try {
       const { getDetallesOrdenCompra } = await import("../../api/detalleOrdenCompra");
       const detalles = await getDetallesOrdenCompra(defaultValues.id);
@@ -469,7 +543,6 @@ console.log("OrdenCompraForm empresas:",empresas)
         ? 0
         : subtotalCalc * (Number(porcentajeIGV) / 100);
       const totalCalc = subtotalCalc + igvCalc;
-
       // Actualizar en BD
       const { actualizarOrdenCompra } = await import("../../api/ordenCompra");
       await actualizarOrdenCompra(defaultValues.id, {
@@ -477,10 +550,8 @@ console.log("OrdenCompraForm empresas:",empresas)
         totalIGV: igvCalc,
         total: totalCalc,
       });
-
       // Actualizar estado local
       setTotales({ subtotal: subtotalCalc, igv: igvCalc, total: totalCalc });
-
       // ✅ Mostrar mensaje de éxito
       if (mostrarToast) {
         const monedaSimbolo = defaultValues?.moneda?.simbolo || "";
@@ -491,7 +562,6 @@ console.log("OrdenCompraForm empresas:",empresas)
           life: 4000,
         });
       }
-
       return { subtotal: subtotalCalc, igv: igvCalc, total: totalCalc };
     } catch (err) {
       console.error("Error al recalcular totales:", err);
@@ -513,14 +583,12 @@ console.log("OrdenCompraForm empresas:",empresas)
         // Cargar medios de pago
         const mediosPagoData = await getMediosPago();
         setMediosPago(mediosPagoData);
-
         // Cargar estados de CxC (tipoProvieneDeId = 25)
         const estadosCxPData = await getEstadosMultiFuncionPorTipoProviene(25);
         setEstadosCxP(estadosCxPData);
         // Cuentas corrientes
         const CuentasCorrientesData = await getAllCuentaCorriente();
         setCuentasCorrientes(CuentasCorrientesData);
-
       } catch (err) {
         console.error("Error al cargar catálogos de CxC:", err);
         setMediosPago([]);
@@ -535,11 +603,9 @@ console.log("OrdenCompraForm empresas:",empresas)
   const handleBeforeGenerateAsiento = async () => {
     // Recalcular y guardar totales
     await recalcularYGuardarTotales(true);
-
     // ⭐ Verificar que los totales se guardaron correctamente
     const { getOrdenCompraPorId } = await import("../../api/ordenCompra");
     const ordenActualizada = await getOrdenCompraPorId(defaultValues.id);
-
     if (Number(ordenActualizada.total) === 0) {
       toast.current?.show({
         severity: "error",
@@ -572,7 +638,6 @@ console.log("OrdenCompraForm empresas:",empresas)
         setDireccionesEmpresa([]);
       }
     };
-
     cargarDireccionesEmpresa();
   }, [empresaId, empresas]);
 
@@ -592,7 +657,6 @@ console.log("OrdenCompraForm empresas:",empresas)
         setContactosProveedor([]);
       }
     };
-
     cargarContactosProveedor();
   }, [proveedorId]);
 
@@ -645,7 +709,6 @@ console.log("OrdenCompraForm empresas:",empresas)
       const empresaSeleccionada = empresas.find(
         (e) => Number(e.id) === Number(empresaId),
       );
-
       if (esExoneradoAlIGV) {
         setPorcentajeIGV(0);
       } else {
@@ -716,6 +779,13 @@ console.log("OrdenCompraForm empresas:",empresas)
       esGerencial: setEsGerencial,
       ordenCompraOrigenId: setOrdenCompraOrigenId,
       esParticionada: setEsParticionada,
+      tipoDocumentoFinalId: setTipoDocumentoFinalId,
+      numeroDocumentoFinal: setNumeroDocumentoFinal,
+      numSerieDocFinal: setNumSerieDocFinal,
+      numCorreDocFinal: setNumCorreDocFinal,
+      comprobanteRecibido: setComprobanteRecibido,
+      fechaRecepcionComprobante: setFechaRecepcionComprobante,
+      urlDocumentoRef: (value) => setValueRHF("urlDocumentoRef", value),
     };
 
     const setter = setters[field];
@@ -777,6 +847,16 @@ console.log("OrdenCompraForm empresas:",empresas)
         ? Number(dcmtoAfectoNCNDId)
         : null,
       numeroDcmtoAfectoNCND: numeroDcmtoAfectoNCND,
+      tipoDocumentoFinalId: tipoDocumentoFinalId
+        ? Number(tipoDocumentoFinalId)
+        : null,
+      numeroDocumentoFinal: numeroDocumentoFinal || null,
+      numSerieDocFinal: numSerieDocFinal || null,
+      numCorreDocFinal: numCorreDocFinal || null,
+      comprobanteRecibido: comprobanteRecibido || false,
+      fechaRecepcionComprobante: fechaRecepcionComprobante || null,
+      urlDocumentoRef: getValuesRHF("urlDocumentoRef") || null,
+
     };
 
     if (!data.empresaId) {
@@ -861,6 +941,23 @@ console.log("OrdenCompraForm empresas:",empresas)
     });
   };
 
+  const handleReactivarClick = () => {
+    if (!defaultValues?.id) return;
+
+    // Validación de permisos
+    if (!permisos.puedeEditar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para reactivar documentos.",
+        life: 3000,
+      });
+      return;
+    }
+
+    onReactivar(defaultValues.id);
+  };
+
   const handleGenerarKardexClick = () => {
     if (!defaultValues?.id) return;
 
@@ -874,6 +971,23 @@ console.log("OrdenCompraForm empresas:",empresas)
     }
 
     onGenerarKardex(defaultValues.id);
+  };
+
+  const handleGenerarCxPClick = () => {
+    if (!defaultValues?.id) return;
+
+    // Validación de permisos
+    if (!permisos.puedeEditar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para generar Cuenta por Pagar.",
+        life: 3000,
+      });
+      return;
+    }
+
+    onGenerarCxP(defaultValues.id);
   };
 
   const handlePdfGenerated = (urlPdf) => {
@@ -910,6 +1024,12 @@ console.log("OrdenCompraForm empresas:",empresas)
     observaciones,
     porcentajeIGV,
     esExoneradoAlIGV,
+    tipoDocumentoFinalId,
+    numeroDocumentoFinal,
+    numSerieDocFinal,
+    numCorreDocFinal,
+    comprobanteRecibido,
+    fechaRecepcionComprobante,
   };
 
   const estaPendiente = Number(estadoId) === 38 || !estadoId;
@@ -1044,6 +1164,18 @@ console.log("OrdenCompraForm empresas:",empresas)
             esParticionada={esParticionada}
             onEsParticionadaChange={setEsParticionada}
             onProveedorCreado={onProveedorCreado}
+            tipoDocumentoFinalId={tipoDocumentoFinalId}
+            onTipoDocumentoFinalIdChange={setTipoDocumentoFinalId}
+            numeroDocumentoFinal={numeroDocumentoFinal}
+            onNumeroDocumentoFinalChange={setNumeroDocumentoFinal}
+            numSerieDocFinal={numSerieDocFinal}
+            onNumSerieDocFinalChange={setNumSerieDocFinal}
+            numCorreDocFinal={numCorreDocFinal}
+            onNumCorreDocFinalChange={setNumCorreDocFinal}
+            comprobanteRecibido={comprobanteRecibido}
+            onComprobanteRecibidoChange={setComprobanteRecibido}
+            fechaRecepcionComprobante={fechaRecepcionComprobante}
+            onFechaRecepcionComprobanteChange={setFechaRecepcionComprobante}
           />
         </TabPanel>
 
@@ -1064,7 +1196,19 @@ console.log("OrdenCompraForm empresas:",empresas)
             onRecargarRegistro={onRecargarRegistro}
           />
         </TabPanel>
-
+        {/* ⭐ TAB: COMPROBANTE DEL PROVEEDOR (PDF) */}
+        <TabPanel header="📄 Comprobante Proveedor">
+          <PdfComprobanteProveedorCard
+            control={control}
+            errors={errorsRHF}
+            setValue={setValueRHF}
+            watch={watchRHF}
+            getValues={getValuesRHF}
+            defaultValues={getValuesRHF()}
+            ordenCompraId={defaultValues?.id}
+            readOnly={readOnly}
+          />
+        </TabPanel>
         <TabPanel
           header="Impresión PDF"
           leftIcon="pi pi-file-pdf"
@@ -1131,8 +1275,8 @@ console.log("OrdenCompraForm empresas:",empresas)
                 readOnly ||
                 loading ||
                 !permisos.puedeEditar ||
-                estaAnulado ||
-                (!estaAprobado && !estaParticionado && !estaFacturado)
+                (!estaAprobado && !estaParticionado && !estaFacturado) ||
+                estaAnulado
               }
               tooltip={
                 estaAnulado
@@ -1150,6 +1294,30 @@ console.log("OrdenCompraForm empresas:",empresas)
             />
           )}
         </div>
+
+        <div style={{ flex: 1 }}>
+          {/* Botón Generar CxP */}
+          {isEdit && (
+            <Button
+              label="Generar CxP"
+              icon="pi pi-money-bill"
+              className="p-button-success"
+              onClick={handleGenerarCxPClick}
+              disabled={
+                !estaAprobado ||
+                facturado
+              }
+              tooltip={
+                !estaAprobado
+                  ? "La orden debe estar APROBADA para generar CxP"
+                  : facturado
+                    ? "Ya tiene Cuenta por Pagar generada"
+                    : "Generar Cuenta por Pagar y cambiar estado a FACTURADA"
+              }
+            />
+          )}
+        </div>
+
         <div style={{ flex: 1 }}>
           {isEdit && (
             <Button
@@ -1168,6 +1336,28 @@ console.log("OrdenCompraForm empresas:",empresas)
                     : !permisos.puedeEliminar
                       ? "No tiene permisos para anular"
                       : "Anular orden de compra"
+              }
+            />
+          )}
+        </div>
+
+        <div style={{ flex: 1 }}>
+          {/* Botón Reactivar Documento - Visible si está APROBADA o FACTURADA */}
+          {(estaAprobado || estaFacturado) && isEdit && (
+            <Button
+              label="Reactivar Documento"
+              icon="pi pi-replay"
+              className="p-button-warning"
+              onClick={handleReactivarClick}
+              disabled={readOnly || loading || estaAnulado}
+              tooltip={
+                estaAnulado
+                  ? "No se puede reactivar un documento anulado"
+                  : readOnly
+                    ? "Modo solo lectura"
+                    : !permisos.puedeEditar
+                      ? "No tiene permisos para reactivar"
+                      : "Reactivar documento a estado PENDIENTE (elimina kardex, CxP sin pagos y asientos contables)"
               }
             />
           )}
