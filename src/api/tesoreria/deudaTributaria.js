@@ -55,8 +55,3 @@ export async function getDeudasTributariasByTipo(tipoDeudaId) {
   const res = await axios.get(`${API_URL}/tipo/${tipoDeudaId}`, { headers: getAuthHeaders() });
   return res.data;
 }
-
-export async function getDeudasTributariasByPeriodo(empresaId, periodo) {
-  const res = await axios.get(`${API_URL}/empresa/${empresaId}/periodo/${periodo}`, { headers: getAuthHeaders() });
-  return res.data;
-}

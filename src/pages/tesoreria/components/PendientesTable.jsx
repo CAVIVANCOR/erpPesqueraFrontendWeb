@@ -14,6 +14,7 @@ const PendientesTable = ({
   onEntregarFondos,
   onPagarDeudaPersonal,  // AGREGAR ESTA LÍNEA
   onPagarDeudaTributaria,
+  onPagoEspecializado,  // ✅ AGREGAR ESTA LÍNEA
   permisos,
   tipo,
 }) => {
@@ -107,7 +108,7 @@ const PendientesTable = ({
     if (!permisos.puedeCrear) return null;
 
     // Si es una asignación, mostrar botón "Entregar Fondos"
-   if (rowData.esAsignacion === true && rowData.origen === ORIGEN_DOCUMENTO_TESORERIA.ASIGNACION_RENDIR) {
+    if (rowData.esAsignacion === true && rowData.origen === ORIGEN_DOCUMENTO_TESORERIA.ASIGNACION_RENDIR) {
       return (
         <Button
           label="Entregar Fondos"
@@ -142,6 +143,20 @@ const PendientesTable = ({
           className="p-button-sm p-button-warning"
           onClick={() => onPagarDeudaTributaria(rowData)}
           tooltip="Pagar deuda tributaria"
+          tooltipOptions={{ position: "left" }}
+        />
+      );
+    }
+
+    // Para CxC con opciones especiales
+    if (rowData.origen === ORIGEN_DOCUMENTO_TESORERIA.CUENTAS_POR_COBRAR) {
+      return (
+        <Button
+          label="Pagar Cuenta"
+          icon="pi pi-briefcase"
+          className="p-button-sm p-button-primary"
+          onClick={() => onPagoEspecializado(rowData)}
+          tooltip="Pago especializado con SUNAT (Detracción/Retención/Percepción)"
           tooltipOptions={{ position: "left" }}
         />
       );
