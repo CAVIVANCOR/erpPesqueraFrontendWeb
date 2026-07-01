@@ -4,6 +4,7 @@ import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { getCuentaPorCobrarByPreFacturaId } from "../../api/cuentasPorCobrarPagar/cuentaPorCobrar";
 import CuentaPorCobrarForm from "../cuentaPorCobrar/CuentaPorCobrarForm";
+import { ESTADO_PREFACTURA } from "../../utils/estados.constants";
 
 /**
  * Componente reutilizable genérico para editar una Cuenta por Cobrar desde cualquier módulo
@@ -86,9 +87,9 @@ export default function IrACxCEditar({
         return;
       }
 
-      // ⭐ NUEVO: Solo cargar CxC si el estado es >= 96 (APROBADA)
+      // ⭐ NUEVO: Solo cargar CxC si el estado es >= EMITIDA
       const estadoId = Number(preFactura?.estadoId || 0);
-      if (estadoId < 96) {
+      if (estadoId < ESTADO_PREFACTURA.EMITIDA) {
         if (isMounted) {
           setCxcData(null);
           setLoading(false);

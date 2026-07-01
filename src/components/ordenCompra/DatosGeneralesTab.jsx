@@ -94,7 +94,6 @@ export default function DatosGeneralesTab({
   fechaRecepcionComprobante,
   onFechaRecepcionComprobanteChange,
 }) {
-  console.log("formData.empresaId :", formData.empresaId, "empresas:", empresas)
   // Helper para obtener código de moneda (ISO)
   const getCodigoMoneda = () => {
     // Prioridad 1: Usar la relación directa de la orden (más eficiente)
@@ -850,8 +849,8 @@ export default function DatosGeneralesTab({
               ordenCompraId={formData.id}
               ordenCompra={formData}
               empresas={empresas || []}
-              proveedores={proveedoresOptions || []}
-              monedas={monedasOptions || []}
+              proveedores={proveedores || []}
+              monedas={monedas || []}
               estados={estadosCxP || []}
               periodosContables={periodosContables || []}
               mediosPago={mediosPago || []}
@@ -902,7 +901,7 @@ export default function DatosGeneralesTab({
               severityTrue="success"
               severityFalse="warning"
               icon={comprobanteRecibido ? "pi-check-circle" : "pi-clock"}
-              //**disabled={!puedeEditar || readOnly}
+            //**disabled={!puedeEditar || readOnly}
             />
           </div>
 

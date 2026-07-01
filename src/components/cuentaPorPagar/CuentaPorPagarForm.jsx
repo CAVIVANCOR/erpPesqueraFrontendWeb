@@ -27,6 +27,7 @@ import {
 } from "../../api/cuentasPorCobrarPagar/pago";
 import { getCuentaPorPagarById } from "../../api/cuentasPorCobrarPagar/cuentaPorPagar";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { ESTADO_CUENTA_POR_PAGAR } from "../../utils/estados.constants";
 
 const CuentaPorPagarForm = forwardRef(({
   isEdit,
@@ -55,8 +56,12 @@ const CuentaPorPagarForm = forwardRef(({
   const [ordenCompraId, setOrdenCompraId] = useState(
     defaultValues?.ordenCompraId || null,
   );
-  const [empresaId, setEmpresaId] = useState(defaultValues?.empresaId || null);
-  const [proveedorId, setProveedorId] = useState(defaultValues?.proveedorId || null);
+  const [empresaId, setEmpresaId] = useState(
+    defaultValues?.empresaId ? Number(defaultValues.empresaId) : null
+  );
+  const [proveedorId, setProveedorId] = useState(
+    defaultValues?.proveedorId ? Number(defaultValues.proveedorId) : null
+  );
   const [numeroOrdenCompra, setNumeroOrdenCompra] = useState(
     defaultValues?.numeroOrdenCompra || "",
   );
@@ -83,9 +88,13 @@ const CuentaPorPagarForm = forwardRef(({
   const [esGerencial, setEsGerencial] = useState(
     defaultValues?.esGerencial || false,
   );
-  const [monedaId, setMonedaId] = useState(defaultValues?.monedaId || null);
+  const [monedaId, setMonedaId] = useState(
+    defaultValues?.monedaId ? Number(defaultValues.monedaId) : null
+  );
   const [esContado, setEsContado] = useState(defaultValues?.esContado || false);
-  const [estadoId, setEstadoId] = useState(defaultValues?.estadoId || 100);
+  const [estadoId, setEstadoId] = useState(
+    defaultValues?.estadoId ? Number(defaultValues.estadoId) : ESTADO_CUENTA_POR_PAGAR.PENDIENTE
+  );
   const [observaciones, setObservaciones] = useState(
     defaultValues?.observaciones || "",
   );
@@ -233,7 +242,7 @@ const CuentaPorPagarForm = forwardRef(({
       setTieneDetraccion(cuentaActualizada.tieneDetraccion || false);
       setTieneRetencion(cuentaActualizada.tieneRetencion || false);
       setTienePercepcion(cuentaActualizada.tienePercepcion || false);
-      setEstadoId(cuentaActualizada.estadoId || 100);
+      setEstadoId(cuentaActualizada.estadoId || ESTADO_CUENTA_POR_PAGAR.PENDIENTE);
     } catch (error) {
       console.error("❌ Error al recargar cuenta desde backend:", error);
     }
@@ -490,6 +499,7 @@ const CuentaPorPagarForm = forwardRef(({
   };
 
   // Preparar options
+
   const empresasOptions =
     empresas?.map((e) => ({
       label: e.razonSocial,
@@ -507,6 +517,7 @@ const CuentaPorPagarForm = forwardRef(({
       label: m.codigoSunat,
       value: Number(m.id),
     })) || [];
+
 
   const estadosOptions =
     estados?.map((e) => ({

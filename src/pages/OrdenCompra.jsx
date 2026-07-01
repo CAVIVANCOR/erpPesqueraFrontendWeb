@@ -221,7 +221,6 @@ export default function OrdenCompra({ ruta }) {
         getPeriodosContables(), // ✅ AGREGADO
         getMotivoNotaCreditoDebitoActivos(),
       ]);
-      console.log("OrdenCompra cargarDatos empresasData", empresasData)
       setEmpresas(empresasData);
       setProveedores(proveedoresData);
       setFormasPago(formasPagoData);
@@ -782,10 +781,16 @@ export default function OrdenCompra({ ruta }) {
             const { generarCuentaPorPagar } = await import("../api/ordenCompra");
             const resultado = await generarCuentaPorPagar(id);
 
+            // Validar que la respuesta tenga la estructura esperada
+            if (!resultado || !resultado.cuentaPorPagar) {
+              console.error("Estructura de resultado:", resultado);
+              throw new Error("Respuesta inválida del servidor al generar CxP");
+            }
+
             toast.current.show({
               severity: "success",
               summary: "Cuenta por Pagar Generada",
-              detail: `CxP ${resultado.ordenCompra.esGerencial ? 'NEGRA' : 'BLANCA'} generada exitosamente. Monto: ${Number(resultado.cuentaPorPagar.montoTotal).toFixed(2)}`,
+              detail: resultado.mensaje || `CxP generada exitosamente. Monto: ${Number(resultado.cuentaPorPagar.montoTotal).toFixed(2)}`,
               life: 5000,
             });
 
@@ -793,6 +798,7 @@ export default function OrdenCompra({ ruta }) {
             setShowDialog(false);
           } catch (err) {
             console.error("Error al generar CxP:", err);
+            console.error("Error completo:", err.response?.data); // ⭐ LOG ADICIONAL
             const errorMsg =
               err.response?.data?.mensaje ||
               err.response?.data?.message ||

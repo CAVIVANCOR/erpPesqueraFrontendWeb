@@ -96,7 +96,8 @@ export async function generarCuentaPorPagar(id) {
     {},
     { headers: getAuthHeaders() }
   );
-  return res.data;
+  // El backend devuelve { success, mensaje, data: { ordenCompra, cuentaPorPagar } }
+  return res.data.data || res.data;
 }
 
 /**

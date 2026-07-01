@@ -27,6 +27,7 @@ import {
 } from "../../api/cuentasPorCobrarPagar/pago";
 import { getCuentaPorCobrarById } from "../../api/cuentasPorCobrarPagar/cuentaPorCobrar";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { ESTADO_CUENTA_POR_COBRAR } from "../../utils/estados.constants";
 
 const CuentaPorCobrarForm = forwardRef(({
   isEdit,
@@ -55,8 +56,12 @@ const CuentaPorCobrarForm = forwardRef(({
   const [preFacturaId, setPreFacturaId] = useState(
     defaultValues?.preFacturaId || null,
   );
-  const [empresaId, setEmpresaId] = useState(defaultValues?.empresaId || null);
-  const [clienteId, setClienteId] = useState(defaultValues?.clienteId || null);
+  const [empresaId, setEmpresaId] = useState(
+    defaultValues?.empresaId ? Number(defaultValues.empresaId) : null
+  );
+  const [clienteId, setClienteId] = useState(
+    defaultValues?.clienteId ? Number(defaultValues.clienteId) : null
+  );
   const [numeroPreFactura, setNumeroPreFactura] = useState(
     defaultValues?.numeroPreFactura || "",
   );
@@ -83,9 +88,13 @@ const CuentaPorCobrarForm = forwardRef(({
   const [esGerencial, setEsGerencial] = useState(
     defaultValues?.esGerencial || false,
   );
-  const [monedaId, setMonedaId] = useState(defaultValues?.monedaId || null);
+  const [monedaId, setMonedaId] = useState(
+    defaultValues?.monedaId ? Number(defaultValues.monedaId) : null
+  );
   const [esContado, setEsContado] = useState(defaultValues?.esContado || false);
-  const [estadoId, setEstadoId] = useState(defaultValues?.estadoId || 100);
+  const [estadoId, setEstadoId] = useState(
+    defaultValues?.estadoId ? Number(defaultValues.estadoId) : ESTADO_CUENTA_POR_COBRAR.PENDIENTE
+  );
   const [observaciones, setObservaciones] = useState(
     defaultValues?.observaciones || "",
   );
@@ -231,7 +240,7 @@ const CuentaPorCobrarForm = forwardRef(({
       setTieneDetraccion(cuentaActualizada.tieneDetraccion || false);
       setTieneRetencion(cuentaActualizada.tieneRetencion || false);
       setTienePercepcion(cuentaActualizada.tienePercepcion || false);
-      setEstadoId(cuentaActualizada.estadoId || 100);
+      setEstadoId(cuentaActualizada.estadoId || ESTADO_CUENTA_POR_COBRAR.PENDIENTE);
     } catch (error) {
       console.error("❌ Error al recargar cuenta desde backend:", error);
     }

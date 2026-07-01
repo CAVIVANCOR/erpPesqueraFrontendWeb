@@ -7,6 +7,7 @@ import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Panel } from "primereact/panel";
 import { Divider } from "primereact/divider";
+import { Checkbox } from "primereact/checkbox";
 import {
   ProductoSelectorDialog,
   ProductoSelectedDisplay,
@@ -40,16 +41,20 @@ export default function DetalleDialog({
     precioUnitario: 0,
     subtotal: 0,
     observaciones: "",
+    cantidadCompra: null,
+    precioUnitarioCompra: null,
   });
 
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [showProductoSelector, setShowProductoSelector] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [usarUnidadComercial, setUsarUnidadComercial] = useState(false);
 
   useEffect(() => {
     if (visible) {
       if (detalle) {
         // EDICIÓN: Cargar datos existentes
+        const tieneUnidadComercial = !!(detalle.cantidadCompra && detalle.precioUnitarioCompra);
         const valorSinIGV = Number(detalle.precioUnitario || 0); // ⭐ BD guarda SIN IGV
         const precioConIGV = esExoneradoIGV
           ? valorSinIGV
@@ -63,7 +68,11 @@ export default function DetalleDialog({
           precioUnitario: valorSinIGV, // ⭐ Para consistencia
           subtotal: Number(detalle.cantidad || 1) * valorSinIGV,
           observaciones: detalle.observaciones || "",
+          cantidadCompra: detalle.cantidadCompra ? Number(detalle.cantidadCompra) : null,
+          precioUnitarioCompra: detalle.precioUnitarioCompra ? Number(detalle.precioUnitarioCompra) : null,
         });
+
+        setUsarUnidadComercial(tieneUnidadComercial);
 
         // Buscar producto seleccionado
         const producto = productos.find(
@@ -80,8 +89,11 @@ export default function DetalleDialog({
           precioUnitario: 0,
           subtotal: 0,
           observaciones: "",
+          cantidadCompra: null,
+          precioUnitarioCompra: null,
         });
         setProductoSeleccionado(null);
+        setUsarUnidadComercial(false);
       }
     }
   }, [visible, detalle, productos, porcentajeIGV, esExoneradoIGV]);
@@ -89,32 +101,38 @@ export default function DetalleDialog({
   const handleChange = (field, value) => {
     const newFormData = { ...formData, [field]: value };
 
-    // ⭐ LÓGICA DE RECÁLCULO BIDIRECCIONAL
-    if (field === "valorUnitarioSinIGV") {
-      // Usuario cambió VALOR SIN IGV → Calcular PRECIO CON IGV
-      const valorSinIGV = Number(value || 0);
-      const precioConIGV = esExoneradoIGV
-        ? valorSinIGV
-        : valorSinIGV * (1 + porcentajeIGV / 100);
+    // ⭐ LÓGICA DE RECÁLCULO SEGÚN MODO
+    if (usarUnidadComercial) {
+      // Modo comercial: solo actualizar el campo, el subtotal se calcula en render
+      // No hay cálculos adicionales necesarios
+    } else {
+      // Modo almacén: lógica bidireccional con IGV
+      if (field === "valorUnitarioSinIGV") {
+        // Usuario cambió VALOR SIN IGV → Calcular PRECIO CON IGV
+        const valorSinIGV = Number(value || 0);
+        const precioConIGV = esExoneradoIGV
+          ? valorSinIGV
+          : valorSinIGV * (1 + porcentajeIGV / 100);
 
-      newFormData.precioUnitarioConIGV = precioConIGV;
-      newFormData.precioUnitario = precioConIGV; // Este se guarda en BD
-      newFormData.subtotal = newFormData.cantidad * precioConIGV;
-    } else if (field === "precioUnitarioConIGV") {
-      // Usuario cambió PRECIO CON IGV → Calcular VALOR SIN IGV
-      const precioConIGV = Number(value || 0);
-      const valorSinIGV = esExoneradoIGV
-        ? precioConIGV
-        : precioConIGV / (1 + porcentajeIGV / 100);
+        newFormData.precioUnitarioConIGV = precioConIGV;
+        newFormData.precioUnitario = precioConIGV; // Este se guarda en BD
+        newFormData.subtotal = newFormData.cantidad * precioConIGV;
+      } else if (field === "precioUnitarioConIGV") {
+        // Usuario cambió PRECIO CON IGV → Calcular VALOR SIN IGV
+        const precioConIGV = Number(value || 0);
+        const valorSinIGV = esExoneradoIGV
+          ? precioConIGV
+          : precioConIGV / (1 + porcentajeIGV / 100);
 
-      newFormData.valorUnitarioSinIGV = valorSinIGV;
-      newFormData.precioUnitario = precioConIGV; // Este se guarda en BD
-      newFormData.subtotal = newFormData.cantidad * precioConIGV;
-    } else if (field === "cantidad") {
-      // Usuario cambió CANTIDAD → Recalcular SUBTOTAL
-      const cantidad = Number(value || 0);
-      const precio = newFormData.precioUnitarioConIGV;
-      newFormData.subtotal = cantidad * precio;
+        newFormData.valorUnitarioSinIGV = valorSinIGV;
+        newFormData.precioUnitario = precioConIGV; // Este se guarda en BD
+        newFormData.subtotal = newFormData.cantidad * precioConIGV;
+      } else if (field === "cantidad") {
+        // Usuario cambió CANTIDAD → Recalcular SUBTOTAL
+        const cantidad = Number(value || 0);
+        const precio = newFormData.precioUnitarioConIGV;
+        newFormData.subtotal = cantidad * precio;
+      }
     }
 
     setFormData(newFormData);
@@ -145,24 +163,47 @@ export default function DetalleDialog({
       return;
     }
 
-    if (!formData.cantidad || formData.cantidad <= 0) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Validación",
-        detail: "La cantidad debe ser mayor a 0",
-        life: 3000,
-      });
-      return;
-    }
+    // Validar según modo
+    if (usarUnidadComercial) {
+      if (!formData.cantidadCompra || formData.cantidadCompra <= 0) {
+        toast.current.show({
+          severity: "warn",
+          summary: "Validación",
+          detail: "La cantidad comercial debe ser mayor a 0",
+          life: 3000,
+        });
+        return;
+      }
 
-    if (!formData.valorUnitarioSinIGV || formData.valorUnitarioSinIGV <= 0) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Validación",
-        detail: "El precio debe ser mayor a 0",
-        life: 3000,
-      });
-      return;
+      if (!formData.precioUnitarioCompra || formData.precioUnitarioCompra <= 0) {
+        toast.current.show({
+          severity: "warn",
+          summary: "Validación",
+          detail: "El precio comercial debe ser mayor a 0",
+          life: 3000,
+        });
+        return;
+      }
+    } else {
+      if (!formData.cantidad || formData.cantidad <= 0) {
+        toast.current.show({
+          severity: "warn",
+          summary: "Validación",
+          detail: "La cantidad debe ser mayor a 0",
+          life: 3000,
+        });
+        return;
+      }
+
+      if (!formData.valorUnitarioSinIGV || formData.valorUnitarioSinIGV <= 0) {
+        toast.current.show({
+          severity: "warn",
+          summary: "Validación",
+          detail: "El precio debe ser mayor a 0",
+          life: 3000,
+        });
+        return;
+      }
     }
 
     setSaving(true);
@@ -170,11 +211,17 @@ export default function DetalleDialog({
       const dataToSave = {
         ordenCompraId: Number(ordenCompraId),
         productoId: Number(formData.productoId),
-        cantidad: Number(formData.cantidad),
-        precioUnitario: Number(formData.valorUnitarioSinIGV), // ⭐ Guardamos VALOR SIN IGV
-        subtotal: Number(formData.cantidad * formData.valorUnitarioSinIGV), // ⭐ Subtotal SIN IGV
         observaciones: formData.observaciones || null,
       };
+
+      // Agregar datos según modo
+      if (usarUnidadComercial) {
+        dataToSave.cantidadCompra = Number(formData.cantidadCompra);
+        dataToSave.precioUnitarioCompra = Number(formData.precioUnitarioCompra);
+      } else {
+        dataToSave.cantidad = Number(formData.cantidad);
+        dataToSave.precioUnitario = Number(formData.valorUnitarioSinIGV);
+      }
 
       if (detalle) {
         await actualizarDetalleOrdenCompra(detalle.id, dataToSave);
@@ -244,7 +291,20 @@ export default function DetalleDialog({
           soloConSaldo={false}
           productoIdSeleccionado={formData.productoId} // ⭐ NUEVO: Pasar producto seleccionado
         />
-
+        {/* Checkbox para usar unidad comercial */}
+        {formData.productoId && productoSeleccionado?.unidadMedidaComercialId && (
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+            <Checkbox
+              inputId="usarComercial"
+              checked={usarUnidadComercial}
+              onChange={(e) => setUsarUnidadComercial(e.checked)}
+              disabled={saving || !puedeEditarDetalles}
+            />
+            <label htmlFor="usarComercial" style={{ fontWeight: "bold" }}>
+              Usar Unidad Comercial ({productoSeleccionado?.unidadMedidaComercial?.simbolo})
+            </label>
+          </div>
+        )}
         {/* Cantidad y Unidad */}
         <div
           style={{
@@ -253,31 +313,62 @@ export default function DetalleDialog({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="cantidad">Cantidad *</label>
-            <InputNumber
-              id="cantidad"
-              value={formData.cantidad}
-              onValueChange={(e) => handleChange("cantidad", e.value)}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              min={0}
-              disabled={saving || !puedeEditarDetalles}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="unidad">Unidad/Empaque</label>
-            <InputText
-              id="unidad"
-              value={productoSeleccionado?.unidadMedida?.nombre || "-"}
-              disabled
-              style={{ textTransform: "uppercase" }}
-            />
-          </div>
+          {usarUnidadComercial ? (
+            <>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="cantidadCompra">
+                  Cantidad ({productoSeleccionado?.unidadMedidaComercial?.simbolo}) *
+                </label>
+                <InputNumber
+                  id="cantidadCompra"
+                  value={formData.cantidadCompra}
+                  onValueChange={(e) => handleChange("cantidadCompra", e.value)}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={3}
+                  min={0}
+                  disabled={saving || !puedeEditarDetalles}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="unidadComercial">Unidad Comercial</label>
+                <InputText
+                  id="unidadComercial"
+                  value={productoSeleccionado?.unidadMedidaComercial?.nombre || "-"}
+                  disabled
+                  style={{ textTransform: "uppercase" }}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="cantidad">Cantidad *</label>
+                <InputNumber
+                  id="cantidad"
+                  value={formData.cantidad}
+                  onValueChange={(e) => handleChange("cantidad", e.value)}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  min={0}
+                  disabled={saving || !puedeEditarDetalles}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="unidad">Unidad/Empaque</label>
+                <InputText
+                  id="unidad"
+                  value={productoSeleccionado?.unidadMedida?.nombre || "-"}
+                  disabled
+                  style={{ textTransform: "uppercase" }}
+                />
+              </div>
+            </>
+          )}
         </div>
 
-        {/* ⭐ NUEVO: Valor Unitario SIN IGV */}
+        {/* Campos de Precio según modo */}
         <div
           style={{
             display: "flex",
@@ -285,66 +376,112 @@ export default function DetalleDialog({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="valorUnitarioSinIGV">
-              💰 V.C.Unit.
-            </label>
-            <InputNumber
-              id="valorUnitarioSinIGV"
-              value={formData.valorUnitarioSinIGV}
-              onValueChange={(e) => handleChange("valorUnitarioSinIGV", e.value)}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={6}
-              min={0}
-              prefix={codigoMoneda ? `${codigoMoneda} ` : ""}
-              disabled={saving || !puedeEditarDetalles}
-              style={{
-                backgroundColor: esExoneradoIGV ? "#fff3cd" : "#e3f2fd",
-                fontWeight: "bold"
-              }}
-            />
-          </div>
-          {/* ⭐ NUEVO: Precio Unitario CON IGV */}
-          {!esExoneradoIGV && (
-            <div style={{ flex: 1 }}>
-              <label htmlFor="precioUnitarioConIGV">
-                💵 P.C.Unit.
-              </label>
-              <InputNumber
-                id="precioUnitarioConIGV"
-                value={formData.precioUnitarioConIGV}
-                onValueChange={(e) => handleChange("precioUnitarioConIGV", e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={6}
-                min={0}
-                prefix={codigoMoneda ? `${codigoMoneda} ` : ""}
-                disabled={saving || !puedeEditarDetalles}
-                style={{
-                  backgroundColor: "#e8f5e9",
-                  fontWeight: "bold"
-                }}
-              />
-            </div>
+          {usarUnidadComercial ? (
+            <>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="precioUnitarioCompra">
+                  Precio Unitario ({productoSeleccionado?.unidadMedidaComercial?.simbolo}) *
+                </label>
+                <InputNumber
+                  id="precioUnitarioCompra"
+                  value={formData.precioUnitarioCompra}
+                  onValueChange={(e) => handleChange("precioUnitarioCompra", e.value)}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={6}
+                  min={0}
+                  prefix={codigoMoneda ? `${codigoMoneda} ` : ""}
+                  disabled={saving || !puedeEditarDetalles}
+                  style={{
+                    backgroundColor: "#e3f2fd",
+                    fontWeight: "bold"
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="subtotalComercial">📊 Subtotal</label>
+                <InputNumber
+                  id="subtotalComercial"
+                  value={formData.cantidadCompra && formData.precioUnitarioCompra
+                    ? Number(formData.cantidadCompra) * Number(formData.precioUnitarioCompra)
+                    : 0}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  prefix={codigoMoneda ? `${codigoMoneda} ` : ""}
+                  disabled
+                  style={{
+                    backgroundColor: "#f5f5f5",
+                    fontWeight: "bold",
+                    fontSize: "1.1em"
+                  }}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="valorUnitarioSinIGV">
+                  💰 V.C.Unit.
+                </label>
+                <InputNumber
+                  id="valorUnitarioSinIGV"
+                  value={formData.valorUnitarioSinIGV}
+                  onValueChange={(e) => handleChange("valorUnitarioSinIGV", e.value)}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={6}
+                  min={0}
+                  prefix={codigoMoneda ? `${codigoMoneda} ` : ""}
+                  disabled={saving || !puedeEditarDetalles}
+                  style={{
+                    backgroundColor: esExoneradoIGV ? "#fff3cd" : "#e3f2fd",
+                    fontWeight: "bold"
+                  }}
+                />
+              </div>
+              {/* ⭐ NUEVO: Precio Unitario CON IGV */}
+              {!esExoneradoIGV && (
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="precioUnitarioConIGV">
+                    💵 P.C.Unit.
+                  </label>
+                  <InputNumber
+                    id="precioUnitarioConIGV"
+                    value={formData.precioUnitarioConIGV}
+                    onValueChange={(e) => handleChange("precioUnitarioConIGV", e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={6}
+                    min={0}
+                    prefix={codigoMoneda ? `${codigoMoneda} ` : ""}
+                    disabled={saving || !puedeEditarDetalles}
+                    style={{
+                      backgroundColor: "#e8f5e9",
+                      fontWeight: "bold"
+                    }}
+                  />
+                </div>
+              )}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="subtotal">📊 P.Venta</label>
+                <InputNumber
+                  id="subtotal"
+                  value={formData.subtotal}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  prefix={codigoMoneda ? `${codigoMoneda} ` : ""}
+                  disabled
+                  style={{
+                    backgroundColor: "#f5f5f5",
+                    fontWeight: "bold",
+                    fontSize: "1.1em"
+                  }}
+                />
+              </div>
+            </>
           )}
-          <div style={{ flex: 1 }}>
-            <label htmlFor="subtotal">📊 P.Venta</label>
-            <InputNumber
-              id="subtotal"
-              value={formData.subtotal}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              prefix={codigoMoneda ? `${codigoMoneda} ` : ""}
-              disabled
-              style={{
-                backgroundColor: "#f5f5f5",
-                fontWeight: "bold",
-                fontSize: "1.1em"
-              }}
-            />
-          </div>
         </div>
 
         <Divider />
