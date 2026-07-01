@@ -239,7 +239,7 @@ export default function DatosGeneralesTab({
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccionar tipo"
-            disabled={true}
+            disabled={isEdit || !puedeEditar || readOnly}
             style={{
               fontWeight: "bold",
               textTransform: "uppercase",
