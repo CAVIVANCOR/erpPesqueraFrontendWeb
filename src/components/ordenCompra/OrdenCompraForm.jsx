@@ -227,7 +227,7 @@ export default function OrdenCompraForm({
   const [activeTab, setActiveTab] = useState(0);
   const [detallesCount, setDetallesCount] = useState(0);
   const [datosAdicionalesCount, setDatosAdicionalesCount] = useState(0);
-  const [totales, setTotales] = useState({ subtotal: 0, igv: 0, total: 0 });
+  const [totales, setTotales] = useState({ subtotal: 0, totalDescuentos: 0, igv: 0, total: 0 });
   const [fechaDocumentoInicial, setFechaDocumentoInicial] = useState(null);
   const [estadosCxP, setEstadosCxP] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
@@ -494,12 +494,14 @@ export default function OrdenCompraForm({
           (sum, det) => sum + (Number(det.subtotal) || 0),
           0,
         );
+        const totalDescuentosCalc = 0; // Por ahora 0, implementar descuentos en el futuro
         const igvCalc = esExoneradoAlIGV
           ? 0
           : subtotalSinIGV * (Number(porcentajeIGV) / 100);
         const totalCalc = subtotalSinIGV + igvCalc;
         setTotales({
           subtotal: subtotalSinIGV,
+          totalDescuentos: totalDescuentosCalc,
           igv: igvCalc,
           total: totalCalc
         });
@@ -514,7 +516,7 @@ export default function OrdenCompraForm({
         }
       } catch (err) {
         console.error("Error al calcular totales:", err);
-        setTotales({ subtotal: 0, igv: 0, total: 0 });
+        setTotales({ subtotal: 0, totalDescuentos: 0, igv: 0, total: 0 });
       }
     };
     calcularTotales();
@@ -529,7 +531,7 @@ export default function OrdenCompraForm({
   // ⭐ FUNCIÓN AUXILIAR: Recalcular y guardar totales en BD con Toast
   const recalcularYGuardarTotales = async (mostrarToast = true) => {
     if (!defaultValues?.id) {
-      return { subtotal: 0, igv: 0, total: 0 };
+      return { subtotal: 0, totalDescuentos: 0, igv: 0, total: 0 };
     }
     try {
       const { getDetallesOrdenCompra } = await import("../../api/detalleOrdenCompra");
@@ -539,6 +541,7 @@ export default function OrdenCompraForm({
         (sum, det) => sum + (Number(det.subtotal) || 0),
         0,
       );
+      const totalDescuentosCalc = 0; // Por ahora 0, implementar descuentos en el futuro
       const igvCalc = esExoneradoAlIGV
         ? 0
         : subtotalCalc * (Number(porcentajeIGV) / 100);
@@ -547,11 +550,12 @@ export default function OrdenCompraForm({
       const { actualizarOrdenCompra } = await import("../../api/ordenCompra");
       await actualizarOrdenCompra(defaultValues.id, {
         subtotal: subtotalCalc,
+        totalDescuentos: totalDescuentosCalc,
         totalIGV: igvCalc,
         total: totalCalc,
       });
       // Actualizar estado local
-      setTotales({ subtotal: subtotalCalc, igv: igvCalc, total: totalCalc });
+      setTotales({ subtotal: subtotalCalc, totalDescuentos: totalDescuentosCalc, igv: igvCalc, total: totalCalc });
       // ✅ Mostrar mensaje de éxito
       if (mostrarToast) {
         const monedaSimbolo = defaultValues?.moneda?.simbolo || "";
@@ -562,7 +566,7 @@ export default function OrdenCompraForm({
           life: 4000,
         });
       }
-      return { subtotal: subtotalCalc, igv: igvCalc, total: totalCalc };
+      return { subtotal: subtotalCalc, totalDescuentos: totalDescuentosCalc, igv: igvCalc, total: totalCalc };
     } catch (err) {
       console.error("Error al recalcular totales:", err);
       if (mostrarToast) {
@@ -826,6 +830,10 @@ export default function OrdenCompraForm({
       observaciones,
       porcentajeIGV,
       esExoneradoAlIGV,
+      subtotal: totales.subtotal,
+      totalDescuentos: totales.totalDescuentos,
+      totalIGV: totales.igv,
+      total: totales.total,
       direccionRecepcionAlmacenId: direccionRecepcionAlmacenId
         ? Number(direccionRecepcionAlmacenId)
         : null,
