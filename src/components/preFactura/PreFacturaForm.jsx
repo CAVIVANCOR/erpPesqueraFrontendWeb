@@ -24,6 +24,7 @@ import { InputNumber } from "primereact/inputnumber";
 import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 import AsientoContableManager from "../common/AsientoContableManager";
 import { crearDetallePreFactura } from "../../api/detallePreFactura";
+import { ESTADO_PREFACTURA } from "../../utils/estados.constants";
 
 export default function PreFacturaForm({
   isEdit,
@@ -1394,15 +1395,15 @@ export default function PreFacturaForm({
   };
 
   // Estados del documento
-  const estaPendiente = estadoId === 45 || !estadoId;
-  const estaAprobada = estadoId === 46;
-  const estaAnulada = estadoId === 47;
-  const estaParticionada = estadoId === 48;
-  const estaFacturada = estadoId === 95;
-  const estaEmitida = estadoId === 96;
-  const estaComprobanteGenerado = estadoId === 97;
-  const estaValidadoSunat = estadoId === 98;
-  const estaNoValidadoSunat = estadoId === 99;
+  const estaPendiente = estadoId === ESTADO_PREFACTURA.PENDIENTE || !estadoId;
+  const estaAprobada = estadoId === ESTADO_PREFACTURA.APROBADA;
+  const estaAnulada = estadoId === ESTADO_PREFACTURA.ANULADA;
+  const estaParticionada = estadoId === ESTADO_PREFACTURA.PARTICIONADA;
+  const estaFacturada = estadoId === ESTADO_PREFACTURA.FACTURADA;
+  const estaEmitida = estadoId === ESTADO_PREFACTURA.EMITIDA;
+  const estaComprobanteGenerado = estadoId === ESTADO_PREFACTURA.COMPROBANTE_ELECTRONICO_GENERADO;
+  const estaValidadoSunat = estadoId === ESTADO_PREFACTURA.VALIDADO_SUNAT;
+  const estaNoValidadoSunat = estadoId === ESTADO_PREFACTURA.NO_VALIDADO_SUNAT;
   const kardexGenerado = Boolean(defaultValues?.movSalidaAlmacenId);
 
   // ⭐ PERMISOS ESPECIALES: Usuario con puedeAprobarDocs tiene acceso total
@@ -1411,7 +1412,15 @@ export default function PreFacturaForm({
   // Estados válidos para generar kardex (todos excepto PENDIENTE y ANULADA)
   const puedeGenerarKardex = tienePermisoEspecial
     ? !estaAnulada
-    : [46, 48, 95, 96, 97, 98, 99].includes(estadoId);
+    : [
+      ESTADO_PREFACTURA.APROBADA,
+      ESTADO_PREFACTURA.PARTICIONADA,
+      ESTADO_PREFACTURA.FACTURADA,
+      ESTADO_PREFACTURA.EMITIDA,
+      ESTADO_PREFACTURA.COMPROBANTE_ELECTRONICO_GENERADO,
+      ESTADO_PREFACTURA.VALIDADO_SUNAT,
+      ESTADO_PREFACTURA.NO_VALIDADO_SUNAT,
+    ].includes(estadoId);
 
   const puedeEditar = tienePermisoEspecial
     ? !estaAnulada && !loading
