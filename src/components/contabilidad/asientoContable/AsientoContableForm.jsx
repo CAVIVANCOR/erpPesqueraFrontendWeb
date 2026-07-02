@@ -100,9 +100,10 @@ export default function AsientoContableForm({
   const esAnulado = estadoId === 78;    // ANULADO (corregido de 77 a 78)
 
   // Verificar si el período está cerrado
-  const periodoEstaCerrado = defaultValues?.periodoContable?.estado?.descripcion !== "ABIERTO";
+  // Solo verificar período cerrado si estamos EDITANDO un asiento existente
+  const periodoEstaCerrado = isEdit && defaultValues?.periodoContable?.estado?.descripcion !== "ABIERTO";
 
-  // Solo lectura si: período CERRADO
+  // Solo lectura si: readOnly prop O período cerrado (solo en edición)
   const isReadOnly = readOnly || periodoEstaCerrado;
 
   return (

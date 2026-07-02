@@ -192,6 +192,7 @@ export default function AsientoContable({ ruta }) {
     }
     setSelected(null);
     setIsEdit(false);
+
     setShowDialog(true);
   };
 
