@@ -223,6 +223,7 @@ const AsientoContableManager = ({
       return;
     }
     setLoading(true);
+
     try {
       // ⭐ EJECUTAR CALLBACK ANTES DE GENERAR (si existe)
       if (onBeforeGenerate && typeof onBeforeGenerate === 'function') {
@@ -235,40 +236,12 @@ const AsientoContableManager = ({
         }
       }
       if (asientos.length > 0) {
-        // ⭐ REGENERAR ASIENTO CON TOTALES ACTUALIZADOS
-        // Generar nuevo borrador con datos frescos
-        const urlBorrador = `${baseUrl}/${documentoId}/${config.borradorEndpoint}`;
-        const responseBorrador = config.borradorMethod === "POST"
-          ? await axios.post(urlBorrador, {}, { headers: getAuthHeaders() })
-          : await axios.get(urlBorrador, { headers: getAuthHeaders() });
-        const borradorActualizado = responseBorrador.data;
-
-        // Capturar warnings si existen
-        if (borradorActualizado.warnings && borradorActualizado.warnings.length > 0) {
-          setWarnings(borradorActualizado.warnings);
-        } else {
-          setWarnings([]);
-        }
-
-        // Actualizar el asiento existente (mantener el ID)
-        const asientoExistente = asientos[0];
-        const asientoActualizado = {
-          ...borradorActualizado,
-          id: asientoExistente.id, // Mantener el ID del asiento existente
-        };
-        // Guardar asiento actualizado
-        await axios.put(
-          `${baseUrl}/${documentoId}/${config.guardarEndpoint}`,
-          { asientoData: asientoActualizado },
-          { headers: getAuthHeaders() }
-        );
-        // Recargar lista de asientos
-        await cargarAsientos();
+        // ⭐ YA EXISTE ASIENTO - SOLO MOSTRAR (no crear duplicados)
         toast.current?.show({
-          severity: "success",
-          summary: "Asiento Actualizado",
-          detail: "Asiento contable actualizado con los totales correctos.",
-          life: 4000,
+          severity: "info",
+          summary: "Asiento Existente",
+          detail: "Ya existe un asiento contable para este documento.",
+          life: 3000,
         });
         // Mostrar lista de asientos
         setShowListDialog(true);
@@ -353,6 +326,10 @@ const AsientoContableManager = ({
       setShowEditorDialog(false);
       setBorradorAsiento(null);
       await cargarAsientos();
+
+      // ⭐ NUEVO: Abrir lista de asientos después de guardar
+      setShowListDialog(true);
+
       // Ejecutar callback si existe
       if (onAsientoChange) {
         onAsientoChange();

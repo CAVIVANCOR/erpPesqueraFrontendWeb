@@ -261,7 +261,6 @@ export default function MovimientoAlmacen({ ruta }) {
   }, [items]);
 
   const cargarDatos = async () => {
-    console.log("Entro a cargarDatos")
     setLoading(true);
     try {
       const [
@@ -325,7 +324,6 @@ export default function MovimientoAlmacen({ ruta }) {
       );
       setEstadosCalidad(estadosCalidadFiltrados);
 
-      console.log("MovimientoAlmacen   cargarDatos: ubicacionesData", ubicacionesData)
       setUbicacionesFisicas(ubicacionesData); // ← AGREGAR AQUÍ
 
       // Establecer datos para entregas a rendir

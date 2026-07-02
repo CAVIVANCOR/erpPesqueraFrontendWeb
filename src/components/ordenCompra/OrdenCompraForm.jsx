@@ -605,19 +605,52 @@ export default function OrdenCompraForm({
 
   // ⭐ CALLBACK para AsientoContableManager
   const handleBeforeGenerateAsiento = async () => {
-    // Recalcular y guardar totales
-    await recalcularYGuardarTotales(true);
-    // ⭐ Verificar que los totales se guardaron correctamente
-    const { getOrdenCompraPorId } = await import("../../api/ordenCompra");
-    const ordenActualizada = await getOrdenCompraPorId(defaultValues.id);
-    if (Number(ordenActualizada.total) === 0) {
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Los totales no se actualizaron correctamente en la base de datos. Intente nuevamente.",
-        life: 5000,
-      });
-      throw new Error("Totales en cero");
+    try {
+      // Recalcular y guardar totales
+      const totalesActualizados = await recalcularYGuardarTotales(false); // No mostrar toast aquí
+
+      // ⭐ Verificar que los totales se calcularon correctamente
+      if (!totalesActualizados || Number(totalesActualizados.total) === 0) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "La orden no tiene detalles o el total es cero. No se puede generar el asiento contable.",
+          life: 5000,
+        });
+        throw new Error("Total en cero");
+      }
+
+      // ⭐ Verificar que se guardó correctamente en BD
+      const { getOrdenCompraPorId } = await import("../../api/ordenCompra");
+      const ordenActualizada = await getOrdenCompraPorId(defaultValues.id);
+
+      if (Number(ordenActualizada.total) === 0) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Los totales no se guardaron correctamente en la base de datos. Intente nuevamente.",
+          life: 5000,
+        });
+        throw new Error("Error al guardar totales");
+      }
+
+      // ✅ Todo OK, continuar con generación de asiento
+      return true;
+
+    } catch (error) {
+      console.error("Error en handleBeforeGenerateAsiento:", error);
+
+      // Si el error ya mostró un toast, no mostrar otro
+      if (!error.message?.includes("Total en cero") && !error.message?.includes("Error al guardar")) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: error.message || "Error al preparar la generación del asiento contable.",
+          life: 5000,
+        });
+      }
+
+      throw error; // Re-lanzar para que AsientoContableManager lo maneje
     }
   };
 
