@@ -52,6 +52,7 @@ import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 import GenerarKardexDialog from "../components/common/kardex/GenerarKardexDialog";
 import EmpresaSelector from "../components/common/EmpresaSelector";
 import { getMotivoNotaCreditoDebitoActivos } from "../api/ventas/motivoNotaCreditoDebito";
+import { getAllUbicacionesFisicas } from "../api/ubicacionFisica";
 
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
@@ -84,6 +85,7 @@ export default function OrdenCompra({ ruta }) {
   const [conceptosMovAlmacen, setConceptosMovAlmacen] = useState([]);
   const [estadosMercaderia, setEstadosMercaderia] = useState([]);
   const [estadosCalidad, setEstadosCalidad] = useState([]);
+  const [ubicacionesFisicas, setUbicacionesFisicas] = useState([]);
   const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [periodosContables, setPeriodosContables] = useState([]);
   const [motivosNCND, setMotivosNCND] = useState([]);
@@ -199,6 +201,7 @@ export default function OrdenCompra({ ruta }) {
         unidadesNegocioData,
         periodosContablesData,
         motivosNCNDData,
+        ubicacionesData,
       ] = await Promise.all([
         getOrdenesCompra(),
         getEmpresas(),
@@ -220,6 +223,7 @@ export default function OrdenCompra({ ruta }) {
         getUnidadesNegocio({ activo: true }),
         getPeriodosContables(), // ✅ AGREGADO
         getMotivoNotaCreditoDebitoActivos(),
+        getAllUbicacionesFisicas(),
       ]);
       setEmpresas(empresasData);
       setProveedores(proveedoresData);
@@ -255,6 +259,7 @@ export default function OrdenCompra({ ruta }) {
         (e) => Number(e.tipoProvieneDeId) === 10 && !e.cesado,
       );
       setEstadosCalidad(estadosCalidadFiltrados);
+      setUbicacionesFisicas(ubicacionesData || []);
 
       const ordenesNormalizadas = ordenesData.map((orden) => ({
         ...orden,
@@ -525,10 +530,11 @@ export default function OrdenCompra({ ruta }) {
 
     confirmDialog({
       message:
-        "¿Está seguro de reactivar esta orden de compra? " +
-        "Si tiene movimiento de almacén, el kardex será eliminado y los saldos recalculados. " +
-        "Si tiene Cuenta por Pagar sin pagos, será eliminada. " +
-        "Los asientos contables asociados también serán eliminados.",
+        "¿Está seguro de reactivar esta orden de compra?\n\n" +
+        "• Si tiene movimiento de almacén, será ELIMINADO completamente y los saldos recalculados.\n" +
+        "• Si tiene Cuenta por Pagar sin pagos, será ELIMINADA.\n" +
+        "• Si tiene Asientos Contables, serán ELIMINADOS.\n\n" +
+        "Esta operación NO se puede deshacer.",
       header: "Confirmar Reactivación",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-warning",
@@ -540,28 +546,51 @@ export default function OrdenCompra({ ruta }) {
           const { reactivarDocumentoOrdenCompra } = await import("../api/ordenCompra");
           const resultado = await reactivarDocumentoOrdenCompra(ordenCompraId);
 
-          // Mostrar resumen detallado de la reactivación
-          const mensajeDetalle = `
-            Orden de Compra reactivada exitosamente:
-            - Kardex eliminados: ${resultado.kardexEliminados || 0}
-            - Productos afectados: ${resultado.productosAfectados || 0}
-            - Saldos detallados actualizados: ${resultado.saldosDetActualizados || 0}
-            - Saldos generales actualizados: ${resultado.saldosGenActualizados || 0}
-            ${resultado.cuentaPorPagarEliminada ? '- Cuenta por Pagar eliminada' : ''}
-            ${resultado.asientosEliminados ? `- Asientos contables eliminados: ${resultado.asientosEliminados}` : ''}
-            
-            Ahora puede editar el documento.
-          `;
+          // Construir mensaje detallado
+          let mensajeDetalle = "Orden de Compra reactivada exitosamente:\n\n";
+
+          // Movimientos de Almacén
+          if (resultado.movimientosAlmacen?.eliminados > 0) {
+            mensajeDetalle += `✅ Movimientos de Almacén ELIMINADOS: ${resultado.movimientosAlmacen.eliminados}\n`;
+            resultado.movimientosAlmacen.movimientos.forEach((mov, index) => {
+              mensajeDetalle += `   ${index + 1}. ID: ${mov.id} - Doc: ${mov.numeroDocumento}\n`;
+            });
+            mensajeDetalle += `   • Total Kardex eliminados: ${resultado.movimientosAlmacen.kardexEliminados}\n`;
+            mensajeDetalle += `   • Total Detalles eliminados: ${resultado.movimientosAlmacen.detallesEliminados}\n\n`;
+          }
+
+          // Saldos
+          if (resultado.saldos?.productosAfectados > 0) {
+            mensajeDetalle += `✅ Saldos Recalculados:\n`;
+            mensajeDetalle += `   • Productos afectados: ${resultado.saldos.productosAfectados}\n`;
+            mensajeDetalle += `   • Saldos detallados: ${resultado.saldos.saldosDetActualizados}\n`;
+            mensajeDetalle += `   • Saldos generales: ${resultado.saldos.saldosGenActualizados}\n\n`;
+          }
+
+          // Cuenta por Pagar
+          if (resultado.cuentaPorPagar?.eliminada) {
+            mensajeDetalle += `✅ Cuenta por Pagar ELIMINADA:\n`;
+            mensajeDetalle += `   • ID: ${resultado.cuentaPorPagar.cxpId}\n`;
+            mensajeDetalle += `   • Monto: S/ ${Number(resultado.cuentaPorPagar.montoTotal).toFixed(2)}\n\n`;
+          }
+
+          // Asientos Contables
+          if (resultado.asientosContables?.eliminados > 0) {
+            mensajeDetalle += `✅ Asientos Contables ELIMINADOS: ${resultado.asientosContables.eliminados}\n\n`;
+          }
+
+          mensajeDetalle += "La orden volvió a estado PENDIENTE y puede ser editada.";
 
           toast.current.show({
             severity: "success",
             summary: "Orden de Compra Reactivada",
             detail: mensajeDetalle,
-            life: 5000,
+            life: 8000,
           });
 
           cargarDatos();
           setShowDialog(false);
+          setEditing(null);
         } catch (err) {
           console.error("Error al reactivar orden de compra:", err);
           const errorMsg =
@@ -1360,6 +1389,7 @@ export default function OrdenCompra({ ruta }) {
           personalOptions={personalOptions}
           estadosMercaderia={estadosMercaderia}
           estadosCalidad={estadosCalidad}
+          ubicacionesFisicas={ubicacionesFisicas}
           empresaFija={empresaSeleccionada}
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}

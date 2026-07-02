@@ -53,6 +53,7 @@ const AsientoContableManager = ({
   const [selectedAsiento, setSelectedAsiento] = useState(null);
   const [expandedRows, setExpandedRows] = useState(null);
   const [periodoContable, setPeriodoContable] = useState(null);
+  const [warnings, setWarnings] = useState([]); // ⭐ AGREGAR ESTA LÍNEA
 
   // ========================================
   // CONFIGURACIÓN POR TIPO DE DOCUMENTO
@@ -112,7 +113,7 @@ const AsientoContableManager = ({
       eliminarEndpoint: "asiento", // /asiento/:asientoId
     },
 
-    
+
     // ⭐ NUEVO - Deudas con Personal (CTS, Gratificaciones, etc.)
     DeudaConPersonal: {
       baseUrl: "/api/deudas-personal",
@@ -122,7 +123,7 @@ const AsientoContableManager = ({
       eliminarEndpoint: "asiento", // /asiento/:asientoId
     },
 
-    
+
   };
 
   const config = configuraciones[documentoTipo];
@@ -241,6 +242,14 @@ const AsientoContableManager = ({
           ? await axios.post(urlBorrador, {}, { headers: getAuthHeaders() })
           : await axios.get(urlBorrador, { headers: getAuthHeaders() });
         const borradorActualizado = responseBorrador.data;
+
+        // Capturar warnings si existen
+        if (borradorActualizado.warnings && borradorActualizado.warnings.length > 0) {
+          setWarnings(borradorActualizado.warnings);
+        } else {
+          setWarnings([]);
+        }
+
         // Actualizar el asiento existente (mantener el ID)
         const asientoExistente = asientos[0];
         const asientoActualizado = {
@@ -271,6 +280,14 @@ const AsientoContableManager = ({
         ? await axios.post(urlBorrador, {}, { headers: getAuthHeaders() })
         : await axios.get(urlBorrador, { headers: getAuthHeaders() });
       const borradorGenerado = responseBorrador.data;
+
+      // Capturar warnings si existen
+      if (borradorGenerado.warnings && borradorGenerado.warnings.length > 0) {
+        setWarnings(borradorGenerado.warnings);
+      } else {
+        setWarnings([]);
+      }
+
       // Guardar automáticamente en BD
       await axios.post(
         `${baseUrl}/${documentoId}/${config.guardarEndpoint}`,
@@ -489,6 +506,7 @@ const AsientoContableManager = ({
     return (
       <div style={{ padding: "1rem" }}>
         <h4>Detalles del Asiento</h4>
+
         <DataTable
           value={detalles}
           stripedRows
@@ -524,6 +542,27 @@ const AsientoContableManager = ({
   // ========================================
   const contenido = (
     <div>
+      {/* Mostrar warnings si existen */}
+      {warnings.length > 0 && (
+        <Message
+          severity="warn"
+          style={{ marginBottom: "1rem", width: "100%" }}
+          content={
+            <div>
+              <strong>⚠️ Advertencias del Asiento Contable:</strong>
+              <ul style={{ marginTop: "0.5rem", marginBottom: 0, paddingLeft: "1.5rem" }}>
+                {warnings.map((warning, index) => (
+                  <li key={index}>{warning}</li>
+                ))}
+              </ul>
+              <div style={{ marginTop: "0.5rem", fontSize: "0.9rem" }}>
+                <strong>Recomendación:</strong> Configure las cuentas contables en los productos para generar asientos más precisos.
+              </div>
+            </div>
+          }
+        />
+      )}
+
       {/* Lista de asientos */}
       <DataTable
         value={asientos}
@@ -593,6 +632,7 @@ const AsientoContableManager = ({
         onHide={() => {
           setShowEditorDialog(false);
           setBorradorAsiento(null);
+          setWarnings([]);
         }}
         header="Generar Asiento Contable"
         style={{ width: "95vw", maxWidth: "1400px" }}
@@ -673,7 +713,10 @@ const AsientoContableManager = ({
 
         <Dialog
           visible={showListDialog}
-          onHide={() => setShowListDialog(false)}
+          onHide={() => {
+            setShowListDialog(false);
+            setWarnings([]);
+          }}
           header={periodoEstaCerrado
             ? "Asientos Contables (Solo lectura - Período cerrado)"
             : "Asientos Contables"}

@@ -46,7 +46,7 @@ export default function DetalleMovimientoForm({
 }) {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
-  
+  console.log("DetalleMovimientoForm: ubicacionesFisicas",ubicacionesFisicas)
   // Estados del formulario
   const [productoId, setProductoId] = useState(null);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);

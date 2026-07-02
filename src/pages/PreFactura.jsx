@@ -893,17 +893,45 @@ const PreFactura = ({ ruta }) => {
           const { reactivarDocumentoPreFactura } = await import("../api/preFactura");
           const resultado = await reactivarDocumentoPreFactura(preFacturaId);
 
-          // Mostrar resumen detallado de la reactivación (siguiendo patrón de MovimientoAlmacen)
-          const mensajeDetalle = `
-            PreFactura reactivada exitosamente:
-            - Kardex eliminados: ${resultado.kardexEliminados || 0}
-            - Productos afectados: ${resultado.productosAfectados || 0}
-            - Saldos detallados actualizados: ${resultado.saldosDetActualizados || 0}
-            - Saldos generales actualizados: ${resultado.saldosGenActualizados || 0}
-            ${resultado.cuentaPorCobrarEliminada ? '- Cuenta por Cobrar eliminada' : ''}
-            
-            Ahora puede editar el documento.
-          `;
+          // Construir mensaje detallado
+          let mensajeDetalle = "PreFactura reactivada exitosamente:\n\n";
+
+          // Movimientos de Almacén
+          if (resultado.movimientosAlmacen?.eliminados > 0) {
+            mensajeDetalle += `✅ Movimientos de Almacén ELIMINADOS: ${resultado.movimientosAlmacen.eliminados}\n`;
+            resultado.movimientosAlmacen.movimientos.forEach((mov, index) => {
+              mensajeDetalle += `   ${index + 1}. ID: ${mov.id} - Doc: ${mov.numeroDocumento}\n`;
+            });
+            mensajeDetalle += `   • Total Kardex eliminados: ${resultado.movimientosAlmacen.kardexEliminados}\n`;
+            mensajeDetalle += `   • Total Detalles eliminados: ${resultado.movimientosAlmacen.detallesEliminados}\n\n`;
+          }
+
+          // Saldos
+          if (resultado.saldos?.productosAfectados > 0) {
+            mensajeDetalle += `✅ Saldos Recalculados:\n`;
+            mensajeDetalle += `   • Productos afectados: ${resultado.saldos.productosAfectados}\n`;
+            mensajeDetalle += `   • Saldos detallados: ${resultado.saldos.saldosDetActualizados}\n`;
+            mensajeDetalle += `   • Saldos generales: ${resultado.saldos.saldosGenActualizados}\n\n`;
+          }
+
+          // Cuenta por Cobrar
+          if (resultado.cuentaPorCobrar?.eliminada) {
+            mensajeDetalle += `✅ Cuenta por Cobrar ELIMINADA:\n`;
+            mensajeDetalle += `   • ID: ${resultado.cuentaPorCobrar.cxcId}\n`;
+            mensajeDetalle += `   • Monto: S/ ${Number(resultado.cuentaPorCobrar.montoTotal).toFixed(2)}\n\n`;
+          }
+
+          // Comprobantes Electrónicos
+          if (resultado.comprobantesElectronicos?.eliminados > 0) {
+            mensajeDetalle += `✅ Comprobantes Electrónicos ELIMINADOS: ${resultado.comprobantesElectronicos.eliminados}\n\n`;
+          }
+
+          // Asientos Contables
+          if (resultado.asientosContables?.eliminados > 0) {
+            mensajeDetalle += `✅ Asientos Contables ELIMINADOS: ${resultado.asientosContables.eliminados}\n\n`;
+          }
+
+          mensajeDetalle += "La pre-factura volvió a estado PENDIENTE y puede ser editada.";
 
           toast.current.show({
             severity: "success",

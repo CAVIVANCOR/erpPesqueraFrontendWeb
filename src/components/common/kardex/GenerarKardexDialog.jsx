@@ -23,6 +23,7 @@ import { Toast } from "primereact/toast";
 import { getKardexConfig } from "./kardexConfig";
 import { useKardexConfig } from "./useKardexConfig";
 import ValidadorStockMultiProducto from "../ValidadorStockMultiProducto";
+import { getAllUbicacionesFisicas } from "../../../api/ubicacionFisica";
 
 export default function GenerarKardexDialog({
   visible,
@@ -46,6 +47,9 @@ export default function GenerarKardexDialog({
   // Cargar datos necesarios (almacenes, conceptos, estados, direcciones)
   // Estado local para almacenId seleccionado
   const [almacenSeleccionado, setAlmacenSeleccionado] = useState(null);
+  // Estado para ubicaciones físicas
+  const [ubicacionesFisicas, setUbicacionesFisicas] = useState([]);
+  const [loadingUbicaciones, setLoadingUbicaciones] = useState(false);
 
   const {
     almacenes,
@@ -78,6 +82,7 @@ export default function GenerarKardexDialog({
     lote: "",
     estadoId: 6,
     estadoCalidadId: 10,
+    ubicacionFisicaId: null, // ⭐ NUEVO
     observaciones: `${config.tipoMovimiento === "INGRESO" ? "Ingreso" : "Salida"} por ${numeroDocumento || "documento"}`,
   });
 
@@ -89,6 +94,36 @@ export default function GenerarKardexDialog({
   // Sincronizar almacén seleccionado con formData
   useEffect(() => {
     setAlmacenSeleccionado(formData.almacenId);
+  }, [formData.almacenId]);
+
+  // ⭐ NUEVO: Cargar ubicaciones físicas cuando cambia el almacén
+  useEffect(() => {
+    const cargarUbicaciones = async () => {
+      if (!formData.almacenId) {
+        setUbicacionesFisicas([]);
+        setFormData(prev => ({ ...prev, ubicacionFisicaId: null }));
+        return;
+      }
+
+      try {
+        setLoadingUbicaciones(true);
+        const ubicaciones = await getAllUbicacionesFisicas(formData.almacenId);
+        setUbicacionesFisicas(ubicaciones || []);
+      } catch (error) {
+        console.error("Error al cargar ubicaciones físicas:", error);
+        setUbicacionesFisicas([]);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudieron cargar las ubicaciones físicas",
+          life: 3000,
+        });
+      } finally {
+        setLoadingUbicaciones(false);
+      }
+    };
+
+    cargarUbicaciones();
   }, [formData.almacenId]);
 
   // Resetear formulario al abrir
@@ -105,6 +140,7 @@ export default function GenerarKardexDialog({
         lote: "",
         estadoId: 6, // LIBERADO
         estadoCalidadId: 10, // CALIDAD A
+        ubicacionFisicaId: null,
         observaciones: `${config.tipoMovimiento === "INGRESO" ? "Ingreso" : "Salida"} por ${numeroDocumento || "documento"}`,
       });
     }
@@ -173,6 +209,7 @@ export default function GenerarKardexDialog({
       lote: formData.lote || null,
       estadoId: formData.estadoId,
       estadoCalidadId: formData.estadoCalidadId,
+      ubicacionFisicaId: formData.ubicacionFisicaId, // ⭐ AGREGAR ESTA LÍNEA
       observaciones: formData.observaciones,
       asignacionesLotes: asignacionesLotes, // ⭐ NUEVO: Incluir asignaciones de lotes
     });
@@ -234,6 +271,7 @@ export default function GenerarKardexDialog({
         className="p-button-success"
         disabled={
           !formData.almacenId ||
+          !formData.ubicacionFisicaId ||
           !formData.conceptoMovAlmacenId ||
           !formData.fechaDocumento ||
           !formData.dirOrigenId ||
@@ -241,7 +279,8 @@ export default function GenerarKardexDialog({
           (config.tipoMovimiento === "INGRESO" && !formData.estadoId) ||
           (config.tipoMovimiento === "INGRESO" && !formData.estadoCalidadId) ||
           externalLoading ||
-          loadingData
+          loadingData ||
+          loadingUbicaciones
         }
         loading={externalLoading}
       />
@@ -329,6 +368,48 @@ export default function GenerarKardexDialog({
             disabled={loadingData || externalLoading}
             emptyMessage="No hay almacenes disponibles"
           />
+        </div>
+
+        {/* ⭐ NUEVO: Ubicación Física */}
+        <div>
+          <label
+            htmlFor="ubicacionFisica"
+            style={{
+              display: "block",
+              marginBottom: "0.5rem",
+              fontWeight: "bold",
+            }}
+          >
+            Ubicación Física <span style={{ color: "red" }}>*</span>
+          </label>
+          <Dropdown
+            id="ubicacionFisica"
+            value={formData.ubicacionFisicaId}
+            options={ubicacionesFisicas}
+            onChange={(e) => handleChange("ubicacionFisicaId", e.value)}
+            optionLabel="descripcion"
+            optionValue="id"
+            placeholder={
+              !formData.almacenId
+                ? "Primero seleccione un almacén"
+                : "Seleccione una ubicación física"
+            }
+            filter
+            showClear
+            style={{ width: "100%" }}
+            disabled={!formData.almacenId || loadingUbicaciones || loadingData || externalLoading}
+            emptyMessage={
+              !formData.almacenId
+                ? "Seleccione un almacén primero"
+                : "No hay ubicaciones físicas disponibles para este almacén"
+            }
+            loading={loadingUbicaciones}
+          />
+          {!formData.almacenId && (
+            <small style={{ color: "#6c757d", display: "block", marginTop: "0.25rem" }}>
+              Seleccione primero un almacén para ver las ubicaciones disponibles
+            </small>
+          )}
         </div>
 
         {/* Concepto */}
