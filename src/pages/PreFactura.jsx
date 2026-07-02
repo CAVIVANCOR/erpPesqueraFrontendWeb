@@ -30,6 +30,7 @@ import PreFacturaForm from "../components/preFactura/PreFacturaForm";
 import CotizacionVentasForm from "../components/cotizacionVentas/CotizacionVentasForm"; // ⬅️ AGREGAR
 import MovimientoAlmacenForm from "../components/movimientoAlmacen/MovimientoAlmacenForm"; // ⬅️ AGREGAR
 import ContratoServicioForm from "../components/contratoServicio/ContratoServicioForm"; // ⬅️ AGREGAR
+import ConsultaStockForm from "../components/common/ConsultaStockForm";
 import {
   getResponsiveFontSize,
   formatearFecha,
@@ -131,6 +132,7 @@ const PreFactura = ({ ruta }) => {
     useState(false); // ⬅️ AGREGAR
   const [contratoServicioOrigen, setContratoServicioOrigen] = useState(null); // ⬅️ AGREGAR
   const [navigationStack, setNavigationStack] = useState([]); // Stack para navegación de PreFacturas
+  const [showConsultaStock, setShowConsultaStock] = useState(false);
   const toast = useRef(null);
 
   useEffect(() => {
@@ -1539,6 +1541,14 @@ const PreFactura = ({ ruta }) => {
                 </div>
                 <div style={{ flex: 1 }}>
                   <Button
+                    icon="pi pi-search"
+                    label="Consultar Stock"
+                    onClick={() => setShowConsultaStock(true)}
+                    className="p-button-info"
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
                     label="Limpiar Filtros"
                     icon="pi pi-filter-slash"
                     className="p-button-secondary"
@@ -2050,6 +2060,14 @@ const PreFactura = ({ ruta }) => {
           loading={loading}
         />
       )}
+
+      {/* Diálogo de Consulta de Stock */}
+      <ConsultaStockForm
+        visible={showConsultaStock}
+        onHide={() => setShowConsultaStock(false)}
+        empresaIdInicial={empresaSeleccionada}
+      />
+
       <ConfirmDialog />
     </div>
   );

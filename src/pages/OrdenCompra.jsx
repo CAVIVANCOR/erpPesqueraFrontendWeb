@@ -53,6 +53,7 @@ import GenerarKardexDialog from "../components/common/kardex/GenerarKardexDialog
 import EmpresaSelector from "../components/common/EmpresaSelector";
 import { getMotivoNotaCreditoDebitoActivos } from "../api/ventas/motivoNotaCreditoDebito";
 import { getAllUbicacionesFisicas } from "../api/ubicacionFisica";
+import ConsultaStockForm from "../components/common/ConsultaStockForm";
 
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
@@ -109,6 +110,7 @@ export default function OrdenCompra({ ruta }) {
   const [proveedoresUnicos, setProveedoresUnicos] = useState([]);
   const [showKardexDialog, setShowKardexDialog] = useState(false);
   const [kardexDocumentoActual, setKardexDocumentoActual] = useState(null);
+  const [showConsultaStock, setShowConsultaStock] = useState(false);
 
   // ========================================
   // 🆕 CARGAR DATOS AL MONTAR EL COMPONENTE
@@ -1135,6 +1137,16 @@ export default function OrdenCompra({ ruta }) {
               </div>
               <div style={{ flex: 1 }}>
                 <Button
+                  icon="pi pi-search"
+                  label="Consultar Stock"
+                  onClick={() => setShowConsultaStock(true)}
+                  className="p-button-info"
+                  tooltip="Consultar stock de productos"
+                  tooltipOptions={{ position: "bottom" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
                   label="Limpiar Filtros"
                   icon="pi pi-filter-slash"
                   className="p-button-secondary"
@@ -1427,6 +1439,13 @@ export default function OrdenCompra({ ruta }) {
           loading={loading}
         />
       )}
+
+      {/* Diálogo de Consulta de Stock */}
+      <ConsultaStockForm
+        visible={showConsultaStock}
+        onHide={() => setShowConsultaStock(false)}
+        empresaIdInicial={empresaSeleccionada}
+      />
 
     </div>
   );
