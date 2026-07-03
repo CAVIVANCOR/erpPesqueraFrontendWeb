@@ -39,3 +39,11 @@ export async function eliminarSerieDoc(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+export async function generarCorrelativo(serieDocId) {
+  const res = await axios.post(`${API_URL}/generar-correlativo`, 
+    { serieDocId },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

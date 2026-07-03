@@ -751,6 +751,21 @@ export default function PreFacturaForm({
     }
   };
 
+  const handleCambiarTipoSerie = (datos) => {
+    handleChange('tipoDocumentoId', datos.tipoDocumentoId);
+    handleChange('serieDocId', datos.serieDocId);
+    handleChange('numSerieDoc', datos.numSerieDoc);
+    handleChange('numCorreDoc', datos.numCorreDoc);
+    handleChange('numeroDocumento', datos.numeroDocumento);
+
+    toast.current?.show({
+      severity: 'success',
+      summary: 'Tipo y Serie Actualizados',
+      detail: `Nuevo número: ${datos.numeroDocumento}`,
+      life: 3000
+    });
+  };
+
   // Recalcular totales cuando cambien los detalles
   useEffect(() => {
     const calcularTotales = async () => {
@@ -1592,6 +1607,7 @@ export default function PreFacturaForm({
             onChange={handleChange}
             onCargarItemsDocAfecto={handleCargarItemsDocumentoAfecto}
             onSerieChange={handleSerieDocChange}
+            onCambiarTipoSerie={handleCambiarTipoSerie}
             empresasOptions={empresasOptions}
             tiposDocumentoOptions={tiposDocumentoOptions}
             clientesOptions={clientesOptions}

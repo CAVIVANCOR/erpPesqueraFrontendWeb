@@ -17,12 +17,14 @@ import { useAuthStore } from "../../shared/stores/useAuthStore"; // ← AGREGAR 
 import IrACxCEditar from "../common/IrACxCEditar";
 import SelectorDocumentoAfecto from "../common/SelectorDocumentoAfecto";
 import AuditoriaDialog from "../common/AuditoriaDialog";
+import CambiarTipoSerieDialog from "../common/CambiarTipoSerieDialog";
 
 export default function DatosGeneralesTab({
   formData,
   onChange,
   onCargarItemsDocAfecto,
   onSerieChange,
+  onCambiarTipoSerie,
   onIrAPreFacturaOrigen, // Agregar después de onSerieChange
   onIrAMovimientoAlmacen, // Agregar después de onIrAPreFacturaOrigen
   onIrACotizacionVenta, // Agregar después de onIrAMovimientoAlmacen
@@ -92,7 +94,6 @@ export default function DatosGeneralesTab({
   const puedeEditarDetallesConPermiso = tienePermisoEspecial
     ? !estaAnulada && !readOnly
     : puedeEditarDetalles && !readOnly;
-
   // Obtener la moneda seleccionada dinámicamente del estado
   const monedaSeleccionada = monedasOptions.find(
     (m) => m.value === formData.monedaId,
@@ -111,8 +112,7 @@ export default function DatosGeneralesTab({
         Number(p.empresaId) === Number(formData.empresaId);
       const esPeriodoSeleccionado =
         formData.periodoContableId &&
-        Number(p.id) === Number(formData.periodoContableId);
-
+        Number(p.id) === Number(formData.periodoContableId)
       return perteneceAEmpresa || esPeriodoSeleccionado;
     })
     .sort((a, b) => {
@@ -355,6 +355,20 @@ export default function DatosGeneralesTab({
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
+          {isEdit && (
+            <div style={{ flex: 0.3, display: 'flex', alignItems: 'flex-end' }}>
+              <Button
+                label="Cambiar"
+                icon="pi pi-refresh"
+                severity="warning"
+                outlined
+                onClick={() => onChange('_showCambiarTipoSerieDialog', true)}
+                disabled={!puedeEditarConPermiso}
+                style={{ width: '100%', fontWeight: 'bold' }}
+                tooltip="Cambiar Tipo de Documento y Serie"
+              />
+            </div>
+          )}
           <div style={{ flex: 0.25 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -1729,6 +1743,25 @@ export default function DatosGeneralesTab({
           placeholder="Ingrese observaciones adicionales..."
         />
       </Panel>
+
+      <CambiarTipoSerieDialog
+        visible={formData._showCambiarTipoSerieDialog || false}
+        onHide={() => onChange('_showCambiarTipoSerieDialog', false)}
+        empresaId={formData.empresaId}
+        tipoDocumentoActual={{
+          id: formData.tipoDocumentoId,
+          nombre: tiposDocumentoOptions.find(t => t.value === formData.tipoDocumentoId)?.label
+        }}
+        serieActual={{
+          id: formData.serieDocId,
+          serie: formData.numSerieDoc
+        }}
+        tiposDocumentoOptions={tiposDocumentoOptions}
+        seriesDocOptions={seriesDocOptions}
+        onConfirmar={onCambiarTipoSerie}
+        moduloOrigen="PreFactura"
+        toast={toast}
+      />
     </div>
   );
 }
