@@ -1,27 +1,22 @@
 // C:\Proyectos\megui\erp\erp-pesquera-frontend-web\src\components\common\kardex\asignar-stock\AsignarStockDialog.jsx
 
-import React from "react";
+import React, { useRef } from "react";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
-import { useAsignarStock } from "./useAsignarStock";
 import Pantalla1StockPorAlmacen from "./Pantalla1StockPorAlmacen";
-import Pantalla2StockDetallado from "./Pantalla2StockDetallado";
-import Pantalla3Confirmacion from "./Pantalla3Confirmacion";
+import useAsignarStock from "./useAsignarStock";
 
 /**
  * ============================================================================
- * COMPONENTE GENÉRICO: AsignarStockDialog
+ * DIÁLOGO: Asignar Stock (SIMPLIFICADO - 1 SOLA PANTALLA)
  * ============================================================================
  * 
- * Contenedor principal del diálogo de asignación de stock.
- * Maneja la navegación entre pantallas y delega la lógica al hook.
+ * Diálogo para asignar stock a un detalle de PreFactura.
+ * Muestra todos los lotes disponibles y permite asignar cantidades.
  * 
  * @param {Object} props - Props del componente
  * @returns {JSX.Element}
- * 
- * @author ERP Megui - Sistema Profesional
- * @version 1.0.0
  */
 export default function AsignarStockDialog({
   visible,
@@ -31,171 +26,144 @@ export default function AsignarStockDialog({
   productoNombre,
   cantidadRequerida,
   unidadMedida,
-  onConfirmar,
-  asignacionPrevia = null
+  detallePreFacturaId,
+  onConfirmar
 }) {
-  // ============================================================================
-  // HOOK PERSONALIZADO
-  // ============================================================================
+  const toast = useRef(null);
 
+  // ============================================================================
+  // HOOK DE ASIGNACIÓN
+  // ============================================================================
   const {
-    toast,
     loading,
-    pantalla,
-    stockPorAlmacen,
-    stockDetallado,
-    almacenSeleccionado,
+    lotesDisponibles,
     asignaciones,
-    lotesSeleccionados,
-    cantidadAsignada,
-    porcentajeAsignado,
-    handleSeleccionarAlmacen,
-    handleVolverAPantalla1,
-    handleIrAConfirmacion,
-    handleVolverDesdePantalla3,
-    handleAgregarSeleccion,
-    handleEliminarAsignacion,
-    handleToggleLote,
-    handleCambiarCantidad,
-    handleAsignarAutomaticoFIFO,
-    handleConfirmarAsignacion,
-    handleCerrar
+    handleAplicarAsignacion,
+    handleQuitarAsignacion,
+    handleLimpiar,
+    validarAsignaciones
   } = useAsignarStock({
     visible,
     empresaId,
     productoId,
-    productoNombre,
     cantidadRequerida,
-    unidadMedida,
-    asignacionPrevia,
-    onConfirmar,
-    onHide
+    detallePreFacturaId
   });
 
   // ============================================================================
-  // FOOTER DINÁMICO
+  // HANDLERS
   // ============================================================================
+  const handleConfirmar = async () => {
+    // Validar asignaciones
+    const validacion = await validarAsignaciones();
 
-  const renderFooter = () => {
-    if (pantalla === 1) {
-      return (
-        <div>
-          <Button
-            label="Cancelar"
-            icon="pi pi-times"
-            onClick={handleCerrar}
-            className="p-button-text"
-          />
-          <Button
-            label="Finalizar"
-            icon="pi pi-check"
-            onClick={handleIrAConfirmacion}
-            disabled={cantidadAsignada < cantidadRequerida}
-            autoFocus
-          />
-        </div>
-      );
+    if (!validacion.valido) {
+      if (validacion.conflictos) {
+        // Mostrar conflictos
+        toast.current?.show({
+          severity: "error",
+          summary: "Conflictos Detectados",
+          detail: validacion.conflictos.map(c => c.mensaje).join("\n"),
+          life: 8000
+        });
+      } else {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Validación",
+          detail: validacion.mensaje,
+          life: 3000
+        });
+      }
+      return;
     }
 
-    if (pantalla === 2) {
-      return (
-        <div>
-          <Button
-            label="Volver"
-            icon="pi pi-arrow-left"
-            onClick={handleVolverAPantalla1}
-            className="p-button-text"
-          />
-          <Button
-            label="Agregar Selección"
-            icon="pi pi-plus"
-            onClick={handleAgregarSeleccion}
-            disabled={lotesSeleccionados.length === 0}
-            autoFocus
-          />
-        </div>
-      );
-    }
+    // Calcular totales
+    const cantidadTotal = asignaciones.reduce((sum, a) => sum + Number(a.cantidadAsignada), 0);
+    const pesoTotal = asignaciones.reduce((sum, a) => sum + Number(a.pesoAsignado), 0);
 
-    if (pantalla === 3) {
-      return (
-        <div>
-          <Button
-            label="Volver"
-            icon="pi pi-arrow-left"
-            onClick={handleVolverDesdePantalla3}
-            className="p-button-text"
-          />
-          <Button
-            label="Confirmar Asignación"
-            icon="pi pi-check-circle"
-            onClick={handleConfirmarAsignacion}
-            className="p-button-success"
-            disabled={cantidadAsignada < cantidadRequerida}
-            autoFocus
-          />
-        </div>
-      );
-    }
+    // Preparar resultado
+    const resultado = {
+      detallePreFacturaId: detallePreFacturaId,
+      asignaciones: asignaciones,
+      cantidadTotal: cantidadTotal,
+      pesoTotal: pesoTotal
+    };
+
+    // Confirmar
+    onConfirmar(resultado);
+
+    // Limpiar y cerrar
+    handleLimpiar();
+    onHide();
+
+    toast.current?.show({
+      severity: "success",
+      summary: "Éxito",
+      detail: `Se asignaron ${asignaciones.length} lote(s) correctamente`,
+      life: 3000
+    });
   };
+
+  const handleCancelar = () => {
+    handleLimpiar();
+    onHide();
+  };
+
+  // ============================================================================
+  // FOOTER
+  // ============================================================================
+  const footer = (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ fontSize: "0.9em", color: "#666" }}>
+        {asignaciones.length > 0 && (
+          <span>
+            <strong>{asignaciones.length}</strong> lote(s) seleccionado(s)
+          </span>
+        )}
+      </div>
+      <div style={{ display: "flex", gap: "0.5rem" }}>
+        <Button
+          label="Cancelar"
+          icon="pi pi-times"
+          className="p-button-text"
+          onClick={handleCancelar}
+        />
+        <Button
+          label="Confirmar Asignación"
+          icon="pi pi-check"
+          className="p-button-success"
+          onClick={handleConfirmar}
+          disabled={asignaciones.length === 0 || loading}
+        />
+      </div>
+    </div>
+  );
 
   // ============================================================================
   // RENDER
   // ============================================================================
-
   return (
     <>
       <Toast ref={toast} />
       <Dialog
         visible={visible}
-        onHide={handleCerrar}
-        header="Asignar Stock de Producto"
-        style={{ width: "90vw", maxWidth: "1200px" }}
-        footer={renderFooter()}
+        onHide={handleCancelar}
+        header="Asignar Stock"
+        style={{ width: "95vw", maxWidth: "1800px" }}
+        maximizable
         modal
-        closable={false}
+        footer={footer}
       >
-        {pantalla === 1 && (
-          <Pantalla1StockPorAlmacen
-            productoNombre={productoNombre}
-            cantidadRequerida={cantidadRequerida}
-            unidadMedida={unidadMedida}
-            cantidadAsignada={cantidadAsignada}
-            porcentajeAsignado={porcentajeAsignado}
-            asignaciones={asignaciones}
-            stockPorAlmacen={stockPorAlmacen}
-            loading={loading}
-            onSeleccionarAlmacen={handleSeleccionarAlmacen}
-          />
-        )}
-
-        {pantalla === 2 && (
-          <Pantalla2StockDetallado
-            productoNombre={productoNombre}
-            cantidadRequerida={cantidadRequerida}
-            unidadMedida={unidadMedida}
-            cantidadAsignada={cantidadAsignada}
-            almacenSeleccionado={almacenSeleccionado}
-            stockDetallado={stockDetallado}
-            lotesSeleccionados={lotesSeleccionados}
-            loading={loading}
-            onToggleLote={handleToggleLote}
-            onCambiarCantidad={handleCambiarCantidad}
-            onAsignarAutomaticoFIFO={handleAsignarAutomaticoFIFO}
-          />
-        )}
-
-        {pantalla === 3 && (
-          <Pantalla3Confirmacion
-            productoNombre={productoNombre}
-            cantidadRequerida={cantidadRequerida}
-            unidadMedida={unidadMedida}
-            cantidadAsignada={cantidadAsignada}
-            porcentajeAsignado={porcentajeAsignado}
-            asignaciones={asignaciones}
-            onEliminarAsignacion={handleEliminarAsignacion}
-          />
-        )}
+        <Pantalla1StockPorAlmacen
+          productoNombre={productoNombre}
+          cantidadRequerida={cantidadRequerida}
+          unidadMedida={unidadMedida}
+          lotesDisponibles={lotesDisponibles}
+          asignaciones={asignaciones}
+          loading={loading}
+          onAplicarAsignacion={handleAplicarAsignacion}
+          onQuitarAsignacion={handleQuitarAsignacion}
+        />
       </Dialog>
     </>
   );

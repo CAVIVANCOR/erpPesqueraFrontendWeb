@@ -275,14 +275,14 @@ export default function DetallesTab({
   };
 
   // ⭐ HANDLER: Confirmar asignación de stock (FASE 1)
-  const handleConfirmarAsignacion = (asignacion) => {
+  const handleConfirmarAsignacion = (resultado) => {
     setAsignacionesStock(prev => ({
       ...prev,
-      [detalleParaAsignar.id]: {
+      [resultado.detallePreFacturaId]: {
         estaAsignado: true,
-        lotes: asignacion.lotes,
-        cantidadAsignada: asignacion.cantidadAsignada,
-        fechaAsignacion: new Date()
+        asignaciones: resultado.asignaciones,
+        cantidadTotal: resultado.cantidadTotal,
+        pesoTotal: resultado.pesoTotal
       }
     }));
 
@@ -292,11 +292,10 @@ export default function DetallesTab({
     toast.current?.show({
       severity: 'success',
       summary: 'Stock Asignado',
-      detail: `Stock asignado correctamente para ${asignacion.productoNombre}`,
+      detail: `Se asignaron ${resultado.asignaciones.length} lote(s) correctamente`,
       life: 3000
     });
   };
-
   // ⭐ HANDLER: Abrir dialog de asignación de stock
   const handleAbrirAsignarStock = (detalle) => {
     setDetalleParaAsignar(detalle);
@@ -1035,10 +1034,10 @@ export default function DetallesTab({
         }}
         empresaId={empresaId}
         productoId={detalleParaAsignar?.productoId}
-        productoNombre={detalleParaAsignar?.producto?.nombre}
+        productoNombre={detalleParaAsignar?.producto?.descripcionArmada}
         cantidadRequerida={detalleParaAsignar?.cantidad}
         unidadMedida={detalleParaAsignar?.producto?.unidadMedida?.simbolo}
-        clienteId={clienteId}
+        detallePreFacturaId={detalleParaAsignar?.id}
         onConfirmar={handleConfirmarAsignacion}
       />
     </div>

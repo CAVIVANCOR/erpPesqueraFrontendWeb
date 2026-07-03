@@ -1,346 +1,190 @@
 // C:\Proyectos\megui\erp\erp-pesquera-frontend-web\src\components\common\kardex\asignar-stock\useAsignarStock.js
 
-import { useState, useEffect, useRef } from "react";
-import { getSaldosDetProductoCliente } from "../../../../api/saldosDetProductoCliente";
-import {
-  agruparPorAlmacen,
-  calcularProgreso,
-  aplicarFIFO,
-  calcularPesoProporcional,
-  validarCantidadLote,
-  prepararResultado
-} from "./asignarStockUtils";
+import { useState, useEffect } from "react";
+import { useStockData } from "../../../../hooks/useStockData";
 
 /**
  * ============================================================================
- * CUSTOM HOOK: useAsignarStock
+ * HOOK: useAsignarStock
  * ============================================================================
  * 
- * Hook personalizado que encapsula toda la lógica de asignación de stock.
- * Maneja estado, efectos, y handlers para el flujo completo.
+ * Maneja la lógica de asignación de stock simplificada (1 sola pantalla).
  * 
- * @param {Object} config - Configuración del hook
- * @returns {Object} Estados, handlers y datos
- * 
- * @author ERP Megui - Sistema Profesional
- * @version 1.0.0
+ * @param {Object} params - Parámetros del hook
+ * @returns {Object} Estado y handlers
  */
-export const useAsignarStock = ({
+export default function useAsignarStock({
   visible,
   empresaId,
   productoId,
-  productoNombre,
   cantidadRequerida,
-  unidadMedida,
-  asignacionPrevia,
-  onConfirmar,
-  onHide
-}) => {
-  const toast = useRef(null);
-
+  detallePreFacturaId
+}) {
   // ============================================================================
-  // ESTADOS
+  // ESTADO
   // ============================================================================
-  
   const [loading, setLoading] = useState(false);
-  const [pantalla, setPantalla] = useState(1);
-  
-  // Stock disponible
-  const [stockPorAlmacen, setStockPorAlmacen] = useState([]);
-  const [stockDetallado, setStockDetallado] = useState([]);
-  
-  // Almacén seleccionado
-  const [almacenSeleccionado, setAlmacenSeleccionado] = useState(null);
-  
-  // Asignaciones
+  const [lotesDisponibles, setLotesDisponibles] = useState([]);
   const [asignaciones, setAsignaciones] = useState([]);
-  const [lotesSeleccionados, setLotesSeleccionados] = useState([]);
-  
-  // Progreso
-  const [cantidadAsignada, setCantidadAsignada] = useState(0);
-  const [porcentajeAsignado, setPorcentajeAsignado] = useState(0);
+
+  // Hook de stock
+  const stockHook = useStockData();
 
   // ============================================================================
-  // EFECTOS
+  // CARGAR STOCK DISPONIBLE
   // ============================================================================
-
   useEffect(() => {
     if (visible && empresaId && productoId) {
       cargarStockDisponible();
-      
-      if (asignacionPrevia && asignacionPrevia.lotes) {
-        setAsignaciones(asignacionPrevia.lotes);
-        const { cantidadAsignada, porcentajeAsignado } = calcularProgreso(
-          asignacionPrevia.lotes,
-          cantidadRequerida
-        );
-        setCantidadAsignada(cantidadAsignada);
-        setPorcentajeAsignado(porcentajeAsignado);
-      } else {
-        resetearEstado();
-      }
     }
   }, [visible, empresaId, productoId]);
-
-  useEffect(() => {
-    const { cantidadAsignada, porcentajeAsignado } = calcularProgreso(
-      asignaciones,
-      cantidadRequerida
-    );
-    setCantidadAsignada(cantidadAsignada);
-    setPorcentajeAsignado(porcentajeAsignado);
-  }, [asignaciones, cantidadRequerida]);
-
-  // ============================================================================
-  // FUNCIONES DE CARGA
-  // ============================================================================
 
   const cargarStockDisponible = async () => {
     try {
       setLoading(true);
-
-      const saldos = await getSaldosDetProductoCliente({
+      
+      // Cargar saldos detallados
+      const saldos = await stockHook.cargarSaldosDetallados({
         empresaId: Number(empresaId),
-        productoId: Number(productoId),
-        soloConSaldo: true,
         esCustodia: false
       });
 
-      if (!saldos || saldos.length === 0) {
-        toast.current?.show({
-          severity: "warn",
-          summary: "Sin Stock",
-          detail: "No hay stock disponible para este producto",
-          life: 5000
-        });
-        setStockPorAlmacen([]);
-        return;
-      }
+      // Filtrar por producto y saldo > 0
+      const saldosFiltrados = saldos.filter(
+        (s) => Number(s.productoId) === Number(productoId) && Number(s.saldoCantidad) > 0
+      );
 
-      const agrupado = agruparPorAlmacen(saldos);
-      setStockPorAlmacen(agrupado);
-
+      setLotesDisponibles(saldosFiltrados);
     } catch (error) {
       console.error("Error al cargar stock:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cargar el stock disponible",
-        life: 5000
-      });
+      setLotesDisponibles([]);
     } finally {
       setLoading(false);
     }
   };
 
   // ============================================================================
-  // HANDLERS DE NAVEGACIÓN
+  // HANDLERS
   // ============================================================================
+  
+  /**
+   * Aplicar asignación de un lote
+   */
+  const handleAplicarAsignacion = (saldoDetallado, cantidadAsignada) => {
+    // Calcular peso proporcional
+    const pesoAsignado = (cantidadAsignada / Number(saldoDetallado.saldoCantidad)) * Number(saldoDetallado.saldoPeso);
 
-  const handleSeleccionarAlmacen = (almacen) => {
-    setAlmacenSeleccionado(almacen);
-    setStockDetallado(almacen.lotes);
-    setLotesSeleccionados([]);
-    setPantalla(2);
+    // Crear asignación con snapshot completo
+    const nuevaAsignacion = {
+      detallePreFacturaId: detallePreFacturaId,
+      saldoDetalladoId: saldoDetallado.id,
+      
+      // Snapshot completo del saldo
+      empresaId: saldoDetallado.empresaId,
+      almacenId: saldoDetallado.almacenId,
+      productoId: saldoDetallado.productoId,
+      clienteId: saldoDetallado.clienteId,
+      esCustodia: saldoDetallado.esCustodia,
+      lote: saldoDetallado.lote,
+      fechaVencimiento: saldoDetallado.fechaVencimiento,
+      fechaProduccion: saldoDetallado.fechaProduccion,
+      fechaIngreso: saldoDetallado.fechaIngreso,
+      numContenedor: saldoDetallado.numContenedor,
+      nroSerie: saldoDetallado.nroSerie,
+      estadoId: saldoDetallado.estadoId,
+      estadoCalidadId: saldoDetallado.estadoCalidadId,
+      ubicacionFisicaId: saldoDetallado.ubicacionFisicaId,
+      saldoCantidad: Number(saldoDetallado.saldoCantidad),
+      saldoPeso: Number(saldoDetallado.saldoPeso),
+      
+      // Asignación del usuario
+      cantidadAsignada: Number(cantidadAsignada),
+      pesoAsignado: Number(pesoAsignado)
+    };
+
+    setAsignaciones(prev => [...prev, nuevaAsignacion]);
   };
 
-  const handleVolverAPantalla1 = () => {
-    setPantalla(1);
-    setAlmacenSeleccionado(null);
-    setStockDetallado([]);
-    setLotesSeleccionados([]);
+  /**
+   * Quitar asignación
+   */
+  const handleQuitarAsignacion = (asignacion) => {
+    setAsignaciones(prev => prev.filter(a => a.saldoDetalladoId !== asignacion.saldoDetalladoId));
   };
 
-  const handleIrAConfirmacion = () => {
-    if (cantidadAsignada < cantidadRequerida) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Asignación Incompleta",
-        detail: `Falta asignar ${cantidadRequerida - cantidadAsignada} ${unidadMedida}`,
-        life: 5000
-      });
-      return;
-    }
-
-    setPantalla(3);
-  };
-
-  const handleVolverDesdePantalla3 = () => {
-    setPantalla(1);
-  };
-
-  // ============================================================================
-  // HANDLERS DE ASIGNACIÓN
-  // ============================================================================
-
-  const handleAgregarSeleccion = () => {
-    if (lotesSeleccionados.length === 0) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Sin Selección",
-        detail: "Debe seleccionar al menos un lote",
-        life: 3000
-      });
-      return;
-    }
-
-    const nuevasAsignaciones = [...asignaciones, ...lotesSeleccionados];
-    setAsignaciones(nuevasAsignaciones);
-
-    toast.current?.show({
-      severity: "success",
-      summary: "Lotes Agregados",
-      detail: `Se agregaron ${lotesSeleccionados.length} lote(s) de ${almacenSeleccionado.almacenNombre}`,
-      life: 3000
-    });
-
-    handleVolverAPantalla1();
-  };
-
-  const handleEliminarAsignacion = (index) => {
-    const nuevasAsignaciones = asignaciones.filter((_, i) => i !== index);
-    setAsignaciones(nuevasAsignaciones);
-
-    toast.current?.show({
-      severity: "info",
-      summary: "Lote Eliminado",
-      detail: "Asignación eliminada correctamente",
-      life: 3000
-    });
-  };
-
-  const handleToggleLote = (lote, checked) => {
-    if (checked) {
-      const loteConCantidad = {
-        ...lote,
-        cantidadAsignada: Number(lote.saldoCantidad || 0),
-        pesoAsignado: Number(lote.saldoPeso || 0)
-      };
-      setLotesSeleccionados([...lotesSeleccionados, loteConCantidad]);
-    } else {
-      setLotesSeleccionados(lotesSeleccionados.filter(l => l.id !== lote.id));
-    }
-  };
-
-  const handleCambiarCantidad = (lote, nuevaCantidad) => {
-    const cantidadMaxima = Number(lote.saldoCantidad || 0);
-    const cantidadValida = validarCantidadLote(nuevaCantidad, cantidadMaxima);
-
-    const pesoAsignado = calcularPesoProporcional(
-      cantidadValida,
-      cantidadMaxima,
-      Number(lote.saldoPeso || 0)
-    );
-
-    setLotesSeleccionados(lotesSeleccionados.map(l =>
-      l.id === lote.id
-        ? { ...l, cantidadAsignada: cantidadValida, pesoAsignado: pesoAsignado }
-        : l
-    ));
-  };
-
-  const handleAsignarAutomaticoFIFO = () => {
-    if (cantidadAsignada >= cantidadRequerida) {
-      toast.current?.show({
-        severity: "info",
-        summary: "Ya Completado",
-        detail: "La asignación ya está completa",
-        life: 3000
-      });
-      return;
-    }
-
-    const nuevosLotes = aplicarFIFO(stockDetallado, cantidadRequerida, cantidadAsignada);
-
-    setLotesSeleccionados(nuevosLotes);
-
-    toast.current?.show({
-      severity: "success",
-      summary: "FIFO Aplicado",
-      detail: `Se seleccionaron ${nuevosLotes.length} lote(s) automáticamente`,
-      life: 3000
-    });
-  };
-
-  // ============================================================================
-  // HANDLERS DE CONFIRMACIÓN
-  // ============================================================================
-
-  const handleConfirmarAsignacion = () => {
-    if (cantidadAsignada < cantidadRequerida) {
-      toast.current?.show({
-        severity: "error",
-        summary: "Asignación Incompleta",
-        detail: `Debe asignar ${cantidadRequerida} ${unidadMedida}. Asignado: ${cantidadAsignada}`,
-        life: 5000
-      });
-      return;
-    }
-
-    const resultado = prepararResultado({
-      productoId,
-      productoNombre,
-      cantidadRequerida,
-      cantidadAsignada,
-      asignaciones
-    });
-
-    onConfirmar(resultado);
-    handleCerrar();
-  };
-
-  const handleCerrar = () => {
-    resetearEstado();
-    onHide();
-  };
-
-  const resetearEstado = () => {
-    setPantalla(1);
+  /**
+   * Limpiar todo
+   */
+  const handleLimpiar = () => {
     setAsignaciones([]);
-    setLotesSeleccionados([]);
-    setAlmacenSeleccionado(null);
-    setStockDetallado([]);
-    setCantidadAsignada(0);
-    setPorcentajeAsignado(0);
+    setLotesDisponibles([]);
+  };
+
+  /**
+   * Validar asignaciones antes de confirmar
+   */
+  const validarAsignaciones = async () => {
+    if (asignaciones.length === 0) {
+      return {
+        valido: false,
+        mensaje: "Debe asignar al menos un lote"
+      };
+    }
+
+    // Recargar saldos actuales
+    const saldosActuales = await stockHook.cargarSaldosDetallados({
+      empresaId: Number(empresaId),
+      esCustodia: false
+    });
+
+    const conflictos = [];
+
+    for (const asignacion of asignaciones) {
+      const saldoActual = saldosActuales.find(s => s.id === asignacion.saldoDetalladoId);
+
+      if (!saldoActual) {
+        conflictos.push({
+          tipo: 'NO_EXISTE',
+          lote: asignacion.lote,
+          mensaje: `El lote ${asignacion.lote} ya no existe en el sistema`
+        });
+        continue;
+      }
+
+      if (Number(saldoActual.saldoCantidad) < asignacion.cantidadAsignada) {
+        conflictos.push({
+          tipo: 'STOCK_INSUFICIENTE',
+          lote: asignacion.lote,
+          disponibleAntes: asignacion.saldoCantidad,
+          disponibleAhora: saldoActual.saldoCantidad,
+          solicitado: asignacion.cantidadAsignada,
+          mensaje: `Stock insuficiente en lote ${asignacion.lote}. Disponible: ${saldoActual.saldoCantidad}, Solicitado: ${asignacion.cantidadAsignada}`
+        });
+      }
+    }
+
+    if (conflictos.length > 0) {
+      return {
+        valido: false,
+        conflictos: conflictos
+      };
+    }
+
+    return {
+      valido: true
+    };
   };
 
   // ============================================================================
-  // RETORNO DEL HOOK
+  // RETURN
   // ============================================================================
-
   return {
-    // Estados
-    toast,
     loading,
-    pantalla,
-    stockPorAlmacen,
-    stockDetallado,
-    almacenSeleccionado,
+    lotesDisponibles,
     asignaciones,
-    lotesSeleccionados,
-    cantidadAsignada,
-    porcentajeAsignado,
-
-    // Handlers de navegación
-    handleSeleccionarAlmacen,
-    handleVolverAPantalla1,
-    handleIrAConfirmacion,
-    handleVolverDesdePantalla3,
-
-    // Handlers de asignación
-    handleAgregarSeleccion,
-    handleEliminarAsignacion,
-    handleToggleLote,
-    handleCambiarCantidad,
-    handleAsignarAutomaticoFIFO,
-
-    // Handlers de confirmación
-    handleConfirmarAsignacion,
-    handleCerrar,
-
-    // Datos adicionales
-    productoNombre,
-    cantidadRequerida,
-    unidadMedida
+    handleAplicarAsignacion,
+    handleQuitarAsignacion,
+    handleLimpiar,
+    validarAsignaciones
   };
-};
+}

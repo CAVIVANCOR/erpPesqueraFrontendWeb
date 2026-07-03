@@ -170,12 +170,12 @@ export const useProductoSelectorData = ({
       const productosData = await getProductos(filtrosProductos);
 
       // Filtrar solo productos de familia SERVICIOS
-      const servicios = productosData.filter(
-        (producto) => Number(producto.subfamilia?.familiaId) === 5,
-      );
+      //const servicios = productosData.filter(
+      //  (producto) => Number(producto.subfamilia?.familiaId) === 5,
+      //);
 
       // Convertir a formato compatible con saldos (sin stock)
-      const serviciosFormateados = servicios.map((producto) => ({
+      const serviciosFormateados = productosData.map((producto) => ({
         producto: producto,
         productoId: producto.id,
         stockDisponible: 0, // Los servicios no tienen stock
