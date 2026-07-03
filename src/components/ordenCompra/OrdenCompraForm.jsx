@@ -164,6 +164,15 @@ export default function OrdenCompraForm({
   const [esExoneradoAlIGV, setEsExoneradoAlIGV] = useState(
     defaultValues?.esExoneradoAlIGV || false,
   );
+  const [aplicaImpuestoRenta, setAplicaImpuestoRenta] = useState(
+    defaultValues?.aplicaImpuestoRenta || false,
+  );
+  const [porcentajeImpuestoRenta, setPorcentajeImpuestoRenta] = useState(
+    defaultValues?.porcentajeImpuestoRenta || null,
+  );
+  const [montoImpuestoRenta, setMontoImpuestoRenta] = useState(
+    defaultValues?.montoImpuestoRenta || null,
+  );
   const [direccionRecepcionAlmacenId, setDireccionRecepcionAlmacenId] =
     useState(defaultValues?.direccionRecepcionAlmacenId || null);
   const [contactoProveedorId, setContactoProveedorId] = useState(
@@ -352,6 +361,9 @@ export default function OrdenCompraForm({
       setObservaciones(defaultValues.observaciones || "");
       setPorcentajeIGV(defaultValues.porcentajeIGV || null);
       setEsExoneradoAlIGV(defaultValues.esExoneradoAlIGV || false);
+      setAplicaImpuestoRenta(defaultValues.aplicaImpuestoRenta || false);
+      setPorcentajeImpuestoRenta(defaultValues.porcentajeImpuestoRenta || null);
+      setMontoImpuestoRenta(defaultValues.montoImpuestoRenta || null);
       setDireccionRecepcionAlmacenId(
         defaultValues.direccionRecepcionAlmacenId
           ? Number(defaultValues.direccionRecepcionAlmacenId)
@@ -524,6 +536,8 @@ export default function OrdenCompraForm({
     detallesCount,
     porcentajeIGV,
     esExoneradoAlIGV,
+    aplicaImpuestoRenta,
+    porcentajeImpuestoRenta,
     isEdit,
     defaultValues?.id,
   ]);
@@ -759,6 +773,45 @@ export default function OrdenCompraForm({
     }
   }, [esExoneradoAlIGV, empresaId, empresas]);
 
+
+  // Inicializar porcentajeImpuestoRenta desde empresa cuando cambie empresaId (solo en creación)
+  useEffect(() => {
+    if (empresaId && empresas && empresas.length > 0 && !isEdit) {
+      const empresaSeleccionada = empresas.find(
+        (e) => Number(e.id) === Number(empresaId),
+      );
+      if (
+        empresaSeleccionada &&
+        empresaSeleccionada.porcentajeImpuestoRenta !== undefined
+      ) {
+        setPorcentajeImpuestoRenta(empresaSeleccionada.porcentajeImpuestoRenta);
+      }
+    }
+  }, [empresaId, empresas, isEdit]);
+
+  // Actualizar porcentajeImpuestoRenta cuando cambie aplicaImpuestoRenta
+  useEffect(() => {
+    if (empresaId && empresas && empresas.length > 0) {
+      const empresaSeleccionada = empresas.find(
+        (e) => Number(e.id) === Number(empresaId),
+      );
+
+      if (aplicaImpuestoRenta) {
+        if (
+          empresaSeleccionada &&
+          empresaSeleccionada.porcentajeImpuestoRenta !== undefined
+        ) {
+          setPorcentajeImpuestoRenta(empresaSeleccionada.porcentajeImpuestoRenta);
+        }
+      } else {
+        setPorcentajeImpuestoRenta(0);
+        setMontoImpuestoRenta(0);
+      }
+    }
+  }, [aplicaImpuestoRenta, empresaId, empresas]);
+
+
+
   const handleSerieChange = (serieId) => {
     if (serieId) {
       const serie = seriesDoc.find((s) => Number(s.id) === Number(serieId));
@@ -811,6 +864,9 @@ export default function OrdenCompraForm({
       observaciones: setObservaciones,
       porcentajeIGV: setPorcentajeIGV,
       esExoneradoAlIGV: setEsExoneradoAlIGV,
+      aplicaImpuestoRenta: setAplicaImpuestoRenta,
+      porcentajeImpuestoRenta: setPorcentajeImpuestoRenta,
+      montoImpuestoRenta: setMontoImpuestoRenta,
       facturado: setFacturado,
       fechaFacturacion: setFechaFacturacion,
       esGerencial: setEsGerencial,
@@ -863,6 +919,9 @@ export default function OrdenCompraForm({
       observaciones,
       porcentajeIGV,
       esExoneradoAlIGV,
+      aplicaImpuestoRenta,
+      porcentajeImpuestoRenta,
+      montoImpuestoRenta,
       subtotal: totales.subtotal,
       totalDescuentos: totales.totalDescuentos,
       totalIGV: totales.igv,

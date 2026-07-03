@@ -1204,6 +1204,63 @@ export default function DatosGeneralesTab({
             }}
           />
         </div>
+
+
+
+        {/* IMPUESTO A LA RENTA */}
+        <div style={{ flex: 1 }}>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="porcentajeImpuestoRenta"
+          >
+            % Imp. Renta
+          </label>
+          <InputNumber
+            id="porcentajeImpuestoRenta"
+            value={formData.porcentajeImpuestoRenta}
+            onValueChange={(e) => onChange("porcentajeImpuestoRenta", e.value)}
+            suffix="%"
+            min={0}
+            max={100}
+            mode="decimal"
+            minFractionDigits={2}
+            maxFractionDigits={2}
+            disabled={!puedeEditar || readOnly || !formData.aplicaImpuestoRenta}
+            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="aplicaImpuestoRenta"
+          >
+            Estado Imp. Renta
+          </label>
+          <Button
+            id="aplicaImpuestoRenta"
+            label={formData.aplicaImpuestoRenta ? "APLICA" : "NO APLICA"}
+            icon={
+              formData.aplicaImpuestoRenta
+                ? "pi pi-check-circle"
+                : "pi pi-times-circle"
+            }
+            severity={formData.aplicaImpuestoRenta ? "warning" : "secondary"}
+            onClick={() =>
+              onChange("aplicaImpuestoRenta", !formData.aplicaImpuestoRenta)
+            }
+            disabled={!puedeEditar || readOnly}
+            outlined
+            style={{
+              width: "100%",
+              fontWeight: "bold",
+              justifyContent: "center",
+              color: "#000",
+            }}
+          />
+        </div>
+
+
+
         {/* REQUERIMIENTO ASOCIADO - Botón para ir al origen */}
         {formData.requerimientoCompraId && (
           <div style={{ flex: 1 }}>

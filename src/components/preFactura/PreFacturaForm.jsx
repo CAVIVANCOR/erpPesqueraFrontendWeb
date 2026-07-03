@@ -205,7 +205,9 @@ export default function PreFacturaForm({
     // Impuestos
     exoneradoIgv: defaultValues?.exoneradoIgv || false,
     porcentajeIgv: defaultValues?.porcentajeIgv || null,
-
+    aplicaImpuestoRenta: defaultValues?.aplicaImpuestoRenta || false,
+    porcentajeImpuestoRenta: defaultValues?.porcentajeImpuestoRenta || null,
+    montoImpuestoRenta: defaultValues?.montoImpuestoRenta || null,
     // Factores exportación
     factorExportacion: defaultValues?.factorExportacion || null,
     factorExportacionReal: defaultValues?.factorExportacionReal || null,
@@ -412,7 +414,9 @@ export default function PreFacturaForm({
         // Impuestos
         exoneradoIgv: defaultValues?.exoneradoIgv || false,
         porcentajeIgv: defaultValues?.porcentajeIgv || null,
-
+        aplicaImpuestoRenta: formData.aplicaImpuestoRenta || false,
+        porcentajeImpuestoRenta: formData.porcentajeImpuestoRenta || null,
+        montoImpuestoRenta: formData.montoImpuestoRenta || null,
         // Factores exportación
         factorExportacion: defaultValues?.factorExportacion || null,
         factorExportacionReal: defaultValues?.factorExportacionReal || null,
@@ -509,6 +513,8 @@ export default function PreFacturaForm({
     centroCostoId,
     porcentajeIgv,
     exoneradoIgv,
+    aplicaImpuestoRenta,
+    porcentajeImpuestoRenta,
     respVentasId,
     autorizaVentaId,
     supervisorVentaCampoId,
@@ -603,6 +609,43 @@ export default function PreFacturaForm({
       }
     }
   }, [exoneradoIgv, empresaId, empresas]);
+
+
+  // Inicializar porcentajeImpuestoRenta desde empresa cuando cambie empresaId (solo en creación)
+  useEffect(() => {
+    if (empresaId && empresas && empresas.length > 0 && !isEdit) {
+      const empresaSeleccionada = empresas.find(
+        (e) => Number(e.id) === Number(empresaId),
+      );
+      if (
+        empresaSeleccionada &&
+        empresaSeleccionada.porcentajeImpuestoRenta !== undefined
+      ) {
+        handleChange("porcentajeImpuestoRenta", empresaSeleccionada.porcentajeImpuestoRenta);
+      }
+    }
+  }, [empresaId, empresas, isEdit]);
+
+  // Actualizar porcentajeImpuestoRenta cuando cambie aplicaImpuestoRenta
+  useEffect(() => {
+    if (empresaId && empresas && empresas.length > 0) {
+      const empresaSeleccionada = empresas.find(
+        (e) => Number(e.id) === Number(empresaId),
+      );
+
+      if (aplicaImpuestoRenta) {
+        if (
+          empresaSeleccionada &&
+          empresaSeleccionada.porcentajeImpuestoRenta !== undefined
+        ) {
+          handleChange("porcentajeImpuestoRenta", empresaSeleccionada.porcentajeImpuestoRenta);
+        }
+      } else {
+        handleChange("porcentajeImpuestoRenta", 0);
+        handleChange("montoImpuestoRenta", 0);
+      }
+    }
+  }, [aplicaImpuestoRenta, empresaId, empresas]);
 
   // Asignar automáticamente creadoPor al crear y actualizadoPor al editar
   useEffect(() => {
@@ -784,9 +827,19 @@ export default function PreFacturaForm({
         const igvCalc = exoneradoIgv
           ? 0
           : subtotalCalc * (Number(porcentajeIgv) / 100);
-        const totalCalc = subtotalCalc + igvCalc;
 
-        setTotales({ subtotal: subtotalCalc, igv: igvCalc, total: totalCalc });
+        const impuestoRentaCalc = aplicaImpuestoRenta
+          ? subtotalCalc * (Number(porcentajeImpuestoRenta) / 100)
+          : 0;
+
+        const totalCalc = subtotalCalc + igvCalc - impuestoRentaCalc;
+
+        setTotales({
+          subtotal: subtotalCalc,
+          igv: igvCalc,
+          impuestoRenta: impuestoRentaCalc,
+          total: totalCalc
+        });
 
         // ⭐ ACTUALIZAR TOTALES EN EL BACKEND (sin mostrar toast aquí)
         if (defaultValues?.id) {
@@ -794,17 +847,19 @@ export default function PreFacturaForm({
           await actualizarPreFactura(defaultValues.id, {
             subtotal: subtotalCalc,
             totalIGV: igvCalc,
+            montoImpuestoRenta: impuestoRentaCalc,
             total: totalCalc,
           });
         }
       } catch (err) {
         console.error("Error al calcular totales:", err);
-        setTotales({ subtotal: 0, igv: 0, total: 0 });
+        setTotales({ subtotal: 0, igv: 0, impuestoRenta: 0, total: 0 });
       }
     };
 
     calcularTotales();
-  }, [detallesCount, defaultValues?.id, isEdit, exoneradoIgv, porcentajeIgv]);
+  }, [detallesCount, defaultValues?.id, isEdit, exoneradoIgv, porcentajeIgv, aplicaImpuestoRenta, porcentajeImpuestoRenta]);
+
 
   // ⭐ FUNCIÓN AUXILIAR: Recalcular y guardar totales en BD con Toast
   const recalcularYGuardarTotales = async (mostrarToast = true) => {
@@ -829,6 +884,7 @@ export default function PreFacturaForm({
       const resultado = await actualizarPreFactura(defaultValues.id, {
         subtotal: subtotalCalc,
         totalIGV: igvCalc,
+        montoImpuestoRenta: impuestoRentaCalc,
         total: totalCalc,
       });
       // Actualizar estado local
@@ -1116,6 +1172,9 @@ export default function PreFacturaForm({
         : null,
       exoneradoIgv: formData.exoneradoIgv,
       porcentajeIgv: formData.porcentajeIgv,
+      aplicaImpuestoRenta: formData.aplicaImpuestoRenta || false,
+      porcentajeImpuestoRenta: formData.porcentajeImpuestoRenta || null,
+      montoImpuestoRenta: formData.montoImpuestoRenta || null,
       factorExportacion: formData.factorExportacion,
       factorExportacionReal: formData.factorExportacionReal,
       observaciones: formData.observaciones,
@@ -1224,6 +1283,21 @@ export default function PreFacturaForm({
       });
       return;
     }
+
+    // Calcular totales antes de enviar
+    const igvCalc = data.exoneradoIgv
+      ? 0
+      : (data.subtotal || 0) * (Number(data.porcentajeIgv || 0) / 100);
+
+    const impuestoRentaCalc = data.aplicaImpuestoRenta
+      ? (data.subtotal || 0) * (Number(data.porcentajeImpuestoRenta || 0) / 100)
+      : 0;
+
+    const totalCalc = (data.subtotal || 0) + igvCalc - impuestoRentaCalc;
+
+    data.totalIGV = igvCalc;
+    data.montoImpuestoRenta = impuestoRentaCalc;
+    data.total = totalCalc;
 
     onSubmit(data);
   };
@@ -1465,6 +1539,8 @@ export default function PreFacturaForm({
     return {
       ...s,
       id: Number(s.id),
+      empresaId: Number(s.empresaId),
+      tipoDocumentoId: Number(s.tipoDocumentoId),
       label: `${descripcionSerie} (N: ${correlativoActual})`,
       value: Number(s.id),
     };
@@ -1646,6 +1722,7 @@ export default function PreFacturaForm({
             onCountChange={setDetallesCount}
             subtotal={totales.subtotal}
             totalIGV={totales.igv}
+            montoImpuestoRenta={totales.impuestoRenta || 0}
             total={totales.total}
             monedaPreFactura={defaultValues?.moneda}
             readOnly={readOnly}

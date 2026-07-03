@@ -47,3 +47,11 @@ export async function generarCorrelativo(serieDocId) {
   );
   return res.data;
 }
+
+export async function buscarSeriesPorEmpresaYTipo(empresaId, tipoDocumentoId) {
+  const res = await axios.get(`${API_URL}/buscar-por-empresa-tipo`, {
+    params: { empresaId, tipoDocumentoId },
+    headers: getAuthHeaders()
+  });
+  return res.data;
+}

@@ -31,6 +31,8 @@ export default function DetallesTab({
   readOnly = false,
   subtotal = 0,
   totalIGV = 0,
+  montoImpuestoRenta = 0,
+  aplicaImpuestoRenta = false,
   total = 0,
   porcentajeIGV = 0,
   monedaId = null,
@@ -89,7 +91,6 @@ export default function DetallesTab({
 
   const cargarDetalles = async () => {
     if (!preFacturaId) return;
-
     setLoading(true);
     try {
       const data = await getDetallesPreFactura(preFacturaId);
@@ -118,7 +119,6 @@ export default function DetallesTab({
       });
       return;
     }
-
     setDetalleActual({
       productoId: null,
       cantidad: 1,
@@ -193,7 +193,6 @@ export default function DetallesTab({
         });
         return;
       }
-
       if (!detalleActual.precioUnitarioVenta || detalleActual.precioUnitarioVenta <= 0) {
         toast?.current?.show({
           severity: "warn",
@@ -213,7 +212,6 @@ export default function DetallesTab({
         });
         return;
       }
-
       if (!detalleActual.precioUnitario || detalleActual.precioUnitario <= 0) {
         toast?.current?.show({
           severity: "warn",
@@ -231,7 +229,6 @@ export default function DetallesTab({
         preFacturaId: Number(preFacturaId),
         productoId: Number(detalleActual.productoId),
       };
-
       // Agregar datos según modo
       if (usarUnidadComercial) {
         data.cantidadVenta = Number(detalleActual.cantidadVenta);
@@ -240,7 +237,6 @@ export default function DetallesTab({
         data.cantidad = Number(detalleActual.cantidad);
         data.precioUnitario = Number(detalleActual.precioUnitario);
       }
-
       if (editando) {
         await actualizarDetallePreFactura(detalleActual.id, data);
         toast?.current?.show({
@@ -258,7 +254,6 @@ export default function DetallesTab({
           life: 3000,
         });
       }
-
       cerrarDialogo();
       await cargarDetalles();
     } catch (error) {
@@ -285,10 +280,8 @@ export default function DetallesTab({
         pesoTotal: resultado.pesoTotal
       }
     }));
-
     setShowAsignarStock(false);
     setDetalleParaAsignar(null);
-
     toast.current?.show({
       severity: 'success',
       summary: 'Stock Asignado',
@@ -624,6 +617,28 @@ export default function DetallesTab({
             }}
           />
         </div>
+        {aplicaImpuestoRenta && (
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", color: "#FF6B6B" }}>
+              IMPUESTO A LA RENTA (8%)
+            </label>
+            <InputNumber
+              value={montoImpuestoRenta || 0}
+              mode="currency"
+              currency={getCodigoMoneda()}
+              locale="es-PE"
+              minFractionDigits={2}
+              disabled
+              inputStyle={{
+                fontWeight: "bold",
+                fontSize: "1.1rem",
+                backgroundColor: "#FFE5E5",
+                textAlign: "right",
+                color: "#D32F2F"
+              }}
+            />
+          </div>
+        )}
         <div style={{ flex: 1 }}>
           <label style={{ fontWeight: "bold", color: "#2196F3" }}>PRECIO VENTA TOTAL</label>
           <InputNumber

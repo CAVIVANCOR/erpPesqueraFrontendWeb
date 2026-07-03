@@ -70,6 +70,7 @@ export default function DatosGeneralesTab({
   // Totales calculados
   subtotal = 0,
   totalIGV = 0,
+  montoImpuestoRenta = 0,
   total = 0,
   // Objeto moneda de la pre-factura (viene de la relación)
   monedaPreFactura = null,
@@ -136,7 +137,6 @@ export default function DatosGeneralesTab({
         // Fallback: usar descripción del estado si existe
         estadoLabel = p.estado?.descripcion || "⚪ SIN ESTADO";
       }
-
       return {
         label: `${p.nombrePeriodo} - ${estadoLabel}`,
         value: Number(p.id),
@@ -1141,20 +1141,58 @@ export default function DatosGeneralesTab({
               }}
             />
           </div>
+          <div style={{ flex: 0.5 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="porcentajeImpuestoRenta"
+            >
+              % Imp. Renta
+            </label>
+            <InputNumber
+              id="porcentajeImpuestoRenta"
+              value={formData.porcentajeImpuestoRenta}
+              onValueChange={(e) => onChange("porcentajeImpuestoRenta", e.value)}
+              mode="decimal"
+              minFractionDigits={2}
+              maxFractionDigits={2}
+              min={0}
+              max={100}
+              suffix="%"
+              disabled={!puedeEditar || readOnly || !formData.aplicaImpuestoRenta}
+              inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="aplicaImpuestoRenta"
+            >
+              Estado Imp. Renta
+            </label>
+            <Button
+              id="aplicaImpuestoRenta"
+              label={
+                formData.aplicaImpuestoRenta ? "APLICA IMP. RENTA" : "NO APLICA IMP. RENTA"
+              }
+              icon={
+                formData.aplicaImpuestoRenta
+                  ? "pi pi-check-circle"
+                  : "pi pi-times-circle"
+              }
+              severity={formData.aplicaImpuestoRenta ? "warning" : "secondary"}
+              onClick={() => onChange("aplicaImpuestoRenta", !formData.aplicaImpuestoRenta)}
+              disabled={!puedeEditarConPermiso}
+              outlined
+              style={{
+                width: "100%",
+                fontWeight: "bold",
+                justifyContent: "center",
+                color: "#000",
+              }}
+            />
+          </div>
         </div>
-
-        {/* FILA 3: Adelantos */}
-        <div
-          style={{
-            alignItems: "end",
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-            marginTop: "1rem",
-          }}
-        ></div>
       </Panel>
-
       {/* ============================================ */}
       {/* SECCIÓN 7: DETALLES DE PRODUCTOS */}
       {/* ============================================ */}
@@ -1176,6 +1214,8 @@ export default function DatosGeneralesTab({
           readOnly={readOnly}
           subtotal={subtotal}
           totalIGV={totalIGV}
+          montoImpuestoRenta={montoImpuestoRenta}
+          aplicaImpuestoRenta={formData.aplicaImpuestoRenta || false}
           total={total}
           porcentajeIGV={formData.porcentajeIgv || 0}
           monedaId={formData.monedaId}

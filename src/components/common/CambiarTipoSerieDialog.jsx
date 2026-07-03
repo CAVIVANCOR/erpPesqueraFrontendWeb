@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
-import { generarCorrelativo } from '../../api/serieDoc';
+import { generarCorrelativo, buscarSeriesPorEmpresaYTipo } from '../../api/serieDoc';
 
 export default function CambiarTipoSerieDialog({
   visible,
@@ -12,7 +12,6 @@ export default function CambiarTipoSerieDialog({
   tipoDocumentoActual,
   serieActual,
   tiposDocumentoOptions,
-  seriesDocOptions,
   onConfirmar,
   moduloOrigen = 'Documento',
   toast
@@ -20,11 +19,42 @@ export default function CambiarTipoSerieDialog({
   const [nuevoTipoId, setNuevoTipoId] = useState(null);
   const [nuevaSerieId, setNuevaSerieId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [seriesCargadas, setSeriesCargadas] = useState([]);
+  const [cargandoSeries, setCargandoSeries] = useState(false);
 
-  const seriesFiltradas = seriesDocOptions.filter(s => 
-    Number(s.empresaId) === Number(empresaId) &&
-    Number(s.tipoDocumentoId) === Number(nuevoTipoId || tipoDocumentoActual?.id)
-  );
+  useEffect(() => {
+    if (nuevoTipoId && empresaId) {
+      cargarSeriesPorTipo(nuevoTipoId);
+    } else {
+      setSeriesCargadas([]);
+    }
+    setNuevaSerieId(null);
+  }, [nuevoTipoId, empresaId]);
+
+  const cargarSeriesPorTipo = async (tipoDocId) => {
+    try {
+      setCargandoSeries(true);
+      const series = await buscarSeriesPorEmpresaYTipo(empresaId, tipoDocId);
+      setSeriesCargadas(series);
+    } catch (error) {
+      console.error('Error al cargar series:', error);
+      toast?.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudieron cargar las series',
+        life: 3000
+      });
+      setSeriesCargadas([]);
+    } finally {
+      setCargandoSeries(false);
+    }
+  };
+
+  const seriesDocOptions = seriesCargadas.map((s) => ({
+    ...s,
+    label: `${s.serie} (Correlativo: ${s.correlativo})`,
+    value: Number(s.id),
+  }));
 
   const handleConfirmar = async () => {
     if (!nuevoTipoId || !nuevaSerieId) {
@@ -34,7 +64,7 @@ export default function CambiarTipoSerieDialog({
     try {
       setLoading(true);
       const datos = await generarCorrelativo(nuevaSerieId);
-      
+
       onConfirmar(datos);
       handleCerrar();
     } catch (error) {
@@ -53,10 +83,11 @@ export default function CambiarTipoSerieDialog({
   const handleCerrar = () => {
     setNuevoTipoId(null);
     setNuevaSerieId(null);
+    setSeriesCargadas([]);
     onHide();
   };
 
-  const serieSeleccionada = seriesFiltradas.find(s => s.value === nuevaSerieId);
+  const serieSeleccionada = seriesDocOptions.find(s => s.value === nuevaSerieId);
 
   const footer = (
     <div>
@@ -101,10 +132,7 @@ export default function CambiarTipoSerieDialog({
           <Dropdown
             value={nuevoTipoId}
             options={tiposDocumentoOptions}
-            onChange={(e) => {
-              setNuevoTipoId(e.value);
-              setNuevaSerieId(null);
-            }}
+            onChange={(e) => setNuevoTipoId(e.value)}
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccionar tipo"
@@ -120,15 +148,20 @@ export default function CambiarTipoSerieDialog({
           </label>
           <Dropdown
             value={nuevaSerieId}
-            options={seriesFiltradas}
+            options={seriesDocOptions}
             onChange={(e) => setNuevaSerieId(e.value)}
             optionLabel="label"
             optionValue="value"
-            placeholder="Seleccionar serie"
+            placeholder={cargandoSeries ? "Cargando series..." : "Seleccionar serie"}
             filter
-            disabled={!nuevoTipoId || loading}
+            disabled={!nuevoTipoId || loading || cargandoSeries}
             style={{ width: '100%' }}
           />
+          {nuevoTipoId && seriesDocOptions.length === 0 && !cargandoSeries && (
+            <small style={{ color: 'red', marginTop: '0.5rem', display: 'block' }}>
+              No hay series disponibles para este tipo de documento
+            </small>
+          )}
         </div>
 
         {serieSeleccionada && (
