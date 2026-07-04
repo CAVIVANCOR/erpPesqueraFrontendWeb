@@ -862,59 +862,78 @@ export default function PreFacturaForm({
 
 
   // ⭐ FUNCIÓN AUXILIAR: Recalcular y guardar totales en BD con Toast
-  const recalcularYGuardarTotales = async (mostrarToast = true) => {
-    if (!defaultValues?.id) {
-      return { subtotal: 0, igv: 0, total: 0 };
-    }
+ const recalcularYGuardarTotales = async (mostrarToast = true) => {
+  if (!defaultValues?.id) {
+    return { subtotal: 0, igv: 0, impuestoRenta: 0, total: 0 };
+  }
 
-    try {
-      const { getDetallesPreFactura } = await import("../../api/detallePreFactura");
-      const detalles = await getDetallesPreFactura(defaultValues.id);
+  try {
+    const { getDetallesPreFactura } = await import("../../api/detallePreFactura");
+    const detalles = await getDetallesPreFactura(defaultValues.id);
 
-      const subtotalCalc = detalles.reduce(
-        (sum, det) =>
-          sum + (Number(det.cantidad) * Number(det.precioUnitario) || 0),
-        0,
-      );
-      const igvCalc = exoneradoIgv
-        ? 0
-        : subtotalCalc * (Number(porcentajeIgv) / 100);
-      const totalCalc = subtotalCalc + igvCalc;
-      const { actualizarPreFactura } = await import("../../api/preFactura");
-      const resultado = await actualizarPreFactura(defaultValues.id, {
-        subtotal: subtotalCalc,
-        totalIGV: igvCalc,
-        montoImpuestoRenta: impuestoRentaCalc,
-        total: totalCalc,
+    const subtotalCalc = detalles.reduce(
+      (sum, det) =>
+        sum + (Number(det.cantidad) * Number(det.precioUnitario) || 0),
+      0,
+    );
+    
+    const igvCalc = exoneradoIgv
+      ? 0
+      : subtotalCalc * (Number(porcentajeIgv) / 100);
+    
+    // ✅ CALCULAR IMPUESTO A LA RENTA
+    const impuestoRentaCalc = aplicaImpuestoRenta
+      ? subtotalCalc * (Number(porcentajeImpuestoRenta) / 100)
+      : 0;
+    
+    const totalCalc = subtotalCalc + igvCalc - impuestoRentaCalc;
+    
+    const { actualizarPreFactura } = await import("../../api/preFactura");
+    const resultado = await actualizarPreFactura(defaultValues.id, {
+      subtotal: subtotalCalc,
+      totalIGV: igvCalc,
+      montoImpuestoRenta: impuestoRentaCalc,
+      total: totalCalc,
+    });
+    
+    // Actualizar estado local
+    setTotales({ 
+      subtotal: subtotalCalc, 
+      igv: igvCalc, 
+      impuestoRenta: impuestoRentaCalc,
+      total: totalCalc 
+    });
+
+    // ✅ Mostrar mensaje de éxito
+    if (mostrarToast) {
+      const monedaSimbolo = defaultValues?.moneda?.simbolo || "";
+      toast.current?.show({
+        severity: "success",
+        summary: "Totales Actualizados",
+        detail: `Subtotal: ${monedaSimbolo} ${subtotalCalc.toFixed(2)} | IGV: ${monedaSimbolo} ${igvCalc.toFixed(2)}${impuestoRentaCalc > 0 ? ` | Imp.Renta: ${monedaSimbolo} ${impuestoRentaCalc.toFixed(2)}` : ''} | Total: ${monedaSimbolo} ${totalCalc.toFixed(2)}`,
+        life: 4000,
       });
-      // Actualizar estado local
-      setTotales({ subtotal: subtotalCalc, igv: igvCalc, total: totalCalc });
-
-      // ✅ Mostrar mensaje de éxito
-      if (mostrarToast) {
-        const monedaSimbolo = defaultValues?.moneda?.simbolo || "";
-        toast.current?.show({
-          severity: "success",
-          summary: "Totales Actualizados",
-          detail: `Subtotal: ${monedaSimbolo} ${subtotalCalc.toFixed(2)} | IGV: ${monedaSimbolo} ${igvCalc.toFixed(2)} | Total: ${monedaSimbolo} ${totalCalc.toFixed(2)}`,
-          life: 4000,
-        });
-      }
-
-      return { subtotal: subtotalCalc, igv: igvCalc, total: totalCalc };
-    } catch (err) {
-      console.error("Error al recalcular totales:", err);
-      if (mostrarToast) {
-        toast.current?.show({
-          severity: "error",
-          summary: "Error",
-          detail: "No se pudieron actualizar los totales en la base de datos",
-          life: 5000,
-        });
-      }
-      throw err;
     }
-  };
+
+    return { 
+      subtotal: subtotalCalc, 
+      igv: igvCalc, 
+      impuestoRenta: impuestoRentaCalc,
+      total: totalCalc 
+    };
+  } catch (err) {
+    console.error("Error al recalcular totales:", err);
+    if (mostrarToast) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron actualizar los totales en la base de datos",
+        life: 5000,
+      });
+    }
+    throw err;
+  }
+};
 
   // ⭐ CALLBACK para AsientoContableManager
   const handleBeforeGenerateAsiento = async () => {

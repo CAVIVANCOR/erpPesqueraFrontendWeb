@@ -119,8 +119,7 @@ const PreFactura = ({ ruta }) => {
   const [showKardexDialog, setShowKardexDialog] = useState(false);
   const [kardexDocumentoActual, setKardexDocumentoActual] = useState(null);
   // Filtrado automático por Unidad de Negocio
-  const { datosFiltrados: preFacturasFiltradas } =
-    useUnidadNegocioFilter(preFacturas);
+const { datosFiltrados: preFacturasFiltradas } = useUnidadNegocioFilter(itemsFiltrados);
   const [isEditing, setIsEditing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showCotizacionDialog, setShowCotizacionDialog] = useState(false); // ⬅️ AGREGAR
@@ -323,7 +322,7 @@ const PreFactura = ({ ruta }) => {
 
   // Filtrar items cuando cambien los filtros
   useEffect(() => {
-    let filtrados = preFacturasFiltradas;
+let filtrados = items;
 
     // Filtro por empresa
     if (empresaSeleccionada) {
@@ -416,6 +415,97 @@ const PreFactura = ({ ruta }) => {
     nroLiquidacionBusqueda,
     items,
   ]);
+
+
+  // ✅ Calcular totales por moneda
+  const calcularTotalesPorMoneda = () => {
+    let totalSoles = 0;
+    let totalDolares = 0;
+    let colorFondoSoles = "#FFE5B4";
+    let colorFondoDolares = "#C8E6C9";
+    let simboloSoles = "S/";
+    let simboloDolares = "$";
+
+    preFacturasFiltradas.forEach((pf) => {
+      const total = Number(pf.total) || 0;
+
+      if (Number(pf.monedaId) === 1) {
+        // Soles
+        totalSoles += total;
+        if (pf.moneda?.colorFondo) colorFondoSoles = pf.moneda.colorFondo;
+        if (pf.moneda?.simbolo) simboloSoles = pf.moneda.simbolo;
+      } else if (Number(pf.monedaId) === 2) {
+        // Dólares
+        totalDolares += total;
+        if (pf.moneda?.colorFondo) colorFondoDolares = pf.moneda.colorFondo;
+        if (pf.moneda?.simbolo) simboloDolares = pf.moneda.simbolo;
+      }
+    });
+
+    return {
+      totalSoles,
+      totalDolares,
+      colorFondoSoles,
+      colorFondoDolares,
+      simboloSoles,
+      simboloDolares,
+    };
+  };
+
+  // ✅ Template para footer con totales
+  const footerTemplate = () => {
+    const {
+      totalSoles,
+      totalDolares,
+      colorFondoSoles,
+      colorFondoDolares,
+      simboloSoles,
+      simboloDolares,
+    } = calcularTotalesPorMoneda();
+
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          gap: "15px",
+          padding: "10px",
+          fontWeight: "bold",
+          fontSize: "14px",
+        }}
+      >
+        <span>TOTALES:</span>
+
+        {totalSoles > 0 && (
+          <div
+            style={{
+              backgroundColor: colorFondoSoles,
+              padding: "6px 12px",
+              borderRadius: "4px",
+              fontWeight: "bold",
+            }}
+          >
+            {simboloSoles} {formatearNumero(totalSoles, 2)}
+          </div>
+        )}
+
+        {totalDolares > 0 && (
+          <div
+            style={{
+              backgroundColor: colorFondoDolares,
+              padding: "6px 12px",
+              borderRadius: "4px",
+              fontWeight: "bold",
+            }}
+          >
+            {simboloDolares} {formatearNumero(totalDolares, 2)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const handleIrAPreFacturaOrigen = async (preFacturaOrigenId) => {
     // Guardar la PreFactura actual en el stack antes de navegar
     if (selectedPreFactura) {
@@ -1474,13 +1564,14 @@ const PreFactura = ({ ruta }) => {
       <Toast ref={toast} />
       <div className="card">
         <DataTable
-          value={itemsFiltrados}
+          value={preFacturasFiltradas}
           loading={loading}
           dataKey="id"
           paginator
           size="small"
           showGridlines
           stripedRows
+          footer={footerTemplate}  // ✅ AGREGAR ESTA LÍNEA
           rows={25}
           rowsPerPageOptions={[25, 50, 100, 150]}
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"

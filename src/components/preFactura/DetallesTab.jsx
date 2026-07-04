@@ -55,7 +55,7 @@ export default function DetallesTab({
   const tipoDocSeleccionado = tiposDocumentoOptions.find(
     (t) => Number(t.value) === Number(tipoDocumentoId),
   );
-  const esSaldoInicial = tipoDocSeleccionado?.label?.includes("SI-");
+  const esSaldoInicial = tipoDocSeleccionado?.label?.startsWith("SI-");
   const [detalles, setDetalles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);

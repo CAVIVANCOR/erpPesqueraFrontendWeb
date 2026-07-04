@@ -12,7 +12,6 @@ import {
 } from "../../api/detalleOrdenCompra";
 import { getResponsiveFontSize, formatearFecha } from "../../utils/utils";
 
-
 export default function DetallesTab({
   ordenCompraId,
   productos,
@@ -22,15 +21,24 @@ export default function DetallesTab({
   onChange, // ⭐ NUEVO: Callback para notificar cambios
   subtotal = 0,
   totalIGV = 0,
+  montoImpuestoRenta = 0,
+  aplicaImpuestoRenta = false,
   total = 0,
   porcentajeIGV = 0,
   monedas = [],
   monedaId = null,
+  pagosPreviosSI = 0,
+  tipoDocumentoId = null,
+  tiposDocumentoOptions = [],
   readOnly = false,
   permisos = {},
   empresaId,
   empresas = [],
 }) {
+  const tipoDocSeleccionado = tiposDocumentoOptions.find(
+    (t) => Number(t.value) === Number(tipoDocumentoId),
+  );
+  const esSaldoInicial = tipoDocSeleccionado?.codigo?.startsWith("SI-");
   const [detalles, setDetalles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
@@ -178,6 +186,14 @@ export default function DetallesTab({
     return moneda?.simbolo || "S/.";
   };
 
+  const subtotalMostrado = esSaldoInicial
+    ? subtotal - (pagosPreviosSI || 0)
+    : subtotal;
+  const totalMostrado = esSaldoInicial
+    ? total - (pagosPreviosSI || 0)
+    : total;
+
+
   return (
     <div>
       {/* FILA: TOTALES Y BOTÓN */}
@@ -205,10 +221,30 @@ export default function DetallesTab({
             style={{ width: "100%", fontWeight: "bold" }}
           />
         </div>
+        {esSaldoInicial && (
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold" }}>Pagos Previos</label>
+            <InputNumber
+              value={pagosPreviosSI || 0}
+              onValueChange={(e) => onChange("pagosPreviosSI", e.value)}
+              mode="currency"
+              currency={getCodigoMoneda()}
+              locale="es-PE"
+              minFractionDigits={2}
+              disabled={readOnly}
+              inputStyle={{
+                fontWeight: "bold",
+                fontSize: "1.1rem",
+                backgroundColor: "#fff3cd",
+                textAlign: "right",
+              }}
+            />
+          </div>
+        )}
         <div style={{ flex: 1 }}>
           <label style={{ fontWeight: "bold" }}>Valor Compra</label>
           <InputNumber
-            value={subtotal || 0}
+            value={subtotalMostrado || 0}
             mode="currency"
             currency={getCodigoMoneda()}
             locale="es-PE"
@@ -241,12 +277,34 @@ export default function DetallesTab({
             }}
           />
         </div>
+        {aplicaImpuestoRenta && (
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", color: "#FF6B6B" }}>
+              IMPUESTO A LA RENTA (8%)
+            </label>
+            <InputNumber
+              value={montoImpuestoRenta || 0}
+              mode="currency"
+              currency={getCodigoMoneda()}
+              locale="es-PE"
+              minFractionDigits={2}
+              disabled
+              inputStyle={{
+                fontWeight: "bold",
+                fontSize: "1.1rem",
+                backgroundColor: "#FFE5E5",
+                textAlign: "right",
+                color: "#D32F2F"
+              }}
+            />
+          </div>
+        )}
         <div style={{ flex: 1 }}>
           <label style={{ fontWeight: "bold", color: "#2196F3" }}>
             Precio Compra Total
           </label>
           <InputNumber
-            value={total || 0}
+            value={totalMostrado || 0}
             mode="currency"
             currency={getCodigoMoneda()}
             locale="es-PE"

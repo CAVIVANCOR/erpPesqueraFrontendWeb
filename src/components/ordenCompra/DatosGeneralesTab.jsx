@@ -50,6 +50,9 @@ export default function DatosGeneralesTab({
   // Totales calculados
   subtotal = null,
   totalIGV = null,
+  montoImpuestoRenta = null,
+  pagosPreviosSI = null,
+  tipoDocumentoId = null,
   total = null,
   // Objeto moneda de la orden (viene de la relación)
   monedaOrden = null,
@@ -93,6 +96,10 @@ export default function DatosGeneralesTab({
   onComprobanteRecibidoChange,
   fechaRecepcionComprobante,
   onFechaRecepcionComprobanteChange,
+  aplicaImpuestoRenta,
+  onAplicaImpuestoRentaChange,
+  porcentajeImpuestoRenta,
+  onPorcentajeImpuestoRentaChange,
 }) {
   // Helper para obtener código de moneda (ISO)
   const getCodigoMoneda = () => {
@@ -1225,7 +1232,7 @@ export default function DatosGeneralesTab({
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={2}
-            disabled={!puedeEditar || readOnly || !formData.aplicaImpuestoRenta}
+            disabled={!puedeEditar || readOnly || !aplicaImpuestoRenta}
             inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
@@ -1238,17 +1245,17 @@ export default function DatosGeneralesTab({
           </label>
           <Button
             id="aplicaImpuestoRenta"
-            label={formData.aplicaImpuestoRenta ? "APLICA" : "NO APLICA"}
+            label={aplicaImpuestoRenta ? "APLICA" : "NO APLICA"}
             icon={
-              formData.aplicaImpuestoRenta
+              aplicaImpuestoRenta
                 ? "pi pi-check-circle"
                 : "pi pi-times-circle"
             }
-            severity={formData.aplicaImpuestoRenta ? "warning" : "secondary"}
+            severity={aplicaImpuestoRenta ? "warning" : "secondary"}
             onClick={() =>
-              onChange("aplicaImpuestoRenta", !formData.aplicaImpuestoRenta)
+              onAplicaImpuestoRentaChange(!aplicaImpuestoRenta)
             }
-            disabled={!puedeEditar || readOnly}
+            disabled={!puedeEditar || readOnly || Number(tipoDocumentoFinalId) === 3}
             outlined
             style={{
               width: "100%",
@@ -1326,9 +1333,14 @@ export default function DatosGeneralesTab({
             puedeEditar={puedeEditar}
             toast={toast}
             onCountChange={onCountChange}
-            onChange={onDetallesChange} // ⭐ NUEVO: Callback para recalcular totales
+            onChange={onChange} // ⭐ Callback para actualizar formData
             subtotal={subtotal}
             totalIGV={totalIGV}
+            montoImpuestoRenta={montoImpuestoRenta}
+            aplicaImpuestoRenta={aplicaImpuestoRenta}
+            pagosPreviosSI={pagosPreviosSI}
+            tipoDocumentoId={tipoDocumentoId}
+            tiposDocumentoOptions={tiposDocumentoOptions}
             total={total}
             monedas={monedas}
             monedaId={formData.monedaId}

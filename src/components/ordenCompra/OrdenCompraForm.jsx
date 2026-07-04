@@ -158,6 +158,9 @@ export default function OrdenCompraForm({
   const [observaciones, setObservaciones] = useState(
     defaultValues?.observaciones || "",
   );
+  const [pagosPreviosSI, setPagosPreviosSI] = useState(
+    defaultValues?.pagosPreviosSI || 0,
+  );
   const [porcentajeIGV, setPorcentajeIGV] = useState(
     defaultValues?.porcentajeIGV || null,
   );
@@ -213,6 +216,9 @@ export default function OrdenCompraForm({
     defaultValues?.fechaRecepcionComprobante
       ? new Date(defaultValues.fechaRecepcionComprobante)
       : null,
+  );
+  const [urlDocumentoRef, setUrlDocumentoRef] = useState(
+    defaultValues?.urlDocumentoRef || null,
   );
   const [motivoNotaCreditoDebitoId, setMotivoNotaCreditoDebitoId] = useState(
     defaultValues?.motivoNotaCreditoDebitoId || null,
@@ -359,6 +365,7 @@ export default function OrdenCompraForm({
           : null,
       );
       setObservaciones(defaultValues.observaciones || "");
+      setPagosPreviosSI(defaultValues.pagosPreviosSI || 0);
       setPorcentajeIGV(defaultValues.porcentajeIGV || null);
       setEsExoneradoAlIGV(defaultValues.esExoneradoAlIGV || false);
       setAplicaImpuestoRenta(defaultValues.aplicaImpuestoRenta || false);
@@ -418,6 +425,7 @@ export default function OrdenCompraForm({
           ? new Date(defaultValues.fechaRecepcionComprobante)
           : null,
       );
+      setUrlDocumentoRef(defaultValues.urlDocumentoRef || null);
     }
   }, [defaultValues, empresaFija]);
 
@@ -506,29 +514,28 @@ export default function OrdenCompraForm({
           (sum, det) => sum + (Number(det.subtotal) || 0),
           0,
         );
-        const totalDescuentosCalc = 0; // Por ahora 0, implementar descuentos en el futuro
+        const totalDescuentosCalc = 0;
         const igvCalc = esExoneradoAlIGV
           ? 0
           : subtotalSinIGV * (Number(porcentajeIGV) / 100);
-        const totalCalc = subtotalSinIGV + igvCalc;
+
+        const impuestoRentaCalc = aplicaImpuestoRenta
+          ? subtotalSinIGV * (Number(porcentajeImpuestoRenta) / 100)
+          : 0;
+
+        const totalCalc = subtotalSinIGV + igvCalc - impuestoRentaCalc;
+
         setTotales({
           subtotal: subtotalSinIGV,
           totalDescuentos: totalDescuentosCalc,
           igv: igvCalc,
+          impuestoRenta: impuestoRentaCalc,
           total: totalCalc
         });
-        // ⭐ ACTUALIZAR TOTALES EN EL BACKEND (sin mostrar toast aquí)
-        if (defaultValues?.id) {
-          const { actualizarOrdenCompra } = await import("../../api/ordenCompra");
-          await actualizarOrdenCompra(defaultValues.id, {
-            subtotal: subtotalSinIGV,
-            totalIGV: igvCalc,
-            total: totalCalc,
-          });
-        }
+
       } catch (err) {
         console.error("Error al calcular totales:", err);
-        setTotales({ subtotal: 0, totalDescuentos: 0, igv: 0, total: 0 });
+        setTotales({ subtotal: 0, totalDescuentos: 0, igv: 0, impuestoRenta: 0, total: 0 });
       }
     };
     calcularTotales();
@@ -542,58 +549,7 @@ export default function OrdenCompraForm({
     defaultValues?.id,
   ]);
 
-  // ⭐ FUNCIÓN AUXILIAR: Recalcular y guardar totales en BD con Toast
-  const recalcularYGuardarTotales = async (mostrarToast = true) => {
-    if (!defaultValues?.id) {
-      return { subtotal: 0, totalDescuentos: 0, igv: 0, total: 0 };
-    }
-    try {
-      const { getDetallesOrdenCompra } = await import("../../api/detalleOrdenCompra");
-      const detalles = await getDetallesOrdenCompra(defaultValues.id);
 
-      const subtotalCalc = detalles.reduce(
-        (sum, det) => sum + (Number(det.subtotal) || 0),
-        0,
-      );
-      const totalDescuentosCalc = 0; // Por ahora 0, implementar descuentos en el futuro
-      const igvCalc = esExoneradoAlIGV
-        ? 0
-        : subtotalCalc * (Number(porcentajeIGV) / 100);
-      const totalCalc = subtotalCalc + igvCalc;
-      // Actualizar en BD
-      const { actualizarOrdenCompra } = await import("../../api/ordenCompra");
-      await actualizarOrdenCompra(defaultValues.id, {
-        subtotal: subtotalCalc,
-        totalDescuentos: totalDescuentosCalc,
-        totalIGV: igvCalc,
-        total: totalCalc,
-      });
-      // Actualizar estado local
-      setTotales({ subtotal: subtotalCalc, totalDescuentos: totalDescuentosCalc, igv: igvCalc, total: totalCalc });
-      // ✅ Mostrar mensaje de éxito
-      if (mostrarToast) {
-        const monedaSimbolo = defaultValues?.moneda?.simbolo || "";
-        toast.current?.show({
-          severity: "success",
-          summary: "Totales Actualizados",
-          detail: `Subtotal: ${monedaSimbolo} ${subtotalCalc.toFixed(2)} | IGV: ${monedaSimbolo} ${igvCalc.toFixed(2)} | Total: ${monedaSimbolo} ${totalCalc.toFixed(2)}`,
-          life: 4000,
-        });
-      }
-      return { subtotal: subtotalCalc, totalDescuentos: totalDescuentosCalc, igv: igvCalc, total: totalCalc };
-    } catch (err) {
-      console.error("Error al recalcular totales:", err);
-      if (mostrarToast) {
-        toast.current?.show({
-          severity: "error",
-          summary: "Error",
-          detail: "No se pudieron actualizar los totales en la base de datos",
-          life: 5000,
-        });
-      }
-      throw err;
-    }
-  };
   // Cargar catálogos para CxP (Medios de Pago, Estados CxP, Cuentas Corrientes)
   useEffect(() => {
     const cargarCatalogosCxP = async () => {
@@ -620,32 +576,43 @@ export default function OrdenCompraForm({
   // ⭐ CALLBACK para AsientoContableManager
   const handleBeforeGenerateAsiento = async () => {
     try {
-      // Recalcular y guardar totales
-      const totalesActualizados = await recalcularYGuardarTotales(false); // No mostrar toast aquí
-
-      // ⭐ Verificar que los totales se calcularon correctamente
-      if (!totalesActualizados || Number(totalesActualizados.total) === 0) {
+      // ✅ 1. Verificar que existe la orden
+      if (!defaultValues?.id) {
         toast.current?.show({
           severity: "error",
           summary: "Error",
-          detail: "La orden no tiene detalles o el total es cero. No se puede generar el asiento contable.",
+          detail: "No se puede generar asiento sin una orden guardada.",
+          life: 5000,
+        });
+        throw new Error("Orden no guardada");
+      }
+
+      // ✅ 2. Obtener orden actual desde BD
+      const { getOrdenCompraPorId } = await import("../../api/ordenCompra");
+      const ordenActual = await getOrdenCompraPorId(defaultValues.id);
+
+      // ✅ 3. Validar que tiene detalles y total válido
+      const { getDetallesOrdenCompra } = await import("../../api/detalleOrdenCompra");
+      const detalles = await getDetallesOrdenCompra(defaultValues.id);
+
+      if (!detalles || detalles.length === 0) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "La orden no tiene detalles. No se puede generar el asiento contable.",
+          life: 5000,
+        });
+        throw new Error("Sin detalles");
+      }
+
+      if (Number(ordenActual.total) === 0) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "El total de la orden es cero. Guarde la orden primero antes de generar el asiento.",
           life: 5000,
         });
         throw new Error("Total en cero");
-      }
-
-      // ⭐ Verificar que se guardó correctamente en BD
-      const { getOrdenCompraPorId } = await import("../../api/ordenCompra");
-      const ordenActualizada = await getOrdenCompraPorId(defaultValues.id);
-
-      if (Number(ordenActualizada.total) === 0) {
-        toast.current?.show({
-          severity: "error",
-          summary: "Error",
-          detail: "Los totales no se guardaron correctamente en la base de datos. Intente nuevamente.",
-          life: 5000,
-        });
-        throw new Error("Error al guardar totales");
       }
 
       // ✅ Todo OK, continuar con generación de asiento
@@ -655,11 +622,13 @@ export default function OrdenCompraForm({
       console.error("Error en handleBeforeGenerateAsiento:", error);
 
       // Si el error ya mostró un toast, no mostrar otro
-      if (!error.message?.includes("Total en cero") && !error.message?.includes("Error al guardar")) {
+      if (!error.message?.includes("Total en cero") &&
+        !error.message?.includes("Sin detalles") &&
+        !error.message?.includes("Orden no guardada")) {
         toast.current?.show({
           severity: "error",
           summary: "Error",
-          detail: error.message || "Error al preparar la generación del asiento contable.",
+          detail: error.message || "Error al validar la orden para generar el asiento contable.",
           life: 5000,
         });
       }
@@ -667,7 +636,6 @@ export default function OrdenCompraForm({
       throw error; // Re-lanzar para que AsientoContableManager lo maneje
     }
   };
-
   useEffect(() => {
     const cargarDireccionesEmpresa = async () => {
       if (empresaId) {
@@ -789,6 +757,28 @@ export default function OrdenCompraForm({
     }
   }, [empresaId, empresas, isEdit]);
 
+  // Activar/desactivar Impuesto a la Renta según tipoDocumentoFinalId
+  useEffect(() => {
+    if (Number(tipoDocumentoFinalId) === 3) { // Recibo por Honorarios
+      setAplicaImpuestoRenta(true);
+      if (empresaId && empresas && empresas.length > 0) {
+        const empresaSeleccionada = empresas.find(
+          (e) => Number(e.id) === Number(empresaId),
+        );
+        if (
+          empresaSeleccionada &&
+          empresaSeleccionada.porcentajeImpuestoRenta !== undefined
+        ) {
+          setPorcentajeImpuestoRenta(empresaSeleccionada.porcentajeImpuestoRenta);
+        }
+      }
+    } else {
+      setAplicaImpuestoRenta(false);
+      setPorcentajeImpuestoRenta(0);
+      setMontoImpuestoRenta(0);
+    }
+  }, [tipoDocumentoFinalId, empresaId, empresas]);
+
   // Actualizar porcentajeImpuestoRenta cuando cambie aplicaImpuestoRenta
   useEffect(() => {
     if (empresaId && empresas && empresas.length > 0) {
@@ -862,6 +852,7 @@ export default function OrdenCompraForm({
       unidadNegocioId: setUnidadNegocioId,
       movIngresoAlmacenId: setMovIngresoAlmacenId,
       observaciones: setObservaciones,
+      pagosPreviosSI: setPagosPreviosSI,
       porcentajeIGV: setPorcentajeIGV,
       esExoneradoAlIGV: setEsExoneradoAlIGV,
       aplicaImpuestoRenta: setAplicaImpuestoRenta,
@@ -878,7 +869,7 @@ export default function OrdenCompraForm({
       numCorreDocFinal: setNumCorreDocFinal,
       comprobanteRecibido: setComprobanteRecibido,
       fechaRecepcionComprobante: setFechaRecepcionComprobante,
-      urlDocumentoRef: (value) => setValueRHF("urlDocumentoRef", value),
+      urlDocumentoRef: setUrlDocumentoRef,
     };
 
     const setter = setters[field];
@@ -887,120 +878,134 @@ export default function OrdenCompraForm({
     }
   };
 
-  const handleSubmit = () => {
-    const data = {
-      empresaId: empresaId ? Number(empresaId) : null,
-      tipoDocumentoId: tipoDocumentoId ? Number(tipoDocumentoId) : null,
-      serieDocId: serieDocId ? Number(serieDocId) : null,
-      numSerieDoc,
-      numCorreDoc,
-      numeroDocumento,
-      fechaDocumento,
-      fechaContable,
-      periodoContableId: periodoContableId ? Number(periodoContableId) : null,
-      requerimientoCompraId: requerimientoCompraId
-        ? Number(requerimientoCompraId)
-        : null,
-      proveedorId: proveedorId ? Number(proveedorId) : null,
-      formaPagoId: formaPagoId ? Number(formaPagoId) : null,
-      monedaId: monedaId ? Number(monedaId) : null,
-      tipoCambio,
-      fechaEntrega,
-      fechaRecepcion,
-      fechaVencimiento: fechaVencimiento || null,
-      solicitanteId: solicitanteId ? Number(solicitanteId) : null,
-      aprobadoPorId: aprobadoPorId ? Number(aprobadoPorId) : null,
-      estadoId: estadoId ? Number(estadoId) : null,
-      centroCostoId: centroCostoId ? Number(centroCostoId) : null,
-      unidadNegocioId: unidadNegocioId ? Number(unidadNegocioId) : null,
-      movIngresoAlmacenId: movIngresoAlmacenId
-        ? Number(movIngresoAlmacenId)
-        : null,
-      observaciones,
-      porcentajeIGV,
-      esExoneradoAlIGV,
-      aplicaImpuestoRenta,
-      porcentajeImpuestoRenta,
-      montoImpuestoRenta,
-      subtotal: totales.subtotal,
-      totalDescuentos: totales.totalDescuentos,
-      totalIGV: totales.igv,
-      total: totales.total,
-      direccionRecepcionAlmacenId: direccionRecepcionAlmacenId
-        ? Number(direccionRecepcionAlmacenId)
-        : null,
-      contactoProveedorId: contactoProveedorId
-        ? Number(contactoProveedorId)
-        : null,
-      facturado: facturado || false,
-      fechaFacturacion: fechaFacturacion,
-      esGerencial: esGerencial || false,
-      ordenCompraOrigenId: ordenCompraOrigenId
-        ? Number(ordenCompraOrigenId)
-        : null,
-      esParticionada: esParticionada || false,
-      motivoNotaCreditoDebitoId: motivoNotaCreditoDebitoId
-        ? Number(motivoNotaCreditoDebitoId)
-        : null,
-      fechaDcmtoAfectoNCND: fechaDcmtoAfectoNCND,
-      dcmtoAfectoNCNDId: dcmtoAfectoNCNDId
-        ? Number(dcmtoAfectoNCNDId)
-        : null,
-      numeroDcmtoAfectoNCND: numeroDcmtoAfectoNCND,
-      tipoDocumentoFinalId: tipoDocumentoFinalId
-        ? Number(tipoDocumentoFinalId)
-        : null,
-      numeroDocumentoFinal: numeroDocumentoFinal || null,
-      numSerieDocFinal: numSerieDocFinal || null,
-      numCorreDocFinal: numCorreDocFinal || null,
-      comprobanteRecibido: comprobanteRecibido || false,
-      fechaRecepcionComprobante: fechaRecepcionComprobante || null,
-      urlDocumentoRef: getValuesRHF("urlDocumentoRef") || null,
+  const handleSubmit = async () => {
+    try {
+      // ✅ 1. Calcular totales desde detalles ANTES de enviar
+      let subtotalCalc = 0;
+      let totalIGVCalc = 0;
+      let montoImpuestoRentaCalc = 0;
+      let totalCalc = 0;
 
-    };
+      if (isEdit && defaultValues?.id) {
+        const { getDetallesOrdenCompra } = await import("../../api/detalleOrdenCompra");
+        const detalles = await getDetallesOrdenCompra(defaultValues.id);
 
-    if (!data.empresaId) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Validación",
-        detail: "Debe seleccionar una empresa",
+        subtotalCalc = detalles.reduce(
+          (sum, det) => sum + (Number(det.subtotal) || 0),
+          0,
+        );
+
+        totalIGVCalc = esExoneradoAlIGV
+          ? 0
+          : subtotalCalc * (Number(porcentajeIGV) / 100);
+
+        montoImpuestoRentaCalc = aplicaImpuestoRenta
+          ? subtotalCalc * (Number(porcentajeImpuestoRenta) / 100)
+          : 0;
+
+        totalCalc = subtotalCalc + totalIGVCalc - montoImpuestoRentaCalc;
+      }
+
+      // ✅ 2. Preparar datos con totales calculados
+      const data = {
+        empresaId: empresaId ? Number(empresaId) : null,
+        tipoDocumentoId: tipoDocumentoId ? Number(tipoDocumentoId) : null,
+        serieDocId: serieDocId ? Number(serieDocId) : null,
+        numSerieDoc,
+        numCorreDoc,
+        numeroDocumento,
+        fechaDocumento,
+        fechaContable,
+        periodoContableId: periodoContableId ? Number(periodoContableId) : null,
+        requerimientoCompraId: requerimientoCompraId ? Number(requerimientoCompraId) : null,
+        proveedorId: proveedorId ? Number(proveedorId) : null,
+        formaPagoId: formaPagoId ? Number(formaPagoId) : null,
+        monedaId: monedaId ? Number(monedaId) : null,
+        tipoCambio,
+        fechaEntrega,
+        fechaRecepcion,
+        fechaVencimiento: fechaVencimiento || null,
+        solicitanteId: solicitanteId ? Number(solicitanteId) : null,
+        aprobadoPorId: aprobadoPorId ? Number(aprobadoPorId) : null,
+        estadoId: estadoId ? Number(estadoId) : null,
+        centroCostoId: centroCostoId ? Number(centroCostoId) : null,
+        unidadNegocioId: unidadNegocioId ? Number(unidadNegocioId) : null,
+        movIngresoAlmacenId: movIngresoAlmacenId ? Number(movIngresoAlmacenId) : null,
+        observaciones,
+        pagosPreviosSI: pagosPreviosSI !== null && pagosPreviosSI !== undefined ? Number(pagosPreviosSI) : 0,
+        porcentajeIGV,
+        esExoneradoAlIGV,
+        aplicaImpuestoRenta,
+        porcentajeImpuestoRenta,
+        montoImpuestoRenta: montoImpuestoRentaCalc, // ⭐ CALCULADO
+        subtotal: subtotalCalc, // ⭐ CALCULADO
+        totalDescuentos: 0,
+        totalIGV: totalIGVCalc, // ⭐ CALCULADO
+        total: totalCalc, // ⭐ CALCULADO
+        direccionRecepcionAlmacenId: direccionRecepcionAlmacenId ? Number(direccionRecepcionAlmacenId) : null,
+        contactoProveedorId: contactoProveedorId ? Number(contactoProveedorId) : null,
+        facturado: facturado || false,
+        fechaFacturacion: fechaFacturacion,
+        esGerencial: esGerencial || false,
+        ordenCompraOrigenId: ordenCompraOrigenId ? Number(ordenCompraOrigenId) : null,
+        esParticionada: esParticionada || false,
+        motivoNotaCreditoDebitoId: motivoNotaCreditoDebitoId ? Number(motivoNotaCreditoDebitoId) : null,
+        fechaDcmtoAfectoNCND: fechaDcmtoAfectoNCND,
+        dcmtoAfectoNCNDId: dcmtoAfectoNCNDId ? Number(dcmtoAfectoNCNDId) : null,
+        numeroDcmtoAfectoNCND: numeroDcmtoAfectoNCND,
+        tipoDocumentoFinalId: tipoDocumentoFinalId ? Number(tipoDocumentoFinalId) : null,
+        numeroDocumentoFinal: numeroDocumentoFinal,
+        numSerieDocFinal: numSerieDocFinal,
+        numCorreDocFinal: numCorreDocFinal,
+        comprobanteRecibido: comprobanteRecibido || false,
+        fechaRecepcionComprobante: fechaRecepcionComprobante,
+        urlDocumentoRef: urlDocumentoRef,
+      };
+
+      // ✅ 3. Enviar UNA SOLA VEZ al backend
+      if (isEdit) {
+        const { actualizarOrdenCompra } = await import("../../api/ordenCompra");
+        await actualizarOrdenCompra(defaultValues.id, data);
+        toast.current?.show({
+          severity: "success",
+          summary: "Orden de Compra Actualizada",
+          detail: "Los datos se guardaron correctamente",
+          life: 3000,
+        });
+      } else {
+        const { crearOrdenCompra } = await import("../../api/ordenCompra");
+        const nuevaOrden = await crearOrdenCompra(data);
+        toast.current?.show({
+          severity: "success",
+          summary: "Orden de Compra Creada",
+          detail: `Orden ${nuevaOrden.numeroDocumento} creada exitosamente`,
+          life: 3000,
+        });
+        if (onGuardar) onGuardar(nuevaOrden);
+      }
+
+      // ✅ 4. Actualizar estado local
+      if (isEdit) {
+        setTotales({
+          subtotal: subtotalCalc,
+          totalDescuentos: 0,
+          igv: totalIGVCalc,
+          impuestoRenta: montoImpuestoRentaCalc,
+          total: totalCalc,
+        });
+      }
+    } catch (err) {
+      console.error("Error al guardar:", err);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: err.message || "No se pudo guardar la orden de compra",
+        life: 5000,
       });
-      return;
     }
-
-    if (!data.proveedorId) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Validación",
-        detail: "Debe seleccionar un proveedor",
-      });
-      return;
-    }
-
-    if (!data.tipoDocumentoId) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Validación",
-        detail: "Debe seleccionar un tipo de documento",
-      });
-      return;
-    }
-
-    // ✅ VALIDACIÓN: Motivo obligatorio para NC (ID=8) y ND (ID=9)
-    const esNotaCreditoDebito =
-      Number(data.tipoDocumentoId) === 8 || Number(data.tipoDocumentoId) === 9;
-
-    if (esNotaCreditoDebito && !motivoNotaCreditoDebitoId) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Validación",
-        detail: "Debe seleccionar un motivo para Nota de Crédito/Débito",
-      });
-      return;
-    }
-
-    onSubmit(data);
   };
+
+
 
   const handleAprobarClick = () => {
     if (!defaultValues?.id) {
@@ -1122,6 +1127,7 @@ export default function OrdenCompraForm({
     unidadNegocioId,
     movIngresoAlmacenId,
     observaciones,
+    pagosPreviosSI,
     porcentajeIGV,
     esExoneradoAlIGV,
     tipoDocumentoFinalId,
@@ -1133,7 +1139,7 @@ export default function OrdenCompraForm({
   };
 
   const estaPendiente = Number(estadoId) === 38 || !estadoId;
-  const estaAprobado = Number(estadoId) === 39;
+  const estaAprobado = Number(estadoId) >= 39; // ✅ APROBADO o superior (FACTURADO, etc.)
   const estaAnulado = Number(estadoId) === 40;
   const estaParticionado = Number(estadoId) === 112;
   const estaFacturado = Number(estadoId) === 113;
@@ -1216,7 +1222,6 @@ export default function OrdenCompraForm({
             centrosCosto={centrosCosto}
             unidadesNegocioOptions={unidadesNegocioOptions}
             bancos={bancosOptions}
-            tiposDocumentoOptions={tiposDocumentoOptions}
             seriesDocOptions={seriesDocOptions}
             estadosOrdenOptions={estadosOrdenOptions}
             periodosContables={periodosContables}
@@ -1239,6 +1244,11 @@ export default function OrdenCompraForm({
             onDetallesChange={() => setDetallesCount((prev) => prev + 0.0001)} // ⭐ NUEVO: Forzar recálculo
             subtotal={totales.subtotal}
             totalIGV={totales.igv}
+            montoImpuestoRenta={totales.impuestoRenta || 0}
+            aplicaImpuestoRenta={aplicaImpuestoRenta}
+            pagosPreviosSI={pagosPreviosSI}
+            tipoDocumentoId={tipoDocumentoId}
+            tiposDocumentoOptions={tiposDocumentoOptions}
             total={totales.total}
             cuentasCorrientes={cuentasCorrientes}
             mediosPago={mediosPago}
@@ -1276,6 +1286,9 @@ export default function OrdenCompraForm({
             onComprobanteRecibidoChange={setComprobanteRecibido}
             fechaRecepcionComprobante={fechaRecepcionComprobante}
             onFechaRecepcionComprobanteChange={setFechaRecepcionComprobante}
+            onAplicaImpuestoRentaChange={setAplicaImpuestoRenta}
+            porcentajeImpuestoRenta={porcentajeImpuestoRenta}
+            onPorcentajeImpuestoRentaChange={setPorcentajeImpuestoRenta}
           />
         </TabPanel>
 
@@ -1365,6 +1378,28 @@ export default function OrdenCompraForm({
           )}
         </div>
         <div style={{ flex: 1 }}>
+          {/* Botón Generar CxP */}
+          {isEdit && (
+            <Button
+              label="Generar CxP"
+              icon="pi pi-money-bill"
+              className="p-button-success"
+              onClick={handleGenerarCxPClick}
+              disabled={
+                !estaAprobado ||
+                facturado
+              }
+              tooltip={
+                !estaAprobado
+                  ? "La orden debe estar APROBADA para generar CxP"
+                  : facturado
+                    ? "Ya tiene Cuenta por Pagar generada"
+                    : "Generar Cuenta por Pagar y cambiar estado a FACTURADA"
+              }
+            />
+          )}
+        </div>
+        <div style={{ flex: 1 }}>
           {isEdit && (
             <Button
               label="Generar Kardex"
@@ -1395,28 +1430,7 @@ export default function OrdenCompraForm({
           )}
         </div>
 
-        <div style={{ flex: 1 }}>
-          {/* Botón Generar CxP */}
-          {isEdit && (
-            <Button
-              label="Generar CxP"
-              icon="pi pi-money-bill"
-              className="p-button-success"
-              onClick={handleGenerarCxPClick}
-              disabled={
-                !estaAprobado ||
-                facturado
-              }
-              tooltip={
-                !estaAprobado
-                  ? "La orden debe estar APROBADA para generar CxP"
-                  : facturado
-                    ? "Ya tiene Cuenta por Pagar generada"
-                    : "Generar Cuenta por Pagar y cambiar estado a FACTURADA"
-              }
-            />
-          )}
-        </div>
+
 
         <div style={{ flex: 1 }}>
           {isEdit && (

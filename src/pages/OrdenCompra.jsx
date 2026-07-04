@@ -46,7 +46,7 @@ import { getAllDestinoProducto } from "../api/destinoProducto";
 import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
-import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
+import { getResponsiveFontSize, formatearFecha, formatearNumero } from "../utils/utils";
 import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
 import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 import GenerarKardexDialog from "../components/common/kardex/GenerarKardexDialog";
@@ -62,11 +62,15 @@ export default function OrdenCompra({ ruta }) {
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
-  const toast = useRef(null);
+  const toast = useRef(null); // ✅ AGREGAR ESTA LÍNEA
+
   const [items, setItems] = useState([]);
 
+  // ✅ DECLARAR itemsFiltrados ANTES de usarlo
+  const [itemsFiltrados, setItemsFiltrados] = useState([]);
+
   // Filtrado automático por Unidad de Negocio
-  const { datosFiltrados: ordenesFiltradas } = useUnidadNegocioFilter(items);
+  const { datosFiltrados: ordenesFiltradas } = useUnidadNegocioFilter(itemsFiltrados);
 
   const [empresas, setEmpresas] = useState([]);
   const [proveedores, setProveedores] = useState([]);
@@ -103,14 +107,22 @@ export default function OrdenCompra({ ruta }) {
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
-  const [fechaInicio, setFechaInicio] = useState(null);
-  const [fechaFin, setFechaFin] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
-  const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [proveedoresUnicos, setProveedoresUnicos] = useState([]);
   const [showKardexDialog, setShowKardexDialog] = useState(false);
   const [kardexDocumentoActual, setKardexDocumentoActual] = useState(null);
   const [showConsultaStock, setShowConsultaStock] = useState(false);
+
+  // Estados para filtros de rango de fechas
+  const [rangoFechaDocumento, setRangoFechaDocumento] = useState(null);
+  const [rangoFechaFacturacion, setRangoFechaFacturacion] = useState(null);
+  const [tipoDocumentoIdSeleccionado, setTipoDocumentoIdSeleccionado] = useState(null);
+  const [tipoDocumentoFinalIdSeleccionado, setTipoDocumentoFinalIdSeleccionado] = useState(null);
+
+  // Estados para opciones de dropdowns
+  const [tiposDocumentoOrigen, setTiposDocumentoOrigen] = useState([]);
+  const [tiposDocumentoFinal, setTiposDocumentoFinal] = useState([]);
+  const [estadosUnicos, setEstadosUnicos] = useState([]); // ✅ AGREGAR
 
   // ========================================
   // 🆕 CARGAR DATOS AL MONTAR EL COMPONENTE
@@ -119,54 +131,6 @@ export default function OrdenCompra({ ruta }) {
     cargarDatos();
   }, []);
 
-  useEffect(() => {
-    let filtrados = ordenesFiltradas;
-
-    if (empresaSeleccionada) {
-      filtrados = filtrados.filter(
-        (item) => Number(item.empresaId) === Number(empresaSeleccionada),
-      );
-    }
-
-    if (proveedorSeleccionado) {
-      filtrados = filtrados.filter(
-        (item) => Number(item.proveedorId) === Number(proveedorSeleccionado),
-      );
-    }
-
-    if (fechaInicio) {
-      filtrados = filtrados.filter((item) => {
-        const fechaDoc = new Date(item.fechaDocumento);
-        const fechaIni = new Date(fechaInicio);
-        fechaIni.setHours(0, 0, 0, 0);
-        return fechaDoc >= fechaIni;
-      });
-    }
-
-    if (fechaFin) {
-      filtrados = filtrados.filter((item) => {
-        const fechaDoc = new Date(item.fechaDocumento);
-        const fechaFinDia = new Date(fechaFin);
-        fechaFinDia.setHours(23, 59, 59, 999);
-        return fechaDoc <= fechaFinDia;
-      });
-    }
-
-    if (estadoSeleccionado) {
-      filtrados = filtrados.filter(
-        (item) => Number(item.estadoId) === Number(estadoSeleccionado),
-      );
-    }
-
-    setItemsFiltrados(filtrados);
-  }, [
-    empresaSeleccionada,
-    proveedorSeleccionado,
-    fechaInicio,
-    fechaFin,
-    estadoSeleccionado,
-    ordenesFiltradas,
-  ]);
 
   useEffect(() => {
     const proveedoresMap = new Map();
@@ -178,6 +142,90 @@ export default function OrdenCompra({ ruta }) {
     const proveedoresArray = Array.from(proveedoresMap.values());
     setProveedoresUnicos(proveedoresArray);
   }, [ordenesFiltradas]);
+
+
+  // ✅ Filtrado completo de órdenes
+  useEffect(() => {
+    let filtered = items;
+
+    // Filtro por empresa
+    if (empresaSeleccionada) {
+      filtered = filtered.filter(
+        (orden) => Number(orden.empresaId) === Number(empresaSeleccionada),
+      );
+    }
+
+    // Filtro por estado
+    if (estadoSeleccionado) {
+      filtered = filtered.filter(
+        (orden) => Number(orden.estadoId) === Number(estadoSeleccionado),
+      );
+    }
+
+    // Filtro por proveedor
+    if (proveedorSeleccionado) {
+      filtered = filtered.filter(
+        (orden) => Number(orden.proveedorId) === Number(proveedorSeleccionado),
+      );
+    }
+
+    // ✅ Filtro por rango de fecha documento
+    if (rangoFechaDocumento && rangoFechaDocumento[0] && rangoFechaDocumento[1]) {
+      const fechaInicio = new Date(rangoFechaDocumento[0]);
+      fechaInicio.setHours(0, 0, 0, 0);
+      const fechaFin = new Date(rangoFechaDocumento[1]);
+      fechaFin.setHours(23, 59, 59, 999);
+
+      filtered = filtered.filter((orden) => {
+        const fechaDoc = new Date(orden.fechaDocumento);
+        return fechaDoc >= fechaInicio && fechaDoc <= fechaFin;
+      });
+    }
+
+    // ✅ Filtro por rango de fecha facturación
+    if (rangoFechaFacturacion && rangoFechaFacturacion[0] && rangoFechaFacturacion[1]) {
+      const fechaInicio = new Date(rangoFechaFacturacion[0]);
+      fechaInicio.setHours(0, 0, 0, 0);
+      const fechaFin = new Date(rangoFechaFacturacion[1]);
+      fechaFin.setHours(23, 59, 59, 999);
+
+      filtered = filtered.filter((orden) => {
+        if (!orden.fechaFacturacion) return false;
+        const fechaFact = new Date(orden.fechaFacturacion);
+        return fechaFact >= fechaInicio && fechaFact <= fechaFin;
+      });
+    }
+
+    // ✅ Filtro por tipo documento origen
+    if (tipoDocumentoIdSeleccionado) {
+      filtered = filtered.filter(
+        (orden) => Number(orden.tipoDocumentoId) === Number(tipoDocumentoIdSeleccionado),
+      );
+    }
+
+    // ✅ Filtro por tipo documento final
+    if (tipoDocumentoFinalIdSeleccionado) {
+      filtered = filtered.filter(
+        (orden) => Number(orden.tipoDocumentoFinalId) === Number(tipoDocumentoFinalIdSeleccionado),
+      );
+    }
+
+    setItemsFiltrados(filtered);
+  }, [
+    items,
+    empresaSeleccionada,
+    estadoSeleccionado,
+    proveedorSeleccionado,
+    rangoFechaDocumento,
+    rangoFechaFacturacion,
+    tipoDocumentoIdSeleccionado,
+    tipoDocumentoFinalIdSeleccionado,
+  ]);
+
+  // ✅ Inicializar itemsFiltrados cuando se cargan los items
+  useEffect(() => {
+    setItemsFiltrados(items);
+  }, [items]);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -291,6 +339,58 @@ export default function OrdenCompra({ ruta }) {
     }
     setLoading(false);
   };
+
+
+  // ✅ Cargar tipos de documento DINÁMICAMENTE desde órdenes filtradas
+  useEffect(() => {
+    if (items.length > 0) {  // ✅ Usar items (todos los datos)
+      // Tipos de documento origen (únicos)
+      const tiposOrigen = items
+        .filter(o => o.tipoDocumento)
+        .map(o => ({
+          label: `${o.tipoDocumento.codigo} - ${o.tipoDocumento.descripcion}`,
+          value: o.tipoDocumentoId,
+        }))
+        .filter((item, index, self) =>
+          index === self.findIndex(t => t.value === item.value)
+        );
+      setTiposDocumentoOrigen(tiposOrigen);
+
+      // Tipos de documento final (únicos)
+      const tiposFinal = items
+        .filter(o => o.tipoDocumentoFinal)
+        .map(o => ({
+          label: `${o.tipoDocumentoFinal.codigo} - ${o.tipoDocumentoFinal.descripcion}`,
+          value: o.tipoDocumentoFinalId,
+        }))
+        .filter((item, index, self) =>
+          index === self.findIndex(t => t.value === item.value)
+        );
+      setTiposDocumentoFinal(tiposFinal);
+    } else {
+      setTiposDocumentoOrigen([]);
+      setTiposDocumentoFinal([]);
+    }
+  }, [items]);  // ✅ Dependencia correcta
+
+  // ✅ Cargar estados únicos desde items filtrados
+  useEffect(() => {
+    if (itemsFiltrados.length > 0) {
+      const estadosMap = new Map();
+      itemsFiltrados.forEach((orden) => {
+        if (orden.estado) {
+          estadosMap.set(Number(orden.estadoId), {
+            label: orden.estado.descripcion,
+            value: Number(orden.estadoId),
+          });
+        }
+      });
+      const estadosArray = Array.from(estadosMap.values());
+      setEstadosUnicos(estadosArray);
+    } else {
+      setEstadosUnicos([]);
+    }
+  }, [itemsFiltrados]);
 
   // Función para recargar solo proveedores
   const recargarProveedores = async () => {
@@ -450,9 +550,11 @@ export default function OrdenCompra({ ruta }) {
   const limpiarFiltros = () => {
     setEmpresaSeleccionada(null);
     setProveedorSeleccionado(null);
-    setFechaInicio(null);
-    setFechaFin(null);
     setEstadoSeleccionado(null);
+    setRangoFechaDocumento(null);
+    setRangoFechaFacturacion(null);
+    setTipoDocumentoIdSeleccionado(null);
+    setTipoDocumentoFinalIdSeleccionado(null);
   };
 
   const handleAprobar = async (id) => {
@@ -467,10 +569,8 @@ export default function OrdenCompra({ ruta }) {
         life: 3000,
       });
 
-      const { getOrdenCompraPorId } = await import("../api/ordenCompra");
-      const ordenActualizada = await getOrdenCompraPorId(id);
-
-      setEditing(ordenActualizada);
+      // ✅ Usar la orden que ya retornó el backend
+      setEditing(ordenAprobada);
 
       cargarDatos();
     } catch (err) {
@@ -967,6 +1067,52 @@ export default function OrdenCompra({ ruta }) {
     );
   };
 
+  // Template para Tipo Documento Origen
+  const tipoDocumentoOrigenTemplate = (rowData) => {
+    return rowData.tipoDocumento?.codigo || "-";
+  };
+
+  // Template para Número Documento Origen
+  const numeroDocumentoOrigenTemplate = (rowData) => {
+    return rowData.numeroDocumento || "-";
+  };
+
+  // Template para Tipo Documento Final
+  const tipoDocumentoFinalTemplate = (rowData) => {
+    return rowData.tipoDocumentoFinal?.codigo || "-";
+  };
+
+  // Template para Número Documento Final
+  const numeroDocumentoFinalTemplate = (rowData) => {
+    return rowData.numeroDocumentoFinal || "-";
+  };
+
+  // Template para Fecha Facturación
+  const fechaFacturacionTemplate = (rowData) => {
+    return formatearFecha(rowData.fechaFacturacion, "-");
+  };
+
+  // Template para Total con color de fondo de moneda
+  const totalTemplate = (rowData) => {
+    const simbolo = rowData.moneda?.simbolo || "";
+    const total = formatearNumero(rowData.total || 0, 2);
+    const colorFondo = rowData.moneda?.colorFondo || "#ffffff";
+
+    return (
+      <div
+        style={{
+          backgroundColor: colorFondo,
+          padding: "4px 8px",
+          borderRadius: "4px",
+          fontWeight: "bold",
+          textAlign: "right",
+        }}
+      >
+        {simbolo} {total}
+      </div>
+    );
+  };
+
   const estadoTemplate = (rowData) => {
     const estado = rowData.estadoDoc?.descripcion || "";
     let severity = "info";
@@ -1003,6 +1149,95 @@ export default function OrdenCompra({ ruta }) {
     );
   };
 
+  // ✅ Calcular totales por moneda
+  const calcularTotalesPorMoneda = () => {
+    let totalSoles = 0;
+    let totalDolares = 0;
+    let colorFondoSoles = "#FFE5B4";
+    let colorFondoDolares = "#C8E6C9";
+    let simboloSoles = "S/";
+    let simboloDolares = "$";
+
+    ordenesFiltradas.forEach((orden) => {
+      const total = Number(orden.total) || 0;
+
+      if (Number(orden.monedaId) === 1) {
+        // Soles
+        totalSoles += total;
+        if (orden.moneda?.colorFondo) colorFondoSoles = orden.moneda.colorFondo;
+        if (orden.moneda?.simbolo) simboloSoles = orden.moneda.simbolo;
+      } else if (Number(orden.monedaId) === 2) {
+        // Dólares
+        totalDolares += total;
+        if (orden.moneda?.colorFondo) colorFondoDolares = orden.moneda.colorFondo;
+        if (orden.moneda?.simbolo) simboloDolares = orden.moneda.simbolo;
+      }
+    });
+
+    return {
+      totalSoles,
+      totalDolares,
+      colorFondoSoles,
+      colorFondoDolares,
+      simboloSoles,
+      simboloDolares,
+    };
+  };
+
+
+  // ✅ Template para footer con totales
+  const footerTemplate = () => {
+    const {
+      totalSoles,
+      totalDolares,
+      colorFondoSoles,
+      colorFondoDolares,
+      simboloSoles,
+      simboloDolares,
+    } = calcularTotalesPorMoneda();
+
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          gap: "15px",
+          padding: "10px",
+          fontWeight: "bold",
+          fontSize: "14px",
+        }}
+      >
+        <span>TOTALES:</span>
+
+        {totalSoles > 0 && (
+          <div
+            style={{
+              backgroundColor: colorFondoSoles,
+              padding: "6px 12px",
+              borderRadius: "4px",
+              fontWeight: "bold",
+            }}
+          >
+            {simboloSoles} {formatearNumero(totalSoles, 2)}
+          </div>
+        )}
+
+        {totalDolares > 0 && (
+          <div
+            style={{
+              backgroundColor: colorFondoDolares,
+              padding: "6px 12px",
+              borderRadius: "4px",
+              fontWeight: "bold",
+            }}
+          >
+            {simboloDolares} {formatearNumero(totalDolares, 2)}
+          </div>
+        )}
+      </div>
+    );
+  };
   const actionBody = (rowData) => (
     <div
       style={{
@@ -1048,7 +1283,7 @@ export default function OrdenCompra({ ruta }) {
         reject={() => setShowConfirm(false)}
       />
       <DataTable
-        value={itemsFiltrados}
+        value={ordenesFiltradas}
         loading={loading}
         dataKey="id"
         paginator
@@ -1061,6 +1296,7 @@ export default function OrdenCompra({ ruta }) {
         stripedRows
         sortField="id"
         sortOrder={-1}
+        footer={footerTemplate}  // ✅ AGREGAR FOOTER
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar
             ? (e) => handleEdit(e.data)
@@ -1187,34 +1423,61 @@ export default function OrdenCompra({ ruta }) {
                   disabled={loading}
                 />
               </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="fechaInicio" style={{ fontWeight: "bold" }}>
-                  Desde
+              <div style={{ flex: 1, minWidth: "200px" }}>
+                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                  Rango Fecha Documento:
                 </label>
                 <Calendar
-                  id="fechaInicio"
-                  value={fechaInicio}
-                  onChange={(e) => setFechaInicio(e.value)}
-                  placeholder="Fecha inicio"
+                  value={rangoFechaDocumento}
+                  onChange={(e) => setRangoFechaDocumento(e.value)}
+                  selectionMode="range"
                   dateFormat="dd/mm/yy"
+                  placeholder="Seleccione rango"
                   showIcon
-                  showButtonBar
-                  disabled={loading}
+                  style={{ width: "100%" }}
                 />
               </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="fechaFin" style={{ fontWeight: "bold" }}>
-                  Hasta
+
+              <div style={{ flex: 1, minWidth: "200px" }}>
+                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                  Rango Fecha Facturación:
                 </label>
                 <Calendar
-                  id="fechaFin"
-                  value={fechaFin}
-                  onChange={(e) => setFechaFin(e.value)}
-                  placeholder="Fecha fin"
+                  value={rangoFechaFacturacion}
+                  onChange={(e) => setRangoFechaFacturacion(e.value)}
+                  selectionMode="range"
                   dateFormat="dd/mm/yy"
+                  placeholder="Seleccione rango"
                   showIcon
-                  showButtonBar
-                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              <div style={{ flex: 1, minWidth: "200px" }}>
+                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                  Tipo Doc Origen:
+                </label>
+                <Dropdown
+                  value={tipoDocumentoIdSeleccionado}
+                  options={tiposDocumentoOrigen}
+                  onChange={(e) => setTipoDocumentoIdSeleccionado(e.value)}
+                  placeholder="Todos"
+                  showClear
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              <div style={{ flex: 1, minWidth: "200px" }}>
+                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                  Tipo Doc Final:
+                </label>
+                <Dropdown
+                  value={tipoDocumentoFinalIdSeleccionado}
+                  options={tiposDocumentoFinal}
+                  onChange={(e) => setTipoDocumentoFinalIdSeleccionado(e.value)}
+                  placeholder="Todos"
+                  showClear
+                  style={{ width: "100%" }}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -1224,10 +1487,7 @@ export default function OrdenCompra({ ruta }) {
                 <Dropdown
                   id="estadoFiltro"
                   value={estadoSeleccionado}
-                  options={estadosDoc.map((e) => ({
-                    label: e.descripcion,
-                    value: Number(e.id),
-                  }))}
+                  options={estadosUnicos}
                   onChange={(e) => setEstadoSeleccionado(e.value)}
                   placeholder="Todos"
                   optionLabel="label"
@@ -1242,12 +1502,25 @@ export default function OrdenCompra({ ruta }) {
       >
         <Column field="id" header="ID" style={{ width: 80 }} sortable />
         <Column field="empresaId" header="Empresa" body={empresaNombre} />
+
+        {/* Tipo Documento Origen */}
+        <Column
+          field="tipoDocumento.codigo"
+          header="Tipo Doc"
+          body={tipoDocumentoOrigenTemplate}
+          style={{ width: 90, textAlign: "center" }}
+          sortable
+        />
+
+        {/* Número Documento Origen */}
         <Column
           field="numeroDocumento"
           header="N° Documento"
+          body={numeroDocumentoOrigenTemplate}
           style={{ width: 140, textAlign: "center" }}
           sortable
         />
+
         <Column
           field="fechaDocumento"
           header="Fecha Documento"
@@ -1255,10 +1528,47 @@ export default function OrdenCompra({ ruta }) {
           style={{ width: 110, textAlign: "center" }}
           sortable
         />
+
         <Column
           field="proveedorId"
           header="Proveedor"
           body={proveedorNombre}
+          sortable
+        />
+
+        {/* Tipo Documento Final */}
+        <Column
+          field="tipoDocumentoFinal.codigo"
+          header="Tipo Doc Final"
+          body={tipoDocumentoFinalTemplate}
+          style={{ width: 100, textAlign: "center" }}
+          sortable
+        />
+
+        {/* Número Documento Final */}
+        <Column
+          field="numeroDocumentoFinal"
+          header="N° Doc Final"
+          body={numeroDocumentoFinalTemplate}
+          style={{ width: 140, textAlign: "center" }}
+          sortable
+        />
+
+        {/* Fecha Facturación */}
+        <Column
+          field="fechaFacturacion"
+          header="Fecha Fact."
+          body={fechaFacturacionTemplate}
+          style={{ width: 110, textAlign: "center" }}
+          sortable
+        />
+
+        {/* Total con color de fondo */}
+        <Column
+          field="total"
+          header="Total"
+          body={totalTemplate}
+          style={{ width: 140 }}
           sortable
         />
 
@@ -1269,6 +1579,7 @@ export default function OrdenCompra({ ruta }) {
           style={{ width: 80, textAlign: "center" }}
           sortable
         />
+
         <Column
           field="tipoCambio"
           header="T/C"
@@ -1277,6 +1588,7 @@ export default function OrdenCompra({ ruta }) {
           bodyStyle={{ textAlign: "right" }}
           sortable
         />
+
         <Column
           field="estadoId"
           header="Estado"
@@ -1284,6 +1596,7 @@ export default function OrdenCompra({ ruta }) {
           style={{ width: 150, textAlign: "center" }}
           sortable
         />
+
         <Column
           field="esExoneradoAlIGV"
           header="IGV"
@@ -1291,6 +1604,7 @@ export default function OrdenCompra({ ruta }) {
           style={{ width: 110, textAlign: "center" }}
           sortable
         />
+
         <Column
           body={actionBody}
           header="Acciones"
