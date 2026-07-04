@@ -247,6 +247,7 @@ export default function OrdenCompraForm({
   const [estadosCxP, setEstadosCxP] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [mediosPago, setMediosPago] = useState([]);
+  const [showCambiarTipoSerieDialog, setShowCambiarTipoSerieDialog] = useState(false); // ✅ AGREGAR
 
   // ════════════════════════════════════════════════════════════
   // EFECTO: CONCATENAR NÚMERO DOCUMENTO FINAL
@@ -826,7 +827,32 @@ export default function OrdenCompraForm({
     }
   };
 
+
+  // ✅ FUNCIÓN PARA CAMBIAR TIPO Y SERIE
+  const handleCambiarTipoSerie = (datos) => {
+    setTipoDocumentoId(datos.tipoDocumentoId);
+    setSerieDocId(datos.serieDocId);
+    setNumSerieDoc(datos.numSerieDoc);
+    setNumCorreDoc(datos.numCorreDoc);
+    setNumeroDocumento(datos.numeroDocumento);
+
+      // ✅ Cerrar dialog
+  setShowCambiarTipoSerieDialog(false);
+
+    toast.current?.show({
+      severity: 'success',
+      summary: 'Tipo y Serie Actualizados',
+      detail: `Nuevo número: ${datos.numeroDocumento}`,
+      life: 3000
+    });
+  };
+
   const handleChange = (field, value) => {
+    // ✅ Manejar dialog de cambiar tipo/serie
+    if (field === '_showCambiarTipoSerieDialog') {
+      setShowCambiarTipoSerieDialog(value);
+      return;
+    }
     const setters = {
       empresaId: setEmpresaId,
       tipoDocumentoId: setTipoDocumentoId,
@@ -1211,6 +1237,7 @@ export default function OrdenCompraForm({
             formData={formData}
             onChange={handleChange}
             onSerieChange={handleSerieChange}
+            onCambiarTipoSerie={handleCambiarTipoSerie} // ✅ AGREGAR
             empresas={empresas}
             proveedores={proveedores}
             proveedoresOptions={proveedoresOptions}
@@ -1242,6 +1269,7 @@ export default function OrdenCompraForm({
             toast={toast}
             onCountChange={setDetallesCount}
             onDetallesChange={() => setDetallesCount((prev) => prev + 0.0001)} // ⭐ NUEVO: Forzar recálculo
+            showCambiarTipoSerieDialog={showCambiarTipoSerieDialog} // ✅ AGREGAR
             subtotal={totales.subtotal}
             totalIGV={totales.igv}
             montoImpuestoRenta={totales.impuestoRenta || 0}

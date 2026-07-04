@@ -12,10 +12,14 @@ import { getResponsiveFontSize } from "../../utils/utils";
 import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
 import IrACxPEditar from "../common/IrACxPEditar";
 import BooleanToggleButton from "../common/BooleanToggleButton";
+import CambiarTipoSerieDialog from "../common/CambiarTipoSerieDialog"; // ✅ AGREGAR
+
 export default function DatosGeneralesTab({
   formData,
   onChange,
   onSerieChange,
+  onCambiarTipoSerie, // ✅ AGREGAR
+  showCambiarTipoSerieDialog, // ✅ AGREGAR
   empresas,
   proveedores,
   formasPago,
@@ -228,68 +232,7 @@ export default function DatosGeneralesTab({
             inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
-        <div style={{ flex: 0.8 }}>
-          {/* TIPO DOCUMENTO - Siempre ID 17: ORDEN DE COMPRA */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="tipoDocumentoId"
-          >
-            Tipo Documento*
-          </label>
-          <Dropdown
-            id="tipoDocumentoId"
-            value={
-              formData.tipoDocumentoId ? Number(formData.tipoDocumentoId) : null
-            }
-            options={tiposDocumentoOptions}
-            onChange={(e) => onChange("tipoDocumentoId", e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar tipo"
-            disabled={isEdit || !puedeEditar || readOnly}
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-              backgroundColor: "#f0f0f0",
-            }}
-          />
-        </div>
-        <div style={{ flex: 0.8 }}>
-          {/* NÚMERO DOCUMENTO */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="numeroDocumento"
-          >
-            Número de Documento
-          </label>
-          <InputText
-            id="numeroDocumento"
-            value={formData.numeroDocumento || ""}
-            disabled
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-            }}
-          />
-        </div>
-        <div style={{ flex: 0.7 }}>
-          {/* FECHA ENTREGA */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="fechaEntrega"
-          >
-            Fecha Entrega
-          </label>
-          <Calendar
-            id="fechaEntrega"
-            value={formData.fechaEntrega}
-            onChange={(e) => onChange("fechaEntrega", e.value)}
-            dateFormat="dd/mm/yy"
-            showIcon
-            disabled={!puedeEditar || readOnly}
-            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
+
         <div style={{ flex: 0.7 }}>
           {/* FECHA VENCIMIENTO */}
           <label
@@ -336,6 +279,189 @@ export default function DatosGeneralesTab({
           />
         </div>
       </div>
+
+
+      <Panel
+        header="Tipo Documento Correlativos y Fechas de Entrega y Recepcion"
+        toggleable
+        collapsed={false}
+        className="mb-3"
+      >
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 5,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 0.8 }}>
+            {/* TIPO DOCUMENTO - Siempre ID 17: ORDEN DE COMPRA */}
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="tipoDocumentoId"
+            >
+              Tipo Documento*
+            </label>
+            <Dropdown
+              id="tipoDocumentoId"
+              value={
+                formData.tipoDocumentoId ? Number(formData.tipoDocumentoId) : null
+              }
+              options={tiposDocumentoOptions}
+              onChange={(e) => onChange("tipoDocumentoId", e.value)}
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccionar tipo"
+              disabled={isEdit || !puedeEditar || readOnly}
+              style={{
+                fontWeight: "bold",
+                textTransform: "uppercase",
+                backgroundColor: "#f0f0f0",
+              }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            {/* SERIE DOCUMENTO */}
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="serieDocId"
+            >
+              Serie de Documento*
+            </label>
+            <Dropdown
+              id="serieDocId"
+              value={formData.serieDocId ? Number(formData.serieDocId) : null}
+              options={seriesDocOptions || []}
+              onChange={(e) => onSerieChange(e.value)}
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccionar serie"
+              disabled={
+                !puedeEditar ||
+                readOnly ||
+                !formData.tipoDocumentoId ||
+                !!formData.serieDocId
+              }
+              required
+              style={{
+                fontWeight: "bold",
+                textTransform: "uppercase",
+              }}
+            />
+          </div>
+          <div style={{ flex: 0.25 }}>
+            {/* NÚMERO SERIE DOC */}
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="numSerieDoc"
+            >
+              Serie Doc.
+            </label>
+            <InputText
+              id="numSerieDoc"
+              value={formData.numSerieDoc || ""}
+              disabled
+              style={{
+                fontWeight: "bold",
+                textTransform: "uppercase",
+                backgroundColor: "#f0f0f0",
+              }}
+            />
+          </div>
+          <div style={{ flex: 0.5 }}>
+            {/* NÚMERO CORRELATIVO */}
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="numCorreDoc"
+            >
+              Número Correlativo
+            </label>
+            <InputText
+              id="numCorreDoc"
+              value={formData.numCorreDoc || ""}
+              disabled
+              style={{
+                fontWeight: "bold",
+                textTransform: "uppercase",
+                backgroundColor: "#f0f0f0",
+              }}
+            />
+          </div>
+          {/* ✅ BOTÓN CAMBIAR TIPO/SERIE */}
+          {isEdit && (
+            <div style={{ flex: 0.5, display: 'flex', alignItems: 'flex-end' }}>
+              <Button
+                label="Cambiar"
+                icon="pi pi-refresh"
+                severity="warning"
+                outlined
+                onClick={() => onChange('_showCambiarTipoSerieDialog', true)}
+                disabled={!puedeEditar || readOnly || !formData.serieDocId}
+                style={{ width: '100%', fontWeight: 'bold' }}
+                tooltip="Cambiar Tipo de Documento y Serie"
+                tooltipOptions={{ position: 'top' }}
+              />
+            </div>
+          )}
+          <div style={{ flex: 0.8 }}>
+            {/* NÚMERO DOCUMENTO */}
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="numeroDocumento"
+            >
+              Número de Documento
+            </label>
+            <InputText
+              id="numeroDocumento"
+              value={formData.numeroDocumento || ""}
+              disabled
+              style={{
+                fontWeight: "bold",
+                textTransform: "uppercase",
+              }}
+            />
+          </div>
+          <div style={{ flex: 0.7 }}>
+            {/* FECHA ENTREGA */}
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="fechaEntrega"
+            >
+              Fecha Entrega
+            </label>
+            <Calendar
+              id="fechaEntrega"
+              value={formData.fechaEntrega}
+              onChange={(e) => onChange("fechaEntrega", e.value)}
+              dateFormat="dd/mm/yy"
+              showIcon
+              disabled={!puedeEditar || readOnly}
+              inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+            />
+          </div>
+          <div style={{ flex: 0.6 }}>
+            {/* FECHA RECEPCIÓN */}
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="fechaRecepcion"
+            >
+              Fecha Recepción
+            </label>
+            <Calendar
+              id="fechaRecepcion"
+              value={formData.fechaRecepcion}
+              onChange={(e) => onChange("fechaRecepcion", e.value)}
+              dateFormat="dd/mm/yy"
+              showIcon
+              disabled={!puedeEditar || readOnly}
+              inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+            />
+          </div>
+        </div>
+      </Panel>
+
+
       <div
         style={{
           alignItems: "end",
@@ -344,73 +470,7 @@ export default function DatosGeneralesTab({
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
-        <div style={{ flex: 1 }}>
-          {/* SERIE DOCUMENTO */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="serieDocId"
-          >
-            Serie de Documento*
-          </label>
-          <Dropdown
-            id="serieDocId"
-            value={formData.serieDocId ? Number(formData.serieDocId) : null}
-            options={seriesDocOptions || []}
-            onChange={(e) => onSerieChange(e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar serie"
-            disabled={
-              !puedeEditar ||
-              readOnly ||
-              !formData.tipoDocumentoId ||
-              !!formData.serieDocId
-            }
-            required
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-            }}
-          />
-        </div>
-        <div style={{ flex: 0.25 }}>
-          {/* NÚMERO SERIE DOC */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="numSerieDoc"
-          >
-            Serie Doc.
-          </label>
-          <InputText
-            id="numSerieDoc"
-            value={formData.numSerieDoc || ""}
-            disabled
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-              backgroundColor: "#f0f0f0",
-            }}
-          />
-        </div>
-        <div style={{ flex: 0.5 }}>
-          {/* NÚMERO CORRELATIVO */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="numCorreDoc"
-          >
-            Número Correlativo
-          </label>
-          <InputText
-            id="numCorreDoc"
-            value={formData.numCorreDoc || ""}
-            disabled
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-              backgroundColor: "#f0f0f0",
-            }}
-          />
-        </div>
+
         <div style={{ flex: 2 }}>
           {/* SOLICITANTE */}
           <label
@@ -692,24 +752,7 @@ export default function DatosGeneralesTab({
             style={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
-        <div style={{ flex: 0.6 }}>
-          {/* FECHA RECEPCIÓN */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="fechaRecepcion"
-          >
-            Fecha Recepción
-          </label>
-          <Calendar
-            id="fechaRecepcion"
-            value={formData.fechaRecepcion}
-            onChange={(e) => onChange("fechaRecepcion", e.value)}
-            dateFormat="dd/mm/yy"
-            showIcon
-            disabled={!puedeEditar || readOnly}
-            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
+
       </div>
       {/* ⭐ SECCIÓN: CAMPOS DE FACTURACIÓN */}
       <div
@@ -1241,11 +1284,11 @@ export default function DatosGeneralesTab({
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
             htmlFor="aplicaImpuestoRenta"
           >
-            Estado Imp. Renta
+            Afecto Imp. Renta
           </label>
           <Button
             id="aplicaImpuestoRenta"
-            label={aplicaImpuestoRenta ? "APLICA" : "NO APLICA"}
+            label={aplicaImpuestoRenta ? "SI" : "NO"}
             icon={
               aplicaImpuestoRenta
                 ? "pi pi-check-circle"
@@ -1265,9 +1308,6 @@ export default function DatosGeneralesTab({
             }}
           />
         </div>
-
-
-
         {/* REQUERIMIENTO ASOCIADO - Botón para ir al origen */}
         {formData.requerimientoCompraId && (
           <div style={{ flex: 1 }}>
@@ -1294,7 +1334,6 @@ export default function DatosGeneralesTab({
             />
           </div>
         )}
-
         {/* MOVIMIENTO DE ALMACÉN GENERADO */}
         {formData.movIngresoAlmacenId && (
           <div style={{ flex: 0.75 }}>
@@ -1352,6 +1391,29 @@ export default function DatosGeneralesTab({
           />
         </div>
       )}
+
+
+      {/* ✅ DIALOG CAMBIAR TIPO/SERIE */}
+      <CambiarTipoSerieDialog
+        visible={showCambiarTipoSerieDialog || false} // ✅ CAMBIAR
+        onHide={() => onChange('_showCambiarTipoSerieDialog', false)}
+        empresaId={formData.empresaId}
+        tipoDocumentoActual={{
+          id: formData.tipoDocumentoId,
+          nombre: tiposDocumentoOptions.find(t => t.value === formData.tipoDocumentoId)?.label
+        }}
+        serieActual={{
+          id: formData.serieDocId,
+          serie: formData.numSerieDoc
+        }}
+        tiposDocumentoOptions={tiposDocumentoOptions}
+        seriesDocOptions={seriesDocOptions}
+        onConfirmar={onCambiarTipoSerie}
+        moduloOrigen="OrdenCompra"
+        toast={toast}
+      />
+
+
     </div>
   );
 }

@@ -204,6 +204,7 @@ export default function DetallesTab({
           gap: 10,
           flexDirection: window.innerWidth < 768 ? "column" : "row",
           marginBottom: 5,
+          marginTop:10,
           padding: "5px",
           backgroundColor: "#f8f9fa",
           borderRadius: "8px",
