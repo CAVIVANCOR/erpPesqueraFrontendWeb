@@ -212,11 +212,6 @@ export default function OrdenCompraForm({
   const [comprobanteRecibido, setComprobanteRecibido] = useState(
     defaultValues?.comprobanteRecibido || false,
   );
-  const [fechaRecepcionComprobante, setFechaRecepcionComprobante] = useState(
-    defaultValues?.fechaRecepcionComprobante
-      ? new Date(defaultValues.fechaRecepcionComprobante)
-      : null,
-  );
   const [urlDocumentoRef, setUrlDocumentoRef] = useState(
     defaultValues?.urlDocumentoRef || null,
   );
@@ -421,11 +416,6 @@ export default function OrdenCompraForm({
       setNumSerieDocFinal(defaultValues.numSerieDocFinal || "");
       setNumCorreDocFinal(defaultValues.numCorreDocFinal || "");
       setComprobanteRecibido(defaultValues.comprobanteRecibido || false);
-      setFechaRecepcionComprobante(
-        defaultValues.fechaRecepcionComprobante
-          ? new Date(defaultValues.fechaRecepcionComprobante)
-          : null,
-      );
       setUrlDocumentoRef(defaultValues.urlDocumentoRef || null);
     }
   }, [defaultValues, empresaFija]);
@@ -836,8 +826,8 @@ export default function OrdenCompraForm({
     setNumCorreDoc(datos.numCorreDoc);
     setNumeroDocumento(datos.numeroDocumento);
 
-      // ✅ Cerrar dialog
-  setShowCambiarTipoSerieDialog(false);
+    // ✅ Cerrar dialog
+    setShowCambiarTipoSerieDialog(false);
 
     toast.current?.show({
       severity: 'success',
@@ -894,7 +884,6 @@ export default function OrdenCompraForm({
       numSerieDocFinal: setNumSerieDocFinal,
       numCorreDocFinal: setNumCorreDocFinal,
       comprobanteRecibido: setComprobanteRecibido,
-      fechaRecepcionComprobante: setFechaRecepcionComprobante,
       urlDocumentoRef: setUrlDocumentoRef,
     };
 
@@ -984,7 +973,6 @@ export default function OrdenCompraForm({
         numSerieDocFinal: numSerieDocFinal,
         numCorreDocFinal: numCorreDocFinal,
         comprobanteRecibido: comprobanteRecibido || false,
-        fechaRecepcionComprobante: fechaRecepcionComprobante,
         urlDocumentoRef: urlDocumentoRef,
       };
 
@@ -1161,7 +1149,6 @@ export default function OrdenCompraForm({
     numSerieDocFinal,
     numCorreDocFinal,
     comprobanteRecibido,
-    fechaRecepcionComprobante,
   };
 
   const estaPendiente = Number(estadoId) === 38 || !estadoId;
@@ -1312,8 +1299,6 @@ export default function OrdenCompraForm({
             onNumCorreDocFinalChange={setNumCorreDocFinal}
             comprobanteRecibido={comprobanteRecibido}
             onComprobanteRecibidoChange={setComprobanteRecibido}
-            fechaRecepcionComprobante={fechaRecepcionComprobante}
-            onFechaRecepcionComprobanteChange={setFechaRecepcionComprobante}
             onAplicaImpuestoRentaChange={setAplicaImpuestoRenta}
             porcentajeImpuestoRenta={porcentajeImpuestoRenta}
             onPorcentajeImpuestoRentaChange={setPorcentajeImpuestoRenta}

@@ -54,6 +54,7 @@ import EmpresaSelector from "../components/common/EmpresaSelector";
 import { getMotivoNotaCreditoDebitoActivos } from "../api/ventas/motivoNotaCreditoDebito";
 import { getAllUbicacionesFisicas } from "../api/ubicacionFisica";
 import ConsultaStockForm from "../components/common/ConsultaStockForm";
+import { useActualizarRegistroEnLista } from "../hooks/useActualizarRegistroEnLista";
 
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
@@ -68,6 +69,11 @@ export default function OrdenCompra({ ruta }) {
 
   // ✅ DECLARAR itemsFiltrados ANTES de usarlo
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
+
+  // ✅ Hook para actualizar registros sin recargar
+  const { actualizarRegistro, agregarRegistro, eliminarRegistro } =
+    useActualizarRegistroEnLista(items, setItems);
+
 
   // Filtrado automático por Unidad de Negocio
   const { datosFiltrados: ordenesFiltradas } = useUnidadNegocioFilter(itemsFiltrados);
@@ -221,11 +227,6 @@ export default function OrdenCompra({ ruta }) {
     tipoDocumentoIdSeleccionado,
     tipoDocumentoFinalIdSeleccionado,
   ]);
-
-  // ✅ Inicializar itemsFiltrados cuando se cargan los items
-  useEffect(() => {
-    setItemsFiltrados(items);
-  }, [items]);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -527,7 +528,13 @@ export default function OrdenCompra({ ruta }) {
         setEditing(ordenCompleta);
       }
 
-      cargarDatos();
+      if (esEdicion) {
+        actualizarRegistro(editing.id, ordenActualizada);
+      } else {
+        agregarRegistro(ordenCompleta);
+      }
+
+
     } catch (err) {
       const errorMsg =
         err.response?.data?.error ||
@@ -562,6 +569,8 @@ export default function OrdenCompra({ ruta }) {
     try {
       const ordenAprobada = await aprobarOrdenCompra(id);
 
+      actualizarRegistro(id, ordenAprobada);
+
       toast.current.show({
         severity: "success",
         summary: "Orden Aprobada",
@@ -569,12 +578,8 @@ export default function OrdenCompra({ ruta }) {
         life: 3000,
       });
 
-      // ✅ Usar la orden que ya retornó el backend
       setEditing(ordenAprobada);
-
-      cargarDatos();
     } catch (err) {
-      console.error("Error al aprobar:", err);
       const errorMsg =
         err.response?.data?.message ||
         err.response?.data?.error ||
@@ -590,10 +595,16 @@ export default function OrdenCompra({ ruta }) {
     setLoading(false);
   };
 
+
   const handleAnular = async (id) => {
     setLoading(true);
     try {
       await anularOrdenCompra(id);
+
+      const { getOrdenCompraPorId } = await import("../api/ordenCompra");
+      const ordenActualizada = await getOrdenCompraPorId(id);
+
+      actualizarRegistro(id, ordenActualizada);
 
       toast.current.show({
         severity: "success",
@@ -603,7 +614,6 @@ export default function OrdenCompra({ ruta }) {
       });
 
       setShowDialog(false);
-      cargarDatos();
     } catch (err) {
       const errorMsg =
         err.response?.data?.error ||
@@ -618,6 +628,7 @@ export default function OrdenCompra({ ruta }) {
     }
     setLoading(false);
   };
+
 
   const handleReactivar = async (ordenCompraId) => {
     if (!permisos.puedeEditar) {
@@ -690,7 +701,8 @@ export default function OrdenCompra({ ruta }) {
             life: 8000,
           });
 
-          cargarDatos();
+          actualizarRegistro(ordenCompraId, resultado.ordenCompra);
+
           setShowDialog(false);
           setEditing(null);
         } catch (err) {
@@ -1114,7 +1126,7 @@ export default function OrdenCompra({ ruta }) {
   };
 
   const estadoTemplate = (rowData) => {
-    const estado = rowData.estadoDoc?.descripcion || "";
+    const estado = rowData.estado?.descripcion || "";
     let severity = "info";
 
     if (estado.includes("PENDIENTE")) severity = "warning";
@@ -1617,7 +1629,11 @@ export default function OrdenCompra({ ruta }) {
         }
         visible={showDialog}
         style={{ width: "1300px" }}
-        onHide={() => setShowDialog(false)}
+        onHide={() => {
+          console.log('🔴 [DIALOG] onHide ejecutado');
+          console.log('🔴 [DIALOG] items.length:', items.length);
+          setShowDialog(false);
+        }}
         modal
         maximizable
         maximized={true}

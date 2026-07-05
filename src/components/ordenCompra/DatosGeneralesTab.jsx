@@ -98,8 +98,6 @@ export default function DatosGeneralesTab({
   onNumCorreDocFinalChange,
   comprobanteRecibido,
   onComprobanteRecibidoChange,
-  fechaRecepcionComprobante,
-  onFechaRecepcionComprobanteChange,
   aplicaImpuestoRenta,
   onAplicaImpuestoRentaChange,
   porcentajeImpuestoRenta,
@@ -807,27 +805,7 @@ export default function DatosGeneralesTab({
           />
         </div>
 
-        <div style={{ flex: 0.75 }}>
-          {/* FECHA FACTURACIÓN */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="fechaFacturacion"
-          >
-            Fecha Facturación
-          </label>
-          <Calendar
-            id="fechaFacturacion"
-            value={fechaFacturacion}
-            onChange={(e) =>
-              onFechaFacturacionChange && onFechaFacturacionChange(e.value)
-            }
-            dateFormat="dd/mm/yy"
-            showIcon
-            disabled={!puedeEditar || readOnly}
-            showButtonBar
-            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
+
 
         <div style={{ flex: 0.25 }}>
           {/* ES GERENCIAL */}
@@ -954,32 +932,27 @@ export default function DatosGeneralesTab({
             //**disabled={!puedeEditar || readOnly}
             />
           </div>
-
-          {/* FECHA RECEPCIÓN COMPROBANTE */}
-          <div style={{ flex: 0.5 }}>
+          <div style={{ flex: 0.75 }}>
+            {/* FECHA FACTURACIÓN */}
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="fechaRecepcionComprobante"
+              htmlFor="fechaFacturacion"
             >
-              Fecha Recepción
+              Fecha Facturación
             </label>
             <Calendar
-              id="fechaRecepcionComprobante"
-              value={fechaRecepcionComprobante}
+              id="fechaFacturacion"
+              value={fechaFacturacion}
               onChange={(e) =>
-                onFechaRecepcionComprobanteChange &&
-                onFechaRecepcionComprobanteChange(e.value)
+                onFechaFacturacionChange && onFechaFacturacionChange(e.value)
               }
               dateFormat="dd/mm/yy"
               showIcon
-              //**disabled={!puedeEditar || readOnly }
-              style={{
-                width: "100%",
-                fontWeight: "bold",
-              }}
+              disabled={!puedeEditar || readOnly}
+              showButtonBar
+              inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
-
           {/* TIPO DOCUMENTO FINAL */}
           <div style={{ flex: 1 }}>
             <label
