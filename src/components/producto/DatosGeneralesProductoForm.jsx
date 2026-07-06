@@ -679,7 +679,7 @@ export default function DatosGeneralesProductoForm({
             marginBottom: 10,
           }}
         >
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1.5 }}>
             <label htmlFor="descripcionBase" className="font-bold">
               Descripción Base *
             </label>
@@ -738,16 +738,7 @@ export default function DatosGeneralesProductoForm({
               </small>
             )}
           </div>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-            marginBottom: 10,
-          }}
-        >
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 2.5 }}>
             <label htmlFor="descripcionArmada" className="font-bold">
               Descripción Armada *
             </label>
@@ -781,6 +772,7 @@ export default function DatosGeneralesProductoForm({
             )}
           </div>
         </div>
+
 
         <Panel
           header="Procedencia, Almacenamiento, Unidades Medida/Empaque Estado"
@@ -839,7 +831,7 @@ export default function DatosGeneralesProductoForm({
                 </small>
               )}
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1.5 }}>
               <label htmlFor="tipoAlmacenamientoId" className="font-bold">
                 Tipo de Almacenamiento *
               </label>
@@ -879,7 +871,7 @@ export default function DatosGeneralesProductoForm({
                 </small>
               )}
             </div>
-            <div style={{ flex: 2 }}>
+            <div style={{ flex: 1 }}>
               <label htmlFor="unidadMedidaId" className="font-bold">
                 Unidad de Medida *
               </label>
@@ -920,7 +912,7 @@ export default function DatosGeneralesProductoForm({
                 </small>
               )}
             </div>
-            <div style={{ flex: 2 }}>
+            <div style={{ flex: 1 }}>
               <label htmlFor="unidadMedidaComercialId" style={{ fontWeight: "bold", color: "green" }}>
                 Unidad Comercial
               </label>
@@ -950,9 +942,6 @@ export default function DatosGeneralesProductoForm({
                   {errors.unidadMedidaComercialId.message}
                 </small>
               )}
-              <small className="p-text-secondary" style={{ display: 'block', marginTop: '4px' }}>
-                Si no se define, se usará automáticamente la Unidad de Almacén
-              </small>
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="estadoInicialId" className="font-bold">
@@ -982,8 +971,8 @@ export default function DatosGeneralesProductoForm({
                 </small>
               )}
             </div>
-            <div style={{ flex: 1 }}>
-              <label className="font-bold">Estado del Producto</label>
+            <div style={{ flex: 0.5 }}>
+              <label className="font-bold">Cesado</label>
               <Controller
                 name="cesado"
                 control={control}
@@ -1006,89 +995,7 @@ export default function DatosGeneralesProductoForm({
 
         </Panel>
 
-        <Panel
-          header="Descripciones para Exportacion (Español/Ingles)"
-          toggleable
-          collapsed={true}
-          className="mb-3"
-        >
 
-          {/* 🌍 DESCRIPCIONES PARA EXPORTACIÓN */}
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-              marginBottom: 10,
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <label htmlFor="descripcionEspanolExportacion" className="font-bold">
-                Descripción Español (Exportación)
-              </label>
-              <Controller
-                name="descripcionEspanolExportacion"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <InputTextarea
-                    id="descripcionEspanolExportacion"
-                    {...field}
-                    rows={2}
-                    className={classNames({
-                      "p-invalid": fieldState.error,
-                    })}
-                    style={{
-                      textTransform: "uppercase",
-                      fontStyle: "italic",
-                      fontWeight: "bold",
-                      color: "green"
-                    }}
-                    placeholder="Descripción en español para ventas al exterior"
-                    disabled={readOnly}
-                  />
-                )}
-              />
-              {errors.descripcionEspanolExportacion && (
-                <small className="p-error">
-                  {errors.descripcionEspanolExportacion.message}
-                </small>
-              )}
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="descripcionInglesExportacion" className="font-bold">
-                Descripción Inglés (Exportación)
-              </label>
-              <Controller
-                name="descripcionInglesExportacion"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <InputTextarea
-                    id="descripcionInglesExportacion"
-                    {...field}
-                    rows={2}
-                    className={classNames({
-                      "p-invalid": fieldState.error,
-                    })}
-                    style={{
-                      textTransform: "uppercase",
-                      fontStyle: "italic",
-                      fontWeight: "bold",
-                      color: "green"
-                    }}
-                    placeholder="English description for international sales"
-                    disabled={readOnly}
-                  />
-                )}
-              />
-              {errors.descripcionInglesExportacion && (
-                <small className="p-error">
-                  {errors.descripcionInglesExportacion.message}
-                </small>
-              )}
-            </div>
-          </div>
-
-        </Panel>
         <Panel
           header="Detraccion y Retencion "
           toggleable
@@ -1306,7 +1213,89 @@ export default function DatosGeneralesProductoForm({
             </div>
           </div>
         </Panel>
+        <Panel
+          header="Descripciones para Exportacion (Español/Ingles)"
+          toggleable
+          collapsed={true}
+          className="mb-3"
+        >
 
+          {/* 🌍 DESCRIPCIONES PARA EXPORTACIÓN */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+              marginBottom: 10,
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="descripcionEspanolExportacion" className="font-bold">
+                Descripción Español (Exportación)
+              </label>
+              <Controller
+                name="descripcionEspanolExportacion"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <InputTextarea
+                    id="descripcionEspanolExportacion"
+                    {...field}
+                    rows={2}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    style={{
+                      textTransform: "uppercase",
+                      fontStyle: "italic",
+                      fontWeight: "bold",
+                      color: "green"
+                    }}
+                    placeholder="Descripción en español para ventas al exterior"
+                    disabled={readOnly}
+                  />
+                )}
+              />
+              {errors.descripcionEspanolExportacion && (
+                <small className="p-error">
+                  {errors.descripcionEspanolExportacion.message}
+                </small>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="descripcionInglesExportacion" className="font-bold">
+                Descripción Inglés (Exportación)
+              </label>
+              <Controller
+                name="descripcionInglesExportacion"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <InputTextarea
+                    id="descripcionInglesExportacion"
+                    {...field}
+                    rows={2}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    style={{
+                      textTransform: "uppercase",
+                      fontStyle: "italic",
+                      fontWeight: "bold",
+                      color: "green"
+                    }}
+                    placeholder="English description for international sales"
+                    disabled={readOnly}
+                  />
+                )}
+              />
+              {errors.descripcionInglesExportacion && (
+                <small className="p-error">
+                  {errors.descripcionInglesExportacion.message}
+                </small>
+              )}
+            </div>
+          </div>
+
+        </Panel>
 
         <Panel
           header="Foto del Producto"
