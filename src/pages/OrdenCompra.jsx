@@ -1627,8 +1627,6 @@ export default function OrdenCompra({ ruta }) {
         visible={showDialog}
         style={{ width: "1300px" }}
         onHide={() => {
-          console.log('🔴 [DIALOG] onHide ejecutado');
-          console.log('🔴 [DIALOG] items.length:', items.length);
           setShowDialog(false);
         }}
         modal

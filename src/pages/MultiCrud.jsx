@@ -16,7 +16,7 @@ import { useDashboardStore } from "../shared/stores/useDashboardStore";
 export default function MultiCrud() {
   const isMobile = useIsMobile();
   const { vistaActual, unidadSeleccionada } = useDashboardStore();
-    // Obtener estado y funciones del contexto
+  // Obtener estado y funciones del contexto
   const { tabs, activeIndex, setActiveIndex, cerrarTab, volverAlDashboard } =
     useModulo();
 
@@ -57,7 +57,7 @@ export default function MultiCrud() {
   return (
     <div style={{ minHeight: "calc(100vh - 64px)", position: "relative" }}>
       {/* Sistema de pestañas dinámicas */}
-           {activeIndex === -1 ? (
+      {activeIndex === -1 ? (
         // Mostrar Dashboard según la vista actual
         vistaActual === "modular" ? (
           <Dashboard />
@@ -99,7 +99,7 @@ export default function MultiCrud() {
         style={{
           position: "fixed",
           bottom: "32px",
-          right: "32px",
+          left: "32px",
           width: "64px",
           height: "64px",
           borderRadius: "50%",

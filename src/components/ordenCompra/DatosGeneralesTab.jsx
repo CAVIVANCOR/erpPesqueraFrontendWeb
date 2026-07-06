@@ -280,7 +280,7 @@ export default function DatosGeneralesTab({
 
 
       <Panel
-        header="Tipo Documento Correlativos y Fechas de Entrega y Recepcion"
+        header="Tipo Documento Correlativos, Fechas de Entrega y Recepcion"
         toggleable
         collapsed={false}
         className="mb-3"

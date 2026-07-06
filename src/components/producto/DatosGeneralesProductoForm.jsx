@@ -15,8 +15,6 @@ import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
 import { Dropdown } from "primereact/dropdown";
-import { ToggleButton } from "primereact/togglebutton";
-import { ButtonGroup } from "primereact/buttongroup";
 import { Checkbox } from "primereact/checkbox";
 import { classNames } from "primereact/utils";
 import { Controller } from "react-hook-form";
@@ -27,6 +25,7 @@ import { subirFotoProducto } from "../../api/producto";
 import { Panel } from "primereact/panel";
 import { Tag } from "primereact/tag";
 import PlanCuentaContableSelector from "../common/PlanCuentaContableSelector";
+import BooleanToggleButton from "../common/BooleanToggleButton";
 
 export default function DatosGeneralesProductoForm({
   control,
@@ -569,30 +568,6 @@ export default function DatosGeneralesProductoForm({
             )}
           </div>
 
-          <div style={{ flex: 1 }}>
-            <label htmlFor="codigo" className="font-bold">
-              Código *
-            </label>
-            <Controller
-              name="codigo"
-              control={control}
-              render={({ field, fieldState }) => (
-                <InputText
-                  id="codigo"
-                  {...field}
-                  className={classNames({
-                    "p-invalid": fieldState.error,
-                  })}
-                  style={{ fontWeight: "bold" }}
-                  maxLength={20}
-                  disabled={readOnly}
-                />
-              )}
-            />
-            {errors.codigo && (
-              <small className="p-error">{errors.codigo.message}</small>
-            )}
-          </div>
         </div>
         <div
           style={{
@@ -764,82 +739,6 @@ export default function DatosGeneralesProductoForm({
             )}
           </div>
         </div>
-
-        {/* 🌍 DESCRIPCIONES PARA EXPORTACIÓN */}
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-            marginBottom: 10,
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="descripcionEspanolExportacion" className="font-bold">
-              Descripción Español (Exportación)
-            </label>
-            <Controller
-              name="descripcionEspanolExportacion"
-              control={control}
-              render={({ field, fieldState }) => (
-                <InputTextarea
-                  id="descripcionEspanolExportacion"
-                  {...field}
-                  rows={2}
-                  className={classNames({
-                    "p-invalid": fieldState.error,
-                  })}
-                  style={{
-                    textTransform: "uppercase",
-                    fontStyle: "italic",
-                    fontWeight: "bold",
-                    color: "green"
-                  }}
-                  placeholder="Descripción en español para ventas al exterior"
-                  disabled={readOnly}
-                />
-              )}
-            />
-            {errors.descripcionEspanolExportacion && (
-              <small className="p-error">
-                {errors.descripcionEspanolExportacion.message}
-              </small>
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="descripcionInglesExportacion" className="font-bold">
-              Descripción Inglés (Exportación)
-            </label>
-            <Controller
-              name="descripcionInglesExportacion"
-              control={control}
-              render={({ field, fieldState }) => (
-                <InputTextarea
-                  id="descripcionInglesExportacion"
-                  {...field}
-                  rows={2}
-                  className={classNames({
-                    "p-invalid": fieldState.error,
-                  })}
-                  style={{
-                    textTransform: "uppercase",
-                    fontStyle: "italic",
-                    fontWeight: "bold",
-                    color: "green"
-                  }}
-                  placeholder="English description for international sales"
-                  disabled={readOnly}
-                />
-              )}
-            />
-            {errors.descripcionInglesExportacion && (
-              <small className="p-error">
-                {errors.descripcionInglesExportacion.message}
-              </small>
-            )}
-          </div>
-        </div>
-
         <div
           style={{
             display: "flex",
@@ -883,16 +782,22 @@ export default function DatosGeneralesProductoForm({
           </div>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "2rem",
-            marginTop: "1rem",
-            marginBottom: "1rem",
-          }}
+        <Panel
+          header="Procedencia, Almacenamiento, Unidades Medida/Empaque Estado"
+          toggleable
+          collapsed={false}
+          className="mb-3"
         >
-          <div style={{ flex: 1 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "end",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+              marginBottom: 10,
+            }}
+          >
+
             <div style={{ flex: 1 }}>
               <label htmlFor="procedenciaId" className="font-bold">
                 Procedencia *
@@ -1050,6 +955,156 @@ export default function DatosGeneralesProductoForm({
               </small>
             </div>
             <div style={{ flex: 1 }}>
+              <label htmlFor="estadoInicialId" className="font-bold">
+                Estado Inicial *
+              </label>
+              <Controller
+                name="estadoInicialId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Dropdown
+                    id="estadoInicialId"
+                    {...field}
+                    options={estadosInicialesOptions}
+                    placeholder="Seleccione estado inicial"
+                    style={{ fontWeight: "bold" }}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    showClear
+                    disabled={readOnly}
+                  />
+                )}
+              />
+              {errors.estadoInicialId && (
+                <small className="p-error">
+                  {errors.estadoInicialId.message}
+                </small>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label className="font-bold">Estado del Producto</label>
+              <Controller
+                name="cesado"
+                control={control}
+                render={({ field }) => (
+                  <BooleanToggleButton
+                    value={field.value || false}
+                    onChange={field.onChange}
+                    labelTrue="CESADO"
+                    labelFalse="ACTIVO"
+                    severityTrue="danger"
+                    severityFalse="success"
+                    icon={field.value ? "pi-times-circle" : "pi-check-circle"}
+                    disabled={readOnly}
+                    style={{ marginTop: "0.5rem" }}
+                  />
+                )}
+              />
+            </div>
+          </div>
+
+        </Panel>
+
+        <Panel
+          header="Descripciones para Exportacion (Español/Ingles)"
+          toggleable
+          collapsed={true}
+          className="mb-3"
+        >
+
+          {/* 🌍 DESCRIPCIONES PARA EXPORTACIÓN */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+              marginBottom: 10,
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="descripcionEspanolExportacion" className="font-bold">
+                Descripción Español (Exportación)
+              </label>
+              <Controller
+                name="descripcionEspanolExportacion"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <InputTextarea
+                    id="descripcionEspanolExportacion"
+                    {...field}
+                    rows={2}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    style={{
+                      textTransform: "uppercase",
+                      fontStyle: "italic",
+                      fontWeight: "bold",
+                      color: "green"
+                    }}
+                    placeholder="Descripción en español para ventas al exterior"
+                    disabled={readOnly}
+                  />
+                )}
+              />
+              {errors.descripcionEspanolExportacion && (
+                <small className="p-error">
+                  {errors.descripcionEspanolExportacion.message}
+                </small>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="descripcionInglesExportacion" className="font-bold">
+                Descripción Inglés (Exportación)
+              </label>
+              <Controller
+                name="descripcionInglesExportacion"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <InputTextarea
+                    id="descripcionInglesExportacion"
+                    {...field}
+                    rows={2}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    style={{
+                      textTransform: "uppercase",
+                      fontStyle: "italic",
+                      fontWeight: "bold",
+                      color: "green"
+                    }}
+                    placeholder="English description for international sales"
+                    disabled={readOnly}
+                  />
+                )}
+              />
+              {errors.descripcionInglesExportacion && (
+                <small className="p-error">
+                  {errors.descripcionInglesExportacion.message}
+                </small>
+              )}
+            </div>
+          </div>
+
+        </Panel>
+        <Panel
+          header="Detraccion y Retencion "
+          toggleable
+          collapsed={false}
+          className="mb-3"
+        >
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "end",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+              marginBottom: 10,
+            }}
+          >
+            <div style={{ flex: 1 }}>
               <label htmlFor="tipoDetraccionId" className="font-bold">
                 Tipo Detracción SUNAT
               </label>
@@ -1088,94 +1143,7 @@ export default function DatosGeneralesProductoForm({
                   {errors.tipoDetraccionId.message}
                 </small>
               )}
-              <small className="p-text-secondary" style={{ display: 'block', marginTop: '4px' }}>
-                Seleccione para auto-llenar el porcentaje
-              </small>
             </div>
-          </div>
-
-          {/* Fila 11: Cuentas Contables */}
-          <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
-            <div style={{ flex: 1 }}>
-              <Controller
-                name="cuentaComprasId"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <PlanCuentaContableSelector
-                    value={field.value}
-                    onChange={field.onChange}
-                    label="Cuenta Compras (60)"
-                    placeholder="Seleccione cuenta de compras"
-                    disabled={readOnly}
-                    error={!!fieldState.error}
-                    errorMessage={fieldState.error?.message}
-                    showClearButton={true}
-                  />
-                )}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Controller
-                name="cuentaInventarioId"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <PlanCuentaContableSelector
-                    value={field.value}
-                    onChange={field.onChange}
-                    label="Cuenta Inventario (20)"
-                    placeholder="Seleccione cuenta de inventario"
-                    disabled={readOnly}
-                    error={!!fieldState.error}
-                    errorMessage={fieldState.error?.message}
-                    showClearButton={true}
-                  />
-                )}
-              />
-            </div>
-          </div>
-
-          {/* Fila 12: Cuentas Contables (continuación) */}
-          <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
-            <div style={{ flex: 1 }}>
-              <Controller
-                name="cuentaCostoVentasId"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <PlanCuentaContableSelector
-                    value={field.value}
-                    onChange={field.onChange}
-                    label="Cuenta Costo Ventas (69)"
-                    placeholder="Seleccione cuenta de costo de ventas"
-                    disabled={readOnly}
-                    error={!!fieldState.error}
-                    errorMessage={fieldState.error?.message}
-                    showClearButton={true}
-                  />
-                )}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Controller
-                name="cuentaVariacionId"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <PlanCuentaContableSelector
-                    value={field.value}
-                    onChange={field.onChange}
-                    label="Cuenta Variación (61)"
-                    placeholder="Seleccione cuenta de variación"
-                    disabled={readOnly}
-                    error={!!fieldState.error}
-                    errorMessage={fieldState.error?.message}
-                    showClearButton={true}
-                  />
-                )}
-              />
-            </div>
-          </div>
-
-          {/* Fila 12: Detracción */}
-          <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
             <div style={{ flex: 1 }}>
               <label htmlFor="porcentajeDetraccion" className="font-bold">
                 Detracción (%)
@@ -1225,17 +1193,17 @@ export default function DatosGeneralesProductoForm({
                 name="exoneradoRetencion"
                 control={control}
                 render={({ field }) => (
-                  <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
-                    <Checkbox
-                      inputId="exoneradoRetencion"
-                      checked={field.value || false}
-                      onChange={(e) => field.onChange(e.checked)}
-                      disabled={readOnly}
-                    />
-                    <label htmlFor="exoneradoRetencion" style={{ marginLeft: 8, fontWeight: 'normal' }}>
-                      {field.value ? 'Sí, está exonerado' : 'No, aplica retención'}
-                    </label>
-                  </div>
+                  <BooleanToggleButton
+                    value={field.value || false}
+                    onChange={field.onChange}
+                    labelTrue="EXONERADO"
+                    labelFalse="APLICA RETENCIÓN"
+                    severityTrue="info"
+                    severityFalse="secondary"
+                    icon={field.value ? "pi-check-circle" : "pi-times-circle"}
+                    disabled={readOnly}
+                    style={{ marginTop: "0.5rem" }}
+                  />
                 )}
               />
               {errors.exoneradoRetencion && (
@@ -1244,68 +1212,114 @@ export default function DatosGeneralesProductoForm({
                 </small>
               )}
             </div>
+          </div>
+
+        </Panel>
+
+
+        <Panel
+          header="Cuentas Contables"
+          toggleable
+          collapsed={false}
+          className="mb-3"
+        >
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+              marginBottom: 10,
+            }}
+          >
+
             <div style={{ flex: 1 }}>
-              <label htmlFor="estadoInicialId" className="font-bold">
-                Estado Inicial *
-              </label>
               <Controller
-                name="estadoInicialId"
+                name="cuentaComprasId"
                 control={control}
                 render={({ field, fieldState }) => (
-                  <Dropdown
-                    id="estadoInicialId"
-                    {...field}
-                    options={estadosInicialesOptions}
-                    placeholder="Seleccione estado inicial"
-                    style={{ fontWeight: "bold" }}
-                    className={classNames({
-                      "p-invalid": fieldState.error,
-                    })}
-                    showClear
+                  <PlanCuentaContableSelector
+                    value={field.value}
+                    onChange={field.onChange}
+                    label="Cuenta Compras (60)"
+                    placeholder="Seleccione cuenta de compras"
                     disabled={readOnly}
+                    error={!!fieldState.error}
+                    errorMessage={fieldState.error?.message}
+                    showClearButton={true}
                   />
                 )}
               />
-              {errors.estadoInicialId && (
-                <small className="p-error">
-                  {errors.estadoInicialId.message}
-                </small>
-              )}
             </div>
             <div style={{ flex: 1 }}>
               <Controller
-                name="cesado"
+                name="cuentaInventarioId"
                 control={control}
-                render={({ field }) => (
-                  <Button
-                    id="cesado"
-                    type="button"
-                    label={field.value ? "CESADO" : "ACTIVO"}
-                    icon={
-                      field.value ? "pi pi-times-circle" : "pi pi-check-circle"
-                    }
-                    className={
-                      field.value ? "p-button-danger" : "p-button-primary"
-                    }
-                    onClick={() => field.onChange(!field.value)}
-                    style={{ marginTop: "0.5rem", width: "100%" }}
+                render={({ field, fieldState }) => (
+                  <PlanCuentaContableSelector
+                    value={field.value}
+                    onChange={field.onChange}
+                    label="Cuenta Inventario (20)"
+                    placeholder="Seleccione cuenta de inventario"
                     disabled={readOnly}
-                    raised
+                    error={!!fieldState.error}
+                    errorMessage={fieldState.error?.message}
+                    showClearButton={true}
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Controller
+                name="cuentaCostoVentasId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <PlanCuentaContableSelector
+                    value={field.value}
+                    onChange={field.onChange}
+                    label="Cuenta Costo Ventas (69)"
+                    placeholder="Seleccione cuenta de costo de ventas"
+                    disabled={readOnly}
+                    error={!!fieldState.error}
+                    errorMessage={fieldState.error?.message}
+                    showClearButton={true}
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Controller
+                name="cuentaVariacionId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <PlanCuentaContableSelector
+                    value={field.value}
+                    onChange={field.onChange}
+                    label="Cuenta Variación (61)"
+                    placeholder="Seleccione cuenta de variación"
+                    disabled={readOnly}
+                    error={!!fieldState.error}
+                    errorMessage={fieldState.error?.message}
+                    showClearButton={true}
                   />
                 )}
               />
             </div>
           </div>
+        </Panel>
+
+
+        <Panel
+          header="Foto del Producto"
+          toggleable
+          collapsed={true}
+          className="mb-3"
+        >
           <div
             style={{
               display: "flex",
-              justifyContent: "flex-end",
-              gap: "2rem",
-              marginTop: 18,
-              border: "1px solid #ccc",
-              borderRadius: 6,
-              padding: "1rem",
-              backgroundColor: "#f8f9fa",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+              marginBottom: 10,
             }}
           >
             {/* Controles de carga y mensaje */}
@@ -1393,7 +1407,8 @@ export default function DatosGeneralesProductoForm({
               )}
             </div>
           </div>
-        </div>
+        </Panel>
+
         {/* Sección de Información Margenes de Utilidad */}
         <Panel
           header="Información Adicional"
