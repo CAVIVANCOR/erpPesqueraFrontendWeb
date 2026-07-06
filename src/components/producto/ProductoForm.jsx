@@ -239,6 +239,7 @@ export default function ProductoForm({
   estadosIniciales = [],
   unidadMetricaDefault,
   especies = [],
+  tiposDetraccion = [],
   onGuardar,
   onCancelar,
   modoEdicion = false,
@@ -327,6 +328,7 @@ export default function ProductoForm({
       medidaAngulo: producto?.medidaAngulo || "",
       descripcionMedidaAdicional: producto?.descripcionMedidaAdicional || "",
       especieId: producto?.especieId ? Number(producto.especieId) : null,
+      tipoDetraccionId: producto?.tipoDetraccionId ? Number(producto.tipoDetraccionId) : null,
       exoneradoRetencion: producto?.exoneradoRetencion || false,
       sujetoDetraccion: producto?.sujetoDetraccion || false,
       aplicaSubfamilia: producto?.aplicaSubfamilia || false,
@@ -443,6 +445,7 @@ export default function ProductoForm({
         medidaAngulo: data.medidaAngulo,
         descripcionMedidaAdicional: data.descripcionMedidaAdicional,
         especieId: data.especieId ? Number(data.especieId) : null,
+        tipoDetraccionId: data.tipoDetraccionId ? Number(data.tipoDetraccionId) : null,
         porcentajeDetraccion: data.porcentajeDetraccion,
         exoneradoIgv: data.exoneradoIgv,
         exoneradoRetencion: data.exoneradoRetencion,
@@ -546,6 +549,7 @@ export default function ProductoForm({
               colores={colores}
               unidadMetricaDefault={unidadMetricaDefault}
               especies={especies}
+              tiposDetraccion={tiposDetraccion}
               readOnly={readOnly}
             />
           </TabPanel>

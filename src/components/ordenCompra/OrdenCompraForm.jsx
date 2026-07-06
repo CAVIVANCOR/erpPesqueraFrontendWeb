@@ -976,29 +976,10 @@ export default function OrdenCompraForm({
         urlDocumentoRef: urlDocumentoRef,
       };
 
-      // ✅ 3. Enviar UNA SOLA VEZ al backend
-      if (isEdit) {
-        const { actualizarOrdenCompra } = await import("../../api/ordenCompra");
-        await actualizarOrdenCompra(defaultValues.id, data);
-        toast.current?.show({
-          severity: "success",
-          summary: "Orden de Compra Actualizada",
-          detail: "Los datos se guardaron correctamente",
-          life: 3000,
-        });
-      } else {
-        const { crearOrdenCompra } = await import("../../api/ordenCompra");
-        const nuevaOrden = await crearOrdenCompra(data);
-        toast.current?.show({
-          severity: "success",
-          summary: "Orden de Compra Creada",
-          detail: `Orden ${nuevaOrden.numeroDocumento} creada exitosamente`,
-          life: 3000,
-        });
-        if (onGuardar) onGuardar(nuevaOrden);
-      }
+      // ✅ 3. Llamar callback del padre (él maneja el guardado)
+      onSubmit(data);
 
-      // ✅ 4. Actualizar estado local
+      // ✅ 4. Actualizar estado local solo en edición
       if (isEdit) {
         setTotales({
           subtotal: subtotalCalc,

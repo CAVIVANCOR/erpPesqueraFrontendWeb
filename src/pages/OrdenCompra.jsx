@@ -502,20 +502,26 @@ export default function OrdenCompra({ ruta }) {
 
     setLoading(true);
     try {
+      const { getOrdenCompraPorId } = await import("../api/ordenCompra");
+      let ordenResultado;
+
       if (esEdicion) {
         await actualizarOrdenCompra(editing.id, data);
-
-        const { getOrdenCompraPorId } = await import("../api/ordenCompra");
-        const ordenActualizada = await getOrdenCompraPorId(editing.id);
-        setEditing(ordenActualizada);
+        ordenResultado = await getOrdenCompraPorId(editing.id);
+        setEditing(ordenResultado);
 
         toast.current.show({
           severity: "success",
           summary: "Actualizado",
           detail: "Orden actualizada. Puedes seguir agregando detalles.",
         });
+
+        actualizarRegistro(editing.id, ordenResultado);
       } else {
         const resultado = await crearOrdenCompra(data);
+        ordenResultado = await getOrdenCompraPorId(resultado.id);
+        setEditing(ordenResultado);
+
         toast.current.show({
           severity: "success",
           summary: "Creado",
@@ -523,17 +529,8 @@ export default function OrdenCompra({ ruta }) {
           life: 5000,
         });
 
-        const { getOrdenCompraPorId } = await import("../api/ordenCompra");
-        const ordenCompleta = await getOrdenCompraPorId(resultado.id);
-        setEditing(ordenCompleta);
+        agregarRegistro(ordenResultado);
       }
-
-      if (esEdicion) {
-        actualizarRegistro(editing.id, ordenActualizada);
-      } else {
-        agregarRegistro(ordenCompleta);
-      }
-
 
     } catch (err) {
       const errorMsg =

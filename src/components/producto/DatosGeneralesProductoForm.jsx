@@ -26,6 +26,7 @@ import { Toast } from "primereact/toast";
 import { subirFotoProducto } from "../../api/producto";
 import { Panel } from "primereact/panel";
 import { Tag } from "primereact/tag";
+import PlanCuentaContableSelector from "../common/PlanCuentaContableSelector";
 
 export default function DatosGeneralesProductoForm({
   control,
@@ -46,11 +47,13 @@ export default function DatosGeneralesProductoForm({
   colores = [],
   unidadMetricaDefault,
   especies = [],
+  tiposDetraccion = [],
   defaultValues = {},
   readOnly = false,
 }) {
-  // Watch del porcentaje de detracción para sincronizar sujetoDetraccion
+  // Watch del porcentaje de detracción y tipo de detracción
   const porcentajeDetraccionWatch = watch("porcentajeDetraccion");
+  const tipoDetraccionIdWatch = watch("tipoDetraccionId");
 
   // Efecto para sincronizar automáticamente sujetoDetraccion con porcentajeDetraccion
   useEffect(() => {
@@ -143,6 +146,12 @@ export default function DatosGeneralesProductoForm({
   const especiesOptions = especies.map((e) => ({
     label: e.nombre,
     value: Number(e.id),
+  }));
+
+  const tiposDetraccionOptions = tiposDetraccion.map((t) => ({
+    label: `${t.codigo} - ${t.nombre} - ${Number(t.tasa).toFixed(2)}%`,
+    value: Number(t.id),
+    tasa: Number(t.tasa)
   }));
 
   // Limpiar subfamilia cuando cambie la familia
@@ -1007,7 +1016,7 @@ export default function DatosGeneralesProductoForm({
               )}
             </div>
             <div style={{ flex: 2 }}>
-              <label htmlFor="unidadMedidaComercialId" style={{fontWeight:"bold", color:"green"}}>
+              <label htmlFor="unidadMedidaComercialId" style={{ fontWeight: "bold", color: "green" }}>
                 Unidad Comercial
               </label>
               <Controller
@@ -1027,7 +1036,7 @@ export default function DatosGeneralesProductoForm({
                     showClear
                     filter
                     disabled={readOnly}
-                    style={{fontWeight:"bold"}}
+                    style={{ fontWeight: "bold" }}
                   />
                 )}
               />
@@ -1040,6 +1049,133 @@ export default function DatosGeneralesProductoForm({
                 Si no se define, se usará automáticamente la Unidad de Almacén
               </small>
             </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="tipoDetraccionId" className="font-bold">
+                Tipo Detracción SUNAT
+              </label>
+              <Controller
+                name="tipoDetraccionId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Dropdown
+                    id="tipoDetraccionId"
+                    value={field.value ? Number(field.value) : null}
+                    onChange={(e) => {
+                      field.onChange(e.value);
+                      // Auto-llenar porcentajeDetraccion y marcar sujetoDetraccion
+                      if (e.value) {
+                        const tipoSeleccionado = tiposDetraccionOptions.find(t => Number(t.value) === Number(e.value));
+                        if (tipoSeleccionado) {
+                          setValue("porcentajeDetraccion", tipoSeleccionado.tasa, { shouldValidate: true });
+                          setValue("sujetoDetraccion", true, { shouldValidate: true });
+                        }
+                      }
+                    }}
+                    options={tiposDetraccionOptions}
+                    placeholder="Seleccione tipo de detracción"
+                    style={{ fontWeight: "bold" }}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    showClear
+                    filter
+                    disabled={readOnly}
+                  />
+                )}
+              />
+              {errors.tipoDetraccionId && (
+                <small className="p-error">
+                  {errors.tipoDetraccionId.message}
+                </small>
+              )}
+              <small className="p-text-secondary" style={{ display: 'block', marginTop: '4px' }}>
+                Seleccione para auto-llenar el porcentaje
+              </small>
+            </div>
+          </div>
+
+          {/* Fila 11: Cuentas Contables */}
+          <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+            <div style={{ flex: 1 }}>
+              <Controller
+                name="cuentaComprasId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <PlanCuentaContableSelector
+                    value={field.value}
+                    onChange={field.onChange}
+                    label="Cuenta Compras (60)"
+                    placeholder="Seleccione cuenta de compras"
+                    disabled={readOnly}
+                    error={!!fieldState.error}
+                    errorMessage={fieldState.error?.message}
+                    showClearButton={true}
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Controller
+                name="cuentaInventarioId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <PlanCuentaContableSelector
+                    value={field.value}
+                    onChange={field.onChange}
+                    label="Cuenta Inventario (20)"
+                    placeholder="Seleccione cuenta de inventario"
+                    disabled={readOnly}
+                    error={!!fieldState.error}
+                    errorMessage={fieldState.error?.message}
+                    showClearButton={true}
+                  />
+                )}
+              />
+            </div>
+          </div>
+
+          {/* Fila 12: Cuentas Contables (continuación) */}
+          <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+            <div style={{ flex: 1 }}>
+              <Controller
+                name="cuentaCostoVentasId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <PlanCuentaContableSelector
+                    value={field.value}
+                    onChange={field.onChange}
+                    label="Cuenta Costo Ventas (69)"
+                    placeholder="Seleccione cuenta de costo de ventas"
+                    disabled={readOnly}
+                    error={!!fieldState.error}
+                    errorMessage={fieldState.error?.message}
+                    showClearButton={true}
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Controller
+                name="cuentaVariacionId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <PlanCuentaContableSelector
+                    value={field.value}
+                    onChange={field.onChange}
+                    label="Cuenta Variación (61)"
+                    placeholder="Seleccione cuenta de variación"
+                    disabled={readOnly}
+                    error={!!fieldState.error}
+                    errorMessage={fieldState.error?.message}
+                    showClearButton={true}
+                  />
+                )}
+              />
+            </div>
+          </div>
+
+          {/* Fila 12: Detracción */}
+          <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
             <div style={{ flex: 1 }}>
               <label htmlFor="porcentajeDetraccion" className="font-bold">
                 Detracción (%)

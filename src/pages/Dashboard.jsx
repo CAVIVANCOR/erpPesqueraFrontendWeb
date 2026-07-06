@@ -627,6 +627,12 @@ export default function Dashboard() {
           tab: "tablas", // ← NUEVO
         },
         {
+          label: "Tipos de Detracción",
+          key: "tipoDetraccion",
+          icon: "pi-percentage",
+          tab: "tablas", // ← NUEVO
+        },
+        {
           label: "Entidad Comercial",
           key: "entidadComercial",
           icon: "pi-building",

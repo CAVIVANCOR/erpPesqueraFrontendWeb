@@ -53,6 +53,7 @@ import { getPaises } from "../api/pais";
 import { getMarcas } from "../api/marca";
 import { getEspecies } from "../api/especie";
 import EmpresaSelector from "../components/common/EmpresaSelector";
+import { getTiposDetraccionActivos } from "../api/tipoDetraccion";
 
 const Producto = ({ ruta }) => {
   const toast = useRef(null);
@@ -95,6 +96,7 @@ const Producto = ({ ruta }) => {
   const [coloresCatalogo, setColoresCatalogo] = useState([]);
   const [paisesCatalogo, setPaisesCatalogo] = useState([]);
   const [marcasCatalogo, setMarcasCatalogo] = useState([]);
+  const [tiposDetraccionCatalogo, setTiposDetraccionCatalogo] = useState([]);
 
   // Estados para catálogos que NO se filtran
   const [unidadesMetricas, setUnidadesMetricas] = useState([]);
@@ -132,6 +134,7 @@ const Producto = ({ ruta }) => {
         marcasData,
         unidadMetricaDefaultData,
         especiesData,
+        tiposDetraccionData,
       ] = await Promise.all([
         getUnidadesMedida(),
         getUnidadesMedidaMetricas(),
@@ -142,6 +145,9 @@ const Producto = ({ ruta }) => {
         getMarcas(),
         getUnidadMetricaDefault(),
         getEspecies().catch((err) => {
+          return []; // Retornar array vacío si falla
+        }),
+        getTiposDetraccionActivos().catch((err) => {
           return []; // Retornar array vacío si falla
         }),
       ]);
@@ -156,6 +162,7 @@ const Producto = ({ ruta }) => {
       setMarcasCatalogo(marcasData);
       setUnidadMetricaDefault(unidadMetricaDefaultData);
       setEspeciesCatalogo(especiesData);
+      setTiposDetraccionCatalogo(tiposDetraccionData);
 
       // Los filtros dinámicos se cargarán desde obtenerOpcionesDinamicas()
     } catch (error) {
@@ -1046,7 +1053,7 @@ const Producto = ({ ruta }) => {
 
       <Dialog
         visible={dialogVisible}
-        style={{ width: "1350px", maxWidth: "95vw" }}
+        style={{ width: "1300px" }}
         header={
           productoSeleccionado && productoSeleccionado.id
             ? `Editar Producto - ID: ${productoSeleccionado.id}`
@@ -1054,6 +1061,7 @@ const Producto = ({ ruta }) => {
         }
         modal
         maximizable
+        maximized={true}
         onHide={cerrarDialogo}
       >
         <ProductoForm
@@ -1077,6 +1085,7 @@ const Producto = ({ ruta }) => {
           estadosIniciales={estadosIniciales}
           unidadMetricaDefault={unidadMetricaDefault}
           especies={especiesCatalogo}
+          tiposDetraccion={tiposDetraccionCatalogo}
           permisos={permisos}
           readOnly={!!productoSeleccionado && !!productoSeleccionado.id && !permisos.puedeEditar}
         />
