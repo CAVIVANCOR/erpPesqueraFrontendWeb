@@ -40,8 +40,8 @@ import {
 // Utils
 import { formatearNumero } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
-import { getTiposMovimiento } from "../../api/tipoMovimiento";
-import { getTiposDetraccion } from "../../api/tesoreria/tipoDetraccion";
+import { getAllTipoMovEntregaRendir } from "../../api/tipoMovEntregaRendir";
+import { getAllTiposDetraccion } from "../../api/tipoDetraccion";
 import { getTiposRetencionPercepcion } from "../../api/tesoreria/tipoRetencionPercepcion";
 
 const TesoreriaPendientes = () => {
@@ -176,8 +176,8 @@ const TesoreriaPendientes = () => {
           getEstadosMultiFuncion(),
           getPeriodosContables(),
           getAllEmpresas(),
-          getTiposMovimiento(),
-          getTiposDetraccion(),
+          getAllTipoMovEntregaRendir(),
+          getAllTiposDetraccion(),
           getTiposRetencionPercepcion(),
           getEntidadesComerciales(),
           getEstadosMultiFuncionPorTipoProviene(24), // Estados de Cuenta por Cobrar

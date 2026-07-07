@@ -148,62 +148,27 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   // ════════════════════════════════════════════════════════════
   useEffect(() => {
     const consultarTipoCambio = async () => {
-      if (!fechaPago || !monedaPagoId || !cuentaPorCobrar?.monedaId) return;
+      if (!visible || !fechaPago) return;
 
-      const monedaPago = monedas.find(m => Number(m.id) === Number(monedaPagoId));
-      const monedaDeuda = monedas.find(m => Number(m.id) === Number(cuentaPorCobrar.monedaId));
+      try {
+        const year = fechaPago.getFullYear();
+        const month = String(fechaPago.getMonth() + 1).padStart(2, '0');
+        const day = String(fechaPago.getDate()).padStart(2, '0');
+        const fechaISO = `${year}-${month}-${day}`;
 
-      // Si ambas monedas son iguales, tipo de cambio = 1
-      if (monedaPago?.codigo === monedaDeuda?.codigo) {
-        setTipoCambio(1);
-        return;
-      }
+        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
 
-      // Si una es USD y la otra PEN, consultar SUNAT
-      if (
-        (monedaPago?.codigo === 'USD' && monedaDeuda?.codigo === 'PEN') ||
-        (monedaPago?.codigo === 'PEN' && monedaDeuda?.codigo === 'USD')
-      ) {
-        try {
-          const fechaISO = fechaPago.toISOString().split('T')[0];
-          const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
-
-          // Usar buy_price (precio de compra del dólar)
-          if (tipoCambioData && tipoCambioData.buy_price) {
-            const tc = parseFloat(tipoCambioData.buy_price);
-            setTipoCambio(tc);
-
-            toast?.current?.show({
-              severity: 'success',
-              summary: 'Tipo de Cambio',
-              detail: `T/C SUNAT: S/ ${tc.toFixed(3)} por USD (${fechaISO})`,
-              life: 3000
-            });
-          } else {
-            toast?.current?.show({
-              severity: 'warn',
-              summary: 'Advertencia',
-              detail: 'No se encontró tipo de cambio para la fecha seleccionada.',
-              life: 5000
-            });
-          }
-        } catch (error) {
-          console.error('Error al consultar tipo de cambio:', error);
-          toast?.current?.show({
-            severity: 'warn',
-            summary: 'Advertencia',
-            detail: error.message || 'No se pudo consultar el tipo de cambio de SUNAT. Ingrese manualmente.',
-            life: 5000
-          });
+        if (tipoCambioData && tipoCambioData.buy_price) {
+          const tc = parseFloat(tipoCambioData.buy_price);
+          setTipoCambio(tc);
         }
-      } else {
-        // Para otras combinaciones de monedas, establecer en 1
-        setTipoCambio(1);
+      } catch (error) {
+        console.error('Error al consultar tipo de cambio:', error);
       }
     };
 
     consultarTipoCambio();
-  }, [fechaPago, monedaPagoId, cuentaPorCobrar?.monedaId, monedas, toast]);
+  }, [visible, fechaPago]);
   // ════════════════════════════════════════════════════════════
   // EFECTOS: CALCULAR MONTO APLICADO A LA DEUDA
   // ════════════════════════════════════════════════════════════
@@ -899,8 +864,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 mode="decimal"
                 minFractionDigits={2}
                 maxFractionDigits={2}
-                prefix={monedaPago?.simbolo ? `${monedaPago.simbolo} ` : ''}
-                className="w-full"
+                style={{ width: "100%" }}
               />
             </div>
           </div>
@@ -923,7 +887,6 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 mode="decimal"
                 minFractionDigits={4}
                 maxFractionDigits={4}
-                className="w-full"
                 disabled={monedaPago?.codigo === monedaDeuda?.codigo}
               />
             </div>
@@ -938,7 +901,6 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 minFractionDigits={2}
                 maxFractionDigits={2}
                 prefix={monedaDeuda?.simbolo ? `${monedaDeuda.simbolo} ` : ''}
-                className="w-full"
                 disabled
               />
             </div>
@@ -952,7 +914,6 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 options={mediosPagoOptions}
                 onChange={(e) => setMedioPagoId(e.value)}
                 placeholder="Seleccione medio de pago"
-                className="w-full"
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -965,7 +926,6 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 options={bancosOptions}
                 onChange={(e) => setBancoId(e.value)}
                 placeholder="Seleccione banco"
-                className="w-full"
                 showClear
               />
             </div>
@@ -982,13 +942,16 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
               />
             </div>
           </div>
+
+          {console.log('🔍 tiposMovimiento recibido:', tiposMovimiento)}
+          {console.log('🔍 tiposMovimiento length:', tiposMovimiento?.length)}
+          {console.log('🔍 tipoMovimientoIngresoId:', tipoMovimientoIngresoId)}
           <TipoMovimientoSelector
             tiposMovimiento={tiposMovimiento}
             value={tipoMovimientoIngresoId}
             onChange={(value) => setTipoMovimientoIngresoId(value)}
             required={true}
             placeholder="Buscar tipo de movimiento de ingreso..."
-            filterFunction={(tipo) => tipo.esIngreso === true}
           />
         </div>
       </Panel>
@@ -1000,12 +963,16 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   // ════════════════════════════════════════════════════════════
   const renderCargosBancarios = () => {
     const monedaPago = monedas.find(m => Number(m.id) === Number(monedaPagoId));
-
     return (
       <Panel header="🏦 Cargos Bancarios" className="mb-3" toggleable collapsed>
-        <div className="grid">
-          <div className="col-12 md:col-6">
-            <div className="field">
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
               <label htmlFor="montoITF" className="font-bold">
                 ITF (Impuesto a las Transacciones Financieras)
               </label>
@@ -1016,14 +983,9 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 mode="decimal"
                 minFractionDigits={2}
                 maxFractionDigits={2}
-                prefix={monedaPago?.simbolo ? `${monedaPago.simbolo} ` : ''}
-                className="w-full"
               />
             </div>
-          </div>
-
-          <div className="col-12 md:col-6">
-            <div className="field">
+            <div style={{ flex: 1 }}>
               <label htmlFor="montoComision" className="font-bold">
                 Comisión Bancaria
               </label>
@@ -1034,12 +996,9 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 mode="decimal"
                 minFractionDigits={2}
                 maxFractionDigits={2}
-                prefix={monedaPago?.simbolo ? `${monedaPago.simbolo} ` : ''}
-                className="w-full"
               />
             </div>
           </div>
-        </div>
       </Panel>
     );
   };

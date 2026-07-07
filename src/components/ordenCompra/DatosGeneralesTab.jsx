@@ -308,7 +308,7 @@ export default function DatosGeneralesTab({
               optionLabel="label"
               optionValue="value"
               placeholder="Seleccionar tipo"
-              disabled={isEdit || !puedeEditar || readOnly}
+              disabled={!puedeEditar || readOnly}
               style={{
                 fontWeight: "bold",
                 textTransform: "uppercase",

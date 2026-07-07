@@ -1433,6 +1433,7 @@ export default function OrdenCompra({ ruta }) {
                   optionLabel="label"
                   optionValue="value"
                   showClear
+                  filter
                   disabled={loading}
                 />
               </div>
@@ -1476,6 +1477,7 @@ export default function OrdenCompra({ ruta }) {
                   onChange={(e) => setTipoDocumentoIdSeleccionado(e.value)}
                   placeholder="Todos"
                   showClear
+                  filter
                   style={{ width: "100%" }}
                 />
               </div>
@@ -1491,6 +1493,7 @@ export default function OrdenCompra({ ruta }) {
                   placeholder="Todos"
                   showClear
                   style={{ width: "100%" }}
+                  filter
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -1507,6 +1510,7 @@ export default function OrdenCompra({ ruta }) {
                   optionValue="value"
                   showClear
                   disabled={loading}
+                  filter
                 />
               </div>
             </div>
