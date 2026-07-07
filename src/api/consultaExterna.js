@@ -104,17 +104,29 @@ export const consultarSunatRucFull = async (ruc) => {
  */
 export const consultarTipoCambioSunat = async (params = {}) => {
   try {
-    const { date, month, year } = params;
-    
-    // Validar parámetros
+    let { date, month, year } = params;
+    // NORMALIZAR FECHA PRIMERO (antes de validar)
+    if (date) {
+      if (date instanceof Date) {
+        const yearVal = date.getFullYear();
+        const monthVal = String(date.getMonth() + 1).padStart(2, '0');
+        const dayVal = String(date.getDate()).padStart(2, '0');
+        date = `${yearVal}-${monthVal}-${dayVal}`;
+      } else if (typeof date === 'string' && date.includes('T')) {
+        // Si es ISO string con hora, extraer solo fecha
+        date = date.split('T')[0];
+      }
+    }
+
+    // Validar parámetros (ahora date ya está normalizado)
     if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       throw new Error('Fecha debe estar en formato YYYY-MM-DD');
     }
-    
+
     if (month && (month < 1 || month > 12)) {
       throw new Error('Mes debe estar entre 1 y 12');
     }
-    
+
     if (year && year < 2000) {
       throw new Error('Año debe ser mayor a 2000');
     }

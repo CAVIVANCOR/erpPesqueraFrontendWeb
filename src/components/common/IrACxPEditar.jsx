@@ -1,9 +1,10 @@
 // src/components/common/IrACxPEditar.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { getCuentaPorPagarByOrdenCompraId } from "../../api/cuentasPorCobrarPagar/cuentaPorPagar";
 import CuentaPorPagarForm from "../cuentaPorPagar/CuentaPorPagarForm";
+import { ModuloContext } from "../../context/ModuloContext";
 
 /**
  * Componente reutilizable genérico para editar una Cuenta por Pagar desde cualquier módulo
@@ -59,9 +60,11 @@ export default function IrACxPEditar({
   estadoIdMinimo = 39,
   ...rest
 }) {
+  const { abrirModulo } = useContext(ModuloContext);
   const [cxpData, setCxpData] = useState(null);
   const [loading, setLoading] = useState(!!ordenCompraId);
   const [showDialog, setShowDialog] = useState(false);
+  const [showSelectionDialog, setShowSelectionDialog] = useState(false);
   const [error, setError] = useState(null);
 
   // Validar props obligatorios
@@ -124,13 +127,30 @@ export default function IrACxPEditar({
 
   const handleClick = () => {
     if (cxpData) {
-      setShowDialog(true);
+      setShowSelectionDialog(true);
     } else if (toast) {
       toast.current?.show({
         severity: "warn",
         summary: "Sin CxP",
         detail: error || "No se encontró una Cuenta por Pagar asociada a esta OrdenCompra",
         life: 3000,
+      });
+    }
+  };
+
+  const handleOpcionA = () => {
+    setShowSelectionDialog(false);
+    setShowDialog(true);
+  };
+
+  const handleOpcionB = () => {
+    setShowSelectionDialog(false);
+    if (abrirModulo && ordenCompra?.proveedorId) {
+      abrirModulo('cuentaPorPagar', 'Cuentas por Pagar', {
+        proveedorId: ordenCompra.proveedorId,
+        proveedorNombre: ordenCompra.proveedor?.nombre || 'Proveedor',
+        soloPendientes: true,
+        highlightId: cxpData?.id
       });
     }
   };
@@ -170,6 +190,41 @@ export default function IrACxPEditar({
         disabled={loading}
         {...rest}
       />
+
+      <Dialog
+        header="¿Qué deseas consultar?"
+        visible={showSelectionDialog}
+        style={{ width: "600px" }}
+        onHide={() => setShowSelectionDialog(false)}
+        modal
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "15px", padding: "10px" }}>
+          <Button
+            label={`📄 Editar CxP de este Documento (ID: ${cxpData?.id || ''})`}
+            icon="pi pi-pencil"
+            severity="warning"
+            outlined
+            onClick={handleOpcionA}
+            style={{ padding: "15px", justifyContent: "flex-start", textAlign: "left" }}
+          />
+          <div style={{ fontSize: "0.85rem", color: "#666", marginLeft: "10px", marginTop: "-10px" }}>
+            Monto: {cxpData?.moneda?.simbolo || 'S/'} {Number(cxpData?.montoTotal || 0).toFixed(2)} |
+            Saldo: {cxpData?.moneda?.simbolo || 'S/'} {Number(cxpData?.saldoPendiente || 0).toFixed(2)}
+          </div>
+
+          <Button
+            label={`📋 Ver Cuenta Corriente del Proveedor`}
+            icon="pi pi-list"
+            severity="info"
+            outlined
+            onClick={handleOpcionB}
+            style={{ padding: "15px", justifyContent: "flex-start", textAlign: "left" }}
+          />
+          <div style={{ fontSize: "0.85rem", color: "#666", marginLeft: "10px", marginTop: "-10px" }}>
+            Proveedor: {ordenCompra?.proveedor?.nombre || 'N/A'} | Solo CxP pendientes
+          </div>
+        </div>
+      </Dialog>
 
       <Dialog
         header={

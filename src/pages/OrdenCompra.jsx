@@ -55,6 +55,7 @@ import { getMotivoNotaCreditoDebitoActivos } from "../api/ventas/motivoNotaCredi
 import { getAllUbicacionesFisicas } from "../api/ubicacionFisica";
 import ConsultaStockForm from "../components/common/ConsultaStockForm";
 import { useActualizarRegistroEnLista } from "../hooks/useActualizarRegistroEnLista";
+import { useDashboardStore } from "../shared/stores/useDashboardStore";
 
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
@@ -547,7 +548,13 @@ export default function OrdenCompra({ ruta }) {
   };
 
   const handleAdd = () => {
-    setEditing({ empresaId: empresaSeleccionada });
+    const { unidadSeleccionada } = useDashboardStore.getState();
+    const unidadNegocioId = unidadSeleccionada?.id ? Number(unidadSeleccionada.id) : null;
+    const objetoEditing = {
+      empresaId: empresaSeleccionada,
+      unidadNegocioId
+    };
+    setEditing(objetoEditing);
     setShowDialog(true);
   };
 
@@ -1345,10 +1352,7 @@ export default function OrdenCompra({ ruta }) {
                 <Button
                   label="Nuevo"
                   icon="pi pi-plus"
-                  onClick={() => {
-                    setEditing(null);
-                    setShowDialog(true);
-                  }}
+                  onClick={handleAdd}
                   disabled={!permisos.puedeCrear || !empresaIdSelector}
                   tooltip={
                     !empresaIdSelector

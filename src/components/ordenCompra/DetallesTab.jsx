@@ -281,7 +281,7 @@ export default function DetallesTab({
         {aplicaImpuestoRenta && (
           <div style={{ flex: 1 }}>
             <label style={{ fontWeight: "bold", color: "#FF6B6B" }}>
-              IMPUESTO A LA RENTA (8%)
+              IMPUESTO A LA RENTA
             </label>
             <InputNumber
               value={montoImpuestoRenta || 0}

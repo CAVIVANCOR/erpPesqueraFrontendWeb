@@ -230,7 +230,30 @@ export default function DatosGeneralesTab({
             inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
-
+        <div style={{ flex: 2 }}>
+          {/* FORMA DE PAGO */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="formaPagoId"
+          >
+            Forma de Pago
+          </label>
+          <Dropdown
+            id="formaPagoId"
+            value={formData.formaPagoId ? Number(formData.formaPagoId) : null}
+            options={formasPago.map((f) => ({
+              label: f.nombre,
+              value: Number(f.id),
+            }))}
+            onChange={(e) => onChange("formaPagoId", e.value)}
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccionar forma de pago"
+            disabled={!puedeEditar || readOnly}
+            showClear
+            style={{ fontWeight: "bold", textTransform: "uppercase" }}
+          />
+        </div>
         <div style={{ flex: 0.7 }}>
           {/* FECHA VENCIMIENTO */}
           <label
@@ -249,33 +272,7 @@ export default function DatosGeneralesTab({
             inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
-        <div style={{ flex: 1 }}>
-          {/* UNIDAD DE NEGOCIO */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="unidadNegocioId"
-          >
-            Unidad de Negocio*
-          </label>
-          <Dropdown
-            id="unidadNegocioId"
-            value={
-              formData.unidadNegocioId ? Number(formData.unidadNegocioId) : null
-            }
-            options={unidadesNegocioOptions}
-            onChange={(e) => onChange("unidadNegocioId", e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar unidad de negocio"
-            filter
-            showClear
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-            }}
-            disabled={!puedeEditar || readOnly}
-          />
-        </div>
+
       </div>
 
 
@@ -459,100 +456,6 @@ export default function DatosGeneralesTab({
         </div>
       </Panel>
 
-
-      <div
-        style={{
-          alignItems: "end",
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-
-        <div style={{ flex: 2 }}>
-          {/* SOLICITANTE */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="solicitanteId"
-          >
-            Solicitante
-          </label>
-          <Dropdown
-            id="solicitanteId"
-            value={
-              formData.solicitanteId ? Number(formData.solicitanteId) : null
-            }
-            options={personalOptions.map((p) => ({
-              label: p.nombreCompleto,
-              value: Number(p.id),
-            }))}
-            onChange={(e) => onChange("solicitanteId", e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar solicitante"
-            filter
-            disabled={!puedeEditar || readOnly}
-            showClear
-            style={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-        <div style={{ flex: 1.5 }}>
-          {/* APROBADO POR */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="aprobadoPorId"
-          >
-            Aprobado Por
-          </label>
-          <Dropdown
-            id="aprobadoPorId"
-            value={
-              formData.aprobadoPorId ? Number(formData.aprobadoPorId) : null
-            }
-            options={personalOptions.map((p) => ({
-              label: p.nombreCompleto,
-              value: Number(p.id),
-            }))}
-            onChange={(e) => onChange("aprobadoPorId", e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar aprobador"
-            filter
-            disabled
-            showClear
-            style={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-        <div style={{ flex: 2 }}>
-          {/* CENTRO DE COSTO */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="centroCostoId"
-          >
-            Centro de Costo
-          </label>
-          <Dropdown
-            id="centroCostoId"
-            value={
-              formData.centroCostoId ? Number(formData.centroCostoId) : null
-            }
-            options={
-              centrosCosto?.map((c) => ({
-                label: `${c.Codigo} - (${c.Nombre})`,
-                value: Number(c.id),
-              })) || []
-            }
-            onChange={(e) => onChange("centroCostoId", e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar centro costo"
-            filter
-            disabled={!puedeEditar || readOnly}
-            showClear
-            style={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-      </div>
       {/* ============================================ */}
       {/* SECCIÓN: DATOS NOTA DE CRÉDITO/DÉBITO (CONDICIONAL) */}
       {/* ============================================ */}
@@ -688,7 +591,7 @@ export default function DatosGeneralesTab({
             empresaId={formData.empresaId}
             tipoEntidad="proveedor"
             onEntidadCreada={handleEntidadCreada}
-            label="Crear Proveedor"
+            label="Crear"
             icon="pi pi-building"
             severity="info"
             outlined={true}
@@ -726,27 +629,32 @@ export default function DatosGeneralesTab({
             style={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
-        {/* ⭐ NUEVO: CONTACTO DEL PROVEEDOR */}
-        <div style={{ flex: 1.5 }}>
+        <div style={{ flex: 2 }}>
+          {/* CENTRO DE COSTO */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="contactoProveedorId"
+            htmlFor="centroCostoId"
           >
-            Contacto del Proveedor
+            Centro de Costo
           </label>
           <Dropdown
-            id="contactoProveedorId"
-            value={contactoProveedorId ? Number(contactoProveedorId) : null}
-            options={contactosProveedor.map((c) => ({
-              label: c.nombres,
-              value: Number(c.id),
-            }))}
-            onChange={(e) => onContactoProveedorChange(e.value)}
-            placeholder="Seleccionar contacto"
+            id="centroCostoId"
+            value={
+              formData.centroCostoId ? Number(formData.centroCostoId) : null
+            }
+            options={
+              centrosCosto?.map((c) => ({
+                label: `${c.Codigo} - (${c.Nombre})`,
+                value: Number(c.id),
+              })) || []
+            }
+            onChange={(e) => onChange("centroCostoId", e.value)}
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccionar centro costo"
+            filter
             disabled={!puedeEditar || readOnly}
             showClear
-            filter
-            filterBy="label"
             style={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
@@ -762,51 +670,33 @@ export default function DatosGeneralesTab({
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
-        <div style={{ flex: 2 }}>
-          {/* FORMA DE PAGO */}
+        <div style={{ flex: 1 }}>
+          {/* UNIDAD DE NEGOCIO */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="formaPagoId"
+            htmlFor="unidadNegocioId"
           >
-            Forma de Pago
+            Unidad de Negocio*
           </label>
           <Dropdown
-            id="formaPagoId"
-            value={formData.formaPagoId ? Number(formData.formaPagoId) : null}
-            options={formasPago.map((f) => ({
-              label: f.nombre,
-              value: Number(f.id),
-            }))}
-            onChange={(e) => onChange("formaPagoId", e.value)}
+            id="unidadNegocioId"
+            value={
+              formData.unidadNegocioId ? Number(formData.unidadNegocioId) : null
+            }
+            options={unidadesNegocioOptions}
+            onChange={(e) => onChange("unidadNegocioId", e.value)}
             optionLabel="label"
             optionValue="value"
-            placeholder="Seleccionar forma de pago"
-            disabled={!puedeEditar || readOnly}
+            placeholder="Seleccionar unidad de negocio"
+            filter
             showClear
-            style={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-        <div style={{ flex: 0.5 }}>
-          {/* FACTURADO */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="facturado"
-          >
-            Facturado
-          </label>
-          <Button
-            id="facturado"
-            label={facturado ? "FACTURADO" : "FACTURADO"}
-            icon={facturado ? "pi pi-check-circle" : "pi pi-times-circle"}
-            severity={facturado ? "success" : "secondary"}
-            onClick={() => onFacturadoChange && onFacturadoChange(!facturado)}
+            style={{
+              fontWeight: "bold",
+              textTransform: "uppercase",
+            }}
             disabled={!puedeEditar || readOnly}
-            style={{ width: "100%" }}
           />
         </div>
-
-
-
         <div style={{ flex: 0.25 }}>
           {/* ES GERENCIAL */}
           <label
@@ -903,7 +793,7 @@ export default function DatosGeneralesTab({
         header="📄 Comprobante del Proveedor"
         toggleable
         collapsed={!comprobanteRecibido}
-        className="mb-3"
+        className="mt-3"
       >
         <div
           style={{
@@ -1108,27 +998,7 @@ export default function DatosGeneralesTab({
             style={{ fontSize: getResponsiveFontSize() }}
           />
         </div>
-        <div style={{ flex: 1 }}>
-          {/* OBSERVACIONES */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="observaciones"
-          >
-            Observaciones
-          </label>
-          <InputText
-            id="observaciones"
-            value={formData.observaciones}
-            onChange={(e) => onChange("observaciones", e.target.value)}
-            disabled={!puedeEditar || readOnly}
-            style={{
-              color: "red",
-              fontStyle: "italic",
-              fontWeight: "bold",
-              textTransform: "uppercase",
-            }}
-          />
-        </div>
+
         <div style={{ flex: 0.5 }}>
           {/* MONEDA */}
           <label
@@ -1271,7 +1141,7 @@ export default function DatosGeneralesTab({
             onClick={() =>
               onAplicaImpuestoRentaChange(!aplicaImpuestoRenta)
             }
-            disabled={!puedeEditar || readOnly || Number(tipoDocumentoFinalId) === 3}
+            disabled={!puedeEditar || readOnly || Number(tipoDocumentoFinalId) !== 3}
             outlined
             style={{
               width: "100%",
@@ -1364,7 +1234,139 @@ export default function DatosGeneralesTab({
           />
         </div>
       )}
-
+      <Panel
+        header="📄 Responsables y Observaciones"
+        toggleable
+        collapsed={true}
+        className="mb-3"
+      >
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 5,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            {/* SOLICITANTE */}
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="solicitanteId"
+            >
+              Solicitante
+            </label>
+            <Dropdown
+              id="solicitanteId"
+              value={
+                formData.solicitanteId ? Number(formData.solicitanteId) : null
+              }
+              options={personalOptions.map((p) => ({
+                label: p.nombreCompleto,
+                value: Number(p.id),
+              }))}
+              onChange={(e) => onChange("solicitanteId", e.value)}
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccionar solicitante"
+              filter
+              disabled={!puedeEditar || readOnly}
+              showClear
+              style={{ fontWeight: "bold", textTransform: "uppercase" }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            {/* APROBADO POR */}
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="aprobadoPorId"
+            >
+              Aprobado Por
+            </label>
+            <Dropdown
+              id="aprobadoPorId"
+              value={
+                formData.aprobadoPorId ? Number(formData.aprobadoPorId) : null
+              }
+              options={personalOptions.map((p) => ({
+                label: p.nombreCompleto,
+                value: Number(p.id),
+              }))}
+              onChange={(e) => onChange("aprobadoPorId", e.value)}
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccionar aprobador"
+              filter
+              disabled
+              showClear
+              style={{ fontWeight: "bold", textTransform: "uppercase" }}
+            />
+          </div>
+          {/* ⭐ NUEVO: CONTACTO DEL PROVEEDOR */}
+          <div style={{ flex: 1 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="contactoProveedorId"
+            >
+              Contacto del Proveedor
+            </label>
+            <Dropdown
+              id="contactoProveedorId"
+              value={contactoProveedorId ? Number(contactoProveedorId) : null}
+              options={contactosProveedor.map((c) => ({
+                label: c.nombres,
+                value: Number(c.id),
+              }))}
+              onChange={(e) => onContactoProveedorChange(e.value)}
+              placeholder="Seleccionar contacto"
+              disabled={!puedeEditar || readOnly}
+              showClear
+              filter
+              filterBy="label"
+              style={{ fontWeight: "bold", textTransform: "uppercase" }}
+            />
+          </div>
+          <div style={{ flex: 0.5 }}>
+          {/* FACTURADO */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="facturado"
+          >
+            CxP Generada
+          </label>
+          <Button
+            id="facturado"
+            label={facturado ? "SI" : "NO"}
+            icon={facturado ? "pi pi-check-circle" : "pi pi-times-circle"}
+            severity={facturado ? "success" : "secondary"}
+            onClick={() => onFacturadoChange && onFacturadoChange(!facturado)}
+            disabled={true}
+            style={{ width: "100%" }}
+          />
+        </div>
+          <div style={{ flex: 1 }}>
+            {/* OBSERVACIONES */}
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="observaciones"
+            >
+              Observaciones
+            </label>
+            <InputText
+              id="observaciones"
+              value={formData.observaciones}
+              onChange={(e) => onChange("observaciones", e.target.value)}
+              disabled={!puedeEditar || readOnly}
+              style={{
+                color: "red",
+                fontStyle: "italic",
+                fontWeight: "bold",
+                textTransform: "uppercase",
+              }}
+            />
+          </div>
+        </div>
+      </Panel>
 
       {/* ✅ DIALOG CAMBIAR TIPO/SERIE */}
       <CambiarTipoSerieDialog

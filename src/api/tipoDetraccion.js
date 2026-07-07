@@ -5,7 +5,7 @@
 import axios from "axios";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
-const API_URL = `${import.meta.env.VITE_API_URL}/tesoreria/tipos-detraccion`;
+const API_URL = `${import.meta.env.VITE_API_URL}/tesoreria/tipo-detraccion`;
 
 /**
  * Obtiene el token JWT profesionalmente desde Zustand

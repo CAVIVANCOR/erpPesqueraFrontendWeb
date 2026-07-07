@@ -1,6 +1,7 @@
 // src/pages/CuentaPorPagar.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import { Navigate } from "react-router-dom";
+import { ModuloContext } from "../context/ModuloContext";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -36,6 +37,8 @@ import { getPeriodosContables } from "../api/contabilidad/periodoContable";
 export default function CuentaPorPagar({ ruta }) {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
+  const { tabs, activeIndex } = useContext(ModuloContext);
+
   // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
@@ -60,10 +63,26 @@ export default function CuentaPorPagar({ ruta }) {
   const [loading, setLoading] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
 
+  const [proveedorFiltrado, setProveedorFiltrado] = useState(null);
+  const [highlightId, setHighlightId] = useState(null);
+
   const [formData, setFormData] = useState({});
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    const tabActual = tabs[activeIndex];
+    if (tabActual?.contextData) {
+      const { proveedorId, highlightId: highlightIdParam } = tabActual.contextData;
+      if (proveedorId) {
+        setProveedorFiltrado(Number(proveedorId));
+      }
+      if (highlightIdParam) {
+        setHighlightId(Number(highlightIdParam));
+      }
+    }
+  }, [tabs, activeIndex]);
 
   const loadData = async () => {
     try {
@@ -466,6 +485,104 @@ export default function CuentaPorPagar({ ruta }) {
     );
   };
 
+  const cuentasFiltradas = cuentas.filter((cuenta) => {
+    const cumpleFiltroProveedor = proveedorFiltrado
+      ? Number(cuenta.proveedorId) === proveedorFiltrado
+      : true;
+    const cumpleSoloPendientes = Number(cuenta.saldoPendiente || 0) > 0;
+    return cumpleFiltroProveedor && cumpleSoloPendientes;
+  });
+
+  const calcularTotalesPorMoneda = () => {
+    let totalSoles = 0;
+    let totalDolares = 0;
+    let pagadoSoles = 0;
+    let pagadoDolares = 0;
+    let saldoSoles = 0;
+    let saldoDolares = 0;
+    let colorFondoSoles = "#FFE5B4";
+    let colorFondoDolares = "#C8E6C9";
+    let simboloSoles = "S/";
+    let simboloDolares = "$";
+
+    cuentasFiltradas.forEach((cuenta) => {
+      const montoTotal = Number(cuenta.montoTotal) || 0;
+      const montoPagado = Number(cuenta.montoPagado) || 0;
+      const saldoPendiente = Number(cuenta.saldoPendiente) || 0;
+
+      if (Number(cuenta.monedaId) === 1) {
+        totalSoles += montoTotal;
+        pagadoSoles += montoPagado;
+        saldoSoles += saldoPendiente;
+        if (cuenta.moneda?.colorFondo) colorFondoSoles = cuenta.moneda.colorFondo;
+        if (cuenta.moneda?.simbolo) simboloSoles = cuenta.moneda.simbolo;
+      } else if (Number(cuenta.monedaId) === 2) {
+        totalDolares += montoTotal;
+        pagadoDolares += montoPagado;
+        saldoDolares += saldoPendiente;
+        if (cuenta.moneda?.colorFondo) colorFondoDolares = cuenta.moneda.colorFondo;
+        if (cuenta.moneda?.simbolo) simboloDolares = cuenta.moneda.simbolo;
+      }
+    });
+
+    return {
+      totalSoles, totalDolares,
+      pagadoSoles, pagadoDolares,
+      saldoSoles, saldoDolares,
+      colorFondoSoles, colorFondoDolares,
+      simboloSoles, simboloDolares,
+      cantidadDocs: cuentasFiltradas.length
+    };
+  };
+
+  const footerTemplate = () => {
+    const {
+      totalSoles, totalDolares,
+      pagadoSoles, pagadoDolares,
+      saldoSoles, saldoDolares,
+      colorFondoSoles, colorFondoDolares,
+      simboloSoles, simboloDolares,
+      cantidadDocs
+    } = calcularTotalesPorMoneda();
+
+    return (
+      <div style={{ padding: "15px", backgroundColor: "#f8f9fa" }}>
+        <div style={{ fontWeight: "bold", marginBottom: "10px", fontSize: "16px" }}>
+          💰 TOTALES: {cantidadDocs} documento{cantidadDocs !== 1 ? 's' : ''}
+        </div>
+        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+          {(totalSoles > 0 || saldoSoles > 0) && (
+            <div style={{ flex: 1, minWidth: "250px", padding: "10px", border: "1px solid #ddd", borderRadius: "8px" }}>
+              <div style={{ fontWeight: "bold", marginBottom: "8px", color: "#333" }}>SOLES</div>
+              <div style={{ marginBottom: "5px" }}>Total: <span style={{ fontWeight: "bold" }}>{simboloSoles} {totalSoles.toFixed(2)}</span></div>
+              <div style={{ marginBottom: "5px" }}>Pagado: <span style={{ fontWeight: "bold" }}>{simboloSoles} {pagadoSoles.toFixed(2)}</span></div>
+              <div style={{ backgroundColor: colorFondoSoles, padding: "8px", borderRadius: "4px", fontWeight: "bold", fontSize: "16px" }}>
+                ⭐ Saldo: {simboloSoles} {saldoSoles.toFixed(2)}
+              </div>
+            </div>
+          )}
+          {(totalDolares > 0 || saldoDolares > 0) && (
+            <div style={{ flex: 1, minWidth: "250px", padding: "10px", border: "1px solid #ddd", borderRadius: "8px" }}>
+              <div style={{ fontWeight: "bold", marginBottom: "8px", color: "#333" }}>DÓLARES</div>
+              <div style={{ marginBottom: "5px" }}>Total: <span style={{ fontWeight: "bold" }}>{simboloDolares} {totalDolares.toFixed(2)}</span></div>
+              <div style={{ marginBottom: "5px" }}>Pagado: <span style={{ fontWeight: "bold" }}>{simboloDolares} {pagadoDolares.toFixed(2)}</span></div>
+              <div style={{ backgroundColor: colorFondoDolares, padding: "8px", borderRadius: "4px", fontWeight: "bold", fontSize: "16px" }}>
+                ⭐ Saldo: {simboloDolares} {saldoDolares.toFixed(2)}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const rowClassName = (rowData) => {
+    if (highlightId && Number(rowData.id) === highlightId) {
+      return 'p-highlight';
+    }
+    return '';
+  };
+
   const deleteCuentaDialogFooter = (
     <>
       <Button
@@ -493,16 +610,18 @@ export default function CuentaPorPagar({ ruta }) {
         right={rightToolbarTemplate}
       />
       <DataTable
-        value={cuentas}
+        value={cuentasFiltradas}
         loading={loading}
         globalFilter={globalFilter}
-        emptyMessage="No se encontraron cuentas por pagar"
+        emptyMessage="No se encontraron cuentas por pagar pendientes"
         stripedRows
         showGridlines
         paginator
         rows={25}
         rowsPerPageOptions={[25, 50, 100, 150]}
         size="small"
+        footer={footerTemplate}
+        rowClassName={rowClassName}
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar
             ? (e) => editCuenta(e.data)

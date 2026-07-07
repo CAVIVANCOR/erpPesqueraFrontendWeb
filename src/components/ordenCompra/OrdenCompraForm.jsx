@@ -150,7 +150,7 @@ export default function OrdenCompraForm({
     defaultValues?.centroCostoId || null,
   );
   const [unidadNegocioId, setUnidadNegocioId] = useState(
-    defaultValues?.unidadNegocioId || null,
+    defaultValues?.unidadNegocioId ? Number(defaultValues.unidadNegocioId) : null,
   );
   const [movIngresoAlmacenId, setMovIngresoAlmacenId] = useState(
     defaultValues?.movIngresoAlmacenId || null,
@@ -350,11 +350,13 @@ export default function OrdenCompraForm({
           ? Number(defaultValues.centroCostoId)
           : null,
       );
-      setUnidadNegocioId(
-        defaultValues.unidadNegocioId
-          ? Number(defaultValues.unidadNegocioId)
-          : null,
-      );
+      if (defaultValues.unidadNegocioId !== undefined) {
+        setUnidadNegocioId(
+          defaultValues.unidadNegocioId
+            ? Number(defaultValues.unidadNegocioId)
+            : null,
+        );
+      }
       setMovIngresoAlmacenId(
         defaultValues.movIngresoAlmacenId
           ? Number(defaultValues.movIngresoAlmacenId)
@@ -466,7 +468,11 @@ export default function OrdenCompraForm({
 
       try {
         const fecha = new Date(fechaDocumento);
-        const fechaISO = fecha.toISOString().split("T")[0];
+        // Usar hora local en lugar de UTC
+        const year = fecha.getFullYear();
+        const month = String(fecha.getMonth() + 1).padStart(2, '0');
+        const day = String(fecha.getDate()).padStart(2, '0');
+        const fechaISO = `${year}-${month}-${day}`;
         const tipoCambioData = await consultarTipoCambioSunat({
           date: fechaISO,
         });
@@ -741,9 +747,10 @@ export default function OrdenCompraForm({
       );
       if (
         empresaSeleccionada &&
-        empresaSeleccionada.porcentajeImpuestoRenta !== undefined
+        empresaSeleccionada.porcentajeImpuestoRenta !== undefined &&
+        empresaSeleccionada.porcentajeImpuestoRenta !== null
       ) {
-        setPorcentajeImpuestoRenta(empresaSeleccionada.porcentajeImpuestoRenta);
+        setPorcentajeImpuestoRenta(Number(empresaSeleccionada.porcentajeImpuestoRenta));
       }
     }
   }, [empresaId, empresas, isEdit]);
@@ -758,9 +765,10 @@ export default function OrdenCompraForm({
         );
         if (
           empresaSeleccionada &&
-          empresaSeleccionada.porcentajeImpuestoRenta !== undefined
+          empresaSeleccionada.porcentajeImpuestoRenta !== undefined &&
+          empresaSeleccionada.porcentajeImpuestoRenta !== null
         ) {
-          setPorcentajeImpuestoRenta(empresaSeleccionada.porcentajeImpuestoRenta);
+          setPorcentajeImpuestoRenta(Number(empresaSeleccionada.porcentajeImpuestoRenta));
         }
       }
     } else {
@@ -780,9 +788,10 @@ export default function OrdenCompraForm({
       if (aplicaImpuestoRenta) {
         if (
           empresaSeleccionada &&
-          empresaSeleccionada.porcentajeImpuestoRenta !== undefined
+          empresaSeleccionada.porcentajeImpuestoRenta !== undefined &&
+          empresaSeleccionada.porcentajeImpuestoRenta !== null
         ) {
-          setPorcentajeImpuestoRenta(empresaSeleccionada.porcentajeImpuestoRenta);
+          setPorcentajeImpuestoRenta(Number(empresaSeleccionada.porcentajeImpuestoRenta));
         }
       } else {
         setPorcentajeImpuestoRenta(0);
@@ -1125,6 +1134,9 @@ export default function OrdenCompraForm({
     pagosPreviosSI,
     porcentajeIGV,
     esExoneradoAlIGV,
+    aplicaImpuestoRenta,
+    porcentajeImpuestoRenta,
+    montoImpuestoRenta,
     tipoDocumentoFinalId,
     numeroDocumentoFinal,
     numSerieDocFinal,
@@ -1453,7 +1465,7 @@ export default function OrdenCompraForm({
           {/* Botón Reactivar Documento - Visible si está APROBADA o FACTURADA */}
           {(estaAprobado || estaFacturado) && isEdit && (
             <Button
-              label="Reactivar Documento"
+              label="Reactivar"
               icon="pi pi-replay"
               className="p-button-warning"
               onClick={handleReactivarClick}
