@@ -1231,9 +1231,20 @@ export default function PreFacturaForm({
       porcentajeAdelanto: formData.porcentajeAdelanto
         ? Number(formData.porcentajeAdelanto)
         : null,
-      pagosPreviosSI: formData.pagosPreviosSI // ← AGREGAR ESTAS 3 LÍNEAS
+            pagosPreviosSI: formData.pagosPreviosSI
         ? Number(formData.pagosPreviosSI)
         : null,
+      // ════════════════════════════════════════════════════════════
+      // CAMPOS PARA NOTA DE CRÉDITO / DÉBITO
+      // ════════════════════════════════════════════════════════════
+      motivoNotaCreditoDebitoId: formData.motivoNotaCreditoDebitoId
+        ? Number(formData.motivoNotaCreditoDebitoId)
+        : null,
+      fechaDcmtoAfectoNCND: formData.fechaDcmtoAfectoNCND || null,
+      dcmtoAfectoNCNDId: formData.dcmtoAfectoNCNDId
+        ? Number(formData.dcmtoAfectoNCNDId)
+        : null,
+      numeroDcmtoAfectoNCND: formData.numeroDcmtoAfectoNCND?.trim() || null,
     };
 
     // Validaciones
