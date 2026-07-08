@@ -130,7 +130,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       numeroCuotas: defaultValues?.numeroCuotas || 0,
       frecuenciaPago: defaultValues?.frecuenciaPago || "",
       numeroDias: defaultValues?.numeroDias || 0,
-      diaPago: defaultValues?.diaPago || 1,
+      diaPago: defaultValues?.diaPago || 0,
       periodoGracia: defaultValues?.periodoGracia || 0,
       tipoGarantia: defaultValues?.tipoGarantia || "",
       valorGarantia: defaultValues?.valorGarantia || 0,
@@ -545,12 +545,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   }));
 
   const lineasCreditoOptions = useMemo(() => {
+    console.log("lineasCredito",lineasCredito)
     return lineasCredito.map((l) => ({
       ...l,
       id: Number(l.id),
       bancoId: Number(l.bancoId),
       empresaId: Number(l.empresaId),
-      label: `${l.numeroLinea} - ${l.moneda?.codigoSunat || ""} ${formatearNumero(l.montoDisponible, 2)}`,
+      label: `${l.banco.nombre} - ${l.moneda?.codigoSunat || ""} ${formatearNumero(l.montoAprobado, 2)}`,
       value: Number(l.id),
     }));
   }, [lineasCredito]);
@@ -1187,7 +1188,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                     id="diaPago"
                     value={field.value}
                     onValueChange={(e) => field.onChange(e.value)}
-                    min={1}
+                    min={0}
                     max={31}
                     disabled={readOnly}
                     style={{ width: "100%" }}

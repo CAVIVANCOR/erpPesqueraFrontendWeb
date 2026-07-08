@@ -654,21 +654,16 @@ const PendientesHeader = ({
   ];
 
   return (
-    <Card
-      title="🎛️ PANEL DE CONTROL - TESORERÍA"
-      className="mb-3"
-      style={{ backgroundColor: "#f8f9fa" }}
-    >
+    <Card>
       {/* ========================================
           FILA 1: ATENCIONES
           ======================================== */}
-      <div className="mb-4">
+      <div>
         <div
           style={{
             backgroundColor: "#e3f2fd",
             padding: "0.5rem 1rem",
             borderRadius: "6px",
-            marginBottom: "0.75rem",
           }}
         >
           <h3
@@ -683,7 +678,7 @@ const PendientesHeader = ({
           </h3>
         </div>
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 2, flexWrap: "nowrap" }}>
           {/* Botones de Tipo (Todos, Por Cobrar, Por Pagar) */}
           {tipoOptions.map((option) => (
             <Button
@@ -709,8 +704,6 @@ const PendientesHeader = ({
               {getTipoLabel(option)}
             </Button>
           ))}
-
-
           {/* Botones de Deudas (Personal, Tributarias) */}
           {deudasOptions.map((option) => (
             <Button

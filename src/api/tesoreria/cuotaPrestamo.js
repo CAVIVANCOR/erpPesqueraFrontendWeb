@@ -112,3 +112,24 @@ export async function actualizarCuotasVencidas() {
   });
   return res.data;
 }
+
+
+/**
+ * Generar cronograma de cuotas automáticamente
+ */
+export async function generarCronogramaCuotas(prestamoBancarioId) {
+  const res = await axios.post(`${API_URL}/generar-cronograma/${prestamoBancarioId}`, {}, {
+    headers: getAuthHeaders(),
+  });
+  return res.data;
+}
+
+/**
+ * Guardar/actualizar múltiples cuotas (bulk)
+ */
+export async function guardarCuotasBulk(prestamoBancarioId, cuotas) {
+  const res = await axios.post(`${API_URL}/bulk/${prestamoBancarioId}`, { cuotas }, {
+    headers: getAuthHeaders(),
+  });
+  return res.data;
+}

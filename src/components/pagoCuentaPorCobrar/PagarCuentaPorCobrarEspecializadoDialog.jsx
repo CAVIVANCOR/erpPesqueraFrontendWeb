@@ -13,12 +13,14 @@ import { Tag } from 'primereact/tag';
 import BooleanToggleButton from '../common/BooleanToggleButton';
 import CuentaCorrienteSelector from '../common/CuentaCorrienteSelector';
 import { consultarTipoCambioSunat } from '../../api/consultaExterna';
-import { procesarPagoEspecializado } from '../../api/tesoreria/pagoEspecializadoCuentaPorCobrar';
+import { procesarPagoEspecializado, actualizarUrlVoucherConsolidado, actualizarUrlVoucherIndividual } from '../../api/tesoreria/pagoEspecializadoCuentaPorCobrar';
 import { useAuthStore } from '../../shared/stores/useAuthStore';
-import { getResponsiveFontSize } from '../../utils/utils';
+import { getResponsiveFontSize, formatearFecha, formatearNumero } from '../../utils/utils';
 import ConfirmacionPagoDialog from './ConfirmacionPagoDialog';
 import TipoMovimientoSelector from '../common/TipoMovimientoSelector';
 import CuentaPorCobrarInfoButton from '../common/CuentaPorCobrarInfoButton';
+import { generarYSubirVoucherConsolidado } from './VoucherConsolidadoPagoCxCPDF';
+import { generarYSubirVoucherMovimiento } from './VoucherMovimientoCajaPDF';
 
 /**
  * ════════════════════════════════════════════════════════════
@@ -132,9 +134,9 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       // Inicializar moneda de pago con la moneda de la deuda
       setMonedaPagoId(cuentaPorCobrar.monedaId);
 
-      // Inicializar monto sugerido con el saldo pendiente
-      setMontoPagado(Number(cuentaPorCobrar.saldoPendiente || 0));
-      setMontoAplicadoDeuda(Number(cuentaPorCobrar.saldoPendiente || 0));
+      // Inicializar monto pagado en CERO (usuario debe ingresar)
+      setMontoPagado(0);
+      setMontoAplicadoDeuda(0);
 
       // Inicializar importes de conceptos SUNAT
       setImporteTotalDetraccion(Number(cuentaPorCobrar.saldoPendiente || 0));
@@ -148,7 +150,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   // ════════════════════════════════════════════════════════════
   useEffect(() => {
     const consultarTipoCambio = async () => {
-      if (!visible || !fechaPago) return;
+      if (!fechaPago) return;
 
       try {
         const year = fechaPago.getFullYear();
@@ -168,7 +170,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
     };
 
     consultarTipoCambio();
-  }, [visible, fechaPago]);
+  }, [fechaPago]);
   // ════════════════════════════════════════════════════════════
   // EFECTOS: CALCULAR MONTO APLICADO A LA DEUDA
   // ════════════════════════════════════════════════════════════
@@ -184,10 +186,10 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
     let montoConvertido = Number(montoPagado);
 
     // Convertir si las monedas son diferentes
-    if (monedaPago?.codigo !== monedaDeuda?.codigo) {
-      if (monedaPago?.codigo === 'USD' && monedaDeuda?.codigo === 'PEN') {
+    if (monedaPago?.codigoSunat !== monedaDeuda?.codigoSunat) {
+      if (monedaPago?.codigoSunat === 'USD' && monedaDeuda?.codigoSunat === 'PEN') {
         montoConvertido = Number(montoPagado) * Number(tipoCambio);
-      } else if (monedaPago?.codigo === 'PEN' && monedaDeuda?.codigo === 'USD') {
+      } else if (monedaPago?.codigoSunat === 'PEN' && monedaDeuda?.codigoSunat === 'USD') {
         montoConvertido = Number(montoPagado) / Number(tipoCambio);
       }
     }
@@ -423,16 +425,6 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       return false;
     }
 
-    if (Number(montoAplicadoDeuda) > Number(cuentaPorCobrar?.saldoPendiente || 0)) {
-      toast?.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'El monto aplicado no puede ser mayor al saldo pendiente.',
-        life: 3000
-      });
-      return false;
-    }
-
     // Validar detracción
     if (aplicaDetraccion) {
       if (!numeroConstanciaDetraccion) {
@@ -611,13 +603,54 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       const response = await procesarPagoEspecializado(dataPago);
 
       if (response.success) {
+        const { pagoCuentaPorCobrar, movimientos, conceptosSunat, resumen } = response.data;
+        const empresaData = empresas.find(e => Number(e.id) === Number(cuentaPorCobrar.empresaId));
+
+        // Generar voucher consolidado automáticamente
+        const voucherConsolidado = await generarYSubirVoucherConsolidado(
+          pagoCuentaPorCobrar,
+          movimientos || {},
+          conceptosSunat || {},
+          resumen || {},
+          empresaData,
+          cuentaPorCobrar
+        );
+
+        if (voucherConsolidado.success && voucherConsolidado.urlPdf) {
+          // Actualizar URL en MovimientoCaja (Ingreso)
+          await actualizarUrlVoucherConsolidado(movimientos.ingreso.id, voucherConsolidado.urlPdf);
+          response.data.urlVoucherConsolidado = voucherConsolidado.urlPdf;
+        }
+
+        // Generar vouchers individuales automáticamente
+        if (movimientos.ingreso) {
+          const voucherIngreso = await generarYSubirVoucherMovimiento(movimientos.ingreso, empresaData, cuentaPorCobrar);
+          if (voucherIngreso.success && voucherIngreso.urlPdf) {
+            await actualizarUrlVoucherIndividual(movimientos.ingreso.id, voucherIngreso.urlPdf);
+          }
+        }
+
+        if (movimientos.itf) {
+          const voucherITF = await generarYSubirVoucherMovimiento(movimientos.itf, empresaData, cuentaPorCobrar);
+          if (voucherITF.success && voucherITF.urlPdf) {
+            await actualizarUrlVoucherIndividual(movimientos.itf.id, voucherITF.urlPdf);
+          }
+        }
+
+        if (movimientos.comision) {
+          const voucherComision = await generarYSubirVoucherMovimiento(movimientos.comision, empresaData, cuentaPorCobrar);
+          if (voucherComision.success && voucherComision.urlPdf) {
+            await actualizarUrlVoucherIndividual(movimientos.comision.id, voucherComision.urlPdf);
+          }
+        }
+
         setResultadoPago(response.data);
         setShowConfirmacion(true);
 
         toast?.current?.show({
           severity: 'success',
           summary: 'Éxito',
-          detail: response.message || 'Pago procesado exitosamente.',
+          detail: 'Pago procesado y vouchers generados exitosamente.',
           life: 5000
         });
       }
@@ -732,10 +765,32 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
 
             <div>
               <label className="font-bold" style={{ display: "block", marginBottom: "0.25rem" }}>
+                Fecha Emisión:
+              </label>
+              <Tag
+                value={formatearFecha(cuentaPorCobrar.fechaEmision)}
+                severity="info"
+                style={{ fontSize: "0.9rem" }}
+              />
+            </div>
+
+            <div>
+              <label className="font-bold" style={{ display: "block", marginBottom: "0.25rem" }}>
+                Fecha Vencimiento:
+              </label>
+              <Tag
+                value={formatearFecha(cuentaPorCobrar.fechaVencimiento)}
+                severity="warning"
+                style={{ fontSize: "0.9rem" }}
+              />
+            </div>
+
+            <div>
+              <label className="font-bold" style={{ display: "block", marginBottom: "0.25rem" }}>
                 Monto Total:
               </label>
               <Tag
-                value={`${simboloMoneda} ${Number(cuentaPorCobrar.montoTotal || 0).toFixed(2)}`}
+                value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.montoTotal || 0)}`}
                 severity="info"
                 style={{ fontSize: "0.9rem", fontWeight: "600" }}
               />
@@ -746,7 +801,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 Monto Pagado:
               </label>
               <Tag
-                value={`${simboloMoneda} ${Number(cuentaPorCobrar.montoPagado || 0).toFixed(2)}`}
+                value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.montoPagado || 0)}`}
                 severity="success"
                 style={{ fontSize: "0.9rem", fontWeight: "600" }}
               />
@@ -757,7 +812,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 Saldo Pendiente:
               </label>
               <Tag
-                value={`${simboloMoneda} ${Number(cuentaPorCobrar.saldoPendiente || 0).toFixed(2)}`}
+                value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.saldoPendiente || 0)}`}
                 severity="warning"
                 style={{ fontSize: "0.9rem", fontWeight: "600" }}
               />
@@ -811,9 +866,17 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
               <CuentaCorrienteSelector
                 empresaIdPreseleccionada={cuentaPorCobrar?.empresaId}
                 value={cuentaBancariaId}
-                onChange={({ cuentaCorrienteId, bancoId }) => {
+                onChange={({ cuentaCorrienteId, bancoId, moneda }) => {
                   setCuentaBancariaId(cuentaCorrienteId);
-                  setBancoId(bancoId); // ← Banco se asigna automáticamente
+                  setBancoId(bancoId);
+
+                  // Auto-seleccionar moneda de pago según la cuenta
+                  if (moneda?.id) {
+                    setMonedaPagoId(Number(moneda.id));
+                  }
+
+                  // Resetear monto pagado a cero
+                  setMontoPagado(0);
                 }}
                 label=""
                 placeholder="Seleccione cuenta corriente"
@@ -860,7 +923,21 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
               <InputNumber
                 id="montoPagado"
                 value={montoPagado}
-                onValueChange={(e) => setMontoPagado(e.value)}
+                onValueChange={(e) => {
+                  const nuevoMonto = e.value || 0;
+                  setMontoPagado(nuevoMonto);
+
+                  // Alerta si monto > deuda (sin bloquear)
+                  if (nuevoMonto > Number(cuentaPorCobrar?.saldoPendiente || 0)) {
+                    const moneda = monedas.find(m => Number(m.id) === Number(cuentaPorCobrar?.monedaId));
+                    toast?.current?.show({
+                      severity: 'warn',
+                      summary: 'Advertencia',
+                      detail: `El monto pagado (${moneda?.simbolo} ${nuevoMonto.toFixed(2)}) es mayor que la deuda (${moneda?.simbolo} ${Number(cuentaPorCobrar?.saldoPendiente || 0).toFixed(2)})`,
+                      life: 4000
+                    });
+                  }
+                }}
                 mode="decimal"
                 minFractionDigits={2}
                 maxFractionDigits={2}
@@ -887,7 +964,6 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 mode="decimal"
                 minFractionDigits={4}
                 maxFractionDigits={4}
-                disabled={monedaPago?.codigo === monedaDeuda?.codigo}
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -965,40 +1041,40 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
     const monedaPago = monedas.find(m => Number(m.id) === Number(monedaPagoId));
     return (
       <Panel header="🏦 Cargos Bancarios" className="mb-3" toggleable collapsed>
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <label htmlFor="montoITF" className="font-bold">
-                ITF (Impuesto a las Transacciones Financieras)
-              </label>
-              <InputNumber
-                id="montoITF"
-                value={montoITF}
-                onValueChange={(e) => setMontoITF(e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="montoComision" className="font-bold">
-                Comisión Bancaria
-              </label>
-              <InputNumber
-                id="montoComision"
-                value={montoComision}
-                onValueChange={(e) => setMontoComision(e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-              />
-            </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label htmlFor="montoITF" className="font-bold">
+              ITF (Impuesto a las Transacciones Financieras)
+            </label>
+            <InputNumber
+              id="montoITF"
+              value={montoITF}
+              onValueChange={(e) => setMontoITF(e.value)}
+              mode="decimal"
+              minFractionDigits={2}
+              maxFractionDigits={2}
+            />
           </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="montoComision" className="font-bold">
+              Comisión Bancaria
+            </label>
+            <InputNumber
+              id="montoComision"
+              value={montoComision}
+              onValueChange={(e) => setMontoComision(e.value)}
+              mode="decimal"
+              minFractionDigits={2}
+              maxFractionDigits={2}
+            />
+          </div>
+        </div>
       </Panel>
     );
   };
@@ -1641,6 +1717,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
         resultadoPago={resultadoPago}
         cuentaPorCobrar={cuentaPorCobrar}
         monedas={monedas}
+        empresas={empresas}
         toast={toast}
       />
     </>

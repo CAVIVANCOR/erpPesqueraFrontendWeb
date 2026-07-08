@@ -5,6 +5,7 @@ import { Dialog } from "primereact/dialog";
 import { getCuentaPorPagarByOrdenCompraId } from "../../api/cuentasPorCobrarPagar/cuentaPorPagar";
 import CuentaPorPagarForm from "../cuentaPorPagar/CuentaPorPagarForm";
 import { ModuloContext } from "../../context/ModuloContext";
+import { ESTADO_ORDEN_COMPRA } from "../../utils/estados.constants";
 
 /**
  * Componente reutilizable genérico para editar una Cuenta por Pagar desde cualquier módulo
@@ -87,9 +88,9 @@ export default function IrACxPEditar({
         return;
       }
 
-      // Solo cargar CxP si el estado es >= estadoIdMinimo (APROBADO por defecto = 39)
+      // Solo cargar CxP si el estado NO es PENDIENTE
       const estadoId = Number(ordenCompra?.estadoId || 0);
-      if (estadoId < estadoIdMinimo) {
+      if (estadoId === ESTADO_ORDEN_COMPRA.PENDIENTE) {
         if (isMounted) {
           setCxpData(null);
           setLoading(false);

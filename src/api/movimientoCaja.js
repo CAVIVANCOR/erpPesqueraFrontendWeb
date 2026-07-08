@@ -186,3 +186,67 @@ export const getMovimientosCajaPorCuenta = async (cuentaId, fechaInicio = null, 
     throw error;
   }
 };
+
+
+/**
+ * Obtiene un movimiento de caja por ID con todas sus relaciones
+ * @param {number} id - ID del movimiento de caja
+ * @returns {Promise<Object>} Movimiento de caja con relaciones
+ */
+export const getMovimientoCajaById = async (id) => {
+  try {
+    const response = await axios.get(`${API_URL}/${id}`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener movimiento de caja por ID:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtiene todos los movimientos de una operación especializada por correlativo
+ * @param {number} correlativo - Correlativo de la operación
+ * @returns {Promise<Array>} Lista de movimientos de la operación
+ */
+export const getMovimientosPorCorrelativo = async (correlativo) => {
+  try {
+    const response = await axios.get(`${API_URL}/correlativo/${correlativo}`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener movimientos por correlativo:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtiene movimientos de caja con filtros
+ * @param {Object} filtros - Filtros a aplicar
+ * @returns {Promise<Array>} Lista de movimientos filtrados
+ */
+export const getMovimientosCajaConFiltros = async (filtros = {}) => {
+  try {
+    const params = new URLSearchParams();
+    
+    if (filtros.empresaId) params.append('empresaId', filtros.empresaId);
+    if (filtros.fechaDesde) params.append('fechaDesde', filtros.fechaDesde);
+    if (filtros.fechaHasta) params.append('fechaHasta', filtros.fechaHasta);
+    if (filtros.tipoMovimientoId) params.append('tipoMovimientoId', filtros.tipoMovimientoId);
+    if (filtros.correlativo) params.append('correlativo', filtros.correlativo);
+    if (filtros.estadoId) params.append('estadoId', filtros.estadoId);
+    
+    const queryString = params.toString();
+    const url = `${API_URL}${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await axios.get(url, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener movimientos con filtros:', error);
+    throw error;
+  }
+};

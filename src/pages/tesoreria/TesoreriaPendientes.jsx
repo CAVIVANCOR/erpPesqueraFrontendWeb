@@ -319,6 +319,7 @@ const TesoreriaPendientes = () => {
       empresaId: documento.empresa?.id,
       numeroPreFactura: documento.documentoNumero,
       fechaEmision: documento.fechaEmision,
+      fechaVencimiento: documento.fechaVencimiento,
       monedaId: documento.moneda?.id,
       montoTotal: documento.montoTotal,
       montoPagado: documento.montoPagado || 0,
@@ -331,7 +332,6 @@ const TesoreriaPendientes = () => {
     setCuentaPorCobrarEspecializada(cuentaPorCobrar);
     setShowPagoEspecializadoDialog(true);
   };
-
   const handleCancelarPagoEspecializado = () => {
     setShowPagoEspecializadoDialog(false);
     setCuentaPorCobrarEspecializada(null);
@@ -390,20 +390,23 @@ const TesoreriaPendientes = () => {
     <div className="p-fluid">
       <Toast ref={toast} />
       <ConfirmDialog />
-      {/* ✅ AGREGAR: Selector de Empresa */}
-      <Card className="mb-3">
-        <div className="p-fluid">
-          <div className="field">
-            <label htmlFor="empresa" className="font-bold">
-              🏢 Empresa
-            </label>
-            <EmpresaSelector
-              empresaId={usuario?.empresaId}
-              onEmpresaChange={(id) => handleFiltroChange("empresaId", id)}
-            />
-          </div>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label htmlFor="empresa" className="font-bold">
+            🏢 Empresa
+          </label>
+          <EmpresaSelector
+            empresaId={usuario?.empresaId}
+            onEmpresaChange={(id) => handleFiltroChange("empresaId", id)}
+          />
         </div>
-      </Card>
+      </div>
       {/* Panel de Saldos de Cuentas Corrientes */}
       <SaldosCuentasPanel
         saldosCuentas={saldosCuentas}

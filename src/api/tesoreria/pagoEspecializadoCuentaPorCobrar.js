@@ -64,3 +64,25 @@ export async function obtenerResumenOperacion(empresaId, correlativo) {
   });
   return res.data;
 }
+
+/**
+ * Actualizar URL del voucher consolidado
+ */
+export async function actualizarUrlVoucherConsolidado(movimientoIngresoId, urlPdf) {
+  const res = await axios.patch(`${API_URL}/voucher-consolidado/${movimientoIngresoId}`, 
+    { urlPdf }, 
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
+
+/**
+ * Actualizar URL del voucher individual
+ */
+export async function actualizarUrlVoucherIndividual(movimientoId, urlPdf) {
+  const res = await axios.patch(`${API_URL}/voucher-individual/${movimientoId}`, 
+    { urlPdf }, 
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

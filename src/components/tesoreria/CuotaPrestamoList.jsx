@@ -1,4 +1,3 @@
-// src/components/tesoreria/CuotaPrestamoList.jsx
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -7,36 +6,29 @@ import { Dialog } from "primereact/dialog";
 import { Tag } from "primereact/tag";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
-import { Toolbar } from "primereact/toolbar";
-import { InputText } from "primereact/inputtext";
+import { Calendar } from "primereact/calendar";
+import { InputNumber } from "primereact/inputnumber";
 import { FilterMatchMode } from "primereact/api";
-import CuotaPrestamoForm from "./CuotaPrestamoForm";
 import {
   getCuotasPorPrestamo,
   deleteCuotaPrestamo,
-  createCuotaPrestamo,
-  updateCuotaPrestamo,
-  registrarPagoCuota,
+  generarCronogramaCuotas,
+  guardarCuotasBulk,
 } from "../../api/tesoreria/cuotaPrestamo";
 import { getResponsiveFontSize } from "../../utils/utils";
-import CronogramaImportTable from "./CronogramaImportTable";
 
 export default function CuotaPrestamoList({
   prestamoBancarioId,
+  prestamo,
   readOnly = false,
 }) {
   const [cuotas, setCuotas] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [dialogVisible, setDialogVisible] = useState(false);
-  const [dialogPagoVisible, setDialogPagoVisible] = useState(false);
-  const [selectedCuota, setSelectedCuota] = useState(null);
-  const [isEdit, setIsEdit] = useState(false);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
   const [filters, setFilters] = useState({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
   });
   const toast = useRef(null);
-  const [dialogImportVisible, setDialogImportVisible] = useState(false);
 
   useEffect(() => {
     if (prestamoBancarioId) {
@@ -48,8 +40,13 @@ export default function CuotaPrestamoList({
     try {
       setLoading(true);
       const data = await getCuotasPorPrestamo(prestamoBancarioId);
-      setCuotas(data);
+      if (data && data.length > 0) {
+        setCuotas(data);
+      } else {
+        await handleGenerarCronograma();
+      }
     } catch (error) {
+      console.error("Error al cargar cuotas:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -61,102 +58,23 @@ export default function CuotaPrestamoList({
     }
   };
 
-  // Calcular totales
-  const totales = useMemo(() => {
-    return {
-      montoCapital: cuotas.reduce((sum, c) => sum + parseFloat(c.montoCapital || 0), 0),
-      montoInteres: cuotas.reduce((sum, c) => sum + parseFloat(c.montoInteres || 0), 0),
-      montoComision: cuotas.reduce((sum, c) => sum + parseFloat(c.montoComision || 0), 0),
-      montoSeguro: cuotas.reduce((sum, c) => sum + parseFloat(c.montoSeguro || 0), 0),
-      montoTotal: cuotas.reduce((sum, c) => sum + parseFloat(c.montoTotal || 0), 0),
-    };
-  }, [cuotas]);
-
-  const onGlobalFilterChange = (e) => {
-    const value = e.target.value;
-    let _filters = { ...filters };
-    _filters["global"].value = value;
-    setFilters(_filters);
-    setGlobalFilterValue(value);
-  };
-
-  const openNew = () => {
-    setSelectedCuota(null);
-    setIsEdit(false);
-    setDialogVisible(true);
-  };
-
-  const openEdit = (cuota) => {
-    setSelectedCuota(cuota);
-    setIsEdit(true);
-    setDialogVisible(true);
-  };
-
-  const openPago = (cuota) => {
-    setSelectedCuota(cuota);
-    setDialogPagoVisible(true);
-  };
-
-  const hideDialog = () => {
-    setDialogVisible(false);
-    setDialogPagoVisible(false);
-    setSelectedCuota(null);
-  };
-
-  const handleSubmit = async (data) => {
+  const handleGenerarCronograma = async () => {
     try {
       setLoading(true);
-      if (isEdit && selectedCuota) {
-        await updateCuotaPrestamo(selectedCuota.id, data);
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Cuota actualizada correctamente",
-          life: 3000,
-        });
-      } else {
-        await createCuotaPrestamo({
-          ...data,
-          prestamoBancarioId: Number(prestamoBancarioId),
-        });
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Cuota creada correctamente",
-          life: 3000,
-        });
-      }
-      hideDialog();
-      await cargarCuotas();
-    } catch (error) {
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: error.response?.data?.message || "Error al guardar cuota",
-        life: 3000,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePago = async (data) => {
-    try {
-      setLoading(true);
-      await registrarPagoCuota(selectedCuota.id, data);
+      const data = await generarCronogramaCuotas(prestamoBancarioId);
+      setCuotas(data);
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: "Pago registrado correctamente",
+        detail: `Cronograma generado: ${data.length} cuotas`,
         life: 3000,
       });
-      hideDialog();
-      await cargarCuotas();
     } catch (error) {
+      console.error("Error al generar cronograma:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.message || "Error al registrar pago",
+        detail: error.response?.data?.message || "Error al generar cronograma",
         life: 3000,
       });
     } finally {
@@ -164,58 +82,131 @@ export default function CuotaPrestamoList({
     }
   };
 
-  const handleImportarCuotas = async (cuotasImportadas) => {
+  const handleGuardarTodo = async () => {
     try {
       setLoading(true);
-
-      let cuotasCreadas = 0;
-      let errores = 0;
-
-      for (const cuota of cuotasImportadas) {
-        try {
-          const cuotaData = {
-            prestamoBancarioId: prestamoBancarioId,
-            numeroCuota: cuota.numeroCuota,
-            fechaVencimiento: cuota.fechaVencimiento,
-            saldoCapitalAntes: cuota.saldoCapitalAntes,
-            montoCapital: cuota.montoCapital,
-            montoInteres: cuota.montoInteres,
-            montoComision: cuota.montoComision || 0,
-            montoSeguro: cuota.montoSeguro || 0,
-            montoTotal: cuota.montoTotal,
-            saldoCapitalDespues: cuota.saldoCapitalDespues,
-            estadoPago: "PENDIENTE",
-          };
-
-          await createCuotaPrestamo(cuotaData);
-          cuotasCreadas++;
-        } catch (error) {
-          console.error(`Error al crear cuota ${cuota.numeroCuota}:`, error);
-          errores++;
-        }
-      }
-
+      await guardarCuotasBulk(prestamoBancarioId, cuotas);
       toast.current?.show({
-        severity: errores === 0 ? "success" : "warn",
-        summary: errores === 0 ? "Éxito" : "Importación Parcial",
-        detail: `${cuotasCreadas} cuotas importadas correctamente${
-          errores > 0 ? `, ${errores} con errores` : ""
-        }`,
-        life: 5000,
+        severity: "success",
+        summary: "Éxito",
+        detail: "Cuotas guardadas correctamente",
+        life: 3000,
       });
-
       await cargarCuotas();
     } catch (error) {
+      console.error("Error al guardar cuotas:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al importar cuotas",
+        detail: "Error al guardar cuotas",
         life: 3000,
       });
     } finally {
       setLoading(false);
     }
   };
+
+  const onCellEditComplete = (e) => {
+    const { rowData, newValue, field } = e;
+    const cuotasActualizadas = [...cuotas];
+    const index = cuotasActualizadas.findIndex((c) => c.id === rowData.id);
+
+    if (field === "fechaVencimiento") {
+      cuotasActualizadas[index][field] = newValue;
+    } else {
+      const numero = parseFloat(newValue);
+      cuotasActualizadas[index][field] = isNaN(numero) ? 0 : numero;
+
+      if (
+        field === "montoCapital" ||
+        field === "montoInteres" ||
+        field === "montoComision" ||
+        field === "montoSeguro"
+      ) {
+        const cuota = cuotasActualizadas[index];
+        cuota.montoTotal =
+          (cuota.montoCapital || 0) +
+          (cuota.montoInteres || 0) +
+          (cuota.montoComision || 0) +
+          (cuota.montoSeguro || 0);
+      }
+
+      if (field === "montoCapital") {
+        recalcularSaldos(cuotasActualizadas, index);
+      }
+    }
+
+    setCuotas(cuotasActualizadas);
+  };
+
+  const recalcularSaldos = (cuotasArray, desdeIndex) => {
+    for (let i = desdeIndex; i < cuotasArray.length; i++) {
+      if (i === 0) {
+        cuotasArray[i].saldoCapitalAntes = prestamo.montoDesembolsado;
+      } else {
+        cuotasArray[i].saldoCapitalAntes =
+          cuotasArray[i - 1].saldoCapitalDespues;
+      }
+      cuotasArray[i].saldoCapitalDespues =
+        cuotasArray[i].saldoCapitalAntes - cuotasArray[i].montoCapital;
+
+      const saldoAntes = cuotasArray[i].saldoCapitalAntes;
+      const tasaMensual = (prestamo.tasaInteresAnual || 0) / 12 / 100;
+      cuotasArray[i].montoInteres = saldoAntes * tasaMensual;
+      cuotasArray[i].montoTotal =
+        cuotasArray[i].montoCapital +
+        cuotasArray[i].montoInteres +
+        (cuotasArray[i].montoComision || 0) +
+        (cuotasArray[i].montoSeguro || 0);
+    }
+  };
+
+  const cellEditor = (options) => {
+    if (options.field === "fechaVencimiento") {
+      return (
+        <Calendar
+          value={options.value}
+          onChange={(e) => options.editorCallback(e.value)}
+          dateFormat="dd/mm/yy"
+          showIcon
+        />
+      );
+    }
+    return (
+      <InputNumber
+        value={options.value}
+        onValueChange={(e) => options.editorCallback(e.value)}
+        mode="decimal"
+        minFractionDigits={2}
+        maxFractionDigits={2}
+      />
+    );
+  };
+
+  const totales = useMemo(() => {
+    return {
+      montoCapital: cuotas.reduce(
+        (sum, c) => sum + parseFloat(c.montoCapital || 0),
+        0
+      ),
+      montoInteres: cuotas.reduce(
+        (sum, c) => sum + parseFloat(c.montoInteres || 0),
+        0
+      ),
+      montoComision: cuotas.reduce(
+        (sum, c) => sum + parseFloat(c.montoComision || 0),
+        0
+      ),
+      montoSeguro: cuotas.reduce(
+        (sum, c) => sum + parseFloat(c.montoSeguro || 0),
+        0
+      ),
+      montoTotal: cuotas.reduce(
+        (sum, c) => sum + parseFloat(c.montoTotal || 0),
+        0
+      ),
+    };
+  }, [cuotas]);
 
   const confirmDelete = (cuota) => {
     confirmDialog({
@@ -253,23 +244,21 @@ export default function CuotaPrestamoList({
 
   const estadoBodyTemplate = (rowData) => {
     const severity =
-      rowData.estadoPago === "PAGADA"
+      rowData.estadoPago === "PAGADO"
         ? "success"
-        : rowData.estadoPago === "VENCIDA"
+        : rowData.estadoPago === "VENCIDO"
         ? "danger"
         : "warning";
     return <Tag value={rowData.estadoPago} severity={severity} />;
   };
 
-  const fechaBodyTemplate = (rowData, field) => {
-    return rowData[field]
-      ? new Date(rowData[field]).toLocaleDateString("es-PE")
-      : "-";
+  const fechaBodyTemplate = (rowData) => {
+    if (!rowData.fechaVencimiento) return "";
+    return new Date(rowData.fechaVencimiento).toLocaleDateString("es-PE");
   };
 
   const montoBodyTemplate = (rowData, field) => {
     return new Intl.NumberFormat("es-PE", {
-      style: "decimal",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(rowData[field] || 0);
@@ -278,28 +267,6 @@ export default function CuotaPrestamoList({
   const actionBodyTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
-        {rowData.estadoPago === "PENDIENTE" && (
-          <Button
-            icon="pi pi-dollar"
-            rounded
-            outlined
-            severity="success"
-            onClick={() => openPago(rowData)}
-            tooltip="Registrar Pago"
-            tooltipOptions={{ position: "top" }}
-            disabled={readOnly}
-          />
-        )}
-        <Button
-          icon="pi pi-pencil"
-          rounded
-          outlined
-          severity="info"
-          onClick={() => openEdit(rowData)}
-          tooltip="Editar"
-          tooltipOptions={{ position: "top" }}
-          disabled={readOnly}
-        />
         <Button
           icon="pi pi-trash"
           rounded
@@ -314,10 +281,8 @@ export default function CuotaPrestamoList({
     );
   };
 
-
   const formatCurrency = (value) => {
     return new Intl.NumberFormat("es-PE", {
-      style: "decimal",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(value || 0);
@@ -327,7 +292,7 @@ export default function CuotaPrestamoList({
     <div>
       <Toast ref={toast} />
       <ConfirmDialog />
-          <div className="card">
+      <div className="card">
         <DataTable
           value={cuotas}
           loading={loading}
@@ -344,9 +309,7 @@ export default function CuotaPrestamoList({
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cuotas"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           style={{ fontSize: getResponsiveFontSize() }}
-          selectionMode="single"
-          onRowClick={(e) => !readOnly && openEdit(e.data)}
-          rowClassName={() => !readOnly ? "cursor-pointer" : ""}
+          editMode="cell"
           header={
             <div
               style={{
@@ -357,21 +320,23 @@ export default function CuotaPrestamoList({
               }}
             >
               <div style={{ flex: 1 }}>
-                <h2>Cuotas del Préstamo</h2>
+                <h2>Cronograma de Cuotas</h2>
               </div>
-              <div style={{ flex: 1, display: "flex", gap: "10px" }}>
+              <div style={{ flex: 1, display: "flex", gap: "10px", justifyContent: "flex-end" }}>
                 <Button
-                  label="Nueva Cuota"
-                  icon="pi pi-plus"
-                  severity="success"
-                  onClick={openNew}
+                  label="Regenerar Cronograma"
+                  icon="pi pi-refresh"
+                  severity="warning"
+                  onClick={handleGenerarCronograma}
+                  loading={loading}
                   disabled={readOnly}
                 />
                 <Button
-                  label="Importar desde PDF"
-                  icon="pi pi-file-import"
-                  severity="info"
-                  onClick={() => setDialogImportVisible(true)}
+                  label="Guardar Todo"
+                  icon="pi pi-save"
+                  severity="success"
+                  onClick={handleGuardarTodo}
+                  loading={loading}
                   disabled={readOnly}
                 />
               </div>
@@ -380,142 +345,125 @@ export default function CuotaPrestamoList({
         >
           <Column
             field="numeroCuota"
-            header="N° Cuota"
+            header="N°"
             sortable
-            style={{ minWidth: "8rem", textAlign:"center" }}
+            style={{ width: "60px", textAlign: "center" }}
             footer="TOTALES:"
             footerStyle={{ textAlign: "right", fontWeight: "bold" }}
           />
           <Column
             field="fechaVencimiento"
             header="Vencimiento"
-            body={(rowData) => fechaBodyTemplate(rowData, "fechaVencimiento")}
+            body={fechaBodyTemplate}
+            editor={cellEditor}
+            onCellEditComplete={onCellEditComplete}
             sortable
-            style={{ minWidth: "6rem", textAlign:"center" }}
+            style={{ width: "130px", textAlign: "center" }}
           />
           <Column
             field="saldoCapitalAntes"
-            header="Saldo Capital Antes"
-            body={(rowData) => montoBodyTemplate(rowData, "saldoCapitalAntes")}
+            header="Saldo Antes"
+            body={(r) => montoBodyTemplate(r, "saldoCapitalAntes")}
             sortable
-            style={{ minWidth: "8rem", textAlign:"right" }}
+            style={{ width: "130px", textAlign: "right", backgroundColor: "#f5f5f5" }}
           />
           <Column
             field="montoCapital"
-            header="Monto Capital"
-            body={(rowData) => montoBodyTemplate(rowData, "montoCapital")}
+            header="Capital"
+            body={(r) => montoBodyTemplate(r, "montoCapital")}
+            editor={cellEditor}
+            onCellEditComplete={onCellEditComplete}
             sortable
-            style={{ minWidth: "8rem", textAlign:"right" }}
+            style={{ width: "120px", textAlign: "right" }}
             footer={formatCurrency(totales.montoCapital)}
-            footerStyle={{ textAlign: "right", fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+            footerStyle={{
+              textAlign: "right",
+              fontWeight: "bold",
+              backgroundColor: "#f0f0f0",
+            }}
           />
           <Column
             field="montoInteres"
-            header="Monto Interés"
-            body={(rowData) => montoBodyTemplate(rowData, "montoInteres")}
+            header="Interés"
+            body={(r) => montoBodyTemplate(r, "montoInteres")}
             sortable
-            style={{ minWidth: "6rem", textAlign:"right" }}
+            style={{ width: "110px", textAlign: "right", backgroundColor: "#fff3cd" }}
             footer={formatCurrency(totales.montoInteres)}
-            footerStyle={{ textAlign: "right", fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+            footerStyle={{
+              textAlign: "right",
+              fontWeight: "bold",
+              backgroundColor: "#f0f0f0",
+            }}
           />
           <Column
             field="montoComision"
-            header="Monto Comisión"
-            body={(rowData) => montoBodyTemplate(rowData, "montoComision")}
+            header="Comisión"
+            body={(r) => montoBodyTemplate(r, "montoComision")}
+            editor={cellEditor}
+            onCellEditComplete={onCellEditComplete}
             sortable
-            style={{ minWidth: "6rem", textAlign:"right" }}
+            style={{ width: "110px", textAlign: "right" }}
             footer={formatCurrency(totales.montoComision)}
-            footerStyle={{ textAlign: "right", fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+            footerStyle={{
+              textAlign: "right",
+              fontWeight: "bold",
+              backgroundColor: "#f0f0f0",
+            }}
           />
           <Column
             field="montoSeguro"
-            header="Monto Seguro"
-            body={(rowData) => montoBodyTemplate(rowData, "montoSeguro")}
+            header="Seguro"
+            body={(r) => montoBodyTemplate(r, "montoSeguro")}
+            editor={cellEditor}
+            onCellEditComplete={onCellEditComplete}
             sortable
-            style={{ minWidth: "6rem", textAlign:"right" }}
+            style={{ width: "100px", textAlign: "right" }}
             footer={formatCurrency(totales.montoSeguro)}
-            footerStyle={{ textAlign: "right", fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+            footerStyle={{
+              textAlign: "right",
+              fontWeight: "bold",
+              backgroundColor: "#f0f0f0",
+            }}
           />
           <Column
             field="montoTotal"
-            header="Monto Total"
-            body={(rowData) => montoBodyTemplate(rowData, "montoTotal")}
+            header="Total"
+            body={(r) => montoBodyTemplate(r, "montoTotal")}
             sortable
-            style={{ minWidth: "8rem", textAlign:"right" }}
+            style={{
+              width: "120px",
+              textAlign: "right",
+              backgroundColor: "#d1ecf1",
+              fontWeight: "bold",
+            }}
             footer={formatCurrency(totales.montoTotal)}
-            footerStyle={{ textAlign: "right", fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+            footerStyle={{
+              textAlign: "right",
+              fontWeight: "bold",
+              backgroundColor: "#f0f0f0",
+            }}
           />
           <Column
             field="saldoCapitalDespues"
-            header="Saldo Capital Después"
-            body={(rowData) =>
-              montoBodyTemplate(rowData, "saldoCapitalDespues")
-            }
+            header="Saldo Después"
+            body={(r) => montoBodyTemplate(r, "saldoCapitalDespues")}
             sortable
-            style={{ minWidth: "8rem", textAlign:"right" }}
+            style={{ width: "130px", textAlign: "right", backgroundColor: "#f5f5f5" }}
           />
           <Column
             field="estadoPago"
             header="Estado"
             body={estadoBodyTemplate}
             sortable
-            style={{ minWidth: "10rem" }}
-          />
-          <Column
-            field="fechaPago"
-            header="Fecha Pago"
-            body={(rowData) => fechaBodyTemplate(rowData, "fechaPago")}
-            sortable
-            style={{ minWidth: "12rem" }}
+            style={{ width: "100px" }}
           />
           <Column
             body={actionBodyTemplate}
             exportable={false}
-            style={{ minWidth: "12rem" }}
+            style={{ width: "80px" }}
           />
         </DataTable>
       </div>
-
-      <Dialog
-        visible={dialogVisible}
-        style={{ width: "80vw" }}
-        header={isEdit ? "Editar Cuota" : "Nueva Cuota"}
-        modal
-        className="p-fluid"
-        onHide={hideDialog}
-      >
-        <CuotaPrestamoForm
-          isEdit={isEdit}
-          defaultValues={selectedCuota}
-          prestamoBancarioId={prestamoBancarioId}
-          onSubmit={handleSubmit}
-          onCancel={hideDialog}
-          loading={loading}
-        />
-      </Dialog>
-
-      <Dialog
-        visible={dialogPagoVisible}
-        style={{ width: "40vw" }}
-        header="Registrar Pago"
-        modal
-        className="p-fluid"
-        onHide={hideDialog}
-      >
-        <CuotaPrestamoForm
-          isPago={true}
-          defaultValues={selectedCuota}
-          onSubmit={handlePago}
-          onCancel={hideDialog}
-          loading={loading}
-        />
-      </Dialog>
-      <CronogramaImportTable
-        visible={dialogImportVisible}
-        onHide={() => setDialogImportVisible(false)}
-        onImport={handleImportarCuotas}
-        prestamoBancarioId={prestamoBancarioId}
-      />
     </div>
   );
 }

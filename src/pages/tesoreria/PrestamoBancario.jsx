@@ -1174,6 +1174,7 @@ export default function PrestamoBancario({ ruta }) {
           loading={loading}
         />
       </Dialog>
+
     </div>
   );
 }

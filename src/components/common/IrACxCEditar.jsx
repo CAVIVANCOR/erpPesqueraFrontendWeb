@@ -87,9 +87,9 @@ export default function IrACxCEditar({
         return;
       }
 
-      // ⭐ NUEVO: Solo cargar CxC si el estado es >= EMITIDA
+      // ⭐ Solo cargar CxC si el estado NO es PENDIENTE
       const estadoId = Number(preFactura?.estadoId || 0);
-      if (estadoId < ESTADO_PREFACTURA.EMITIDA) {
+      if (estadoId === ESTADO_PREFACTURA.PENDIENTE) {
         if (isMounted) {
           setCxcData(null);
           setLoading(false);

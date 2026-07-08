@@ -10,7 +10,10 @@ import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { Toolbar } from "primereact/toolbar";
 import { Tag } from "primereact/tag";
+import { Calendar } from "primereact/calendar";
+import { Dropdown } from "primereact/dropdown";
 import CuentaPorPagarForm from "../components/cuentaPorPagar/CuentaPorPagarForm";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 import { getMediosPago } from "../api/medioPago";
 import { getBancos } from "../api/banco";
 import { getAllCuentaCorriente } from "../api/cuentaCorriente";
@@ -30,7 +33,7 @@ import { getMonedas } from "../api/moneda";
 import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { getOrdenesCompra } from "../api/ordenCompra";
 import { useAuthStore } from "../shared/stores/useAuthStore";
-import { getResponsiveFontSize } from "../utils/utils";
+import { getResponsiveFontSize, formatearFecha, formatearNumero } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
 import { getPeriodosContables } from "../api/contabilidad/periodoContable";
 
@@ -67,6 +70,21 @@ export default function CuentaPorPagar({ ruta }) {
   const [highlightId, setHighlightId] = useState(null);
 
   const [formData, setFormData] = useState({});
+
+  // ═══════════════════════════════════════════════════════════
+  // ESTADOS DE FILTROS
+  // ═══════════════════════════════════════════════════════════
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
+  const [rangoFechas, setRangoFechas] = useState(null);
+  const [rangoFechasVencimiento, setRangoFechasVencimiento] = useState(null);
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
+  const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
+  const [nroDocumentoBusqueda, setNroDocumentoBusqueda] = useState("");
+  const [cuentasFiltradasNuevo, setCuentasFiltradasNuevo] = useState([]);
+  const [proveedoresUnicos, setProveedoresUnicos] = useState([]);
+  const [estadosUnicos, setEstadosUnicos] = useState([]);
+  const [monedasUnicas, setMonedasUnicas] = useState([]);
   useEffect(() => {
     loadData();
   }, []);
@@ -133,6 +151,143 @@ export default function CuentaPorPagar({ ruta }) {
       setLoading(false);
     }
   };
+
+  // ═══════════════════════════════════════════════════════════
+  // EFECTO: GENERAR OPCIONES ÚNICAS PARA FILTROS
+  // ═══════════════════════════════════════════════════════════
+  useEffect(() => {
+    const datosParaOpciones = empresaSeleccionada
+      ? cuentasFiltradasNuevo.filter(c => Number(c.empresaId) === Number(empresaSeleccionada))
+      : cuentasFiltradasNuevo;
+
+    // Proveedores únicos
+    const proveedoresUnicos = [...new Map(
+      datosParaOpciones
+        .filter(c => c.proveedor)
+        .map(c => [c.proveedor.id, c.proveedor])
+    ).values()];
+
+    // Estados únicos
+    const estadosUnicos = [...new Map(
+      datosParaOpciones
+        .filter(c => c.estado)
+        .map(c => [c.estado.id, c.estado])
+    ).values()];
+
+    // Monedas únicas
+    const monedasUnicas = [...new Map(
+      datosParaOpciones
+        .filter(c => c.moneda)
+        .map(c => [c.moneda.id, c.moneda])
+    ).values()];
+
+    setProveedoresUnicos(proveedoresUnicos);
+    setEstadosUnicos(estadosUnicos);
+    setMonedasUnicas(monedasUnicas);
+
+    // Limpiar selecciones que ya no existen
+    if (proveedorSeleccionado && !proveedoresUnicos.find(p => Number(p.id) === Number(proveedorSeleccionado))) {
+      setProveedorSeleccionado(null);
+    }
+    if (estadoSeleccionado && !estadosUnicos.find(e => Number(e.id) === Number(estadoSeleccionado))) {
+      setEstadoSeleccionado(null);
+    }
+    if (monedaSeleccionada && !monedasUnicas.find(m => Number(m.id) === Number(monedaSeleccionada))) {
+      setMonedaSeleccionada(null);
+    }
+  }, [cuentasFiltradasNuevo, empresaSeleccionada, proveedorSeleccionado, estadoSeleccionado, monedaSeleccionada]);
+
+  // ═══════════════════════════════════════════════════════════
+  // EFECTO: APLICAR FILTROS
+  // ═══════════════════════════════════════════════════════════
+  useEffect(() => {
+    let filtrados = cuentas;
+
+    // Filtro por empresa
+    if (empresaSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.empresaId) === Number(empresaSeleccionada)
+      );
+    }
+
+    // Filtro por proveedor
+    if (proveedorSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.proveedorId) === Number(proveedorSeleccionado)
+      );
+    }
+
+    // Filtro por rango de fechas (fechaEmision)
+    if (rangoFechas && rangoFechas[0]) {
+      filtrados = filtrados.filter((item) => {
+        const fechaEmision = new Date(item.fechaEmision);
+        const fechaIni = new Date(rangoFechas[0]);
+        fechaIni.setHours(0, 0, 0, 0);
+
+        // Si hay fecha fin
+        if (rangoFechas[1]) {
+          const fechaFinDia = new Date(rangoFechas[1]);
+          fechaFinDia.setHours(23, 59, 59, 999);
+          return fechaEmision >= fechaIni && fechaEmision <= fechaFinDia;
+        }
+        // Solo fecha inicio
+        return fechaEmision >= fechaIni;
+      });
+    }
+
+    // Filtro por rango de fechas de vencimiento
+    if (rangoFechasVencimiento && rangoFechasVencimiento[0]) {
+      filtrados = filtrados.filter((item) => {
+        const fechaVencimiento = new Date(item.fechaVencimiento);
+        const fechaIni = new Date(rangoFechasVencimiento[0]);
+        fechaIni.setHours(0, 0, 0, 0);
+
+        // Si hay fecha fin
+        if (rangoFechasVencimiento[1]) {
+          const fechaFinDia = new Date(rangoFechasVencimiento[1]);
+          fechaFinDia.setHours(23, 59, 59, 999);
+          return fechaVencimiento >= fechaIni && fechaVencimiento <= fechaFinDia;
+        }
+        // Solo fecha inicio
+        return fechaVencimiento >= fechaIni;
+      });
+    }
+
+    // Filtro por estado
+    if (estadoSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.estadoId) === Number(estadoSeleccionado)
+      );
+    }
+
+    // Filtro por moneda
+    if (monedaSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.monedaId) === Number(monedaSeleccionada)
+      );
+    }
+
+    // Filtro por número de documento
+    if (nroDocumentoBusqueda && nroDocumentoBusqueda.trim() !== "") {
+      const busqueda = nroDocumentoBusqueda.toLowerCase().trim();
+      filtrados = filtrados.filter((item) => {
+        const nroDocumento = item.numeroOrdenCompra || "";
+        return nroDocumento.toLowerCase().includes(busqueda);
+      });
+    }
+
+    setCuentasFiltradasNuevo(filtrados);
+  }, [
+    empresaSeleccionada,
+    proveedorSeleccionado,
+    rangoFechas,
+    rangoFechasVencimiento,
+    estadoSeleccionado,
+    monedaSeleccionada,
+    nroDocumentoBusqueda,
+    cuentas,
+  ]);
+
   const handleGenerarAsiento = async (cuenta) => {
     try {
       // TODO: Implementar generación de asiento contable
@@ -152,11 +307,20 @@ export default function CuentaPorPagar({ ruta }) {
       });
     }
   };
-  const openNew = () => {
-    setFormData({});
-    setSelectedCuenta(null);
-    setIsEdit(false);
-    setCuentaDialog(true);
+  // FUNCIÓN ELIMINADA: openNew
+  // Las cuentas por pagar se generan automáticamente desde Orden de Compra
+
+  // ═══════════════════════════════════════════════════════════
+  // FUNCIÓN: LIMPIAR FILTROS
+  // ═══════════════════════════════════════════════════════════
+  const limpiarFiltros = () => {
+    setEmpresaSeleccionada(null);
+    setProveedorSeleccionado(null);
+    setRangoFechas(null);
+    setRangoFechasVencimiento(null);
+    setEstadoSeleccionado(null);
+    setMonedaSeleccionada(null);
+    setNroDocumentoBusqueda("");
   };
 
   const hideDialog = () => {
@@ -449,43 +613,9 @@ export default function CuentaPorPagar({ ruta }) {
       </div>
     );
   };
-  const leftToolbarTemplate = () => {
-    return (
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        <Button
-          label="Nuevo"
-          icon="pi pi-plus"
-          className="p-button-success"
-          onClick={openNew}
-          disabled={!permisos.puedeCrear || loading}
-          tooltip={!permisos.puedeCrear ? "No tiene permisos para crear" : ""}
-        />
-        <Button
-          label="Actualizar"
-          icon="pi pi-refresh"
-          className="p-button-info"
-          onClick={loadData}
-          loading={loading}
-        />
-      </div>
-    );
-  };
 
-  const rightToolbarTemplate = () => {
-    return (
-      <span className="p-input-icon-left">
-        <i className="pi pi-search" />
-        <InputText
-          type="search"
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          placeholder="Buscar..."
-        />
-      </span>
-    );
-  };
-
-  const cuentasFiltradas = cuentas.filter((cuenta) => {
+  // Aplicar filtro adicional de proveedor desde contexto y solo pendientes
+  const cuentasFiltradas = cuentasFiltradasNuevo.filter((cuenta) => {
     const cumpleFiltroProveedor = proveedorFiltrado
       ? Number(cuenta.proveedorId) === proveedorFiltrado
       : true;
@@ -603,12 +733,171 @@ export default function CuentaPorPagar({ ruta }) {
   return (
     <div className="card">
       <Toast ref={toast} />
-      <h2>Gestión de Cuentas por Pagar</h2>
-      <Toolbar
-        className="mb-4"
-        left={leftToolbarTemplate}
-        right={rightToolbarTemplate}
-      />
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECCIÓN DE FILTROS */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div style={{ marginBottom: "1rem" }}>
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 2 }}>
+            <h2>Cuentas por Pagar</h2>
+          </div>
+          <div style={{ flex: 2 }}>
+            <label style={{ fontWeight: "bold" }}>Empresa</label>
+            <EmpresaSelector
+              empresaId={usuario?.empresaId}
+              onEmpresaChange={(id) => setEmpresaSeleccionada(id)}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              label="Actualizar"
+              icon="pi pi-refresh"
+              className="p-button-info"
+              onClick={loadData}
+              loading={loading}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              label="Limpiar Filtros"
+              icon="pi pi-filter-slash"
+              className="p-button-secondary"
+              outlined
+              onClick={limpiarFiltros}
+              disabled={loading}
+            />
+          </div>
+        </div>
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            marginTop: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 2 }}>
+            <label htmlFor="proveedorFiltro" style={{ fontWeight: "bold" }}>
+              Proveedor
+            </label>
+            <Dropdown
+              id="proveedorFiltro"
+              value={proveedorSeleccionado}
+              options={proveedoresUnicos.map((p) => ({
+                label: p.razonSocial,
+                value: Number(p.id),
+              }))}
+              onChange={(e) => setProveedorSeleccionado(e.value)}
+              placeholder="Todos"
+              optionLabel="label"
+              optionValue="value"
+              showClear
+              filter
+              disabled={loading}
+                            style={{ width: "100%" }}
+            />
+          </div>
+          <div style={{ flex: 2 }}>
+            <label htmlFor="rangoFechas" style={{ fontWeight: "bold" }}>
+              Rango de Fechas (Emisión)
+            </label>
+            <Calendar
+              id="rangoFechas"
+              value={rangoFechas}
+              onChange={(e) => setRangoFechas(e.value)}
+              selectionMode="range"
+              dateFormat="dd/mm/yy"
+              showIcon
+              placeholder="Seleccionar rango..."
+              style={{ width: "100%" }}
+              disabled={loading}
+              readOnlyInput
+            />
+          </div>
+          <div style={{ flex: 2 }}>
+            <label htmlFor="rangoFechasVencimiento" style={{ fontWeight: "bold" }}>
+              Rango de Fechas (Vencimiento)
+            </label>
+            <Calendar
+              id="rangoFechasVencimiento"
+              value={rangoFechasVencimiento}
+              onChange={(e) => setRangoFechasVencimiento(e.value)}
+              selectionMode="range"
+              dateFormat="dd/mm/yy"
+              showIcon
+              placeholder="Seleccionar rango..."
+              style={{ width: "100%" }}
+              disabled={loading}
+              readOnlyInput
+            />
+          </div>
+          <div style={{ flex: 2 }}>
+            <label htmlFor="estadoFiltro" style={{ fontWeight: "bold" }}>
+              Estado
+            </label>
+            <Dropdown
+              id="estadoFiltro"
+              value={estadoSeleccionado}
+              options={estadosUnicos.map((e) => ({
+                label: e.descripcion,
+                value: Number(e.id),
+              }))}
+              onChange={(e) => setEstadoSeleccionado(e.value)}
+              placeholder="Todos"
+              optionLabel="label"
+              optionValue="value"
+              showClear
+              filter
+              disabled={loading}
+                            style={{ width: "100%" }}
+            />
+          </div>
+          <div style={{ flex: 2 }}>
+            <label htmlFor="monedaFiltro" style={{ fontWeight: "bold" }}>
+              Moneda
+            </label>
+            <Dropdown
+              id="monedaFiltro"
+              value={monedaSeleccionada}
+              options={monedasUnicas.map((m) => ({
+                label: m.descripcion,
+                value: Number(m.id),
+              }))}
+              onChange={(e) => setMonedaSeleccionada(e.value)}
+              placeholder="Todas"
+              optionLabel="label"
+              optionValue="value"
+              showClear
+              filter
+              disabled={loading}
+                            style={{ width: "100%" }}
+            />
+          </div>
+          <div style={{ flex: 2 }}>
+            <label htmlFor="nroDocumentoInput" style={{ fontWeight: "bold" }}>
+              N° Documento
+            </label>
+            <InputText
+              id="nroDocumentoInput"
+              value={nroDocumentoBusqueda}
+              onChange={(e) => setNroDocumentoBusqueda(e.target.value)}
+              placeholder="Buscar por N° Documento..."
+              style={{ width: "100%" }}
+              disabled={loading}
+            />
+          </div>
+        </div>
+      </div>
+
       <DataTable
         value={cuentasFiltradas}
         loading={loading}

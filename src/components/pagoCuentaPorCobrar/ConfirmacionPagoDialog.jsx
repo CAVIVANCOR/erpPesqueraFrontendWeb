@@ -1,5 +1,5 @@
 // src/components/pagoCuentaPorCobrar/ConfirmacionPagoDialog.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Panel } from 'primereact/panel';
@@ -7,6 +7,7 @@ import { Divider } from 'primereact/divider';
 import { Tag } from 'primereact/tag';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
+import VerImpresionVoucherPagoCxC from './VerImpresionVoucherPagoCxC';
 
 /**
  * ════════════════════════════════════════════════════════════
@@ -27,8 +28,15 @@ export default function ConfirmacionPagoDialog({
   resultadoPago,
   cuentaPorCobrar,
   monedas = [],
+  empresas = [],
   toast
 }) {
+  const [mostrarVouchers, setMostrarVouchers] = useState(false);
+
+  // Obtener empresa del pago
+  const empresa = empresas.find(e =>
+    Number(e.id) === Number(resultadoPago?.pagoCuentaPorCobrar?.empresaId)
+  );
   // ════════════════════════════════════════════════════════════
   // RENDER: HEADER CONFIRMACIÓN
   // ════════════════════════════════════════════════════════════
@@ -40,7 +48,7 @@ export default function ConfirmacionPagoDialog({
         <i className="pi pi-check-circle text-green-500" style={{ fontSize: '4rem' }}></i>
         <h2 className="mt-3 mb-2">¡Pago Procesado Exitosamente!</h2>
         <div className="text-xl">
-          <Tag 
+          <Tag
             value={`Operación #${resultadoPago.correlativo}`}
             severity="success"
             style={{ fontSize: '1.2rem', padding: '0.5rem 1rem' }}
@@ -57,10 +65,10 @@ export default function ConfirmacionPagoDialog({
     if (!resultadoPago?.resumen) return null;
 
     const { resumen } = resultadoPago;
-    const monedaPago = monedas.find(m => 
+    const monedaPago = monedas.find(m =>
       Number(m.id) === Number(resultadoPago.pagoCuentaPorCobrar?.monedaPagoId)
     );
-    const monedaDeuda = monedas.find(m => 
+    const monedaDeuda = monedas.find(m =>
       Number(m.id) === Number(resultadoPago.pagoCuentaPorCobrar?.monedaDeudaId)
     );
 
@@ -71,7 +79,7 @@ export default function ConfirmacionPagoDialog({
             <div className="field">
               <label className="font-bold">Monto Bruto:</label>
               <div>
-                <Tag 
+                <Tag
                   value={`${monedaPago?.simbolo || ''} ${Number(resumen.montoBruto || 0).toFixed(2)}`}
                   severity="info"
                 />
@@ -84,7 +92,7 @@ export default function ConfirmacionPagoDialog({
               <div className="field">
                 <label className="font-bold">ITF:</label>
                 <div>
-                  <Tag 
+                  <Tag
                     value={`${monedaPago?.simbolo || ''} ${Number(resumen.montoITF || 0).toFixed(2)}`}
                     severity="warning"
                   />
@@ -98,7 +106,7 @@ export default function ConfirmacionPagoDialog({
               <div className="field">
                 <label className="font-bold">Comisión:</label>
                 <div>
-                  <Tag 
+                  <Tag
                     value={`${monedaPago?.simbolo || ''} ${Number(resumen.montoComision || 0).toFixed(2)}`}
                     severity="warning"
                   />
@@ -111,7 +119,7 @@ export default function ConfirmacionPagoDialog({
             <div className="field">
               <label className="font-bold">Monto Neto en Caja:</label>
               <div>
-                <Tag 
+                <Tag
                   value={`${monedaPago?.simbolo || ''} ${Number(resumen.montoNetoCaja || 0).toFixed(2)}`}
                   severity="success"
                 />
@@ -124,7 +132,7 @@ export default function ConfirmacionPagoDialog({
               <div className="field">
                 <label className="font-bold">Detracción:</label>
                 <div>
-                  <Tag 
+                  <Tag
                     value={`${monedaPago?.simbolo || ''} ${Number(resumen.montoDetraccion || 0).toFixed(2)}`}
                     severity="contrast"
                   />
@@ -138,7 +146,7 @@ export default function ConfirmacionPagoDialog({
               <div className="field">
                 <label className="font-bold">Retención:</label>
                 <div>
-                  <Tag 
+                  <Tag
                     value={`${monedaPago?.simbolo || ''} ${Number(resumen.montoRetencion || 0).toFixed(2)}`}
                     severity="contrast"
                   />
@@ -152,7 +160,7 @@ export default function ConfirmacionPagoDialog({
               <div className="field">
                 <label className="font-bold">Percepción:</label>
                 <div>
-                  <Tag 
+                  <Tag
                     value={`${monedaPago?.simbolo || ''} ${Number(resumen.montoPercepcion || 0).toFixed(2)}`}
                     severity="contrast"
                   />
@@ -169,7 +177,7 @@ export default function ConfirmacionPagoDialog({
             <div className="field">
               <label className="font-bold text-lg">Deuda Cancelada:</label>
               <div>
-                <Tag 
+                <Tag
                   value={`${monedaDeuda?.simbolo || ''} ${Number(resumen.deudaCancelada || 0).toFixed(2)}`}
                   severity="success"
                   style={{ fontSize: '1.2rem', padding: '0.5rem 1rem' }}
@@ -182,7 +190,7 @@ export default function ConfirmacionPagoDialog({
             <div className="field">
               <label className="font-bold text-lg">Saldo Pendiente:</label>
               <div>
-                <Tag 
+                <Tag
                   value={`${monedaDeuda?.simbolo || ''} ${Number(resumen.saldoPendiente || 0).toFixed(2)}`}
                   severity={Number(resumen.saldoPendiente || 0) > 0 ? 'warning' : 'success'}
                   style={{ fontSize: '1.2rem', padding: '0.5rem 1rem' }}
@@ -202,7 +210,7 @@ export default function ConfirmacionPagoDialog({
     if (!resultadoPago?.movimientos) return null;
 
     const movimientos = [];
-    
+
     if (resultadoPago.movimientos.ingreso) {
       movimientos.push({
         tipo: 'Ingreso',
@@ -237,9 +245,9 @@ export default function ConfirmacionPagoDialog({
         <DataTable value={movimientos} size="small">
           <Column field="tipo" header="Tipo" />
           <Column field="id" header="ID" />
-          <Column 
-            field="monto" 
-            header="Monto" 
+          <Column
+            field="monto"
+            header="Monto"
             body={(rowData) => Number(rowData.monto || 0).toFixed(2)}
           />
           <Column field="observaciones" header="Observaciones" />
@@ -316,19 +324,6 @@ export default function ConfirmacionPagoDialog({
           onClick={onHide}
           className="p-button-secondary"
         />
-        <Button
-          label="Imprimir Voucher"
-          icon="pi pi-print"
-          onClick={() => {
-            toast?.current?.show({
-              severity: 'info',
-              summary: 'Información',
-              detail: 'Funcionalidad de impresión de voucher en desarrollo.',
-              life: 3000
-            });
-          }}
-          className="p-button-primary"
-        />
       </div>
     );
   };
@@ -341,7 +336,7 @@ export default function ConfirmacionPagoDialog({
       visible={visible}
       onHide={onHide}
       header="✅ Confirmación de Pago"
-      style={{ width: '90vw', maxWidth: '900px' }}
+      style={{ width: '90vw', maxWidth: '1200px' }}
       modal
       footer={renderFooter()}
     >
@@ -349,6 +344,28 @@ export default function ConfirmacionPagoDialog({
       {renderResumen()}
       {renderMovimientos()}
       {renderConceptosSunat()}
+
+      {/* Voucher Consolidado Automático */}
+      {resultadoPago?.urlVoucherConsolidado && (
+        <>
+          <Divider />
+          <Panel header="📄 Voucher Consolidado" className="mb-3">
+            <iframe
+              src={resultadoPago.urlVoucherConsolidado}
+              style={{ width: '100%', height: '600px', border: 'none' }}
+              title="Voucher Consolidado"
+            />
+            <div className="mt-3 text-center">
+              <Button
+                label="Descargar Voucher"
+                icon="pi pi-download"
+                onClick={() => window.open(resultadoPago.urlVoucherConsolidado, '_blank')}
+                className="p-button-primary"
+              />
+            </div>
+          </Panel>
+        </>
+      )}
     </Dialog>
   );
 }
