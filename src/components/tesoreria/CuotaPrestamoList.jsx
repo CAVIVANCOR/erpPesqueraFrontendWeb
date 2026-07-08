@@ -17,6 +17,13 @@ import {
 } from "../../api/tesoreria/cuotaPrestamo";
 import { getResponsiveFontSize } from "../../utils/utils";
 
+// Estilos para celdas editables
+const editableCellStyle = {
+  backgroundColor: '#e3f2fd',
+  border: '1px solid #90caf9',
+  cursor: 'pointer'
+};
+
 export default function CuotaPrestamoList({
   prestamoBancarioId,
   prestamo,
@@ -28,6 +35,9 @@ export default function CuotaPrestamoList({
   const [filters, setFilters] = useState({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
   });
+  const [showCalendarDialog, setShowCalendarDialog] = useState(false);
+  const [selectedDateCell, setSelectedDateCell] = useState(null);
+  const [tempDate, setTempDate] = useState(null);
   const toast = useRef(null);
 
   useEffect(() => {
@@ -82,23 +92,78 @@ export default function CuotaPrestamoList({
     }
   };
 
-  const handleGuardarTodo = async () => {
+
+  const handleRegenerarDesdeCuota = async (numeroCuota) => {
     try {
       setLoading(true);
-      await guardarCuotasBulk(prestamoBancarioId, cuotas);
+
+      const cuotasArray = [...cuotas];
+      const index = cuotasArray.findIndex(c => c.numeroCuota === numeroCuota);
+
+      if (index === -1) return;
+
+      // Recalcular desde esta cuota hacia adelante
+      for (let i = index; i < cuotasArray.length; i++) {
+        // Calcular saldo antes
+        const saldoAnterior = i === 0
+          ? parseFloat(prestamo?.montoDesembolsado || 0)
+          : parseFloat(cuotasArray[i - 1].saldoCapitalDespues || 0);
+
+        cuotasArray[i].saldoCapitalAntes = saldoAnterior;
+
+        // Si NO fue editado manualmente, recalcular capital
+        if (!cuotasArray[i].capitalEditadoManualmente) {
+          // Calcular cuota fija (sistema francés)
+          const tasaMensual = prestamo?.tasaInteresEfectiva
+            ? Math.pow(1 + parseFloat(prestamo.tasaInteresEfectiva) / 100, 1 / 12) - 1
+            : Math.pow(1 + parseFloat(prestamo?.tasaInteresAnual || 0) / 100, 1 / 12) - 1;
+
+          const n = cuotasArray.length;
+          const cuotaFija = parseFloat(prestamo?.montoDesembolsado || 0) *
+            (tasaMensual * Math.pow(1 + tasaMensual, n)) /
+            (Math.pow(1 + tasaMensual, n) - 1);
+
+          const interesCuota = saldoAnterior * tasaMensual;
+          cuotasArray[i].montoCapital = cuotaFija - interesCuota;
+        }
+
+        // Si NO fue editado manualmente, recalcular interés
+        if (!cuotasArray[i].interesEditadoManualmente) {
+          const tasaMensual = prestamo?.tasaInteresEfectiva
+            ? Math.pow(1 + parseFloat(prestamo.tasaInteresEfectiva) / 100, 1 / 12) - 1
+            : Math.pow(1 + parseFloat(prestamo?.tasaInteresAnual || 0) / 100, 1 / 12) - 1;
+
+          cuotasArray[i].montoInteres = saldoAnterior * tasaMensual;
+        }
+
+        // Recalcular saldo después
+        cuotasArray[i].saldoCapitalDespues = saldoAnterior - parseFloat(cuotasArray[i].montoCapital || 0);
+
+        // Recalcular total
+        cuotasArray[i].montoTotal =
+          parseFloat(cuotasArray[i].montoCapital || 0) +
+          parseFloat(cuotasArray[i].montoInteres || 0) +
+          parseFloat(cuotasArray[i].montoComision || 0) +
+          parseFloat(cuotasArray[i].montoSeguro || 0);
+      }
+
+      setCuotas([...cuotasArray]);
+
+      // Guardar
+      await guardarCuotasBulk(prestamoBancarioId, cuotasArray);
+
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: "Cuotas guardadas correctamente",
+        detail: `Cuotas regeneradas desde la ${numeroCuota}`,
         life: 3000,
       });
-      await cargarCuotas();
     } catch (error) {
-      console.error("Error al guardar cuotas:", error);
+      console.error("Error al regenerar:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al guardar cuotas",
+        detail: "Error al regenerar cuotas",
         life: 3000,
       });
     } finally {
@@ -106,69 +171,233 @@ export default function CuotaPrestamoList({
     }
   };
 
-  const onCellEditComplete = (e) => {
-    const { rowData, newValue, field } = e;
-    const cuotasActualizadas = [...cuotas];
-    const index = cuotasActualizadas.findIndex((c) => c.id === rowData.id);
+  const handleCompletarCalculos = async () => {
+    if (!cuotas || cuotas.length < 2) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe haber al menos 2 cuotas para completar cálculos",
+        life: 3000,
+      });
+      return;
+    }
 
-    if (field === "fechaVencimiento") {
-      cuotasActualizadas[index][field] = newValue;
-    } else {
-      const numero = parseFloat(newValue);
-      cuotasActualizadas[index][field] = isNaN(numero) ? 0 : numero;
+    try {
+      setLoading(true);
 
-      if (
-        field === "montoCapital" ||
-        field === "montoInteres" ||
-        field === "montoComision" ||
-        field === "montoSeguro"
-      ) {
-        const cuota = cuotasActualizadas[index];
-        cuota.montoTotal =
-          (cuota.montoCapital || 0) +
-          (cuota.montoInteres || 0) +
-          (cuota.montoComision || 0) +
-          (cuota.montoSeguro || 0);
+      const cuotasArray = [...cuotas];
+
+      // Empezar desde la cuota 2 (índice 1)
+      for (let i = 1; i < cuotasArray.length; i++) {
+        // Calcular saldo antes desde la cuota anterior
+        const saldoAnterior = parseFloat(cuotasArray[i - 1].saldoCapitalDespues || 0);
+        cuotasArray[i].saldoCapitalAntes = saldoAnterior;
+
+        // Si NO fue editado manualmente, recalcular interés
+        if (!cuotasArray[i].interesEditadoManualmente) {
+          const tasaMensual = prestamo?.tasaInteresEfectiva
+            ? Math.pow(1 + parseFloat(prestamo.tasaInteresEfectiva) / 100, 1 / 12) - 1
+            : Math.pow(1 + parseFloat(prestamo?.tasaInteresAnual || 0) / 100, 1 / 12) - 1;
+
+          cuotasArray[i].montoInteres = saldoAnterior * tasaMensual;
+        }
+
+        // Si NO fue editado manualmente, recalcular capital
+        if (!cuotasArray[i].capitalEditadoManualmente) {
+          // Calcular cuota fija (sistema francés)
+          const tasaMensual = prestamo?.tasaInteresEfectiva
+            ? Math.pow(1 + parseFloat(prestamo.tasaInteresEfectiva) / 100, 1 / 12) - 1
+            : Math.pow(1 + parseFloat(prestamo?.tasaInteresAnual || 0) / 100, 1 / 12) - 1;
+
+          const n = cuotasArray.length;
+          const cuotaFija = parseFloat(prestamo?.montoDesembolsado || 0) *
+            (tasaMensual * Math.pow(1 + tasaMensual, n)) /
+            (Math.pow(1 + tasaMensual, n) - 1);
+
+          const interesCuota = parseFloat(cuotasArray[i].montoInteres || 0);
+          cuotasArray[i].montoCapital = cuotaFija - interesCuota;
+        }
+
+        // Recalcular saldo después
+        cuotasArray[i].saldoCapitalDespues = saldoAnterior - parseFloat(cuotasArray[i].montoCapital || 0);
+
+        // Recalcular total
+        cuotasArray[i].montoTotal =
+          parseFloat(cuotasArray[i].montoCapital || 0) +
+          parseFloat(cuotasArray[i].montoInteres || 0) +
+          parseFloat(cuotasArray[i].montoComision || 0) +
+          parseFloat(cuotasArray[i].montoSeguro || 0);
       }
 
+      // Actualizar estado primero
+      setCuotas([...cuotasArray]);
+
+      // Guardar en BD
+      await guardarCuotasBulk(prestamoBancarioId, cuotasArray);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Cálculos completados y guardados correctamente",
+        life: 3000,
+      });
+    } catch (error) {
+      console.error("Error al completar cálculos:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al completar cálculos",
+        life: 3000,
+      });
+      // Recargar cuotas en caso de error
+      await cargarCuotas();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onCellEditComplete = async (e) => {
+    let { rowData, newValue, field, originalEvent: event } = e;
+
+    const cuotasArray = [...cuotas];
+    const index = cuotasArray.findIndex((c) => c.numeroCuota === rowData.numeroCuota);
+
+    if (index === -1) {
+      event.preventDefault();
+      return;
+    }
+
+    if (field === "fechaVencimiento") {
+      cuotasArray[index][field] = newValue;
+      cuotasArray[index].fechaEditadaManualmente = true;
+    } else {
+      // CONVERTIR A NÚMERO - NUNCA STRINGS
+      const valor = parseFloat(newValue) || 0;
+      cuotasArray[index][field] = valor;
+
+      // Marcar como editado manualmente
       if (field === "montoCapital") {
-        recalcularSaldos(cuotasActualizadas, index);
+        cuotasArray[index].capitalEditadoManualmente = true;
+      } else if (field === "montoInteres") {
+        cuotasArray[index].interesEditadoManualmente = true;
+      } else if (field === "montoComision") {
+        cuotasArray[index].comisionEditadaManualmente = true;
+      } else if (field === "montoSeguro") {
+        cuotasArray[index].seguroEditadoManualmente = true;
+      }
+
+      // RECALCULAR TOTAL - SIEMPRE CON NÚMEROS
+      const nuevoTotal =
+        parseFloat(cuotasArray[index].montoCapital || 0) +
+        parseFloat(cuotasArray[index].montoInteres || 0) +
+        parseFloat(cuotasArray[index].montoComision || 0) +
+        parseFloat(cuotasArray[index].montoSeguro || 0);
+
+      // Crear nuevo objeto para forzar re-render
+      cuotasArray[index] = {
+        ...cuotasArray[index],
+        montoTotal: nuevoTotal
+      };
+      // Si editó capital, recalcular saldos siguientes
+      if (field === "montoCapital") {
+        // Recalcular saldo después de la cuota editada
+        const saldoAnteriorCuotaEditada = index === 0
+          ? parseFloat(prestamo?.montoDesembolsado || 0)
+          : parseFloat(cuotasArray[index - 1].saldoCapitalDespues || 0);
+
+        cuotasArray[index].saldoCapitalDespues = saldoAnteriorCuotaEditada - parseFloat(cuotasArray[index].montoCapital || 0);
+
+        // Recalcular saldos de cuotas siguientes (desde index + 1)
+        for (let i = index + 1; i < cuotasArray.length; i++) {
+          const saldoAnterior = parseFloat(cuotasArray[i - 1].saldoCapitalDespues || 0);
+
+          cuotasArray[i].saldoCapitalAntes = saldoAnterior;
+          cuotasArray[i].saldoCapitalDespues = saldoAnterior - parseFloat(cuotasArray[i].montoCapital || 0);
+        }
       }
     }
 
-    setCuotas(cuotasActualizadas);
+    // Forzar re-render creando nuevo array
+    setCuotas([...cuotasArray]);
+
+    // Guardar inmediatamente
+    try {
+      await guardarCuotasBulk(prestamoBancarioId, cuotasArray);
+      toast.current?.show({
+        severity: "success",
+        summary: "Guardado",
+        detail: `${field} actualizado`,
+        life: 2000,
+      });
+    } catch (error) {
+      console.error("Error al guardar:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al guardar cambios",
+        life: 3000,
+      });
+      await cargarCuotas();
+    }
+
+    event.preventDefault();
+  };
+  // Recalcular solo el total de UNA cuota (cuando se edita interés/comisión/seguro)
+  const recalcularTotalCuota = (cuotasArray, index) => {
+    cuotasArray[index].montoTotal =
+      parseFloat(cuotasArray[index].montoCapital || 0) +
+      parseFloat(cuotasArray[index].montoInteres || 0) +
+      parseFloat(cuotasArray[index].montoComision || 0) +
+      parseFloat(cuotasArray[index].montoSeguro || 0);
   };
 
-  const recalcularSaldos = (cuotasArray, desdeIndex) => {
-    for (let i = desdeIndex; i < cuotasArray.length; i++) {
-      if (i === 0) {
-        cuotasArray[i].saldoCapitalAntes = prestamo.montoDesembolsado;
-      } else {
-        cuotasArray[i].saldoCapitalAntes =
-          cuotasArray[i - 1].saldoCapitalDespues;
-      }
-      cuotasArray[i].saldoCapitalDespues =
-        cuotasArray[i].saldoCapitalAntes - cuotasArray[i].montoCapital;
+  // Recalcular saldos e intereses desde una cuota hacia adelante (cuando se edita capital)
+  const recalcularDesdeCuota = (cuotasArray, index) => {
+    const tasaMensual = prestamo?.tasaInteresEfectiva
+      ? Math.pow(1 + parseFloat(prestamo.tasaInteresEfectiva) / 100, 1 / 12) - 1
+      : Math.pow(1 + parseFloat(prestamo?.tasaInteresAnual || 0) / 100, 1 / 12) - 1;
 
-      const saldoAntes = cuotasArray[i].saldoCapitalAntes;
-      const tasaMensual = (prestamo.tasaInteresAnual || 0) / 12 / 100;
-      cuotasArray[i].montoInteres = saldoAntes * tasaMensual;
+    for (let i = index; i < cuotasArray.length; i++) {
+      // Recalcular saldo antes
+      const saldoAnterior = i === 0
+        ? parseFloat(prestamo?.montoDesembolsado || 0)
+        : cuotasArray[i - 1].saldoCapitalDespues;
+
+      cuotasArray[i].saldoCapitalAntes = saldoAnterior;
+
+      // Recalcular saldo después
+      cuotasArray[i].saldoCapitalDespues = saldoAnterior - (cuotasArray[i].montoCapital || 0);
+
+      // Solo recalcular interés si NO fue editado manualmente
+      if (!cuotasArray[i].interesEditadoManualmente) {
+        cuotasArray[i].montoInteres = saldoAnterior * tasaMensual;
+      }
+
+      // Recalcular total
       cuotasArray[i].montoTotal =
-        cuotasArray[i].montoCapital +
-        cuotasArray[i].montoInteres +
-        (cuotasArray[i].montoComision || 0) +
-        (cuotasArray[i].montoSeguro || 0);
+        parseFloat(cuotasArray[i].montoCapital || 0) +
+        parseFloat(cuotasArray[i].montoInteres || 0) +
+        parseFloat(cuotasArray[i].montoComision || 0) +
+        parseFloat(cuotasArray[i].montoSeguro || 0);
     }
   };
 
   const cellEditor = (options) => {
     if (options.field === "fechaVencimiento") {
       return (
-        <Calendar
-          value={options.value}
-          onChange={(e) => options.editorCallback(e.value)}
-          dateFormat="dd/mm/yy"
-          showIcon
+        <Button
+          type="button"
+          label={options.value ? new Date(options.value).toLocaleDateString('es-PE') : 'Seleccionar'}
+          icon="pi pi-calendar"
+          onClick={() => {
+            setSelectedDateCell(options);
+            // Convertir string a Date object si es necesario
+            const fechaActual = options.value ? new Date(options.value) : new Date();
+            setTempDate(fechaActual);
+            setShowCalendarDialog(true);
+          }}
+          style={{ width: '100%' }}
+          size="small"
         />
       );
     }
@@ -181,6 +410,51 @@ export default function CuotaPrestamoList({
         maxFractionDigits={2}
       />
     );
+  };
+
+  const handleDateSelect = async () => {
+    if (selectedDateCell && tempDate) {
+      setShowCalendarDialog(false);
+
+      // Actualizar directamente en el array de cuotas
+      const cuotasArray = [...cuotas];
+      const index = cuotasArray.findIndex((c) => c.id === selectedDateCell.rowData.id);
+
+      if (index !== -1) {
+        // Crear nuevo objeto para forzar re-render
+        cuotasArray[index] = {
+          ...cuotasArray[index],
+          fechaVencimiento: tempDate,
+          fechaEditadaManualmente: true
+        };
+
+        // Actualizar estado ANTES de guardar para mostrar cambio inmediatamente
+        setCuotas([...cuotasArray]);
+
+        // Guardar inmediatamente en BD
+        try {
+          await guardarCuotasBulk(prestamoBancarioId, cuotasArray);
+          toast.current?.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: "Fecha actualizada correctamente",
+            life: 2000,
+          });
+        } catch (error) {
+          console.error("Error al guardar fecha:", error);
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "Error al guardar la fecha",
+            life: 3000,
+          });
+          // Recargar para revertir cambio
+          await cargarCuotas();
+        }
+      }
+    }
+    setSelectedDateCell(null);
+    setTempDate(null);
   };
 
   const totales = useMemo(() => {
@@ -247,8 +521,8 @@ export default function CuotaPrestamoList({
       rowData.estadoPago === "PAGADO"
         ? "success"
         : rowData.estadoPago === "VENCIDO"
-        ? "danger"
-        : "warning";
+          ? "danger"
+          : "warning";
     return <Tag value={rowData.estadoPago} severity={severity} />;
   };
 
@@ -268,6 +542,7 @@ export default function CuotaPrestamoList({
     return (
       <div className="flex gap-2">
         <Button
+          type="button"
           icon="pi pi-trash"
           rounded
           outlined
@@ -292,6 +567,44 @@ export default function CuotaPrestamoList({
     <div>
       <Toast ref={toast} />
       <ConfirmDialog />
+
+      <Dialog
+        header="Seleccionar Fecha"
+        visible={showCalendarDialog}
+        style={{ width: '550px' }}
+        onHide={() => {
+          setShowCalendarDialog(false);
+          setSelectedDateCell(null);
+          setTempDate(null);
+        }}
+        footer={
+          <div>
+            <Button
+              type="button"
+              label="Cancelar"
+              icon="pi pi-times"
+              onClick={() => setShowCalendarDialog(false)}
+              className="p-button-text"
+            />
+            <Button
+              type="button"
+              label="Aceptar"
+              icon="pi pi-check"
+              onClick={handleDateSelect}
+              autoFocus
+            />
+          </div>
+        }
+      >
+        <Calendar
+          value={tempDate}
+          onChange={(e) => setTempDate(e.value)}
+          dateFormat="dd/mm/yy"
+          inline
+          style={{ width: "100%" }}
+        />
+      </Dialog>
+
       <div className="card">
         <DataTable
           value={cuotas}
@@ -324,20 +637,26 @@ export default function CuotaPrestamoList({
               </div>
               <div style={{ flex: 1, display: "flex", gap: "10px", justifyContent: "flex-end" }}>
                 <Button
+                  type="button"
                   label="Regenerar Cronograma"
                   icon="pi pi-refresh"
                   severity="warning"
                   onClick={handleGenerarCronograma}
                   loading={loading}
                   disabled={readOnly}
+                  tooltip="Regenera todas las cuotas desde cero"
+                  tooltipOptions={{ position: "top" }}
                 />
                 <Button
-                  label="Guardar Todo"
-                  icon="pi pi-save"
-                  severity="success"
-                  onClick={handleGuardarTodo}
+                  type="button"
+                  label="Completar Cálculos"
+                  icon="pi pi-calculator"
+                  severity="info"
+                  onClick={handleCompletarCalculos}
                   loading={loading}
-                  disabled={readOnly}
+                  disabled={readOnly || cuotas.length < 2}
+                  tooltip="Recalcula cuotas desde la 2 respetando valores editados"
+                  tooltipOptions={{ position: "top" }}
                 />
               </div>
             </div>
@@ -359,6 +678,7 @@ export default function CuotaPrestamoList({
             onCellEditComplete={onCellEditComplete}
             sortable
             style={{ width: "130px", textAlign: "center" }}
+            bodyStyle={editableCellStyle}
           />
           <Column
             field="saldoCapitalAntes"
@@ -375,6 +695,7 @@ export default function CuotaPrestamoList({
             onCellEditComplete={onCellEditComplete}
             sortable
             style={{ width: "120px", textAlign: "right" }}
+            bodyStyle={editableCellStyle}
             footer={formatCurrency(totales.montoCapital)}
             footerStyle={{
               textAlign: "right",
@@ -386,8 +707,11 @@ export default function CuotaPrestamoList({
             field="montoInteres"
             header="Interés"
             body={(r) => montoBodyTemplate(r, "montoInteres")}
+            editor={cellEditor}
+            onCellEditComplete={onCellEditComplete}
             sortable
-            style={{ width: "110px", textAlign: "right", backgroundColor: "#fff3cd" }}
+            style={{ width: "110px", textAlign: "right" }}
+            bodyStyle={editableCellStyle}
             footer={formatCurrency(totales.montoInteres)}
             footerStyle={{
               textAlign: "right",
@@ -403,6 +727,7 @@ export default function CuotaPrestamoList({
             onCellEditComplete={onCellEditComplete}
             sortable
             style={{ width: "110px", textAlign: "right" }}
+            bodyStyle={editableCellStyle}
             footer={formatCurrency(totales.montoComision)}
             footerStyle={{
               textAlign: "right",
@@ -418,6 +743,7 @@ export default function CuotaPrestamoList({
             onCellEditComplete={onCellEditComplete}
             sortable
             style={{ width: "100px", textAlign: "right" }}
+            bodyStyle={editableCellStyle}
             footer={formatCurrency(totales.montoSeguro)}
             footerStyle={{
               textAlign: "right",

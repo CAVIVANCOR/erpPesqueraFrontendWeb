@@ -434,28 +434,12 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
           dataToSend,
         );
 
-        try {
-          const recalculoResultado = await recalcularCuotasPrestamo(
-            Number(defaultValues.id),
-          );
-
-          toast.current?.show({
-            severity: "success",
-            summary: "Éxito",
-            detail: `Préstamo actualizado. ${recalculoResultado.mensaje}. Cuotas recalculadas: ${recalculoResultado.cuotasRecalculadas}`,
-            life: 5000,
-          });
-        } catch (recalculoError) {
-          toast.current?.show({
-            severity: "warn",
-            summary: "Advertencia",
-            detail:
-              "Préstamo actualizado pero hubo un error al recalcular las cuotas: " +
-              (recalculoError.response?.data?.mensaje ||
-                recalculoError.message),
-            life: 5000,
-          });
-        }
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Préstamo actualizado correctamente",
+          life: 3000,
+        });
       } else {
         resultado = await createPrestamoBancario(dataToSend);
 
@@ -523,9 +507,8 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       .map((c) => ({
         ...c,
         id: Number(c.id),
-        label: `${c.numeroCuenta} - ${c.banco?.nombre || ""} - ${
-          c.moneda?.codigoSunat || ""
-        }`,
+        label: `${c.numeroCuenta} - ${c.banco?.nombre || ""} - ${c.moneda?.codigoSunat || ""
+          }`,
         value: Number(c.id),
       }));
   }, [cuentasCorrientes, empresaIdWatch, bancoIdWatch, monedaIdWatch]);
@@ -545,7 +528,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   }));
 
   const lineasCreditoOptions = useMemo(() => {
-    console.log("lineasCredito",lineasCredito)
+    console.log("lineasCredito", lineasCredito)
     return lineasCredito.map((l) => ({
       ...l,
       id: Number(l.id),
@@ -569,9 +552,8 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       .map((p) => ({
         ...p,
         id: Number(p.id),
-        label: `${p.numeroPrestamo} - ${p.banco?.nombre || ""} - ${
-          p.moneda?.codigoSunat || ""
-        } ${Number(p.saldoCapital || 0).toFixed(2)}`,
+        label: `${p.numeroPrestamo} - ${p.banco?.nombre || ""} - ${p.moneda?.codigoSunat || ""
+          } ${Number(p.saldoCapital || 0).toFixed(2)}`,
         value: Number(p.id),
       }));
   }, [prestamosParaRefinanciar, defaultValues?.id]);
@@ -1216,7 +1198,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                     onValueChange={(e) => field.onChange(e.value)}
                     mode="decimal"
                     minFractionDigits={2}
-                    maxFractionDigits={4}
+                    maxFractionDigits={6}
                     min={0}
                     disabled={readOnly}
                     style={{ width: "100%" }}
@@ -1244,7 +1226,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                     onValueChange={(e) => field.onChange(e.value)}
                     mode="decimal"
                     minFractionDigits={2}
-                    maxFractionDigits={4}
+                    maxFractionDigits={6}
                     min={0}
                     disabled={readOnly}
                     style={{ width: "100%" }}
@@ -1272,7 +1254,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                     onValueChange={(e) => field.onChange(e.value)}
                     mode="decimal"
                     minFractionDigits={2}
-                    maxFractionDigits={4}
+                    maxFractionDigits={6}
                     min={0}
                     disabled={readOnly}
                     style={{ width: "100%" }}
@@ -2022,7 +2004,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
             <CardAsientoContable
               asientosContables={defaultValues?.asientosContables || []} // ✅ Array de asientos
               prestamoBancarioId={defaultValues?.id} // ✅ ID del préstamo
-              // ... otras props
+            // ... otras props
             />
           </TabPanel>
         )}
