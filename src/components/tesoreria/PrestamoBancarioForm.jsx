@@ -31,7 +31,6 @@ import { getAllPrestamoBancario } from "../../api/tesoreria/prestamoBancarios";
 import { getLineaCreditoVigentes } from "../../api/tesoreria/lineaCredito";
 import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 import CuotaPrestamoList from "./CuotaPrestamoList";
-import DesembolsoPrestamoCard from "./DesembolsoPrestamoCard";
 import GarantiaPrestamoCard from "./GarantiaPrestamoCard";
 import DocPrestamoPrincipal from "./DocPrestamoPrincipal";
 import DocPrestamoAdicional from "./DocPrestamoAdicional";
@@ -1927,27 +1926,6 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
           )}
         </TabPanel>
 
-        <TabPanel header="Desembolsos" leftIcon="pi pi-money-bill">
-          {isEdit && defaultValues?.id ? (
-            <DesembolsoPrestamoCard
-              prestamoBancarioId={defaultValues.id}
-              readOnly={readOnly}
-            />
-          ) : (
-            <div
-              style={{ padding: "20px", textAlign: "center", color: "#666" }}
-            >
-              <i
-                className="pi pi-info-circle"
-                style={{ fontSize: "2em", marginBottom: "10px" }}
-              ></i>
-              <p>
-                Los desembolsos se podrán registrar después de guardar el
-                préstamo.
-              </p>
-            </div>
-          )}
-        </TabPanel>
 
         <TabPanel header="Garantías" leftIcon="pi pi-shield">
           {isEdit && defaultValues?.id ? (
@@ -1996,17 +1974,6 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
             readOnly={readOnly}
           />
         </TabPanel>
-
-        {/* TAB 7: ASIENTO CONTABLE */}
-        {isEdit && (
-          <TabPanel header="Asientos Contables" leftIcon="pi pi-book">
-            <CardAsientoContable
-              asientosContables={defaultValues?.asientosContables || []} // ✅ Array de asientos
-              prestamoBancarioId={defaultValues?.id} // ✅ ID del préstamo
-            // ... otras props
-            />
-          </TabPanel>
-        )}
       </TabView>
 
       {/* BOTONES DE ACCIÓN - SIEMPRE VISIBLES */}

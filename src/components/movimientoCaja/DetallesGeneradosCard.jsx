@@ -23,7 +23,6 @@ const DetallesGeneradosCard = ({
   const [pagosCxP, setPagosCxP] = useState([]);
   const [conciliaciones, setConciliaciones] = useState([]);
   const [cuotasPrestamo, setCuotasPrestamo] = useState([]);
-  const [desembolsos, setDesembolsos] = useState([]);
   const [letras, setLetras] = useState([]);
   const [retenciones, setRetenciones] = useState([]);
   const [inversiones, setInversiones] = useState([]);
@@ -79,7 +78,6 @@ const DetallesGeneradosCard = ({
       // TODO: Implementar cuando existan los endpoints en el backend
       setConciliaciones([]);
       setCuotasPrestamo([]);
-      setDesembolsos([]);
       setLetras([]);
       setRetenciones([]);
       setInversiones([]);
@@ -120,7 +118,6 @@ const DetallesGeneradosCard = ({
     pagosCxP.length +
     conciliaciones.length +
     cuotasPrestamo.length +
-    desembolsos.length +
     letras.length +
     retenciones.length +
     inversiones.length +
@@ -327,23 +324,6 @@ const DetallesGeneradosCard = ({
               <Column field="numeroCuota" header="Cuota" />
               <Column field="montoCuota" header="Monto" body={(rowData) => formatCurrency(rowData.montoCuota)} />
               <Column field="fechaPago" header="Fecha Pago" body={(rowData) => formatDate(rowData.fechaPago)} />
-            </DataTable>
-          </TabPanel>
-        )}
-
-        {/* Tab 7: Desembolsos Préstamo */}
-        {desembolsos.length > 0 && (
-          <TabPanel
-            header={
-              <span>
-                Desembolsos Préstamo {getBadgeCount(desembolsos)}
-              </span>
-            }
-          >
-            <DataTable value={desembolsos} size="small" stripedRows>
-              <Column field="prestamo.numeroPrestamo" header="Préstamo" />
-              <Column field="montoDesembolsado" header="Monto" body={(rowData) => formatCurrency(rowData.montoDesembolsado)} />
-              <Column field="fechaDesembolso" header="Fecha" body={(rowData) => formatDate(rowData.fechaDesembolso)} />
             </DataTable>
           </TabPanel>
         )}

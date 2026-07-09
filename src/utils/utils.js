@@ -572,15 +572,6 @@ export const PERIODICIDAD_RENDIMIENTO_OPTIONS = [
   { label: "ANUAL", value: "ANUAL" },
 ];
 
-/**
- * Tipo de desembolso
- * Schema: enum TipoDesembolso
- */
-export const TIPO_DESEMBOLSO_OPTIONS = [
-  { label: "TOTAL", value: "TOTAL" },
-  { label: "PARCIAL", value: "PARCIAL" },
-  { label: "PROGRAMADO", value: "PROGRAMADO" },
-];
 
 /**
  * Tipo de garantia real
@@ -634,17 +625,7 @@ export const METODO_PAGO_OPTIONS = [
   { label: "TARJETA DE DEBITO", value: "TARJETA_DEBITO" },
 ];
 
-/**
- * Estado de desembolso
- * Schema: enum EstadoDesembolso
- */
-export const ESTADO_DESEMBOLSO_OPTIONS = [
-  { label: "PENDIENTE", value: "PENDIENTE" },
-  { label: "PROCESADO", value: "PROCESADO" },
-  { label: "CONFIRMADO", value: "CONFIRMADO" },
-  { label: "RECHAZADO", value: "RECHAZADO" },
-  { label: "ANULADO", value: "ANULADO" },
-];
+
 
 /**
  * Tipo de renovacion
