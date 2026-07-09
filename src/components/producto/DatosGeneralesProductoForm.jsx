@@ -47,6 +47,7 @@ export default function DatosGeneralesProductoForm({
   unidadMetricaDefault,
   especies = [],
   tiposDetraccion = [],
+  tiposAfectacionIGV = [],
   defaultValues = {},
   readOnly = false,
 }) {
@@ -997,7 +998,7 @@ export default function DatosGeneralesProductoForm({
 
 
         <Panel
-          header="Detraccion y Retencion "
+          header="Tipo Afectacio IGV, Detraccion y Retencion "
           toggleable
           collapsed={false}
           className="mb-3"
@@ -1011,6 +1012,42 @@ export default function DatosGeneralesProductoForm({
               marginBottom: 10,
             }}
           >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="tipoAfectacionIGVId" className="font-bold">
+                Tipo Afectación IGV
+              </label>
+              <Controller
+                name="tipoAfectacionIGVId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Dropdown
+                    id="tipoAfectacionIGVId"
+                    value={field.value ? Number(field.value) : null}
+                    onChange={(e) => field.onChange(e.value)}
+                    options={tiposAfectacionIGV}
+                    optionLabel="nombre"
+                    optionValue="id"
+                    placeholder="Seleccione tipo afectación IGV"
+                    filter
+                    showClear
+                    disabled={readOnly}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    itemTemplate={(option) => (
+                      <div>
+                        <strong>{option.codigo}</strong> - {option.nombre}
+                      </div>
+                    )}
+                  />
+                )}
+              />
+              {errors.tipoAfectacionIGVId && (
+                <small className="p-error">
+                  {errors.tipoAfectacionIGVId.message}
+                </small>
+              )}
+            </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="tipoDetraccionId" className="font-bold">
                 Tipo Detracción SUNAT

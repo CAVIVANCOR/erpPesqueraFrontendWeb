@@ -449,7 +449,7 @@ export default function Dashboard() {
       descripcion:
         "Control financiero, cuentas corrientes y asientos contables",
       icono: "pi-wallet",
-      modulos: 23,
+      modulos: 24,
       color: "#5DADE2",
       submenu: [
         {
@@ -631,6 +631,12 @@ export default function Dashboard() {
           key: "tipoDetraccion",
           icon: "pi-percentage",
           tab: "tablas", // ← NUEVO
+        },
+        {
+          label: "Tipos Afectación IGV",
+          key: "tipoAfectacionIGV",
+          icon: "pi-percentage",
+          tab: "tablas",
         },
         {
           label: "Entidad Comercial",

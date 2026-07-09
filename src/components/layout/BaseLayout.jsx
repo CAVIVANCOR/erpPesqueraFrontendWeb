@@ -87,6 +87,7 @@ import PagoCuentaPorCobrar from "../../pages/PagoCuentaPorCobrar";
 import PagoCuentaPorPagar from "../../pages/PagoCuentaPorPagar";
 import TipoProducto from "../../pages/TipoProducto";
 import TipoDeudaPersonal from "../../pages/TipoDeudaPersonal";
+import TipoAfectacionIGVList from "../../pages/TipoAfectacionIGVList";
 import TipoDetraccion from "../../pages/TipoDetraccion";
 import DeudaConPersonal from "../../pages/DeudaConPersonal";
 import PagoDeudaPersonal from "../../pages/PagoDeudaPersonal";
@@ -146,7 +147,6 @@ import MotivoSinFaena from "../../pages/MotivoSinFaena";
 import TipoMovimientoActivoFijo from "../../pages/TipoMovimientoActivoFijo";
 import MovimientoActivoFijo from "../../pages/MovimientoActivoFijo";
 import RendicionGastos from "../../pages/RendicionGastos/RendicionGastosList";
-
 /**
  * BaseLayout - Layout principal con gestión de módulos
  *
@@ -266,6 +266,10 @@ export default function BaseLayout({ children, onLogout }) {
     tipoDeudaPersonal: {
       label: "Tipos Deuda de Personal",
       componente: <TipoDeudaPersonal ruta="tipoDeudaPersonal" />,
+    },
+    tipoAfectacionIGV: {
+      label: "Tipos Afectación IGV",
+      componente: <TipoAfectacionIGVList ruta="tipoAfectacionIGV" />,
     },
     tipoDetraccion: {
       label: "Tipos de Detracción",

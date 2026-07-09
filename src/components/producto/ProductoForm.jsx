@@ -240,6 +240,7 @@ export default function ProductoForm({
   unidadMetricaDefault,
   especies = [],
   tiposDetraccion = [],
+  tiposAfectacionIGV = [],
   onGuardar,
   onCancelar,
   modoEdicion = false,
@@ -329,6 +330,7 @@ export default function ProductoForm({
       descripcionMedidaAdicional: producto?.descripcionMedidaAdicional || "",
       especieId: producto?.especieId ? Number(producto.especieId) : null,
       tipoDetraccionId: producto?.tipoDetraccionId ? Number(producto.tipoDetraccionId) : null,
+      tipoAfectacionIGVId: producto?.tipoAfectacionIGVId ? Number(producto.tipoAfectacionIGVId) : null,
       exoneradoRetencion: producto?.exoneradoRetencion || false,
       sujetoDetraccion: producto?.sujetoDetraccion || false,
       aplicaSubfamilia: producto?.aplicaSubfamilia || false,
@@ -445,7 +447,7 @@ export default function ProductoForm({
         medidaAngulo: data.medidaAngulo,
         descripcionMedidaAdicional: data.descripcionMedidaAdicional,
         especieId: data.especieId ? Number(data.especieId) : null,
-        tipoDetraccionId: data.tipoDetraccionId ? Number(data.tipoDetraccionId) : null,
+        tipoAfectacionIGVId: data.tipoAfectacionIGVId ? Number(data.tipoAfectacionIGVId) : null,
         porcentajeDetraccion: data.porcentajeDetraccion,
         exoneradoIgv: data.exoneradoIgv,
         exoneradoRetencion: data.exoneradoRetencion,
@@ -550,6 +552,7 @@ export default function ProductoForm({
               unidadMetricaDefault={unidadMetricaDefault}
               especies={especies}
               tiposDetraccion={tiposDetraccion}
+              tiposAfectacionIGV={tiposAfectacionIGV}
               readOnly={readOnly}
             />
           </TabPanel>

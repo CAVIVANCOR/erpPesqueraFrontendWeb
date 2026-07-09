@@ -54,6 +54,7 @@ import { getMarcas } from "../api/marca";
 import { getEspecies } from "../api/especie";
 import EmpresaSelector from "../components/common/EmpresaSelector";
 import { getTiposDetraccionActivos } from "../api/tipoDetraccion";
+import { getTiposAfectacionIGVActivos } from "../api/facturacionElectronica/tipoAfectacionIGV";
 
 const Producto = ({ ruta }) => {
   const toast = useRef(null);
@@ -97,7 +98,7 @@ const Producto = ({ ruta }) => {
   const [paisesCatalogo, setPaisesCatalogo] = useState([]);
   const [marcasCatalogo, setMarcasCatalogo] = useState([]);
   const [tiposDetraccionCatalogo, setTiposDetraccionCatalogo] = useState([]);
-
+  const [tiposAfectacionIGVCatalogo, setTiposAfectacionIGVCatalogo] = useState([]);
   // Estados para catálogos que NO se filtran
   const [unidadesMetricas, setUnidadesMetricas] = useState([]);
   const [empresas, setEmpresas] = useState([]);
@@ -135,6 +136,7 @@ const Producto = ({ ruta }) => {
         unidadMetricaDefaultData,
         especiesData,
         tiposDetraccionData,
+        tiposAfectacionIGVData,
       ] = await Promise.all([
         getUnidadesMedida(),
         getUnidadesMedidaMetricas(),
@@ -150,6 +152,9 @@ const Producto = ({ ruta }) => {
         getTiposDetraccionActivos().catch((err) => {
           return []; // Retornar array vacío si falla
         }),
+        getTiposAfectacionIGVActivos().catch((err) => {
+          return []; // Retornar array vacío si falla
+        }),
       ]);
 
       // Guardar catálogos COMPLETOS para el formulario
@@ -163,6 +168,7 @@ const Producto = ({ ruta }) => {
       setUnidadMetricaDefault(unidadMetricaDefaultData);
       setEspeciesCatalogo(especiesData);
       setTiposDetraccionCatalogo(tiposDetraccionData);
+      setTiposAfectacionIGVCatalogo(tiposAfectacionIGVData);
 
       // Los filtros dinámicos se cargarán desde obtenerOpcionesDinamicas()
     } catch (error) {
@@ -1086,6 +1092,7 @@ const Producto = ({ ruta }) => {
           unidadMetricaDefault={unidadMetricaDefault}
           especies={especiesCatalogo}
           tiposDetraccion={tiposDetraccionCatalogo}
+          tiposAfectacionIGV={tiposAfectacionIGVCatalogo}
           permisos={permisos}
           readOnly={!!productoSeleccionado && !!productoSeleccionado.id && !permisos.puedeEditar}
         />
