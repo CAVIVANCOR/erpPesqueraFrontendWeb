@@ -150,8 +150,8 @@ export default function CuotaPrestamoList({
 
   const handleMarcarSaldoInicial = (cuota) => {
     confirmDialog({
-      message: `¿Marcar cuota #${cuota.numeroCuota} como saldo inicial?\n\nEsta acción:\n• Marcará la cuota como pagada el 31/12/2025\n• Actualizará los saldos del préstamo\n• No se puede deshacer fácilmente`,
-      header: "Confirmar Saldo Inicial",
+      message: `¿Marcar cuota #${cuota.numeroCuota} como Historico?\n\nEsta acción:\n• Marcará la cuota como pagada el 31/12/2025\n• Actualizará los saldos del préstamo\n• No se puede deshacer fácilmente`,
+      header: "Confirmar Historico",
       icon: "pi pi-exclamation-triangle",
       acceptLabel: "Confirmar",
       rejectLabel: "Cancelar",
@@ -162,7 +162,7 @@ export default function CuotaPrestamoList({
           toast.current.show({
             severity: "success",
             summary: "Éxito",
-            detail: `Cuota #${cuota.numeroCuota} marcada como saldo inicial`,
+            detail: `Cuota #${cuota.numeroCuota} marcada como Historico`,
             life: 3000,
           });
           await cargarCuotas();
@@ -172,11 +172,11 @@ export default function CuotaPrestamoList({
             onCuotasChanged();
           }
         } catch (error) {
-          console.error("Error al marcar saldo inicial:", error);
+          console.error("Error al marcar Historico:", error);
           toast.current.show({
             severity: "error",
             summary: "Error",
-            detail: error.response?.data?.message || "Error al marcar saldo inicial",
+            detail: error.response?.data?.message || "Error al marcar Historico",
             life: 5000,
           });
         } finally {
@@ -1023,7 +1023,7 @@ export default function CuotaPrestamoList({
             style={{ width: "120px" }}
           />
           <Column
-            header="S.Inicial"
+            header="Historico"
             body={(rowData) => {
               const fechaCorte = new Date("2026-01-01");
               const fechaVenc = new Date(rowData.fechaVencimiento);

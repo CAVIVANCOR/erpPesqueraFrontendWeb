@@ -182,7 +182,7 @@ const PlanCuentaContableSelector = ({
     if (!value) {
       return null;
     }
-    
+
     const cuenta = cuentas.find((c) => Number(c.id) === Number(value));
     return cuenta;
   }, [cuentas, value]);
@@ -213,7 +213,7 @@ const PlanCuentaContableSelector = ({
         });
       }
     });
-    
+
     // Ordenar por código
     const clases = Array.from(clasesMap.values()).sort((a, b) =>
       a.codigo.localeCompare(b.codigo, undefined, { numeric: true })
@@ -232,14 +232,57 @@ const PlanCuentaContableSelector = ({
     return filtradas;
   }, [cuentasConFiltroEstado, claseFiltro]);
 
-  // Ordenar cuentas por código
+  // Ordenar cuentas por jerarquía contable (Clase > Cuenta > SubCuenta > Divisionaria > SubDivisionaria)
   const cuentasOrdenadas = useMemo(() => {
     return [...cuentasFiltradas].sort((a, b) => {
-      const codigoA = a.codigoCuenta || "";
-      const codigoB = b.codigoCuenta || "";
-      return codigoA.localeCompare(codigoB, undefined, { numeric: true });
+      const codigoA = String(a.codigoCuenta || "");
+      const codigoB = String(b.codigoCuenta || "");
+
+      // Dividir por puntos para comparar jerárquicamente
+      const partesA = codigoA.split('.').map(p => p.padStart(10, '0'));
+      const partesB = codigoB.split('.').map(p => p.padStart(10, '0'));
+
+      // Comparar nivel por nivel
+      const maxNiveles = Math.max(partesA.length, partesB.length);
+      for (let i = 0; i < maxNiveles; i++) {
+        const parteA = partesA[i] || '';
+        const parteB = partesB[i] || '';
+
+        if (parteA !== parteB) {
+          return parteA.localeCompare(parteB);
+        }
+      }
+
+      return 0;
     });
   }, [cuentasFiltradas]);
+
+  // Filtrar por búsqueda global (inteligente: numérica busca en código, texto busca en nombre/descripción)
+  const cuentasConBusqueda = useMemo(() => {
+    if (!globalFilterValue || globalFilterValue.trim() === '') {
+      return cuentasOrdenadas;
+    }
+
+    const searchTerm = globalFilterValue.trim();
+    const searchTermLower = searchTerm.toLowerCase();
+
+    // Detectar si la búsqueda es numérica (solo dígitos y puntos)
+    const esNumerico = /^[\d.]+$/.test(searchTerm);
+
+    return cuentasOrdenadas.filter((cuenta) => {
+      const codigo = String(cuenta.codigoCuenta || '').toLowerCase();
+      const nombre = String(cuenta.nombreCuenta || '').toLowerCase();
+      const descripcion = String(cuenta.descripcion || '').toLowerCase();
+
+      if (esNumerico) {
+        // Búsqueda numérica: SOLO en código (desde el inicio)
+        return codigo.startsWith(searchTermLower);
+      } else {
+        // Búsqueda de texto: en nombre Y descripción (DENTRO DE - includes)
+        return nombre.includes(searchTermLower) || descripcion.includes(searchTermLower);
+      }
+    });
+  }, [cuentasOrdenadas, globalFilterValue]);
 
   /**
    * Maneja el cambio de clase
@@ -255,7 +298,7 @@ const PlanCuentaContableSelector = ({
     if (onChange) {
       onChange(Number(cuenta.id));
     }
-    
+
     setDialogVisible(false);
     setGlobalFilterValue("");
     setClaseFiltro(null);
@@ -313,10 +356,10 @@ const PlanCuentaContableSelector = ({
       'DIVISIONARIA': 'danger',
       'SUBDIVISIONARIA': 'secondary',
     };
-    
+
     return (
-      <Tag 
-        value={rowData.nivel} 
+      <Tag
+        value={rowData.nivel}
         severity={severityMap[rowData.nivel] || 'info'}
         style={{ fontSize: "0.75rem" }}
       />
@@ -328,7 +371,7 @@ const PlanCuentaContableSelector = ({
    */
   const tipoTemplate = (rowData) => {
     if (!rowData.tipoCuenta) return <span style={{ color: "#999" }}>-</span>;
-    
+
     const severityMap = {
       'ACTIVO': 'success',
       'PASIVO': 'danger',
@@ -336,10 +379,10 @@ const PlanCuentaContableSelector = ({
       'INGRESO': 'success',
       'GASTO': 'warning',
     };
-    
+
     return (
-      <Tag 
-        value={rowData.tipoCuenta} 
+      <Tag
+        value={rowData.tipoCuenta}
         severity={severityMap[rowData.tipoCuenta] || 'secondary'}
         style={{ fontSize: "0.75rem" }}
       />
@@ -379,10 +422,15 @@ const PlanCuentaContableSelector = ({
    */
   const footer = (
     <div style={{ textAlign: "left", color: "#666", fontSize: "0.9rem" }}>
-      Total: {cuentasOrdenadas.length} cuenta(s)
+      Total: {cuentasConBusqueda.length} cuenta(s)
       {claseFiltro && (
         <span style={{ marginLeft: "1rem", color: "#2196F3" }}>
           📊 Filtrando por Clase {claseFiltro}
+        </span>
+      )}
+      {globalFilterValue && (
+        <span style={{ marginLeft: "1rem", color: "#FF9800" }}>
+          🔍 Búsqueda: "{globalFilterValue}"
         </span>
       )}
     </div>
@@ -419,13 +467,13 @@ const PlanCuentaContableSelector = ({
             <span style={{ color: "#999" }}>Cargando...</span>
           ) : cuentaSeleccionada ? (
             <span style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-              <Tag 
-                value={cuentaSeleccionada.codigoCuenta} 
+              <Tag
+                value={cuentaSeleccionada.codigoCuenta}
                 severity="info"
                 style={{ fontWeight: "bold" }}
               />
-              <Tag 
-                value={cuentaSeleccionada.nombreCuenta} 
+              <Tag
+                value={cuentaSeleccionada.nombreCuenta}
                 severity="success"
               />
             </span>
@@ -464,25 +512,25 @@ const PlanCuentaContableSelector = ({
         maximizable
       >
         {/* Layout de 2 columnas */}
-        <div style={{ 
-          display: "grid", 
-          gridTemplateColumns: "200px 1fr", 
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "200px 1fr",
           gap: "1rem",
           height: "600px"
         }}>
-          
+
           {/* ========== COLUMNA 1: CLASES (FILTRO) ========== */}
-          <div style={{ 
-            display: "flex", 
+          <div style={{
+            display: "flex",
             flexDirection: "column",
             borderRight: "1px solid #dee2e6"
           }}>
             <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: "600" }}>
               Clases (2 dígitos)
             </h4>
-            <div style={{ 
-              display: "flex", 
-              flexDirection: "column", 
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
               gap: "0.35rem",
               overflowY: "auto",
               paddingRight: "0.5rem"
@@ -543,10 +591,10 @@ const PlanCuentaContableSelector = ({
           {/* ========== COLUMNA 2: TABLA DE CUENTAS ========== */}
           <div style={{ display: "flex", flexDirection: "column" }}>
             {header}
-            
+
             <DataTable
               ref={dt}
-              value={cuentasOrdenadas}
+              value={cuentasConBusqueda}
               selectionMode="single"
               onRowSelect={(e) => {
                 handleSeleccion(e.data);
@@ -555,8 +603,6 @@ const PlanCuentaContableSelector = ({
               paginator
               rows={20}
               rowsPerPageOptions={[20, 40, 100]}
-              globalFilter={globalFilterValue}
-              globalFilterFields={['codigoCuenta', 'nombreCuenta', 'descripcion']}
               emptyMessage="No se encontraron cuentas contables"
               stripedRows
               showGridlines
