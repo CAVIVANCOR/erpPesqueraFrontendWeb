@@ -20,6 +20,7 @@ import {
   createPrestamoBancario,
   updatePrestamoBancario,
   recalcularCuotasPrestamo,
+  getPrestamoBancarioById,
 } from "../../api/tesoreria/prestamoBancarios";
 import { getEmpresas } from "../../api/empresa";
 import { getBancos } from "../../api/banco";
@@ -289,6 +290,28 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       setPrestamosParaRefinanciar(prestamosFiltrados);
     } catch (error) {
       console.error("Error al cargar préstamos para refinanciar:", error);
+    }
+  };
+
+  const recargarSaldosPrestamo = async () => {
+    if (!isEdit || !defaultValues?.id) return;
+
+    try {
+      const prestamoActualizado = await getPrestamoBancarioById(defaultValues.id);
+
+      // Actualizar solo los campos de saldos en el formulario
+      setValue('saldoCapital', prestamoActualizado.saldoCapital);
+      setValue('saldoInteres', prestamoActualizado.saldoInteres);
+      setValue('capitalPagado', prestamoActualizado.capitalPagado);
+      setValue('interesPagado', prestamoActualizado.interesPagado);
+
+      console.log('Saldos actualizados:', {
+        saldoCapital: prestamoActualizado.saldoCapital,
+        capitalPagado: prestamoActualizado.capitalPagado,
+        interesPagado: prestamoActualizado.interesPagado,
+      });
+    } catch (error) {
+      console.error('Error al recargar saldos del préstamo:', error);
     }
   };
 
@@ -1909,6 +1932,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
             <CuotaPrestamoList
               prestamoBancarioId={defaultValues.id}
               readOnly={readOnly}
+              onCuotasChanged={recargarSaldosPrestamo}
             />
           ) : (
             <div

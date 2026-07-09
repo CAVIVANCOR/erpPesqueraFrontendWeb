@@ -9,14 +9,19 @@ import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Calendar } from "primereact/calendar";
 import { InputNumber } from "primereact/inputnumber";
 import { FilterMatchMode } from "primereact/api";
+import { Dropdown } from "primereact/dropdown";
 import {
   getCuotasPorPrestamo,
   deleteCuotaPrestamo,
   generarCronogramaCuotas,
   guardarCuotasBulk,
+  marcarCuotaSaldoInicial,
+  updateCuotaPrestamo,
 } from "../../api/tesoreria/cuotaPrestamo";
-import { getResponsiveFontSize } from "../../utils/utils";
-
+import { getResponsiveFontSize, ESTADO_CUOTA_PRESTAMO } from "../../utils/utils";
+import { getEstadosMultiFuncionPorTipoProvieneDe } from "../../api/estadoMultiFuncion";
+import BooleanToggleButton from "../common/BooleanToggleButton";
+import CuotaPrestamoForm from "./CuotaPrestamoForm";
 // Estilos para celdas editables
 const editableCellStyle = {
   backgroundColor: '#e3f2fd',
@@ -88,6 +93,7 @@ export default function CuotaPrestamoList({
   prestamoBancarioId,
   prestamo,
   readOnly = false,
+  onCuotasChanged,
 }) {
   const [cuotas, setCuotas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -95,6 +101,10 @@ export default function CuotaPrestamoList({
   const [filters, setFilters] = useState({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
   });
+  const [estadosCuota, setEstadosCuota] = useState([]);
+  const [estadoFiltro, setEstadoFiltro] = useState(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [selectedCuota, setSelectedCuota] = useState(null);
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
   const [selectedDateCell, setSelectedDateCell] = useState(null);
   const [tempDate, setTempDate] = useState(null);
@@ -103,8 +113,18 @@ export default function CuotaPrestamoList({
   useEffect(() => {
     if (prestamoBancarioId) {
       cargarCuotas();
+      cargarEstados();
     }
   }, [prestamoBancarioId]);
+
+  const cargarEstados = async () => {
+    try {
+      const estados = await getEstadosMultiFuncionPorTipoProvieneDe(31);
+      setEstadosCuota(estados);
+    } catch (error) {
+      console.error("Error al cargar estados:", error);
+    }
+  };
 
   const cargarCuotas = async () => {
     try {
@@ -127,6 +147,82 @@ export default function CuotaPrestamoList({
       setLoading(false);
     }
   };
+
+  const handleMarcarSaldoInicial = (cuota) => {
+    confirmDialog({
+      message: `¿Marcar cuota #${cuota.numeroCuota} como saldo inicial?\n\nEsta acción:\n• Marcará la cuota como pagada el 31/12/2025\n• Actualizará los saldos del préstamo\n• No se puede deshacer fácilmente`,
+      header: "Confirmar Saldo Inicial",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Confirmar",
+      rejectLabel: "Cancelar",
+      accept: async () => {
+        try {
+          setLoading(true);
+          await marcarCuotaSaldoInicial(cuota.id);
+          toast.current.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: `Cuota #${cuota.numeroCuota} marcada como saldo inicial`,
+            life: 3000,
+          });
+          await cargarCuotas();
+
+          // Notificar al padre que las cuotas cambiaron
+          if (onCuotasChanged) {
+            onCuotasChanged();
+          }
+        } catch (error) {
+          console.error("Error al marcar saldo inicial:", error);
+          toast.current.show({
+            severity: "error",
+            summary: "Error",
+            detail: error.response?.data?.message || "Error al marcar saldo inicial",
+            life: 5000,
+          });
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
+
+  const handleEdit = (cuota) => {
+    setSelectedCuota(cuota);
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateCuota = async (data) => {
+    try {
+      setLoading(true);
+      await updateCuotaPrestamo(selectedCuota.id, data);
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Cuota actualizada correctamente",
+        life: 3000,
+      });
+      setShowEditDialog(false);
+      setSelectedCuota(null);
+      await cargarCuotas();
+
+      // Notificar al padre que las cuotas cambiaron
+      if (onCuotasChanged) {
+        onCuotasChanged();
+      }
+    } catch (error) {
+      console.error("Error al actualizar cuota:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al actualizar cuota",
+        life: 5000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const handleGenerarCronograma = async () => {
     try {
@@ -648,6 +744,17 @@ export default function CuotaPrestamoList({
       <div className="flex gap-2">
         <Button
           type="button"
+          icon="pi pi-pencil"
+          rounded
+          outlined
+          severity="info"
+          onClick={() => handleEdit(rowData)}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+          disabled={readOnly}
+        />
+        <Button
+          type="button"
           icon="pi pi-trash"
           rounded
           outlined
@@ -667,6 +774,11 @@ export default function CuotaPrestamoList({
       maximumFractionDigits: 2,
     }).format(value || 0);
   };
+
+  const cuotasFiltradas = useMemo(() => {
+    if (!estadoFiltro) return cuotas;
+    return cuotas.filter(c => c.estadoPago === estadoFiltro);
+  }, [cuotas, estadoFiltro]);
 
   return (
     <div>
@@ -712,7 +824,7 @@ export default function CuotaPrestamoList({
 
       <div className="card">
         <DataTable
-          value={cuotas}
+          value={cuotasFiltradas}
           loading={loading}
           dataKey="id"
           showGridlines
@@ -740,7 +852,7 @@ export default function CuotaPrestamoList({
               <div style={{ flex: 1 }}>
                 <h2>Cronograma de Cuotas</h2>
               </div>
-              <div style={{ flex: 1, display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <div style={{ flex: 1 }}>
                 <Button
                   type="button"
                   label="Regenerar Cronograma"
@@ -752,6 +864,8 @@ export default function CuotaPrestamoList({
                   tooltip="Regenera todas las cuotas desde cero"
                   tooltipOptions={{ position: "top" }}
                 />
+              </div>
+              <div style={{ flex: 1 }}>
                 <Button
                   type="button"
                   label="Completar Cálculos"
@@ -762,6 +876,19 @@ export default function CuotaPrestamoList({
                   disabled={readOnly || cuotas.length < 2}
                   tooltip="Recalcula cuotas desde la 2 respetando valores editados"
                   tooltipOptions={{ position: "top" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Dropdown
+                  value={estadoFiltro}
+                  options={[
+                    { label: "Todos los estados", value: null },
+                    ...estadosCuota.map(e => ({ label: e.descripcion, value: e.descripcion }))
+                  ]}
+                  onChange={(e) => setEstadoFiltro(e.value)}
+                  placeholder="Filtrar por estado"
+                  style={{ width: "200px" }}
+                  filter
                 />
               </div>
             </div>
@@ -884,9 +1011,41 @@ export default function CuotaPrestamoList({
           <Column
             field="estadoPago"
             header="Estado"
-            body={estadoBodyTemplate}
-            sortable
-            style={{ width: "100px" }}
+            body={(rowData) => {
+              const estado = estadosCuota.find(e => e.descripcion === rowData.estadoPago);
+              return (
+                <Tag
+                  value={rowData.estadoPago}
+                  severity={estado?.severityColor || "secondary"}
+                />
+              );
+            }}
+            style={{ width: "120px" }}
+          />
+          <Column
+            header="S.Inicial"
+            body={(rowData) => {
+              const fechaCorte = new Date("2026-01-01");
+              const fechaVenc = new Date(rowData.fechaVencimiento);
+              const puedeMarcar = fechaVenc < fechaCorte && !rowData.saldoInicialPagada && !readOnly;
+
+              if (fechaVenc >= fechaCorte) return null;
+
+              return (
+                <BooleanToggleButton
+                  value={rowData.saldoInicialPagada}
+                  onChange={() => handleMarcarSaldoInicial(rowData)}
+                  labelTrue="Sí"
+                  labelFalse="No"
+                  severityTrue="info"
+                  severityFalse="secondary"
+                  size="small"
+                  disabled={!puedeMarcar}
+                  style={{ width: "60px" }}
+                />
+              );
+            }}
+            style={{ width: "80px", textAlign: "center" }}
           />
           <Column
             body={actionBodyTemplate}
@@ -895,6 +1054,30 @@ export default function CuotaPrestamoList({
           />
         </DataTable>
       </div>
+      <Dialog
+        header="Editar Cuota"
+        visible={showEditDialog}
+        style={{ width: "800px" }}
+        onHide={() => {
+          setShowEditDialog(false);
+          setSelectedCuota(null);
+        }}
+        modal
+      >
+        {selectedCuota && (
+          <CuotaPrestamoForm
+            isEdit={true}
+            defaultValues={selectedCuota}
+            prestamoBancarioId={prestamoBancarioId}
+            onSubmit={handleUpdateCuota}
+            onCancel={() => {
+              setShowEditDialog(false);
+              setSelectedCuota(null);
+            }}
+            loading={loading}
+          />
+        )}
+      </Dialog>
     </div>
   );
 }

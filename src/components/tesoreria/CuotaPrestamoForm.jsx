@@ -4,6 +4,7 @@ import { Button } from "primereact/button";
 import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
+import { getEstadosMultiFuncionPorTipoProvieneDe } from "../../api/estadoMultiFuncion";
 
 export default function CuotaPrestamoForm({
   isEdit = false,
@@ -29,22 +30,18 @@ export default function CuotaPrestamoForm({
     montoPagado: defaultValues?.montoPagado || defaultValues?.montoTotal || 0,
   });
 
-  const estadosOptions = [
-    { label: "PENDIENTE", value: "PENDIENTE" },
-    { label: "PAGADA", value: "PAGADA" },
-    { label: "VENCIDA", value: "VENCIDA" },
-  ];
+  const [estadosOptions, setEstadosOptions] = useState([]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => {
       const newData = { ...prev, [field]: value };
 
-           // Calcular cuota total automáticamente (Capital + Interés + Comisión + Seguro)
+      // Calcular cuota total automáticamente (Capital + Interés + Comisión + Seguro)
       if (field === "montoCapital" || field === "montoInteres" || field === "montoComision" || field === "montoSeguro") {
-        newData.montoTotal = 
-          Number(newData.montoCapital || 0) + 
-          Number(newData.montoInteres || 0) + 
-          Number(newData.montoComision || 0) + 
+        newData.montoTotal =
+          Number(newData.montoCapital || 0) +
+          Number(newData.montoInteres || 0) +
+          Number(newData.montoComision || 0) +
           Number(newData.montoSeguro || 0);
       }
 
@@ -54,7 +51,11 @@ export default function CuotaPrestamoForm({
     });
   };
 
-    useEffect(() => {
+  useEffect(() => {
+    cargarEstados();
+  }, []);
+
+  useEffect(() => {
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       setFormData({
         numeroCuota: defaultValues?.numeroCuota || 1,
@@ -72,6 +73,19 @@ export default function CuotaPrestamoForm({
       });
     }
   }, [defaultValues]);
+
+  const cargarEstados = async () => {
+    try {
+      const estados = await getEstadosMultiFuncionPorTipoProvieneDe(31);
+      const options = estados.map(e => ({
+        label: e.descripcion,
+        value: e.descripcion,
+      }));
+      setEstadosOptions(options);
+    } catch (error) {
+      console.error("Error al cargar estados:", error);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -179,12 +193,14 @@ export default function CuotaPrestamoForm({
             options={estadosOptions}
             onChange={(e) => handleChange("estadoPago", e.value)}
             required
+            disabled
+            tooltip="El estado se actualiza automáticamente"
           />
         </div>
       </div>
 
       <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
-               <div style={{ flex: 1 }}>
+        <div style={{ flex: 1 }}>
           <label htmlFor="saldoCapitalAntes" style={{ fontWeight: "bold" }}>
             Saldo Capital Antes
           </label>
@@ -226,7 +242,7 @@ export default function CuotaPrestamoForm({
             maxFractionDigits={2}
             required
           />
-               </div>
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
@@ -274,7 +290,7 @@ export default function CuotaPrestamoForm({
             disabled
           />
         </div>
-                <div style={{ flex: 1 }}>
+        <div style={{ flex: 1 }}>
           <label htmlFor="saldoCapitalDespues" style={{ fontWeight: "bold" }}>
             Saldo Capital Después
           </label>

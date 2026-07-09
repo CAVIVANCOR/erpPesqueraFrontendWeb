@@ -510,6 +510,18 @@ export const ESTADO_PAGO_CUOTA_OPTIONS = [
 ];
 
 /**
+ * Estados de cuotas de préstamo bancario
+ * Basado en EstadoMultiFuncion con tipoProvieneDeId = 31
+ */
+export const ESTADO_CUOTA_PRESTAMO = {
+  PENDIENTE: 135n,
+  VENCIDO: 136n,
+  PAGO_PARCIAL: 137n,
+  PAGADO: 138n,
+  SALDO_INICIAL: 139n,
+};
+
+/**
  * Tipo de linea de credito
  * Schema: enum TipoLineaCredito
  */

@@ -133,3 +133,13 @@ export async function guardarCuotasBulk(prestamoBancarioId, cuotas) {
   });
   return res.data;
 }
+
+/**
+ * Marcar cuota como saldo inicial
+ */
+export async function marcarCuotaSaldoInicial(id) {
+  const res = await axios.post(`${API_URL}/${id}/marcar-saldo-inicial`, {}, {
+    headers: getAuthHeaders(),
+  });
+  return res.data;
+}
