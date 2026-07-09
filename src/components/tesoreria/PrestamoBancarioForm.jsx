@@ -528,7 +528,6 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   }));
 
   const lineasCreditoOptions = useMemo(() => {
-    console.log("lineasCredito", lineasCredito)
     return lineasCredito.map((l) => ({
       ...l,
       id: Number(l.id),

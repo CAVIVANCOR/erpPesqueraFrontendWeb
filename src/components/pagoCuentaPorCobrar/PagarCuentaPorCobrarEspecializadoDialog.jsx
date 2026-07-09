@@ -1018,10 +1018,6 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
               />
             </div>
           </div>
-
-          {console.log('🔍 tiposMovimiento recibido:', tiposMovimiento)}
-          {console.log('🔍 tiposMovimiento length:', tiposMovimiento?.length)}
-          {console.log('🔍 tipoMovimientoIngresoId:', tipoMovimientoIngresoId)}
           <TipoMovimientoSelector
             tiposMovimiento={tiposMovimiento}
             value={tipoMovimientoIngresoId}

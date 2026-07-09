@@ -1,0 +1,122 @@
+[
+  {
+    "cuota": "1.00",
+    "saldo antes": "348,000.00",
+    "capital": "27,135.09",
+    "interes": "3,939.30",
+    "comision": "0.00",
+    "seguro": "0.00",
+    "total a pagar": "31,074.39",
+    "saldo despues": "320,864.91"
+  },
+  {
+    "cuota": "2.00",
+    "saldo antes": "320,864.91",
+    "capital": "27,784.51",
+    "interes": "3,289.88",
+    "comision": "0.00",
+    "seguro": "0.00",
+    "total a pagar": "31,074.39",
+    "saldo despues": "293,080.40"
+  },
+  {
+    "cuota": "3.00",
+    "saldo antes": "293,080.40",
+    "capital": "27,861.01",
+    "interes": "3,213.38",
+    "comision": "0.00",
+    "seguro": "0.00",
+    "total a pagar": "31,074.39",
+    "saldo despues": "265,219.39"
+  },
+  {
+    "cuota": "4.00",
+    "saldo antes": "265,219.39",
+    "capital": "28,166.49",
+    "interes": "2,907.90",
+    "comision": "0.00",
+    "seguro": "0.00",
+    "total a pagar": "31,074.39",
+    "saldo despues": "237,052.90"
+  },
+  {
+    "cuota": "5.00",
+    "saldo antes": "237,052.90",
+    "capital": "28,559.59",
+    "interes": "2,514.80",
+    "comision": "0.00",
+    "seguro": "0.00",
+    "total a pagar": "31,074.39",
+    "saldo despues": "208,493.31"
+  },
+  {
+    "cuota": "6.00",
+    "saldo antes": "208,493.31",
+    "capital": "28,862.57",
+    "interes": "2,211.82",
+    "comision": "0.00",
+    "seguro": "0.00",
+    "total a pagar": "31,074.39",
+    "saldo despues": "179,630.74"
+  },
+  {
+    "cuota": "7.00",
+    "saldo antes": "179,630.74",
+    "capital": "29,104.89",
+    "interes": "1,969.50",
+    "comision": "0.00",
+    "seguro": "0.00",
+    "total a pagar": "31,074.39",
+    "saldo despues": "150,525.85"
+  },
+  {
+    "cuota": "8.00",
+    "saldo antes": "150,525.85",
+    "capital": "29,424.00",
+    "interes": "1,650.39",
+    "comision": "0.00",
+    "seguro": "0.00",
+    "total a pagar": "31,074.39",
+    "saldo despues": "121,101.85"
+  },
+  {
+    "cuota": "9.00",
+    "saldo antes": "121,101.85",
+    "capital": "29,875.74",
+    "interes": "1,198.65",
+    "comision": "0.00",
+    "seguro": "0.00",
+    "total a pagar": "31,074.39",
+    "saldo despues": "91,226.11"
+  },
+  {
+    "cuota": "10.00",
+    "saldo antes": "91,226.11",
+    "capital": "30,041.73",
+    "interes": "1,032.66",
+    "comision": "0.00",
+    "seguro": "0.00",
+    "total a pagar": "31,074.39",
+    "saldo despues": "61,184.38"
+  },
+  {
+    "cuota": "11.00",
+    "saldo antes": "61,184.38",
+    "capital": "30,447.06",
+    "interes": "627.33",
+    "comision": "0.00",
+    "seguro": "0.00",
+    "total a pagar": "31,074.39",
+    "saldo despues": "30,737.32"
+  },
+  {
+    "cuota": "12.00",
+    "saldo antes": "30,737.32",
+    "capital": "30,737.32",
+    "interes": "337.01",
+    "comision": "0.00",
+    "seguro": "0.00",
+    "total a pagar": "31,074.33",
+    "saldo despues": "0.00"
+  }
+]
