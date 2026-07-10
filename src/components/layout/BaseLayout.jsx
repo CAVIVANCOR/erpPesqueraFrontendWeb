@@ -88,6 +88,7 @@ import PagoCuentaPorPagar from "../../pages/PagoCuentaPorPagar";
 import TipoProducto from "../../pages/TipoProducto";
 import TipoDeudaPersonal from "../../pages/TipoDeudaPersonal";
 import TipoAfectacionIGVList from "../../pages/TipoAfectacionIGVList";
+import TipoOperacionSunatList from "../../pages/TipoOperacionSunatList";
 import TipoDetraccion from "../../pages/TipoDetraccion";
 import DeudaConPersonal from "../../pages/DeudaConPersonal";
 import PagoDeudaPersonal from "../../pages/PagoDeudaPersonal";
@@ -270,6 +271,10 @@ export default function BaseLayout({ children, onLogout }) {
     tipoAfectacionIGV: {
       label: "Tipos Afectación IGV",
       componente: <TipoAfectacionIGVList ruta="tipoAfectacionIGV" />,
+    },
+    tipoOperacionSunat: {
+      label: "Tipos Operación SUNAT",
+      componente: <TipoOperacionSunatList ruta="tipoOperacionSunat" />,
     },
     tipoDetraccion: {
       label: "Tipos de Detracción",

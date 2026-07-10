@@ -639,6 +639,12 @@ export default function Dashboard() {
           tab: "tablas",
         },
         {
+          label: "Tipos Operación SUNAT",
+          key: "tipoOperacionSunat",
+          icon: "pi-file-edit",
+          tab: "tablas",
+        },
+        {
           label: "Entidad Comercial",
           key: "entidadComercial",
           icon: "pi-building",

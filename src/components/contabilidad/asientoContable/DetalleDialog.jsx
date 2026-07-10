@@ -8,6 +8,7 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
 import CrearEntidadComercialButton from "../../shared/CrearEntidadComercialButton";
+import PlanCuentaContableSelector from "../../common/PlanCuentaContableSelector";
 
 export default function DetalleDialog({
   visible,
@@ -37,10 +38,7 @@ export default function DetalleDialog({
   isReadOnly,
   toast,
 }) {
-  const cuentasOptions = planCuentas.map((c) => ({
-    label: `${c.codigoCuenta} - ${c.nombreCuenta}`,
-    value: Number(c.id),
-  }));
+
 
   const monedasOptions = monedas.map((m) => ({
     label: m.codigoSunat,
@@ -88,17 +86,15 @@ export default function DetalleDialog({
           }}
         >
           <div style={{ flex: 1 }}>
-            <label htmlFor="planCuentaId" style={{ fontWeight: "bold" }}>
-              Cuenta Contable <span style={{ color: "red" }}>*</span>
-            </label>
-            <Dropdown
-              id="planCuentaId"
+            {/* CUENTA CONTABLE */}
+            <PlanCuentaContableSelector
               value={detalleFormData.planCuentaId}
-              options={cuentasOptions}
-              onChange={(e) => handleCuentaChange(e.value)}
-              placeholder="Seleccionar cuenta"
-              filter
-              filterBy="label"
+              onChange={handleCuentaChange}
+              label="Cuenta Contable"
+              required={true}
+              placeholder="Seleccionar cuenta contable"
+              disabled={isReadOnly}
+              showClearButton={true}
             />
           </div>
         </div>
@@ -416,7 +412,7 @@ export default function DetalleDialog({
           </div>
         </div>
 
-               {/* CENTRO DE COSTO */}
+        {/* CENTRO DE COSTO */}
         <div
           style={{
             display: "flex",
@@ -498,8 +494,8 @@ export default function DetalleDialog({
                     value={
                       editingDetalle.creadoEn
                         ? new Date(editingDetalle.creadoEn).toLocaleString(
-                            "es-PE",
-                          )
+                          "es-PE",
+                        )
                         : "N/A"
                     }
                     disabled
@@ -524,8 +520,8 @@ export default function DetalleDialog({
                     value={
                       editingDetalle.actualizadoEn
                         ? new Date(editingDetalle.actualizadoEn).toLocaleString(
-                            "es-PE",
-                          )
+                          "es-PE",
+                        )
                         : "N/A"
                     }
                     disabled

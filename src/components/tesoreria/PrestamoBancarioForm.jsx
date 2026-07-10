@@ -304,12 +304,6 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       setValue('saldoInteres', prestamoActualizado.saldoInteres);
       setValue('capitalPagado', prestamoActualizado.capitalPagado);
       setValue('interesPagado', prestamoActualizado.interesPagado);
-
-      console.log('Saldos actualizados:', {
-        saldoCapital: prestamoActualizado.saldoCapital,
-        capitalPagado: prestamoActualizado.capitalPagado,
-        interesPagado: prestamoActualizado.interesPagado,
-      });
     } catch (error) {
       console.error('Error al recargar saldos del préstamo:', error);
     }
