@@ -153,7 +153,10 @@ export default function DatosGeneralesProductoForm({
     value: Number(t.id),
     tasa: Number(t.tasa)
   }));
-
+  const tiposAfectacionIGVOptions = tiposAfectacionIGV.map((t) => ({
+    label: `${t.codigo} - ${t.nombre}`,
+    value: Number(t.id)
+  }));
   // Limpiar subfamilia cuando cambie la familia
   useEffect(() => {
     if (familiaIdWatch) {
@@ -1024,21 +1027,15 @@ export default function DatosGeneralesProductoForm({
                     id="tipoAfectacionIGVId"
                     value={field.value ? Number(field.value) : null}
                     onChange={(e) => field.onChange(e.value)}
-                    options={tiposAfectacionIGV}
-                    optionLabel="nombre"
-                    optionValue="id"
+                    options={tiposAfectacionIGVOptions}
                     placeholder="Seleccione tipo afectación IGV"
-                    filter
-                    showClear
-                    disabled={readOnly}
+                    style={{ fontWeight: "bold" }}
                     className={classNames({
                       "p-invalid": fieldState.error,
                     })}
-                    itemTemplate={(option) => (
-                      <div>
-                        <strong>{option.codigo}</strong> - {option.nombre}
-                      </div>
-                    )}
+                    showClear
+                    filter
+                    disabled={readOnly}
                   />
                 )}
               />
