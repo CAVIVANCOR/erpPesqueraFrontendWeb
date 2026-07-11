@@ -24,6 +24,8 @@ import {
   eliminarPreFactura,
   crearPreFactura,
   actualizarPreFactura,
+  actualizarTipoOperacionSunatMasivo,
+  actualizarTipoAfectacionIGVMasivo,
 } from "../api/preFactura";
 import { getMotivoNotaCreditoDebitoActivos } from "../api/ventas/motivoNotaCreditoDebito";
 import PreFacturaForm from "../components/preFactura/PreFacturaForm";
@@ -64,6 +66,9 @@ import GenerarKardexDialog from "../components/common/kardex/GenerarKardexDialog
 import { generarMovimientoAlmacenPreFactura, regenerarKardexPreFactura } from "../api/preFactura";
 import { useDashboardStore } from "../shared/stores/useDashboardStore";
 import AuditoriaDialog from "../components/common/AuditoriaDialog";
+import AsignarTipoOperacionSunatDialog from "../components/common/AsignarTipoOperacionSunatDialog";
+import AsignarTipoAfectacionIGVDialog from "../components/common/AsignarTipoAfectacionIGVDialog";
+import { generarPreFacturasExcel } from "../components/preFactura/reports/generarPreFacturasExcel";
 
 /**
  * Componente PreFactura
@@ -77,6 +82,9 @@ const PreFactura = ({ ruta }) => {
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
+  const [showAsignarTipoAfectacionDialog, setShowAsignarTipoAfectacionDialog] = useState(false);
+  const [selectedRecords, setSelectedRecords] = useState([]);
+  const [showAsignarTipoOpDialog, setShowAsignarTipoOpDialog] = useState(false);
   const [items, setItems] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
@@ -119,7 +127,7 @@ const PreFactura = ({ ruta }) => {
   const [showKardexDialog, setShowKardexDialog] = useState(false);
   const [kardexDocumentoActual, setKardexDocumentoActual] = useState(null);
   // Filtrado automático por Unidad de Negocio
-const { datosFiltrados: preFacturasFiltradas } = useUnidadNegocioFilter(itemsFiltrados);
+  const { datosFiltrados: preFacturasFiltradas } = useUnidadNegocioFilter(itemsFiltrados);
   const [isEditing, setIsEditing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showCotizacionDialog, setShowCotizacionDialog] = useState(false); // ⬅️ AGREGAR
@@ -322,7 +330,7 @@ const { datosFiltrados: preFacturasFiltradas } = useUnidadNegocioFilter(itemsFil
 
   // Filtrar items cuando cambien los filtros
   useEffect(() => {
-let filtrados = items;
+    let filtrados = items;
 
     // Filtro por empresa
     if (empresaSeleccionada) {
@@ -795,6 +803,85 @@ let filtrados = items;
     setLoading(false);
   };
 
+
+  const handleAsignarTipoOperacion = async (ids, tipoOperacionSunatId) => {
+    try {
+      const resultado = await actualizarTipoOperacionSunatMasivo(ids, tipoOperacionSunatId);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: resultado.mensaje || `${resultado.actualizados} registro(s) actualizado(s)`,
+        life: 3000,
+      });
+
+      setSelectedRecords([]);
+      cargarDatos();
+    } catch (error) {
+      console.error("Error actualizando tipo de operación:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al actualizar registros",
+        life: 3000,
+      });
+      throw error;
+    }
+  };
+
+  const handleAsignarTipoAfectacion = async (ids, tipoAfectacionIGVId) => {
+    try {
+      const resultado = await actualizarTipoAfectacionIGVMasivo(ids, tipoAfectacionIGVId);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: resultado.mensaje || `${resultado.actualizados} registro(s) actualizado(s)`,
+        life: 3000,
+      });
+
+      setSelectedRecords([]);
+      cargarDatos();
+    } catch (error) {
+      console.error("Error actualizando tipo de afectación IGV:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al actualizar registros",
+        life: 3000,
+      });
+      throw error;
+    }
+  };
+  const handleExportarExcel = async () => {
+    try {
+      setLoading(true);
+      const response = await getPreFacturas();
+      const blob = await generarPreFacturasExcel(response);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `PreFacturas_${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.current.show({
+        severity: 'success',
+        summary: 'Exportado',
+        detail: 'Excel generado correctamente',
+        life: 3000
+      });
+    } catch (error) {
+      console.error('Error al exportar:', error);
+      toast.current.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Error al generar Excel',
+        life: 3000
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   const cerrarDialogo = () => {
     // Si hay una PreFactura en el stack de navegación, volver a ella
     if (navigationStack.length > 0) {
@@ -1565,6 +1652,8 @@ let filtrados = items;
       <div className="card">
         <DataTable
           value={preFacturasFiltradas}
+          selection={selectedRecords}
+          onSelectionChange={(e) => setSelectedRecords(e.value)}
           loading={loading}
           dataKey="id"
           paginator
@@ -1646,6 +1735,38 @@ let filtrados = items;
                     outlined
                     onClick={limpiarFiltros}
                     disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Asignar Tipo Operación SUNAT"
+                    icon="pi pi-tag"
+                    onClick={() => setShowAsignarTipoOpDialog(true)}
+                    disabled={!selectedRecords || selectedRecords.length === 0}
+                    className="p-button-info"
+                    tooltip="Asignar tipo de operación SUNAT a registros seleccionados"
+                    tooltipOptions={{ position: "top" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Asignar Tipo Afectación IGV"
+                    icon="pi pi-percentage"
+                    onClick={() => setShowAsignarTipoAfectacionDialog(true)}
+                    disabled={!selectedRecords || selectedRecords.length === 0}
+                    className="p-button-warning"
+                    tooltip="Asignar tipo de afectación IGV a registros seleccionados"
+                    tooltipOptions={{ position: "top" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Exportar Excel"
+                    icon="pi pi-file-excel"
+                    className="p-button-success"
+                    onClick={handleExportarExcel}
+                    disabled={loading}
+                    tooltip="Exportar todas las PreFacturas a Excel"
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -1833,6 +1954,11 @@ let filtrados = items;
           }
         >
           <Column
+            selectionMode="multiple"
+            headerStyle={{ width: "3rem" }}
+            exportable={false}
+          />
+          <Column
             field="id"
             header="ID"
             style={{ width: 80, verticalAlign: "top" }}
@@ -1949,6 +2075,30 @@ let filtrados = items;
             body={fechaContableTemplate}
             style={{ width: 120, textAlign: "center", verticalAlign: "top" }}
             sortable
+          />
+          <Column
+            field="tipoOperacionSunat.descripcion"
+            header="Tipo Operación SUNAT"
+            body={(rowData) =>
+              rowData.tipoOperacionSunat?.descripcion ||
+              <span style={{ color: "#999" }}>(Sin asignar)</span>
+            }
+            sortable
+            filter
+            filterPlaceholder="Buscar por tipo operación"
+            style={{ minWidth: "250px" }}
+          />
+          <Column
+            field="tipoAfectacionIGV.nombre"
+            header="Tipo Afectación IGV"
+            body={(rowData) =>
+              rowData.tipoAfectacionIGV?.nombre ||
+              <span style={{ color: "#999" }}>(Sin asignar)</span>
+            }
+            sortable
+            filter
+            filterPlaceholder="Buscar por tipo afectación"
+            style={{ minWidth: "200px" }}
           />
           <Column
             body={actionBodyTemplate}
@@ -2159,6 +2309,22 @@ let filtrados = items;
         empresaIdInicial={empresaSeleccionada}
       />
 
+      <AsignarTipoOperacionSunatDialog
+        visible={showAsignarTipoOpDialog}
+        onHide={() => setShowAsignarTipoOpDialog(false)}
+        selectedIds={selectedRecords.map(r => r.id)}
+        onAplicar={handleAsignarTipoOperacion}
+        toast={toast}
+        entidadNombre="PreFacturas"
+      />
+      <AsignarTipoAfectacionIGVDialog
+        visible={showAsignarTipoAfectacionDialog}
+        onHide={() => setShowAsignarTipoAfectacionDialog(false)}
+        selectedIds={selectedRecords.map(r => r.id)}
+        onAplicar={handleAsignarTipoAfectacion}
+        toast={toast}
+        entidadNombre="PreFacturas"
+      />
       <ConfirmDialog />
     </div>
   );

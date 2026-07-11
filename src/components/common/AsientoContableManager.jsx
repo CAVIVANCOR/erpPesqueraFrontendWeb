@@ -10,7 +10,9 @@ import axios from "axios";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import AsientoContableEditor from "./AsientoContableEditor";
 import AsientoContableViewer from "./AsientoContableViewer";
-
+import * as preFacturaAPI from "../../api/preFactura";
+import * as ordenCompraAPI from "../../api/ordenCompra";
+import * as movimientoActivoFijoAPI from "../../api/movimientoActivoFijo";
 /**
  * Obtiene el token JWT desde el store de autenticación
  * @returns {Object} Headers con autorización Bearer
@@ -236,15 +238,84 @@ const AsientoContableManager = ({
         }
       }
       if (asientos.length > 0) {
-        // ⭐ YA EXISTE ASIENTO - SOLO MOSTRAR (no crear duplicados)
-        toast.current?.show({
-          severity: "info",
-          summary: "Asiento Existente",
-          detail: "Ya existe un asiento contable para este documento.",
-          life: 3000,
+        // ⭐ YA EXISTE ASIENTO - PREGUNTAR SI REGENERAR
+        confirmDialog({
+          message: "Ya existe un asiento contable para este documento. ¿Desea eliminarlo y generar uno nuevo?",
+          header: "Regenerar Asiento Contable",
+          icon: "pi pi-exclamation-triangle",
+          acceptLabel: "Sí, Regenerar",
+          rejectLabel: "Cancelar",
+          accept: async () => {
+            try {
+              // Eliminar asientos existentes
+              const apiModule = documentoTipo === 'PreFactura'
+                ? preFacturaAPI
+                : documentoTipo === 'OrdenCompra'
+                  ? ordenCompraAPI
+                  : movimientoActivoFijoAPI;
+
+              for (const asiento of asientos) {
+                await apiModule.eliminarAsientoContable(documentoId, asiento.id);
+              }
+
+              toast.current?.show({
+                severity: "success",
+                summary: "Asientos Eliminados",
+                detail: "Asientos anteriores eliminados correctamente.",
+                life: 2000,
+              });
+
+              // Recargar y continuar con generación
+              await cargarAsientos();
+
+              // Generar nuevo asiento
+              const urlBorrador = `${baseUrl}/${documentoId}/${config.borradorEndpoint}`;
+              const responseBorrador = config.borradorMethod === "POST"
+                ? await axios.post(urlBorrador, {}, { headers: getAuthHeaders() })
+                : await axios.get(urlBorrador, { headers: getAuthHeaders() });
+              const borradorGenerado = responseBorrador.data;
+
+              if (borradorGenerado.warnings && borradorGenerado.warnings.length > 0) {
+                setWarnings(borradorGenerado.warnings);
+              } else {
+                setWarnings([]);
+              }
+
+              await axios.post(
+                `${baseUrl}/${documentoId}/${config.guardarEndpoint}`,
+                { asientoData: borradorGenerado },
+                { headers: getAuthHeaders() }
+              );
+
+              await cargarAsientos();
+
+              toast.current?.show({
+                severity: "success",
+                summary: "Asiento Regenerado",
+                detail: "Asiento contable regenerado correctamente.",
+                life: 4000,
+              });
+
+              setShowListDialog(true);
+
+              if (onAsientoChange) {
+                onAsientoChange();
+              }
+            } catch (error) {
+              console.error("Error al regenerar asiento:", error);
+              toast.current?.show({
+                severity: "error",
+                summary: "Error",
+                detail: error.response?.data?.message || "Error al regenerar asiento",
+                life: 3000,
+              });
+            }
+          },
+          reject: () => {
+            setShowListDialog(true);
+          }
         });
-        // Mostrar lista de asientos
-        setShowListDialog(true);
+        setLoading(false);
         return;
       }
       // ✅ SI NO EXISTE NINGÚN ASIENTO, GENERAR UNO NUEVO

@@ -1989,7 +1989,6 @@ export default function PreFacturaForm({
               onBeforeGenerate={handleBeforeGenerateAsiento}
             />
           )}
-
           <Button
             label="Cancelar"
             icon="pi pi-times"

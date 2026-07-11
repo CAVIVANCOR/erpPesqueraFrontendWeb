@@ -383,3 +383,21 @@ export async function getPreFacturasParaDocumentoAfecto(empresaId, clienteId, fe
     throw error;
   }
 }
+
+export async function actualizarTipoOperacionSunatMasivo(ids, tipoOperacionSunatId) {
+  const res = await axios.put(
+    `${API_URL}/actualizar-tipo-operacion-sunat-masivo`,
+    { ids, tipoOperacionSunatId },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
+
+export async function actualizarTipoAfectacionIGVMasivo(ids, tipoAfectacionIGVId) {
+  const res = await axios.put(
+    `${API_URL}/actualizar-tipo-afectacion-igv-masivo`,
+    { ids, tipoAfectacionIGVId },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

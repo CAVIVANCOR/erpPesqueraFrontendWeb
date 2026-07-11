@@ -117,3 +117,22 @@ export async function reactivarDocumentoOrdenCompra(id) {
     throw error;
   }
 }
+
+/**
+ * Eliminar asiento contable de una OrdenCompra
+ * @param {number} ordenCompraId - ID de la orden de compra
+ * @param {number} asientoId - ID del asiento a eliminar
+ * @returns {Promise<Object>} - Confirmación
+ */
+export async function eliminarAsientoContable(ordenCompraId, asientoId) {
+  try {
+    const response = await axios.delete(
+      `${API_URL}/${ordenCompraId}/asiento/${asientoId}`,
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error al eliminar asiento contable:", error);
+    throw error;
+  }
+}
