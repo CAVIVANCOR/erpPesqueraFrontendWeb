@@ -55,6 +55,7 @@ import { getEspecies } from "../api/especie";
 import EmpresaSelector from "../components/common/EmpresaSelector";
 import { getTiposDetraccionActivos } from "../api/tipoDetraccion";
 import { getTiposAfectacionIGVActivos } from "../api/facturacionElectronica/tipoAfectacionIGV";
+import { generarProductosExcel } from "../components/producto/reports/generarProductosExcel";
 
 const Producto = ({ ruta }) => {
   const toast = useRef(null);
@@ -432,7 +433,35 @@ const Producto = ({ ruta }) => {
     selectedUnidadMedida,
     globalFilterValue,
   ]);
-
+  const handleExportarExcel = async () => {
+    try {
+      setLoading(true);
+      const response = await getProductos();
+      const blob = await generarProductosExcel(response);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Productos_${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.current.show({
+        severity: 'success',
+        summary: 'Exportado',
+        detail: 'Excel generado correctamente',
+        life: 3000
+      });
+    } catch (error) {
+      console.error('Error al exportar:', error);
+      toast.current.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Error al generar Excel',
+        life: 3000
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   const abrirDialogoNuevo = () => {
     // Pre-cargar empresa y cliente seleccionados en los filtros
     const productoInicial = {
@@ -935,7 +964,16 @@ const Producto = ({ ruta }) => {
               style={{ fontWeight: "bold" }}
             />
           </div>
-
+          <div style={{ flex: 1 }}>
+            <Button
+              label="Exportar Excel"
+              icon="pi pi-file-excel"
+              className="p-button-success"
+              onClick={handleExportarExcel}
+              disabled={loading}
+              tooltip="Exportar todos los Productos a Excel"
+            />
+          </div>
         </div>
       </div>
     );

@@ -56,6 +56,7 @@ import { getAllUbicacionesFisicas } from "../api/ubicacionFisica";
 import ConsultaStockForm from "../components/common/ConsultaStockForm";
 import { useActualizarRegistroEnLista } from "../hooks/useActualizarRegistroEnLista";
 import { useDashboardStore } from "../shared/stores/useDashboardStore";
+import { generarOrdenesCompraExcel } from "../components/ordenCompra/reports/generarOrdenesCompraExcel";
 
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
@@ -1066,7 +1067,35 @@ export default function OrdenCompra({ ruta }) {
       setLoading(false);
     }
   };
-
+  const handleExportarExcel = async () => {
+    try {
+      setLoading(true);
+      const response = await getOrdenesCompra();
+      const blob = await generarOrdenesCompraExcel(response);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `OrdenesCompra_${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.current.show({
+        severity: 'success',
+        summary: 'Exportado',
+        detail: 'Excel generado correctamente',
+        life: 3000
+      });
+    } catch (error) {
+      console.error('Error al exportar:', error);
+      toast.current.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Error al generar Excel',
+        life: 3000
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   const empresaNombre = (rowData) => {
     return rowData.empresa?.razonSocial || "";
   };
@@ -1402,6 +1431,16 @@ export default function OrdenCompra({ ruta }) {
                   outlined
                   onClick={limpiarFiltros}
                   disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Exportar Excel"
+                  icon="pi pi-file-excel"
+                  className="p-button-success"
+                  onClick={handleExportarExcel}
+                  disabled={loading}
+                  tooltip="Exportar todas las Órdenes de Compra a Excel"
                 />
               </div>
               <div style={{ flex: 1 }}>
