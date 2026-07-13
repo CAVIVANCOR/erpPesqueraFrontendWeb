@@ -335,6 +335,7 @@ export default function ProductoForm({
       cuentaInventarioId: producto?.cuentaInventarioId ? Number(producto.cuentaInventarioId) : null,
       cuentaCostoVentasId: producto?.cuentaCostoVentasId ? Number(producto.cuentaCostoVentasId) : null,
       cuentaVariacionId: producto?.cuentaVariacionId ? Number(producto.cuentaVariacionId) : null,
+      cuentaVentasId: producto?.cuentaVentasId ? Number(producto.cuentaVentasId) : null,
       exoneradoRetencion: producto?.exoneradoRetencion || false,
       sujetoDetraccion: producto?.sujetoDetraccion || false,
       aplicaSubfamilia: producto?.aplicaSubfamilia || false,
@@ -358,7 +359,6 @@ export default function ProductoForm({
   });
 
   const familiaIdWatch = watch("familiaId");
-
   // Limpiar subfamilia cuando cambie la familia
   useEffect(() => {
     if (familiaIdWatch) {
@@ -457,6 +457,7 @@ export default function ProductoForm({
         cuentaInventarioId: data.cuentaInventarioId ? Number(data.cuentaInventarioId) : null,
         cuentaCostoVentasId: data.cuentaCostoVentasId ? Number(data.cuentaCostoVentasId) : null,
         cuentaVariacionId: data.cuentaVariacionId ? Number(data.cuentaVariacionId) : null,
+        cuentaVentasId: data.cuentaVentasId ? Number(data.cuentaVentasId) : null,
         porcentajeDetraccion: data.porcentajeDetraccion,
         exoneradoIgv: data.exoneradoIgv,
         exoneradoRetencion: data.exoneradoRetencion,

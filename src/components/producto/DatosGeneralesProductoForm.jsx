@@ -1245,6 +1245,24 @@ export default function DatosGeneralesProductoForm({
                 )}
               />
             </div>
+            <div style={{ flex: 1 }}>
+              <Controller
+                name="cuentaVentasId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <PlanCuentaContableSelector
+                    value={field.value}
+                    onChange={field.onChange}
+                    label="Cuenta Ventas (70)"
+                    placeholder="Seleccione cuenta de ventas"
+                    disabled={readOnly}
+                    error={!!fieldState.error}
+                    errorMessage={fieldState.error?.message}
+                    showClearButton={true}
+                  />
+                )}
+              />
+            </div>
           </div>
         </Panel>
         <Panel
