@@ -1662,6 +1662,60 @@ export default function OrdenCompra({ ruta }) {
         />
 
         <Column
+          header="Detrac."
+          body={(rowData) => {
+            if (!rowData.aplicaDetraccion) return "-";
+            return (
+              <div style={{ textAlign: "center" }}>
+                <Tag
+                  value={`${Number(rowData.porcentajeDetraccion || 0).toFixed(2)}%`}
+                  severity="warning"
+                  icon="pi pi-percentage"
+                  style={{ fontSize: "0.75rem" }}
+                />
+              </div>
+            );
+          }}
+          style={{ width: 90, textAlign: "center", verticalAlign: "top" }}
+          bodyStyle={{ textAlign: "center" }}
+        />
+        <Column
+          header="Reten."
+          body={(rowData) => {
+            if (!rowData.aplicaRetencion) return "-";
+            return (
+              <div style={{ textAlign: "center" }}>
+                <Tag
+                  value={`${Number(rowData.porcentajeRetencion || 0).toFixed(2)}%`}
+                  severity="help"
+                  icon="pi pi-percentage"
+                  style={{ fontSize: "0.75rem" }}
+                />
+              </div>
+            );
+          }}
+          style={{ width: 90, textAlign: "center", verticalAlign: "top" }}
+          bodyStyle={{ textAlign: "center" }}
+        />
+        <Column
+          header="Percep."
+          body={(rowData) => {
+            if (!rowData.aplicaPercepcion) return "-";
+            return (
+              <div style={{ textAlign: "center" }}>
+                <Tag
+                  value={`${Number(rowData.porcentajePercepcion || 0).toFixed(2)}%`}
+                  severity="info"
+                  icon="pi pi-percentage"
+                  style={{ fontSize: "0.75rem" }}
+                />
+              </div>
+            );
+          }}
+          style={{ width: 90, textAlign: "center", verticalAlign: "top" }}
+          bodyStyle={{ textAlign: "center" }}
+        />
+        <Column
           body={actionBody}
           header="Acciones"
           style={{ width: 100, textAlign: "center" }}
