@@ -72,6 +72,16 @@ export default function DatosGeneralesTab({
   totalIGV = 0,
   montoImpuestoRenta = 0,
   total = 0,
+  // Impuestos
+  aplicaDetraccion = false,
+  montoDetraccion = 0,
+  porcentajeDetraccion = 0,
+  aplicaRetencion = false,
+  montoRetencion = 0,
+  porcentajeRetencion = 0,
+  aplicaPercepcion = false,
+  montoPercepcion = 0,
+  porcentajePercepcion = 0,
   // Objeto moneda de la pre-factura (viene de la relación)
   monedaPreFactura = null,
   readOnly = false,
@@ -1226,6 +1236,15 @@ export default function DatosGeneralesTab({
           onChange={onChange}
           clienteId={formData.clienteId}
           fechaDocumento={formData.fechaDocumento}
+          aplicaDetraccion={aplicaDetraccion}
+          montoDetraccion={montoDetraccion}
+          porcentajeDetraccion={porcentajeDetraccion}
+          aplicaRetencion={aplicaRetencion}
+          montoRetencion={montoRetencion}
+          porcentajeRetencion={porcentajeRetencion}
+          aplicaPercepcion={aplicaPercepcion}
+          montoPercepcion={montoPercepcion}
+          porcentajePercepcion={porcentajePercepcion}
         />
       </Panel>
 

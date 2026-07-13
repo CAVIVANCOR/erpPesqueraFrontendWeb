@@ -18,6 +18,7 @@ import { getMediosPago } from "../../api/medioPago";
 import { getAllCuentaCorriente } from "../../api/cuentaCorriente";
 import PdfComprobanteProveedorCard from "./PdfComprobanteProveedorCard";
 import { useForm } from "react-hook-form";
+import { getOrdenCompraPorId } from "../../api/ordenCompra";
 
 export default function OrdenCompraForm({
   isEdit,
@@ -237,7 +238,23 @@ export default function OrdenCompraForm({
   const [activeTab, setActiveTab] = useState(0);
   const [detallesCount, setDetallesCount] = useState(0);
   const [datosAdicionalesCount, setDatosAdicionalesCount] = useState(0);
-  const [totales, setTotales] = useState({ subtotal: 0, totalDescuentos: 0, igv: 0, total: 0 });
+  const [totales, setTotales] = useState({
+    subtotal: 0,
+    totalDescuentos: 0,
+    igv: 0,
+    impuestoRenta: 0,
+    total: 0,
+    // Impuestos
+    aplicaDetraccion: false,
+    montoDetraccion: 0,
+    porcentajeDetraccion: 0,
+    aplicaRetencion: false,
+    montoRetencion: 0,
+    porcentajeRetencion: 0,
+    aplicaPercepcion: false,
+    montoPercepcion: 0,
+    porcentajePercepcion: 0,
+  });
   const [fechaDocumentoInicial, setFechaDocumentoInicial] = useState(null);
   const [estadosCxP, setEstadosCxP] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
@@ -499,49 +516,71 @@ export default function OrdenCompraForm({
   }, [fechaDocumento, fechaDocumentoInicial]);
 
   useEffect(() => {
-    const calcularTotales = async () => {
-      if (!defaultValues?.id || !isEdit) return;
+    const obtenerTotalesDelBackend = async () => {
+      if (!defaultValues?.id || !isEdit) {
+        setTotales({
+          subtotal: 0,
+          totalDescuentos: 0,
+          igv: 0,
+          impuestoRenta: 0,
+          total: 0,
+          aplicaDetraccion: false,
+          montoDetraccion: 0,
+          porcentajeDetraccion: 0,
+          aplicaRetencion: false,
+          montoRetencion: 0,
+          porcentajeRetencion: 0,
+          aplicaPercepcion: false,
+          montoPercepcion: 0,
+          porcentajePercepcion: 0,
+        });
+        return;
+      }
+
       try {
-        const { getDetallesOrdenCompra } =
-          await import("../../api/detalleOrdenCompra");
-        const detalles = await getDetallesOrdenCompra(defaultValues.id);
-
-        // ⭐ subtotal ya viene SIN IGV desde los detalles
-        const subtotalSinIGV = detalles.reduce(
-          (sum, det) => sum + (Number(det.subtotal) || 0),
-          0,
-        );
-        const totalDescuentosCalc = 0;
-        const igvCalc = esExoneradoAlIGV
-          ? 0
-          : subtotalSinIGV * (Number(porcentajeIGV) / 100);
-
-        const impuestoRentaCalc = aplicaImpuestoRenta
-          ? subtotalSinIGV * (Number(porcentajeImpuestoRenta) / 100)
-          : 0;
-
-        const totalCalc = subtotalSinIGV + igvCalc - impuestoRentaCalc;
+        // Recargar orden completa desde backend para obtener totales actualizados
+        const ordenActualizada = await getOrdenCompraPorId(defaultValues.id);
 
         setTotales({
-          subtotal: subtotalSinIGV,
-          totalDescuentos: totalDescuentosCalc,
-          igv: igvCalc,
-          impuestoRenta: impuestoRentaCalc,
-          total: totalCalc
+          subtotal: Number(ordenActualizada.subtotal || 0),
+          totalDescuentos: Number(ordenActualizada.totalDescuentos || 0),
+          igv: Number(ordenActualizada.totalIGV || 0),
+          impuestoRenta: Number(ordenActualizada.montoImpuestoRenta || 0),
+          total: Number(ordenActualizada.total || 0),
+          // Impuestos
+          aplicaDetraccion: ordenActualizada.aplicaDetraccion || false,
+          montoDetraccion: Number(ordenActualizada.montoDetraccion || 0),
+          porcentajeDetraccion: Number(ordenActualizada.porcentajeDetraccion || 0),
+          aplicaRetencion: ordenActualizada.aplicaRetencion || false,
+          montoRetencion: Number(ordenActualizada.montoRetencion || 0),
+          porcentajeRetencion: Number(ordenActualizada.porcentajeRetencion || 0),
+          aplicaPercepcion: ordenActualizada.aplicaPercepcion || false,
+          montoPercepcion: Number(ordenActualizada.montoPercepcion || 0),
+          porcentajePercepcion: Number(ordenActualizada.porcentajePercepcion || 0),
         });
-
       } catch (err) {
-        console.error("Error al calcular totales:", err);
-        setTotales({ subtotal: 0, totalDescuentos: 0, igv: 0, impuestoRenta: 0, total: 0 });
+        console.error("Error al obtener totales:", err);
+        setTotales({
+          subtotal: 0,
+          totalDescuentos: 0,
+          igv: 0,
+          impuestoRenta: 0,
+          total: 0,
+          aplicaDetraccion: false,
+          montoDetraccion: 0,
+          porcentajeDetraccion: 0,
+          aplicaRetencion: false,
+          montoRetencion: 0,
+          porcentajeRetencion: 0,
+          aplicaPercepcion: false,
+          montoPercepcion: 0,
+          porcentajePercepcion: 0,
+        });
       }
     };
-    calcularTotales();
+    obtenerTotalesDelBackend();
   }, [
-    detallesCount,
-    porcentajeIGV,
-    esExoneradoAlIGV,
-    aplicaImpuestoRenta,
-    porcentajeImpuestoRenta,
+    detallesCount, // ⭐ CRÍTICO: Se recarga cuando cambian los detalles
     isEdit,
     defaultValues?.id,
   ]);
@@ -904,33 +943,8 @@ export default function OrdenCompraForm({
 
   const handleSubmit = async () => {
     try {
-      // ✅ 1. Calcular totales desde detalles ANTES de enviar
-      let subtotalCalc = 0;
-      let totalIGVCalc = 0;
-      let montoImpuestoRentaCalc = 0;
-      let totalCalc = 0;
+      // ✅ Preparar datos (backend calculará totales)
 
-      if (isEdit && defaultValues?.id) {
-        const { getDetallesOrdenCompra } = await import("../../api/detalleOrdenCompra");
-        const detalles = await getDetallesOrdenCompra(defaultValues.id);
-
-        subtotalCalc = detalles.reduce(
-          (sum, det) => sum + (Number(det.subtotal) || 0),
-          0,
-        );
-
-        totalIGVCalc = esExoneradoAlIGV
-          ? 0
-          : subtotalCalc * (Number(porcentajeIGV) / 100);
-
-        montoImpuestoRentaCalc = aplicaImpuestoRenta
-          ? subtotalCalc * (Number(porcentajeImpuestoRenta) / 100)
-          : 0;
-
-        totalCalc = subtotalCalc + totalIGVCalc - montoImpuestoRentaCalc;
-      }
-
-      // ✅ 2. Preparar datos con totales calculados
       const data = {
         empresaId: empresaId ? Number(empresaId) : null,
         tipoDocumentoId: tipoDocumentoId ? Number(tipoDocumentoId) : null,
@@ -961,11 +975,6 @@ export default function OrdenCompraForm({
         esExoneradoAlIGV,
         aplicaImpuestoRenta,
         porcentajeImpuestoRenta,
-        montoImpuestoRenta: montoImpuestoRentaCalc, // ⭐ CALCULADO
-        subtotal: subtotalCalc, // ⭐ CALCULADO
-        totalDescuentos: 0,
-        totalIGV: totalIGVCalc, // ⭐ CALCULADO
-        total: totalCalc, // ⭐ CALCULADO
         direccionRecepcionAlmacenId: direccionRecepcionAlmacenId ? Number(direccionRecepcionAlmacenId) : null,
         contactoProveedorId: contactoProveedorId ? Number(contactoProveedorId) : null,
         facturado: facturado || false,
@@ -987,17 +996,6 @@ export default function OrdenCompraForm({
 
       // ✅ 3. Llamar callback del padre (él maneja el guardado)
       onSubmit(data);
-
-      // ✅ 4. Actualizar estado local solo en edición
-      if (isEdit) {
-        setTotales({
-          subtotal: subtotalCalc,
-          totalDescuentos: 0,
-          igv: totalIGVCalc,
-          impuestoRenta: montoImpuestoRentaCalc,
-          total: totalCalc,
-        });
-      }
     } catch (err) {
       console.error("Error al guardar:", err);
       toast.current?.show({
@@ -1254,6 +1252,15 @@ export default function OrdenCompraForm({
             totalIGV={totales.igv}
             montoImpuestoRenta={totales.impuestoRenta || 0}
             aplicaImpuestoRenta={aplicaImpuestoRenta}
+            aplicaDetraccion={totales.aplicaDetraccion}
+            montoDetraccion={totales.montoDetraccion}
+            porcentajeDetraccion={totales.porcentajeDetraccion}
+            aplicaRetencion={totales.aplicaRetencion}
+            montoRetencion={totales.montoRetencion}
+            porcentajeRetencion={totales.porcentajeRetencion}
+            aplicaPercepcion={totales.aplicaPercepcion}
+            montoPercepcion={totales.montoPercepcion}
+            porcentajePercepcion={totales.porcentajePercepcion}
             pagosPreviosSI={pagosPreviosSI}
             tipoDocumentoId={tipoDocumentoId}
             tiposDocumentoOptions={tiposDocumentoOptions}

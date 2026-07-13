@@ -25,6 +25,7 @@ import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 import AsientoContableManager from "../common/AsientoContableManager";
 import { crearDetallePreFactura } from "../../api/detallePreFactura";
 import { ESTADO_PREFACTURA } from "../../utils/estados.constants";
+import { getPreFacturaPorId } from "../../api/preFactura";
 
 export default function PreFacturaForm({
   isEdit,
@@ -488,7 +489,21 @@ export default function PreFacturaForm({
   const [activeTab, setActiveTab] = useState(0);
   const [detallesCount, setDetallesCount] = useState(0);
   const [refreshClientes, setRefreshClientes] = useState(null);
-  const [totales, setTotales] = useState({ subtotal: 0, igv: 0, total: 0 });
+  const [totales, setTotales] = useState({
+    subtotal: 0,
+    igv: 0,
+    impuestoRenta: 0,
+    total: 0,
+    aplicaDetraccion: false,
+    montoDetraccion: 0,
+    porcentajeDetraccion: 0,
+    aplicaRetencion: false,
+    montoRetencion: 0,
+    porcentajeRetencion: 0,
+    aplicaPercepcion: false,
+    montoPercepcion: 0,
+    porcentajePercepcion: 0,
+  });
   const [estadosPreFactura, setEstadosPreFactura] = useState([]);
   const [fechaDocumentoInicial, setFechaDocumentoInicial] = useState(null);
   const [mediosPago, setMediosPago] = useState([]);
@@ -809,144 +824,78 @@ export default function PreFacturaForm({
     });
   };
 
-  // Recalcular totales cuando cambien los detalles
   useEffect(() => {
-    const calcularTotales = async () => {
-      if (!defaultValues?.id || !isEdit) return;
+    const obtenerTotalesDelBackend = async () => {
+      if (!defaultValues?.id || !isEdit) {
+        setTotales({
+          subtotal: 0,
+          igv: 0,
+          impuestoRenta: 0,
+          total: 0,
+          aplicaDetraccion: false,
+          montoDetraccion: 0,
+          porcentajeDetraccion: 0,
+          aplicaRetencion: false,
+          montoRetencion: 0,
+          porcentajeRetencion: 0,
+          aplicaPercepcion: false,
+          montoPercepcion: 0,
+          porcentajePercepcion: 0,
+        });
+        return;
+      }
 
       try {
-        const { getDetallesPreFactura } =
-          await import("../../api/detallePreFactura");
-        const detalles = await getDetallesPreFactura(defaultValues.id);
-
-        const subtotalCalc = detalles.reduce(
-          (sum, det) =>
-            sum + (Number(det.cantidad) * Number(det.precioUnitario) || 0),
-          0,
-        );
-        const igvCalc = exoneradoIgv
-          ? 0
-          : subtotalCalc * (Number(porcentajeIgv) / 100);
-
-        const impuestoRentaCalc = aplicaImpuestoRenta
-          ? subtotalCalc * (Number(porcentajeImpuestoRenta) / 100)
-          : 0;
-
-        const totalCalc = subtotalCalc + igvCalc - impuestoRentaCalc;
+        const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
 
         setTotales({
-          subtotal: subtotalCalc,
-          igv: igvCalc,
-          impuestoRenta: impuestoRentaCalc,
-          total: totalCalc
+          subtotal: Number(preFacturaActualizada.subtotal || 0),
+          igv: Number(preFacturaActualizada.totalIGV || 0),
+          impuestoRenta: Number(preFacturaActualizada.montoImpuestoRenta || 0),
+          total: Number(preFacturaActualizada.total || 0),
+          aplicaDetraccion: preFacturaActualizada.aplicaDetraccion || false,
+          montoDetraccion: Number(preFacturaActualizada.montoDetraccion || 0),
+          porcentajeDetraccion: Number(preFacturaActualizada.porcentajeDetraccion || 0),
+          aplicaRetencion: preFacturaActualizada.aplicaRetencion || false,
+          montoRetencion: Number(preFacturaActualizada.montoRetencion || 0),
+          porcentajeRetencion: Number(preFacturaActualizada.porcentajeRetencion || 0),
+          aplicaPercepcion: preFacturaActualizada.aplicaPercepcion || false,
+          montoPercepcion: Number(preFacturaActualizada.montoPercepcion || 0),
+          porcentajePercepcion: Number(preFacturaActualizada.porcentajePercepcion || 0),
         });
-
-        // ⭐ ACTUALIZAR TOTALES EN EL BACKEND (sin mostrar toast aquí)
-        if (defaultValues?.id) {
-          const { actualizarPreFactura } = await import("../../api/preFactura");
-          await actualizarPreFactura(defaultValues.id, {
-            subtotal: subtotalCalc,
-            totalIGV: igvCalc,
-            montoImpuestoRenta: impuestoRentaCalc,
-            total: totalCalc,
-          });
-        }
       } catch (err) {
-        console.error("Error al calcular totales:", err);
-        setTotales({ subtotal: 0, igv: 0, impuestoRenta: 0, total: 0 });
+        console.error("Error al obtener totales:", err);
+        setTotales({
+          subtotal: 0,
+          igv: 0,
+          impuestoRenta: 0,
+          total: 0,
+          aplicaDetraccion: false,
+          montoDetraccion: 0,
+          porcentajeDetraccion: 0,
+          aplicaRetencion: false,
+          montoRetencion: 0,
+          porcentajeRetencion: 0,
+          aplicaPercepcion: false,
+          montoPercepcion: 0,
+          porcentajePercepcion: 0,
+        });
       }
     };
+    obtenerTotalesDelBackend();
+  }, [detallesCount, isEdit, defaultValues?.id]);
 
-    calcularTotales();
-  }, [detallesCount, defaultValues?.id, isEdit, exoneradoIgv, porcentajeIgv, aplicaImpuestoRenta, porcentajeImpuestoRenta]);
 
-
-  // ⭐ FUNCIÓN AUXILIAR: Recalcular y guardar totales en BD con Toast
- const recalcularYGuardarTotales = async (mostrarToast = true) => {
-  if (!defaultValues?.id) {
-    return { subtotal: 0, igv: 0, impuestoRenta: 0, total: 0 };
-  }
-
-  try {
-    const { getDetallesPreFactura } = await import("../../api/detallePreFactura");
-    const detalles = await getDetallesPreFactura(defaultValues.id);
-
-    const subtotalCalc = detalles.reduce(
-      (sum, det) =>
-        sum + (Number(det.cantidad) * Number(det.precioUnitario) || 0),
-      0,
-    );
-    
-    const igvCalc = exoneradoIgv
-      ? 0
-      : subtotalCalc * (Number(porcentajeIgv) / 100);
-    
-    // ✅ CALCULAR IMPUESTO A LA RENTA
-    const impuestoRentaCalc = aplicaImpuestoRenta
-      ? subtotalCalc * (Number(porcentajeImpuestoRenta) / 100)
-      : 0;
-    
-    const totalCalc = subtotalCalc + igvCalc - impuestoRentaCalc;
-    
-    const { actualizarPreFactura } = await import("../../api/preFactura");
-    const resultado = await actualizarPreFactura(defaultValues.id, {
-      subtotal: subtotalCalc,
-      totalIGV: igvCalc,
-      montoImpuestoRenta: impuestoRentaCalc,
-      total: totalCalc,
-    });
-    
-    // Actualizar estado local
-    setTotales({ 
-      subtotal: subtotalCalc, 
-      igv: igvCalc, 
-      impuestoRenta: impuestoRentaCalc,
-      total: totalCalc 
-    });
-
-    // ✅ Mostrar mensaje de éxito
-    if (mostrarToast) {
-      const monedaSimbolo = defaultValues?.moneda?.simbolo || "";
-      toast.current?.show({
-        severity: "success",
-        summary: "Totales Actualizados",
-        detail: `Subtotal: ${monedaSimbolo} ${subtotalCalc.toFixed(2)} | IGV: ${monedaSimbolo} ${igvCalc.toFixed(2)}${impuestoRentaCalc > 0 ? ` | Imp.Renta: ${monedaSimbolo} ${impuestoRentaCalc.toFixed(2)}` : ''} | Total: ${monedaSimbolo} ${totalCalc.toFixed(2)}`,
-        life: 4000,
-      });
-    }
-
-    return { 
-      subtotal: subtotalCalc, 
-      igv: igvCalc, 
-      impuestoRenta: impuestoRentaCalc,
-      total: totalCalc 
-    };
-  } catch (err) {
-    console.error("Error al recalcular totales:", err);
-    if (mostrarToast) {
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudieron actualizar los totales en la base de datos",
-        life: 5000,
-      });
-    }
-    throw err;
-  }
-};
 
   // ⭐ CALLBACK para AsientoContableManager
   const handleBeforeGenerateAsiento = async () => {
-    // Recalcular y guardar totales
-    await recalcularYGuardarTotales(true);
-    // ⭐ Verificar que los totales se guardaron correctamente
-    const { getPreFacturaPorId } = await import("../../api/preFactura");
+    // Los totales ya están calculados en el backend, solo verificar
     const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
     if (Number(preFacturaActualizada.total) === 0) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Los totales no se actualizaron correctamente en la base de datos. Intente nuevamente.",
+        detail: "Los totales están en cero. Verifique los detalles de la PreFactura.",
         life: 5000,
       });
       throw new Error("Totales en cero");
@@ -1231,7 +1180,7 @@ export default function PreFacturaForm({
       porcentajeAdelanto: formData.porcentajeAdelanto
         ? Number(formData.porcentajeAdelanto)
         : null,
-            pagosPreviosSI: formData.pagosPreviosSI
+      pagosPreviosSI: formData.pagosPreviosSI
         ? Number(formData.pagosPreviosSI)
         : null,
       // ════════════════════════════════════════════════════════════
@@ -1456,8 +1405,6 @@ export default function PreFacturaForm({
   const handleFacturarBlancaClick = async () => {
     try {
       // ⭐ RECALCULAR Y GUARDAR TOTALES ANTES DE EMITIR
-      await recalcularYGuardarTotales(true);
-
       const resultado = await facturarPreFacturaBlanca(defaultValues.id);
 
       toast?.current?.show({
@@ -1762,6 +1709,15 @@ export default function PreFacturaForm({
             onIrAContratoServicio={onIrAContratoServicio}
             onClienteCreado={handleClienteCreado}
             refreshClientes={refreshClientes}
+            aplicaDetraccion={totales.aplicaDetraccion}
+            montoDetraccion={totales.montoDetraccion}
+            porcentajeDetraccion={totales.porcentajeDetraccion}
+            aplicaRetencion={totales.aplicaRetencion}
+            montoRetencion={totales.montoRetencion}
+            porcentajeRetencion={totales.porcentajeRetencion}
+            aplicaPercepcion={totales.aplicaPercepcion}
+            montoPercepcion={totales.montoPercepcion}
+            porcentajePercepcion={totales.porcentajePercepcion}
           />
         </TabPanel>
         {/* TAB 2: IMPRESION PDF */}

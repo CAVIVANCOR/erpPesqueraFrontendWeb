@@ -33,6 +33,16 @@ export default function DetallesTab({
   totalIGV = 0,
   montoImpuestoRenta = 0,
   aplicaImpuestoRenta = false,
+  // Impuestos
+  aplicaDetraccion = false,
+  montoDetraccion = 0,
+  porcentajeDetraccion = 0,
+  aplicaRetencion = false,
+  montoRetencion = 0,
+  porcentajeRetencion = 0,
+  aplicaPercepcion = false,
+  montoPercepcion = 0,
+  porcentajePercepcion = 0,
   total = 0,
   porcentajeIGV = 0,
   monedaId = null,
@@ -639,6 +649,72 @@ export default function DetallesTab({
             />
           </div>
         )}
+        {aplicaDetraccion && (
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", color: "#FF9800" }}>
+              DETRACCIÓN ({porcentajeDetraccion}%)
+            </label>
+            <InputNumber
+              value={montoDetraccion || 0}
+              mode="currency"
+              currency={getCodigoMoneda()}
+              locale="es-PE"
+              minFractionDigits={2}
+              disabled
+              inputStyle={{
+                fontWeight: "bold",
+                fontSize: "1.1rem",
+                backgroundColor: "#FFF3E0",
+                textAlign: "right",
+                color: "#E65100"
+              }}
+            />
+          </div>
+        )}
+        {aplicaRetencion && (
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", color: "#9C27B0" }}>
+              RETENCIÓN ({porcentajeRetencion}%)
+            </label>
+            <InputNumber
+              value={montoRetencion || 0}
+              mode="currency"
+              currency={getCodigoMoneda()}
+              locale="es-PE"
+              minFractionDigits={2}
+              disabled
+              inputStyle={{
+                fontWeight: "bold",
+                fontSize: "1.1rem",
+                backgroundColor: "#F3E5F5",
+                textAlign: "right",
+                color: "#6A1B9A"
+              }}
+            />
+          </div>
+        )}
+        {aplicaPercepcion && (
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", color: "#00BCD4" }}>
+              PERCEPCIÓN ({porcentajePercepcion}%)
+            </label>
+            <InputNumber
+              value={montoPercepcion || 0}
+              mode="currency"
+              currency={getCodigoMoneda()}
+              locale="es-PE"
+              minFractionDigits={2}
+              disabled
+              inputStyle={{
+                fontWeight: "bold",
+                fontSize: "1.1rem",
+                backgroundColor: "#E0F7FA",
+                textAlign: "right",
+                color: "#006064"
+              }}
+            />
+          </div>
+        )}
         <div style={{ flex: 1 }}>
           <label style={{ fontWeight: "bold", color: "#2196F3" }}>PRECIO VENTA TOTAL</label>
           <InputNumber
@@ -685,6 +761,20 @@ export default function DetallesTab({
           header="Producto"
           body={productoTemplate}
           style={{ minWidth: "250px" }}
+        />
+        <Column
+          header="% Detrac."
+          body={(rowData) => {
+            if (!rowData.producto?.porcentajeDetraccion) return "-";
+            return (
+              <div style={{ textAlign: "right", fontWeight: "bold", color: "#FF9800" }}>
+                {Number(rowData.producto.porcentajeDetraccion).toFixed(2)}%
+              </div>
+            );
+          }}
+          style={{ width: "100px", textAlign: "right" }}
+          bodyStyle={{ textAlign: "right" }}
+          alignHeader="center"
         />
         <Column
           field="cantidad"

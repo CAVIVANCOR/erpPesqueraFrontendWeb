@@ -55,9 +55,20 @@ export default function DatosGeneralesTab({
   subtotal = null,
   totalIGV = null,
   montoImpuestoRenta = null,
+  aplicaImpuestoRenta = false,
   pagosPreviosSI = null,
   tipoDocumentoId = null,
   total = null,
+  // Impuestos
+  aplicaDetraccion = false,
+  montoDetraccion = 0,
+  porcentajeDetraccion = 0,
+  aplicaRetencion = false,
+  montoRetencion = 0,
+  porcentajeRetencion = 0,
+  aplicaPercepcion = false,
+  montoPercepcion = 0,
+  porcentajePercepcion = 0,
   // Objeto moneda de la orden (viene de la relación)
   monedaOrden = null,
   readOnly = false,
@@ -98,10 +109,6 @@ export default function DatosGeneralesTab({
   onNumCorreDocFinalChange,
   comprobanteRecibido,
   onComprobanteRecibidoChange,
-  aplicaImpuestoRenta,
-  onAplicaImpuestoRentaChange,
-  porcentajeImpuestoRenta,
-  onPorcentajeImpuestoRentaChange,
 }) {
   // Helper para obtener código de moneda (ISO)
   const getCodigoMoneda = () => {
@@ -1220,6 +1227,15 @@ export default function DatosGeneralesTab({
             totalIGV={totalIGV}
             montoImpuestoRenta={montoImpuestoRenta}
             aplicaImpuestoRenta={aplicaImpuestoRenta}
+            aplicaDetraccion={aplicaDetraccion}
+            montoDetraccion={montoDetraccion}
+            porcentajeDetraccion={porcentajeDetraccion}
+            aplicaRetencion={aplicaRetencion}
+            montoRetencion={montoRetencion}
+            porcentajeRetencion={porcentajeRetencion}
+            aplicaPercepcion={aplicaPercepcion}
+            montoPercepcion={montoPercepcion}
+            porcentajePercepcion={porcentajePercepcion}
             pagosPreviosSI={pagosPreviosSI}
             tipoDocumentoId={tipoDocumentoId}
             tiposDocumentoOptions={tiposDocumentoOptions}
@@ -1327,23 +1343,23 @@ export default function DatosGeneralesTab({
             />
           </div>
           <div style={{ flex: 0.5 }}>
-          {/* FACTURADO */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="facturado"
-          >
-            CxP Generada
-          </label>
-          <Button
-            id="facturado"
-            label={facturado ? "SI" : "NO"}
-            icon={facturado ? "pi pi-check-circle" : "pi pi-times-circle"}
-            severity={facturado ? "success" : "secondary"}
-            onClick={() => onFacturadoChange && onFacturadoChange(!facturado)}
-            disabled={true}
-            style={{ width: "100%" }}
-          />
-        </div>
+            {/* FACTURADO */}
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="facturado"
+            >
+              CxP Generada
+            </label>
+            <Button
+              id="facturado"
+              label={facturado ? "SI" : "NO"}
+              icon={facturado ? "pi pi-check-circle" : "pi pi-times-circle"}
+              severity={facturado ? "success" : "secondary"}
+              onClick={() => onFacturadoChange && onFacturadoChange(!facturado)}
+              disabled={true}
+              style={{ width: "100%" }}
+            />
+          </div>
           <div style={{ flex: 1 }}>
             {/* OBSERVACIONES */}
             <label

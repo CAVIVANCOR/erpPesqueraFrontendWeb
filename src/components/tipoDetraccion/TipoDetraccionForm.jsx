@@ -24,6 +24,7 @@ const TipoDetraccionForm = ({
       codigo: "",
       nombre: "",
       tasa: 0,
+      montoMinimo: null,
       activo: true,
     },
     mode: "onChange",
@@ -34,12 +35,14 @@ const TipoDetraccionForm = ({
       setValue("codigo", defaultValues.codigo || "");
       setValue("nombre", defaultValues.nombre || "");
       setValue("tasa", defaultValues.tasa ? Number(defaultValues.tasa) : 0);
+      setValue("montoMinimo", defaultValues.montoMinimo ? Number(defaultValues.montoMinimo) : null);
       setValue("activo", defaultValues.activo !== undefined ? defaultValues.activo : true);
     } else {
       reset({
         codigo: "",
         nombre: "",
         tasa: 0,
+        montoMinimo: null,
         activo: true,
       });
     }
@@ -50,6 +53,7 @@ const TipoDetraccionForm = ({
       codigo: data.codigo.trim(),
       nombre: data.nombre.trim(),
       tasa: Number(data.tasa),
+      montoMinimo: data.montoMinimo ? Number(data.montoMinimo) : null,
       activo: Boolean(data.activo),
     };
     onSubmit(datosNormalizados);
@@ -189,6 +193,51 @@ const TipoDetraccionForm = ({
         {getFormErrorMessage("tasa")}
       </div>
 
+      <div className="field mt-4">
+        <label
+          htmlFor="montoMinimo"
+          className={classNames("font-medium", {
+            "p-error": errors.montoMinimo,
+          })}
+        >
+          Monto Mínimo (S/)
+        </label>
+        <Controller
+          name="montoMinimo"
+          control={control}
+          rules={{
+            min: {
+              value: 0,
+              message: "El monto mínimo debe ser mayor o igual a 0",
+            },
+          }}
+          render={({ field, fieldState }) => (
+            <div className="p-inputgroup">
+              <span className="p-inputgroup-addon">
+                <i className="pi pi-money-bill" />
+              </span>
+              <InputNumber
+                id={field.name}
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                className={classNames({ "p-invalid": fieldState.error })}
+                disabled={loading}
+                mode="currency"
+                currency="PEN"
+                locale="es-PE"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                min={0}
+                placeholder="Ej: 700.00"
+              />
+            </div>
+          )}
+        />
+        {getFormErrorMessage("montoMinimo")}
+        <small className="p-text-secondary">
+          Umbral mínimo para aplicar detracción. Dejar vacío si no aplica.
+        </small>
+      </div>
       <div className="field mt-4">
         <label htmlFor="activo" className="font-medium">
           Estado
