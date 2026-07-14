@@ -473,14 +473,19 @@ export default function ProductoForm({
         urlFichaTecnica: data.urlFichaTecnica,
         urlFotoProducto: data.urlFotoProducto,
       };
+
+      
       // Eliminar propiedades que son null o undefined (pero mantener false y 0)
+      // EXCEPCIÓN: Mantener tipoDetraccionId null para permitir limpiar el campo
       Object.keys(datosParaEnviar).forEach((key) => {
         const value = datosParaEnviar[key];
         // Solo eliminar si es null o undefined, mantener false, 0 y strings vacíos
-        if (value === null || value === undefined) {
+        // EXCEPCIÓN: No eliminar tipoDetraccionId cuando es null (necesario para limpiar)
+        if ((value === null || value === undefined) && key !== 'tipoDetraccionId') {
           delete datosParaEnviar[key];
         }
       });
+
 
       // Asegurar que los campos booleanos críticos siempre se envíen
       if (datosParaEnviar.exoneradoRetencion === undefined) {

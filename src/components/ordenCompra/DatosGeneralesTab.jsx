@@ -1247,6 +1247,7 @@ export default function DatosGeneralesTab({
             permisos={permisos}
             empresaId={formData.empresaId}
             empresas={empresas}
+            tipoCambio={formData.tipoCambio}
           />
         </div>
       )}

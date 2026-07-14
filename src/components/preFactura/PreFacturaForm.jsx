@@ -1718,6 +1718,18 @@ export default function PreFacturaForm({
             aplicaPercepcion={totales.aplicaPercepcion}
             montoPercepcion={totales.montoPercepcion}
             porcentajePercepcion={totales.porcentajePercepcion}
+            facturado={formData.facturado}
+            onFacturadoChange={(value) => handleChange("facturado", value)}
+            fechaFacturacion={formData.fechaFacturacion}
+            onFechaFacturacionChange={(value) => handleChange("fechaFacturacion", value)}
+            tipoDocumentoFinalId={formData.tipoDocumentoFinalId}
+            onTipoDocumentoFinalIdChange={(value) => handleChange("tipoDocumentoFinalId", value)}
+            numeroDocumentoFinal={formData.numeroDocumentoFinal}
+            onNumeroDocumentoFinalChange={(value) => handleChange("numeroDocumentoFinal", value)}
+            numSerieDocFinal={formData.numSerieDocFinal}
+            onNumSerieDocFinalChange={(value) => handleChange("numSerieDocFinal", value)}
+            numCorreDocFinal={formData.numCorreDocFinal}
+            onNumCorreDocFinalChange={(value) => handleChange("numCorreDocFinal", value)}
           />
         </TabPanel>
         {/* TAB 2: IMPRESION PDF */}

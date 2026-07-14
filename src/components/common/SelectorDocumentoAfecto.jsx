@@ -5,20 +5,19 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
+import { Tag } from "primereact/tag";
 import { getPreFacturasParaDocumentoAfecto, getPreFacturaPorId } from "../../api/preFactura";
 import { formatearFecha, formatearNumero } from "../../utils/utils";
 
-/**
- * Componente genérico para seleccionar un documento afecto (PreFactura)
- * para Notas de Crédito/Débito
- */
 export default function SelectorDocumentoAfecto({
+  value = null,
+  onChange,
   empresaId,
   clienteId,
   fechaLimite,
-  onSelect,
   disabled = false,
   placeholder = "Seleccionar documento afectado",
+  showClearButton = true,
   toast,
 }) {
   const [visible, setVisible] = useState(false);
@@ -27,12 +26,31 @@ export default function SelectorDocumentoAfecto({
   const [globalFilter, setGlobalFilter] = useState("");
   const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
 
+  // Cargar documento seleccionado cuando value cambia
+  useEffect(() => {
+    if (value) {
+      cargarDocumentoSeleccionado(value);
+    } else {
+      setDocumentoSeleccionado(null);
+    }
+  }, [value]);
+
   // Cargar documentos cuando se abre el dialog
   useEffect(() => {
     if (visible && empresaId && clienteId) {
       cargarDocumentos();
     }
   }, [visible, empresaId, clienteId, fechaLimite]);
+
+  const cargarDocumentoSeleccionado = async (id) => {
+    try {
+      const doc = await getPreFacturaPorId(id);
+      setDocumentoSeleccionado(doc);
+    } catch (error) {
+      console.error("Error cargando documento seleccionado:", error);
+      setDocumentoSeleccionado(null);
+    }
+  };
 
   const cargarDocumentos = async () => {
     setLoading(true);
@@ -52,36 +70,29 @@ export default function SelectorDocumentoAfecto({
   const handleSeleccionar = async (rowData) => {
     setLoading(true);
     try {
-      // Obtener el detalle completo de la PreFactura
       const preFacturaCompleta = await getPreFacturaPorId(rowData.id);
-
-      // Preparar datos para retornar
-      const datosDocumento = {
-        preFacturaId: preFacturaCompleta.id,
-        fechaDocumento: preFacturaCompleta.fechaDocumento,
-        numeroDocumento: preFacturaCompleta.numeroDocumento,
-        detalleItems: preFacturaCompleta.detalles || [],
-      };
-      // Llamar al callback
-      onSelect(datosDocumento);
-
-      // Cerrar dialog
+      setDocumentoSeleccionado(preFacturaCompleta);
+      onChange(preFacturaCompleta.id);
       setVisible(false);
-      setDocumentoSeleccionado(null);
 
       toast?.current?.show({
         severity: "success",
-        summary: "Documento Cargado",
-        detail: `PreFactura ${preFacturaCompleta.numeroDocumento} cargada correctamente`,
+        summary: "Documento Seleccionado",
+        detail: `${preFacturaCompleta.numeroDocumentoFinal || preFacturaCompleta.numeroDocumento} seleccionado`,
       });
     } catch (error) {
       toast?.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo cargar el detalle del documento",
+        detail: "No se pudo cargar el documento",
       });
     }
     setLoading(false);
+  };
+
+  const handleClear = () => {
+    setDocumentoSeleccionado(null);
+    onChange(null);
   };
 
   const header = (
@@ -110,32 +121,75 @@ export default function SelectorDocumentoAfecto({
   };
 
   const fechaTemplate = (rowData) => {
-    return formatearFecha(rowData.fechaDocumento);
+    return formatearFecha(rowData.fechaFacturacion || rowData.fechaDocumento);
   };
 
   const montoTemplate = (rowData) => {
-    return formatearNumero(rowData.total);
+    const moneda = rowData.moneda;
+    return (
+      <div style={{
+        backgroundColor: moneda?.colorFondo || '#FFFFFF',
+        padding: '0.25rem 0.5rem',
+        borderRadius: '4px',
+        display: 'inline-block',
+        fontWeight: 'bold'
+      }}>
+        {moneda?.simbolo || 'S/.'} {formatearNumero(rowData.total)}
+      </div>
+    );
   };
 
   const tipoDocumentoTemplate = (rowData) => {
-    return rowData.tipoDocumento?.descripcion || "N/A";
-  };
-
-  const clienteTemplate = (rowData) => {
-    return rowData.cliente?.razonSocial || "N/A";
+    return (
+      <Tag
+        value={rowData.tipoDocumentoFinal?.descripcion || rowData.tipoDocumento?.descripcion || "N/A"}
+        severity="info"
+      />
+    );
   };
 
   return (
     <>
-      <Button
-        label={documentoSeleccionado?.numeroDocumento || placeholder}
-        icon="pi pi-search"
-        onClick={() => setVisible(true)}
-        disabled={disabled || !empresaId || !clienteId}
-        className="p-button-outlined"
-        style={{ width: "100%" }}
-        tooltip={!empresaId || !clienteId ? "Seleccione empresa y cliente primero" : ""}
-      />
+      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+        <Button
+          type="button"
+          onClick={() => setVisible(true)}
+          disabled={disabled || !empresaId || !clienteId}
+          className="p-button-outlined"
+          style={{ width: "100%", justifyContent: "flex-start", textAlign: "left" }}
+          tooltip={!empresaId || !clienteId ? "Seleccione empresa y cliente primero" : ""}
+        >
+          {documentoSeleccionado ? (
+            <span style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+              <Tag value={documentoSeleccionado.tipoDocumentoFinal?.descripcion} severity="success" />
+              <Tag value={documentoSeleccionado.numeroDocumentoFinal} severity="info" style={{ fontWeight: "bold" }} />
+              <Tag value={formatearFecha(documentoSeleccionado.fechaFacturacion)} severity="warning" />
+              <span style={{
+                backgroundColor: documentoSeleccionado.moneda?.colorFondo || '#FFFFE0',
+                padding: '0.25rem 0.5rem',
+                borderRadius: '4px',
+                fontWeight: 'bold',
+                fontSize: '0.875rem'
+              }}>
+                {documentoSeleccionado.moneda?.simbolo || 'S/.'} {formatearNumero(documentoSeleccionado.total)}
+              </span>
+            </span>
+          ) : (
+            <span style={{ color: "#999" }}>📄 {placeholder}</span>
+          )}
+        </Button>
+
+        {showClearButton && documentoSeleccionado && !disabled && (
+          <Button
+            type="button"
+            icon="pi pi-times"
+            onClick={handleClear}
+            className="p-button-rounded p-button-text p-button-danger"
+            tooltip="Limpiar selección"
+            tooltipOptions={{ position: 'top' }}
+          />
+        )}
+      </div>
 
       <Dialog
         header="Documentos Disponibles"
@@ -156,11 +210,10 @@ export default function SelectorDocumentoAfecto({
           size="small"
           emptyMessage="No se encontraron documentos"
         >
-          <Column field="tipoDocumento.descripcion" header="Tipo Documento" body={tipoDocumentoTemplate} sortable />
-          <Column field="numeroDocumento" header="Número" sortable />
-          <Column field="fechaDocumento" header="Fecha" body={fechaTemplate} sortable />
-          <Column field="cliente.razonSocial" header="Cliente" body={clienteTemplate} sortable />
-          <Column field="total" header="Monto Total" body={montoTemplate} sortable />
+          <Column field="tipoDocumentoFinal.descripcion" header="Tipo" body={tipoDocumentoTemplate} sortable />
+          <Column field="numeroDocumentoFinal" header="Número" sortable />
+          <Column field="fechaFacturacion" header="Fecha" body={fechaTemplate} sortable />
+          <Column field="total" header="Total" body={montoTemplate} sortable />
           <Column header="Acciones" body={accionesTemplate} style={{ width: "150px" }} />
         </DataTable>
       </Dialog>

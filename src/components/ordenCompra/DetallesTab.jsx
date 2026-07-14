@@ -37,6 +37,7 @@ export default function DetallesTab({
   porcentajeIGV = 0,
   monedas = [],
   monedaId = null,
+  tipoCambio = 1,
   pagosPreviosSI = 0,
   tipoDocumentoId = null,
   tiposDocumentoOptions = [],
@@ -318,14 +319,14 @@ export default function DetallesTab({
             <InputNumber
               value={montoDetraccion || 0}
               mode="currency"
-              currency={getCodigoMoneda()}
+              currency="PEN"
               locale="es-PE"
               minFractionDigits={2}
               disabled
               inputStyle={{
                 fontWeight: "bold",
                 fontSize: "1.1rem",
-                backgroundColor: "#FFF3E0",
+                backgroundColor: monedas.find(m => m.codigo === 'PEN')?.colorFondo || "#FFFFE0",
                 textAlign: "right",
                 color: "#E65100"
               }}
@@ -340,14 +341,14 @@ export default function DetallesTab({
             <InputNumber
               value={montoRetencion || 0}
               mode="currency"
-              currency={getCodigoMoneda()}
+              currency="PEN"
               locale="es-PE"
               minFractionDigits={2}
               disabled
               inputStyle={{
                 fontWeight: "bold",
                 fontSize: "1.1rem",
-                backgroundColor: "#F3E5F5",
+                backgroundColor: monedas.find(m => m.codigo === 'PEN')?.colorFondo || "#FFFFE0",
                 textAlign: "right",
                 color: "#6A1B9A"
               }}
@@ -362,14 +363,14 @@ export default function DetallesTab({
             <InputNumber
               value={montoPercepcion || 0}
               mode="currency"
-              currency={getCodigoMoneda()}
+              currency="PEN"
               locale="es-PE"
               minFractionDigits={2}
               disabled
               inputStyle={{
                 fontWeight: "bold",
                 fontSize: "1.1rem",
-                backgroundColor: "#E0F7FA",
+                backgroundColor: monedas.find(m => m.codigo === 'PEN')?.colorFondo || "#FFFFE0",
                 textAlign: "right",
                 color: "#006064"
               }}

@@ -1049,41 +1049,65 @@ export default function DatosGeneralesProductoForm({
               <label htmlFor="tipoDetraccionId" className="font-bold">
                 Tipo Detracción SUNAT
               </label>
-              <Controller
-                name="tipoDetraccionId"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <Dropdown
-                    id="tipoDetraccionId"
-                    value={field.value ? Number(field.value) : null}
-                    onChange={(e) => {
-                      field.onChange(e.value);
-                      // Auto-llenar porcentajeDetraccion y marcar sujetoDetraccion
-                      if (e.value) {
-                        const tipoSeleccionado = tiposDetraccionOptions.find(t => Number(t.value) === Number(e.value));
-                        if (tipoSeleccionado) {
-                          setValue("porcentajeDetraccion", tipoSeleccionado.tasa, { shouldValidate: true });
-                          setValue("sujetoDetraccion", true, { shouldValidate: true });
-                        }
-                      }
-                    }}
-                    options={tiposDetraccionOptions}
-                    placeholder="Seleccione tipo de detracción"
-                    style={{ fontWeight: "bold" }}
-                    className={classNames({
-                      "p-invalid": fieldState.error,
-                    })}
-                    showClear
-                    filter
-                    disabled={readOnly}
-                  />
-                )}
-              />
-              {errors.tipoDetraccionId && (
-                <small className="p-error">
-                  {errors.tipoDetraccionId.message}
-                </small>
-              )}
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'start' }}>
+                <Controller
+                  name="tipoDetraccionId"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <div style={{ flex: 1, display: 'flex', gap: '0.5rem' }}>
+                      <div style={{ flex: 1.75 }}>
+                        <Dropdown
+                          id="tipoDetraccionId"
+                          value={field.value ? Number(field.value) : null}
+                          onChange={(e) => {
+                            field.onChange(e.value);
+                            // Auto-llenar porcentajeDetraccion y marcar sujetoDetraccion
+                            if (e.value) {
+                              const tipoSeleccionado = tiposDetraccionOptions.find(t => Number(t.value) === Number(e.value));
+                              if (tipoSeleccionado) {
+                                setValue("porcentajeDetraccion", tipoSeleccionado.tasa, { shouldValidate: true });
+                                setValue("sujetoDetraccion", true, { shouldValidate: true });
+                              }
+                            }
+                          }}
+                          options={tiposDetraccionOptions}
+                          placeholder="Seleccione tipo de detracción"
+                          style={{ fontWeight: "bold" }}
+                          className={classNames({
+                            "p-invalid": fieldState.error,
+                          })}
+                          showClear
+                          filter
+                          disabled={readOnly}
+                        />
+                        {errors.tipoDetraccionId && (
+                          <small className="p-error">
+                            {errors.tipoDetraccionId.message}
+                          </small>
+                        )}
+                      </div>
+                      <div style={{ flex: 0.25 }}>
+                        <Button
+                          type="button"
+                          label="X"
+                          severity="danger"
+                          size="small"
+                          onClick={() => {
+                            field.onChange(null);
+                            setValue("porcentajeDetraccion", 0, { shouldValidate: true, shouldDirty: true });
+                            setValue("sujetoDetraccion", false, { shouldValidate: true, shouldDirty: true });
+                          }}
+                          disabled={readOnly}
+                          style={{ marginTop: '0.25rem' }}
+                          tooltip="Limpiar detracción"
+                          tooltipOptions={{ position: 'top' }}
+                        />
+                      </div>
+
+                    </div>
+                  )}
+                />
+              </div>
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="porcentajeDetraccion" className="font-bold">
@@ -1167,12 +1191,10 @@ export default function DatosGeneralesProductoForm({
           <div
             style={{
               display: "flex",
-              gap: 10,
+              gap: 5,
               flexDirection: window.innerWidth < 768 ? "column" : "row",
-              marginBottom: 10,
             }}
           >
-
             <div style={{ flex: 1 }}>
               <Controller
                 name="cuentaComprasId"
@@ -1227,6 +1249,15 @@ export default function DatosGeneralesProductoForm({
                 )}
               />
             </div>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 5,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+
             <div style={{ flex: 1 }}>
               <Controller
                 name="cuentaVariacionId"

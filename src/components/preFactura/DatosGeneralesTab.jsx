@@ -18,6 +18,7 @@ import IrACxCEditar from "../common/IrACxCEditar";
 import SelectorDocumentoAfecto from "../common/SelectorDocumentoAfecto";
 import AuditoriaDialog from "../common/AuditoriaDialog";
 import CambiarTipoSerieDialog from "../common/CambiarTipoSerieDialog";
+import BooleanToggleButton from "../common/BooleanToggleButton";
 
 export default function DatosGeneralesTab({
   formData,
@@ -88,6 +89,19 @@ export default function DatosGeneralesTab({
   contactosClienteOptions = [],
   direccionesClienteOptions = [],
   permisos = {}, // ⭐ NUEVO
+  // ⭐ CAMPOS DE COMPROBANTE ELECTRÓNICO
+  facturado,
+  onFacturadoChange,
+  fechaFacturacion,
+  onFechaFacturacionChange,
+  tipoDocumentoFinalId,
+  onTipoDocumentoFinalIdChange,
+  numeroDocumentoFinal,
+  onNumeroDocumentoFinalChange,
+  numSerieDocFinal,
+  onNumSerieDocFinalChange,
+  numCorreDocFinal,
+  onNumCorreDocFinalChange,
 }) {
   // Determinar si es exportación para mostrar campos adicionales
   const esExportacion = formData.paisDestinoId || formData.incotermId;
@@ -555,6 +569,170 @@ export default function DatosGeneralesTab({
         </div>
       </Panel>
 
+
+      {/* ════════════════════════════════════════════════════════════ */}
+      {/* PANEL: COMPROBANTE ELECTRÓNICO GENERADO */}
+      {/* ════════════════════════════════════════════════════════════ */}
+      <Panel
+        header="📄 Comprobante Electrónico Generado"
+        toggleable
+        collapsed={!facturado}
+        className="mt-3"
+      >
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 5,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {/* FACTURADO */}
+          <div style={{ flex: 0.5 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="facturado"
+            >
+              Estado Facturación
+            </label>
+            <BooleanToggleButton
+              value={facturado}
+              onChange={onFacturadoChange}
+              labelTrue="FACTURADO"
+              labelFalse="PENDIENTE"
+              severityTrue="success"
+              severityFalse="warning"
+              icon={facturado ? "pi-check-circle" : "pi-clock"}
+              disabled={!puedeEditarConPermiso}
+            />
+          </div>
+          <div style={{ flex: 0.75 }}>
+            {/* FECHA FACTURACIÓN */}
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="fechaFacturacion"
+            >
+              Fecha Facturación
+            </label>
+            <Calendar
+              id="fechaFacturacion"
+              value={fechaFacturacion}
+              onChange={(e) =>
+                onFechaFacturacionChange && onFechaFacturacionChange(e.value)
+              }
+              dateFormat="dd/mm/yy"
+              showIcon
+              disabled={!puedeEditarConPermiso}
+              showButtonBar
+              inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+            />
+          </div>
+          {/* TIPO DOCUMENTO FINAL */}
+          <div style={{ flex: 1 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="tipoDocumentoFinalId"
+            >
+              Tipo Comprobante
+            </label>
+            <Dropdown
+              id="tipoDocumentoFinalId"
+              value={tipoDocumentoFinalId}
+              options={tiposDocumentoOptions}
+              onChange={(e) =>
+                onTipoDocumentoFinalIdChange &&
+                onTipoDocumentoFinalIdChange(e.value)
+              }
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccione tipo"
+              filter
+              disabled={!puedeEditarConPermiso}
+              style={{
+                width: "100%",
+                fontWeight: "bold",
+                textTransform: "uppercase",
+              }}
+            />
+          </div>
+
+          {/* SERIE DOCUMENTO FINAL */}
+          <div style={{ flex: 0.5 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="numSerieDocFinal"
+            >
+              Serie
+            </label>
+            <InputText
+              id="numSerieDocFinal"
+              value={numSerieDocFinal || ""}
+              onChange={(e) =>
+                onNumSerieDocFinalChange &&
+                onNumSerieDocFinalChange(e.target.value.toUpperCase())
+              }
+              maxLength={40}
+              disabled={!puedeEditarConPermiso}
+              style={{
+                width: "100%",
+                fontWeight: "bold",
+                textTransform: "uppercase",
+              }}
+            />
+          </div>
+
+          {/* CORRELATIVO DOCUMENTO FINAL */}
+          <div style={{ flex: 0.5 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="numCorreDocFinal"
+            >
+              Correlativo
+            </label>
+            <InputText
+              id="numCorreDocFinal"
+              value={numCorreDocFinal || ""}
+              onChange={(e) =>
+                onNumCorreDocFinalChange &&
+                onNumCorreDocFinalChange(e.target.value)
+              }
+              maxLength={40}
+              disabled={!puedeEditarConPermiso}
+              style={{
+                width: "100%",
+                fontWeight: "bold",
+              }}
+            />
+          </div>
+
+          {/* NÚMERO DOCUMENTO FINAL (CONCATENADO) */}
+          <div style={{ flex: 1 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="numeroDocumentoFinal"
+            >
+              Número Completo
+            </label>
+            <InputText
+              id="numeroDocumentoFinal"
+              value={numeroDocumentoFinal || ""}
+              disabled
+              placeholder="F001-00000456"
+              style={{
+                width: "100%",
+                fontWeight: "bold",
+                backgroundColor: "#f0f0f0",
+                textTransform: "uppercase",
+              }}
+              tooltip="Se genera automáticamente: Serie + Correlativo"
+              tooltipOptions={{ position: "top" }}
+            />
+          </div>
+        </div>
+      </Panel>
+
+
+
       {/* ============================================ */}
       {/* SECCIÓN 2: DATOS NOTA DE CRÉDITO/DÉBITO (CONDICIONAL) */}
       {/* ============================================ */}
@@ -564,14 +742,53 @@ export default function DatosGeneralesTab({
           toggleable
           style={{ marginTop: "1rem" }}
         >
+          {/* FILA 1: Selector de Documento Afectado y Motivo, Campos Manuales (para docs del 2025 o anteriores) */}
           <div
             style={{
               alignItems: "end",
               display: "flex",
-              gap: 10,
+              gap: 5,
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
+            <div style={{ flex: 1 }}>
+              <label
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+                htmlFor="documentoAfecto"
+              >
+                🔍 Buscar Documento Afectado (Opcional) 💡 Use este selector para documentos del 2026 en adelante
+              </label>
+              <SelectorDocumentoAfecto
+                value={formData.dcmtoAfectoNCNDId}
+                empresaId={formData.empresaId}
+                clienteId={formData.clienteId}
+                fechaLimite={formData.fechaDocumento}
+                onChange={(preFacturaId) => {
+                  if (preFacturaId) {
+                    // Cargar datos completos del documento
+                    import("../../api/preFactura").then(({ getPreFacturaPorId }) => {
+                      getPreFacturaPorId(preFacturaId).then((datos) => {
+                        onChange("dcmtoAfectoNCNDId", preFacturaId);
+                        onChange("fechaDcmtoAfectoNCND", new Date(datos.fechaFacturacion));
+                        onChange("numeroDcmtoAfectoNCND", datos.numeroDocumentoFinal);
+                        // Cargar items automáticamente
+                        if (onCargarItemsDocAfecto && datos.detalles && datos.detalles.length > 0) {
+                          onCargarItemsDocAfecto(datos.detalles);
+                        }
+                      });
+                    });
+                  } else {
+                    // Limpiar campos
+                    onChange("dcmtoAfectoNCNDId", null);
+                    onChange("fechaDcmtoAfectoNCND", null);
+                    onChange("numeroDcmtoAfectoNCND", null);
+                  }
+                }}
+                disabled={!puedeEditarConPermiso || !formData.empresaId || !formData.clienteId}
+                placeholder="Buscar en sistema..."
+                toast={toast}
+              />
+            </div>
             <div style={{ flex: 1 }}>
               <label
                 style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -613,69 +830,6 @@ export default function DatosGeneralesTab({
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             </div>
-          </div>
-
-          {/* FILA 2: Selector de Documento Afectado */}
-          <div
-            style={{
-              alignItems: "end",
-              display: "flex",
-              gap: 10,
-              marginTop: "1rem",
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 2 }}>
-              <label
-                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-                htmlFor="documentoAfecto"
-              >
-                🔍 Buscar Documento Afectado (Opcional)
-              </label>
-              <SelectorDocumentoAfecto
-                empresaId={formData.empresaId}
-                clienteId={formData.clienteId}
-                fechaLimite={formData.fechaDocumento}
-                onSelect={(datos) => {
-                  // Actualizar campos del documento afecto
-                  onChange("dcmtoAfectoNCNDId", datos.preFacturaId);
-
-                  // Usar setTimeout para asegurar que los cambios se apliquen en orden
-                  setTimeout(() => {
-                    onChange("fechaDcmtoAfectoNCND", new Date(datos.fechaDocumento));
-                  }, 0);
-
-                  setTimeout(() => {
-                    onChange("numeroDcmtoAfectoNCND", datos.numeroDocumento);
-                  }, 10);
-
-                  // Cargar items automáticamente después de actualizar campos
-                  setTimeout(() => {
-                    if (onCargarItemsDocAfecto && datos.detalleItems && datos.detalleItems.length > 0) {
-                      onCargarItemsDocAfecto(datos.detalleItems);
-                    }
-                  }, 50);
-                }}
-                disabled={!puedeEditarConPermiso || !formData.empresaId || !formData.clienteId}
-                placeholder="Buscar en sistema..."
-                toast={toast}
-              />
-              <small style={{ color: "#666", display: "block", marginTop: "0.25rem" }}>
-                💡 Use este selector para documentos del 2026 en adelante
-              </small>
-            </div>
-          </div>
-
-          {/* FILA 3: Campos Manuales (para docs del 2025 o anteriores) */}
-          <div
-            style={{
-              alignItems: "end",
-              display: "flex",
-              gap: 10,
-              marginTop: "1rem",
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
             <div style={{ flex: 0.7 }}>
               <label
                 style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -698,7 +852,7 @@ export default function DatosGeneralesTab({
                 style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
                 htmlFor="numeroDcmtoAfectoNCND"
               >
-                Número Dcmto. Afectado
+                N° Dcmto. Afectado
               </label>
               <InputText
                 id="numeroDcmtoAfectoNCND"
@@ -709,7 +863,6 @@ export default function DatosGeneralesTab({
                 maxLength={40}
                 disabled={!puedeEditarConPermiso}
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                placeholder="Ej: F001-00000123"
               />
             </div>
           </div>
