@@ -988,27 +988,6 @@ export default function DatosGeneralesTab({
           <div style={{ flex: 1 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="centroCostoId"
-            >
-              Centro Costo
-            </label>
-            <Dropdown
-              id="centroCostoId"
-              value={formData.centroCostoId}
-              options={centrosCostoOptions}
-              onChange={(e) => onChange("centroCostoId", e.value)}
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Seleccionar centro"
-              filter
-              showClear
-              disabled={!puedeEditarConPermiso}
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="tipoProductoId"
             >
               Tipo Producto*

@@ -346,14 +346,27 @@ const CentroCostoSelector = ({
             <span style={{ color: "#999" }}>Cargando...</span>
           ) : centroSeleccionado ? (
             <span style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+              {/* Categoría */}
+              {centroSeleccionado.categoria && (
+                <Tag
+                  value={centroSeleccionado.categoria.nombre}
+                  severity="info"
+                  style={{ fontWeight: "bold", fontSize: "0.75rem" }}
+                />
+              )}
+              {/* ParentCentroID (Subcategoría) */}
+              {centroSeleccionado.ParentCentroID && (
+                <Tag
+                  value={centroSeleccionado.ParentCentroID}
+                  severity="warning"
+                  style={{ fontWeight: "500", fontSize: "0.75rem" }}
+                />
+              )}
+              {/* Descripción */}
               <Tag
-                value={centroSeleccionado.Codigo}
-                severity="info"
-                style={{ fontWeight: "bold" }}
-              />
-              <Tag
-                value={centroSeleccionado.Nombre}
+                value={centroSeleccionado.Descripcion || centroSeleccionado.Nombre}
                 severity="success"
+                style={{ fontSize: "0.75rem" }}
               />
             </span>
           ) : (

@@ -116,6 +116,7 @@ export default function OrdenCompra({ ruta }) {
   const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
+  const [centroCostoSeleccionado, setCentroCostoSeleccionado] = useState(null);
   const [proveedoresUnicos, setProveedoresUnicos] = useState([]);
   const [showKardexDialog, setShowKardexDialog] = useState(false);
   const [kardexDocumentoActual, setKardexDocumentoActual] = useState(null);
@@ -218,6 +219,13 @@ export default function OrdenCompra({ ruta }) {
       );
     }
 
+    // ✅ Filtro por centro de costo
+    if (centroCostoSeleccionado) {
+      filtered = filtered.filter(
+        (orden) => Number(orden.centroCostoId) === Number(centroCostoSeleccionado),
+      );
+    }
+
     setItemsFiltrados(filtered);
   }, [
     items,
@@ -228,6 +236,7 @@ export default function OrdenCompra({ ruta }) {
     rangoFechaFacturacion,
     tipoDocumentoIdSeleccionado,
     tipoDocumentoFinalIdSeleccionado,
+    centroCostoSeleccionado,
   ]);
 
   const cargarDatos = async () => {
@@ -567,6 +576,7 @@ export default function OrdenCompra({ ruta }) {
     setRangoFechaFacturacion(null);
     setTipoDocumentoIdSeleccionado(null);
     setTipoDocumentoFinalIdSeleccionado(null);
+    setCentroCostoSeleccionado(null);
   };
 
   const handleAprobar = async (id) => {
@@ -1112,6 +1122,55 @@ export default function OrdenCompra({ ruta }) {
     );
   };
 
+  // Template para Centro de Costo con tags profesionales
+  const centroCostoTemplate = (rowData) => {
+    const centroCosto = rowData.centroCosto;
+
+    if (!centroCosto) {
+      return <span style={{ color: "#999" }}>-</span>;
+    }
+
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "wrap" }}>
+        {/* Categoría */}
+        {centroCosto.categoria && (
+          <Tag
+            value={centroCosto.categoria.nombre}
+            severity="info"
+            style={{
+              fontWeight: "bold",
+              fontSize: "0.7rem",
+              backgroundColor: "#2196F3",
+              color: "#FFFFFF"
+            }}
+          />
+        )}
+        {/* ParentCentroID (Subcategoría) */}
+        {centroCosto.ParentCentroID && (
+          <Tag
+            value={centroCosto.ParentCentroID}
+            severity="warning"
+            style={{
+              fontWeight: "500",
+              fontSize: "0.7rem",
+              backgroundColor: "#FF9800",
+              color: "#FFFFFF"
+            }}
+          />
+        )}
+        {/* Descripción */}
+        <Tag
+          value={centroCosto.Descripcion || centroCosto.Nombre}
+          severity="success"
+          style={{
+            fontSize: "0.7rem",
+            backgroundColor: "#4CAF50",
+            color: "#FFFFFF"
+          }}
+        />
+      </div>
+    );
+  };
   // Template para Tipo Documento Origen
   const tipoDocumentoOrigenTemplate = (rowData) => {
     return rowData.tipoDocumento?.codigo || "-";
@@ -1550,6 +1609,30 @@ export default function OrdenCompra({ ruta }) {
                   showClear
                   disabled={loading}
                   filter
+                  style={{ width: "100%" }}
+
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="centroCostoFiltro" style={{ fontWeight: "bold" }}>
+                  Centro de Costo
+                </label>
+                <Dropdown
+                  id="centroCostoFiltro"
+                  value={centroCostoSeleccionado}
+                  options={centrosCosto.map((c) => ({
+                    label: `${c.categoria?.nombre || ''} - ${c.ParentCentroID || ''} - ${c.Descripcion || c.Nombre}`.trim(),
+                    value: Number(c.id),
+                  }))}
+                  onChange={(e) => setCentroCostoSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  filter
+                  disabled={loading}
+                  style={{ width: "100%" }}
+
                 />
               </div>
             </div>
@@ -1714,6 +1797,15 @@ export default function OrdenCompra({ ruta }) {
           }}
           style={{ width: 90, textAlign: "center", verticalAlign: "top" }}
           bodyStyle={{ textAlign: "center" }}
+        />
+        
+        {/* Centro de Costo */}
+        <Column
+          field="centroCostoId"
+          header="Centro de Costo"
+          body={centroCostoTemplate}
+          sortable
+          style={{ minWidth: "300px" }}
         />
         <Column
           body={actionBody}

@@ -3,7 +3,6 @@ import React from "react";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
-import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
@@ -13,6 +12,7 @@ import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
 import IrACxPEditar from "../common/IrACxPEditar";
 import BooleanToggleButton from "../common/BooleanToggleButton";
 import CambiarTipoSerieDialog from "../common/CambiarTipoSerieDialog"; // ✅ AGREGAR
+import CentroCostoSelector from "../common/CentroCostoSelector";
 
 export default function DatosGeneralesTab({
   formData,
@@ -638,31 +638,14 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 2 }}>
           {/* CENTRO DE COSTO */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="centroCostoId"
-          >
-            Centro de Costo
-          </label>
-          <Dropdown
-            id="centroCostoId"
-            value={
-              formData.centroCostoId ? Number(formData.centroCostoId) : null
-            }
-            options={
-              centrosCosto?.map((c) => ({
-                label: `${c.Codigo} - (${c.Nombre})`,
-                value: Number(c.id),
-              })) || []
-            }
-            onChange={(e) => onChange("centroCostoId", e.value)}
-            optionLabel="label"
-            optionValue="value"
+          <CentroCostoSelector
+            value={formData.centroCostoId ? Number(formData.centroCostoId) : null}
+            onChange={(value) => onChange("centroCostoId", value)}
+            label="Centro de Costo"
             placeholder="Seleccionar centro costo"
-            filter
             disabled={!puedeEditar || readOnly}
-            showClear
-            style={{ fontWeight: "bold", textTransform: "uppercase" }}
+            showClearButton={true}
+            empresaId={formData.empresaId}
           />
         </div>
 

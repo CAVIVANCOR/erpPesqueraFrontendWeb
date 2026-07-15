@@ -1641,7 +1641,7 @@ export default function RendicionGastosList({ ruta }) {
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <h1>Rendición de Gastos</h1>
+                  <h1>Rendición de Gastos xxxx</h1>
                 </div>
                 <div style={{ flex: 0.25 }}>
                   <Button

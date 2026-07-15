@@ -37,9 +37,24 @@ const LiquidacionRendicionGastosCard = ({
   const rendicionGastosId = movimientoData?.documentoOrigenId;
 
   // Usar valores locales si existen, sino usar movimientoData, sino formulario
-  const saldoInicial = saldoInicialLocal || Number(movimientoData?.saldoInicialAsignacion || 0) || Number(getValues("saldoInicialAsignacion") || 0);
-  const saldoFinal = saldoFinalLocal || Number(movimientoData?.saldoFinalAsignacion || 0) || Number(getValues("saldoFinalAsignacion") || 0);
+  const saldoInicial = saldoInicialLocal > 0
+    ? saldoInicialLocal
+    : (movimientoData?.saldoInicialAsignacion
+      ? Number(movimientoData.saldoInicialAsignacion)
+      : Number(getValues("saldoInicialAsignacion") || 0));
+
+  const saldoFinal = saldoFinalLocal > 0
+    ? saldoFinalLocal
+    : (movimientoData?.saldoFinalAsignacion
+      ? Number(movimientoData.saldoFinalAsignacion)
+      : Number(getValues("saldoFinalAsignacion") || 0));
   const fechaLiquidacion = fechaLiquidacionLocal || movimientoData?.fechaLiquidacionEntregaARendir || getValues("fechaLiquidacionEntregaARendir");
+
+  console.log('💰 VALORES CALCULADOS:');
+  console.log('saldoInicial:', saldoInicial);
+  console.log('saldoFinal:', saldoFinal);
+  console.log('saldoInicialLocal:', saldoInicialLocal);
+  console.log('movimientoData?.saldoInicialAsignacion:', movimientoData?.saldoInicialAsignacion);
 
   useEffect(() => {
     if (urlLiquidacion) {
@@ -49,14 +64,20 @@ const LiquidacionRendicionGastosCard = ({
 
   // Inicializar estados locales desde movimientoData cuando se carga el componente
   useEffect(() => {
+    console.log('🔍 DEBUG SALDO INICIAL - useEffect movimientoData');
+    console.log('movimientoData:', movimientoData);
+    console.log('movimientoData.saldoInicialAsignacion:', movimientoData?.saldoInicialAsignacion);
+    console.log('movimientoData.saldoFinalAsignacion:', movimientoData?.saldoFinalAsignacion);
+
     if (movimientoData) {
+      // Cargar SIEMPRE, no solo si está liquidada
+
       const liquidada = movimientoData.entregaARendirLiquidada;
-      if (liquidada) {
-        setSaldoInicialLocal(Number(movimientoData.saldoInicialAsignacion || 0));
-        setSaldoFinalLocal(Number(movimientoData.saldoFinalAsignacion || 0));
-        setFechaLiquidacionLocal(movimientoData.fechaLiquidacionEntregaARendir);
-        setEstaLiquidadaLocal(true);
-      }
+      setSaldoInicialLocal(Number(movimientoData.saldoInicialAsignacion || 0));
+      setSaldoFinalLocal(Number(movimientoData.saldoFinalAsignacion || 0));
+      setFechaLiquidacionLocal(movimientoData.fechaLiquidacionEntregaARendir);
+      setEstaLiquidadaLocal(true);
+
     }
   }, [movimientoData]);
 

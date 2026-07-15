@@ -170,7 +170,7 @@ const AuditoriaDialog = ({
     icon: "pi pi-info-circle",
     tooltip: "Ver datos de auditoría",
     tooltipOptions: { position: "top" },
-    className: "p-button-secondary",
+    className: "p-button-text p-button-sm",
     size: "small",
     rounded: true,
     outlined: true,

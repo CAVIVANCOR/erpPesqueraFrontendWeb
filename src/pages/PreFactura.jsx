@@ -1477,32 +1477,29 @@ const PreFactura = ({ ruta }) => {
       abrirDialogoEdicion(event.data);
     }
   };
-
+  
 
   const actionBodyTemplate = (rowData) => {
     return (
-      <div className="flex gap-2">
+      <div style={{ display: "flex", gap: "0.25rem", alignItems: "center", justifyContent: "center" }}>
         <Button
           icon="pi pi-pencil"
-          rounded
-          outlined
-          className="p-button-warning"
+          className="p-button-text p-button-sm"
           onClick={() => abrirDialogoEdicion(rowData)}
-          disabled={!permisos.puedeEditar}
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
           tooltip="Editar"
           tooltipOptions={{ position: "top" }}
+          style={{ padding: "0.25rem", minWidth: "auto" }}
         />
         <Button
           icon="pi pi-trash"
-          rounded
-          outlined
-          severity="danger"
+          className="p-button-text p-button-danger p-button-sm"
           onClick={() => confirmarEliminacion(rowData)}
           disabled={!permisos.puedeEliminar}
           tooltip="Eliminar"
           tooltipOptions={{ position: "top" }}
+          style={{ padding: "0.25rem", minWidth: "auto" }}
         />
-        {/* ⭐ NUEVO: Botón de Auditoría */}
         <AuditoriaDialog
           data={rowData}
           fieldMapping={{
@@ -1608,32 +1605,7 @@ const PreFactura = ({ ruta }) => {
       </div>
     );
   };
-  const accionesTemplate = (rowData) => {
-    return (
-      <div className="flex gap-2">
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-text p-button-sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            abrirDialogoEdicion(rowData);
-          }}
-          disabled={!permisos.puedeVer && !permisos.puedeEditar}
-          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
-        />
-        <Button
-          icon="pi pi-trash"
-          className="p-button-text p-button-danger p-button-sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            confirmarEliminacion(rowData);
-          }}
-          disabled={!permisos.puedeEliminar}
-          tooltip="Eliminar"
-        />
-      </div>
-    );
-  };
+
 
   const limpiarFiltros = () => {
     setEmpresaSeleccionada(null);
@@ -2080,8 +2052,7 @@ const PreFactura = ({ ruta }) => {
             field="tipoOperacionSunat.descripcion"
             header="Tipo Operación SUNAT"
             body={(rowData) =>
-              rowData.tipoOperacionSunat?.descripcion ||
-              <span style={{ color: "#999" }}>(Sin asignar)</span>
+              rowData.tipoOperacionSunat?.descripcion 
             }
             sortable
             filter
@@ -2092,8 +2063,7 @@ const PreFactura = ({ ruta }) => {
             field="tipoAfectacionIGV.nombre"
             header="Tipo Afectación IGV"
             body={(rowData) =>
-              rowData.tipoAfectacionIGV?.nombre ||
-              <span style={{ color: "#999" }}>(Sin asignar)</span>
+              rowData.tipoAfectacionIGV?.nombre
             }
             sortable
             filter
@@ -2157,14 +2127,10 @@ const PreFactura = ({ ruta }) => {
           <Column
             body={actionBodyTemplate}
             exportable={false}
-            style={{ width: "180px" }}
+            style={{ width: "110px",  textAlign: "center", verticalAlign: "top" }}
             header="Acciones"
           />
-          <Column
-            body={accionesTemplate}
-            header="Acciones"
-            style={{ width: 120, textAlign: "center", verticalAlign: "top" }}
-          />
+
         </DataTable>
       </div>
 
