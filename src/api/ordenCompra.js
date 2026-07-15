@@ -136,3 +136,14 @@ export async function eliminarAsientoContable(ordenCompraId, asientoId) {
     throw error;
   }
 }
+
+
+
+export async function asignarCentroCostoMasivo(centroCostoId, ordenesIds) {
+  const res = await axios.put(
+    `${API_URL}/asignar-centro-costo-masivo`,
+    { centroCostoId, ordenesIds },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

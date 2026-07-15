@@ -57,6 +57,8 @@ import ConsultaStockForm from "../components/common/ConsultaStockForm";
 import { useActualizarRegistroEnLista } from "../hooks/useActualizarRegistroEnLista";
 import { useDashboardStore } from "../shared/stores/useDashboardStore";
 import { generarOrdenesCompraExcel } from "../components/ordenCompra/reports/generarOrdenesCompraExcel";
+import AsignarCentroCostoMasivo from "../components/common/AsignarCentroCostoMasivo";
+import { asignarCentroCostoMasivo } from "../api/ordenCompra";
 
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
@@ -132,7 +134,8 @@ export default function OrdenCompra({ ruta }) {
   const [tiposDocumentoOrigen, setTiposDocumentoOrigen] = useState([]);
   const [tiposDocumentoFinal, setTiposDocumentoFinal] = useState([]);
   const [estadosUnicos, setEstadosUnicos] = useState([]); // ✅ AGREGAR
-
+  const [ordenesSeleccionadas, setOrdenesSeleccionadas] = useState([]);
+  const [showAsignarCentroCostoDialog, setShowAsignarCentroCostoDialog] = useState(false);
   // ========================================
   // 🆕 CARGAR DATOS AL MONTAR EL COMPONENTE
   // ========================================
@@ -577,6 +580,31 @@ export default function OrdenCompra({ ruta }) {
     setTipoDocumentoIdSeleccionado(null);
     setTipoDocumentoFinalIdSeleccionado(null);
     setCentroCostoSeleccionado(null);
+  };
+
+
+  const handleAsignarCentroCosto = async (centroCostoId, ordenesIds) => {
+    try {
+      const resultado = await asignarCentroCostoMasivo(centroCostoId, ordenesIds);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: resultado.message || `${resultado.count} órdenes actualizadas`,
+        life: 3000,
+      });
+
+      await cargarDatos();
+      setOrdenesSeleccionadas([]);
+    } catch (error) {
+      console.error("Error al asignar centro de costo:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al asignar centro de costo",
+        life: 3000,
+      });
+    }
   };
 
   const handleAprobar = async (id) => {
@@ -1388,6 +1416,8 @@ export default function OrdenCompra({ ruta }) {
       />
       <DataTable
         value={ordenesFiltradas}
+        selection={ordenesSeleccionadas}
+        onSelectionChange={(e) => setOrdenesSeleccionadas(e.value)}
         loading={loading}
         dataKey="id"
         paginator
@@ -1613,7 +1643,22 @@ export default function OrdenCompra({ ruta }) {
 
                 />
               </div>
-              <div style={{ flex: 2 }}>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Asignar Centro Costo"
+                  icon="pi pi-tag"
+                  className="p-button-help"
+                  onClick={() => setShowAsignarCentroCostoDialog(true)}
+                  disabled={loading || ordenesSeleccionadas.length === 0}
+                  tooltip={
+                    ordenesSeleccionadas.length === 0
+                      ? "Seleccione órdenes primero"
+                      : `Asignar centro de costo a ${ordenesSeleccionadas.length} órdenes`
+                  }
+                  tooltipOptions={{ position: "bottom" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
                 <label htmlFor="centroCostoFiltro" style={{ fontWeight: "bold" }}>
                   Centro de Costo
                 </label>
@@ -1639,6 +1684,7 @@ export default function OrdenCompra({ ruta }) {
           </div>
         }
       >
+        <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
         <Column field="id" header="ID" style={{ width: 80 }} sortable />
         <Column field="empresaId" header="Empresa" body={empresaNombre} />
 
@@ -1798,7 +1844,7 @@ export default function OrdenCompra({ ruta }) {
           style={{ width: 90, textAlign: "center", verticalAlign: "top" }}
           bodyStyle={{ textAlign: "center" }}
         />
-        
+
         {/* Centro de Costo */}
         <Column
           field="centroCostoId"
@@ -1965,6 +2011,13 @@ export default function OrdenCompra({ ruta }) {
         empresaIdInicial={empresaSeleccionada}
       />
 
+      <AsignarCentroCostoMasivo
+        visible={showAsignarCentroCostoDialog}
+        onHide={() => setShowAsignarCentroCostoDialog(false)}
+        registrosSeleccionados={ordenesSeleccionadas.map(o => o.id)}
+        onAsignar={handleAsignarCentroCosto}
+        nombreModulo="órdenes de compra"
+      />
     </div>
   );
 }
