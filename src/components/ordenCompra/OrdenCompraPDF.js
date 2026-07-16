@@ -29,7 +29,7 @@ export async function generarYSubirPDFOrdenCompra(
     // 2. Crear un blob del PDF
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
 
-// 3. Crear FormData - El backend generará el nombre automáticamente
+    // 3. Crear FormData - El backend generará el nombre automáticamente
     const formData = new FormData();
     formData.append("files", blob, "temp.pdf"); // Nombre temporal, el backend lo reemplazará
     formData.append("moduleName", "orden-compra");
@@ -97,16 +97,15 @@ export async function generarPDFOrdenCompra(
   let yPosition = height - 50;
   const margin = 20;
   const lineHeight = 13;
-  
+
   // ========================================
   // PREPARAR DATOS PARA 3 COLUMNAS
   // ========================================
-  
+
   // COLUMNA 1: Datos principales - LABELS ACORTADOS
   const datosColumna1 = [
     ["F. Dcmto.:", formatearFecha(ordenCompra.fechaDocumento)],
     ["F. Entrega:", formatearFecha(ordenCompra.fechaEntrega)],
-    ["C.Costo:", ordenCompra.centroCosto?.nombre || "-"],
     ["Proveedor:", ordenCompra.proveedor?.razonSocial || "-"],
     [
       ordenCompra.proveedor?.tipoDocumento?.codigo || "DOC:",
@@ -138,7 +137,7 @@ export async function generarPDFOrdenCompra(
 
   // COLUMNA 3: Datos adicionales dinámicos
   const datosColumna3 = [];
-  
+
   if (ordenCompra.datosAdicionales && ordenCompra.datosAdicionales.length > 0) {
     ordenCompra.datosAdicionales.forEach((dato) => {
       // Construir label
@@ -147,15 +146,15 @@ export async function generarPDFOrdenCompra(
         label += " (Adjunto)";
       }
       label += ":";
-      
+
       // Obtener value
       const value = dato.valorDato || "-";
-      
+
       datosColumna3.push([label, value]);
     });
   }
 
-  
+
   // DIBUJAR ENCABEZADO COMPLETO usando función modular con 3 columnas
   yPosition = await dibujaEncabezadoPDFOC({
     pag: page,
@@ -176,29 +175,29 @@ export async function generarPDFOrdenCompra(
   // TABLA DE DETALLES
   yPosition -= 8;
 
-// Encabezados de tabla con anchos ajustados dinámicamente
-const anchoDisponibleTabla = width - (margin * 2);
-  
-// Calcular anchos proporcionales basados en el ancho disponible (100% del espacio)
-const colWidths = [
-  anchoDisponibleTabla * 0.035,  // # (3.5%)
-  anchoDisponibleTabla * 0.465,  // Producto (46.5%)
-  anchoDisponibleTabla * 0.055,  // Cant. (5.5%)
-  anchoDisponibleTabla * 0.245,  // Unidad/Empaque (24.5%)
-  anchoDisponibleTabla * 0.095,  // P. Unitario (9.5%)
-  anchoDisponibleTabla * 0.105,  // Subtotal (10.5%)
-];
-  
-const headers = [
-  "#",
-  "Producto",
-  "Cant.",
-  "Unidad/Empaque",
-  "P. Unitario",
-  "Subtotal",
-];
-const tableWidth = colWidths.reduce((sum, width) => sum + width, 0);
-const tableStartX = margin;
+  // Encabezados de tabla con anchos ajustados dinámicamente
+  const anchoDisponibleTabla = width - (margin * 2);
+
+  // Calcular anchos proporcionales basados en el ancho disponible (100% del espacio)
+  const colWidths = [
+    anchoDisponibleTabla * 0.035,  // # (3.5%)
+    anchoDisponibleTabla * 0.465,  // Producto (46.5%)
+    anchoDisponibleTabla * 0.055,  // Cant. (5.5%)
+    anchoDisponibleTabla * 0.245,  // Unidad/Empaque (24.5%)
+    anchoDisponibleTabla * 0.095,  // P. Unitario (9.5%)
+    anchoDisponibleTabla * 0.105,  // Subtotal (10.5%)
+  ];
+
+  const headers = [
+    "#",
+    "Producto",
+    "Cant.",
+    "Unidad/Empaque",
+    "P. Unitario",
+    "Subtotal",
+  ];
+  const tableWidth = colWidths.reduce((sum, width) => sum + width, 0);
+  const tableStartX = margin;
 
   // Función para dibujar encabezado de tabla (reutilizable en nuevas páginas)
   const dibujarEncabezadoTabla = async (pag, yPos, incluirEncabezadoCompleto = false) => {
@@ -296,7 +295,7 @@ const tableStartX = margin;
   let xPos;
   for (let index = 0; index < detalles.length; index++) {
     const detalle = detalles[index];
-    
+
     // Verificar si hay espacio para la fila (umbral de 180px)
     if (yPosition < 180) {
       // Nueva página si no hay espacio
@@ -342,7 +341,7 @@ const tableStartX = margin;
       // Alinear números a la derecha, texto a la izquierda
       let textX = colX + 3;
       let textY = yPosition;
-      
+
       if (i === 0 || i === 2 || i === 4 || i === 5) {
         // Columnas numéricas: alinear a la derecha
         const textWidth = fontNormal.widthOfTextAtSize(data, 8);
@@ -363,15 +362,15 @@ const tableStartX = margin;
       let yObs = yPosition - 10;
       const obsX = tableStartX + colWidths[0] + 3; // Posición X de la columna Producto
       const obsMaxWidth = colWidths[1] - 6; // Ancho máximo para observaciones
-      
+
       // Dividir observaciones en líneas
       const words = observaciones.split(' ');
       let currentLine = '';
-      
+
       words.forEach((word, idx) => {
         const testLine = currentLine ? `${currentLine} ${word}` : word;
         const testWidth = fontNormal.widthOfTextAtSize(testLine, 7);
-        
+
         if (testWidth > obsMaxWidth && currentLine) {
           // Dibujar línea actual
           page.drawText(currentLine, {
@@ -386,7 +385,7 @@ const tableStartX = margin;
         } else {
           currentLine = testLine;
         }
-        
+
         // Última palabra
         if (idx === words.length - 1 && currentLine) {
           page.drawText(currentLine, {
@@ -407,7 +406,7 @@ const tableStartX = margin;
     let lineX = tableStartX;
     const lineStartY = rowY + 13;
     const lineEndY = rowY - rowHeight + 15;
-    
+
     for (let i = 0; i <= colWidths.length; i++) {
       page.drawLine({
         start: { x: lineX, y: lineStartY },
@@ -472,6 +471,27 @@ const tableStartX = margin;
       color: rgb(0.7, 0.7, 0.7),
     });
 
+    // Texto de Detracción o Retención (solo en la primera página)
+    if (pageNumber === 1) {
+      let textoImpuesto = "";
+
+      if (ordenCompra.aplicaDetraccion === true) {
+        textoImpuesto = "Operaciones sujetas al Sistema de Pago de Obligaciones Tributarias con el Gobierno Central";
+      } else if (ordenCompra.aplicaRetencion === true) {
+        textoImpuesto = "Agentes de Retención de IGV - Resolución de Superintendencia N° (R.S. 229-2024) a partir del 01/01/2025";
+      }
+
+      if (textoImpuesto) {
+        p.drawText(textoImpuesto, {
+          x: margin,
+          y: 56,
+          size: 7,
+          font: fontBold,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+      }
+    }
+
     p.drawText(
       `Generado: ${new Date().toLocaleString("es-PE")} | Sistema ERP Megui`,
       {
@@ -487,7 +507,7 @@ const tableStartX = margin;
   // ========================================
   // AGREGAR DOCUMENTOS ADJUNTOS COMO PÁGINAS ADICIONALES
   // ========================================
-  
+
   if (ordenCompra.datosAdicionales && ordenCompra.datosAdicionales.length > 0) {
     for (const dato of ordenCompra.datosAdicionales) {
       if (dato.esDocumento && dato.urlDocumento) {
@@ -497,25 +517,25 @@ const tableStartX = margin;
           // Resultado: datos-adicionales-oc-merged-1769457901911-su3q0n.pdf
           const fileName = dato.urlDocumento.split('/').pop();
           // Construir URL usando el endpoint genérico del sistema PDF unificado
-          const docUrl = `${import.meta.env.VITE_API_URL}/pdf/datos-adicionales-oc/${fileName}`;          
+          const docUrl = `${import.meta.env.VITE_API_URL}/pdf/datos-adicionales-oc/${fileName}`;
           // Obtener token de autenticación
           const token = useAuthStore.getState().token;
-          
+
           // Descargar el documento con autenticación
           const docResponse = await fetch(docUrl, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           });
-          
+
           if (docResponse.ok) {
             const docBytes = await docResponse.arrayBuffer();
-            
+
             // Verificar si es un PDF
             if (dato.urlDocumento.toLowerCase().endsWith('.pdf')) {
               // Cargar el PDF adjunto
               const adjuntoPdf = await PDFDocument.load(docBytes);
-              
+
               // Copiar todas las páginas del PDF adjunto al documento principal
               const copiedPages = await pdfDoc.copyPages(adjuntoPdf, adjuntoPdf.getPageIndices());
               copiedPages.forEach((copiedPage) => {
@@ -526,45 +546,45 @@ const tableStartX = margin;
               // Si es una imagen, agregarla como nueva página
               let adjuntoImage;
               const extension = dato.urlDocumento.toLowerCase();
-              
+
               if (extension.endsWith('.png')) {
                 adjuntoImage = await pdfDoc.embedPng(docBytes);
               } else if (extension.endsWith('.jpg') || extension.endsWith('.jpeg')) {
                 adjuntoImage = await pdfDoc.embedJpg(docBytes);
               }
-              
+
               if (adjuntoImage) {
                 // Crear nueva página para la imagen
                 const imagePage = pdfDoc.addPage([841.89, 595.28]); // A4 horizontal
                 pages.push(imagePage);
-                
+
                 const { width: pageWidth, height: pageHeight } = imagePage.getSize();
                 const imageDims = adjuntoImage.size();
-                
+
                 // Calcular dimensiones para ajustar la imagen a la página
                 const maxWidth = pageWidth - (margin * 2);
                 const maxHeight = pageHeight - (margin * 2);
                 const aspectRatio = imageDims.width / imageDims.height;
-                
+
                 let finalWidth = maxWidth;
                 let finalHeight = maxWidth / aspectRatio;
-                
+
                 if (finalHeight > maxHeight) {
                   finalHeight = maxHeight;
                   finalWidth = maxHeight * aspectRatio;
                 }
-                
+
                 // Centrar la imagen
                 const x = (pageWidth - finalWidth) / 2;
                 const y = (pageHeight - finalHeight) / 2;
-                
+
                 imagePage.drawImage(adjuntoImage, {
                   x,
                   y,
                   width: finalWidth,
                   height: finalHeight,
                 });
-                
+
                 // Agregar título de la imagen
                 imagePage.drawText(`Adjunto: ${dato.nombreDato}`, {
                   x: margin,

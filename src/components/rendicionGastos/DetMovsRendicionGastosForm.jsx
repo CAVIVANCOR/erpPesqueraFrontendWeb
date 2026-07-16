@@ -222,6 +222,8 @@ const DetMovsRendicionGastosForm = ({
           embarcacionId: movimiento.embarcacionId
             ? Number(movimiento.embarcacionId)
             : null,
+          saldoInicialAsignacion: Number(movimiento.saldoInicialAsignacion || 0),
+          saldoFinalAsignacion: Number(movimiento.saldoFinalAsignacion || 0),
         });
 
         if (
@@ -1944,54 +1946,54 @@ const DetMovsRendicionGastosForm = ({
       )}
 
       {cardActiva === "liquidacion" && (
-          <LiquidacionRendicionGastosCard
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={getValues()}
-            detMovId={movimiento?.id}
-            readOnly={false}
-            movimientoData={movimiento}
-            onLiquidacionExitosa={async () => {
-              if (movimiento?.id) {
-                try {
-                  const token = useAuthStore.getState().token;
-                  const response = await fetch(
-                    `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir/${movimiento.id}`,
-                    {
-                      headers: {
-                        Authorization: `Bearer ${token}`,
-                      },
+        <LiquidacionRendicionGastosCard
+          control={control}
+          errors={errors}
+          setValue={setValue}
+          watch={watch}
+          getValues={getValues}
+          defaultValues={getValues()}
+          detMovId={movimiento?.id}
+          readOnly={false}
+          movimientoData={movimiento}
+          onLiquidacionExitosa={async () => {
+            if (movimiento?.id) {
+              try {
+                const token = useAuthStore.getState().token;
+                const response = await fetch(
+                  `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir/${movimiento.id}`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
                     },
+                  },
+                );
+                if (response.ok) {
+                  const movimientoActualizado = await response.json();
+                  setValue(
+                    "saldoInicialAsignacion",
+                    movimientoActualizado.saldoInicialAsignacion,
                   );
-                  if (response.ok) {
-                    const movimientoActualizado = await response.json();
-                    setValue(
-                      "saldoInicialAsignacion",
-                      movimientoActualizado.saldoInicialAsignacion,
-                    );
-                    setValue(
-                      "saldoFinalAsignacion",
-                      movimientoActualizado.saldoFinalAsignacion,
-                    );
+                  setValue(
+                    "saldoFinalAsignacion",
+                    movimientoActualizado.saldoFinalAsignacion,
+                  );
 
-                    toast.current?.show({
-                      severity: "success",
-                      summary: "Saldo Actualizado",
-                      detail: `Saldo Final: ${movimientoActualizado.moneda?.simbolo || ""} ${Number(movimientoActualizado.saldoFinalAsignacion || 0).toFixed(2)}`,
-                      life: 5000,
-                    });
-                  }
-                } catch (error) {
-                  console.error("Error al recargar movimiento:", error);
+                  toast.current?.show({
+                    severity: "success",
+                    summary: "Saldo Actualizado",
+                    detail: `Saldo Final: ${movimientoActualizado.moneda?.simbolo || ""} ${Number(movimientoActualizado.saldoFinalAsignacion || 0).toFixed(2)}`,
+                    life: 5000,
+                  });
                 }
+              } catch (error) {
+                console.error("Error al recargar movimiento:", error);
               }
-            }}
-            onGuardarMovimiento={() => handleSubmit(onSubmit)()}
-            permisos={permisos}
-          />
+            }
+          }}
+          onGuardarMovimiento={() => handleSubmit(onSubmit)()}
+          permisos={permisos}
+        />
       )}
       <div
         style={{
