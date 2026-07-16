@@ -473,19 +473,104 @@ export default function OrdenCompra({ ruta }) {
     setShowConfirm(false);
     if (!toDelete) return;
     setLoading(true);
+
     try {
-      await eliminarOrdenCompra(toDelete.id);
+      const resultado = await eliminarOrdenCompra(toDelete.id);
+
+      const { resultados } = resultado;
+
+      const totalEliminados =
+        resultados.ordenesCompra +
+        resultados.detallesOrdenCompra +
+        resultados.cuentasPorPagar +
+        resultados.pagos +
+        resultados.movimientosAlmacen +
+        resultados.detallesMovAlmacen +
+        resultados.kardexEliminados +
+        resultados.asientosContables +
+        resultados.percepciones +
+        resultados.datosAdicionales +
+        resultados.ordenesCompraHijas;
+
+      const registrosEliminados = [];
+      const saldosRegenerados = [];
+      const otrosRegistros = [];
+
+      if (resultados.ordenesCompra > 0) {
+        registrosEliminados.push(`✅ Orden de Compra: ${resultados.ordenesCompra} eliminada`);
+      }
+      if (resultados.detallesOrdenCompra > 0) {
+        registrosEliminados.push(`📋 Detalles Orden Compra: ${resultados.detallesOrdenCompra} eliminados`);
+      }
+      if (resultados.cuentasPorPagar > 0) {
+        registrosEliminados.push(`🏦 Cuenta por Pagar: ${resultados.cuentasPorPagar} eliminada`);
+      }
+      if (resultados.pagos > 0) {
+        registrosEliminados.push(`💰 Pagos: ${resultados.pagos} eliminados`);
+      }
+      if (resultados.asientosContables > 0) {
+        registrosEliminados.push(`📒 Asientos Contables: ${resultados.asientosContables} eliminados`);
+      }
+      if (resultados.percepciones > 0) {
+        registrosEliminados.push(`📊 Percepciones: ${resultados.percepciones} eliminadas`);
+      }
+      if (resultados.movimientosAlmacen > 0) {
+        registrosEliminados.push(`📦 Movimiento Almacén: ${resultados.movimientosAlmacen} eliminado`);
+      }
+      if (resultados.detallesMovAlmacen > 0) {
+        registrosEliminados.push(`📝 Detalles Mov. Almacén: ${resultados.detallesMovAlmacen} eliminados`);
+      }
+      if (resultados.kardexEliminados > 0) {
+        registrosEliminados.push(`📊 Kardex: ${resultados.kardexEliminados} eliminados`);
+      }
+      if (resultados.datosAdicionales > 0) {
+        registrosEliminados.push(`📄 Datos Adicionales: ${resultados.datosAdicionales} eliminados`);
+      }
+      if (resultados.ordenesCompraHijas > 0) {
+        registrosEliminados.push(`🔗 Órdenes Compra Hijas: ${resultados.ordenesCompraHijas} eliminadas`);
+      }
+
+      if (resultados.repuestosContratistas > 0) {
+        otrosRegistros.push(`🔧 Repuestos Contratistas: ${resultados.repuestosContratistas} desvinculados`);
+      }
+
+      if (resultados.saldosDetRegenerados > 0) {
+        saldosRegenerados.push(`🔄 Saldos detallados: ${resultados.saldosDetRegenerados} recalculados`);
+      }
+      if (resultados.saldosGenRegenerados > 0) {
+        saldosRegenerados.push(`🔄 Saldos generales: ${resultados.saldosGenRegenerados} recalculados`);
+      }
+
+      let mensajeCompleto = `${resultado.mensaje}\n\n`;
+      mensajeCompleto += `📊 REGISTROS ELIMINADOS (${totalEliminados} total):\n`;
+      mensajeCompleto += registrosEliminados.join('\n');
+
+      if (otrosRegistros.length > 0) {
+        mensajeCompleto += `\n\n🔗 REGISTROS DESVINCULADOS:\n`;
+        mensajeCompleto += otrosRegistros.join('\n');
+      }
+
+      if (saldosRegenerados.length > 0) {
+        mensajeCompleto += `\n\n🔄 INVENTARIO ACTUALIZADO:\n`;
+        mensajeCompleto += saldosRegenerados.join('\n');
+      }
+
       toast.current.show({
         severity: "success",
-        summary: "Eliminado",
-        detail: "Orden de compra eliminada correctamente.",
+        summary: "✅ Eliminación Completa Exitosa",
+        detail: mensajeCompleto,
+        life: 12000,
       });
+
       cargarDatos();
-    } catch (err) {
+    } catch (error) {
+      const mensajeError = error.response?.data?.error || error.message || "Error desconocido";
+
       toast.current.show({
         severity: "error",
-        summary: "Error",
-        detail: err.response?.data?.error || "No se pudo eliminar.",
+        summary: "Error al Eliminar",
+        detail: `No se pudo eliminar la Orden de Compra.\n\n${mensajeError}\n\nTodos los cambios fueron revertidos (transacción atómica).`,
+        life: 6000,
       });
     }
     setLoading(false);
