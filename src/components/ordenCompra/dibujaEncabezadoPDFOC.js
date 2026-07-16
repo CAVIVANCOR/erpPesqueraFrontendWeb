@@ -176,9 +176,9 @@ export async function dibujaEncabezadoPDFOC({
     // Verificar si es la dirección de entrega (texto largo)
     const esDireccionEntrega = label === "Entregar en:";
     
-    if (esDireccionEntrega) {
-      // Dividir dirección en múltiples líneas
-      const maxValueWidth = anchoColumna1 - anchoLabelCol1 - 5;
+        if (esDireccionEntrega) {
+      // Dividir dirección en múltiples líneas - USAR TODO EL ANCHO HASTA COLUMNA 2
+      const maxValueWidth = columna2X - (columna1X + anchoLabelCol1) - 15;
       const words = String(value).split(' ');
       let currentLine = '';
       let yDireccion = yCol1;
