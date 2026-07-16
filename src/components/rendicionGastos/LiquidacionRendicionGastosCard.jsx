@@ -49,13 +49,6 @@ const LiquidacionRendicionGastosCard = ({
       ? Number(movimientoData.saldoFinalAsignacion)
       : Number(getValues("saldoFinalAsignacion") || 0));
   const fechaLiquidacion = fechaLiquidacionLocal || movimientoData?.fechaLiquidacionEntregaARendir || getValues("fechaLiquidacionEntregaARendir");
-
-  console.log('💰 VALORES CALCULADOS:');
-  console.log('saldoInicial:', saldoInicial);
-  console.log('saldoFinal:', saldoFinal);
-  console.log('saldoInicialLocal:', saldoInicialLocal);
-  console.log('movimientoData?.saldoInicialAsignacion:', movimientoData?.saldoInicialAsignacion);
-
   useEffect(() => {
     if (urlLiquidacion) {
       setPdfUrl(urlLiquidacion);
@@ -64,23 +57,15 @@ const LiquidacionRendicionGastosCard = ({
 
   // Inicializar estados locales desde movimientoData cuando se carga el componente
   useEffect(() => {
-    console.log('🔍 DEBUG SALDO INICIAL - useEffect movimientoData');
-    console.log('movimientoData:', movimientoData);
-    console.log('movimientoData.saldoInicialAsignacion:', movimientoData?.saldoInicialAsignacion);
-    console.log('movimientoData.saldoFinalAsignacion:', movimientoData?.saldoFinalAsignacion);
-
     if (movimientoData) {
       // Cargar SIEMPRE, no solo si está liquidada
-
       const liquidada = movimientoData.entregaARendirLiquidada;
       setSaldoInicialLocal(Number(movimientoData.saldoInicialAsignacion || 0));
       setSaldoFinalLocal(Number(movimientoData.saldoFinalAsignacion || 0));
       setFechaLiquidacionLocal(movimientoData.fechaLiquidacionEntregaARendir);
       setEstaLiquidadaLocal(true);
-
     }
   }, [movimientoData]);
-
   // También actualizar cuando cambian los valores del formulario
   useEffect(() => {
     const liquidada = getValues("entregaARendirLiquidada");

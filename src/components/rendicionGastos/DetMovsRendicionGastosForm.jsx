@@ -56,9 +56,6 @@ const DetMovsRendicionGastosForm = ({
   onEntidadComercialCreada,
 }) => {
   const toast = useRef(null);
-  console.log('📦 MOVIMIENTO RECIBIDO EN FORM (PROPS):', movimiento);
-  console.log('📦 movimiento.saldoInicialAsignacion:', movimiento?.saldoInicialAsignacion);
-  console.log('📦 movimiento.saldoFinalAsignacion:', movimiento?.saldoFinalAsignacion);
   const isEditing = !!movimiento;
   const { usuario } = useAuthStore();
   const [modulos, setModulos] = useState([]);
@@ -1947,10 +1944,6 @@ const DetMovsRendicionGastosForm = ({
       )}
 
       {cardActiva === "liquidacion" && (
-        <>
-          {console.log('🔥 MOVIMIENTO PASADO A CARD:', movimiento)}
-          {console.log('🔥 movimiento.saldoInicialAsignacion:', movimiento?.saldoInicialAsignacion)}
-          {console.log('🔥 movimiento.saldoFinalAsignacion:', movimiento?.saldoFinalAsignacion)}
           <LiquidacionRendicionGastosCard
             control={control}
             errors={errors}
@@ -1999,7 +1992,6 @@ const DetMovsRendicionGastosForm = ({
             onGuardarMovimiento={() => handleSubmit(onSubmit)()}
             permisos={permisos}
           />
-        </>
       )}
       <div
         style={{
