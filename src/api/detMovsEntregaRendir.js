@@ -205,3 +205,35 @@ export const calcularSaldoFinal = async (asignacionId) => {
     throw error;
   }
 };
+
+
+export const recalcularSaldosResponsable = async (responsableId) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/recalcular-saldos/${responsableId}`,
+      {},
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error al recalcular saldos del responsable:', error);
+    throw error;
+  }
+};
+
+
+
+export const asignarCentroCostoMasivo = async (centroCostoId, movimientosIds) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/asignar-centro-costo-masivo`,
+      { centroCostoId, movimientosIds },
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error al asignar centro de costo masivo:', error);
+    throw error;
+  }
+};
+

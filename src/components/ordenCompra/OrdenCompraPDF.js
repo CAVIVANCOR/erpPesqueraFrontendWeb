@@ -113,7 +113,7 @@ export async function generarPDFOrdenCompra(
     ],
     [
       "Entregar en:",
-      ordenCompra.direccionRecepcionAlmacen?.direccion || "-"
+      ordenCompra.direccionRecepcionAlmacen?.direccionArmada || ordenCompra.direccionRecepcionAlmacen?.direccion || "-"
     ],
   ];
 

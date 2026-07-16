@@ -40,9 +40,8 @@ export async function dibujaEncabezadoPDFOC({
   // Cargar logo si existe
   if (empresa?.logo && empresa?.id) {
     try {
-      const logoUrl = `${import.meta.env.VITE_API_URL}/empresas-logo/${
-        empresa.id
-      }/logo`;
+      const logoUrl = `${import.meta.env.VITE_API_URL}/empresas-logo/${empresa.id
+        }/logo`;
       const logoResponse = await fetch(logoUrl);
 
       if (logoResponse.ok) {
@@ -144,18 +143,18 @@ export async function dibujaEncabezadoPDFOC({
   const gapEntreColumnas = 5;
   // Calcular anchos de columnas optimizados
   const anchoDisponible = width - (margin * 2);
-  
+
   // Columna 1: más ancha (30%)
   // Columna 2: estrecha (20%) - movida 1.5cm a la derecha
   // Columna 3: el doble de ancho (50%)
-  const anchoColumna1 = (anchoDisponible * 0.30)+80;  // 30% (aumentado)
+  const anchoColumna1 = (anchoDisponible * 0.30) + 80;  // 30% (aumentado)
   const anchoColumna2 = anchoDisponible * 0.20;  // 20% (reducido)
   const anchoColumna3 = anchoDisponible * 0.50;  // 50% (el doble)
-  
+
   const columna1X = margin;
   const columna2X = gapEntreColumnas + anchoColumna1 + 42; // +42 puntos = ~1.5cm a la derecha
   const columna3X = gapEntreColumnas + anchoColumna1 + anchoColumna2 + 42;
-  
+
   // Anchos de labels ajustados por columna
   const anchoLabelCol1 = 60;  // Más compacto para labels acortados
   const anchoLabelCol2 = 55;  // Más compacto para labels acortados
@@ -172,23 +171,26 @@ export async function dibujaEncabezadoPDFOC({
       size: 9,
       font: fontBold,
     });
-    
+
     // Verificar si es la dirección de entrega (texto largo)
     const esDireccionEntrega = label === "Entregar en:";
-    
-        if (esDireccionEntrega) {
-      // Dividir dirección en múltiples líneas - USAR TODO EL ANCHO HASTA COLUMNA 2
+
+    if (esDireccionEntrega) {
+
+
+      // CALCULAR ANCHO MÁXIMO: Desde después del label hasta antes de columna 2
       const maxValueWidth = columna2X - (columna1X + anchoLabelCol1) - 15;
       const words = String(value).split(' ');
       let currentLine = '';
       let yDireccion = yCol1;
-      
+      let lineCount = 0;
+
       words.forEach((word, idx) => {
         const testLine = currentLine ? `${currentLine} ${word}` : word;
         const testWidth = fontNormal.widthOfTextAtSize(testLine, 9);
-        
         if (testWidth > maxValueWidth && currentLine) {
           // Dibujar línea actual
+          lineCount++;
           pag.drawText(currentLine, {
             x: columna1X + anchoLabelCol1,
             y: yDireccion,
@@ -200,9 +202,10 @@ export async function dibujaEncabezadoPDFOC({
         } else {
           currentLine = testLine;
         }
-        
+
         // Última palabra
         if (idx === words.length - 1 && currentLine) {
+          lineCount++;
           pag.drawText(currentLine, {
             x: columna1X + anchoLabelCol1,
             y: yDireccion,
@@ -211,7 +214,7 @@ export async function dibujaEncabezadoPDFOC({
           });
         }
       });
-      
+
       // Ajustar yCol1 para la siguiente línea
       yCol1 = yDireccion - lineHeight;
     } else {
@@ -219,12 +222,12 @@ export async function dibujaEncabezadoPDFOC({
       const maxValueWidth = anchoColumna1 - anchoLabelCol1 - 5;
       let valueTexto = String(value);
       let valueWidth = fontNormal.widthOfTextAtSize(valueTexto, 9);
-      
+
       while (valueWidth > maxValueWidth && valueTexto.length > 3) {
         valueTexto = valueTexto.substring(0, valueTexto.length - 4) + "...";
         valueWidth = fontNormal.widthOfTextAtSize(valueTexto, 9);
       }
-      
+
       pag.drawText(valueTexto, {
         x: columna1X + anchoLabelCol1,
         y: yCol1,
@@ -265,31 +268,31 @@ export async function dibujaEncabezadoPDFOC({
       const maxLabelWidth = anchoLabelCol3 - 5;
       let labelTexto = label;
       let labelWidth = fontBold.widthOfTextAtSize(labelTexto, 9);
-      
+
       // Truncar label si es muy largo
       while (labelWidth > maxLabelWidth && labelTexto.length > 3) {
         labelTexto = labelTexto.substring(0, labelTexto.length - 4) + "...";
         labelWidth = fontBold.widthOfTextAtSize(labelTexto, 9);
       }
-      
+
       pag.drawText(labelTexto, {
         x: columna3X,
         y: yCol3,
         size: 9,
         font: fontBold,
       });
-      
+
       // Limitar ancho del value (ahora tiene el doble de espacio)
       const maxValueWidth = anchoColumna3 - anchoLabelCol3 - 10;
       let valueTexto = String(value);
       let valueWidth = fontNormal.widthOfTextAtSize(valueTexto, 9);
-      
+
       // Truncar value si es muy largo
       while (valueWidth > maxValueWidth && valueTexto.length > 3) {
         valueTexto = valueTexto.substring(0, valueTexto.length - 4) + "...";
         valueWidth = fontNormal.widthOfTextAtSize(valueTexto, 9);
       }
-      
+
       pag.drawText(valueTexto, {
         x: columna3X + anchoLabelCol3,
         y: yCol3,

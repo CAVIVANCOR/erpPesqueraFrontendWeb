@@ -10,12 +10,16 @@ import { Badge } from "primereact/badge";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { Tag } from "primereact/tag";
 import DetMovsRendicionGastosForm from "../../components/rendicionGastos/DetMovsRendicionGastosForm";
+import AsignarCentroCostoMasivo from "../../components/common/AsignarCentroCostoMasivo";
 import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 import {
   crearDetMovsEntregaRendir,
   actualizarDetMovsEntregaRendir,
   eliminarDetMovsEntregaRendir,
+  recalcularSaldosResponsable,
+  asignarCentroCostoMasivo,
 } from "../../api/detMovsEntregaRendir";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
@@ -76,6 +80,7 @@ export default function RendicionGastosList({ ruta }) {
   const [totalRecalculo, setTotalRecalculo] = useState(0);
   const [mostrarDialogoResultados, setMostrarDialogoResultados] = useState(false);
   const [resultadosRecalculo, setResultadosRecalculo] = useState(null);
+  const [showAsignarCentroCostoDialog, setShowAsignarCentroCostoDialog] = useState(false);
   // Cargar datos iniciales
   useEffect(() => {
     cargarDatos();
@@ -258,6 +263,95 @@ export default function RendicionGastosList({ ruta }) {
   };
 
 
+  // 🔄 RECALCULAR SALDOS MANUALMENTE
+  const recalcularYGuardarSaldos = async () => {
+    setRecalculandoSaldos(true);
+    setProgresoRecalculo(0);
+
+    try {
+      const responsablesUnicos = [...new Set(
+        movimientos
+          .filter(m => m.formaParteCalculoEntregaARendir === true)
+          .map(m => m.responsableId)
+      )];
+
+      setTotalRecalculo(responsablesUnicos.length);
+
+      let procesados = 0;
+      const errores = [];
+
+      for (const responsableId of responsablesUnicos) {
+        try {
+          await recalcularSaldosResponsable(responsableId);
+          procesados++;
+          setProgresoRecalculo(procesados);
+        } catch (error) {
+          errores.push({
+            responsableId: responsableId,
+            error: error.response?.data?.message || error.message,
+          });
+        }
+      }
+
+      await cargarDatos();
+
+      setResultadosRecalculo({
+        total: responsablesUnicos.length,
+        actualizados: procesados,
+        errores: errores,
+        exitoso: errores.length === 0,
+      });
+      setMostrarDialogoResultados(true);
+
+      if (errores.length === 0) {
+        toast.current?.show({
+          severity: "success",
+          summary: "Recálculo Completado",
+          detail: `Se recalcularon los saldos de ${procesados} responsables`,
+          life: 3000,
+        });
+      }
+
+    } catch (error) {
+      console.error("❌ Error crítico en recálculo de saldos:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error Crítico",
+        detail: "Error al recalcular saldos: " + (error.message || "Error desconocido"),
+        life: 5000,
+      });
+    } finally {
+      setRecalculandoSaldos(false);
+      setProgresoRecalculo(0);
+      setTotalRecalculo(0);
+    }
+  };
+
+
+  // 🏷️ ASIGNAR CENTRO DE COSTO MASIVO
+  const handleAsignarCentroCosto = async (centroCostoId, movimientosIds) => {
+    try {
+      const resultado = await asignarCentroCostoMasivo(centroCostoId, movimientosIds);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Centro de Costo Asignado",
+        detail: resultado.message || `Se actualizó el centro de costo de ${resultado.actualizados} movimiento(s)`,
+        life: 3000,
+      });
+
+      await cargarDatos();
+      setSelectedMovimientos([]);
+    } catch (error) {
+      console.error("Error al asignar centro de costo:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al asignar centro de costo",
+        life: 5000,
+      });
+    }
+  };
 
   // Filtrar movimientos que son asignaciones
   const movimientosAsignacionEntregaRendir = useMemo(() => {
@@ -1012,6 +1106,54 @@ export default function RendicionGastosList({ ruta }) {
     );
   };
 
+
+  // Template para Centro de Costo
+  const centroCostoTemplate = (rowData) => {
+    const centroCosto = rowData.centroCosto;
+
+    if (!centroCosto) {
+      return <span style={{ color: "#999" }}>-</span>;
+    }
+
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "wrap" }}>
+        {centroCosto.categoria && (
+          <Tag
+            value={centroCosto.categoria.nombre}
+            severity="info"
+            style={{
+              fontWeight: "bold",
+              fontSize: "0.7rem",
+              backgroundColor: "#2196F3",
+              color: "#FFFFFF"
+            }}
+          />
+        )}
+        {centroCosto.ParentCentroID && (
+          <Tag
+            value={centroCosto.ParentCentroID}
+            severity="warning"
+            style={{
+              fontWeight: "500",
+              fontSize: "0.7rem",
+              backgroundColor: "#FF9800",
+              color: "#FFFFFF"
+            }}
+          />
+        )}
+        <Tag
+          value={centroCosto.Descripcion || centroCosto.Nombre}
+          severity="success"
+          style={{
+            fontSize: "0.7rem",
+            backgroundColor: "#4CAF50",
+            color: "#FFFFFF"
+          }}
+        />
+      </div>
+    );
+  };
+
   const entidadComercialTemplate = (rowData) => {
     if (!rowData.entidadComercialId) return "N/A";
 
@@ -1250,7 +1392,6 @@ export default function RendicionGastosList({ ruta }) {
           value={obtenerMovimientosFiltrados()}
           selection={selectedMovimientos}
           onSelectionChange={handleSelectionChange}
-          selectionMode="single"
           onRowClick={(e) => handleEditarMovimiento(e.data)}
           dataKey="id"
           loading={loading}
@@ -1280,7 +1421,7 @@ export default function RendicionGastosList({ ruta }) {
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <h1>Rendición de Gastos xxxx</h1>
+                  <h1>Rendición de Gastos</h1>
                 </div>
                 <div style={{ flex: 0.25 }}>
                   <Button
@@ -1351,7 +1492,25 @@ export default function RendicionGastosList({ ruta }) {
                     tooltipOptions={{ position: "top" }}
                   />
                 </div>
-                <div style={{ flex: 0.35, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ flex: 0.35 }}>
+                  <Button
+                    label="Asignar Centro Costo"
+                    icon="pi pi-tag"
+                    className="p-button-help"
+                    onClick={() => setShowAsignarCentroCostoDialog(true)}
+                    disabled={loading || !Array.isArray(selectedMovimientos) || selectedMovimientos.length === 0}
+                    tooltip={
+                      !Array.isArray(selectedMovimientos) || selectedMovimientos.length === 0
+                        ? "Seleccione movimientos para asignar centro de costo"
+                        : `Asignar centro de costo a ${selectedMovimientos.length} movimiento(s)`
+                    }
+                    tooltipOptions={{ position: "top" }}
+                    type="button"
+                    raised
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <Button
                     label="Recalcular Saldos"
                     icon={
@@ -1380,21 +1539,6 @@ export default function RendicionGastosList({ ruta }) {
                       showValue={false}
                     />
                   )}
-                </div>
-                <div style={{ flex: 0.25 }}>
-                  <Button
-                    label="Detectar Errores"
-                    icon="pi pi-exclamation-triangle"
-                    className="p-button-help"
-                    severity="help"
-                    onClick={detectarErroresGastos}
-                    disabled={recalculandoSaldos || !permisos?.puedeEditar}
-                    type="button"
-                    raised
-                    style={{ width: "100%" }}
-                    tooltip="Detectar errores en gastos"
-                    tooltipOptions={{ position: "top" }}
-                  />
                 </div>
               </div>
 
@@ -1563,10 +1707,7 @@ export default function RendicionGastosList({ ruta }) {
             </div>
           }
         >
-          <Column
-            selectionMode="single"
-            headerStyle={{ width: "3rem" }}
-          ></Column>
+        <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
           <Column field="id" header="Id" sortable />
           <Column
             field="fechaMovimiento"
@@ -1648,6 +1789,13 @@ export default function RendicionGastosList({ ruta }) {
             body={saldoFinalAsignacionTemplate}
             sortable
             style={{ minWidth: "120px" }}
+          />
+          <Column
+            field="centroCostoId"
+            header="Centro de Costo"
+            body={centroCostoTemplate}
+            sortable
+            style={{ minWidth: "100px" }}
           />
           <Column
             field="urlComprobanteMovimiento"
@@ -1824,6 +1972,13 @@ export default function RendicionGastosList({ ruta }) {
       </Dialog>
 
 
+      <AsignarCentroCostoMasivo
+        visible={showAsignarCentroCostoDialog}
+        onHide={() => setShowAsignarCentroCostoDialog(false)}
+        registrosSeleccionados={Array.isArray(selectedMovimientos) ? selectedMovimientos.map(m => m.id) : []}
+        onAsignar={handleAsignarCentroCosto}
+        nombreModulo="movimientos"
+      />
     </div>
   );
 }
