@@ -13,10 +13,12 @@ import IrACxPEditar from "../common/IrACxPEditar";
 import BooleanToggleButton from "../common/BooleanToggleButton";
 import CambiarTipoSerieDialog from "../common/CambiarTipoSerieDialog"; // ✅ AGREGAR
 import CentroCostoSelector from "../common/CentroCostoSelector";
+import SelectorDocumentoAfectoOC from "../common/SelectorDocumentoAfectoOC";
 
 export default function DatosGeneralesTab({
   formData,
   onChange,
+  onCargarItemsDocAfecto,
   onSerieChange,
   onCambiarTipoSerie, // ✅ AGREGAR
   showCambiarTipoSerieDialog, // ✅ AGREGAR
@@ -464,22 +466,61 @@ export default function DatosGeneralesTab({
       </Panel>
 
       {/* ============================================ */}
-      {/* SECCIÓN: DATOS NOTA DE CRÉDITO/DÉBITO (CONDICIONAL) */}
+      {/* SECCIÓN 2: DATOS NOTA DE CRÉDITO/DÉBITO (CONDICIONAL) */}
       {/* ============================================ */}
-      {motivoNotaCreditoDebitoId && (
+      {(Number(formData.tipoDocumentoId) === 8 || Number(formData.tipoDocumentoId) === 9) && (
         <Panel
           header="📝 Datos de Nota de Crédito/Débito"
           toggleable
           style={{ marginTop: "1rem" }}
         >
+          {/* FILA 1: Selector de Documento Afectado y Motivo, Campos Manuales (para docs del 2025 o anteriores) */}
           <div
             style={{
               alignItems: "end",
               display: "flex",
-              gap: 10,
+              gap: 5,
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
+            <div style={{ flex: 1 }}>
+              <label
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+                htmlFor="documentoAfecto"
+              >
+                🔍 Buscar Documento Afectado (Opcional) 💡 Use este selector para documentos del 2026 en adelante
+              </label>
+              <SelectorDocumentoAfectoOC
+                value={dcmtoAfectoNCNDId}
+                empresaId={formData.empresaId}
+                proveedorId={formData.proveedorId}
+                fechaLimite={formData.fechaDocumento}
+                onChange={(ordenCompraId) => {
+                  if (ordenCompraId) {
+                    // Cargar datos completos del documento
+                    import("../../api/ordenCompra").then(({ getOrdenCompraPorId }) => {
+                      getOrdenCompraPorId(ordenCompraId).then((datos) => {
+                        onDcmtoAfectoNCNDIdChange(ordenCompraId);
+                        onFechaDcmtoAfectoNCNDChange(new Date(datos.fechaFacturacion || datos.fechaDocumento));
+                        onNumeroDcmtoAfectoNCNDChange(datos.numeroDocumentoFinal || datos.numeroDocumento);
+                        // Cargar items automáticamente
+                        if (onCargarItemsDocAfecto && datos.detalles && datos.detalles.length > 0) {
+                          onCargarItemsDocAfecto(datos.detalles);
+                        }
+                      });
+                    });
+                  } else {
+                    // Limpiar campos
+                    onDcmtoAfectoNCNDIdChange(null);
+                    onFechaDcmtoAfectoNCNDChange(null);
+                    onNumeroDcmtoAfectoNCNDChange(null);
+                  }
+                }}
+                disabled={!puedeEditar || readOnly || !formData.empresaId || !formData.proveedorId}
+                placeholder="Buscar en sistema..."
+                toast={toast}
+              />
+            </div>
             <div style={{ flex: 1 }}>
               <label
                 style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -543,7 +584,7 @@ export default function DatosGeneralesTab({
                 style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
                 htmlFor="numeroDcmtoAfectoNCND"
               >
-                Número Dcmto. Afectado
+                N° Dcmto. Afectado
               </label>
               <InputText
                 id="numeroDcmtoAfectoNCND"
@@ -554,12 +595,12 @@ export default function DatosGeneralesTab({
                 maxLength={40}
                 disabled={!puedeEditar || readOnly}
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                placeholder="Ej: F001-00000123"
               />
             </div>
           </div>
         </Panel>
       )}
+
       <div
         style={{
           alignItems: "end",

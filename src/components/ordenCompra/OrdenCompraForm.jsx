@@ -409,22 +409,31 @@ export default function OrdenCompraForm({
           : null,
       );
       setEsParticionada(defaultValues.esParticionada || false);
-      setMotivoNotaCreditoDebitoId(
-        defaultValues.motivoNotaCreditoDebitoId
-          ? Number(defaultValues.motivoNotaCreditoDebitoId)
-          : null,
-      );
-      setFechaDcmtoAfectoNCND(
-        defaultValues.fechaDcmtoAfectoNCND
-          ? new Date(defaultValues.fechaDcmtoAfectoNCND)
-          : null,
-      );
-      setDcmtoAfectoNCNDId(
-        defaultValues.dcmtoAfectoNCNDId
-          ? Number(defaultValues.dcmtoAfectoNCNDId)
-          : null,
-      );
-      setNumeroDcmtoAfectoNCND(defaultValues.numeroDcmtoAfectoNCND || "");
+      // Solo actualizar si defaultValues tiene valores O si los estados actuales están vacíos
+      if (defaultValues.motivoNotaCreditoDebitoId || !motivoNotaCreditoDebitoId) {
+        setMotivoNotaCreditoDebitoId(
+          defaultValues.motivoNotaCreditoDebitoId
+            ? Number(defaultValues.motivoNotaCreditoDebitoId)
+            : null,
+        );
+      }
+      if (defaultValues.fechaDcmtoAfectoNCND || !fechaDcmtoAfectoNCND) {
+        setFechaDcmtoAfectoNCND(
+          defaultValues.fechaDcmtoAfectoNCND
+            ? new Date(defaultValues.fechaDcmtoAfectoNCND)
+            : null,
+        );
+      }
+      if (defaultValues.dcmtoAfectoNCNDId || !dcmtoAfectoNCNDId) {
+        setDcmtoAfectoNCNDId(
+          defaultValues.dcmtoAfectoNCNDId
+            ? Number(defaultValues.dcmtoAfectoNCNDId)
+            : null,
+        );
+      }
+      if (defaultValues.numeroDcmtoAfectoNCND || !numeroDcmtoAfectoNCND) {
+        setNumeroDcmtoAfectoNCND(defaultValues.numeroDcmtoAfectoNCND || "");
+      }
 
       setTipoDocumentoFinalId(
         defaultValues.tipoDocumentoFinalId

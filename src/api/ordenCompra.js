@@ -147,3 +147,30 @@ export async function asignarCentroCostoMasivo(centroCostoId, ordenesIds) {
   );
   return res.data;
 }
+
+
+
+/**
+ * Obtiene órdenes de compra filtradas por empresa, proveedor y fecha límite (para NC/ND)
+ * @param {number} empresaId - ID de la empresa
+ * @param {number} proveedorId - ID del proveedor
+ * @param {string} fechaLimite - Fecha límite en formato ISO
+ * @returns {Promise<Array>} Lista de órdenes de compra filtradas
+ */
+export async function getOrdenesCompraParaDocumentoAfecto(empresaId, proveedorId, fechaLimite) {
+  try {
+    const params = new URLSearchParams();
+    if (empresaId) params.append('empresaId', empresaId);
+    if (proveedorId) params.append('proveedorId', proveedorId);
+    if (fechaLimite) params.append('fechaLimite', fechaLimite);
+    
+    const response = await axios.get(`${API_URL}/por-proveedor?${params.toString()}`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error al obtener órdenes de compra para documento afecto:", error);
+    throw error;
+  }
+}
+
