@@ -19,6 +19,7 @@ export default function DetallesTab({
   toast,
   onCountChange,
   onChange, // ⭐ NUEVO: Callback para notificar cambios
+  refreshTrigger, // ⭐ Trigger para forzar recarga de detalles
   subtotal = 0,
   totalIGV = 0,
   montoImpuestoRenta = 0,
@@ -67,7 +68,7 @@ export default function DetallesTab({
     if (ordenCompraId) {
       cargarDetalles();
     }
-  }, [ordenCompraId]);
+  }, [ordenCompraId, refreshTrigger]);
 
   useEffect(() => {
     if (onCountChange) {

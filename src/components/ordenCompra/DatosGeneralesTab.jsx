@@ -53,6 +53,7 @@ export default function DatosGeneralesTab({
   toast,
   onCountChange,
   onDetallesChange, // ⭐ NUEVO: Callback cuando cambian los detalles
+  refreshTrigger, // ⭐ Trigger para forzar recarga de detalles
   // Totales calculados
   subtotal = null,
   totalIGV = null,
@@ -112,18 +113,6 @@ export default function DatosGeneralesTab({
   comprobanteRecibido,
   onComprobanteRecibidoChange,
 }) {
-  // Helper para obtener código de moneda (ISO)
-  const getCodigoMoneda = () => {
-    // Prioridad 1: Usar la relación directa de la orden (más eficiente)
-    if (monedaOrden?.codigoSunat) {
-      return monedaOrden.codigoSunat;
-    }
-    // Prioridad 2: Buscar en el array de opciones (fallback)
-    const moneda = monedas.find(
-      (m) => Number(m.id) === Number(formData.monedaId),
-    );
-    return moneda?.codigoSunat || "PEN";
-  };
 
   // ✅ FILTRAR Y PREPARAR PERIODOS CONTABLES
   const periodosContablesFiltrados = periodosContables
@@ -1247,6 +1236,7 @@ export default function DatosGeneralesTab({
             toast={toast}
             onCountChange={onCountChange}
             onChange={onChange} // ⭐ Callback para actualizar formData
+            refreshTrigger={refreshTrigger}
             subtotal={subtotal}
             totalIGV={totalIGV}
             montoImpuestoRenta={montoImpuestoRenta}

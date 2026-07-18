@@ -119,6 +119,8 @@ export default function OrdenCompra({ ruta }) {
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [centroCostoSeleccionado, setCentroCostoSeleccionado] = useState(null);
+  const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+  const [productosUnicos, setProductosUnicos] = useState([]);
   const [proveedoresUnicos, setProveedoresUnicos] = useState([]);
   const [showKardexDialog, setShowKardexDialog] = useState(false);
   const [kardexDocumentoActual, setKardexDocumentoActual] = useState(null);
@@ -155,6 +157,31 @@ export default function OrdenCompra({ ruta }) {
     setProveedoresUnicos(proveedoresArray);
   }, [ordenesFiltradas]);
 
+  // ✅ Extraer productos únicos de los detalles de las órdenes filtradas
+  useEffect(() => {
+    const productosMap = new Map();
+    ordenesFiltradas.forEach((orden) => {
+      if (orden.detalles && Array.isArray(orden.detalles)) {
+        orden.detalles.forEach((detalle) => {
+          if (detalle.producto && detalle.producto.id) {
+            productosMap.set(detalle.producto.id, {
+              id: detalle.producto.id,
+              descripcionArmada: detalle.producto.descripcionArmada || "Sin descripción",
+            });
+          }
+        });
+      }
+    });
+    const productosArray = Array.from(productosMap.values()).sort((a, b) =>
+      a.descripcionArmada.localeCompare(b.descripcionArmada)
+    );
+    setProductosUnicos(productosArray);
+
+    // Limpiar selección si el producto ya no existe en los filtrados
+    if (productoSeleccionado && !productosArray.find(p => Number(p.id) === Number(productoSeleccionado))) {
+      setProductoSeleccionado(null);
+    }
+  }, [ordenesFiltradas, productoSeleccionado]);
 
   // ✅ Filtrado completo de órdenes
   useEffect(() => {
@@ -229,6 +256,18 @@ export default function OrdenCompra({ ruta }) {
       );
     }
 
+    // ✅ Filtro por producto (en detalles)
+    if (productoSeleccionado) {
+      filtered = filtered.filter((orden) => {
+        if (orden.detalles && Array.isArray(orden.detalles)) {
+          return orden.detalles.some((detalle) => {
+            return Number(detalle.producto?.id) === Number(productoSeleccionado);
+          });
+        }
+        return false;
+      });
+    }
+
     setItemsFiltrados(filtered);
   }, [
     items,
@@ -240,6 +279,7 @@ export default function OrdenCompra({ ruta }) {
     tipoDocumentoIdSeleccionado,
     tipoDocumentoFinalIdSeleccionado,
     centroCostoSeleccionado,
+    productoSeleccionado,
   ]);
 
   const cargarDatos = async () => {
@@ -660,6 +700,7 @@ export default function OrdenCompra({ ruta }) {
     setEmpresaSeleccionada(null);
     setProveedorSeleccionado(null);
     setEstadoSeleccionado(null);
+    setProductoSeleccionado(null);
     setRangoFechaDocumento(null);
     setRangoFechaFacturacion(null);
     setTipoDocumentoIdSeleccionado(null);
@@ -1643,6 +1684,26 @@ export default function OrdenCompra({ ruta }) {
                   }))}
                   onChange={(e) => setProveedorSeleccionado(e.value)}
                   placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  filter
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="productoFiltro" style={{ fontWeight: "bold" }}>
+                  Producto
+                </label>
+                <Dropdown
+                  id="productoFiltro"
+                  value={productoSeleccionado}
+                  options={productosUnicos.map((p) => ({
+                    label: p.descripcionArmada,
+                    value: Number(p.id),
+                  }))}
+                  onChange={(e) => setProductoSeleccionado(e.value)}
+                  placeholder="Todos los productos"
                   optionLabel="label"
                   optionValue="value"
                   showClear

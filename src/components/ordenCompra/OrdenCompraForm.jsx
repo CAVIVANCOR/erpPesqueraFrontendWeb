@@ -57,7 +57,7 @@ export default function OrdenCompraForm({
   onProveedorCreado, // ✅ NUEVO: callback para recargar proveedores
 }) {
   const { usuario } = useAuthStore();
-
+  const [refreshDetalles, setRefreshDetalles] = useState(0);
 
   // ════════════════════════════════════════════════════════════
   // REACT HOOK FORM: Solo para componentes PDF
@@ -681,6 +681,71 @@ export default function OrdenCompraForm({
       throw error; // Re-lanzar para que AsientoContableManager lo maneje
     }
   };
+
+  const handleCargarItemsDocumentoAfecto = async (detalleItems) => {
+    if (!defaultValues?.id) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe guardar la NC/ND antes de cargar items del documento afecto",
+        life: 5000,
+      });
+      return;
+    }
+
+    if (!detalleItems || detalleItems.length === 0) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Sin Items",
+        detail: "El documento seleccionado no tiene items para copiar",
+        life: 3000,
+      });
+      return;
+    }
+
+    try {
+      const { crearDetalleOrdenCompra } = await import("../../api/detalleOrdenCompra");
+      let itemsCargados = 0;
+
+      for (const item of detalleItems) {
+        const cantidad = Number(item.cantidad) || 0;
+        const precioUnitario = Number(item.precioUnitario) || 0;
+        const cantidadCompra = item.cantidadCompra ? Number(item.cantidadCompra) : null;
+        const precioUnitarioCompra = item.precioUnitarioCompra ? Number(item.precioUnitarioCompra) : null;
+
+        const nuevoDetalle = {
+          ordenCompraId: defaultValues.id,
+          productoId: Number(item.productoId),
+          cantidad: cantidad,
+          precioUnitario: precioUnitario,
+          cantidadCompra: cantidadCompra,
+          precioUnitarioCompra: precioUnitarioCompra,
+        };
+
+        await crearDetalleOrdenCompra(nuevoDetalle);
+        itemsCargados++;
+      }
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Items Cargados",
+        detail: `Se cargaron ${itemsCargados} items del documento afecto correctamente`,
+        life: 3000,
+      });
+
+      // Forzar recarga de detalles
+      setRefreshDetalles(prev => prev + 1);
+    } catch (error) {
+      console.error("Error al cargar items:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.message || "No se pudieron cargar los items del documento afecto",
+        life: 5000,
+      });
+    }
+  };
+
   useEffect(() => {
     const cargarDireccionesEmpresa = async () => {
       if (empresaId) {
@@ -1223,6 +1288,7 @@ export default function OrdenCompraForm({
           <DatosGeneralesTab
             formData={formData}
             onChange={handleChange}
+            onCargarItemsDocAfecto={handleCargarItemsDocumentoAfecto}
             onSerieChange={handleSerieChange}
             onCambiarTipoSerie={handleCambiarTipoSerie} // ✅ AGREGAR
             empresas={empresas}
@@ -1256,6 +1322,7 @@ export default function OrdenCompraForm({
             toast={toast}
             onCountChange={setDetallesCount}
             onDetallesChange={() => setDetallesCount((prev) => prev + 0.0001)} // ⭐ NUEVO: Forzar recálculo
+            refreshTrigger={refreshDetalles}
             showCambiarTipoSerieDialog={showCambiarTipoSerieDialog} // ✅ AGREGAR
             subtotal={totales.subtotal}
             totalIGV={totales.igv}
