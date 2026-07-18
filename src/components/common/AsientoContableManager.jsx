@@ -6,46 +6,33 @@ import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { confirmDialog } from "primereact/confirmdialog";
 import { Message } from "primereact/message";
-import axios from "axios";
+import { Tag } from "primereact/tag";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
-import AsientoContableEditor from "./AsientoContableEditor";
+import { formatearFecha, formatearNumero } from "../../utils/utils";
+import { ESTADO_ASIENTO_CONTABLE, ESTADO_PERIODO_CONTABLE, ESTADO_SEVERITY } from "../../utils/estados.constants";
 import AsientoContableViewer from "./AsientoContableViewer";
 import * as preFacturaAPI from "../../api/preFactura";
 import * as ordenCompraAPI from "../../api/ordenCompra";
 import * as movimientoActivoFijoAPI from "../../api/movimientoActivoFijo";
-/**
- * Obtiene el token JWT desde el store de autenticación
- * @returns {Object} Headers con autorización Bearer
- */
-function getAuthHeaders() {
-  const token = useAuthStore.getState().token;
-  return { Authorization: `Bearer ${token}` };
-}
+import * as saldoCuentaCorrienteAPI from "../../api/saldoCuentaCorriente";
 
 /**
  * Componente genérico para gestionar asientos contables
- * Soporta múltiples tipos de documentos (PreFactura, MovimientoActivoFijo, etc.)
- *
- * @param {Object} props
- * @param {string} props.documentoTipo - Tipo de documento (PreFactura, MovimientoActivoFijo, etc.)
- * @param {BigInt|number} props.documentoId - ID del documento
- * @param {BigInt|number} props.periodoContableId - ID del período contable
- * @param {boolean} props.showAsButton - Si true, muestra botón. Si false, muestra inline
- * @param {Function} props.onAsientoChange - Callback cuando cambia un asiento
+ * Soporta múltiples tipos de documentos (PreFactura, SaldoCuentaCorriente, etc.)
  */
 const AsientoContableManager = ({
   documentoTipo,
   documentoId,
+  empresaId,
   periodoContableId,
   showAsButton = false,
   onAsientoChange,
-  onBeforeGenerate, // ⭐ NUEVO: Callback antes de generar asiento
+  onBeforeGenerate,
 }) => {
   const toast = useRef(null);
+  const usuario = useAuthStore((state) => state.user);
 
-  // ========================================
-  // ESTADOS
-  // ========================================
+  // Estados
   const [asientos, setAsientos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showListDialog, setShowListDialog] = useState(false);
@@ -55,98 +42,30 @@ const AsientoContableManager = ({
   const [selectedAsiento, setSelectedAsiento] = useState(null);
   const [expandedRows, setExpandedRows] = useState(null);
   const [periodoContable, setPeriodoContable] = useState(null);
-  const [warnings, setWarnings] = useState([]); // ⭐ AGREGAR ESTA LÍNEA
+  const [warnings, setWarnings] = useState([]);
 
-  // ========================================
-  // CONFIGURACIÓN POR TIPO DE DOCUMENTO
-  // ========================================
-  const configuraciones = {
-    // Ventas
-    PreFactura: {
-      baseUrl: "/api/pre-facturas",
-      borradorEndpoint: "borrador-asiento",
-      borradorMethod: "GET",
-      guardarEndpoint: "guardar-asiento",
-      eliminarEndpoint: "asiento", // /asiento/:asientoId
-    },
-
-    // Activos Fijos
-    MovimientoActivoFijo: {
-      baseUrl: "/api/movimientos-activo-fijo",
-      borradorEndpoint: "generar-borrador-asiento",
-      borradorMethod: "POST",
-      guardarEndpoint: "guardar-asiento",
-      eliminarEndpoint: "asiento-contable", // /asiento-contable
-    },
-
-    // Flujo de Caja
-    SaldoCuentaCorriente: {
-      baseUrl: "/api/saldos-cuenta-corriente",
-      borradorEndpoint: "borrador-asiento",
-      borradorMethod: "GET",
-      guardarEndpoint: "guardar-asiento",
-      eliminarEndpoint: "asiento", // /asiento/:asientoId
-    },
-
-    // Compras (para futuro)
-    OrdenCompra: {
-      baseUrl: "/api/ordenes-compra",
-      borradorEndpoint: "borrador-asiento",
-      borradorMethod: "GET",
-      guardarEndpoint: "guardar-asiento",
-      eliminarEndpoint: "asiento", // /asiento/:asientoId
-    },
-
-    // Cuentas por Cobrar (para futuro)
-    CuentaPorCobrar: {
-      baseUrl: "/api/cuentas-por-cobrar",
-      borradorEndpoint: "borrador-asiento",
-      borradorMethod: "GET",
-      guardarEndpoint: "guardar-asiento",
-      eliminarEndpoint: "asiento", // /asiento/:asientoId
-    },
-
-    // Cuentas por Pagar (para futuro)
-    CuentaPorPagar: {
-      baseUrl: "/api/cuentas-por-pagar",
-      borradorEndpoint: "borrador-asiento",
-      borradorMethod: "GET",
-      guardarEndpoint: "guardar-asiento",
-      eliminarEndpoint: "asiento", // /asiento/:asientoId
-    },
-
-
-    // ⭐ NUEVO - Deudas con Personal (CTS, Gratificaciones, etc.)
-    DeudaConPersonal: {
-      baseUrl: "/api/deudas-personal",
-      borradorEndpoint: "borrador-asiento",
-      borradorMethod: "GET",
-      guardarEndpoint: "guardar-asiento",
-      eliminarEndpoint: "asiento", // /asiento/:asientoId
-    },
-
-
+  // Mapeo de APIs por tipo de documento
+  const API_MODULES = {
+    PreFactura: preFacturaAPI,
+    SaldoCuentaCorriente: saldoCuentaCorrienteAPI,
+    MovimientoActivoFijo: movimientoActivoFijoAPI,
+    OrdenCompra: ordenCompraAPI,
   };
 
-  const config = configuraciones[documentoTipo];
-  const baseUrl = config?.baseUrl;
+  const api = API_MODULES[documentoTipo];
 
-  // ========================================
-  // VALIDACIONES
-  // ========================================
-  const periodoEstaCerrado = periodoContable?.estado?.descripcion !== "ABIERTO";
+  // Validaciones
+  const periodoEstaCerrado = Number(periodoContable?.estadoId) !== ESTADO_PERIODO_CONTABLE.ABIERTO;
   const puedeGenerar = documentoId && !periodoEstaCerrado;
-  const puedeEditar = !periodoEstaCerrado;
-  const puedeEliminar = !periodoEstaCerrado;
 
-  // ========================================
-  // EFECTOS
-  // ========================================
+  // Efectos
   useEffect(() => {
     if (periodoContableId) {
       cargarPeriodoContable();
+    } else if (documentoId && empresaId) {
+      cargarPeriodoPorDocumento();
     }
-  }, [periodoContableId]);
+  }, [periodoContableId, documentoId, empresaId]);
 
   useEffect(() => {
     if (documentoId) {
@@ -154,41 +73,80 @@ const AsientoContableManager = ({
     }
   }, [documentoId]);
 
-  // ========================================
-  // FUNCIONES DE CARGA
-  // ========================================
+  // Funciones de carga
   const cargarPeriodoContable = async () => {
-    if (!periodoContableId) {
-      return;
-    }
+    if (!periodoContableId) return;
 
     try {
-      const url = `${import.meta.env.VITE_API_URL}/contabilidad/periodo-contable/${periodoContableId}`;
-      const response = await axios.get(url, { headers: getAuthHeaders() });
-      setPeriodoContable(response.data);
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/contabilidad/periodo-contable/${periodoContableId}`,
+        { headers: { Authorization: `Bearer ${useAuthStore.getState().token}` } }
+      );
+      const data = await response.json();
+      setPeriodoContable(data);
     } catch (error) {
-      console.error("  ❌ Error al cargar período contable:", error);
-      console.error("  ❌ Status:", error.response?.status);
-      console.error("  ❌ Data:", error.response?.data);
+      console.error("Error al cargar período contable:", error);
+      setPeriodoContable(null);
+    }
+  };
+
+  const cargarPeriodoPorDocumento = async () => {
+    if (!documentoId || !empresaId || !api) return;
+
+    try {
+      let documento;
+
+      if (documentoTipo === 'PreFactura') {
+        documento = await api.getPreFacturaPorId(documentoId);
+      } else if (documentoTipo === 'SaldoCuentaCorriente') {
+        documento = await api.getSaldoCuentaCorrienteById(documentoId);
+      } else if (documentoTipo === 'MovimientoActivoFijo') {
+        documento = await api.getMovimientoActivoFijoPorId(documentoId);
+      } else if (documentoTipo === 'OrdenCompra') {
+        documento = await api.getOrdenCompraPorId(documentoId);
+      } else {
+        throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
+      }
+
+      const fecha = new Date(documento.fecha || documento.fechaDocumento || documento.fechaContable);
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/contabilidad/periodo-contable/por-fecha?empresaId=${empresaId}&anio=${fecha.getFullYear()}&mes=${fecha.getMonth() + 1}`,
+        { headers: { Authorization: `Bearer ${useAuthStore.getState().token}` } }
+      );
+      const data = await response.json();
+      setPeriodoContable(data);
+    } catch (error) {
+      console.error("Error al cargar período por documento:", error);
       setPeriodoContable(null);
     }
   };
 
   const cargarAsientos = async () => {
-    if (!documentoId || !baseUrl) return [];
+    if (!documentoId || !api) return [];
 
     try {
       setLoading(true);
-      const response = await axios.get(`${baseUrl}/${documentoId}`, {
-        headers: getAuthHeaders(),
-      });
-      const asientosObtenidos = response.data.asientosContables || [];
+      let documento;
+
+      // Usar método específico según tipo de documento
+      if (documentoTipo === 'PreFactura') {
+        documento = await api.getPreFacturaPorId(documentoId);
+      } else if (documentoTipo === 'SaldoCuentaCorriente') {
+        documento = await api.getSaldoCuentaCorrienteById(documentoId);
+      } else if (documentoTipo === 'MovimientoActivoFijo') {
+        documento = await api.getMovimientoActivoFijoPorId(documentoId);
+      } else if (documentoTipo === 'OrdenCompra') {
+        documento = await api.getOrdenCompraPorId(documentoId);
+      } else {
+        throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
+      }
+
+      const asientosObtenidos = documento.asientosContables || [];
       setAsientos(asientosObtenidos);
       return asientosObtenidos;
     } catch (error) {
-      console.error("❌ Error al cargar asientos:", error);
-      console.error("  Status:", error.response?.status);
-      console.error("  Data:", error.response?.data);
+      console.error("Error al cargar asientos:", error);
       setAsientos([]);
       return [];
     } finally {
@@ -196,422 +154,316 @@ const AsientoContableManager = ({
     }
   };
 
-  // ========================================
-  // HANDLER DEL BOTÓN PRINCIPAL
-  // ========================================
-  const handleBotonPrincipal = () => {
-    const tieneAprobados = asientos.some(a => Number(a.estadoId) === 75);
-
-    if (tieneAprobados) {
-      // Si hay asientos aprobados, mostrar lista
-      setShowListDialog(true);
-    } else {
-      // Si no hay aprobados, generar nuevo asiento
-      handleGenerarAsiento();
-    }
-  };
-
-  // ========================================
-  // FUNCIONES DE ACCIONES
-  // ========================================
+  // Función principal de generación/regeneración
   const handleGenerarAsiento = async () => {
     if (!puedeGenerar) {
       toast.current?.show({
         severity: "warn",
-        summary: "Advertencia",
-        detail: "No se puede generar asiento. Verifique que el documento esté guardado y el período esté abierto.",
+        summary: "No se puede generar asiento",
+        detail: periodoEstaCerrado
+          ? "El período contable está cerrado"
+          : "Debe guardar el documento primero",
         life: 4000,
       });
       return;
     }
+
+    if (onBeforeGenerate) {
+      const continuar = await onBeforeGenerate();
+      if (continuar === false) return; // Solo detener si es explícitamente false
+    }
+
     setLoading(true);
 
     try {
-      // ⭐ EJECUTAR CALLBACK ANTES DE GENERAR (si existe)
-      if (onBeforeGenerate && typeof onBeforeGenerate === 'function') {
-        try {
-          await onBeforeGenerate();
-        } catch (error) {
-          // Si el callback falla, abortar generación
+      const asientosActuales = await cargarAsientos();
+      if (asientosActuales.length > 0) {
+        // Verificar estados
+        const tieneAprobados = asientosActuales.some(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.APROBADO);
+        if (tieneAprobados) {
+          const pendientes = asientosActuales.filter(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.PENDIENTE).length;
+          const anulados = asientosActuales.filter(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.ANULADO).length;
+          const aprobados = asientosActuales.filter(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.APROBADO).length;
+          toast.current?.show({
+            severity: "warn",
+            summary: "No se puede regenerar",
+            detail: `Este documento tiene ${aprobados} asiento(s) APROBADO(s) que no pueden modificarse. Pendientes: ${pendientes}, Anulados: ${anulados}`,
+            life: 6000,
+          });
+          setShowListDialog(true);
           setLoading(false);
           return;
         }
-      }
-      if (asientos.length > 0) {
-        // ⭐ YA EXISTE ASIENTO - PREGUNTAR SI REGENERAR
+
+        // Solo pendientes/anulados - preguntar
+        const pendientes = asientosActuales.filter(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.PENDIENTE);
+        const anulados = asientosActuales.filter(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.ANULADO);
+        const totalEliminar = pendientes.length + anulados.length;
         confirmDialog({
-          message: "Ya existe un asiento contable para este documento. ¿Desea eliminarlo y generar uno nuevo?",
+          message: `Se eliminarán ${totalEliminar} asiento(s): ${pendientes.length} PENDIENTE(S) y ${anulados.length} ANULADO(S). ¿Desea continuar?`,
           header: "Regenerar Asiento Contable",
           icon: "pi pi-exclamation-triangle",
           acceptLabel: "Sí, Regenerar",
-          rejectLabel: "Cancelar",
+          rejectLabel: "No, Solo Mostrar",
           accept: async () => {
-            try {
-              // Eliminar asientos existentes
-              const apiModule = documentoTipo === 'PreFactura'
-                ? preFacturaAPI
-                : documentoTipo === 'OrdenCompra'
-                  ? ordenCompraAPI
-                  : movimientoActivoFijoAPI;
-
-              for (const asiento of asientos) {
-                await apiModule.eliminarAsientoContable(documentoId, asiento.id);
-              }
-
-              toast.current?.show({
-                severity: "success",
-                summary: "Asientos Eliminados",
-                detail: "Asientos anteriores eliminados correctamente.",
-                life: 2000,
-              });
-
-              // Recargar y continuar con generación
-              await cargarAsientos();
-
-              // Generar nuevo asiento
-              const urlBorrador = `${baseUrl}/${documentoId}/${config.borradorEndpoint}`;
-              const responseBorrador = config.borradorMethod === "POST"
-                ? await axios.post(urlBorrador, {}, { headers: getAuthHeaders() })
-                : await axios.get(urlBorrador, { headers: getAuthHeaders() });
-              const borradorGenerado = responseBorrador.data;
-
-              if (borradorGenerado.warnings && borradorGenerado.warnings.length > 0) {
-                setWarnings(borradorGenerado.warnings);
-              } else {
-                setWarnings([]);
-              }
-
-              await axios.post(
-                `${baseUrl}/${documentoId}/${config.guardarEndpoint}`,
-                { asientoData: borradorGenerado },
-                { headers: getAuthHeaders() }
-              );
-
-              await cargarAsientos();
-
-              toast.current?.show({
-                severity: "success",
-                summary: "Asiento Regenerado",
-                detail: "Asiento contable regenerado correctamente.",
-                life: 4000,
-              });
-
-              setShowListDialog(true);
-
-              if (onAsientoChange) {
-                onAsientoChange();
-              }
-            } catch (error) {
-              console.error("Error al regenerar asiento:", error);
-              toast.current?.show({
-                severity: "error",
-                summary: "Error",
-                detail: error.response?.data?.message || "Error al regenerar asiento",
-                life: 3000,
-              });
-            }
+            await regenerarAsientos([...pendientes, ...anulados]);
           },
           reject: () => {
             setShowListDialog(true);
+            setLoading(false);
           }
         });
-        setLoading(false);
         return;
       }
-      // ✅ SI NO EXISTE NINGÚN ASIENTO, GENERAR UNO NUEVO
-      const urlBorrador = `${baseUrl}/${documentoId}/${config.borradorEndpoint}`;
-      const responseBorrador = config.borradorMethod === "POST"
-        ? await axios.post(urlBorrador, {}, { headers: getAuthHeaders() })
-        : await axios.get(urlBorrador, { headers: getAuthHeaders() });
-      const borradorGenerado = responseBorrador.data;
 
-      // Capturar warnings si existen
-      if (borradorGenerado.warnings && borradorGenerado.warnings.length > 0) {
-        setWarnings(borradorGenerado.warnings);
+      // No hay asientos - generar nuevo
+      await generarNuevoAsiento();
+    } catch (error) {
+      console.error("Error:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || error.message || "Error al procesar asiento",
+        life: 5000,
+      });
+      setLoading(false);
+    }
+  };
+
+  const regenerarAsientos = async (asientosAEliminar) => {
+    try {
+      // Eliminar asientos según tipo de documento
+      for (const asiento of asientosAEliminar) {
+        if (documentoTipo === 'PreFactura') {
+          await api.eliminarAsientoContable(documentoId, asiento.id);
+        } else if (documentoTipo === 'SaldoCuentaCorriente') {
+          await api.eliminarAsientoContable(documentoId, asiento.id);
+        } else if (documentoTipo === 'MovimientoActivoFijo') {
+          await api.eliminarAsientoContable(documentoId, asiento.id);
+        } else if (documentoTipo === 'OrdenCompra') {
+          await api.eliminarAsientoContable(documentoId, asiento.id);
+        }
+      }
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Asientos eliminados",
+        detail: `${asientosAEliminar.length} asiento(s) eliminado(s)`,
+        life: 3000,
+      });
+
+      await cargarAsientos();
+      await generarNuevoAsiento();
+    } catch (error) {
+      console.error("Error al regenerar:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error al regenerar",
+        detail: error.response?.data?.message || error.message,
+        life: 5000,
+      });
+      setLoading(false);
+    }
+  };
+
+  const generarNuevoAsiento = async () => {
+    try {
+      let borrador;
+
+      // Generar borrador según tipo de documento
+      if (documentoTipo === 'PreFactura') {
+        borrador = await api.obtenerBorradorAsiento(documentoId);
+      } else if (documentoTipo === 'SaldoCuentaCorriente') {
+        borrador = await api.generarBorradorAsiento(documentoId);
+      } else if (documentoTipo === 'MovimientoActivoFijo') {
+        borrador = await api.generarBorradorAsiento(documentoId);
+      } else if (documentoTipo === 'OrdenCompra') {
+        borrador = await api.generarBorradorAsiento(documentoId);
+      } else {
+        throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
+      }
+
+      if (borrador.warnings?.length > 0) {
+        setWarnings(borrador.warnings);
       } else {
         setWarnings([]);
       }
 
-      // Guardar automáticamente en BD
-      await axios.post(
-        `${baseUrl}/${documentoId}/${config.guardarEndpoint}`,
-        { asientoData: borradorGenerado },
-        { headers: getAuthHeaders() }
-      );
-
-      // Recargar lista de asientos
+      // Guardar asiento según tipo de documento
+      let asientoGuardado;
+      if (documentoTipo === 'PreFactura') {
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador);
+      } else if (documentoTipo === 'SaldoCuentaCorriente') {
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
+      } else if (documentoTipo === 'MovimientoActivoFijo') {
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
+      } else if (documentoTipo === 'OrdenCompra') {
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
+      }
       await cargarAsientos();
 
       toast.current?.show({
         severity: "success",
-        summary: "Asiento Generado",
-        detail: "Asiento contable generado y guardado correctamente.",
+        summary: "Asiento generado",
+        detail: "Asiento contable generado correctamente",
         life: 4000,
       });
 
-      // Mostrar lista de asientos
       setShowListDialog(true);
 
-      // Ejecutar callback si existe
       if (onAsientoChange) {
         onAsientoChange();
       }
     } catch (error) {
-      console.error("Error al generar asiento:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: error.response?.data?.message || "Error al generar asiento contable",
-        life: 3000,
-      });
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGuardarAsiento = async (asientoData) => {
-    const esEdicion = asientoData.id !== undefined && asientoData.id !== null;
-    setLoading(true);
-    try {
-      if (esEdicion) {
-        // EDITAR: Actualizar asiento existente
-        await axios.put(
-          `${baseUrl}/${documentoId}/${config.guardarEndpoint}`,
-          { asientoData },
-          { headers: getAuthHeaders() }
-        );
-      } else {
-        // CREAR: Nuevo asiento
-        await axios.post(
-          `${baseUrl}/${documentoId}/${config.guardarEndpoint}`,
-          { asientoData },
-          { headers: getAuthHeaders() }
-        );
-      }
-      toast.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: esEdicion ? "Asiento actualizado correctamente" : "Asiento guardado correctamente",
-        life: 3000,
-      });
-      setShowEditorDialog(false);
-      setBorradorAsiento(null);
-      await cargarAsientos();
-
-      // ⭐ NUEVO: Abrir lista de asientos después de guardar
-      setShowListDialog(true);
-
-      // Ejecutar callback si existe
-      if (onAsientoChange) {
-        onAsientoChange();
-      }
-    } catch (error) {
-      console.error("❌ Error al guardar asiento:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: error.response?.data?.message || "Error al guardar asiento contable",
-        life: 3000,
-      });
-    } finally {
-      setLoading(false);
-    }
+  const handleBotonPrincipal = () => {
+    handleGenerarAsiento();
   };
+
   const handleVerAsiento = (asiento) => {
     setSelectedAsiento(asiento);
     setShowViewerDialog(true);
   };
-  const handleEditarAsiento = async (asiento) => {
-    const esAprobado = Number(asiento.estadoId) === 77;
 
-    if (esAprobado) {
-      // Confirmar antes de editar APROBADO
-      confirmDialog({
-        message: "Está editando un asiento APROBADO. Al guardar, el estado cambiará a PENDIENTE y requerirá nueva aprobación. ¿Desea continuar?",
-        header: "Editar Asiento Aprobado",
-        icon: "pi pi-exclamation-triangle",
-        acceptLabel: "Sí, Editar",
-        rejectLabel: "Cancelar",
-        accept: () => {
-          setBorradorAsiento(asiento);
-          setShowEditorDialog(true);
-        }
+  const handleEliminarAsiento = async (asiento) => {
+    if (Number(asiento.estadoId) === ESTADO_ASIENTO_CONTABLE.APROBADO) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "No se puede eliminar",
+        detail: "No se puede eliminar un asiento APROBADO",
+        life: 4000,
       });
-    } else {
-      // Si no está aprobado, editar directamente
-      setBorradorAsiento(asiento);
-      setShowEditorDialog(true);
+      return;
     }
-  };
 
-  // ========================================
-  // TEMPLATES DE COLUMNAS
-  // ========================================
-  const fechaTemplate = (rowData) => {
-    return new Date(rowData.fechaAsiento).toLocaleDateString("es-PE");
-  };
+    confirmDialog({
+      message: `¿Está seguro de eliminar el asiento ${asiento.numeroAsiento}?`,
+      header: "Confirmar Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Sí, Eliminar",
+      rejectLabel: "Cancelar",
+      accept: async () => {
+        try {
+          // Eliminar según tipo de documento
+          if (documentoTipo === 'PreFactura') {
+            await api.eliminarAsientoContable(documentoId, asiento.id);
+          } else if (documentoTipo === 'SaldoCuentaCorriente') {
+            await api.eliminarAsientoContable(documentoId, asiento.id);
+          } else if (documentoTipo === 'MovimientoActivoFijo') {
+            await api.eliminarAsientoContable(documentoId, asiento.id);
+          } else if (documentoTipo === 'OrdenCompra') {
+            await api.eliminarAsientoContable(documentoId, asiento.id);
+          }
 
-  const tipoLibroTemplate = (rowData) => {
-    const esFiscal = rowData.tipoLibro === "FISCAL";
-    return (
-      <span
-        style={{
-          padding: "0.25rem 0.5rem",
-          borderRadius: "4px",
-          backgroundColor: esFiscal ? "#d4edda" : "#fff3cd",
-          color: esFiscal ? "#155724" : "#856404",
-          fontWeight: "bold",
-          fontSize: "0.85rem",
-        }}
-      >
-        {rowData.tipoLibro}
-      </span>
-    );
+          toast.current?.show({
+            severity: "success",
+            summary: "Asiento eliminado",
+            detail: "Asiento contable eliminado correctamente",
+            life: 3000,
+          });
+          await cargarAsientos();
+          if (onAsientoChange) onAsientoChange();
+        } catch (error) {
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: error.response?.data?.message || "Error al eliminar asiento",
+            life: 5000,
+          });
+        }
+      }
+    });
   };
+  // Templates
+  const fechaTemplate = (rowData) => formatearFecha(new Date(rowData.fechaAsiento));
 
   const estadoTemplate = (rowData) => {
-    const esAprobado = Number(rowData.estadoId) === 77;
-    const esPendiente = Number(rowData.estadoId) === 76;
+    const severity = ESTADO_SEVERITY[rowData.estadoId] || 'info';
+    return <Tag value={rowData.estado?.descripcion} severity={severity} />;
+  };
 
-    let texto = "GENERADO";
-    let bgColor = "#fff3cd";
-    let textColor = "#856404";
-
-    if (esAprobado) {
-      texto = "APROBADO";
-      bgColor = "#d4edda";
-      textColor = "#155724";
-    } else if (esPendiente) {
-      texto = "PENDIENTE";
-      bgColor = "#cfe2ff";
-      textColor = "#084298";
-    }
-
+   const montoTemplate = (rowData, field) => {
+    const monto = Number(rowData[field]);
+    const moneda = rowData.moneda;
     return (
-      <span
-        style={{
-          padding: "0.25rem 0.5rem",
-          borderRadius: "4px",
-          backgroundColor: bgColor,
-          color: textColor,
-          fontWeight: "bold",
-          fontSize: "0.85rem",
-        }}
-      >
-        {texto}
-      </span>
+      <Tag
+        value={`${moneda?.simbolo || ''} ${formatearNumero(monto, 2)}`}
+        style={{ backgroundColor: moneda?.colorFondo || '#6c757d', color: '#000' }}
+      />
     );
   };
 
-  const montoTemplate = (rowData, field) => {
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: "PEN",
-    }).format(rowData[field]);
-  };
+  const tipoLibroTemplate = (rowData) => (
+    <Tag value={rowData.tipoLibro} severity={rowData.tipoLibro === 'FISCAL' ? 'info' : 'secondary'} />
+  );
 
-  const cuadradoTemplate = (rowData) => {
-    const estaCuadrado = rowData.estaCuadrado;
-    return estaCuadrado ? (
-      <i className="pi pi-check-circle" style={{ color: "green", fontSize: "1.2rem" }} />
-    ) : (
-      <i className="pi pi-times-circle" style={{ color: "red", fontSize: "1.2rem" }} />
-    );
-  };
+  const cuadradoTemplate = (rowData) => (
+    <Tag
+      icon={rowData.estaCuadrado ? "pi pi-check" : "pi pi-times"}
+      severity={rowData.estaCuadrado ? "success" : "danger"}
+      value={rowData.estaCuadrado ? "Sí" : "No"}
+    />
+  );
 
-  const accionesTemplate = (rowData) => {
-    return (
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        {/* Editar (solo si período abierto) */}
-        {!periodoEstaCerrado && puedeEditar && (
-          <Button
-            icon="pi pi-pencil"
-            className="p-button-warning p-button-text"
-            onClick={() => handleEditarAsiento(rowData)}
-            tooltip={Number(rowData.estadoId) === 77
-              ? "Editar asiento APROBADO (cambiará a PENDIENTE)"
-              : "Editar asiento"}
-          />
-        )}
-
-        {/* Ver */}
+  const accionesTemplate = (rowData) => (
+    <div style={{ display: "flex", gap: "0.5rem" }}>
+      <Button
+        icon="pi pi-eye"
+        className="p-button-info p-button-sm"
+        onClick={() => handleVerAsiento(rowData)}
+        tooltip="Ver asiento"
+      />
+      {Number(rowData.estadoId) !== ESTADO_ASIENTO_CONTABLE.APROBADO && !periodoEstaCerrado && (
         <Button
-          icon="pi pi-eye"
-          className="p-button-info p-button-text"
-          onClick={() => handleVerAsiento(rowData)}
-          tooltip="Ver asiento completo"
+          icon="pi pi-trash"
+          className="p-button-danger p-button-sm"
+          onClick={() => handleEliminarAsiento(rowData)}
+          tooltip="Eliminar asiento"
         />
-      </div>
-    );
-  };
+      )}
+    </div>
+  );
 
-  // ========================================
-  // TEMPLATE DE EXPANSIÓN
-  // ========================================
-  const rowExpansionTemplate = (rowData) => {
-    const detalles = rowData.detalles || [];
+  const rowExpansionTemplate = (data) => (
+    <div className="p-3">
+      <h5>Detalles del Asiento</h5>
+      <DataTable value={data.detalles} size="small">
+        <Column field="numeroLinea" header="#" style={{ width: "50px" }} />
+        <Column field="planCuenta.codigoCuenta" header="Cuenta" />
+        <Column field="planCuenta.nombreCuenta" header="Descripción" />
+        <Column field="glosa" header="Glosa" />
+        <Column
+          field="debe"
+          header="Debe"
+          body={(row) => formatearNumero(Number(row.debe), 2)}
+          style={{ textAlign: "right" }}
+        />
+        <Column
+          field="haber"
+          header="Haber"
+          body={(row) => formatearNumero(Number(row.haber), 2)}
+          style={{ textAlign: "right" }}
+        />
+      </DataTable>
+    </div>
+  );
 
-    return (
-      <div style={{ padding: "1rem" }}>
-        <h4>Detalles del Asiento</h4>
-
-        <DataTable
-          value={detalles}
-          stripedRows
-          showGridlines
-          size="small"
-        >
-          <Column field="numeroLinea" header="Línea" style={{ width: "80px" }} />
-          <Column
-            field="planCuenta.codigoCuenta"
-            header="Cuenta"
-            body={(data) => `${data.planCuenta?.codigoCuenta || ''} - ${data.planCuenta?.nombreCuenta || ''}`}
-          />
-          <Column field="glosa" header="Glosa" />
-          <Column
-            field="debe"
-            header="Debe"
-            body={(data) => montoTemplate(data, "debe")}
-            style={{ textAlign: "right" }}
-          />
-          <Column
-            field="haber"
-            header="Haber"
-            body={(data) => montoTemplate(data, "haber")}
-            style={{ textAlign: "right" }}
-          />
-        </DataTable>
-      </div>
-    );
-  };
-
-  // ========================================
-  // CONTENIDO PRINCIPAL (LISTA)
-  // ========================================
+  // Renderizado del contenido
   const contenido = (
     <div>
-      {/* Mostrar warnings si existen */}
+      <Toast ref={toast} />
       {warnings.length > 0 && (
         <Message
           severity="warn"
+          text={`Advertencias: ${warnings.join(", ")}`}
           style={{ marginBottom: "1rem", width: "100%" }}
-          content={
-            <div>
-              <strong>⚠️ Advertencias del Asiento Contable:</strong>
-              <ul style={{ marginTop: "0.5rem", marginBottom: 0, paddingLeft: "1.5rem" }}>
-                {warnings.map((warning, index) => (
-                  <li key={index}>{warning}</li>
-                ))}
-              </ul>
-              <div style={{ marginTop: "0.5rem", fontSize: "0.9rem" }}>
-                <strong>Recomendación:</strong> Configure las cuentas contables en los productos para generar asientos más precisos.
-              </div>
-            </div>
-          }
         />
       )}
-
-      {/* Lista de asientos */}
       <DataTable
         value={asientos}
         loading={loading}
@@ -625,82 +477,16 @@ const AsientoContableManager = ({
         size="small"
       >
         <Column expander style={{ width: "3em" }} />
-        <Column
-          field="numeroAsiento"
-          header="Número Asiento"
-          style={{ minWidth: "180px" }}
-          sortable
-        />
-        <Column
-          field="fechaAsiento"
-          header="Fecha"
-          body={fechaTemplate}
-          style={{ minWidth: "120px" }}
-          sortable
-        />
-        <Column
-          field="tipoLibro"
-          header="Tipo Libro"
-          body={tipoLibroTemplate}
-          style={{ minWidth: "130px" }}
-          sortable
-        />
-        <Column
-          header="Estado"
-          body={estadoTemplate}
-          style={{ minWidth: "130px" }}
-        />
-        <Column
-          field="totalDebe"
-          header="Total Debe"
-          body={(rowData) => montoTemplate(rowData, "totalDebe")}
-          style={{ minWidth: "150px", textAlign: "right" }}
-        />
-        <Column
-          field="totalHaber"
-          header="Total Haber"
-          body={(rowData) => montoTemplate(rowData, "totalHaber")}
-          style={{ minWidth: "150px", textAlign: "right" }}
-        />
-        <Column
-          header="Cuadrado"
-          body={cuadradoTemplate}
-          style={{ minWidth: "100px", textAlign: "center" }}
-        />
-        <Column
-          header="Acciones"
-          body={accionesTemplate}
-          style={{ minWidth: "120px" }}
-        />
+        <Column field="numeroAsiento" header="Número Asiento" sortable />
+        <Column field="fechaAsiento" header="Fecha" body={fechaTemplate} sortable />
+        <Column field="tipoLibro" header="Tipo Libro" body={tipoLibroTemplate} sortable />
+        <Column header="Estado" body={estadoTemplate} />
+        <Column field="totalDebe" header="Total Debe" body={(row) => montoTemplate(row, "totalDebe")} style={{ textAlign: "right" }} />
+        <Column field="totalHaber" header="Total Haber" body={(row) => montoTemplate(row, "totalHaber")} style={{ textAlign: "right" }} />
+        <Column header="Cuadrado" body={cuadradoTemplate} style={{ textAlign: "center" }} />
+        <Column header="Acciones" body={accionesTemplate} />
       </DataTable>
 
-      {/* Diálogo para generar/editar asiento */}
-      <Dialog
-        visible={showEditorDialog}
-        onHide={() => {
-          setShowEditorDialog(false);
-          setBorradorAsiento(null);
-          setWarnings([]);
-        }}
-        header="Generar Asiento Contable"
-        style={{ width: "95vw", maxWidth: "1400px" }}
-        maximizable
-        modal
-      >
-        {borradorAsiento && (
-          <AsientoContableEditor
-            borradorAsiento={borradorAsiento}
-            onGuardar={handleGuardarAsiento}
-            onCancelar={() => {
-              setShowEditorDialog(false);
-              setBorradorAsiento(null);
-            }}
-            loading={loading}
-          />
-        )}
-      </Dialog>
-
-      {/* Diálogo para ver asiento */}
       <Dialog
         visible={showViewerDialog}
         onHide={() => {
@@ -725,21 +511,23 @@ const AsientoContableManager = ({
     </div>
   );
 
-  // ========================================
-  // RENDERIZADO
-  // ========================================
-
-  // Si showAsButton es true, mostrar como botón
+  // Renderizado como botón
   if (showAsButton) {
-    const tieneAprobados = asientos.some(a => Number(a.estadoId) === 75);
-    const labelBoton = tieneAprobados ? "Mostrar Asientos" : "Generar Asiento";
-    const iconoBoton = tieneAprobados ? "pi pi-eye" : "pi pi-book";
-    const colorBoton = tieneAprobados ? "p-button-success" : "p-button-info";
+    const pendientes = asientos.filter(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.PENDIENTE).length;
+    const aprobados = asientos.filter(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.APROBADO).length;
+    const anulados = asientos.filter(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.ANULADO).length;
+    const total = asientos.length;
+
+    const tieneAsientos = total > 0;
+    const tieneAprobados = aprobados > 0;
+    const labelBoton = tieneAsientos ? "Regenerar Asientos" : "Generar Asientos";
+    const iconoBoton = tieneAsientos ? "pi pi-refresh" : "pi pi-book";
+    const colorBoton = tieneAprobados ? "p-button-success" : tieneAsientos ? "p-button-warning" : "p-button-info";
 
     return (
       <>
         <Toast ref={toast} />
-        <div style={{ display: "flex", gap: "0.5rem" }}>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
           <Button
             label={labelBoton}
             icon={iconoBoton}
@@ -747,16 +535,14 @@ const AsientoContableManager = ({
             onClick={handleBotonPrincipal}
             disabled={!documentoId || loading}
             loading={loading}
-            tooltip={
-              !documentoId
-                ? "Guarde el documento primero"
-                : periodoEstaCerrado
-                  ? "Período contable cerrado - Solo lectura"
-                  : tieneAprobados
-                    ? "Ver asientos contables generados"
-                    : "Generar nuevo asiento contable"
-            }
           />
+          {tieneAsientos && (
+            <div style={{ display: "flex", gap: "0.25rem" }}>
+              {pendientes > 0 && <Tag value={`${pendientes} P`} severity="warning" />}
+              {aprobados > 0 && <Tag value={`${aprobados} A`} severity="success" />}
+              {anulados > 0 && <Tag value={`${anulados} X`} severity="danger" />}
+            </div>
+          )}
         </div>
 
         <Dialog
@@ -765,9 +551,7 @@ const AsientoContableManager = ({
             setShowListDialog(false);
             setWarnings([]);
           }}
-          header={periodoEstaCerrado
-            ? "Asientos Contables (Solo lectura - Período cerrado)"
-            : "Asientos Contables"}
+          header={periodoEstaCerrado ? "Asientos Contables (Solo lectura - Período cerrado)" : "Asientos Contables"}
           style={{ width: "95vw" }}
           maximizable
           modal
@@ -785,7 +569,6 @@ const AsientoContableManager = ({
     );
   }
 
-  // Si showAsButton es false, mostrar inline
   return contenido;
 };
 

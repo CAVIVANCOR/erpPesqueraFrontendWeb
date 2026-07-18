@@ -30,6 +30,7 @@ import { getCentrosCosto } from "../api/centroCosto";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 
 export default function SaldoCuentaCorriente({ ruta }) {
   const { usuario } = useAuthStore();
@@ -45,9 +46,11 @@ export default function SaldoCuentaCorriente({ ruta }) {
   const [empresas, setEmpresas] = useState([]);
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [empresaFilter, setEmpresaFilter] = useState(null);
+  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [cuentaFilter, setCuentaFilter] = useState(null);
   const [rangoFechasFilter, setRangoFechasFilter] = useState(null); // ✅ Un solo estado para el rango
   const [conciliadoFilter, setConciliadoFilter] = useState(null);
+  const [asientoFilter, setAsientoFilter] = useState('TODOS'); // TODOS, PENDIENTE, GENERADO
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
@@ -73,23 +76,23 @@ export default function SaldoCuentaCorriente({ ruta }) {
 
   useEffect(() => {
     filtrarItems();
-  }, [items, empresaFilter, cuentaFilter, rangoFechasFilter, conciliadoFilter]);
+  }, [items, empresaFilter, cuentaFilter, rangoFechasFilter, conciliadoFilter, asientoFilter]);
 
-    // ✅ Limpiar filtro de cuenta cuando cambia la empresa
+  // ✅ Limpiar filtro de cuenta cuando cambia la empresa
   useEffect(() => {
     if (empresaFilter && cuentaFilter) {
       // Verificar si la cuenta seleccionada pertenece a la empresa filtrada
       const cuentaSeleccionada = cuentasCorrientes.find(
         (c) => Number(c.id) === Number(cuentaFilter)
       );
-      
+
       if (cuentaSeleccionada && Number(cuentaSeleccionada.empresaId) !== Number(empresaFilter)) {
         // Si la cuenta no pertenece a la empresa, limpiar el filtro de cuenta
         setCuentaFilter(null);
       }
     }
   }, [empresaFilter, cuentasCorrientes]);
-  
+
   const cargarDatos = async () => {
     setLoading(true);
     try {
@@ -157,9 +160,14 @@ export default function SaldoCuentaCorriente({ ruta }) {
       filtrados = filtrados.filter((item) => item.conciliado === conciliadoFilter);
     }
 
+    if (asientoFilter === 'PENDIENTE') {
+      filtrados = filtrados.filter((item) => !item.asientosContables || item.asientosContables.length === 0);
+    } else if (asientoFilter === 'GENERADO') {
+      filtrados = filtrados.filter((item) => item.asientosContables && item.asientosContables.length > 0);
+    }
+
     setItemsFiltrados(filtrados);
   };
-
   const onNew = () => {
     if (!permisos.puedeCrear) {
       toast.current?.show({
@@ -782,15 +790,15 @@ export default function SaldoCuentaCorriente({ ruta }) {
               }}
             >
               <div style={{ flex: 1 }}>
-                <label htmlFor="empresaFilter">Filtrar por Empresa</label>
-                <Dropdown
-                  id="empresaFilter"
-                  value={empresaFilter}
-                  options={empresaOptions}
-                  onChange={(e) => setEmpresaFilter(e.value)}
-                  placeholder="Todas"
-                  showClear
-                  style={{ width: "100%" }}
+                <label htmlFor="empresaFilter" style={{ fontWeight: "bold" }}>
+                  Empresa*
+                </label>
+                <EmpresaSelector
+                  empresaId={usuario?.empresaId}
+                  onEmpresaChange={(id) => {
+                    setEmpresaIdSelector(id);
+                    setEmpresaFilter(id);
+                  }}
                 />
               </div>
               <div style={{ flex: 1.5 }}>
@@ -830,6 +838,26 @@ export default function SaldoCuentaCorriente({ ruta }) {
                   onChange={(e) => setConciliadoFilter(e.value)}
                   placeholder="Todos"
                   showClear
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="asientoctactegenerado">Asiento</label>
+                <Button
+                  id="asientoctactegenerado"
+                  label={asientoFilter === 'TODOS' ? 'Todos' : asientoFilter === 'PENDIENTE' ? 'Pendiente' : 'Generado'}
+                  icon="pi pi-file"
+                  className={`p-button-sm ${asientoFilter === 'TODOS' ? 'p-button-secondary' : asientoFilter === 'PENDIENTE' ? 'p-button-warning' : 'p-button-success'}`}
+                  onClick={() => {
+                    if (asientoFilter === 'TODOS') {
+                      setAsientoFilter('PENDIENTE');
+                    } else if (asientoFilter === 'PENDIENTE') {
+                      setAsientoFilter('GENERADO');
+                    } else {
+                      setAsientoFilter('TODOS');
+                    }
+                  }}
+                  tooltip="Filtrar por estado de asiento contable"
                   style={{ width: "100%" }}
                 />
               </div>
@@ -909,6 +937,19 @@ export default function SaldoCuentaCorriente({ ruta }) {
           header="Conciliado"
           body={conciliadoBodyTemplate}
           sortable
+        />
+        <Column
+          header="Asiento"
+          body={(rowData) => {
+            const tieneAsientos = rowData.asientosContables && rowData.asientosContables.length > 0;
+            return tieneAsientos ? (
+              <Tag value="GENERADO" severity="success" icon="pi pi-check" />
+            ) : (
+              <Tag value="PENDIENTE" severity="warning" icon="pi pi-clock" />
+            );
+          }}
+          sortable
+          style={{ textAlign: "center", width: "120px" }}
         />
         <Column body={actionBodyTemplate} header="Acciones" style={{ width: "180px" }} />
       </DataTable>

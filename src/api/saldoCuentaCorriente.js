@@ -222,3 +222,22 @@ export const guardarAsientoContable = async (saldoId, asientoData, creadoPor) =>
     throw error;
   }
 };
+
+
+/**
+ * Elimina un asiento contable asociado al saldo
+ * @param {number} saldoId - ID del saldo
+ * @param {number} asientoId - ID del asiento a eliminar
+ * @returns {Promise<Object>} Confirmación de eliminación
+ */
+export const eliminarAsientoContable = async (saldoId, asientoId) => {
+  try {
+    const response = await axios.delete(`${API_URL}/${saldoId}/asiento/${asientoId}`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al eliminar asiento contable:', error);
+    throw error;
+  }
+};

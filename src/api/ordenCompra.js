@@ -138,6 +138,45 @@ export async function eliminarAsientoContable(ordenCompraId, asientoId) {
 }
 
 
+/**
+ * Generar borrador de asiento contable para OrdenCompra
+ * @param {number} ordenCompraId - ID de la orden de compra
+ * @returns {Promise<Object>} - Borrador del asiento
+ */
+export async function generarBorradorAsiento(ordenCompraId) {
+  try {
+    const response = await axios.get(
+      `${API_URL}/${ordenCompraId}/borrador-asiento`,
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error al generar borrador de asiento:", error);
+    throw error;
+  }
+}
+
+/**
+ * Guardar asiento contable de OrdenCompra
+ * @param {number} ordenCompraId - ID de la orden de compra
+ * @param {Object} asientoData - Datos del asiento
+ * @param {number} usuarioId - ID del usuario
+ * @returns {Promise<Object>} - Asiento guardado
+ */
+export async function guardarAsientoContable(ordenCompraId, asientoData, usuarioId) {
+  try {
+    const response = await axios.post(
+      `${API_URL}/${ordenCompraId}/guardar-asiento`,
+      { ...asientoData, creadoPor: usuarioId },
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error al guardar asiento contable:", error);
+    throw error;
+  }
+}
+
 
 export async function asignarCentroCostoMasivo(centroCostoId, ordenesIds) {
   const res = await axios.put(

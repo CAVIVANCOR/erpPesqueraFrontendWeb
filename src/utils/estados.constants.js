@@ -106,7 +106,7 @@ export const ESTADO_SEVERITY = {
   [ESTADO_ASIENTO_CONTABLE.PENDIENTE]: 'warning',
   [ESTADO_ASIENTO_CONTABLE.APROBADO]: 'contrast',
   [ESTADO_ASIENTO_CONTABLE.ANULADO]: 'danger',
-  
+
   // Cuenta por Pagar
   [ESTADO_CUENTA_POR_PAGAR.PENDIENTE]: 'danger',
   [ESTADO_CUENTA_POR_PAGAR.PAGO_PARCIAL]: 'warning',
@@ -114,7 +114,7 @@ export const ESTADO_SEVERITY = {
   [ESTADO_CUENTA_POR_PAGAR.VENCIDO]: 'danger',
   [ESTADO_CUENTA_POR_PAGAR.ANULADO]: 'secondary',
   [ESTADO_CUENTA_POR_PAGAR.CANJEADO]: 'contrast',
-  
+
   // Orden de Compra
   [ESTADO_ORDEN_COMPRA.PENDIENTE]: 'warning',
   [ESTADO_ORDEN_COMPRA.APROBADO]: 'success',
@@ -122,6 +122,11 @@ export const ESTADO_SEVERITY = {
   [ESTADO_ORDEN_COMPRA.KARDEX_GENERADO]: 'success',
   [ESTADO_ORDEN_COMPRA.PARTICIONADA]: 'secondary',
   [ESTADO_ORDEN_COMPRA.FACTURADA]: 'contrast',
+
+  // Período Contable
+  73: 'contrast',  // ABIERTO
+  74: 'warning',   // CERRADO
+  75: 'danger',    // BLOQUEADO
 };
 
 // ────────────────────────────────────────────────────────────

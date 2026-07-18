@@ -26,6 +26,7 @@ import AsientoContableManager from "../common/AsientoContableManager";
 import { crearDetallePreFactura } from "../../api/detallePreFactura";
 import { ESTADO_PREFACTURA } from "../../utils/estados.constants";
 import { getPreFacturaPorId } from "../../api/preFactura";
+import { confirmDialog } from "primereact/confirmdialog";
 
 export default function PreFacturaForm({
   isEdit,
@@ -898,8 +899,9 @@ export default function PreFacturaForm({
         detail: "Los totales están en cero. Verifique los detalles de la PreFactura.",
         life: 5000,
       });
-      throw new Error("Totales en cero");
+      return false; // Detener generación
     }
+    return true; // Continuar generación
   };
 
   const handleClienteCreado = async (cliente) => {

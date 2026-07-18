@@ -11,8 +11,9 @@ import {
   crearSaldoCuentaCorriente,
   actualizarSaldoCuentaCorriente,
 } from "../../api/saldoCuentaCorriente";
-import CardAsientoContable from "../common/CardAsientoContable";
+import AsientoContableManager from "../common/AsientoContableManager";
 import CuentaCorrienteSelector from "../common/CuentaCorrienteSelector";
+import { ConfirmDialog } from "primereact/confirmdialog";
 
 export default function SaldoCuentaCorrienteForm({
   isEdit = false,
@@ -20,7 +21,6 @@ export default function SaldoCuentaCorrienteForm({
   centrosCosto = [],
   onSubmit,
   onCancel,
-  onGenerarAsiento,
   loading = false,
   readOnly = false,
 }) {
@@ -30,6 +30,7 @@ export default function SaldoCuentaCorrienteForm({
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null); // ← NUEVO ESTADO
 
   const [formData, setFormData] = useState({
+    id: defaultValues?.id || null,
     cuentaCorrienteId: defaultValues?.cuentaCorrienteId || null,
     empresaId: defaultValues?.empresaId !== undefined ? Number(defaultValues.empresaId) : null,
     fecha: defaultValues?.fecha ? new Date(defaultValues.fecha) : new Date(),
@@ -49,6 +50,7 @@ export default function SaldoCuentaCorrienteForm({
 
   useEffect(() => {
     setFormData({
+      id: defaultValues?.id || null,
       cuentaCorrienteId: defaultValues?.cuentaCorrienteId
         ? Number(defaultValues.cuentaCorrienteId)
         : null,
@@ -77,6 +79,22 @@ export default function SaldoCuentaCorrienteForm({
       setMonedaSeleccionada(defaultValues.cuentaCorriente.moneda);
     }
   }, [defaultValues]);
+
+  // ⭐ CALLBACK para AsientoContableManager
+  const handleBeforeGenerateAsiento = async () => {
+    // Validar que exista el saldo
+    if (!formData.id) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Debe guardar el saldo antes de generar el asiento contable.",
+        life: 5000,
+      });
+      throw new Error("Saldo no guardado");
+    }
+  };
+
+
   // Calcular saldo actual automáticamente
   useEffect(() => {
     const calculado =
@@ -401,20 +419,21 @@ export default function SaldoCuentaCorrienteForm({
               </div>
             </form>
           </TabPanel>
-
-          {/* TAB 2: ASIENTO CONTABLE */}
-          {isEdit && (
-            <TabPanel header="Asientos Contables" leftIcon="pi pi-book">
-              <CardAsientoContable
-                asientosContables={defaultValues?.asientosContables || []}
-                saldoCuentaCorrienteId={defaultValues?.id}
-                onGenerarAsiento={() => onGenerarAsiento(defaultValues)}
-                disabled={loading || guardando}
-                loading={loading || guardando}
-              />
-            </TabPanel>
-          )}
         </TabView>
+
+        {/* Componente genérico de asientos contables */}
+        {isEdit && formData.id && (
+          <div style={{ marginTop: "1rem" }}>
+            <AsientoContableManager
+              documentoId={formData.id}
+              documentoTipo="SaldoCuentaCorriente"
+              empresaId={formData.empresaId}
+              periodoContableId={undefined}
+              showAsButton={true}
+              onBeforeGenerate={handleBeforeGenerateAsiento}
+            />
+          </div>
+        )}
 
         {/* Botones de acción */}
         <div
@@ -458,6 +477,7 @@ export default function SaldoCuentaCorrienteForm({
             size="small"
           />
         </div>
+        <ConfirmDialog />
       </div>
     </>
   );
