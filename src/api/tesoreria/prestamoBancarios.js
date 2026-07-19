@@ -96,3 +96,18 @@ export async function desvincularPrestamoDeSublinea(prestamoId) {
   );
   return res.data;
 }
+
+export async function generarBorradorAsiento(id) {
+  const res = await axios.get(`${API_URL}/${id}/generar-borrador-asiento`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function guardarAsientoContable(id, asientoData, creadoPor) {
+  const res = await axios.post(`${API_URL}/${id}/guardar-asiento`, { asientoData, creadoPor }, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function eliminarAsientoContable(id, asientoId) {
+  const res = await axios.delete(`${API_URL}/${id}/asiento/${asientoId}`, { headers: getAuthHeaders() });
+  return res.data;
+}

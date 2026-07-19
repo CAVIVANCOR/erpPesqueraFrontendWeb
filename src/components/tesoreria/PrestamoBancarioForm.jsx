@@ -38,8 +38,8 @@ import DocPrestamoAdicional from "./DocPrestamoAdicional";
 import { getTipoPrestamoActivos } from "../../api/tesoreria/tipoPrestamo";
 import { obtenerTipoCambio } from "../../api/tesoreria/lineaCredito";
 import { getSublineasCreditoPorLinea } from "../../api/tesoreria/sublineaCredito";
-import CardAsientoContable from "../common/CardAsientoContable";
 import { Panel } from "primereact/panel";
+import AsientoContableManager from "../common/AsientoContableManager";
 
 const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   {
@@ -167,6 +167,21 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   const monedaIdWatch = watch("monedaId");
   const fechaDesembolsoWatch = watch("fechaDesembolso");
   const lineaCreditoIdWatch = watch("lineaCreditoId");
+
+
+  // ⭐ CALLBACK para AsientoContableManager
+  const handleBeforeGenerateAsiento = async () => {
+    if (!defaultValues?.id) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Debe guardar el préstamo antes de generar el asiento contable.",
+        life: 5000,
+      });
+      throw new Error("Préstamo no guardado");
+    }
+  };
+
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -1993,6 +2008,20 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
           />
         </TabPanel>
       </TabView>
+
+      {/* Componente genérico de asientos contables */}
+      {isEdit && defaultValues?.id && (
+        <div style={{ marginTop: "1rem" }}>
+          <AsientoContableManager
+            documentoId={defaultValues.id}
+            documentoTipo="PrestamoBancario"
+            empresaId={watch("empresaId")}
+            periodoContableId={undefined}
+            showAsButton={true}
+            onBeforeGenerate={handleBeforeGenerateAsiento}
+          />
+        </div>
+      )}
 
       {/* BOTONES DE ACCIÓN - SIEMPRE VISIBLES */}
       {!readOnly && (

@@ -15,6 +15,7 @@ import * as preFacturaAPI from "../../api/preFactura";
 import * as ordenCompraAPI from "../../api/ordenCompra";
 import * as movimientoActivoFijoAPI from "../../api/movimientoActivoFijo";
 import * as saldoCuentaCorrienteAPI from "../../api/saldoCuentaCorriente";
+import * as prestamoBancariosAPI from "../../api/tesoreria/prestamoBancarios";
 
 /**
  * Componente genérico para gestionar asientos contables
@@ -31,7 +32,6 @@ const AsientoContableManager = ({
 }) => {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.user);
-
   // Estados
   const [asientos, setAsientos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -50,10 +50,10 @@ const AsientoContableManager = ({
     SaldoCuentaCorriente: saldoCuentaCorrienteAPI,
     MovimientoActivoFijo: movimientoActivoFijoAPI,
     OrdenCompra: ordenCompraAPI,
+    PrestamoBancario: prestamoBancariosAPI,
   };
 
   const api = API_MODULES[documentoTipo];
-
   // Validaciones
   const periodoEstaCerrado = Number(periodoContable?.estadoId) !== ESTADO_PERIODO_CONTABLE.ABIERTO;
   const puedeGenerar = documentoId && !periodoEstaCerrado;
@@ -104,12 +104,18 @@ const AsientoContableManager = ({
         documento = await api.getMovimientoActivoFijoPorId(documentoId);
       } else if (documentoTipo === 'OrdenCompra') {
         documento = await api.getOrdenCompraPorId(documentoId);
+      } else if (documentoTipo === 'PrestamoBancario') {
+        documento = await api.getPrestamoBancarioById(documentoId);
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
 
-      const fecha = new Date(documento.fecha || documento.fechaDocumento || documento.fechaContable);
-
+      let fecha;
+      if (documentoTipo === 'PrestamoBancario') {
+        fecha = new Date(documento.fechaDesembolso);
+      } else {
+        fecha = new Date(documento.fecha || documento.fechaDocumento || documento.fechaContable);
+      }
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/contabilidad/periodo-contable/por-fecha?empresaId=${empresaId}&anio=${fecha.getFullYear()}&mes=${fecha.getMonth() + 1}`,
         { headers: { Authorization: `Bearer ${useAuthStore.getState().token}` } }
@@ -138,6 +144,8 @@ const AsientoContableManager = ({
         documento = await api.getMovimientoActivoFijoPorId(documentoId);
       } else if (documentoTipo === 'OrdenCompra') {
         documento = await api.getOrdenCompraPorId(documentoId);
+      } else if (documentoTipo === 'PrestamoBancario') {
+        documento = await api.getPrestamoBancarioById(documentoId);
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
@@ -242,6 +250,8 @@ const AsientoContableManager = ({
           await api.eliminarAsientoContable(documentoId, asiento.id);
         } else if (documentoTipo === 'OrdenCompra') {
           await api.eliminarAsientoContable(documentoId, asiento.id);
+        } else if (documentoTipo === 'PrestamoBancario') {
+          await api.eliminarAsientoContable(documentoId, asiento.id);
         }
       }
 
@@ -279,10 +289,11 @@ const AsientoContableManager = ({
         borrador = await api.generarBorradorAsiento(documentoId);
       } else if (documentoTipo === 'OrdenCompra') {
         borrador = await api.generarBorradorAsiento(documentoId);
+      } else if (documentoTipo === 'PrestamoBancario') {
+        borrador = await api.generarBorradorAsiento(documentoId);
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
-
       if (borrador.warnings?.length > 0) {
         setWarnings(borrador.warnings);
       } else {
@@ -298,6 +309,8 @@ const AsientoContableManager = ({
       } else if (documentoTipo === 'MovimientoActivoFijo') {
         asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
       } else if (documentoTipo === 'OrdenCompra') {
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
+      } else if (documentoTipo === 'PrestamoBancario') {
         asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
       }
       await cargarAsientos();
@@ -387,7 +400,7 @@ const AsientoContableManager = ({
     return <Tag value={rowData.estado?.descripcion} severity={severity} />;
   };
 
-   const montoTemplate = (rowData, field) => {
+  const montoTemplate = (rowData, field) => {
     const monto = Number(rowData[field]);
     const moneda = rowData.moneda;
     return (

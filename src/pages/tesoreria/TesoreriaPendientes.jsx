@@ -43,6 +43,7 @@ import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { getAllTipoMovEntregaRendir } from "../../api/tipoMovEntregaRendir";
 import { getAllTiposDetraccion } from "../../api/tipoDetraccion";
 import { getTiposRetencionPercepcion } from "../../api/tesoreria/tipoRetencionPercepcion";
+import ActualizarCuotasVencidasButton from "../../components/tesoreria/ActualizarCuotasVencidasButton";
 
 const TesoreriaPendientes = () => {
   // Refs
@@ -404,6 +405,14 @@ const TesoreriaPendientes = () => {
           <EmpresaSelector
             empresaId={usuario?.empresaId}
             onEmpresaChange={(id) => handleFiltroChange("empresaId", id)}
+          />
+        </div>
+        <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: "4px" }}>
+          <ActualizarCuotasVencidasButton
+            toast={toast}
+            onSuccess={() => {
+              recargarPendientes();
+            }}
           />
         </div>
       </div>
