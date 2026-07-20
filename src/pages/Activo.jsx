@@ -261,7 +261,11 @@ const Activo = ({ ruta }) => {
   const monedaTemplate = (rowData) => {
     return rowData.moneda?.codigoSunat || "-";
   };
-
+  const cuentaContableTemplate = (rowData) => {
+    return rowData.cuentaContable
+      ? `${rowData.cuentaContable.codigoCuenta} - ${rowData.cuentaContable.nombreCuenta}`
+      : "-";
+  };
   const accionesTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
@@ -438,6 +442,12 @@ const Activo = ({ ruta }) => {
           body={monedaTemplate}
           sortable
           style={{ minWidth: "90px" }}
+        />
+        <Column
+          header="Cuenta Contable"
+          body={cuentaContableTemplate}
+          sortable
+          style={{ minWidth: "250px" }}
         />
         <Column
           body={accionesTemplate}

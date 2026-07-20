@@ -28,6 +28,7 @@ import { crearActivo, actualizarActivo } from "../../api/activo";
 import { getTiposActivo } from "../../api/tipoActivo";
 import { getEmpresas } from "../../api/empresa";
 import { getMonedas } from "../../api/moneda";
+import PlanCuentaContableSelector from "../common/PlanCuentaContableSelector";
 
 // Esquema de validación con Yup
 const esquemaValidacion = yup.object().shape({
@@ -72,6 +73,12 @@ const esquemaValidacion = yup.object().shape({
     .transform((value, originalValue) => {
       return originalValue === "" ? null : value;
     }),
+  cuentaContableId: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
 });
 
 const ActivoForm = ({
@@ -108,6 +115,7 @@ const ActivoForm = ({
       depreciacionAcumulada: null,
       vidaUtilAnios: null,
       monedaId: null,
+      cuentaContableId: null,
     },
   });
 
@@ -133,6 +141,8 @@ const ActivoForm = ({
       setValue("depreciacionAcumulada", activo.depreciacionAcumulada || null);
       setValue("vidaUtilAnios", activo.vidaUtilAnios || null);
       setValue("monedaId", activo.monedaId ? Number(activo.monedaId) : null);
+      setValue("cuentaContableId", activo.cuentaContableId ? Number(activo.cuentaContableId) : null);
+
     } else {
       // Modo creación: usar filtros iniciales si existen
       reset({
@@ -146,6 +156,7 @@ const ActivoForm = ({
         depreciacionAcumulada: null,
         vidaUtilAnios: null,
         monedaId: null,
+        cuentaContableId: null,
       });
     }
   }, [activo, empresaIdInicial, tipoIdInicial, setValue, reset]);
@@ -193,6 +204,7 @@ const ActivoForm = ({
         depreciacionAcumulada: data.depreciacionAcumulada || null,
         vidaUtilAnios: data.vidaUtilAnios || null,
         monedaId: data.monedaId ? Number(data.monedaId) : null,
+        cuentaContableId: data.cuentaContableId ? Number(data.cuentaContableId) : null,
       };
 
       if (esEdicion) {
@@ -465,6 +477,28 @@ const ActivoForm = ({
               {errors.monedaId.message}
             </small>
           )}
+        </div>
+
+        {/* Cuenta Contable */}
+        <div className="field">
+          <Controller
+            name="cuentaContableId"
+            control={control}
+            render={({ field }) => (
+              <PlanCuentaContableSelector
+                value={field.value ? Number(field.value) : null}
+                onChange={(id) => field.onChange(id)}
+                label="Cuenta Contable (Clase 33)"
+                placeholder="Seleccionar Cuenta Contable"
+                disabled={loading || readOnly}
+                required={false}
+                error={!!errors.cuentaContableId}
+                errorMessage={errors.cuentaContableId?.message}
+                showClearButton={true}
+                filtroClase="33"
+              />
+            )}
+          />
         </div>
 
         {/* Campo Costo Original */}
