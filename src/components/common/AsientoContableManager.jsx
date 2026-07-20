@@ -112,7 +112,7 @@ const AsientoContableManager = ({
 
       let fecha;
       if (documentoTipo === 'PrestamoBancario') {
-        fecha = new Date(documento.fechaDesembolso);
+        fecha = new Date(documento.fechaContable || documento.fechaDesembolso);
       } else {
         fecha = new Date(documento.fecha || documento.fechaDocumento || documento.fechaContable);
       }
@@ -149,7 +149,6 @@ const AsientoContableManager = ({
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
-
       const asientosObtenidos = documento.asientosContables || [];
       setAsientos(asientosObtenidos);
       return asientosObtenidos;
@@ -494,8 +493,19 @@ const AsientoContableManager = ({
         <Column field="fechaAsiento" header="Fecha" body={fechaTemplate} sortable />
         <Column field="tipoLibro" header="Tipo Libro" body={tipoLibroTemplate} sortable />
         <Column header="Estado" body={estadoTemplate} />
-        <Column field="totalDebe" header="Total Debe" body={(row) => montoTemplate(row, "totalDebe")} style={{ textAlign: "right" }} />
-        <Column field="totalHaber" header="Total Haber" body={(row) => montoTemplate(row, "totalHaber")} style={{ textAlign: "right" }} />
+        <Column
+          field="totalDebe"
+          header="Total Debe"
+          body={(row) => montoTemplate(row, "totalDebe")}
+          style={{ textAlign: "right" }}
+        />
+        <Column
+          field="totalHaber"
+          header="Total Haber"
+          body={(row) => montoTemplate(row, "totalHaber")}
+          style={{ textAlign: "right" }}
+          bodyStyle={{ backgroundColor: 'transparent' }}
+        />
         <Column header="Cuadrado" body={cuadradoTemplate} style={{ textAlign: "center" }} />
         <Column header="Acciones" body={accionesTemplate} />
       </DataTable>

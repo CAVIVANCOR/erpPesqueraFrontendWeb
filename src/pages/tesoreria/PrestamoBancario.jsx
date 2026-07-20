@@ -93,6 +93,7 @@ export default function PrestamoBancario({ ruta }) {
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
   const [fechaContratoInicio, setFechaContratoInicio] = useState(null);
   const [fechaContratoFin, setFechaContratoFin] = useState(null);
+  const [filtroSaldoInicial, setFiltroSaldoInicial] = useState("TODOS"); // TODOS | SI | NO
 
   useEffect(() => {
     cargarDatos();
@@ -162,7 +163,6 @@ export default function PrestamoBancario({ ruta }) {
         return fechaContrato >= fechaIni;
       });
     }
-
     if (fechaContratoFin) {
       filtrados = filtrados.filter((item) => {
         const fechaContrato = new Date(item.fechaContrato);
@@ -171,7 +171,11 @@ export default function PrestamoBancario({ ruta }) {
         return fechaContrato <= fechaFinDia;
       });
     }
-
+    if (filtroSaldoInicial === "SI") {
+      filtrados = filtrados.filter((item) => item.esSaldoInicial === true);
+    } else if (filtroSaldoInicial === "NO") {
+      filtrados = filtrados.filter((item) => item.esSaldoInicial === false);
+    }
     setItemsFiltrados(filtrados);
   }, [
     empresaSeleccionada,
@@ -184,6 +188,7 @@ export default function PrestamoBancario({ ruta }) {
     monedaSeleccionada,
     fechaContratoInicio,
     fechaContratoFin,
+    filtroSaldoInicial,
     items,
   ]);
 
@@ -551,6 +556,7 @@ export default function PrestamoBancario({ ruta }) {
     setMonedaSeleccionada(null);
     setFechaContratoInicio(null);
     setFechaContratoFin(null);
+    setFiltroSaldoInicial("TODOS");
     setGlobalFilter("");
 
     // Resetear catálogos filtrados a sus valores completos
@@ -932,6 +938,47 @@ export default function PrestamoBancario({ ruta }) {
               </div>
               <div style={{ flex: 1 }}>
                 <label
+                  htmlFor="filtroSaldoInicial"
+                  style={{
+                    fontWeight: "bold",
+                    display: "block",
+                    marginBottom: 5,
+                  }}
+                >
+                  Saldos Iniciales
+                </label>
+                <Button
+                  id="filtroSaldoInicial"
+                  label={
+                    filtroSaldoInicial === "TODOS"
+                      ? "TODOS"
+                      : filtroSaldoInicial === "SI"
+                        ? "SALDOS INICIALES"
+                        : "NUEVOS"
+                  }
+                  severity={
+                    filtroSaldoInicial === "TODOS"
+                      ? "secondary"
+                      : filtroSaldoInicial === "SI"
+                        ? "warning"
+                        : "info"
+                  }
+                  onClick={() => {
+                    if (filtroSaldoInicial === "TODOS") {
+                      setFiltroSaldoInicial("SI");
+                    } else if (filtroSaldoInicial === "SI") {
+                      setFiltroSaldoInicial("NO");
+                    } else {
+                      setFiltroSaldoInicial("TODOS");
+                    }
+                  }}
+                  disabled={loading}
+                  style={{ width: "100%", fontWeight: "bold" }}
+                  tooltip="Clic para cambiar filtro"
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label
                   htmlFor="cuentaCorrienteFiltro"
                   style={{
                     fontWeight: "bold",
@@ -1135,6 +1182,7 @@ export default function PrestamoBancario({ ruta }) {
           style={{ width: 80, textAlign: "center" }}
           sortable
         />
+
         <Column
           field="fechaVencimiento"
           header="Vencimiento"
@@ -1147,6 +1195,19 @@ export default function PrestamoBancario({ ruta }) {
           header="Estado"
           body={estadoTemplate}
           style={{ width: 100 }}
+          sortable
+        />
+        <Column
+          field="esSaldoInicial"
+          header="S.I."
+          body={(rowData) =>
+            rowData.esSaldoInicial ? (
+              <Tag value="SI" severity="warning" style={{ fontWeight: "bold" }} />
+            ) : (
+              <Tag value="NO" severity="info" style={{ fontWeight: "bold" }} />
+            )
+          }
+          style={{ width: 80, textAlign: "center" }}
           sortable
         />
         <Column

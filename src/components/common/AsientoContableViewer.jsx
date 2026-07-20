@@ -219,7 +219,6 @@ const AsientoContableViewer = ({
             </div>
             <div
               style={{
-                backgroundColor: "#E3F2FD",
                 padding: "12px",
                 borderTop: "2px solid #2196F3",
                 fontWeight: "bold",
@@ -281,7 +280,6 @@ const AsientoContableViewer = ({
             </div>
             <div
               style={{
-                backgroundColor: "#E8F5E9",
                 padding: "12px",
                 borderTop: "2px solid #4CAF50",
                 fontWeight: "bold",

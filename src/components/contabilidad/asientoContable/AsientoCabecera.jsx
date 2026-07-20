@@ -6,6 +6,7 @@ import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
+import BooleanToggleButton from "../../common/BooleanToggleButton";
 
 export default function AsientoCabecera({
   formData,
@@ -135,6 +136,16 @@ export default function AsientoCabecera({
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={4}
+            disabled={isReadOnly}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="esSaldoInicial">¿Es Saldo Inicial?</label>
+          <BooleanToggleButton
+            labelTrue="Saldo Inicial"
+            labelFalse="Asiento Normal"
+            value={formData.esSaldoInicial || false}
+            onChange={(value) => handleChange("esSaldoInicial", value)}
             disabled={isReadOnly}
           />
         </div>

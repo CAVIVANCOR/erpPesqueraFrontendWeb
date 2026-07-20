@@ -1391,6 +1391,19 @@ export default function AsientoContable({ ruta }) {
         />
         <Column field="numeroAsiento" header="Número" sortable />
         <Column
+          field="esSaldoInicial"
+          header="Saldo Inicial"
+          body={(rowData) =>
+            rowData.esSaldoInicial ? (
+              <Tag value="SI" severity="info" icon="pi pi-check" />
+            ) : (
+              <Tag value="NO" severity="secondary" />
+            )
+          }
+          sortable
+          style={{ width: "120px" }}
+        />
+        <Column
           field="fechaAsiento"
           header="Fecha"
           body={fechaBodyTemplate}

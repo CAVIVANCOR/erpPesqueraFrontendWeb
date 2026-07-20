@@ -40,6 +40,8 @@ import { obtenerTipoCambio } from "../../api/tesoreria/lineaCredito";
 import { getSublineasCreditoPorLinea } from "../../api/tesoreria/sublineaCredito";
 import { Panel } from "primereact/panel";
 import AsientoContableManager from "../common/AsientoContableManager";
+import BooleanToggleButton from '../common/BooleanToggleButton';
+import { ConfirmDialog } from "primereact/confirmdialog";
 
 const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   {
@@ -159,6 +161,10 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       urlDocumentoPrincipal: defaultValues?.urlDocumentoPDF || "",
       urlDocumentoAdicional: defaultValues?.urlDocAdicionalPDF || "",
       tipoCambioAplicado: defaultValues?.tipoCambioAplicado || null,
+      fechaContable: defaultValues?.fechaContable
+        ? new Date(defaultValues.fechaContable)
+        : new Date(),
+      esSaldoInicial: defaultValues?.esSaldoInicial || false,
     },
   });
 
@@ -178,8 +184,23 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         detail: "Debe guardar el préstamo antes de generar el asiento contable.",
         life: 5000,
       });
-      throw new Error("Préstamo no guardado");
+      return false;
     }
+
+    // Obtener el préstamo completo con sus relaciones para la integración contable
+    const prestamoCompleto = await getPrestamoBancarioById(defaultValues.id);
+
+    if (!prestamoCompleto) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar el préstamo completo para generar el asiento.",
+        life: 5000,
+      });
+      return false;
+    }
+    // Devolver los datos del préstamo completo para que el AsientoContableManager los use
+    return prestamoCompleto;
   };
 
 
@@ -456,6 +477,10 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         urlDocumentoPDF: data.urlDocumentoPrincipal || null,
         urlDocAdicionalPDF: data.urlDocumentoAdicional || null,
         tipoCambioAplicado: data.tipoCambioAplicado,
+        fechaContable: data.fechaContable?.toISOString
+          ? data.fechaContable.toISOString()
+          : data.fechaContable,
+        esSaldoInicial: data.esSaldoInicial,
       };
 
       let resultado;
@@ -1076,6 +1101,56 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                     minFractionDigits={2}
                     disabled={readOnly}
                     style={{ width: "100%" }}
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="fechaContable"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
+                Fecha Contable
+              </label>
+              <Controller
+                name="fechaContable"
+                control={control}
+                render={({ field }) => (
+                  <Calendar
+                    id="fechaContable"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.value)}
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="esSaldoInicial"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
+                ¿Es Saldo Inicial?
+              </label>
+              <Controller
+                name="esSaldoInicial"
+                control={control}
+                render={({ field }) => (
+                  <BooleanToggleButton
+                    labelTrue="Saldo Inicial"
+                    labelFalse="Préstamo Normal"
+                    value={field.value}
+                    onChange={field.onChange}
+                    disabled={readOnly}
                   />
                 )}
               />
@@ -2048,6 +2123,8 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
           />
         </div>
       )}
+      <ConfirmDialog />
+
     </div>
   );
 });

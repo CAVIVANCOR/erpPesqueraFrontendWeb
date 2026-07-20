@@ -216,9 +216,9 @@ export default function Banco({ ruta }) {
         }
       >
         <Column field="id" header="ID" sortable style={{ width: 80 }} />
-        <Column 
-          field="paisId" 
-          header="País" 
+        <Column
+          field="paisId"
+          header="País"
           body={(rowData) => {
             const pais = paises.find(p => Number(p.id) === Number(rowData.paisId));
             return pais ? pais.nombre : rowData.paisId;
@@ -227,7 +227,19 @@ export default function Banco({ ruta }) {
         <Column field="nombre" header="Nombre" sortable />
         <Column field="codigoSwift" header="Código SWIFT" sortable />
         <Column field="codigoBcrp" header="Código BCRP" sortable />
-
+        <Column
+          field="cuentaContableId"
+          header="Cuenta Contable"
+          body={(rowData) => {
+            if (!rowData.cuentaContable) return <span style={{ color: '#999' }}>-</span>;
+            return (
+              <span>
+                <strong>{rowData.cuentaContable.codigoCuenta}</strong> - {rowData.cuentaContable.nombreCuenta}
+              </span>
+            );
+          }}
+          sortable
+        />
         <Column
           field="activo"
           header="Activo"

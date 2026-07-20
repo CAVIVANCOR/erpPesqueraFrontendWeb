@@ -4,7 +4,8 @@ import React from 'react';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
-import { Checkbox } from 'primereact/checkbox';
+import BooleanToggleButton from '../common/BooleanToggleButton';
+import PlanCuentaContableSelector from '../common/PlanCuentaContableSelector';
 
 export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, loading, paises = [], readOnly = false }) {
   const [nombre, setNombre] = React.useState(defaultValues.nombre || '');
@@ -18,6 +19,7 @@ export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, l
     return 1; // Perú por defecto para nuevos bancos
   });
   const [activo, setActivo] = React.useState(defaultValues.activo !== undefined ? !!defaultValues.activo : true);
+  const [cuentaContableId, setCuentaContableId] = React.useState(defaultValues.cuentaContableId ? Number(defaultValues.cuentaContableId) : null);
 
   React.useEffect(() => {
     setNombre(defaultValues.nombre || '');
@@ -30,6 +32,8 @@ export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, l
       setPaisId(1); // Perú por defecto
     }
     setActivo(defaultValues.activo !== undefined ? !!defaultValues.activo : true);
+    setCuentaContableId(defaultValues.cuentaContableId ? Number(defaultValues.cuentaContableId) : null);
+
   }, [defaultValues]);
 
   const handleSubmit = (e) => {
@@ -39,7 +43,8 @@ export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, l
       codigoSwift,
       codigoBcrp,
       paisId: paisId ? Number(paisId) : null,
-      activo
+      activo,
+      cuentaContableId: cuentaContableId ? Number(cuentaContableId) : null,
     });
   };
 
@@ -74,9 +79,26 @@ export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, l
           style={{ fontWeight: "bold" }}
         />
       </div>
-      <div className="p-field-checkbox">
-        <Checkbox id="activo" checked={activo} onChange={e => setActivo(e.checked)} disabled={loading || readOnly} />
+      <div className="p-field">
+        <PlanCuentaContableSelector
+          value={cuentaContableId}
+          onChange={setCuentaContableId}
+          label="Cuenta Contable"
+          disabled={loading || readOnly}
+          required={false}
+          showClearButton={true}
+          placeholder="Seleccionar cuenta contable del banco"
+        />
+      </div>
+      <div className="p-field">
         <label htmlFor="activo">Activo</label>
+        <BooleanToggleButton
+          labelTrue="Activo"
+          labelFalse="Inactivo"
+          value={activo}
+          onChange={setActivo}
+          disabled={loading || readOnly}
+        />
       </div>
       <div className="p-d-flex p-jc-end" style={{ gap: 8 }}>
         <Button type="button" label="Cancelar" className="p-button-text" onClick={onCancel} disabled={loading} />

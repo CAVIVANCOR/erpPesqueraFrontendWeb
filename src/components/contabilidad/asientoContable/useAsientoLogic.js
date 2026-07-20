@@ -56,6 +56,7 @@ export default function useAsientoLogic({
     totalHaber: defaultValues?.totalHaber || 0,
     diferencia: defaultValues?.diferencia || 0,
     estaCuadrado: defaultValues?.estaCuadrado || false,
+    esSaldoInicial: defaultValues?.esSaldoInicial || false,
   });
 
   const [detalles, setDetalles] = useState(defaultValues?.detalles || []);
@@ -941,6 +942,7 @@ export default function useAsientoLogic({
       estadoId: Number(formData.estadoId),
       monedaId: Number(formData.monedaId),
       tipoCambio: formData.tipoCambio ? Number(formData.tipoCambio) : null,
+      esSaldoInicial: formData.esSaldoInicial || false,
       ...totales,
       detalles: detallesActualizados.map((d) => ({
         numeroLinea: d.numeroLinea,
@@ -1098,6 +1100,7 @@ export default function useAsientoLogic({
       estadoId: Number(formData.estadoId),
       monedaId: Number(formData.monedaId),
       tipoCambio: formData.tipoCambio ? Number(formData.tipoCambio) : null,
+      esSaldoInicial: formData.esSaldoInicial || false,
       ...totales,
       detalles:
         detalles.length > 0
