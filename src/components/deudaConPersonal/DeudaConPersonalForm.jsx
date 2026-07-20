@@ -7,7 +7,6 @@ import { InputNumber } from "primereact/inputnumber";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
-import { Checkbox } from "primereact/checkbox";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Dialog } from "primereact/dialog";
@@ -27,6 +26,7 @@ import {
 } from "../../api/tesoreria/pagoDeudaPersonal";
 import PagoDeudaPersonalDialog from "./PagoDeudaPersonalDialog";
 import AsientoContableManager from "../common/AsientoContableManager";  // ⭐ NUEVO
+import AuditoriaDialog from "../common/AuditoriaDialog";
 // ════════════════════════════════════════════════════════════
 // CONSTANTES DE CONFIGURACIÓN - DEUDAS CON PERSONAL
 // ════════════════════════════════════════════════════════════
@@ -119,10 +119,11 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
     esGerencial: defaultValues?.esGerencial || false,
     fechaContable: defaultValues?.fechaContable ? new Date(defaultValues.fechaContable) : new Date(),
     periodoContableId: defaultValues?.periodoContableId ? Number(defaultValues.periodoContableId) : null,
-    creadoPor: defaultValues?.creadoPor || null,
-    actualizadoPor: defaultValues?.actualizadoPor || null,
+    creadoEn: defaultValues?.creadoEn ? new Date(defaultValues.creadoEn) : null,
+    creadoPor: defaultValues?.creadoPor ? Number(defaultValues.creadoPor) : null,
+    actualizadoEn: defaultValues?.actualizadoEn ? new Date(defaultValues.actualizadoEn) : null,
+    actualizadoPor: defaultValues?.actualizadoPor ? Number(defaultValues.actualizadoPor) : null,
   });
-
   // Función para actualizar campos individuales (patrón PreFactura)
   const onChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -151,7 +152,7 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
     return personal
       .filter((p) => Number(p.empresaId) === Number(formData.empresaId))
       .map((p) => ({
-        ...p,
+        id: p.id,
         nombreCompleto: `${p.nombres} ${p.apellidos}`.trim(),
       }));
   }, [formData.empresaId, personal]);
@@ -327,6 +328,36 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
     }
   };
 
+  /**
+ * Callback antes de generar asiento contable
+ * Valida que la deuda esté guardada
+ */
+  const handleBeforeGenerateAsiento = async () => {
+    if (!defaultValues?.id) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Debe guardar la deuda antes de generar el asiento contable.",
+        life: 5000,
+      });
+      return false;
+    }
+
+    const deudaCompleta = await getDeudaConPersonalById(defaultValues.id);
+
+    if (!deudaCompleta) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar la deuda completa para generar el asiento.",
+        life: 5000,
+      });
+      return false;
+    }
+
+    return deudaCompleta;
+  };
+
   const recargarDeudaDesdeBackend = async () => {
     if (!isEdit || !defaultValues?.id) return;
 
@@ -346,27 +377,27 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
   }));
 
   const handleSubmit = () => {
-    if (loading) return; // Prevenir múltiples clics
-
     const data = {
-      empresaId: Number(formData.empresaId),
-      personalId: Number(formData.personalId),
-      tipoDeudaId: Number(formData.tipoDeudaId),
+      empresaId: formData.empresaId ? Number(formData.empresaId) : null,
+      personalId: formData.personalId ? Number(formData.personalId) : null,
+      tipoDeudaId: formData.tipoDeudaId ? Number(formData.tipoDeudaId) : null,
       numeroDocumento: formData.numeroDocumento || null,
-      fecha: formData.fecha,
-      fechaVencimiento: formData.fechaVencimiento,
-      monedaId: Number(formData.monedaId),
-      montoPagadoAnterior: Number(formData.montoPagadoAnterior) || MONTO_DEFAULT,
-      montoOriginal: Number(formData.montoOriginal),
-      montoPagado: Number(formData.montoPagado) || MONTO_DEFAULT,
-      saldoPendiente: Number(formData.saldoPendiente),
-      estadoId: Number(formData.estadoId),
+      fecha: formData.fecha || null,
+      fechaVencimiento: formData.fechaVencimiento || null,
+      monedaId: formData.monedaId ? Number(formData.monedaId) : null,
+      montoPagadoAnterior: formData.montoPagadoAnterior || MONTO_DEFAULT,
+      montoOriginal: formData.montoOriginal || MONTO_DEFAULT,
+      montoPagado: formData.montoPagado || MONTO_DEFAULT,
+      saldoPendiente: formData.saldoPendiente || MONTO_DEFAULT,
+      estadoId: formData.estadoId ? Number(formData.estadoId) : ESTADO_DEFAULT_PENDIENTE,
       observaciones: formData.observaciones || null,
       esSaldoInicial: formData.esSaldoInicial || false,
       esGerencial: formData.esGerencial || false,
       fechaContable: formData.fechaContable || null,
       periodoContableId: formData.periodoContableId ? Number(formData.periodoContableId) : null,
-      creadoPor: isEdit ? formData.creadoPor : usuario?.personalId ? Number(usuario.personalId) : null,
+      creadoEn: isEdit ? formData.creadoEn : null,
+      creadoPor: isEdit ? (formData.creadoPor ? Number(formData.creadoPor) : null) : (usuario?.personalId ? Number(usuario.personalId) : null),
+      actualizadoEn: isEdit ? formData.actualizadoEn : null,
       actualizadoPor: isEdit && usuario?.personalId ? Number(usuario.personalId) : null,
     };
     onSubmit(data);
@@ -540,7 +571,6 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
 
   return (
     <>
-      <ConfirmDialog />
       <TabView>
         {/* TAB 1: DATOS GENERALES */}
         <TabPanel header="Datos Generales" leftIcon="pi pi-file">
@@ -580,10 +610,11 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 <Dropdown
                   id="personalId"
                   value={formData.personalId}
-                  options={personalFiltrado}
+                  options={personalFiltrado?.map((p) => ({
+                    label: p.nombreCompleto,
+                    value: Number(p.id),
+                  })) || []}
                   onChange={(e) => onChange("personalId", e.value)}
-                  optionLabel="nombreCompleto"
-                  optionValue="id"
                   placeholder="Seleccione personal"
                   filter
                   disabled={readOnly || loading || !formData.empresaId}
@@ -609,10 +640,11 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 <Dropdown
                   id="tipoDeudaId"
                   value={formData.tipoDeudaId}
-                  options={tiposDeuda}
+                  options={tiposDeuda?.map((t) => ({
+                    label: t.nombre,
+                    value: Number(t.id),
+                  })) || []}
                   onChange={(e) => onChange("tipoDeudaId", e.value)}
-                  optionLabel="nombre"
-                  optionValue="id"
                   placeholder="Seleccione tipo de deuda"
                   filter
                   disabled={readOnly || loading}
@@ -661,6 +693,23 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 />
               </div>
 
+              {/* Fecha Contable (solo visible si esSaldoInicial = true) */}
+              {formData.esSaldoInicial && (
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="fechaContable">
+                    Fecha Contable <span style={{ color: "red" }}>*</span>
+                  </label>
+                  <Calendar
+                    id="fechaContable"
+                    value={formData.fechaContable}
+                    onChange={(e) => onChange("fechaContable", e.value)}
+                    showIcon
+                    dateFormat="dd/mm/yy"
+                    disabled={readOnly}
+                    tooltip="Fecha del asiento contable (ej: 31/12/2025 para saldos iniciales)"
+                  />
+                </div>
+              )}
 
             </div>
 
@@ -680,10 +729,11 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
                 <Dropdown
                   id="monedaId"
                   value={formData.monedaId}
-                  options={monedas}
+                  options={monedas?.map((m) => ({
+                    label: m.codigoSunat,
+                    value: Number(m.id),
+                  })) || []}
                   onChange={(e) => onChange("monedaId", e.value)}
-                  optionLabel="codigoSunat"
-                  optionValue="id"
                   placeholder="Seleccione moneda"
                   disabled={readOnly || loading}
                 />
@@ -877,83 +927,6 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
           </DataTable>
         </TabPanel>
 
-
-        {/* TAB 3: ASIENTOS CONTABLES ⭐ NUEVO */}
-        <TabPanel
-          header="Asientos Contables"
-          leftIcon="pi pi-book"
-          disabled={!isEdit || !defaultValues?.id}
-        >
-          <div className="p-fluid">
-            {/* Mensaje informativo */}
-            {!isEdit || !defaultValues?.id ? (
-              <div className="p-message p-message-info" style={{ marginBottom: "1rem" }}>
-                <div className="p-message-wrapper">
-                  <span className="p-message-icon pi pi-info-circle"></span>
-                  <div className="p-message-text">
-                    Debe guardar la deuda primero para poder generar asientos contables.
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Información de la deuda */}
-                <div
-                  style={{
-                    background: "#f8f9fa",
-                    padding: "1rem",
-                    borderRadius: "8px",
-                    marginBottom: "1rem",
-                    border: "1px solid #dee2e6"
-                  }}
-                >
-                  <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
-                    <div>
-                      <strong>Tipo:</strong>{" "}
-                      {formData.esSaldoInicial ? (
-                        <span className="p-tag p-tag-info">Saldo Inicial</span>
-                      ) : (
-                        <span className="p-tag p-tag-success">Provisión Mensual</span>
-                      )}
-                    </div>
-                    <div>
-                      <strong>Monto:</strong> {formatearNumero(formData.montoOriginal)}
-                    </div>
-                    <div>
-                      <strong>Tipo Libro:</strong>{" "}
-                      {formData.esGerencial ? (
-                        <span className="p-tag p-tag-warning">GERENCIAL</span>
-                      ) : (
-                        <span className="p-tag">FISCAL</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Información de asientos esperados */}
-                  <div style={{ marginTop: "0.5rem", fontSize: "0.9rem", color: "#6c757d" }}>
-                    <i className="pi pi-info-circle" style={{ marginRight: "0.5rem" }}></i>
-                    {formData.esSaldoInicial ? (
-                      <span>Se generará 1 asiento: 39.1 (Saldos Iniciales) vs 41.x (CTS por Pagar)</span>
-                    ) : (
-                      <span>Se generarán 2 asientos: (1) 62.1 vs 41.x (Provisión), (2) 94.x vs 79.1 (Destino)</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Componente de gestión de asientos */}
-                <AsientoContableManager
-                  documentoTipo="DeudaConPersonal"
-                  documentoId={defaultValues?.id}
-                  periodoContableId={formData.periodoContableId}
-                  showAsButton={false}
-                  onAsientoChange={handleAsientoChange}
-                  key={`asientos-${asientosActualizados}`}
-                />
-              </>
-            )}
-          </div>
-        </TabPanel>
-
       </TabView>
 
       {/* Botones de acción */}
@@ -965,6 +938,49 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
+        {/* ⭐ SECCIÓN DE AUDITORÍA (solo en edición) */}
+        {isEdit && (
+          <div style={{ flex: 1, marginTop: "1rem" }}>
+            <AuditoriaDialog
+              data={formData}
+              fieldMapping={{
+                fechaCreacion: "creadoEn",
+                creadoPor: "creadoPor",
+                fechaActualizacion: "actualizadoEn",
+                actualizadoPor: "actualizadoPor",
+              }}
+              usuarios={personal?.map((p) => ({
+                label: `${p.nombres} ${p.apellidos}`.trim(),
+                value: Number(p.id),
+              })) || []}
+              esSuperUsuario={usuario?.rol === "SUPERUSUARIO"}
+              onSave={(datosCorregidos) => {
+                onChange("creadoPor", datosCorregidos.creadoPor);
+                onChange("actualizadoPor", datosCorregidos.actualizadoPor);
+                onChange("creadoEn", datosCorregidos.fechaCreacion);
+                onChange("actualizadoEn", datosCorregidos.fechaActualizacion);
+              }}
+              buttonProps={{
+                label: usuario?.rol === "SUPERUSUARIO" ? "Auditoría" : "Ver Auditoría",
+                className: "p-button-info",
+                style: { width: "100%" },
+              }}
+            />
+          </div>
+        )}
+        {/* Componente genérico de asientos contables */}
+        {isEdit && defaultValues?.id && (
+          <div style={{ marginTop: "1rem" }}>
+            <AsientoContableManager
+              documentoId={defaultValues.id}
+              documentoTipo="DeudaConPersonal"
+              empresaId={formData.empresaId}
+              periodoContableId={formData.periodoContableId}
+              showAsButton={true}
+              onBeforeGenerate={handleBeforeGenerateAsiento}
+            />
+          </div>
+        )}
         <Button
           label="Cancelar"
           icon="pi pi-times"
@@ -1003,6 +1019,7 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
           onCancel={() => setShowPagoDialog(false)}
         />
       </Dialog>
+      <ConfirmDialog />
     </>
   );
 });

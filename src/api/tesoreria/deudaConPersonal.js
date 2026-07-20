@@ -60,3 +60,23 @@ export async function getDeudasConPersonalByTipo(tipoDeudaId) {
   const res = await axios.get(`${API_URL}/tipo/${tipoDeudaId}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+
+// ════════════════════════════════════════════════════════════
+// ASIENTOS CONTABLES
+// ════════════════════════════════════════════════════════════
+
+export async function generarBorradorAsiento(deudaId) {
+  const res = await axios.get(`${API_URL}/${deudaId}/borrador-asiento`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function guardarAsientoContable(deudaId, borrador, usuarioId) {
+  const res = await axios.post(`${API_URL}/${deudaId}/guardar-asiento`, { asientos: borrador.asientos }, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function eliminarAsientoContable(deudaId, asientoId) {
+  const res = await axios.delete(`${API_URL}/${deudaId}/asiento/${asientoId}`, { headers: getAuthHeaders() });
+  return res.data;
+}

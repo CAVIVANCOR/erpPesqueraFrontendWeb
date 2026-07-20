@@ -16,7 +16,7 @@ import * as ordenCompraAPI from "../../api/ordenCompra";
 import * as movimientoActivoFijoAPI from "../../api/movimientoActivoFijo";
 import * as saldoCuentaCorrienteAPI from "../../api/saldoCuentaCorriente";
 import * as prestamoBancariosAPI from "../../api/tesoreria/prestamoBancarios";
-
+import * as deudaConPersonalAPI from "../../api/tesoreria/deudaConPersonal";
 /**
  * Componente genérico para gestionar asientos contables
  * Soporta múltiples tipos de documentos (PreFactura, SaldoCuentaCorriente, etc.)
@@ -51,6 +51,7 @@ const AsientoContableManager = ({
     MovimientoActivoFijo: movimientoActivoFijoAPI,
     OrdenCompra: ordenCompraAPI,
     PrestamoBancario: prestamoBancariosAPI,
+    DeudaConPersonal: deudaConPersonalAPI,
   };
 
   const api = API_MODULES[documentoTipo];
@@ -106,6 +107,8 @@ const AsientoContableManager = ({
         documento = await api.getOrdenCompraPorId(documentoId);
       } else if (documentoTipo === 'PrestamoBancario') {
         documento = await api.getPrestamoBancarioById(documentoId);
+      } else if (documentoTipo === 'DeudaConPersonal') {
+        documento = await api.getDeudaConPersonalById(documentoId);
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
@@ -113,6 +116,8 @@ const AsientoContableManager = ({
       let fecha;
       if (documentoTipo === 'PrestamoBancario') {
         fecha = new Date(documento.fechaContable || documento.fechaDesembolso);
+      } else if (documentoTipo === 'DeudaConPersonal') {
+        fecha = new Date(documento.esSaldoInicial ? documento.fechaContable : documento.fecha);
       } else {
         fecha = new Date(documento.fecha || documento.fechaDocumento || documento.fechaContable);
       }
@@ -146,6 +151,8 @@ const AsientoContableManager = ({
         documento = await api.getOrdenCompraPorId(documentoId);
       } else if (documentoTipo === 'PrestamoBancario') {
         documento = await api.getPrestamoBancarioById(documentoId);
+      } else if (documentoTipo === 'DeudaConPersonal') {
+        documento = await api.getDeudaConPersonalById(documentoId);
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
@@ -251,6 +258,8 @@ const AsientoContableManager = ({
           await api.eliminarAsientoContable(documentoId, asiento.id);
         } else if (documentoTipo === 'PrestamoBancario') {
           await api.eliminarAsientoContable(documentoId, asiento.id);
+        } else if (documentoTipo === 'DeudaConPersonal') {
+          await api.eliminarAsientoContable(documentoId, asiento.id);
         }
       }
 
@@ -290,6 +299,8 @@ const AsientoContableManager = ({
         borrador = await api.generarBorradorAsiento(documentoId);
       } else if (documentoTipo === 'PrestamoBancario') {
         borrador = await api.generarBorradorAsiento(documentoId);
+      } else if (documentoTipo === 'DeudaConPersonal') {
+        borrador = await api.generarBorradorAsiento(documentoId);
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
@@ -310,6 +321,8 @@ const AsientoContableManager = ({
       } else if (documentoTipo === 'OrdenCompra') {
         asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
       } else if (documentoTipo === 'PrestamoBancario') {
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
+      } else if (documentoTipo === 'DeudaConPersonal') {
         asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
       }
       await cargarAsientos();
@@ -369,6 +382,8 @@ const AsientoContableManager = ({
           } else if (documentoTipo === 'MovimientoActivoFijo') {
             await api.eliminarAsientoContable(documentoId, asiento.id);
           } else if (documentoTipo === 'OrdenCompra') {
+            await api.eliminarAsientoContable(documentoId, asiento.id);
+          } else if (documentoTipo === 'DeudaConPersonal') {
             await api.eliminarAsientoContable(documentoId, asiento.id);
           }
 
