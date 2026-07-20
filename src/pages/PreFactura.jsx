@@ -69,7 +69,8 @@ import AuditoriaDialog from "../components/common/AuditoriaDialog";
 import AsignarTipoOperacionSunatDialog from "../components/common/AsignarTipoOperacionSunatDialog";
 import AsignarTipoAfectacionIGVDialog from "../components/common/AsignarTipoAfectacionIGVDialog";
 import { generarPreFacturasExcel } from "../components/preFactura/reports/generarPreFacturasExcel";
-
+import FiltroTipoLibroButton from "../components/common/FiltroTipoLibroButton";
+import { formatearMontoConSigno, TIPO_DOC_ID } from "../utils/tiposDocumento.constants";
 /**
  * Componente PreFactura
  * Gestión CRUD de pre-facturas con patrón profesional ERP Megui
@@ -139,6 +140,7 @@ const PreFactura = ({ ruta }) => {
     useState(false); // ⬅️ AGREGAR
   const [contratoServicioOrigen, setContratoServicioOrigen] = useState(null); // ⬅️ AGREGAR
   const [navigationStack, setNavigationStack] = useState([]); // Stack para navegación de PreFacturas
+  const [filtroTipoLibro, setFiltroTipoLibro] = useState("FISCAL_SSI");
   const [showConsultaStock, setShowConsultaStock] = useState(false);
   const toast = useRef(null);
 
@@ -372,10 +374,10 @@ const PreFactura = ({ ruta }) => {
       );
     }
 
-    // Filtro por tipo de documento
+    // Filtro por tipo de documento final (comprobante a generar)
     if (tipoDocumentoSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => Number(item.tipoDocumentoId) === Number(tipoDocumentoSeleccionado),
+        (item) => Number(item.tipoDocumentoFinalId || item.tipoDocumentoId) === Number(tipoDocumentoSeleccionado),
       );
     }
 
@@ -411,6 +413,19 @@ const PreFactura = ({ ruta }) => {
       });
     }
 
+    // Filtro por tipo de libro
+    if (filtroTipoLibro === "FISCAL_SSI") {
+      // Fiscal sin saldos iniciales
+      filtrados = filtrados.filter((item) => !item.esGerencial && !item.esSaldoInicial);
+    } else if (filtroTipoLibro === "FISCAL_CSI") {
+      // Fiscal con saldos iniciales
+      filtrados = filtrados.filter((item) => !item.esGerencial && item.esSaldoInicial);
+    } else if (filtroTipoLibro === "GERENCIAL") {
+      // Solo gerenciales
+      filtrados = filtrados.filter((item) => item.esGerencial);
+    }
+    // Si es "TODOS", no se filtra
+
     setItemsFiltrados(filtrados);
   }, [
     empresaSeleccionada,
@@ -421,95 +436,198 @@ const PreFactura = ({ ruta }) => {
     filtroParticionadas,
     productoSeleccionado,
     nroLiquidacionBusqueda,
+    filtroTipoLibro,
     items,
   ]);
 
 
-  // ✅ Calcular totales por moneda
-  const calcularTotalesPorMoneda = () => {
-    let totalSoles = 0;
-    let totalDolares = 0;
-    let colorFondoSoles = "#FFE5B4";
-    let colorFondoDolares = "#C8E6C9";
+  // ✅ Calcular totales por tipo de documento y moneda
+  const calcularTotalesPorTipoYMoneda = () => {
+    const totalesPorTipo = {};
+    let totalGeneralSoles = 0;
+    let totalGeneralDolares = 0;
     let simboloSoles = "S/";
     let simboloDolares = "$";
+    let colorFondoSoles = "#FFE5B4";
+    let colorFondoDolares = "#C8E6C9";
 
     preFacturasFiltradas.forEach((pf) => {
       const total = Number(pf.total) || 0;
+      const codigo = pf.tipoDocumentoFinal?.codigo || pf.tipoDocumento?.codigo || "OTROS";
+      const monedaId = Number(pf.monedaId);
 
-      if (Number(pf.monedaId) === 1) {
-        // Soles
-        totalSoles += total;
-        if (pf.moneda?.colorFondo) colorFondoSoles = pf.moneda.colorFondo;
+      // Inicializar tipo si no existe
+      if (!totalesPorTipo[codigo]) {
+        totalesPorTipo[codigo] = { soles: 0, dolares: 0 };
+      }
+
+      // Acumular por tipo y moneda
+      if (monedaId === 1) {
+        totalesPorTipo[codigo].soles += total;
+        totalGeneralSoles += total;
         if (pf.moneda?.simbolo) simboloSoles = pf.moneda.simbolo;
-      } else if (Number(pf.monedaId) === 2) {
-        // Dólares
-        totalDolares += total;
-        if (pf.moneda?.colorFondo) colorFondoDolares = pf.moneda.colorFondo;
+        if (pf.moneda?.colorFondo) colorFondoSoles = pf.moneda.colorFondo;
+      } else if (monedaId === 2) {
+        totalesPorTipo[codigo].dolares += total;
+        totalGeneralDolares += total;
         if (pf.moneda?.simbolo) simboloDolares = pf.moneda.simbolo;
+        if (pf.moneda?.colorFondo) colorFondoDolares = pf.moneda.colorFondo;
       }
     });
 
     return {
-      totalSoles,
-      totalDolares,
-      colorFondoSoles,
-      colorFondoDolares,
+      totalesPorTipo,
+      totalGeneralSoles,
+      totalGeneralDolares,
       simboloSoles,
       simboloDolares,
+      colorFondoSoles,
+      colorFondoDolares,
     };
   };
 
-  // ✅ Template para footer con totales
+  // ✅ Template para footer con totales por tipo documento
   const footerTemplate = () => {
     const {
-      totalSoles,
-      totalDolares,
-      colorFondoSoles,
-      colorFondoDolares,
+      totalesPorTipo,
+      totalGeneralSoles,
+      totalGeneralDolares,
       simboloSoles,
       simboloDolares,
-    } = calcularTotalesPorMoneda();
+      colorFondoSoles,
+      colorFondoDolares,
+    } = calcularTotalesPorTipoYMoneda();
 
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          alignItems: "center",
-          gap: "15px",
-          padding: "10px",
-          fontWeight: "bold",
-          fontSize: "14px",
-        }}
-      >
-        <span>TOTALES:</span>
+      <div style={{ padding: "8px 10px" }}>
+        {/* LÍNEA 1: Totales por tipo documento agrupados */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "6px",
+            marginBottom: "8px",
+            justifyContent: "flex-end",
+            alignItems: "center",
+          }}
+        >
+          {Object.entries(totalesPorTipo)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([codigo, montos]) => {
+              // Solo mostrar si hay montos
+              if (montos.soles === 0 && montos.dolares === 0) return null;
 
-        {totalSoles > 0 && (
+              return (
+                <div
+                  key={codigo}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    border: "1.5px solid #dee2e6",
+                    borderRadius: "4px",
+                    padding: "3px 6px",
+                    backgroundColor: "transparent",
+                  }}
+                >
+                  {/* Label del tipo */}
+                  <span style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#495057" }}>
+                    {codigo}:
+                  </span>
+
+                  {/* Soles */}
+                  {montos.soles !== 0 && (
+                    <span
+                      style={{
+                        backgroundColor: colorFondoSoles,
+                        padding: "2px 6px",
+                        borderRadius: "3px",
+                        fontSize: "0.75rem",
+                        fontWeight: "bold",
+                        color: montos.soles < 0 ? "#c0392b" : "#000",
+                      }}
+                    >
+                      {simboloSoles} {formatearNumero(montos.soles, 2)}
+                    </span>
+                  )}
+
+                  {/* Dólares */}
+                  {montos.dolares !== 0 && (
+                    <span
+                      style={{
+                        backgroundColor: colorFondoDolares,
+                        padding: "2px 6px",
+                        borderRadius: "3px",
+                        fontSize: "0.75rem",
+                        fontWeight: "bold",
+                        color: montos.dolares < 0 ? "#c0392b" : "#000",
+                      }}
+                    >
+                      {simboloDolares} {formatearNumero(montos.dolares, 2)}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+        </div>
+
+        {/* LÍNEA 2: Totales generales */}
+        <div
+          style={{
+            display: "flex",
+            gap: "6px",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            borderTop: "2px solid #dee2e6",
+            paddingTop: "8px",
+          }}
+        >
           <div
             style={{
-              backgroundColor: colorFondoSoles,
-              padding: "6px 12px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              border: "2px solid #3498db",
               borderRadius: "4px",
-              fontWeight: "bold",
+              padding: "4px 8px",
+              backgroundColor: "transparent",
             }}
           >
-            {simboloSoles} {formatearNumero(totalSoles, 2)}
-          </div>
-        )}
+            <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#2c3e50" }}>
+              TOTALES:
+            </span>
 
-        {totalDolares > 0 && (
-          <div
-            style={{
-              backgroundColor: colorFondoDolares,
-              padding: "6px 12px",
-              borderRadius: "4px",
-              fontWeight: "bold",
-            }}
-          >
-            {simboloDolares} {formatearNumero(totalDolares, 2)}
+            {totalGeneralSoles !== 0 && (
+              <span
+                style={{
+                  backgroundColor: colorFondoSoles,
+                  padding: "3px 8px",
+                  borderRadius: "3px",
+                  fontSize: "0.9rem",
+                  fontWeight: "bold",
+                  color: totalGeneralSoles < 0 ? "#c0392b" : "#000",
+                }}
+              >
+                {simboloSoles} {formatearNumero(totalGeneralSoles, 2)}
+              </span>
+            )}
+
+            {totalGeneralDolares !== 0 && (
+              <span
+                style={{
+                  backgroundColor: colorFondoDolares,
+                  padding: "3px 8px",
+                  borderRadius: "3px",
+                  fontSize: "0.9rem",
+                  fontWeight: "bold",
+                  color: totalGeneralDolares < 0 ? "#c0392b" : "#000",
+                }}
+              >
+                {simboloDolares} {formatearNumero(totalGeneralDolares, 2)}
+              </span>
+            )}
           </div>
-        )}
+        </div>
       </div>
     );
   };
@@ -1477,7 +1595,7 @@ const PreFactura = ({ ruta }) => {
       abrirDialogoEdicion(event.data);
     }
   };
-  
+
 
   const actionBodyTemplate = (rowData) => {
     return (
@@ -1569,7 +1687,7 @@ const PreFactura = ({ ruta }) => {
       : "";
   };
   const tipoDocumentoTemplate = (rowData) => {
-    return rowData.tipoDocumento?.descripcion || "N/A";
+    return rowData.tipoDocumentoFinal?.codigo || rowData.tipoDocumento?.descripcion || "N/A";
   };
 
   const fechaContableTemplate = (rowData) => {
@@ -1588,18 +1706,18 @@ const PreFactura = ({ ruta }) => {
   };
 
   const montosTemplate = (rowData) => {
-    // Mostrar directamente el campo total de PreFactura (Precio de Venta Incluido IGV)
-    const total = Number(rowData.total) || 0;
+    const formato = formatearMontoConSigno(rowData.total || 0);
     const simboloMoneda = rowData.moneda?.simbolo || "";
 
     return (
       <div style={{ textAlign: "right" }}>
         <Tag
-          value={`${simboloMoneda} ${formatearNumero(total)}`}
-          severity="info"
+          value={`${simboloMoneda} ${formato.valor}`}
+          severity={formato.esNegativo ? "danger" : "info"}
           style={{
             fontSize: "0.9rem",
             fontWeight: "bold",
+            color: formato.color,
           }}
         />
       </div>
@@ -1673,6 +1791,7 @@ const PreFactura = ({ ruta }) => {
                     }}
                   />
                 </div>
+
                 <div style={{ flex: 1 }}>
                   <Button
                     label="Nuevo"
@@ -1741,10 +1860,22 @@ const PreFactura = ({ ruta }) => {
                     tooltip="Exportar todas las PreFacturas a Excel"
                   />
                 </div>
+                {/* Filtro Tipo Libro */}
+                <div style={{ flex: 1, minWidth: "150px" }}>
+                  <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                    Tipo Libro
+                  </label>
+                  <FiltroTipoLibroButton
+                    value={filtroTipoLibro}
+                    onChange={setFiltroTipoLibro}
+                    style={{ width: "100%" }}
+                  />
+                </div>
                 <div style={{ flex: 1 }}>
                   {/* Filtro de Unidad de Negocio - Compacto */}
                   <UnidadNegocioFilter />
                 </div>
+
               </div>
               <div
                 style={{
@@ -1957,8 +2088,9 @@ const PreFactura = ({ ruta }) => {
             sortable
           />
           <Column
-            field="numeroDocumento"
+            field="numeroDocumentoFinal"
             header="N° Documento"
+            body={(rowData) => rowData.numeroDocumentoFinal || rowData.numeroDocumento || "N/A"}
             style={{ width: 140, textAlign: "center", verticalAlign: "top" }}
             sortable
           />
@@ -2052,7 +2184,7 @@ const PreFactura = ({ ruta }) => {
             field="tipoOperacionSunat.descripcion"
             header="Tipo Operación SUNAT"
             body={(rowData) =>
-              rowData.tipoOperacionSunat?.descripcion 
+              rowData.tipoOperacionSunat?.descripcion
             }
             sortable
             filter
@@ -2127,7 +2259,7 @@ const PreFactura = ({ ruta }) => {
           <Column
             body={actionBodyTemplate}
             exportable={false}
-            style={{ width: "110px",  textAlign: "center", verticalAlign: "top" }}
+            style={{ width: "110px", textAlign: "center", verticalAlign: "top" }}
             header="Acciones"
           />
 

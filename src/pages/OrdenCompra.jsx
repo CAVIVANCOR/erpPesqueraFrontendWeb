@@ -59,6 +59,8 @@ import { useDashboardStore } from "../shared/stores/useDashboardStore";
 import { generarOrdenesCompraExcel } from "../components/ordenCompra/reports/generarOrdenesCompraExcel";
 import AsignarCentroCostoMasivo from "../components/common/AsignarCentroCostoMasivo";
 import { asignarCentroCostoMasivo } from "../api/ordenCompra";
+import { formatearMontoConSigno } from "../utils/tiposDocumento.constants";
+import FiltroTipoLibroButton from "../components/common/FiltroTipoLibroButton";
 
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
@@ -129,15 +131,15 @@ export default function OrdenCompra({ ruta }) {
   // Estados para filtros de rango de fechas
   const [rangoFechaDocumento, setRangoFechaDocumento] = useState(null);
   const [rangoFechaFacturacion, setRangoFechaFacturacion] = useState(null);
-  const [tipoDocumentoIdSeleccionado, setTipoDocumentoIdSeleccionado] = useState(null);
   const [tipoDocumentoFinalIdSeleccionado, setTipoDocumentoFinalIdSeleccionado] = useState(null);
 
   // Estados para opciones de dropdowns
-  const [tiposDocumentoOrigen, setTiposDocumentoOrigen] = useState([]);
   const [tiposDocumentoFinal, setTiposDocumentoFinal] = useState([]);
   const [estadosUnicos, setEstadosUnicos] = useState([]); // ✅ AGREGAR
   const [ordenesSeleccionadas, setOrdenesSeleccionadas] = useState([]);
   const [showAsignarCentroCostoDialog, setShowAsignarCentroCostoDialog] = useState(false);
+  const [filtroTipoLibro, setFiltroTipoLibro] = useState("FISCAL_SSI");
+
   // ========================================
   // 🆕 CARGAR DATOS AL MONTAR EL COMPONENTE
   // ========================================
@@ -235,12 +237,6 @@ export default function OrdenCompra({ ruta }) {
       });
     }
 
-    // ✅ Filtro por tipo documento origen
-    if (tipoDocumentoIdSeleccionado) {
-      filtered = filtered.filter(
-        (orden) => Number(orden.tipoDocumentoId) === Number(tipoDocumentoIdSeleccionado),
-      );
-    }
 
     // ✅ Filtro por tipo documento final
     if (tipoDocumentoFinalIdSeleccionado) {
@@ -268,6 +264,19 @@ export default function OrdenCompra({ ruta }) {
       });
     }
 
+    // Filtro por tipo de libro
+    if (filtroTipoLibro === "FISCAL_SSI") {
+      // Fiscal sin saldos iniciales
+      filtered = filtered.filter((orden) => !orden.esGerencial && !orden.esSaldoInicial);
+    } else if (filtroTipoLibro === "FISCAL_CSI") {
+      // Fiscal con saldos iniciales
+      filtered = filtered.filter((orden) => !orden.esGerencial && orden.esSaldoInicial);
+    } else if (filtroTipoLibro === "GERENCIAL") {
+      // Solo gerenciales
+      filtered = filtered.filter((orden) => orden.esGerencial);
+    }
+    // Si es "TODOS", no se filtra
+
     setItemsFiltrados(filtered);
   }, [
     items,
@@ -276,10 +285,10 @@ export default function OrdenCompra({ ruta }) {
     proveedorSeleccionado,
     rangoFechaDocumento,
     rangoFechaFacturacion,
-    tipoDocumentoIdSeleccionado,
     tipoDocumentoFinalIdSeleccionado,
     centroCostoSeleccionado,
     productoSeleccionado,
+    filtroTipoLibro,
   ]);
 
   const cargarDatos = async () => {
@@ -399,18 +408,6 @@ export default function OrdenCompra({ ruta }) {
   // ✅ Cargar tipos de documento DINÁMICAMENTE desde órdenes filtradas
   useEffect(() => {
     if (items.length > 0) {  // ✅ Usar items (todos los datos)
-      // Tipos de documento origen (únicos)
-      const tiposOrigen = items
-        .filter(o => o.tipoDocumento)
-        .map(o => ({
-          label: `${o.tipoDocumento.codigo} - ${o.tipoDocumento.descripcion}`,
-          value: o.tipoDocumentoId,
-        }))
-        .filter((item, index, self) =>
-          index === self.findIndex(t => t.value === item.value)
-        );
-      setTiposDocumentoOrigen(tiposOrigen);
-
       // Tipos de documento final (únicos)
       const tiposFinal = items
         .filter(o => o.tipoDocumentoFinal)
@@ -423,7 +420,6 @@ export default function OrdenCompra({ ruta }) {
         );
       setTiposDocumentoFinal(tiposFinal);
     } else {
-      setTiposDocumentoOrigen([]);
       setTiposDocumentoFinal([]);
     }
   }, [items]);  // ✅ Dependencia correcta
@@ -1407,95 +1403,197 @@ export default function OrdenCompra({ ruta }) {
     );
   };
 
-  // ✅ Calcular totales por moneda
-  const calcularTotalesPorMoneda = () => {
-    let totalSoles = 0;
-    let totalDolares = 0;
-    let colorFondoSoles = "#FFE5B4";
-    let colorFondoDolares = "#C8E6C9";
+  // ✅ Calcular totales por tipo de documento y moneda
+  const calcularTotalesPorTipoYMoneda = () => {
+    const totalesPorTipo = {};
+    let totalGeneralSoles = 0;
+    let totalGeneralDolares = 0;
     let simboloSoles = "S/";
     let simboloDolares = "$";
+    let colorFondoSoles = "#FFE5B4";
+    let colorFondoDolares = "#C8E6C9";
 
     ordenesFiltradas.forEach((orden) => {
       const total = Number(orden.total) || 0;
+      const codigo = orden.tipoDocumentoFinal?.codigo || orden.tipoDocumento?.codigo || "OTROS";
+      const monedaId = Number(orden.monedaId);
 
-      if (Number(orden.monedaId) === 1) {
-        // Soles
-        totalSoles += total;
-        if (orden.moneda?.colorFondo) colorFondoSoles = orden.moneda.colorFondo;
+      // Inicializar tipo si no existe
+      if (!totalesPorTipo[codigo]) {
+        totalesPorTipo[codigo] = { soles: 0, dolares: 0 };
+      }
+
+      // Acumular por tipo y moneda
+      if (monedaId === 1) {
+        totalesPorTipo[codigo].soles += total;
+        totalGeneralSoles += total;
         if (orden.moneda?.simbolo) simboloSoles = orden.moneda.simbolo;
-      } else if (Number(orden.monedaId) === 2) {
-        // Dólares
-        totalDolares += total;
-        if (orden.moneda?.colorFondo) colorFondoDolares = orden.moneda.colorFondo;
+        if (orden.moneda?.colorFondo) colorFondoSoles = orden.moneda.colorFondo;
+      } else if (monedaId === 2) {
+        totalesPorTipo[codigo].dolares += total;
+        totalGeneralDolares += total;
         if (orden.moneda?.simbolo) simboloDolares = orden.moneda.simbolo;
+        if (orden.moneda?.colorFondo) colorFondoDolares = orden.moneda.colorFondo;
       }
     });
 
     return {
-      totalSoles,
-      totalDolares,
-      colorFondoSoles,
-      colorFondoDolares,
+      totalesPorTipo,
+      totalGeneralSoles,
+      totalGeneralDolares,
       simboloSoles,
       simboloDolares,
+      colorFondoSoles,
+      colorFondoDolares,
     };
   };
 
-
-  // ✅ Template para footer con totales
+  // ✅ Template para footer con totales por tipo documento
   const footerTemplate = () => {
     const {
-      totalSoles,
-      totalDolares,
-      colorFondoSoles,
-      colorFondoDolares,
+      totalesPorTipo,
+      totalGeneralSoles,
+      totalGeneralDolares,
       simboloSoles,
       simboloDolares,
-    } = calcularTotalesPorMoneda();
+      colorFondoSoles,
+      colorFondoDolares,
+    } = calcularTotalesPorTipoYMoneda();
 
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          alignItems: "center",
-          gap: "15px",
-          padding: "10px",
-          fontWeight: "bold",
-          fontSize: "14px",
-        }}
-      >
-        <span>TOTALES:</span>
+      <div style={{ padding: "8px 10px" }}>
+        {/* LÍNEA 1: Totales por tipo documento agrupados */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "6px",
+            marginBottom: "8px",
+            justifyContent: "flex-end",
+            alignItems: "center",
+          }}
+        >
+          {Object.entries(totalesPorTipo)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([codigo, montos]) => {
+              // Solo mostrar si hay montos
+              if (montos.soles === 0 && montos.dolares === 0) return null;
 
-        {totalSoles > 0 && (
+              return (
+                <div
+                  key={codigo}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    border: "1.5px solid #dee2e6",
+                    borderRadius: "4px",
+                    padding: "3px 6px",
+                    backgroundColor: "transparent",
+                  }}
+                >
+                  {/* Label del tipo */}
+                  <span style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#495057" }}>
+                    {codigo}:
+                  </span>
+
+                  {/* Soles */}
+                  {montos.soles !== 0 && (
+                    <span
+                      style={{
+                        backgroundColor: colorFondoSoles,
+                        padding: "2px 6px",
+                        borderRadius: "3px",
+                        fontSize: "0.75rem",
+                        fontWeight: "bold",
+                        color: montos.soles < 0 ? "#c0392b" : "#000",
+                      }}
+                    >
+                      {simboloSoles} {formatearNumero(montos.soles, 2)}
+                    </span>
+                  )}
+
+                  {/* Dólares */}
+                  {montos.dolares !== 0 && (
+                    <span
+                      style={{
+                        backgroundColor: colorFondoDolares,
+                        padding: "2px 6px",
+                        borderRadius: "3px",
+                        fontSize: "0.75rem",
+                        fontWeight: "bold",
+                        color: montos.dolares < 0 ? "#c0392b" : "#000",
+                      }}
+                    >
+                      {simboloDolares} {formatearNumero(montos.dolares, 2)}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+        </div>
+
+        {/* LÍNEA 2: Totales generales */}
+        <div
+          style={{
+            display: "flex",
+            gap: "6px",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            borderTop: "2px solid #dee2e6",
+            paddingTop: "8px",
+          }}
+        >
           <div
             style={{
-              backgroundColor: colorFondoSoles,
-              padding: "6px 12px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              border: "2px solid #3498db",
               borderRadius: "4px",
-              fontWeight: "bold",
+              padding: "4px 8px",
+              backgroundColor: "transparent",
             }}
           >
-            {simboloSoles} {formatearNumero(totalSoles, 2)}
-          </div>
-        )}
+            <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#2c3e50" }}>
+              TOTALES:
+            </span>
 
-        {totalDolares > 0 && (
-          <div
-            style={{
-              backgroundColor: colorFondoDolares,
-              padding: "6px 12px",
-              borderRadius: "4px",
-              fontWeight: "bold",
-            }}
-          >
-            {simboloDolares} {formatearNumero(totalDolares, 2)}
+            {totalGeneralSoles !== 0 && (
+              <span
+                style={{
+                  backgroundColor: colorFondoSoles,
+                  padding: "3px 8px",
+                  borderRadius: "3px",
+                  fontSize: "0.9rem",
+                  fontWeight: "bold",
+                  color: totalGeneralSoles < 0 ? "#c0392b" : "#000",
+                }}
+              >
+                {simboloSoles} {formatearNumero(totalGeneralSoles, 2)}
+              </span>
+            )}
+
+            {totalGeneralDolares !== 0 && (
+              <span
+                style={{
+                  backgroundColor: colorFondoDolares,
+                  padding: "3px 8px",
+                  borderRadius: "3px",
+                  fontSize: "0.9rem",
+                  fontWeight: "bold",
+                  color: totalGeneralDolares < 0 ? "#c0392b" : "#000",
+                }}
+              >
+                {simboloDolares} {formatearNumero(totalGeneralDolares, 2)}
+              </span>
+            )}
           </div>
-        )}
+        </div>
       </div>
     );
   };
+
   const actionBody = (rowData) => (
     <div
       style={{
@@ -1592,6 +1690,7 @@ export default function OrdenCompra({ ruta }) {
                   }}
                 />
               </div>
+
               <div style={{ flex: 1 }}>
                 <Button
                   label="Nuevo"
@@ -1662,6 +1761,17 @@ export default function OrdenCompra({ ruta }) {
                 {/* Filtro de Unidad de Negocio - Compacto */}
                 <UnidadNegocioFilter />
               </div>
+              {/* Filtro Tipo Libro */}
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold" }}>
+                  Tipo Libro
+                </label>
+                <FiltroTipoLibroButton
+                  value={filtroTipoLibro}
+                  onChange={setFiltroTipoLibro}
+                  style={{ width: "100%" }}
+                />
+              </div>
             </div>
             <div
               style={{
@@ -1725,7 +1835,6 @@ export default function OrdenCompra({ ruta }) {
                   style={{ width: "100%" }}
                 />
               </div>
-
               <div style={{ flex: 1, minWidth: "200px" }}>
                 <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
                   Rango Fecha Facturación:
@@ -1740,22 +1849,6 @@ export default function OrdenCompra({ ruta }) {
                   style={{ width: "100%" }}
                 />
               </div>
-
-              <div style={{ flex: 1, minWidth: "200px" }}>
-                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
-                  Tipo Doc Origen:
-                </label>
-                <Dropdown
-                  value={tipoDocumentoIdSeleccionado}
-                  options={tiposDocumentoOrigen}
-                  onChange={(e) => setTipoDocumentoIdSeleccionado(e.value)}
-                  placeholder="Todos"
-                  showClear
-                  filter
-                  style={{ width: "100%" }}
-                />
-              </div>
-
               <div style={{ flex: 1, minWidth: "200px" }}>
                 <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
                   Tipo Doc Final:
@@ -1786,7 +1879,6 @@ export default function OrdenCompra({ ruta }) {
                   disabled={loading}
                   filter
                   style={{ width: "100%" }}
-
                 />
               </div>
               <div style={{ flex: 1 }}>
