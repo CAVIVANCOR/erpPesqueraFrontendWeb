@@ -10,6 +10,7 @@ import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { Tag } from "primereact/tag";
+import { InputText } from "primereact/inputtext";
 import { confirmDialog } from "primereact/confirmdialog";
 import OrdenCompraForm from "../components/ordenCompra/OrdenCompraForm";
 import RequerimientoCompraForm from "../components/requerimientoCompra/RequerimientoCompraForm";
@@ -129,7 +130,6 @@ export default function OrdenCompra({ ruta }) {
   const [showConsultaStock, setShowConsultaStock] = useState(false);
 
   // Estados para filtros de rango de fechas
-  const [rangoFechaDocumento, setRangoFechaDocumento] = useState(null);
   const [rangoFechaFacturacion, setRangoFechaFacturacion] = useState(null);
   const [tipoDocumentoFinalIdSeleccionado, setTipoDocumentoFinalIdSeleccionado] = useState(null);
 
@@ -138,7 +138,8 @@ export default function OrdenCompra({ ruta }) {
   const [estadosUnicos, setEstadosUnicos] = useState([]); // ✅ AGREGAR
   const [ordenesSeleccionadas, setOrdenesSeleccionadas] = useState([]);
   const [showAsignarCentroCostoDialog, setShowAsignarCentroCostoDialog] = useState(false);
-  const [filtroTipoLibro, setFiltroTipoLibro] = useState("FISCAL_SSI");
+  const [filtroTipoLibro, setFiltroTipoLibro] = useState("FISCAL_S_SI");
+  const [busquedaDocumento, setBusquedaDocumento] = useState("");
 
   // ========================================
   // 🆕 CARGAR DATOS AL MONTAR EL COMPONENTE
@@ -210,18 +211,6 @@ export default function OrdenCompra({ ruta }) {
       );
     }
 
-    // ✅ Filtro por rango de fecha documento
-    if (rangoFechaDocumento && rangoFechaDocumento[0] && rangoFechaDocumento[1]) {
-      const fechaInicio = new Date(rangoFechaDocumento[0]);
-      fechaInicio.setHours(0, 0, 0, 0);
-      const fechaFin = new Date(rangoFechaDocumento[1]);
-      fechaFin.setHours(23, 59, 59, 999);
-
-      filtered = filtered.filter((orden) => {
-        const fechaDoc = new Date(orden.fechaDocumento);
-        return fechaDoc >= fechaInicio && fechaDoc <= fechaFin;
-      });
-    }
 
     // ✅ Filtro por rango de fecha facturación
     if (rangoFechaFacturacion && rangoFechaFacturacion[0] && rangoFechaFacturacion[1]) {
@@ -264,16 +253,48 @@ export default function OrdenCompra({ ruta }) {
       });
     }
 
+    // Filtro por ID (#) o número de documento final
+    if (busquedaDocumento && busquedaDocumento.trim() !== "") {
+      const busqueda = busquedaDocumento.trim();
+
+      // Si empieza con #, buscar por ID
+      if (busqueda.startsWith("#")) {
+        const idBuscado = busqueda.substring(1).trim();
+        if (idBuscado && !isNaN(idBuscado)) {
+          filtered = filtered.filter((orden) => {
+            return String(orden.id) === idBuscado;
+          });
+        }
+      } else {
+        // Búsqueda normal en número de documento final
+        const busquedaLower = busqueda.toLowerCase();
+        filtered = filtered.filter((orden) => {
+          const numeroDocFinal = orden.numeroDocumentoFinal || "";
+          return numeroDocFinal.toLowerCase().includes(busquedaLower);
+        });
+      }
+    }
+
     // Filtro por tipo de libro
-    if (filtroTipoLibro === "FISCAL_SSI") {
-      // Fiscal sin saldos iniciales
-      filtered = filtered.filter((orden) => !orden.esGerencial && !orden.esSaldoInicial);
-    } else if (filtroTipoLibro === "FISCAL_CSI") {
-      // Fiscal con saldos iniciales
-      filtered = filtered.filter((orden) => !orden.esGerencial && orden.esSaldoInicial);
+    if (filtroTipoLibro === "FISCAL_S_SI") {
+      // Fiscal sin saldos iniciales: FAC, BV, NC, ND
+      filtered = filtered.filter((orden) => {
+        const codigo = orden.tipoDocumentoFinal?.codigo || orden.tipoDocumento?.codigo || "";
+        return ["FAC", "BV", "NC", "ND"].includes(codigo);
+      });
+    } else if (filtroTipoLibro === "FISCAL_C_SI") {
+      // Fiscal con saldos iniciales: FAC, BV, NC, ND + todos los SI-*
+      filtered = filtered.filter((orden) => {
+        const codigo = orden.tipoDocumentoFinal?.codigo || orden.tipoDocumento?.codigo || "";
+        return ["FAC", "BV", "NC", "ND"].includes(codigo) || codigo.startsWith("SI-");
+      });
     } else if (filtroTipoLibro === "GERENCIAL") {
-      // Solo gerenciales
-      filtered = filtered.filter((orden) => orden.esGerencial);
+      // Solo gerenciales: codigoSunat="00" excepto OTROS y SI-*
+      filtered = filtered.filter((orden) => {
+        const codigo = orden.tipoDocumentoFinal?.codigo || orden.tipoDocumento?.codigo || "";
+        const codigoSunat = orden.tipoDocumentoFinal?.codigoSunat || orden.tipoDocumento?.codigoSunat || "";
+        return codigoSunat === "00" && codigo !== "00" && !codigo.startsWith("SI-");
+      });
     }
     // Si es "TODOS", no se filtra
 
@@ -283,12 +304,12 @@ export default function OrdenCompra({ ruta }) {
     empresaSeleccionada,
     estadoSeleccionado,
     proveedorSeleccionado,
-    rangoFechaDocumento,
     rangoFechaFacturacion,
     tipoDocumentoFinalIdSeleccionado,
     centroCostoSeleccionado,
     productoSeleccionado,
     filtroTipoLibro,
+    busquedaDocumento,
   ]);
 
   const cargarDatos = async () => {
@@ -697,9 +718,7 @@ export default function OrdenCompra({ ruta }) {
     setProveedorSeleccionado(null);
     setEstadoSeleccionado(null);
     setProductoSeleccionado(null);
-    setRangoFechaDocumento(null);
     setRangoFechaFacturacion(null);
-    setTipoDocumentoIdSeleccionado(null);
     setTipoDocumentoFinalIdSeleccionado(null);
     setCentroCostoSeleccionado(null);
   };
@@ -1321,15 +1340,6 @@ export default function OrdenCompra({ ruta }) {
       </div>
     );
   };
-  // Template para Tipo Documento Origen
-  const tipoDocumentoOrigenTemplate = (rowData) => {
-    return rowData.tipoDocumento?.codigo || "-";
-  };
-
-  // Template para Número Documento Origen
-  const numeroDocumentoOrigenTemplate = (rowData) => {
-    return rowData.numeroDocumento || "-";
-  };
 
   // Template para Tipo Documento Final
   const tipoDocumentoFinalTemplate = (rowData) => {
@@ -1448,7 +1458,7 @@ export default function OrdenCompra({ ruta }) {
     };
   };
 
-  // ✅ Template para footer con totales por tipo documento
+  // ✅ Template para footer con totales en UNA LÍNEA
   const footerTemplate = () => {
     const {
       totalesPorTipo,
@@ -1461,15 +1471,21 @@ export default function OrdenCompra({ ruta }) {
     } = calcularTotalesPorTipoYMoneda();
 
     return (
-      <div style={{ padding: "8px 10px" }}>
-        {/* LÍNEA 1: Totales por tipo documento agrupados */}
+      <div
+        style={{
+          padding: "8px 10px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          borderTop: "2px solid #dee2e6",
+        }}
+      >
+        {/* IZQUIERDA: Totales por tipo documento */}
         <div
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: "6px",
-            marginBottom: "8px",
-            justifyContent: "flex-end",
+            gap: "8px",
             alignItems: "center",
           }}
         >
@@ -1486,10 +1502,6 @@ export default function OrdenCompra({ ruta }) {
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "4px",
-                    border: "1.5px solid #dee2e6",
-                    borderRadius: "4px",
-                    padding: "3px 6px",
-                    backgroundColor: "transparent",
                   }}
                 >
                   {/* Label del tipo */}
@@ -1528,72 +1540,63 @@ export default function OrdenCompra({ ruta }) {
                       {simboloDolares} {formatearNumero(montos.dolares, 2)}
                     </span>
                   )}
+
+                  {/* Separador visual */}
+                  <span style={{ color: "#dee2e6", fontWeight: "bold" }}>|</span>
                 </div>
               );
             })}
         </div>
 
-        {/* LÍNEA 2: Totales generales */}
+        {/* DERECHA: Total general */}
         <div
           style={{
-            display: "flex",
-            gap: "6px",
-            justifyContent: "flex-end",
+            display: "inline-flex",
             alignItems: "center",
-            borderTop: "2px solid #dee2e6",
-            paddingTop: "8px",
+            gap: "6px",
+            border: "2px solid #3498db",
+            borderRadius: "4px",
+            padding: "4px 10px",
+            backgroundColor: "#f8f9fa",
           }}
         >
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              border: "2px solid #3498db",
-              borderRadius: "4px",
-              padding: "4px 8px",
-              backgroundColor: "transparent",
-            }}
-          >
-            <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#2c3e50" }}>
-              TOTALES:
+          <span style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#2c3e50" }}>
+            TOTAL:
+          </span>
+
+          {totalGeneralSoles !== 0 && (
+            <span
+              style={{
+                backgroundColor: colorFondoSoles,
+                padding: "3px 8px",
+                borderRadius: "3px",
+                fontSize: "0.95rem",
+                fontWeight: "bold",
+                color: totalGeneralSoles < 0 ? "#c0392b" : "#000",
+              }}
+            >
+              {simboloSoles} {formatearNumero(totalGeneralSoles, 2)}
             </span>
+          )}
 
-            {totalGeneralSoles !== 0 && (
-              <span
-                style={{
-                  backgroundColor: colorFondoSoles,
-                  padding: "3px 8px",
-                  borderRadius: "3px",
-                  fontSize: "0.9rem",
-                  fontWeight: "bold",
-                  color: totalGeneralSoles < 0 ? "#c0392b" : "#000",
-                }}
-              >
-                {simboloSoles} {formatearNumero(totalGeneralSoles, 2)}
-              </span>
-            )}
-
-            {totalGeneralDolares !== 0 && (
-              <span
-                style={{
-                  backgroundColor: colorFondoDolares,
-                  padding: "3px 8px",
-                  borderRadius: "3px",
-                  fontSize: "0.9rem",
-                  fontWeight: "bold",
-                  color: totalGeneralDolares < 0 ? "#c0392b" : "#000",
-                }}
-              >
-                {simboloDolares} {formatearNumero(totalGeneralDolares, 2)}
-              </span>
-            )}
-          </div>
+          {totalGeneralDolares !== 0 && (
+            <span
+              style={{
+                backgroundColor: colorFondoDolares,
+                padding: "3px 8px",
+                borderRadius: "3px",
+                fontSize: "0.95rem",
+                fontWeight: "bold",
+                color: totalGeneralDolares < 0 ? "#c0392b" : "#000",
+              }}
+            >
+              {simboloDolares} {formatearNumero(totalGeneralDolares, 2)}
+            </span>
+          )}
         </div>
       </div>
     );
   };
-
   const actionBody = (rowData) => (
     <div
       style={{
@@ -1737,9 +1740,8 @@ export default function OrdenCompra({ ruta }) {
                   tooltipOptions={{ position: "bottom" }}
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.25 }}>
                 <Button
-                  label="Limpiar Filtros"
                   icon="pi pi-filter-slash"
                   className="p-button-secondary"
                   outlined
@@ -1755,6 +1757,7 @@ export default function OrdenCompra({ ruta }) {
                   onClick={handleExportarExcel}
                   disabled={loading}
                   tooltip="Exportar todas las Órdenes de Compra a Excel"
+                  style={{ width: "100%" }}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -1781,7 +1784,7 @@ export default function OrdenCompra({ ruta }) {
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <div style={{ flex: 2 }}>
+              <div style={{ flex: 1 }}>
                 <label htmlFor="proveedorFiltro" style={{ fontWeight: "bold" }}>
                   Proveedor
                 </label>
@@ -1799,9 +1802,10 @@ export default function OrdenCompra({ ruta }) {
                   showClear
                   filter
                   disabled={loading}
+                  style={{ width: "100%" }}
                 />
               </div>
-              <div style={{ flex: 2 }}>
+              <div style={{ flex: 1 }}>
                 <label htmlFor="productoFiltro" style={{ fontWeight: "bold" }}>
                   Producto
                 </label>
@@ -1819,33 +1823,6 @@ export default function OrdenCompra({ ruta }) {
                   showClear
                   filter
                   disabled={loading}
-                />
-              </div>
-              <div style={{ flex: 1, minWidth: "200px" }}>
-                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
-                  Rango Fecha Documento:
-                </label>
-                <Calendar
-                  value={rangoFechaDocumento}
-                  onChange={(e) => setRangoFechaDocumento(e.value)}
-                  selectionMode="range"
-                  dateFormat="dd/mm/yy"
-                  placeholder="Seleccione rango"
-                  showIcon
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1, minWidth: "200px" }}>
-                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
-                  Rango Fecha Facturación:
-                </label>
-                <Calendar
-                  value={rangoFechaFacturacion}
-                  onChange={(e) => setRangoFechaFacturacion(e.value)}
-                  selectionMode="range"
-                  dateFormat="dd/mm/yy"
-                  placeholder="Seleccione rango"
-                  showIcon
                   style={{ width: "100%" }}
                 />
               </div>
@@ -1863,6 +1840,34 @@ export default function OrdenCompra({ ruta }) {
                   filter
                 />
               </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="busquedaDocumento" style={{ fontWeight: "bold" }}>
+                  N° Dcmto / #ID
+                </label>
+                <InputText
+                  id="busquedaDocumento"
+                  value={busquedaDocumento}
+                  onChange={(e) => setBusquedaDocumento(e.target.value)}
+                  placeholder="N° Doc (#ID para buscar por ID)..."
+                  style={{ width: "100%" }}
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: "200px" }}>
+                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                  Rango Fecha Facturación:
+                </label>
+                <Calendar
+                  value={rangoFechaFacturacion}
+                  onChange={(e) => setRangoFechaFacturacion(e.value)}
+                  selectionMode="range"
+                  dateFormat="dd/mm/yy"
+                  placeholder="Seleccione rango"
+                  showIcon
+                  style={{ width: "100%" }}
+                />
+              </div>
+
               <div style={{ flex: 1 }}>
                 <label htmlFor="estadoFiltro" style={{ fontWeight: "bold" }}>
                   Estado
@@ -1925,32 +1930,6 @@ export default function OrdenCompra({ ruta }) {
         <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
         <Column field="id" header="ID" style={{ width: 80 }} sortable />
         <Column field="empresaId" header="Empresa" body={empresaNombre} />
-
-        {/* Tipo Documento Origen */}
-        <Column
-          field="tipoDocumento.codigo"
-          header="Tipo Doc"
-          body={tipoDocumentoOrigenTemplate}
-          style={{ width: 90, textAlign: "center" }}
-          sortable
-        />
-
-        {/* Número Documento Origen */}
-        <Column
-          field="numeroDocumento"
-          header="N° Documento"
-          body={numeroDocumentoOrigenTemplate}
-          style={{ width: 140, textAlign: "center" }}
-          sortable
-        />
-
-        <Column
-          field="fechaDocumento"
-          header="Fecha Documento"
-          body={(rowData) => fechaTemplate(rowData, "fechaDocumento")}
-          style={{ width: 110, textAlign: "center" }}
-          sortable
-        />
 
         <Column
           field="proveedorId"

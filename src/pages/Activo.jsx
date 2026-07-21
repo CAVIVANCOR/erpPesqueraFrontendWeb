@@ -261,11 +261,31 @@ const Activo = ({ ruta }) => {
   const monedaTemplate = (rowData) => {
     return rowData.moneda?.codigoSunat || "-";
   };
+
   const cuentaContableTemplate = (rowData) => {
     return rowData.cuentaContable
       ? `${rowData.cuentaContable.codigoCuenta} - ${rowData.cuentaContable.nombreCuenta}`
       : "-";
   };
+
+  const productoTemplate = (rowData) => {
+    return rowData.producto
+      ? `${rowData.producto.descripcionArmada}`
+      : "-";
+  };
+
+  const cuentaDepreciacionTemplate = (rowData) => {
+    return rowData.cuentaDepreciacion
+      ? `${rowData.cuentaDepreciacion.codigoCuenta} - ${rowData.cuentaDepreciacion.nombreCuenta}`
+      : "-";
+  };
+
+  const cuentaGastoDepTemplate = (rowData) => {
+    return rowData.cuentaGastoDep
+      ? `${rowData.cuentaGastoDep.codigoCuenta} - ${rowData.cuentaGastoDep.nombreCuenta}`
+      : "-";
+  };
+
   const accionesTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
@@ -444,8 +464,26 @@ const Activo = ({ ruta }) => {
           style={{ minWidth: "90px" }}
         />
         <Column
+          header="Producto"
+          body={productoTemplate}
+          sortable
+          style={{ minWidth: "250px" }}
+        />
+        <Column
           header="Cuenta Contable"
           body={cuentaContableTemplate}
+          sortable
+          style={{ minWidth: "250px" }}
+        />
+        <Column
+          header="Cuenta Depreciación"
+          body={cuentaDepreciacionTemplate}
+          sortable
+          style={{ minWidth: "250px" }}
+        />
+        <Column
+          header="Cuenta Gasto Dep."
+          body={cuentaGastoDepTemplate}
           sortable
           style={{ minWidth: "250px" }}
         />

@@ -178,6 +178,28 @@ export default function TipoMovimientoActivoFijo({ ruta }) {
     );
   };
 
+  const booleanTemplate = (value) => {
+    return (
+      <Tag
+        value={value ? "SÍ" : "NO"}
+        severity={value ? "success" : "secondary"}
+        style={{ fontSize: "10px", padding: "2px 8px" }}
+      />
+    );
+  };
+
+  const cuentaDebeTemplate = (rowData) => {
+    return rowData.cuentaDebe
+      ? `${rowData.cuentaDebe.codigoCuenta} - ${rowData.cuentaDebe.nombreCuenta}`
+      : "-";
+  };
+
+  const cuentaHaberTemplate = (rowData) => {
+    return rowData.cuentaHaber
+      ? `${rowData.cuentaHaber.codigoCuenta} - ${rowData.cuentaHaber.nombreCuenta}`
+      : "-";
+  };
+
   const handleGenerarReporte = () => {
     setReportData({
       tiposMovimiento: items,
@@ -317,6 +339,67 @@ export default function TipoMovimientoActivoFijo({ ruta }) {
             style={{ minWidth: "120px" }}
           />
           <Column
+            field="afectaValorActivo"
+            header="Afecta Valor"
+            body={(rowData) => booleanTemplate(rowData.afectaValorActivo)}
+            sortable
+            style={{ minWidth: "120px" }}
+          />
+          <Column
+            field="afectaDepreciacion"
+            header="Afecta Dep."
+            body={(rowData) => booleanTemplate(rowData.afectaDepreciacion)}
+            sortable
+            style={{ minWidth: "120px" }}
+          />
+          <Column
+            field="generaAsientoAutomatico"
+            header="Asiento Auto"
+            body={(rowData) => booleanTemplate(rowData.generaAsientoAutomatico)}
+            sortable
+            style={{ minWidth: "130px" }}
+          />
+          <Column
+            field="requiereProducto"
+            header="Req. Producto"
+            body={(rowData) => booleanTemplate(rowData.requiereProducto)}
+            sortable
+            style={{ minWidth: "130px" }}
+          />
+          <Column
+            field="dasDeBajaActivo"
+            header="Da de Baja"
+            body={(rowData) => booleanTemplate(rowData.dasDeBajaActivo)}
+            sortable
+            style={{ minWidth: "120px" }}
+          />
+          <Column
+            header="Cuenta DEBE"
+            body={cuentaDebeTemplate}
+            sortable
+            style={{ minWidth: "250px" }}
+          />
+          <Column
+            header="Cuenta HABER"
+            body={cuentaHaberTemplate}
+            sortable
+            style={{ minWidth: "250px" }}
+          />
+          <Column
+            field="usaCuentasActivo"
+            header="Usa Ctas. Activo"
+            body={(rowData) => booleanTemplate(rowData.usaCuentasActivo)}
+            sortable
+            style={{ minWidth: "140px" }}
+          />
+          <Column
+            field="usaCuentasProducto"
+            header="Usa Ctas. Producto"
+            body={(rowData) => booleanTemplate(rowData.usaCuentasProducto)}
+            sortable
+            style={{ minWidth: "150px" }}
+          />
+          <Column
             body={actionBodyTemplate}
             header="Acciones"
             frozen
@@ -328,7 +411,7 @@ export default function TipoMovimientoActivoFijo({ ruta }) {
 
       <Dialog
         visible={showDialog}
-        style={{ width: "90vw", maxWidth: "600px" }}
+        style={{ width: "90vw", maxWidth: "800px" }}
         header={
           isEdit
             ? "Editar Tipo de Movimiento de Activo Fijo"

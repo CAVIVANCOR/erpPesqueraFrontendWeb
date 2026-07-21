@@ -140,7 +140,7 @@ const PreFactura = ({ ruta }) => {
     useState(false); // ⬅️ AGREGAR
   const [contratoServicioOrigen, setContratoServicioOrigen] = useState(null); // ⬅️ AGREGAR
   const [navigationStack, setNavigationStack] = useState([]); // Stack para navegación de PreFacturas
-  const [filtroTipoLibro, setFiltroTipoLibro] = useState("FISCAL_SSI");
+  const [filtroTipoLibro, setFiltroTipoLibro] = useState("FISCAL_S_SI");
   const [showConsultaStock, setShowConsultaStock] = useState(false);
   const toast = useRef(null);
 
@@ -404,25 +404,52 @@ const PreFactura = ({ ruta }) => {
       });
     }
 
-    // Filtro por número de liquidación de facturación
+    // Filtro por ID (#), número de liquidación o número de documento final
     if (nroLiquidacionBusqueda && nroLiquidacionBusqueda.trim() !== "") {
-      const busqueda = nroLiquidacionBusqueda.toLowerCase().trim();
-      filtrados = filtrados.filter((item) => {
-        const nroLiquidacion = item.nroLiquidacionFacturacion || "";
-        return nroLiquidacion.toLowerCase().includes(busqueda);
-      });
+      const busqueda = nroLiquidacionBusqueda.trim();
+
+      // Si empieza con #, buscar por ID
+      if (busqueda.startsWith("#")) {
+        const idBuscado = busqueda.substring(1).trim();
+        if (idBuscado && !isNaN(idBuscado)) {
+          filtrados = filtrados.filter((item) => {
+            return String(item.id) === idBuscado;
+          });
+        }
+      } else {
+        // Búsqueda normal en campos de texto
+        const busquedaLower = busqueda.toLowerCase();
+        filtrados = filtrados.filter((item) => {
+          const nroLiquidacion = item.nroLiquidacionFacturacion || "";
+          const numeroDocFinal = item.numeroDocumentoFinal || "";
+          return (
+            nroLiquidacion.toLowerCase().includes(busquedaLower) ||
+            numeroDocFinal.toLowerCase().includes(busquedaLower)
+          );
+        });
+      }
     }
 
     // Filtro por tipo de libro
-    if (filtroTipoLibro === "FISCAL_SSI") {
-      // Fiscal sin saldos iniciales
-      filtrados = filtrados.filter((item) => !item.esGerencial && !item.esSaldoInicial);
-    } else if (filtroTipoLibro === "FISCAL_CSI") {
-      // Fiscal con saldos iniciales
-      filtrados = filtrados.filter((item) => !item.esGerencial && item.esSaldoInicial);
+    if (filtroTipoLibro === "FISCAL_S_SI") {
+      // Fiscal sin saldos iniciales: FAC, BV, NC, ND
+      filtrados = filtrados.filter((item) => {
+        const codigo = item.tipoDocumentoFinal?.codigo || item.tipoDocumento?.codigo || "";
+        return ["FAC", "BV", "NC", "ND"].includes(codigo);
+      });
+    } else if (filtroTipoLibro === "FISCAL_C_SI") {
+      // Fiscal con saldos iniciales: FAC, BV, NC, ND + todos los SI-*
+      filtrados = filtrados.filter((item) => {
+        const codigo = item.tipoDocumentoFinal?.codigo || item.tipoDocumento?.codigo || "";
+        return ["FAC", "BV", "NC", "ND"].includes(codigo) || codigo.startsWith("SI-");
+      });
     } else if (filtroTipoLibro === "GERENCIAL") {
-      // Solo gerenciales
-      filtrados = filtrados.filter((item) => item.esGerencial);
+      // Solo gerenciales: codigoSunat="00" excepto OTROS y SI-*
+      filtrados = filtrados.filter((item) => {
+        const codigo = item.tipoDocumentoFinal?.codigo || item.tipoDocumento?.codigo || "";
+        const codigoSunat = item.tipoDocumentoFinal?.codigoSunat || item.tipoDocumento?.codigoSunat || "";
+        return codigoSunat === "00" && codigo !== "00" && !codigo.startsWith("SI-");
+      });
     }
     // Si es "TODOS", no se filtra
 
@@ -486,7 +513,7 @@ const PreFactura = ({ ruta }) => {
     };
   };
 
-  // ✅ Template para footer con totales por tipo documento
+  // ✅ Template para footer con totales en UNA LÍNEA
   const footerTemplate = () => {
     const {
       totalesPorTipo,
@@ -499,15 +526,21 @@ const PreFactura = ({ ruta }) => {
     } = calcularTotalesPorTipoYMoneda();
 
     return (
-      <div style={{ padding: "8px 10px" }}>
-        {/* LÍNEA 1: Totales por tipo documento agrupados */}
+      <div
+        style={{
+          padding: "8px 10px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          borderTop: "2px solid #dee2e6",
+        }}
+      >
+        {/* IZQUIERDA: Totales por tipo documento */}
         <div
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: "6px",
-            marginBottom: "8px",
-            justifyContent: "flex-end",
+            gap: "8px",
             alignItems: "center",
           }}
         >
@@ -524,10 +557,6 @@ const PreFactura = ({ ruta }) => {
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "4px",
-                    border: "1.5px solid #dee2e6",
-                    borderRadius: "4px",
-                    padding: "3px 6px",
-                    backgroundColor: "transparent",
                   }}
                 >
                   {/* Label del tipo */}
@@ -566,67 +595,59 @@ const PreFactura = ({ ruta }) => {
                       {simboloDolares} {formatearNumero(montos.dolares, 2)}
                     </span>
                   )}
+
+                  {/* Separador visual */}
+                  <span style={{ color: "#dee2e6", fontWeight: "bold" }}>|</span>
                 </div>
               );
             })}
         </div>
 
-        {/* LÍNEA 2: Totales generales */}
+        {/* DERECHA: Total general */}
         <div
           style={{
-            display: "flex",
-            gap: "6px",
-            justifyContent: "flex-end",
+            display: "inline-flex",
             alignItems: "center",
-            borderTop: "2px solid #dee2e6",
-            paddingTop: "8px",
+            gap: "6px",
+            border: "2px solid #3498db",
+            borderRadius: "4px",
+            padding: "4px 10px",
+            backgroundColor: "#f8f9fa",
           }}
         >
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              border: "2px solid #3498db",
-              borderRadius: "4px",
-              padding: "4px 8px",
-              backgroundColor: "transparent",
-            }}
-          >
-            <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#2c3e50" }}>
-              TOTALES:
+          <span style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#2c3e50" }}>
+            TOTAL:
+          </span>
+
+          {totalGeneralSoles !== 0 && (
+            <span
+              style={{
+                backgroundColor: colorFondoSoles,
+                padding: "3px 8px",
+                borderRadius: "3px",
+                fontSize: "0.95rem",
+                fontWeight: "bold",
+                color: totalGeneralSoles < 0 ? "#c0392b" : "#000",
+              }}
+            >
+              {simboloSoles} {formatearNumero(totalGeneralSoles, 2)}
             </span>
+          )}
 
-            {totalGeneralSoles !== 0 && (
-              <span
-                style={{
-                  backgroundColor: colorFondoSoles,
-                  padding: "3px 8px",
-                  borderRadius: "3px",
-                  fontSize: "0.9rem",
-                  fontWeight: "bold",
-                  color: totalGeneralSoles < 0 ? "#c0392b" : "#000",
-                }}
-              >
-                {simboloSoles} {formatearNumero(totalGeneralSoles, 2)}
-              </span>
-            )}
-
-            {totalGeneralDolares !== 0 && (
-              <span
-                style={{
-                  backgroundColor: colorFondoDolares,
-                  padding: "3px 8px",
-                  borderRadius: "3px",
-                  fontSize: "0.9rem",
-                  fontWeight: "bold",
-                  color: totalGeneralDolares < 0 ? "#c0392b" : "#000",
-                }}
-              >
-                {simboloDolares} {formatearNumero(totalGeneralDolares, 2)}
-              </span>
-            )}
-          </div>
+          {totalGeneralDolares !== 0 && (
+            <span
+              style={{
+                backgroundColor: colorFondoDolares,
+                padding: "3px 8px",
+                borderRadius: "3px",
+                fontSize: "0.95rem",
+                fontWeight: "bold",
+                color: totalGeneralDolares < 0 ? "#c0392b" : "#000",
+              }}
+            >
+              {simboloDolares} {formatearNumero(totalGeneralDolares, 2)}
+            </span>
+          )}
         </div>
       </div>
     );
@@ -1988,13 +2009,13 @@ const PreFactura = ({ ruta }) => {
                 {/* Filtro por Número de Liquidación */}
                 <div style={{ flex: 2 }}>
                   <label htmlFor="nroLiquidacionInput" style={{ fontWeight: "bold" }}>
-                    N° Referencia
+                    N° Ref./Dcmto/#ID
                   </label>
                   <InputText
                     id="nroLiquidacionInput"
                     value={nroLiquidacionBusqueda}
                     onChange={(e) => setNroLiquidacionBusqueda(e.target.value)}
-                    placeholder="Buscar x N° Referencia..."
+                    placeholder="Buscar x N° Referencia/Doc (#ID para buscar por ID)..."
                     style={{ width: "100%" }}
                     disabled={loading}
                   />

@@ -26,6 +26,8 @@ import {
   crearTipoMovimientoActivoFijo,
   actualizarTipoMovimientoActivoFijo,
 } from "../../api/tipoMovimientoActivoFijo";
+import PlanCuentaContableSelector from "../common/PlanCuentaContableSelector";
+import BooleanToggleButton from "../common/BooleanToggleButton";
 
 /**
  * Esquema de validación con Yup
@@ -43,6 +45,29 @@ const esquemaValidacion = yup.object().shape({
     .max(500, "La descripción no puede exceder 500 caracteres"),
 
   activo: yup.boolean(),
+  
+  // Campos booleanos de configuración
+  afectaValorActivo: yup.boolean(),
+  afectaDepreciacion: yup.boolean(),
+  generaAsientoAutomatico: yup.boolean(),
+  requiereProducto: yup.boolean(),
+  dasDeBajaActivo: yup.boolean(),
+  usaCuentasActivo: yup.boolean(),
+  usaCuentasProducto: yup.boolean(),
+  
+  // Cuentas contables opcionales
+  cuentaDebeId: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  cuentaHaberId: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
 });
 
 /**
@@ -71,6 +96,15 @@ const TipoMovimientoActivoFijoForm = ({
       nombre: "",
       descripcion: "",
       activo: true,
+      afectaValorActivo: false,
+      afectaDepreciacion: false,
+      generaAsientoAutomatico: true,
+      requiereProducto: false,
+      dasDeBajaActivo: false,
+      cuentaDebeId: null,
+      cuentaHaberId: null,
+      usaCuentasActivo: true,
+      usaCuentasProducto: false,
     },
   });
 
@@ -84,6 +118,15 @@ const TipoMovimientoActivoFijoForm = ({
         nombre: tipo.nombre?.trim() || "",
         descripcion: tipo.descripcion?.trim() || "",
         activo: Boolean(tipo.activo),
+        afectaValorActivo: Boolean(tipo.afectaValorActivo),
+        afectaDepreciacion: Boolean(tipo.afectaDepreciacion),
+        generaAsientoAutomatico: Boolean(tipo.generaAsientoAutomatico),
+        requiereProducto: Boolean(tipo.requiereProducto),
+        dasDeBajaActivo: Boolean(tipo.dasDeBajaActivo),
+        cuentaDebeId: tipo.cuentaDebeId ? Number(tipo.cuentaDebeId) : null,
+        cuentaHaberId: tipo.cuentaHaberId ? Number(tipo.cuentaHaberId) : null,
+        usaCuentasActivo: Boolean(tipo.usaCuentasActivo),
+        usaCuentasProducto: Boolean(tipo.usaCuentasProducto),
       });
     } else {
       // Reset para nuevo registro
@@ -91,6 +134,15 @@ const TipoMovimientoActivoFijoForm = ({
         nombre: "",
         descripcion: "",
         activo: true,
+        afectaValorActivo: false,
+        afectaDepreciacion: false,
+        generaAsientoAutomatico: true,
+        requiereProducto: false,
+        dasDeBajaActivo: false,
+        cuentaDebeId: null,
+        cuentaHaberId: null,
+        usaCuentasActivo: true,
+        usaCuentasProducto: false,
       });
     }
   }, [tipo, reset]);
@@ -108,6 +160,15 @@ const TipoMovimientoActivoFijoForm = ({
         nombre: data.nombre?.trim() || "",
         descripcion: data.descripcion?.trim() || null,
         activo: Boolean(data.activo),
+        afectaValorActivo: Boolean(data.afectaValorActivo),
+        afectaDepreciacion: Boolean(data.afectaDepreciacion),
+        generaAsientoAutomatico: Boolean(data.generaAsientoAutomatico),
+        requiereProducto: Boolean(data.requiereProducto),
+        dasDeBajaActivo: Boolean(data.dasDeBajaActivo),
+        cuentaDebeId: data.cuentaDebeId ? Number(data.cuentaDebeId) : null,
+        cuentaHaberId: data.cuentaHaberId ? Number(data.cuentaHaberId) : null,
+        usaCuentasActivo: Boolean(data.usaCuentasActivo),
+        usaCuentasProducto: Boolean(data.usaCuentasProducto),
       };
       let resultado;
       if (tipo?.id) {
@@ -237,6 +298,281 @@ const TipoMovimientoActivoFijoForm = ({
           <small className="text-600">
             Los tipos inactivos no aparecerán en las listas de selección
           </small>
+        </div>
+
+        {/* ========================================
+            🎯 CONFIGURACIÓN DE COMPORTAMIENTO
+            ======================================== */}
+        <div className="field col-12">
+          <hr style={{ margin: "20px 0", borderTop: "2px solid #dee2e6" }} />
+          <h4 style={{ marginBottom: "15px", color: "#495057" }}>
+            🎯 Configuración de Comportamiento
+          </h4>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {/* Afecta Valor Activo */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="afectaValorActivo" className="p-d-block">
+              Afecta Valor del Activo
+            </label>
+            <Controller
+              name="afectaValorActivo"
+              control={control}
+              render={({ field }) => (
+                <BooleanToggleButton
+                  value={field.value}
+                  onChange={field.onChange}
+                  labelTrue="SÍ AFECTA VALOR"
+                  labelFalse="NO AFECTA VALOR"
+                  severityTrue="success"
+                  severityFalse="secondary"
+                  disabled={readOnly}
+                />
+              )}
+            />
+            <small className="text-600">
+              Incrementa o reduce el valor del activo
+            </small>
+          </div>
+
+          {/* Afecta Depreciación */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="afectaDepreciacion" className="p-d-block">
+              Afecta Depreciación
+            </label>
+            <Controller
+              name="afectaDepreciacion"
+              control={control}
+              render={({ field }) => (
+                <BooleanToggleButton
+                  value={field.value}
+                  onChange={field.onChange}
+                  labelTrue="SÍ GENERA DEPRECIACIÓN"
+                  labelFalse="NO GENERA DEPRECIACIÓN"
+                  severityTrue="success"
+                  severityFalse="secondary"
+                  disabled={readOnly}
+                />
+              )}
+            />
+            <small className="text-600">
+              Genera cálculo de depreciación
+            </small>
+          </div>
+
+          {/* Genera Asiento Automático */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="generaAsientoAutomatico" className="p-d-block">
+              Genera Asiento Automático
+            </label>
+            <Controller
+              name="generaAsientoAutomatico"
+              control={control}
+              render={({ field }) => (
+                <BooleanToggleButton
+                  value={field.value}
+                  onChange={field.onChange}
+                  labelTrue="SÍ GENERA ASIENTO"
+                  labelFalse="NO GENERA ASIENTO"
+                  severityTrue="success"
+                  severityFalse="secondary"
+                  disabled={readOnly}
+                />
+              )}
+            />
+            <small className="text-600">
+              Crea asiento contable automático
+            </small>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {/* Requiere Producto */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="requiereProducto" className="p-d-block">
+              Requiere Producto
+            </label>
+            <Controller
+              name="requiereProducto"
+              control={control}
+              render={({ field }) => (
+                <BooleanToggleButton
+                  value={field.value}
+                  onChange={field.onChange}
+                  labelTrue="SÍ REQUIERE"
+                  labelFalse="NO REQUIERE"
+                  severityTrue="warning"
+                  severityFalse="secondary"
+                  disabled={readOnly}
+                />
+              )}
+            />
+            <small className="text-600">
+              Necesita producto enlazado
+            </small>
+          </div>
+
+          {/* Das de Baja Activo */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="dasDeBajaActivo" className="p-d-block">
+              Das de Baja Activo
+            </label>
+            <Controller
+              name="dasDeBajaActivo"
+              control={control}
+              render={({ field }) => (
+                <BooleanToggleButton
+                  value={field.value}
+                  onChange={field.onChange}
+                  labelTrue="SÍ DA DE BAJA"
+                  labelFalse="NO DA DE BAJA"
+                  severityTrue="danger"
+                  severityFalse="secondary"
+                  disabled={readOnly}
+                />
+              )}
+            />
+            <small className="text-600">
+              Marca el activo como cesado
+            </small>
+          </div>
+        </div>
+
+        {/* ========================================
+            💰 CUENTAS CONTABLES ESPECÍFICAS
+            ======================================== */}
+        <div className="field col-12">
+          <hr style={{ margin: "20px 0", borderTop: "2px solid #dee2e6" }} />
+          <h4 style={{ marginBottom: "15px", color: "#495057" }}>
+            💰 Cuentas Contables Específicas
+          </h4>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {/* Cuenta Debe */}
+          <div style={{ flex: 1 }}>
+            <Controller
+              name="cuentaDebeId"
+              control={control}
+              render={({ field }) => (
+                <PlanCuentaContableSelector
+                  value={field.value ? Number(field.value) : null}
+                  onChange={(id) => field.onChange(id)}
+                  label="Cuenta DEBE Principal"
+                  placeholder="Seleccionar Cuenta DEBE"
+                  disabled={readOnly}
+                  required={false}
+                  error={!!errors.cuentaDebeId}
+                  errorMessage={errors.cuentaDebeId?.message}
+                  showClearButton={true}
+                />
+              )}
+            />
+            <small className="text-600">
+              Cuenta contable para el DEBE
+            </small>
+          </div>
+
+          {/* Cuenta Haber */}
+          <div style={{ flex: 1 }}>
+            <Controller
+              name="cuentaHaberId"
+              control={control}
+              render={({ field }) => (
+                <PlanCuentaContableSelector
+                  value={field.value ? Number(field.value) : null}
+                  onChange={(id) => field.onChange(id)}
+                  label="Cuenta HABER Principal"
+                  placeholder="Seleccionar Cuenta HABER"
+                  disabled={readOnly}
+                  required={false}
+                  error={!!errors.cuentaHaberId}
+                  errorMessage={errors.cuentaHaberId?.message}
+                  showClearButton={true}
+                />
+              )}
+            />
+            <small className="text-600">
+              Cuenta contable para el HABER
+            </small>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {/* Usa Cuentas Activo */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="usaCuentasActivo" className="p-d-block">
+              Usa Cuentas del Activo
+            </label>
+            <Controller
+              name="usaCuentasActivo"
+              control={control}
+              render={({ field }) => (
+                <BooleanToggleButton
+                  value={field.value}
+                  onChange={field.onChange}
+                  labelTrue="USA CUENTAS ACTIVO"
+                  labelFalse="NO USA"
+                  severityTrue="info"
+                  severityFalse="secondary"
+                  disabled={readOnly}
+                />
+              )}
+            />
+            <small className="text-600">
+              Usa cuentas del activo (33, 39, 68)
+            </small>
+          </div>
+
+          {/* Usa Cuentas Producto */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="usaCuentasProducto" className="p-d-block">
+              Usa Cuentas del Producto
+            </label>
+            <Controller
+              name="usaCuentasProducto"
+              control={control}
+              render={({ field }) => (
+                <BooleanToggleButton
+                  value={field.value}
+                  onChange={field.onChange}
+                  labelTrue="USA CUENTAS PRODUCTO"
+                  labelFalse="NO USA"
+                  severityTrue="info"
+                  severityFalse="secondary"
+                  disabled={readOnly}
+                />
+              )}
+            />
+            <small className="text-600">
+              Usa cuentas del producto (60, 20, 70, 69, 61)
+            </small>
+          </div>
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>

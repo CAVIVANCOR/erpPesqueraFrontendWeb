@@ -29,6 +29,7 @@ import { getTiposActivo } from "../../api/tipoActivo";
 import { getEmpresas } from "../../api/empresa";
 import { getMonedas } from "../../api/moneda";
 import PlanCuentaContableSelector from "../common/PlanCuentaContableSelector";
+import ProductoSelector from "../common/ProductoSelector";
 
 // Esquema de validación con Yup
 const esquemaValidacion = yup.object().shape({
@@ -79,6 +80,24 @@ const esquemaValidacion = yup.object().shape({
     .transform((value, originalValue) => {
       return originalValue === "" ? null : value;
     }),
+  productoId: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  cuentaDepreciacionId: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  cuentaGastoDepId: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
 });
 
 const ActivoForm = ({
@@ -116,6 +135,9 @@ const ActivoForm = ({
       vidaUtilAnios: null,
       monedaId: null,
       cuentaContableId: null,
+      productoId: null,
+      cuentaDepreciacionId: null,
+      cuentaGastoDepId: null,
     },
   });
 
@@ -142,7 +164,9 @@ const ActivoForm = ({
       setValue("vidaUtilAnios", activo.vidaUtilAnios || null);
       setValue("monedaId", activo.monedaId ? Number(activo.monedaId) : null);
       setValue("cuentaContableId", activo.cuentaContableId ? Number(activo.cuentaContableId) : null);
-
+      setValue("productoId", activo.productoId ? Number(activo.productoId) : null);
+      setValue("cuentaDepreciacionId", activo.cuentaDepreciacionId ? Number(activo.cuentaDepreciacionId) : null);
+      setValue("cuentaGastoDepId", activo.cuentaGastoDepId ? Number(activo.cuentaGastoDepId) : null);
     } else {
       // Modo creación: usar filtros iniciales si existen
       reset({
@@ -157,6 +181,9 @@ const ActivoForm = ({
         vidaUtilAnios: null,
         monedaId: null,
         cuentaContableId: null,
+        productoId: null,
+        cuentaDepreciacionId: null,
+        cuentaGastoDepId: null,
       });
     }
   }, [activo, empresaIdInicial, tipoIdInicial, setValue, reset]);
@@ -205,6 +232,9 @@ const ActivoForm = ({
         vidaUtilAnios: data.vidaUtilAnios || null,
         monedaId: data.monedaId ? Number(data.monedaId) : null,
         cuentaContableId: data.cuentaContableId ? Number(data.cuentaContableId) : null,
+        productoId: data.productoId ? Number(data.productoId) : null,
+        cuentaDepreciacionId: data.cuentaDepreciacionId ? Number(data.cuentaDepreciacionId) : null,
+        cuentaGastoDepId: data.cuentaGastoDepId ? Number(data.cuentaGastoDepId) : null,
       };
 
       if (esEdicion) {
@@ -249,6 +279,7 @@ const ActivoForm = ({
       <div
         style={{
           display: "flex",
+          alignItems: "end",
           gap: 10,
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
@@ -408,8 +439,111 @@ const ActivoForm = ({
         <div style={{ flex: 1 }}>
           <hr style={{ margin: "20px 0", borderTop: "2px solid #dee2e6" }} />
           <h4 style={{ marginBottom: "15px", color: "#495057" }}>
-            📊 Saldos Iniciales (Opcional)
+            📊 Saldos Iniciales (Opcional) Cuentas Contables y Enlace con Productos
           </h4>
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          {/* Cuenta Contable */}
+          <Controller
+            name="cuentaContableId"
+            control={control}
+            render={({ field }) => (
+              <PlanCuentaContableSelector
+                value={field.value ? Number(field.value) : null}
+                onChange={(id) => field.onChange(id)}
+                label="Cuenta Contable (Clase 33)"
+                placeholder="Seleccionar Cuenta Contable"
+                disabled={loading || readOnly}
+                required={false}
+                error={!!errors.cuentaContableId}
+                errorMessage={errors.cuentaContableId?.message}
+                showClearButton={true}
+                filtroClase="33"
+              />
+            )}
+          />
+        </div>
+
+        {/* Cuenta Depreciación Acumulada */}
+        <div style={{ flex: 1 }}>
+          <Controller
+            name="cuentaDepreciacionId"
+            control={control}
+            render={({ field }) => (
+              <PlanCuentaContableSelector
+                value={field.value ? Number(field.value) : null}
+                onChange={(id) => field.onChange(id)}
+                label="Cuenta Depreciación Acumulada (Clase 39)"
+                placeholder="Seleccionar Cuenta Depreciación"
+                disabled={loading || readOnly}
+                required={false}
+                error={!!errors.cuentaDepreciacionId}
+                errorMessage={errors.cuentaDepreciacionId?.message}
+                showClearButton={true}
+                filtroClase="39"
+              />
+            )}
+          />
+        </div>
+        {/* Cuenta Gasto Depreciación */}
+        <div style={{ flex: 1 }}>
+          <Controller
+            name="cuentaGastoDepId"
+            control={control}
+            render={({ field }) => (
+              <PlanCuentaContableSelector
+                value={field.value ? Number(field.value) : null}
+                onChange={(id) => field.onChange(id)}
+                label="Cuenta Gasto Depreciación (Clase 68)"
+                placeholder="Seleccionar Cuenta Gasto"
+                disabled={loading || readOnly}
+                required={false}
+                error={!!errors.cuentaGastoDepId}
+                errorMessage={errors.cuentaGastoDepId?.message}
+                showClearButton={true}
+                filtroClase="68"
+              />
+            )}
+          />
+        </div>
+      </div>
+
+
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+
+        {/* Producto (para compra/venta) */}
+        <div style={{ flex: 1 }}>
+          <Controller
+            name="productoId"
+            control={control}
+            render={({ field }) => (
+              <ProductoSelector
+                value={field.value ? Number(field.value) : null}
+                onChange={(id) => field.onChange(id)}
+                label="Producto (para compra/venta)"
+                placeholder="Seleccionar Producto"
+                disabled={loading || readOnly}
+                required={false}
+                error={!!errors.productoId}
+                errorMessage={errors.productoId?.message}
+                showClearButton={true}
+              />
+            )}
+          />
         </div>
       </div>
 
@@ -448,7 +582,6 @@ const ActivoForm = ({
             </small>
           )}
         </div>
-
         {/* Campo Moneda */}
         <div style={{ flex: 1 }}>
           <label htmlFor="monedaId" className="p-d-block">
@@ -478,29 +611,6 @@ const ActivoForm = ({
             </small>
           )}
         </div>
-
-        {/* Cuenta Contable */}
-        <div className="field">
-          <Controller
-            name="cuentaContableId"
-            control={control}
-            render={({ field }) => (
-              <PlanCuentaContableSelector
-                value={field.value ? Number(field.value) : null}
-                onChange={(id) => field.onChange(id)}
-                label="Cuenta Contable (Clase 33)"
-                placeholder="Seleccionar Cuenta Contable"
-                disabled={loading || readOnly}
-                required={false}
-                error={!!errors.cuentaContableId}
-                errorMessage={errors.cuentaContableId?.message}
-                showClearButton={true}
-                filtroClase="33"
-              />
-            )}
-          />
-        </div>
-
         {/* Campo Costo Original */}
         <div style={{ flex: 1 }}>
           <label htmlFor="costoOriginal" className="p-d-block">
