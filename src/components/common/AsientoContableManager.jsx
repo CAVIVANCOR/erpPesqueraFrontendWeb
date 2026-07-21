@@ -415,12 +415,13 @@ const AsientoContableManager = ({
   };
 
   const montoTemplate = (rowData, field) => {
+    console.log("montoTemplate rowData",rowData)
     const monto = Number(rowData[field]);
     const moneda = rowData.moneda;
     return (
       <Tag
         value={`${moneda?.simbolo || ''} ${formatearNumero(monto, 2)}`}
-        style={{ backgroundColor: moneda?.colorFondo || '#6c757d', color: '#000' }}
+        style={{ backgroundColor: moneda?.colorFondo || 'rgb(255, 255, 255)', color: '#000' }}
       />
     );
   };

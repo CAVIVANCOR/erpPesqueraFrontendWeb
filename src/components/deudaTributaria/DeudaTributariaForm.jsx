@@ -26,6 +26,8 @@ import {
   deletePagoDeudaTributaria,
 } from "../../api/tesoreria/pagoDeudaTributaria";
 import PagoDeudaTributariaDialog from "./PagoDeudaTributariaDialog";
+import AsientoContableManager from "../common/AsientoContableManager";
+
 
 // ════════════════════════════════════════════════════════════
 // CONSTANTES DE CONFIGURACIÓN - DEUDAS TRIBUTARIAS
@@ -343,6 +345,70 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
     onSubmit(data);
   };
 
+
+  /**
+   * Callback antes de generar asiento contable
+   * Valida que la deuda esté guardada y tenga los datos necesarios
+   */
+  const handleBeforeGenerateAsiento = async () => {
+    if (!defaultValues?.id) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Debe guardar la deuda tributaria antes de generar el asiento contable.",
+        life: 5000,
+      });
+      return false;
+    }
+
+    const deudaCompleta = await getDeudaTributariaById(defaultValues.id);
+
+    if (!deudaCompleta) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar la información completa de la deuda.",
+        life: 5000,
+      });
+      return false;
+    }
+
+    // Validar que sea saldo inicial
+    if (!deudaCompleta.esSaldoInicial) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Solo se pueden generar asientos para saldos iniciales por el momento.",
+        life: 5000,
+      });
+      return false;
+    }
+
+    // Validar que tenga cuenta contable asociada
+    if (!deudaCompleta.tipoDeuda?.cuentaContableId) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "El tipo de deuda no tiene una cuenta contable asociada. Configure el tipo de deuda antes de generar el asiento.",
+        life: 5000,
+      });
+      return false;
+    }
+
+    // Validar que tenga monto
+    if (Number(deudaCompleta.montoOriginal) === 0) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "El monto de la deuda está en cero. Verifique los datos antes de generar el asiento.",
+        life: 5000,
+      });
+      return false;
+    }
+
+    return true; // Continuar generación
+  };
+
   const handleRegistrarPago = () => {
     setPagoSeleccionado(null);
     setIsEditPago(false);
@@ -493,7 +559,6 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
 
   return (
     <>
-      <ConfirmDialog />
       <TabView>
         {/* TAB 1: DATOS GENERALES */}
         <TabPanel header="Datos Generales" leftIcon="pi pi-file">
@@ -840,6 +905,20 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
         />
       </div>
 
+      {/* Componente genérico de asientos contables */}
+      {isEdit && defaultValues?.id && (
+        <div style={{ marginTop: "1rem" }}>
+          <AsientoContableManager
+            documentoId={defaultValues.id}
+            documentoTipo="DeudaTributaria"
+            empresaId={formData.empresaId}
+            periodoContableId={formData.periodoContableId}
+            showAsButton={true}
+            onBeforeGenerate={handleBeforeGenerateAsiento}
+          />
+        </div>
+      )}
+
       {/* Dialog para pagos */}
       <Dialog
         visible={showPagoDialog}
@@ -859,6 +938,8 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
           onCancel={() => setShowPagoDialog(false)}
         />
       </Dialog>
+      <ConfirmDialog />
+
     </>
   );
 });

@@ -175,7 +175,7 @@ export default function Dashboard() {
           tab: "operaciones",
         },
         {
-          label: "Orden de Compra",
+          label: "Compras",
           key: "ordenCompra",
           icon: "pi-shopping-cart",
           tab: "operaciones",
@@ -251,7 +251,7 @@ export default function Dashboard() {
           tab: "operaciones",
         },
         {
-          label: "Pre-Factura",
+          label: "Ventas",
           key: "preFactura",
           icon: "pi-file",
           tab: "operaciones",
@@ -489,6 +489,24 @@ export default function Dashboard() {
           tab: "operaciones", // ← NUEVO
         },
         {
+          label: "Centros de Costo",
+          key: "centroCosto",
+          icon: "pi-sitemap",
+          tab: "operaciones", // ← NUEVO
+        },
+        {
+          label: "Cuenta Corriente",
+          key: "cuentaCorriente",
+          icon: "pi-credit-card",
+          tab: "operaciones", // ← NUEVO
+        },
+        {
+          label: "Saldos Cuentas Corrientes",
+          key: "saldoCuentaCorriente",
+          icon: "pi-list",
+          tab: "operaciones", // ← NUEVO
+        },
+        {
           label: "Retención",
           key: "retencion",
           icon: "pi-minus-circle",
@@ -507,12 +525,6 @@ export default function Dashboard() {
           tab: "operaciones", // ← NUEVO
         },
         {
-          label: "Cuenta Corriente",
-          key: "cuentaCorriente",
-          icon: "pi-credit-card",
-          tab: "tablas", // ← NUEVO
-        },
-        {
           label: "Categoría Tipo Movimiento caja",
           key: "categoriaTipoMovimientoCaja",
           icon: "pi-money-bill",
@@ -524,12 +536,7 @@ export default function Dashboard() {
           icon: "pi-send",
           tab: "tablas", // ← NUEVO
         },
-        {
-          label: "Centros de Costo",
-          key: "centroCosto",
-          icon: "pi-sitemap",
-          tab: "tablas", // ← NUEVO
-        },
+
         {
           label: "Categorías Centro Costo",
           key: "categoriaCCosto",
@@ -554,12 +561,7 @@ export default function Dashboard() {
           icon: "pi-credit-card",
           tab: "tablas", // ← NUEVO
         },
-        {
-          label: "Saldos Cuentas Corrientes",
-          key: "saldoCuentaCorriente",
-          icon: "pi-list",
-          tab: "tablas", // ← NUEVO
-        },
+
         {
           label: "Letra de Cambio",
           key: "letra-cambio",

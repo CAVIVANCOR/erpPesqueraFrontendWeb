@@ -1752,8 +1752,10 @@ const PreFactura = ({ ruta }) => {
   };
 
   const montosTemplate = (rowData) => {
+    console.log("montosTemplate rowData",rowData)
     const formato = formatearMontoConSigno(rowData.total || 0);
     const simboloMoneda = rowData.moneda?.simbolo || "";
+    const colorFondoMoneda = rowData.moneda?.colorFondo || "#FFFF";
 
     return (
       <div style={{ textAlign: "right" }}>
@@ -1764,6 +1766,7 @@ const PreFactura = ({ ruta }) => {
             fontSize: "0.9rem",
             fontWeight: "bold",
             color: formato.color,
+            backgroundColor: colorFondoMoneda
           }}
         />
       </div>
