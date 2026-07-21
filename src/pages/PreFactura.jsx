@@ -71,6 +71,9 @@ import AsignarTipoAfectacionIGVDialog from "../components/common/AsignarTipoAfec
 import { generarPreFacturasExcel } from "../components/preFactura/reports/generarPreFacturasExcel";
 import FiltroTipoLibroButton from "../components/common/FiltroTipoLibroButton";
 import { formatearMontoConSigno, TIPO_DOC_ID } from "../utils/tiposDocumento.constants";
+import { MultiSelect } from "primereact/multiselect";
+import { OverlayPanel } from "primereact/overlaypanel";
+
 /**
  * Componente PreFactura
  * Gestión CRUD de pre-facturas con patrón profesional ERP Megui
@@ -115,8 +118,10 @@ const PreFactura = ({ ruta }) => {
   const [filtroParticionadas, setFiltroParticionadas] = useState(null);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [productosUnicos, setProductosUnicos] = useState([]);
-  const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState(null);
-  const [tiposDocumentoUnicos, setTiposDocumentoUnicos] = useState([]);
+  const [tiposDocInternoAplicados, setTiposDocInternoAplicados] = useState([]);
+  const [tiposDocFinalAplicados, setTiposDocFinalAplicados] = useState([]);
+  const [tiposDocInternoDisponibles, setTiposDocInternoDisponibles] = useState([]);
+  const [tiposDocFinalDisponibles, setTiposDocFinalDisponibles] = useState([]);
   const [nroLiquidacionBusqueda, setNroLiquidacionBusqueda] = useState("");
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [clientesUnicos, setClientesUnicos] = useState([]);
@@ -140,9 +145,15 @@ const PreFactura = ({ ruta }) => {
     useState(false); // ⬅️ AGREGAR
   const [contratoServicioOrigen, setContratoServicioOrigen] = useState(null); // ⬅️ AGREGAR
   const [navigationStack, setNavigationStack] = useState([]); // Stack para navegación de PreFacturas
-  const [filtroTipoLibro, setFiltroTipoLibro] = useState("FISCAL_S_SI");
+  const [filtroTipoLibro, setFiltroTipoLibro] = useState("FISCAL_SSI");
   const [showConsultaStock, setShowConsultaStock] = useState(false);
+
+  // Estados temporales para filtros avanzados (no aplicados aún)
+  const [tiposDocInternoTemp, setTiposDocInternoTemp] = useState([]);
+  const [tiposDocFinalTemp, setTiposDocFinalTemp] = useState([]);
+
   const toast = useRef(null);
+  const opFiltrosAvanzados = useRef(null);
 
   useEffect(() => {
     cargarDatos();
@@ -272,12 +283,19 @@ const PreFactura = ({ ruta }) => {
         .filter(pf => pf.estadoDoc)
         .map(pf => [pf.estadoDoc.id, pf.estadoDoc])
     ).values()];
-    // Tipos de Documento únicos
-    const tiposDocumentoUnicos = [...new Map(
+    // Tipos de Documento Interno disponibles (basados en datos filtrados)
+    const tiposDocInternoDisponibles = [...new Map(
       datosParaOpciones
         .filter(pf => pf.tipoDocumento)
         .map(pf => [pf.tipoDocumento.id, pf.tipoDocumento])
-    ).values()];
+    ).values()].sort((a, b) => (a.descripcion || a.nombre || "").localeCompare(b.descripcion || b.nombre || ""));
+
+    // Tipos de Documento Final disponibles (basados en datos filtrados)
+    const tiposDocFinalDisponibles = [...new Map(
+      datosParaOpciones
+        .filter(pf => pf.tipoDocumentoFinal)
+        .map(pf => [pf.tipoDocumentoFinal.id, pf.tipoDocumentoFinal])
+    ).values()].sort((a, b) => (a.descripcion || a.nombre || "").localeCompare(b.descripcion || b.nombre || ""));
 
     // Productos únicos (de los detalles)
     const productosMap = new Map();
@@ -301,7 +319,8 @@ const PreFactura = ({ ruta }) => {
       clientesUnicos,
       estadosUnicos,
       productosUnicos,
-      tiposDocumentoUnicos
+      tiposDocInternoDisponibles,
+      tiposDocFinalDisponibles
     };
   };
 
@@ -313,7 +332,8 @@ const PreFactura = ({ ruta }) => {
     setClientesUnicos(opciones.clientesUnicos);
     setEstadosUnicos(opciones.estadosUnicos);
     setProductosUnicos(opciones.productosUnicos);
-    setTiposDocumentoUnicos(opciones.tiposDocumentoUnicos);
+    setTiposDocInternoDisponibles(opciones.tiposDocInternoDisponibles);
+    setTiposDocFinalDisponibles(opciones.tiposDocFinalDisponibles);
 
     // Limpiar selecciones que ya no existen
     if (clienteSeleccionado && !opciones.clientesUnicos.find(c => Number(c.id) === Number(clienteSeleccionado))) {
@@ -324,9 +344,6 @@ const PreFactura = ({ ruta }) => {
     }
     if (productoSeleccionado && !opciones.productosUnicos.find(p => Number(p.id) === Number(productoSeleccionado))) {
       setProductoSeleccionado(null);
-    }
-    if (tipoDocumentoSeleccionado && !opciones.tiposDocumentoUnicos.find(t => Number(t.id) === Number(tipoDocumentoSeleccionado))) {
-      setTipoDocumentoSeleccionado(null);
     }
   }, [itemsFiltrados, preFacturasFiltradas, empresaSeleccionada]);
 
@@ -374,10 +391,17 @@ const PreFactura = ({ ruta }) => {
       );
     }
 
-    // Filtro por tipo de documento final (comprobante a generar)
-    if (tipoDocumentoSeleccionado) {
-      filtrados = filtrados.filter(
-        (item) => Number(item.tipoDocumentoFinalId || item.tipoDocumentoId) === Number(tipoDocumentoSeleccionado),
+    // Filtro por tipos de documento interno (múltiple)
+    if (tiposDocInternoAplicados && tiposDocInternoAplicados.length > 0) {
+      filtrados = filtrados.filter((item) =>
+        tiposDocInternoAplicados.some(id => Number(item.tipoDocumentoId) === Number(id))
+      );
+    }
+
+    // Filtro por tipos de documento final (múltiple)
+    if (tiposDocFinalAplicados && tiposDocFinalAplicados.length > 0) {
+      filtrados = filtrados.filter((item) =>
+        tiposDocFinalAplicados.some(id => Number(item.tipoDocumentoFinalId) === Number(id))
       );
     }
 
@@ -431,13 +455,13 @@ const PreFactura = ({ ruta }) => {
     }
 
     // Filtro por tipo de libro
-    if (filtroTipoLibro === "FISCAL_S_SI") {
+    if (filtroTipoLibro === "FISCAL_SSI") {
       // Fiscal sin saldos iniciales: FAC, BV, NC, ND
       filtrados = filtrados.filter((item) => {
         const codigo = item.tipoDocumentoFinal?.codigo || item.tipoDocumento?.codigo || "";
         return ["FAC", "BV", "NC", "ND"].includes(codigo);
       });
-    } else if (filtroTipoLibro === "FISCAL_C_SI") {
+    } else if (filtroTipoLibro === "FISCAL_CSI") {
       // Fiscal con saldos iniciales: FAC, BV, NC, ND + todos los SI-*
       filtrados = filtrados.filter((item) => {
         const codigo = item.tipoDocumentoFinal?.codigo || item.tipoDocumento?.codigo || "";
@@ -459,7 +483,8 @@ const PreFactura = ({ ruta }) => {
     clienteSeleccionado,
     rangoFechas,
     estadoSeleccionado,
-    tipoDocumentoSeleccionado,
+    tiposDocInternoAplicados,
+    tiposDocFinalAplicados,
     filtroParticionadas,
     productoSeleccionado,
     nroLiquidacionBusqueda,
@@ -1719,7 +1744,7 @@ const PreFactura = ({ ruta }) => {
     return rowData.unidadNegocio?.nombre || "N/A";
   };
   const igvTemplate = (rowData) => {
-    return rowData.esExoneradoAlIGV ? (
+    return rowData.exoneradoIgv ? (
       <Tag value="EXONERADO" severity="danger" />
     ) : (
       <Tag value="AFECTO" severity="success" />
@@ -1751,11 +1776,52 @@ const PreFactura = ({ ruta }) => {
     setClienteSeleccionado(null);
     setRangoFechas(null);
     setEstadoSeleccionado(null);
-    setTipoDocumentoSeleccionado(null);
+    setTiposDocInternoAplicados([]);
+    setTiposDocFinalAplicados([]);
+    setTiposDocInternoTemp([]);
+    setTiposDocFinalTemp([]);
     setFiltroParticionadas(null);
     setProductoSeleccionado(null);
     setNroLiquidacionBusqueda("");
   };
+
+
+  // Abrir OverlayPanel de filtros avanzados
+  const abrirFiltrosAvanzados = (event) => {
+    // Sincronizar temporales con aplicados al abrir
+    setTiposDocInternoTemp([...tiposDocInternoAplicados]);
+    setTiposDocFinalTemp([...tiposDocFinalAplicados]);
+    opFiltrosAvanzados.current.toggle(event);
+  };
+
+  // Aplicar filtros avanzados
+  const aplicarFiltrosAvanzados = () => {
+    setTiposDocInternoAplicados([...tiposDocInternoTemp]);
+    setTiposDocFinalAplicados([...tiposDocFinalTemp]);
+    opFiltrosAvanzados.current.hide();
+
+    toast.current?.show({
+      severity: "success",
+      summary: "Filtros Aplicados",
+      detail: "Los filtros se han aplicado correctamente",
+      life: 2000,
+    });
+  };
+
+  // Limpiar filtros avanzados (solo temporales)
+  const limpiarFiltrosAvanzados = () => {
+    setTiposDocInternoTemp([]);
+    setTiposDocFinalTemp([]);
+  };
+
+  // Cancelar y cerrar sin aplicar
+  const cancelarFiltrosAvanzados = () => {
+    // Restaurar temporales a los aplicados
+    setTiposDocInternoTemp([...tiposDocInternoAplicados]);
+    setTiposDocFinalTemp([...tiposDocFinalAplicados]);
+    opFiltrosAvanzados.current.hide();
+  };
+
 
   return (
     <div className="p-fluid">
@@ -1797,10 +1863,10 @@ const PreFactura = ({ ruta }) => {
                   flexDirection: window.innerWidth < 768 ? "column" : "row",
                 }}
               >
-                <div style={{ flex: 2 }}>
+                <div style={{ flex: 1 }}>
                   <h2>Pre-Facturas</h2>
                 </div>
-                <div style={{ flex: 2 }}>
+                <div style={{ flex: 1 }}>
                   <label style={{ fontWeight: "bold" }}>
                     Empresa*
                   </label>
@@ -1819,6 +1885,7 @@ const PreFactura = ({ ruta }) => {
                     icon="pi pi-plus"
                     onClick={abrirDialogoNuevo}
                     className="p-button-primary"
+                    style={{ width: "100%" }}
                     disabled={
                       !permisos.puedeCrear || loading || !empresaIdSelector
                     }
@@ -1837,11 +1904,11 @@ const PreFactura = ({ ruta }) => {
                     label="Consultar Stock"
                     onClick={() => setShowConsultaStock(true)}
                     className="p-button-info"
+                    style={{ width: "100%" }}
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 0.25 }}>
                   <Button
-                    label="Limpiar Filtros"
                     icon="pi pi-filter-slash"
                     className="p-button-secondary"
                     outlined
@@ -1858,6 +1925,7 @@ const PreFactura = ({ ruta }) => {
                     className="p-button-info"
                     tooltip="Asignar tipo de operación SUNAT a registros seleccionados"
                     tooltipOptions={{ position: "top" }}
+                    style={{ width: "100%" }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -1869,6 +1937,7 @@ const PreFactura = ({ ruta }) => {
                     className="p-button-warning"
                     tooltip="Asignar tipo de afectación IGV a registros seleccionados"
                     tooltipOptions={{ position: "top" }}
+                    style={{ width: "100%" }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -1879,6 +1948,7 @@ const PreFactura = ({ ruta }) => {
                     onClick={handleExportarExcel}
                     disabled={loading}
                     tooltip="Exportar todas las PreFacturas a Excel"
+                    style={{ width: "100%" }}
                   />
                 </div>
                 {/* Filtro Tipo Libro */}
@@ -1964,26 +2034,125 @@ const PreFactura = ({ ruta }) => {
                     disabled={loading}
                   />
                 </div>
-                {/* Filtro por Tipo de Documento */}
+                {/* Filtros Avanzados de Tipo de Documento */}
                 <div style={{ flex: 2 }}>
-                  <label htmlFor="tipoDocumentoFiltro" style={{ fontWeight: "bold" }}>
-                    Tipo Documento
+                  <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                    Filtros Avanzados
                   </label>
-                  <Dropdown
-                    id="tipoDocumentoFiltro"
-                    value={tipoDocumentoSeleccionado}
-                    options={tiposDocumentoUnicos.map((t) => ({
-                      label: t.descripcion,
-                      value: Number(t.id),
-                    }))}
-                    onChange={(e) => setTipoDocumentoSeleccionado(e.value)}
-                    placeholder="Todos"
-                    optionLabel="label"
-                    optionValue="value"
-                    showClear
-                    filter
+                  <Button
+                    label="Tipos de Documento"
+                    icon="pi pi-filter"
+                    onClick={abrirFiltrosAvanzados}
+                    className="p-button-outlined"
+                    badge={
+                      (tiposDocInternoAplicados.length + tiposDocFinalAplicados.length) > 0
+                        ? String(tiposDocInternoAplicados.length + tiposDocFinalAplicados.length)
+                        : null
+                    }
+                    badgeClassName="p-badge-info"
+                    style={{
+                      width: "100%",
+                      fontWeight: "bold",
+                      justifyContent: "flex-start",
+                    }}
                     disabled={loading}
+                    tooltip={
+                      (tiposDocInternoAplicados.length + tiposDocFinalAplicados.length) > 0
+                        ? `${tiposDocInternoAplicados.length + tiposDocFinalAplicados.length} filtros activos`
+                        : "Filtrar por tipos de documento"
+                    }
+                    tooltipOptions={{ position: "top" }}
                   />
+
+                  {/* OverlayPanel de Filtros Avanzados */}
+                  <OverlayPanel ref={opFiltrosAvanzados} style={{ width: "450px" }}>
+                    <div style={{ padding: "10px" }}>
+                      <h3 style={{ marginTop: 0, marginBottom: "15px", color: "#2c3e50" }}>
+                        <i className="pi pi-filter" style={{ marginRight: "8px" }}></i>
+                        Filtros de Tipo de Documento
+                      </h3>
+
+                      {/* Tipo Documento Interno */}
+                      <div style={{ marginBottom: "20px" }}>
+                        <label htmlFor="tipoDocInternoTemp" style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>
+                          Tipo Documento Interno
+                        </label>
+                        <MultiSelect
+                          id="tipoDocInternoTemp"
+                          value={tiposDocInternoTemp}
+                          options={tiposDocInternoDisponibles.map((t) => ({
+                            label: `${t.codigo || ""} - ${t.descripcion || t.nombre || ""}`,
+                            value: Number(t.id),
+                          }))}
+                          onChange={(e) => setTiposDocInternoTemp(e.value)}
+                          placeholder="Seleccionar tipos"
+                          optionLabel="label"
+                          optionValue="value"
+                          display="chip"
+                          filter
+                          showSelectAll={true}
+                          selectAllLabel="Seleccionar Todos"
+                          style={{ width: "100%" }}
+                          maxSelectedLabels={3}
+                          emptyMessage="No hay tipos disponibles con los filtros actuales"
+                        />
+                        <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
+                          {tiposDocInternoDisponibles.length} tipo(s) disponible(s)
+                        </small>
+                      </div>
+
+                      {/* Tipo Documento Final */}
+                      <div style={{ marginBottom: "20px" }}>
+                        <label htmlFor="tipoDocFinalTemp" style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>
+                          Comprobante Final
+                        </label>
+                        <MultiSelect
+                          id="tipoDocFinalTemp"
+                          value={tiposDocFinalTemp}
+                          options={tiposDocFinalDisponibles.map((t) => ({
+                            label: `${t.codigo || ""} - ${t.descripcion || t.nombre || ""}`,
+                            value: Number(t.id),
+                          }))}
+                          onChange={(e) => setTiposDocFinalTemp(e.value)}
+                          placeholder="Seleccionar comprobantes"
+                          optionLabel="label"
+                          optionValue="value"
+                          display="chip"
+                          filter
+                          showSelectAll={true}
+                          selectAllLabel="Seleccionar Todos"
+                          style={{ width: "100%" }}
+                          maxSelectedLabels={3}
+                          emptyMessage="No hay comprobantes disponibles con los filtros actuales"
+                        />
+                        <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
+                          {tiposDocFinalDisponibles.length} comprobante(s) disponible(s)
+                        </small>
+                      </div>
+
+                      {/* Botones de acción */}
+                      <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", borderTop: "1px solid #dee2e6", paddingTop: "15px" }}>
+                        <Button
+                          label="Limpiar"
+                          icon="pi pi-times"
+                          onClick={limpiarFiltrosAvanzados}
+                          className="p-button-text p-button-secondary"
+                        />
+                        <Button
+                          label="Cancelar"
+                          icon="pi pi-ban"
+                          onClick={cancelarFiltrosAvanzados}
+                          className="p-button-text"
+                        />
+                        <Button
+                          label="Aplicar"
+                          icon="pi pi-check"
+                          onClick={aplicarFiltrosAvanzados}
+                          className="p-button-success"
+                        />
+                      </div>
+                    </div>
+                  </OverlayPanel>
                 </div>
                 {/* Filtro por Producto - Dropdown */}
                 <div style={{ flex: 2 }}>

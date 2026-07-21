@@ -8,6 +8,8 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
+import { MultiSelect } from "primereact/multiselect";
+import { OverlayPanel } from "primereact/overlaypanel";
 import { Calendar } from "primereact/calendar";
 import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
@@ -70,7 +72,8 @@ export default function OrdenCompra({ ruta }) {
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
-  const toast = useRef(null); // ✅ AGREGAR ESTA LÍNEA
+  const toast = useRef(null);
+  const opFiltrosAvanzados = useRef(null);
 
   const [items, setItems] = useState([]);
 
@@ -133,12 +136,20 @@ export default function OrdenCompra({ ruta }) {
   const [rangoFechaFacturacion, setRangoFechaFacturacion] = useState(null);
   const [tipoDocumentoFinalIdSeleccionado, setTipoDocumentoFinalIdSeleccionado] = useState(null);
 
+  // Estados para filtros avanzados de tipo documento
+  const [tiposDocInternoAplicados, setTiposDocInternoAplicados] = useState([]);
+  const [tiposDocFinalAplicados, setTiposDocFinalAplicados] = useState([]);
+  const [tiposDocInternoDisponibles, setTiposDocInternoDisponibles] = useState([]);
+  const [tiposDocFinalDisponibles, setTiposDocFinalDisponibles] = useState([]);
+  const [tiposDocInternoTemp, setTiposDocInternoTemp] = useState([]);
+  const [tiposDocFinalTemp, setTiposDocFinalTemp] = useState([]);
+
   // Estados para opciones de dropdowns
   const [tiposDocumentoFinal, setTiposDocumentoFinal] = useState([]);
   const [estadosUnicos, setEstadosUnicos] = useState([]); // ✅ AGREGAR
   const [ordenesSeleccionadas, setOrdenesSeleccionadas] = useState([]);
   const [showAsignarCentroCostoDialog, setShowAsignarCentroCostoDialog] = useState(false);
-  const [filtroTipoLibro, setFiltroTipoLibro] = useState("FISCAL_S_SI");
+  const [filtroTipoLibro, setFiltroTipoLibro] = useState("FISCAL_SSI");
   const [busquedaDocumento, setBusquedaDocumento] = useState("");
 
   // ========================================
@@ -186,6 +197,35 @@ export default function OrdenCompra({ ruta }) {
     }
   }, [ordenesFiltradas, productoSeleccionado]);
 
+
+  // ✅ Calcular tipos de documento disponibles dinámicamente
+  useEffect(() => {
+    // Tipos de Documento Interno disponibles
+    const tiposInternoMap = new Map();
+    ordenesFiltradas.forEach((orden) => {
+      if (orden.tipoDocumento) {
+        tiposInternoMap.set(orden.tipoDocumento.id, orden.tipoDocumento);
+      }
+    });
+    const tiposInternoArray = Array.from(tiposInternoMap.values()).sort((a, b) =>
+      (a.descripcion || a.nombre || "").localeCompare(b.descripcion || b.nombre || "")
+    );
+    setTiposDocInternoDisponibles(tiposInternoArray);
+
+    // Tipos de Documento Final disponibles
+    const tiposFinalMap = new Map();
+    ordenesFiltradas.forEach((orden) => {
+      if (orden.tipoDocumentoFinal) {
+        tiposFinalMap.set(orden.tipoDocumentoFinal.id, orden.tipoDocumentoFinal);
+      }
+    });
+    const tiposFinalArray = Array.from(tiposFinalMap.values()).sort((a, b) =>
+      (a.descripcion || a.nombre || "").localeCompare(b.descripcion || b.nombre || "")
+    );
+    setTiposDocFinalDisponibles(tiposFinalArray);
+  }, [ordenesFiltradas]);
+
+
   // ✅ Filtrado completo de órdenes
   useEffect(() => {
     let filtered = items;
@@ -227,10 +267,24 @@ export default function OrdenCompra({ ruta }) {
     }
 
 
-    // ✅ Filtro por tipo documento final
+    // ✅ Filtro por tipo documento final (antiguo - mantener por compatibilidad)
     if (tipoDocumentoFinalIdSeleccionado) {
       filtered = filtered.filter(
         (orden) => Number(orden.tipoDocumentoFinalId) === Number(tipoDocumentoFinalIdSeleccionado),
+      );
+    }
+
+    // ✅ Filtros avanzados por tipos de documento interno (múltiple)
+    if (tiposDocInternoAplicados && tiposDocInternoAplicados.length > 0) {
+      filtered = filtered.filter((orden) =>
+        tiposDocInternoAplicados.some(id => Number(orden.tipoDocumentoId) === Number(id))
+      );
+    }
+
+    // ✅ Filtros avanzados por tipos de documento final (múltiple)
+    if (tiposDocFinalAplicados && tiposDocFinalAplicados.length > 0) {
+      filtered = filtered.filter((orden) =>
+        tiposDocFinalAplicados.some(id => Number(orden.tipoDocumentoFinalId) === Number(id))
       );
     }
 
@@ -276,13 +330,13 @@ export default function OrdenCompra({ ruta }) {
     }
 
     // Filtro por tipo de libro
-    if (filtroTipoLibro === "FISCAL_S_SI") {
+    if (filtroTipoLibro === "FISCAL_SSI") {
       // Fiscal sin saldos iniciales: FAC, BV, NC, ND
       filtered = filtered.filter((orden) => {
         const codigo = orden.tipoDocumentoFinal?.codigo || orden.tipoDocumento?.codigo || "";
         return ["FAC", "BV", "NC", "ND"].includes(codigo);
       });
-    } else if (filtroTipoLibro === "FISCAL_C_SI") {
+    } else if (filtroTipoLibro === "FISCAL_CSI") {
       // Fiscal con saldos iniciales: FAC, BV, NC, ND + todos los SI-*
       filtered = filtered.filter((orden) => {
         const codigo = orden.tipoDocumentoFinal?.codigo || orden.tipoDocumento?.codigo || "";
@@ -306,6 +360,8 @@ export default function OrdenCompra({ ruta }) {
     proveedorSeleccionado,
     rangoFechaFacturacion,
     tipoDocumentoFinalIdSeleccionado,
+    tiposDocInternoAplicados,
+    tiposDocFinalAplicados,
     centroCostoSeleccionado,
     productoSeleccionado,
     filtroTipoLibro,
@@ -720,7 +776,47 @@ export default function OrdenCompra({ ruta }) {
     setProductoSeleccionado(null);
     setRangoFechaFacturacion(null);
     setTipoDocumentoFinalIdSeleccionado(null);
+    setTiposDocInternoAplicados([]);
+    setTiposDocFinalAplicados([]);
+    setTiposDocInternoTemp([]);
+    setTiposDocFinalTemp([]);
     setCentroCostoSeleccionado(null);
+  };
+
+
+
+  // ✅ Abrir OverlayPanel de filtros avanzados
+  const abrirFiltrosAvanzados = (event) => {
+    setTiposDocInternoTemp([...tiposDocInternoAplicados]);
+    setTiposDocFinalTemp([...tiposDocFinalAplicados]);
+    opFiltrosAvanzados.current.toggle(event);
+  };
+
+  // ✅ Aplicar filtros avanzados
+  const aplicarFiltrosAvanzados = () => {
+    setTiposDocInternoAplicados([...tiposDocInternoTemp]);
+    setTiposDocFinalAplicados([...tiposDocFinalTemp]);
+    opFiltrosAvanzados.current.hide();
+
+    toast.current?.show({
+      severity: "success",
+      summary: "Filtros Aplicados",
+      detail: "Los filtros se han aplicado correctamente",
+      life: 2000,
+    });
+  };
+
+  // ✅ Limpiar filtros avanzados (solo temporales)
+  const limpiarFiltrosAvanzados = () => {
+    setTiposDocInternoTemp([]);
+    setTiposDocFinalTemp([]);
+  };
+
+  // ✅ Cancelar y cerrar sin aplicar
+  const cancelarFiltrosAvanzados = () => {
+    setTiposDocInternoTemp([...tiposDocInternoAplicados]);
+    setTiposDocFinalTemp([...tiposDocFinalAplicados]);
+    opFiltrosAvanzados.current.hide();
   };
 
 
@@ -1341,6 +1437,11 @@ export default function OrdenCompra({ ruta }) {
     );
   };
 
+  // Template para Tipo Documento Interno
+  const tipoDocumentoInternoTemplate = (rowData) => {
+    return rowData.tipoDocumento?.codigo || "-";
+  };
+
   // Template para Tipo Documento Final
   const tipoDocumentoFinalTemplate = (rowData) => {
     return rowData.tipoDocumentoFinal?.codigo || "-";
@@ -1828,17 +1929,122 @@ export default function OrdenCompra({ ruta }) {
               </div>
               <div style={{ flex: 1, minWidth: "200px" }}>
                 <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
-                  Tipo Doc Final:
+                  Filtros Avanzados:
                 </label>
-                <Dropdown
-                  value={tipoDocumentoFinalIdSeleccionado}
-                  options={tiposDocumentoFinal}
-                  onChange={(e) => setTipoDocumentoFinalIdSeleccionado(e.value)}
-                  placeholder="Todos"
-                  showClear
-                  style={{ width: "100%" }}
-                  filter
+                <Button
+                  label="Tipos de Documento"
+                  icon="pi pi-filter"
+                  onClick={abrirFiltrosAvanzados}
+                  className="p-button-outlined"
+                  badge={
+                    (tiposDocInternoAplicados.length + tiposDocFinalAplicados.length) > 0
+                      ? String(tiposDocInternoAplicados.length + tiposDocFinalAplicados.length)
+                      : null
+                  }
+                  badgeClassName="p-badge-info"
+                  style={{
+                    width: "100%",
+                    fontWeight: "bold",
+                    justifyContent: "flex-start",
+                  }}
+                  disabled={loading}
+                  tooltip={
+                    (tiposDocInternoAplicados.length + tiposDocFinalAplicados.length) > 0
+                      ? `${tiposDocInternoAplicados.length + tiposDocFinalAplicados.length} filtros activos`
+                      : "Filtrar por tipos de documento"
+                  }
+                  tooltipOptions={{ position: "top" }}
                 />
+
+                {/* OverlayPanel de Filtros Avanzados */}
+                <OverlayPanel ref={opFiltrosAvanzados} style={{ width: "450px" }}>
+                  <div style={{ padding: "10px" }}>
+                    <h3 style={{ marginTop: 0, marginBottom: "15px", color: "#2c3e50" }}>
+                      <i className="pi pi-filter" style={{ marginRight: "8px" }}></i>
+                      Filtros de Tipo de Documento
+                    </h3>
+
+                    {/* Tipo Documento Interno */}
+                    <div style={{ marginBottom: "20px" }}>
+                      <label htmlFor="tipoDocInternoTemp" style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>
+                        Tipo Documento Interno
+                      </label>
+                      <MultiSelect
+                        id="tipoDocInternoTemp"
+                        value={tiposDocInternoTemp}
+                        options={tiposDocInternoDisponibles.map((t) => ({
+                          label: `${t.codigo || ""} - ${t.descripcion || t.nombre || ""}`,
+                          value: Number(t.id),
+                        }))}
+                        onChange={(e) => setTiposDocInternoTemp(e.value)}
+                        placeholder="Seleccionar tipos"
+                        optionLabel="label"
+                        optionValue="value"
+                        display="chip"
+                        filter
+                        showSelectAll={true}
+                        selectAllLabel="Seleccionar Todos"
+                        style={{ width: "100%" }}
+                        maxSelectedLabels={3}
+                        emptyMessage="No hay tipos disponibles con los filtros actuales"
+                      />
+                      <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
+                        {tiposDocInternoDisponibles.length} tipo(s) disponible(s)
+                      </small>
+                    </div>
+
+                    {/* Tipo Documento Final */}
+                    <div style={{ marginBottom: "20px" }}>
+                      <label htmlFor="tipoDocFinalTemp" style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>
+                        Comprobante Final
+                      </label>
+                      <MultiSelect
+                        id="tipoDocFinalTemp"
+                        value={tiposDocFinalTemp}
+                        options={tiposDocFinalDisponibles.map((t) => ({
+                          label: `${t.codigo || ""} - ${t.descripcion || t.nombre || ""}`,
+                          value: Number(t.id),
+                        }))}
+                        onChange={(e) => setTiposDocFinalTemp(e.value)}
+                        placeholder="Seleccionar comprobantes"
+                        optionLabel="label"
+                        optionValue="value"
+                        display="chip"
+                        filter
+                        showSelectAll={true}
+                        selectAllLabel="Seleccionar Todos"
+                        style={{ width: "100%" }}
+                        maxSelectedLabels={3}
+                        emptyMessage="No hay comprobantes disponibles con los filtros actuales"
+                      />
+                      <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
+                        {tiposDocFinalDisponibles.length} comprobante(s) disponible(s)
+                      </small>
+                    </div>
+
+                    {/* Botones de acción */}
+                    <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", borderTop: "1px solid #dee2e6", paddingTop: "15px" }}>
+                      <Button
+                        label="Limpiar"
+                        icon="pi pi-times"
+                        onClick={limpiarFiltrosAvanzados}
+                        className="p-button-text p-button-secondary"
+                      />
+                      <Button
+                        label="Cancelar"
+                        icon="pi pi-ban"
+                        onClick={cancelarFiltrosAvanzados}
+                        className="p-button-text"
+                      />
+                      <Button
+                        label="Aplicar"
+                        icon="pi pi-check"
+                        onClick={aplicarFiltrosAvanzados}
+                        className="p-button-success"
+                      />
+                    </div>
+                  </div>
+                </OverlayPanel>
               </div>
               <div style={{ flex: 1 }}>
                 <label htmlFor="busquedaDocumento" style={{ fontWeight: "bold" }}>
@@ -1929,6 +2135,14 @@ export default function OrdenCompra({ ruta }) {
       >
         <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
         <Column field="id" header="ID" style={{ width: 80 }} sortable />
+        {/* Tipo Documento Interno */}
+        <Column
+          field="tipoDocumento.codigo"
+          header="Tipo Doc Interno"
+          body={tipoDocumentoInternoTemplate}
+          style={{ width: 110, textAlign: "center" }}
+          sortable
+        />
         <Column field="empresaId" header="Empresa" body={empresaNombre} />
 
         <Column
