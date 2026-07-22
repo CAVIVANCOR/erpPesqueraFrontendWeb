@@ -757,6 +757,12 @@ export default function Dashboard() {
           tab: "operaciones",
         },
         {
+          label: "Libro Diario",
+          key: "detalleAsientoContable",
+          icon: "pi-list",
+          tab: "operaciones",
+        },
+        {
           label: "Movimientos Activo Fijo",
           key: "movActivoFijo",
           icon: "pi-chart-line",

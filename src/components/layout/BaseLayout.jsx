@@ -127,6 +127,7 @@ import Videoconferencia from "../../pages/Videoconferencia";
 import PlanCuentasContable from "../../pages/contabilidad/PlanCuentasContable";
 import PeriodoContable from "../../pages/contabilidad/PeriodoContable";
 import AsientoContable from "../../pages/contabilidad/AsientoContable";
+import DiarioContable from "../../pages/contabilidad/DiarioContable";
 import PrestamoBancario from "../../pages/tesoreria/PrestamoBancario";
 import TipoPrestamo from "../../pages/tesoreria/TipoPrestamo";
 import LineaCredito from "../../pages/tesoreria/LineaCredito";
@@ -674,6 +675,10 @@ export default function BaseLayout({ children, onLogout }) {
     asientoContable: {
       label: "Asientos Contables",
       componente: <AsientoContable ruta="asientoContable" />,
+    },
+    detalleAsientoContable: {
+      label: "Libro Diario",
+      componente: <DiarioContable ruta="detalleAsientoContable" />,
     },
     tipoPrestamo: {
       label: "Tipos de Préstamo",
