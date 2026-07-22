@@ -17,6 +17,7 @@ import * as movimientoActivoFijoAPI from "../../api/movimientoActivoFijo";
 import * as saldoCuentaCorrienteAPI from "../../api/saldoCuentaCorriente";
 import * as prestamoBancariosAPI from "../../api/tesoreria/prestamoBancarios";
 import * as deudaConPersonalAPI from "../../api/tesoreria/deudaConPersonal";
+import * as deudaTributariaAPI from "../../api/tesoreria/deudaTributaria";
 /**
  * Componente genérico para gestionar asientos contables
  * Soporta múltiples tipos de documentos (PreFactura, SaldoCuentaCorriente, etc.)
@@ -52,6 +53,7 @@ const AsientoContableManager = ({
     OrdenCompra: ordenCompraAPI,
     PrestamoBancario: prestamoBancariosAPI,
     DeudaConPersonal: deudaConPersonalAPI,
+    DeudaTributaria: deudaTributariaAPI,
   };
 
   const api = API_MODULES[documentoTipo];
@@ -109,6 +111,8 @@ const AsientoContableManager = ({
         documento = await api.getPrestamoBancarioById(documentoId);
       } else if (documentoTipo === 'DeudaConPersonal') {
         documento = await api.getDeudaConPersonalById(documentoId);
+      } else if (documentoTipo === 'DeudaTributaria') {
+        documento = await api.getDeudaTributariaById(documentoId);
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
@@ -118,6 +122,8 @@ const AsientoContableManager = ({
         fecha = new Date(documento.fechaContable || documento.fechaDesembolso);
       } else if (documentoTipo === 'DeudaConPersonal') {
         fecha = new Date(documento.esSaldoInicial ? documento.fechaContable : documento.fecha);
+      } else if (documentoTipo === 'DeudaTributaria') {
+        fecha = new Date(documento.fechaContable || documento.fechaGeneracion);
       } else {
         fecha = new Date(documento.fecha || documento.fechaDocumento || documento.fechaContable);
       }
@@ -153,6 +159,8 @@ const AsientoContableManager = ({
         documento = await api.getPrestamoBancarioById(documentoId);
       } else if (documentoTipo === 'DeudaConPersonal') {
         documento = await api.getDeudaConPersonalById(documentoId);
+      } else if (documentoTipo === 'DeudaTributaria') {
+        documento = await api.getDeudaTributariaById(documentoId);
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
@@ -244,7 +252,7 @@ const AsientoContableManager = ({
     }
   };
 
-  const regenerarAsientos = async (asientosAEliminar) => {
+    const regenerarAsientos = async (asientosAEliminar) => {
     try {
       // Eliminar asientos según tipo de documento
       for (const asiento of asientosAEliminar) {
@@ -259,6 +267,8 @@ const AsientoContableManager = ({
         } else if (documentoTipo === 'PrestamoBancario') {
           await api.eliminarAsientoContable(documentoId, asiento.id);
         } else if (documentoTipo === 'DeudaConPersonal') {
+          await api.eliminarAsientoContable(documentoId, asiento.id);
+        } else if (documentoTipo === 'DeudaTributaria') {
           await api.eliminarAsientoContable(documentoId, asiento.id);
         }
       }
@@ -301,6 +311,8 @@ const AsientoContableManager = ({
         borrador = await api.generarBorradorAsiento(documentoId);
       } else if (documentoTipo === 'DeudaConPersonal') {
         borrador = await api.generarBorradorAsiento(documentoId);
+      } else if (documentoTipo === 'DeudaTributaria') {
+        borrador = await api.generarBorradorAsiento(documentoId);
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
@@ -323,6 +335,8 @@ const AsientoContableManager = ({
       } else if (documentoTipo === 'PrestamoBancario') {
         asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
       } else if (documentoTipo === 'DeudaConPersonal') {
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
+      } else if (documentoTipo === 'DeudaTributaria') {
         asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
       }
       await cargarAsientos();
@@ -415,7 +429,6 @@ const AsientoContableManager = ({
   };
 
   const montoTemplate = (rowData, field) => {
-    console.log("montoTemplate rowData",rowData)
     const monto = Number(rowData[field]);
     const moneda = rowData.moneda;
     return (
@@ -574,6 +587,7 @@ const AsientoContableManager = ({
             onClick={handleBotonPrincipal}
             disabled={!documentoId || loading}
             loading={loading}
+            style={{ whiteSpace: "nowrap" }}
           />
           {tieneAsientos && (
             <div style={{ display: "flex", gap: "0.25rem" }}>

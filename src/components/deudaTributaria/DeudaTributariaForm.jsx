@@ -598,10 +598,11 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
                 <Dropdown
                   id="tipoDeudaId"
                   value={formData.tipoDeudaId}
-                  options={tiposDeuda}
+                  options={tiposDeuda?.map((t) => ({
+                    label: t.nombre,
+                    value: Number(t.id),
+                  })) || []}
                   onChange={(e) => onChange("tipoDeudaId", e.value)}
-                  optionLabel="nombre"
-                  optionValue="id"
                   placeholder="Seleccione tipo de deuda"
                   filter
                   disabled={readOnly || loading}
@@ -658,7 +659,6 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
                   disabled={readOnly || loading}
                 />
               </div>
-
               {/* Fecha Vencimiento */}
               <div style={{ flex: 1 }}>
                 <label htmlFor="fechaVencimiento">
@@ -673,10 +673,21 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
                   disabled={readOnly || loading}
                 />
               </div>
-
-
+              {/* Fecha Contable */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaContable">
+                  Fecha Contable
+                </label>
+                <Calendar
+                  id="fechaContable"
+                  value={formData.fechaContable}
+                  onChange={(e) => onChange("fechaContable", e.value)}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  disabled={readOnly || loading}
+                />
+              </div>
             </div>
-
             <div
               style={{
                 display: "flex",
@@ -684,7 +695,6 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-
               {/* Moneda */}
               <div style={{ flex: 1 }}>
                 <label htmlFor="monedaId">
@@ -693,15 +703,15 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
                 <Dropdown
                   id="monedaId"
                   value={formData.monedaId}
-                  options={monedas}
+                  options={monedas?.map((m) => ({
+                    label: m.codigoSunat,
+                    value: Number(m.id),
+                  })) || []}
                   onChange={(e) => onChange("monedaId", e.value)}
-                  optionLabel="codigoSunat"
-                  optionValue="id"
                   placeholder="Seleccione moneda"
                   disabled={readOnly || loading}
                 />
               </div>
-
               {/* Monto Original */}
               <div style={{ flex: 1 }}>
                 <label htmlFor="montoOriginal">
@@ -718,7 +728,6 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
                   style={{ backgroundColor: getColorPorMoneda() }}
                 />
               </div>
-
               {/* Monto Pagado Anterior - Solo visible si es saldo inicial */}
               {formData.esSaldoInicial && (
                 <div style={{ flex: 1 }}>
@@ -737,7 +746,6 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
                   />
                 </div>
               )}
-
               {/* Monto Pagado - Siempre deshabilitado (se calcula automáticamente) */}
               <div style={{ flex: 1 }}>
                 <label htmlFor="montoPagado">Monto Pagado</label>
@@ -751,7 +759,6 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
                   style={{ backgroundColor: getColorPorMoneda() }}
                 />
               </div>
-
               {/* Saldo Pendiente */}
               <div style={{ flex: 1 }}>
                 <label htmlFor="saldoPendiente">Saldo Pendiente</label>
@@ -765,7 +772,6 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
                   style={{ backgroundColor: getColorPorMoneda() }}
                 />
               </div>
-
             </div>
             <div
               style={{
@@ -808,7 +814,6 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
                   disabled={readOnly || loading}
                 />
               </div>
-
               {/* Checkboxes */}
               {/* Saldo Inicial */}
               <div style={{ flex: 1 }}>
@@ -823,9 +828,7 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
                   disabled={readOnly || loading}
                 />
               </div>
-
             </div>
-
             <div
               style={{
                 display: "flex",
@@ -886,6 +889,19 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
+        {/* Componente genérico de asientos contables */}
+        {isEdit && defaultValues?.id && (
+          <div style={{ marginTop: "1rem" }}>
+            <AsientoContableManager
+              documentoId={defaultValues.id}
+              documentoTipo="DeudaTributaria"
+              empresaId={formData.empresaId}
+              periodoContableId={formData.periodoContableId}
+              showAsButton={true}
+              onBeforeGenerate={handleBeforeGenerateAsiento}
+            />
+          </div>
+        )}
         <Button
           label="Cancelar"
           icon="pi pi-times"
@@ -905,19 +921,7 @@ const DeudaTributariaForm = forwardRef((props, ref) => {
         />
       </div>
 
-      {/* Componente genérico de asientos contables */}
-      {isEdit && defaultValues?.id && (
-        <div style={{ marginTop: "1rem" }}>
-          <AsientoContableManager
-            documentoId={defaultValues.id}
-            documentoTipo="DeudaTributaria"
-            empresaId={formData.empresaId}
-            periodoContableId={formData.periodoContableId}
-            showAsButton={true}
-            onBeforeGenerate={handleBeforeGenerateAsiento}
-          />
-        </div>
-      )}
+
 
       {/* Dialog para pagos */}
       <Dialog

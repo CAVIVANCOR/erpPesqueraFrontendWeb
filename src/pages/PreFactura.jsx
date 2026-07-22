@@ -1752,7 +1752,6 @@ const PreFactura = ({ ruta }) => {
   };
 
   const montosTemplate = (rowData) => {
-    console.log("montosTemplate rowData", rowData)
     const formato = formatearMontoConSigno(rowData.total || 0);
     const simboloMoneda = rowData.moneda?.simbolo || "";
     const colorFondoMoneda = rowData.moneda?.colorFondo || "#FFFF";
