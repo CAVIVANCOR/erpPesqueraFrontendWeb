@@ -18,6 +18,8 @@ import * as saldoCuentaCorrienteAPI from "../../api/saldoCuentaCorriente";
 import * as prestamoBancariosAPI from "../../api/tesoreria/prestamoBancarios";
 import * as deudaConPersonalAPI from "../../api/tesoreria/deudaConPersonal";
 import * as deudaTributariaAPI from "../../api/tesoreria/deudaTributaria";
+import * as movimientoAlmacenAPI from "../../api/movimientoAlmacen";
+
 /**
  * Componente genérico para gestionar asientos contables
  * Soporta múltiples tipos de documentos (PreFactura, SaldoCuentaCorriente, etc.)
@@ -54,6 +56,7 @@ const AsientoContableManager = ({
     PrestamoBancario: prestamoBancariosAPI,
     DeudaConPersonal: deudaConPersonalAPI,
     DeudaTributaria: deudaTributariaAPI,
+    MovimientoAlmacen: movimientoAlmacenAPI,
   };
 
   const api = API_MODULES[documentoTipo];
@@ -113,6 +116,8 @@ const AsientoContableManager = ({
         documento = await api.getDeudaConPersonalById(documentoId);
       } else if (documentoTipo === 'DeudaTributaria') {
         documento = await api.getDeudaTributariaById(documentoId);
+      } else if (documentoTipo === 'MovimientoAlmacen') {
+        documento = await api.getMovimientoAlmacenPorId(documentoId);
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
@@ -124,6 +129,8 @@ const AsientoContableManager = ({
         fecha = new Date(documento.esSaldoInicial ? documento.fechaContable : documento.fecha);
       } else if (documentoTipo === 'DeudaTributaria') {
         fecha = new Date(documento.fechaContable || documento.fechaGeneracion);
+      } else if (documentoTipo === 'MovimientoAlmacen') {
+        fecha = new Date(documento.fechaDocumento);
       } else {
         fecha = new Date(documento.fecha || documento.fechaDocumento || documento.fechaContable);
       }
@@ -161,6 +168,8 @@ const AsientoContableManager = ({
         documento = await api.getDeudaConPersonalById(documentoId);
       } else if (documentoTipo === 'DeudaTributaria') {
         documento = await api.getDeudaTributariaById(documentoId);
+      } else if (documentoTipo === 'MovimientoAlmacen') {
+        documento = await api.getMovimientoAlmacenPorId(documentoId);
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
@@ -252,7 +261,7 @@ const AsientoContableManager = ({
     }
   };
 
-    const regenerarAsientos = async (asientosAEliminar) => {
+  const regenerarAsientos = async (asientosAEliminar) => {
     try {
       // Eliminar asientos según tipo de documento
       for (const asiento of asientosAEliminar) {
@@ -313,6 +322,8 @@ const AsientoContableManager = ({
         borrador = await api.generarBorradorAsiento(documentoId);
       } else if (documentoTipo === 'DeudaTributaria') {
         borrador = await api.generarBorradorAsiento(documentoId);
+      } else if (documentoTipo === 'MovimientoAlmacen') {
+        borrador = await api.generarBorradorAsientoSaldoInicial(documentoId);
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
@@ -338,7 +349,10 @@ const AsientoContableManager = ({
         asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
       } else if (documentoTipo === 'DeudaTributaria') {
         asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
+      } else if (documentoTipo === 'MovimientoAlmacen') {
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
       }
+
       await cargarAsientos();
 
       toast.current?.show({
@@ -581,6 +595,7 @@ const AsientoContableManager = ({
         <Toast ref={toast} />
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
           <Button
+            type="button"
             label={labelBoton}
             icon={iconoBoton}
             className={colorBoton}

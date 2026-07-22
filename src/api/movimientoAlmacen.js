@@ -125,3 +125,26 @@ export async function eliminarDetalleMovimiento(id) {
   const res = await axios.delete(`${DETALLE_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+/**
+ * Genera borrador de asiento contable de Saldo Inicial
+ */
+export async function generarBorradorAsientoSaldoInicial(id) {
+  const res = await axios.get(`${API_URL}/${id}/borrador-asiento-saldo-inicial`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Guarda un asiento contable editado
+ */
+export async function guardarAsientoContable(id, asientoData) {
+  const res = await axios.post(`${API_URL}/${id}/guardar-asiento`, { asientoData }, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Elimina un asiento contable
+ */
+export async function eliminarAsientoContable(asientoId) {
+  const res = await axios.delete(`${API_URL}/asiento/${asientoId}`, { headers: getAuthHeaders() });
+  return res.data;
+}

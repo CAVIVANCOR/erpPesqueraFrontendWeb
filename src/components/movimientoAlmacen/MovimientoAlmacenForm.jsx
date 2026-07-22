@@ -28,6 +28,7 @@ import { getEstadosMultiFuncion } from "../../api/estadoMultiFuncion";
 import { getParametrosAprobador } from "../../api/parametroAprobador";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import EntidadComercialSelector from "../common/EntidadComercialSelector";
+import AsientoContableManager from "../common/AsientoContableManager";
 
 export default function MovimientoAlmacenForm({
   isEdit,
@@ -69,7 +70,7 @@ export default function MovimientoAlmacenForm({
   permisos = {}, // Permisos del usuario
   readOnly = false, // Modo solo lectura
 }) {
-  
+
   // Estados de la cabecera - Conforme al modelo MovimientoAlmacen
   const [empresaId, setEmpresaId] = useState(defaultValues.empresaId || null);
   const [tipoDocumentoId, setTipoDocumentoId] = useState(
@@ -262,6 +263,26 @@ export default function MovimientoAlmacenForm({
     );
     setDetalles(defaultValues.detalles || []);
   }, [defaultValues, empresaFija]);
+
+  // Verificar si el concepto es INVENTARIO INICIAL para mostrar botón de asiento
+  const [esSaldoInicial, setEsSaldoInicial] = useState(false);
+
+  useEffect(() => {
+    if (conceptoMovAlmacenId) {
+      const concepto = conceptosMovAlmacen.find(
+        (c) => Number(c.id) === Number(conceptoMovAlmacenId),
+      );
+
+      if (concepto &&
+        Number(concepto.tipoConceptoId) === 4 &&
+        Number(concepto.tipoMovimientoId) === 2 &&
+        concepto.descripcion === "INVENTARIO INICIAL") {
+        setEsSaldoInicial(true);
+      } else {
+        setEsSaldoInicial(false);
+      }
+    }
+  }, [conceptoMovAlmacenId, conceptosMovAlmacen]);
 
   // Cargar esCustodia e información de almacenes automáticamente cuando cambie el concepto
   useEffect(() => {
@@ -655,6 +676,71 @@ export default function MovimientoAlmacenForm({
       setNumSerieDoc("");
       setNumCorreDoc("");
       setNumeroDocumento("");
+    }
+  };
+
+  // ⭐ CALLBACK para AsientoContableManager - Solo para Saldo Inicial
+  const handleBeforeGenerateAsiento = async () => {
+    try {
+      // ✅ 1. Verificar que existe el movimiento
+      if (!defaultValues?.id) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se puede generar asiento sin un movimiento guardado.",
+          life: 5000,
+        });
+        throw new Error("Movimiento no guardado");
+      }
+
+      // ✅ 2. Obtener movimiento actual desde BD
+      const movimientoActual = await getMovimientoAlmacenPorId(defaultValues.id);
+
+      // ✅ 3. Validar que tiene detalles
+      if (!movimientoActual.detalles || movimientoActual.detalles.length === 0) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "El movimiento no tiene detalles. No se puede generar el asiento contable.",
+          life: 5000,
+        });
+        throw new Error("Sin detalles");
+      }
+
+      // ✅ 4. Validar que los productos tienen cuenta de inventario
+      const productosSinCuenta = movimientoActual.detalles.filter(
+        d => !d.producto?.cuentaInventarioId
+      );
+
+      if (productosSinCuenta.length > 0) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: `Hay ${productosSinCuenta.length} producto(s) sin cuenta de inventario configurada. Configure las cuentas contables antes de generar el asiento.`,
+          life: 5000,
+        });
+        throw new Error("Productos sin cuenta inventario");
+      }
+
+      // ✅ Todo OK, continuar con generación de asiento
+      return true;
+
+    } catch (error) {
+      console.error("Error en handleBeforeGenerateAsiento:", error);
+
+      // Si el error ya mostró un toast, no mostrar otro
+      if (!error.message?.includes("Sin detalles") &&
+        !error.message?.includes("Movimiento no guardado") &&
+        !error.message?.includes("Productos sin cuenta")) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: error.message || "Error al validar el movimiento para generar el asiento contable.",
+          life: 5000,
+        });
+      }
+
+      throw error; // Re-lanzar para que AsientoContableManager lo maneje
     }
   };
 
@@ -1818,6 +1904,19 @@ export default function MovimientoAlmacenForm({
             }
             tooltipOptions={{ position: "top" }}
           />
+        )}
+        {/* Componente genérico de asientos contables - Solo para Saldo Inicial */}
+        {isEdit && defaultValues?.id && esSaldoInicial && (
+          <div style={{ flex: 1 }}>
+            <AsientoContableManager
+              documentoId={defaultValues.id}
+              documentoTipo="MovimientoAlmacen"
+              empresaId={empresaId}
+              periodoContableId={undefined}
+              showAsButton={true}
+              onBeforeGenerate={handleBeforeGenerateAsiento}
+            />
+          </div>
         )}
         <Button
           type="button"
