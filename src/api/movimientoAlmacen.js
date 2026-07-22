@@ -144,7 +144,7 @@ export async function guardarAsientoContable(id, asientoData) {
 /**
  * Elimina un asiento contable
  */
-export async function eliminarAsientoContable(asientoId) {
-  const res = await axios.delete(`${API_URL}/asiento/${asientoId}`, { headers: getAuthHeaders() });
+export async function eliminarAsientoContable(documentoId, asientoId) {
+  const res = await axios.delete(`${API_URL}/${documentoId}/asiento/${asientoId}`, { headers: getAuthHeaders() });
   return res.data;
 }

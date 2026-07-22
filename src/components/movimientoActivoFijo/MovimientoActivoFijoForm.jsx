@@ -25,7 +25,7 @@ import { Calendar } from "primereact/calendar";
 import { InputNumber } from "primereact/inputnumber";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Toast } from "primereact/toast";
-import { confirmDialog } from "primereact/confirmdialog";
+import { confirmDialog, ConfirmDialog } from "primereact/confirmdialog";
 import {
   crearMovimientoActivoFijo,
   actualizarMovimientoActivoFijo,
@@ -124,6 +124,7 @@ const MovimientoActivoFijoForm = ({
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
   const esEdicion = !!movimiento;
+  const [generaAsiento, setGeneraAsiento] = useState(false);
 
   // Configuración del formulario con react-hook-form y Yup
   const {
@@ -154,6 +155,7 @@ const MovimientoActivoFijoForm = ({
 
   // Watch empresaId para cargar períodos contables de esa empresa
   const empresaIdSeleccionada = watch("empresaId");
+  const tipoMovimientoId = watch("tipoMovimientoId"); // ← AGREGAR ESTA LÍNEA
 
   /**
    * Cargar datos de combos al montar
@@ -264,6 +266,29 @@ const MovimientoActivoFijoForm = ({
     });
     return () => subscription.unsubscribe();
   }, [watch, setValue]);
+
+  useEffect(() => {
+    if (tipoMovimientoId) {
+      const tipo = tiposMovimiento.find(t => Number(t.id) === Number(tipoMovimientoId));
+      setGeneraAsiento(tipo?.generaAsientoAutomatico === true);
+    }
+  }, [tipoMovimientoId, tiposMovimiento]);
+
+  const handleBeforeGenerateAsiento = async () => {
+    try {
+      if (!movimiento?.id) {
+        throw new Error("Debe guardar el movimiento primero");
+      }
+
+      if (!movimiento.activo?.cuentaContableId) {
+        throw new Error("El activo no tiene cuenta contable (33xxx) configurada");
+      }
+
+      return true;
+    } catch (error) {
+      throw error;
+    }
+  };
 
   /**
    * Cargar datos para combos (excepto períodos contables que se cargan por empresa)
@@ -951,13 +976,14 @@ const MovimientoActivoFijoForm = ({
           }}
         >
           {/* Componente genérico de asientos contables */}
-          {esEdicion && movimiento?.id && (
+          {esEdicion && movimiento?.id && generaAsiento && (
             <AsientoContableManager
               documentoId={movimiento.id}
               documentoTipo="MovimientoActivoFijo"
               empresaId={movimiento.empresaId}
-              periodoContableId={movimiento.periodoContableId}
+              periodoContableId={undefined}
               showAsButton={true}
+              onBeforeGenerate={handleBeforeGenerateAsiento}
             />
           )}
           <Button
@@ -979,6 +1005,8 @@ const MovimientoActivoFijoForm = ({
           )}
         </div>
       </form>
+      <ConfirmDialog />
+
     </div>
   );
 };

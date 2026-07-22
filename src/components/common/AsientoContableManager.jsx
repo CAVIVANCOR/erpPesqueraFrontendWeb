@@ -58,12 +58,10 @@ const AsientoContableManager = ({
     DeudaTributaria: deudaTributariaAPI,
     MovimientoAlmacen: movimientoAlmacenAPI,
   };
-
   const api = API_MODULES[documentoTipo];
   // Validaciones
   const periodoEstaCerrado = Number(periodoContable?.estadoId) !== ESTADO_PERIODO_CONTABLE.ABIERTO;
   const puedeGenerar = documentoId && !periodoEstaCerrado;
-
   // Efectos
   useEffect(() => {
     if (periodoContableId) {
@@ -279,6 +277,8 @@ const AsientoContableManager = ({
           await api.eliminarAsientoContable(documentoId, asiento.id);
         } else if (documentoTipo === 'DeudaTributaria') {
           await api.eliminarAsientoContable(documentoId, asiento.id);
+        } else if (documentoTipo === 'MovimientoAlmacen') {
+          await api.eliminarAsientoContable(documentoId, asiento.id);
         }
       }
 
@@ -340,7 +340,7 @@ const AsientoContableManager = ({
       } else if (documentoTipo === 'SaldoCuentaCorriente') {
         asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
       } else if (documentoTipo === 'MovimientoActivoFijo') {
-        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1)
       } else if (documentoTipo === 'OrdenCompra') {
         asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
       } else if (documentoTipo === 'PrestamoBancario') {

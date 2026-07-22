@@ -45,28 +45,17 @@ export async function eliminarMovimientoActivoFijo(id) {
   return res.data;
 }
 
-export async function generarBorradorAsiento(movimientoId) {
-  const res = await axios.post(
-    `${API_URL}/${movimientoId}/generar-borrador-asiento`,
-    {},
-    { headers: getAuthHeaders() }
-  );
+export async function generarBorradorAsiento(id) {
+  const res = await axios.get(`${API_URL}/${id}/borrador-asiento`, { headers: getAuthHeaders() });
   return res.data;
 }
 
-export async function guardarAsientoContable(movimientoId, asientoData, usuarioId) {
-  const res = await axios.post(
-    `${API_URL}/${movimientoId}/guardar-asiento`,
-    { asientoData },
-    { headers: getAuthHeaders() }
-  );
+export async function guardarAsientoContable(id, asientoData) {
+  const res = await axios.post(`${API_URL}/${id}/guardar-asiento`, { asientoData }, { headers: getAuthHeaders() });
   return res.data;
 }
 
-export async function eliminarAsientoContableMovimiento(movimientoId) {
-  const res = await axios.delete(
-    `${API_URL}/${movimientoId}/asiento-contable`,
-    { headers: getAuthHeaders() }
-  );
+export async function eliminarAsientoContable(documentoId, asientoId) {
+  const res = await axios.delete(`${API_URL}/${documentoId}/asiento/${asientoId}`, { headers: getAuthHeaders() });
   return res.data;
 }
