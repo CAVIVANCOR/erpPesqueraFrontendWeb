@@ -1733,7 +1733,7 @@ const PreFactura = ({ ruta }) => {
       : "";
   };
   const tipoDocumentoTemplate = (rowData) => {
-    return rowData.tipoDocumentoFinal?.codigo || rowData.tipoDocumento?.descripcion || "N/A";
+    return rowData.tipoDocumentoFinal?.codigo || "N/A";
   };
 
   const fechaContableTemplate = (rowData) => {
@@ -1752,7 +1752,7 @@ const PreFactura = ({ ruta }) => {
   };
 
   const montosTemplate = (rowData) => {
-    console.log("montosTemplate rowData",rowData)
+    console.log("montosTemplate rowData", rowData)
     const formato = formatearMontoConSigno(rowData.total || 0);
     const simboloMoneda = rowData.moneda?.simbolo || "";
     const colorFondoMoneda = rowData.moneda?.colorFondo || "#FFFF";
@@ -2261,11 +2261,19 @@ const PreFactura = ({ ruta }) => {
             sortable
           />
           <Column
+            field="tipoDocumento.codigo"
+            header="Tipo Dcmto Interno"
+            body={(rowData) => rowData.tipoDocumento?.codigo || "N/A"}
+            style={{ width: 150, textAlign: "center", verticalAlign: "top" }}
+            sortable
+          />
+          <Column
             field="empresaId"
             header="Empresa"
             body={empresaTemplate}
             style={{ verticalAlign: "top" }}
           />
+
           <Column
             field="unidadNegocioId"
             header="Unidad Negocio"
@@ -2275,21 +2283,15 @@ const PreFactura = ({ ruta }) => {
           />
           <Column
             field="tipoDocumentoId"
-            header="Tipo Documento"
-            body={tipoDocumentoTemplate}
+            header="Tipo Dcmto Final"
+            body={(rowData) => rowData.tipoDocumentoFinal?.codigo || "N/A"}
             style={{ width: 150, textAlign: "center", verticalAlign: "top" }}
             sortable
           />
           <Column
             field="numeroDocumentoFinal"
-            header="N° Documento"
+            header="N° Docmto Final"
             body={(rowData) => rowData.numeroDocumentoFinal || rowData.numeroDocumento || "N/A"}
-            style={{ width: 140, textAlign: "center", verticalAlign: "top" }}
-            sortable
-          />
-          <Column
-            field="nroLiquidacionFacturacion"
-            header="N° Referencia"
             style={{ width: 140, textAlign: "center", verticalAlign: "top" }}
             sortable
           />
@@ -2305,6 +2307,12 @@ const PreFactura = ({ ruta }) => {
             header="Cliente"
             body={clienteTemplate}
             style={{ verticalAlign: "top" }}
+            sortable
+          />
+          <Column
+            field="nroLiquidacionFacturacion"
+            header="N° Referencia"
+            style={{ width: 140, textAlign: "center", verticalAlign: "top" }}
             sortable
           />
           <Column

@@ -1068,6 +1068,9 @@ export default function PreFacturaForm({
       tipoDocumentoId: formData.tipoDocumentoId
         ? Number(formData.tipoDocumentoId)
         : null,
+      tipoDocumentoFinalId: formData.tipoDocumentoFinalId
+        ? Number(formData.tipoDocumentoFinalId)
+        : null,
       serieDocId: formData.serieDocId ? Number(formData.serieDocId) : null,
       numSerieDoc: formData.numSerieDoc,
       numCorreDoc: formData.numCorreDoc,
