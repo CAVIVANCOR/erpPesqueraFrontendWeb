@@ -1780,7 +1780,7 @@ export default function OrdenCompra({ ruta }) {
               }}
             >
               <div style={{ flex: 2 }}>
-                <h2>Órdenes de Compra</h2>
+                <h2>Compras y Gastos</h2>
               </div>
               <div style={{ flex: 2 }}>
                 <label style={{ fontWeight: "bold" }}>
@@ -1857,7 +1857,7 @@ export default function OrdenCompra({ ruta }) {
                   className="p-button-success"
                   onClick={handleExportarExcel}
                   disabled={loading}
-                  tooltip="Exportar todas las Órdenes de Compra a Excel"
+                  tooltip="Exportar todas las Compras a Excel"
                   style={{ width: "100%" }}
                 />
               </div>

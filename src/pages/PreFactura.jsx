@@ -695,11 +695,11 @@ const PreFactura = ({ ruta }) => {
         const response = await getPreFacturaById(preFacturaOrigenId);
         preFacturaOrigen = response.data;
       } catch (error) {
-        console.error("Error al buscar PreFactura Origen:", error);
+        console.error("Error al buscar Venta Origen:", error);
         toast.current.show({
           severity: "error",
           summary: "Error",
-          detail: "No se pudo cargar la PreFactura Origen",
+          detail: "No se pudo cargar la Venta Origen",
           life: 3000,
         });
         return;
@@ -714,7 +714,7 @@ const PreFactura = ({ ruta }) => {
       toast.current.show({
         severity: "warn",
         summary: "Advertencia",
-        detail: "No se encontró la PreFactura Origen",
+        detail: "No se encontró la Venta Origen",
         life: 3000,
       });
     }
@@ -1843,7 +1843,7 @@ const PreFactura = ({ ruta }) => {
           rows={25}
           rowsPerPageOptions={[25, 50, 100, 150]}
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} pre-facturas"
+          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} Ventas"
           sortField="id"
           sortOrder={-1}
           style={{
@@ -1854,7 +1854,7 @@ const PreFactura = ({ ruta }) => {
           onRowClick={
             permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
           }
-          emptyMessage="No se encontraron pre-facturas"
+          emptyMessage="No se encontraron VENTAS"
           header={
             <div>
               <div
@@ -1866,7 +1866,7 @@ const PreFactura = ({ ruta }) => {
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <h2>Pre-Facturas</h2>
+                  <h2>VENTAS</h2>
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontWeight: "bold" }}>
@@ -1949,7 +1949,7 @@ const PreFactura = ({ ruta }) => {
                     className="p-button-success"
                     onClick={handleExportarExcel}
                     disabled={loading}
-                    tooltip="Exportar todas las PreFacturas a Excel"
+                    tooltip="Exportar todas las Ventas a Excel"
                     style={{ width: "100%" }}
                   />
                 </div>
@@ -2174,7 +2174,7 @@ const PreFactura = ({ ruta }) => {
                     showClear
                     style={{ width: "100%" }}
                     disabled={loading}
-                    emptyMessage="No hay productos en las PreFacturas filtradas"
+                    emptyMessage="No hay productos en las Ventas filtradas"
                   />
                 </div>
                 {/* Filtro por Número de Liquidación */}
