@@ -128,6 +128,7 @@ import PlanCuentasContable from "../../pages/contabilidad/PlanCuentasContable";
 import PeriodoContable from "../../pages/contabilidad/PeriodoContable";
 import AsientoContable from "../../pages/contabilidad/AsientoContable";
 import DiarioContable from "../../pages/contabilidad/DiarioContable";
+import MayorContable from "../../pages/contabilidad/MayorContable";
 import PrestamoBancario from "../../pages/tesoreria/PrestamoBancario";
 import TipoPrestamo from "../../pages/tesoreria/TipoPrestamo";
 import LineaCredito from "../../pages/tesoreria/LineaCredito";
@@ -679,6 +680,10 @@ export default function BaseLayout({ children, onLogout }) {
     detalleAsientoContable: {
       label: "Libro Diario",
       componente: <DiarioContable ruta="detalleAsientoContable" />,
+    },
+    detalleAsientoContableMayor: {
+      label: "Libro Mayor",
+      componente: <MayorContable ruta="detalleAsientoContableMayor" />,
     },
     tipoPrestamo: {
       label: "Tipos de Préstamo",

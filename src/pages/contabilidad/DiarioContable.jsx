@@ -18,10 +18,6 @@ import { getPeriodosContables } from "../../api/contabilidad/periodoContable";
 import { getEstadosMultiFuncion } from "../../api/estadoMultiFuncion";
 import { getPlanCuentasContable } from "../../api/contabilidad/planCuentasContable";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
-import { getCentrosCosto } from "../../api/centroCosto";
-import { getTiposDocumento } from "../../api/tipoDocumento";
-import { getMonedas } from "../../api/moneda";
-import { getActivos } from "../../api/activo";
 import { formatearFecha, formatearNumero, getResponsiveFontSize } from "../../utils/utils";
 import EmpresaSelector from "../../components/common/EmpresaSelector";
 import ColorTag from "../../components/shared/ColorTag";
@@ -36,17 +32,13 @@ const DiarioContable = ({ ruta }) => {
     return <Navigate to="/sin-acceso" replace />;
   }
 
-  const [lineas, setLineas] = useState([]);
+  const [lineasFlat, setLineasFlat] = useState([]);
   const [loading, setLoading] = useState(false);
   const [empresas, setEmpresas] = useState([]);
   const [periodos, setPeriodos] = useState([]);
   const [estados, setEstados] = useState([]);
   const [cuentas, setCuentas] = useState([]);
   const [entidades, setEntidades] = useState([]);
-  const [centrosCosto, setCentrosCosto] = useState([]);
-  const [tiposDoc, setTiposDoc] = useState([]);
-  const [monedas, setMonedas] = useState([]);
-  const [activos, setActivos] = useState([]);
 
   const [empresaIdSelector, setEmpresaIdSelector] = useState(usuario?.empresaId || null);
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState(null);
@@ -58,14 +50,18 @@ const DiarioContable = ({ ruta }) => {
   const [soloCuadrados, setSoloCuadrados] = useState(false);
   const [soloDescuadrados, setSoloDescuadrados] = useState(false);
   const [soloConEntidad, setSoloConEntidad] = useState(false);
-  const [filtroSaldoInicial, setFiltroSaldoInicial] = useState('TODOS'); // TODOS | SOLO_SALDOS | SIN_SALDOS
+  const [filtroSaldoInicial, setFiltroSaldoInicial] = useState('TODOS');
 
   const [totales, setTotales] = useState({
     totalDebe: 0,
     totalHaber: 0,
   });
 
-  // ✅ FILTRAR PERIODOS POR EMPRESA Y AÑO ACTUAL
+  const [estadisticas, setEstadisticas] = useState({
+    totalAsientos: 0,
+    totalLineas: 0,
+  });
+
   const periodosFiltrados = useMemo(() => {
     if (!empresaIdSelector) return [];
     
@@ -76,7 +72,6 @@ const DiarioContable = ({ ruta }) => {
     });
   }, [periodos, empresaIdSelector]);
 
-  // ✅ FILTRAR ESTADOS DE ASIENTO CONTABLE (76, 77, 78)
   const estadosAsiento = useMemo(() => {
     return estados.filter(e => [76, 77, 78].includes(Number(e.id)));
   }, [estados]);
@@ -85,7 +80,6 @@ const DiarioContable = ({ ruta }) => {
     cargarCatalogos();
   }, []);
 
-  // ✅ RECARGAR DATOS CUANDO CAMBIA CUALQUIER FILTRO
   useEffect(() => {
     if (empresaIdSelector && periodoSeleccionado) {
       cargarDatos();
@@ -104,7 +98,6 @@ const DiarioContable = ({ ruta }) => {
     filtroSaldoInicial,
   ]);
 
-  // ✅ SELECCIONAR AUTOMÁTICAMENTE PERIODO DEL MES ACTUAL CUANDO CAMBIA LA EMPRESA
   useEffect(() => {
     if (periodosFiltrados.length > 0) {
       const mesActual = new Date().getMonth() + 1;
@@ -128,20 +121,12 @@ const DiarioContable = ({ ruta }) => {
         estadosData,
         cuentasData,
         entidadesData,
-        centrosData,
-        tiposDocData,
-        monedasData,
-        activosData,
       ] = await Promise.all([
         getEmpresas(),
         getPeriodosContables(),
         getEstadosMultiFuncion(),
         getPlanCuentasContable(),
         getEntidadesComerciales(),
-        getCentrosCosto(),
-        getTiposDocumento(),
-        getMonedas(),
-        getActivos(),
       ]);
 
       setEmpresas(empresasData);
@@ -149,10 +134,6 @@ const DiarioContable = ({ ruta }) => {
       setEstados(estadosData);
       setCuentas(cuentasData);
       setEntidades(entidadesData);
-      setCentrosCosto(centrosData);
-      setTiposDoc(tiposDocData);
-      setMonedas(monedasData);
-      setActivos(activosData);
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -179,21 +160,63 @@ const DiarioContable = ({ ruta }) => {
         soloDescuadrados: soloDescuadrados,
         soloConEntidad: soloConEntidad,
         soloSaldosIniciales: filtroSaldoInicial === 'SOLO_SALDOS',
-        page: 1,
-        limit: 10000,
       };
 
       const response = await getLineasDiarioContable(params);
       
-      let lineasFiltradas = response.lineas || [];
+      let asientosFiltrados = response.asientos || [];
       
-      // ✅ FILTRAR EN FRONTEND SI ES "SIN_SALDOS"
       if (filtroSaldoInicial === 'SIN_SALDOS') {
-        lineasFiltradas = lineasFiltradas.filter(linea => !linea.asientoContable?.esSaldoInicial);
+        asientosFiltrados = asientosFiltrados.filter(asiento => !asiento.esSaldoInicial);
       }
       
-      setLineas(lineasFiltradas);
+      // Convertir a formato plano con filas especiales
+      const flat = [];
+      asientosFiltrados.forEach((asiento, asientoIndex) => {
+        // FILA HEADER DEL ASIENTO
+        flat.push({
+          _tipo: 'HEADER',
+          _asientoIndex: asientoIndex,
+          numeroAsiento: asiento.numeroAsiento,
+          fechaAsiento: asiento.fechaAsiento,
+          glosaAsiento: asiento.glosaAsiento,
+          tipoLibro: asiento.tipoLibro,
+          estado: asiento.estado,
+          estaCuadrado: asiento.estaCuadrado,
+          esSaldoInicial: asiento.esSaldoInicial,
+          totales: asiento.totales,
+        });
+        
+        // FILAS DE LÍNEAS
+        asiento.lineas.forEach(linea => {
+          flat.push({
+            _tipo: 'LINEA',
+            _asientoIndex: asientoIndex,
+            ...linea,
+          });
+        });
+        
+        // FILA FOOTER CON TOTALES
+        flat.push({
+          _tipo: 'FOOTER',
+          _asientoIndex: asientoIndex,
+          totales: asiento.totales,
+          estaCuadrado: asiento.estaCuadrado,
+        });
+        
+        // FILA SEPARADOR
+        flat.push({
+          _tipo: 'SEPARADOR',
+          _asientoIndex: asientoIndex,
+        });
+      });
+      
+      setLineasFlat(flat);
       setTotales(response.totales || { totalDebe: 0, totalHaber: 0 });
+      setEstadisticas({
+        totalAsientos: asientosFiltrados.length,
+        totalLineas: response.totalLineas || 0,
+      });
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -218,7 +241,7 @@ const DiarioContable = ({ ruta }) => {
     setSoloDescuadrados(false);
     setSoloConEntidad(false);
     setFiltroSaldoInicial('TODOS');
-    setLineas([]);
+    setLineasFlat([]);
   };
 
   const handleExportar = async (tipo) => {
@@ -315,64 +338,128 @@ const DiarioContable = ({ ruta }) => {
     }
   ];
 
-  const asientoTemplate = (rowData) => (
-    <span style={{ fontFamily: 'monospace', fontSize: getResponsiveFontSize() }}>{rowData.asientoContable?.numeroAsiento}</span>
-  );
+  // TEMPLATES PARA DIFERENTES TIPOS DE FILA
+  const rowClassName = (rowData) => {
+    if (rowData._tipo === 'HEADER') return 'diario-header';
+    if (rowData._tipo === 'FOOTER') return 'diario-footer';
+    if (rowData._tipo === 'SEPARADOR') return 'diario-separador';
+    return 'diario-linea';
+  };
 
-  const fechaTemplate = (rowData) => (
-    <span style={{ fontSize: getResponsiveFontSize() }}>{formatearFecha(rowData.asientoContable?.fechaAsiento)}</span>
-  );
+  const lineaTemplate = (rowData) => {
+    if (rowData._tipo !== 'LINEA') return null;
+    return <span style={{ fontFamily: 'monospace' }}>L{rowData.numeroLinea}</span>;
+  };
 
-  const cuentaTemplate = (rowData) => (
-    <div>
-      <div style={{ fontFamily: 'monospace', fontSize: getResponsiveFontSize(), fontWeight: 'bold' }}>{rowData.planCuenta?.codigoCuenta}</div>
-      <div style={{ fontSize: '0.85rem', color: '#666' }}>{rowData.planCuenta?.nombreCuenta}</div>
-    </div>
-  );
+  const cuentaTemplate = (rowData) => {
+    if (rowData._tipo !== 'LINEA') return null;
+    return (
+      <div>
+        <div style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{rowData.planCuenta?.codigoCuenta}</div>
+        <div style={{ fontSize: '0.85rem', color: '#666' }}>{rowData.planCuenta?.nombreCuenta}</div>
+      </div>
+    );
+  };
+
+  const glosaTemplate = (rowData) => {
+    if (rowData._tipo === 'HEADER') {
+      return (
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', fontWeight: 'bold' }}>
+          <span style={{ fontFamily: 'monospace', fontSize: '1.1rem' }}>ASIENTO: {rowData.numeroAsiento}</span>
+          <span>|</span>
+          <span>FECHA: {formatearFecha(rowData.fechaAsiento)}</span>
+          <span>|</span>
+          <span>GLOSA: {rowData.glosaAsiento}</span>
+          {rowData.esSaldoInicial && <Tag value="SALDO INICIAL" severity="warning" />}
+          <ColorTag estado={rowData.estado} />
+        </div>
+      );
+    }
+    if (rowData._tipo === 'FOOTER') {
+      return <strong>TOTALES DEL ASIENTO</strong>;
+    }
+    if (rowData._tipo === 'SEPARADOR') {
+      return null;
+    }
+    return rowData.glosa;
+  };
+
+  const documentoTemplate = (rowData) => {
+    if (rowData._tipo !== 'LINEA') return null;
+    if (!rowData.tipoDocumentoOrigen && !rowData.numeroDocumentoOrigen) return null;
+    return (
+      <div>
+        <div>{rowData.tipoDocumentoOrigen?.codigo}</div>
+        <div style={{ fontSize: '0.85rem' }}>{rowData.numeroDocumentoOrigen}</div>
+      </div>
+    );
+  };
 
   const entidadTemplate = (rowData) => {
+    if (rowData._tipo !== 'LINEA') return null;
     if (!rowData.entidadComercial) return null;
     return (
       <div>
-        <div style={{ fontSize: getResponsiveFontSize() }}>{rowData.entidadComercial.razonSocial}</div>
+        <div>{rowData.entidadComercial.razonSocial}</div>
         <div style={{ fontSize: '0.85rem', color: '#666' }}>{rowData.entidadComercial.ruc}</div>
       </div>
     );
   };
 
-  const montoTemplate = (rowData, field) => {
-    const monto = Number(rowData[field]);
+  const debeTemplate = (rowData) => {
+    if (rowData._tipo === 'FOOTER') {
+      return (
+        <Tag
+          value={`S/ ${formatearNumero(rowData.totales.debe, 2)}`}
+          severity="success"
+          style={{ fontWeight: 'bold', fontSize: '1rem' }}
+        />
+      );
+    }
+    if (rowData._tipo !== 'LINEA') return null;
+    
+    const monto = Number(rowData.debe);
     if (monto === 0) return null;
-    const moneda = rowData.moneda;
     return (
       <Tag
-        value={`${moneda?.simbolo || ''} ${formatearNumero(monto, 2)}`}
-        style={{ backgroundColor: moneda?.colorFondo || '#fff', color: '#000', fontSize: getResponsiveFontSize() }}
+        value={`${rowData.moneda?.simbolo || ''} ${formatearNumero(monto, 2)}`}
+        style={{ backgroundColor: rowData.moneda?.colorFondo || '#fff', color: '#000' }}
       />
     );
   };
 
-  const estadoTemplate = (rowData) => (
-    <ColorTag estado={rowData.asientoContable?.estado} />
-  );
-
-  const tipoLibroTemplate = (rowData) => (
-    <Tag
-      value={rowData.asientoContable?.tipoLibro}
-      severity={rowData.asientoContable?.tipoLibro === 'FISCAL' ? 'info' : 'secondary'}
-      style={{ fontSize: getResponsiveFontSize() }}
-    />
-  );
-
-  const saldoInicialTemplate = (rowData) => {
-    if (!rowData.asientoContable?.esSaldoInicial) return null;
+  const haberTemplate = (rowData) => {
+    if (rowData._tipo === 'FOOTER') {
+      return (
+        <Tag
+          value={`S/ ${formatearNumero(rowData.totales.haber, 2)}`}
+          severity="warning"
+          style={{ fontWeight: 'bold', fontSize: '1rem' }}
+        />
+      );
+    }
+    if (rowData._tipo !== 'LINEA') return null;
+    
+    const monto = Number(rowData.haber);
+    if (monto === 0) return null;
     return (
       <Tag
-        value="SALDO INICIAL"
-        severity="warning"
-        style={{ fontSize: getResponsiveFontSize() }}
+        value={`${rowData.moneda?.simbolo || ''} ${formatearNumero(monto, 2)}`}
+        style={{ backgroundColor: rowData.moneda?.colorFondo || '#fff', color: '#000' }}
       />
     );
+  };
+
+  const cuadreTemplate = (rowData) => {
+    if (rowData._tipo === 'FOOTER') {
+      const diferencia = Math.abs(rowData.totales.diferencia);
+      return rowData.estaCuadrado ? (
+        <Tag value="✅ CUADRADO" severity="success" style={{ fontWeight: 'bold' }} />
+      ) : (
+        <Tag value={`❌ DESC. (${formatearNumero(diferencia, 2)})`} severity="danger" style={{ fontWeight: 'bold' }} />
+      );
+    }
+    return null;
   };
 
   const buttonConfig = getSaldoInicialButtonConfig();
@@ -383,219 +470,218 @@ const DiarioContable = ({ ruta }) => {
       <Menu model={menuExportItems} popup ref={menuExport} />
 
       <div className="card">
-        <DataTable
-          value={lineas}
-          loading={loading}
-          dataKey="id"
-          paginator
-          size="small"
-          showGridlines
-          stripedRows
-          rows={50}
-          rowsPerPageOptions={[25, 50, 100, 200]}
-          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} líneas"
-          sortField="id"
-          sortOrder={-1}
-          style={{ fontSize: getResponsiveFontSize() }}
-          emptyMessage="Seleccione Empresa y Periodo para ver datos"
-          header={
-            <div>
-              <div
-                style={{
-                  alignItems: "end",
-                  display: "flex",
-                  gap: 10,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <h2>📘 Diario Contable</h2>
-                </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <h2>📘 Libro Diario</h2>
+        </div>
 
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: "bold" }}>Empresa*</label>
-                  <EmpresaSelector
-                    empresaId={usuario?.empresaId}
-                    onEmpresaChange={(id) => setEmpresaIdSelector(id)}
-                  />
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: "bold" }}>Periodo*</label>
-                  <Dropdown
-                    value={periodoSeleccionado}
-                    options={periodosFiltrados}
-                    onChange={(e) => setPeriodoSeleccionado(e.value)}
-                    optionLabel="nombrePeriodo"
-                    optionValue="id"
-                    placeholder="Seleccione periodo"
-                    style={{ width: "100%" }}
-                    filter
-                  />
-                </div>
-
-                <div style={{ flex: 0.25 }}>
-                  <Button
-                    icon="pi pi-filter-slash"
-                    className="p-button-secondary"
-                    outlined
-                    onClick={limpiarFiltros}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <Button
-                    label="Exportar"
-                    icon="pi pi-download"
-                    className="p-button-success"
-                    onClick={(e) => menuExport.current.toggle(e)}
-                    disabled={!empresaIdSelector || !periodoSeleccionado}
-                    style={{ width: "100%" }}
-                  />
-                </div>
-              </div>
-
-              <div
-                style={{
-                  alignItems: "end",
-                  display: "flex",
-                  gap: 10,
-                  marginTop: 10,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: "bold" }}>Rango de Fechas</label>
-                  <Calendar
-                    value={rangoFechas}
-                    onChange={(e) => setRangoFechas(e.value)}
-                    selectionMode="range"
-                    dateFormat="dd/mm/yy"
-                    placeholder="Seleccione rango"
-                    style={{ width: "100%" }}
-                    showIcon
-                    readOnlyInput
-                  />
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: "bold" }}>Tipo Libro</label>
-                  <Dropdown
-                    value={tipoLibroFiltro}
-                    options={[
-                      { label: 'Todos', value: null },
-                      { label: 'FISCAL', value: 'FISCAL' },
-                      { label: 'GERENCIAL', value: 'GERENCIAL' }
-                    ]}
-                    onChange={(e) => setTipoLibroFiltro(e.value)}
-                    placeholder="Todos"
-                    style={{ width: "100%" }}
-                  />
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: "bold" }}>Estado</label>
-                  <Dropdown
-                    value={estadoFiltro}
-                    options={estadosAsiento}
-                    onChange={(e) => setEstadoFiltro(e.value)}
-                    optionLabel="descripcion"
-                    optionValue="id"
-                    placeholder="Todos"
-                    style={{ width: "100%" }}
-                    showClear
-                  />
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: "bold" }}>Nº Asiento</label>
-                  <InputText
-                    value={numeroAsientoFiltro}
-                    onChange={(e) => setNumeroAsientoFiltro(e.target.value)}
-                    placeholder="Buscar asiento"
-                    style={{ width: "100%" }}
-                  />
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: "bold" }}>Código Cuenta</label>
-                  <InputText
-                    value={codigoCuentaFiltro}
-                    onChange={(e) => setCodigoCuentaFiltro(e.target.value)}
-                    placeholder="Ej: 10, 40, 62"
-                    style={{ width: "100%" }}
-                    tooltip="Busca cuentas que INICIEN con este código"
-                  />
-                </div>
-              </div>
-
-              <div
-                style={{
-                  alignItems: "center",
-                  display: "flex",
-                  gap: 15,
-                  marginTop: 10,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  <Checkbox
-                    inputId="soloCuadrados"
-                    checked={soloCuadrados}
-                    onChange={(e) => setSoloCuadrados(e.checked)}
-                  />
-                  <label htmlFor="soloCuadrados" style={{ marginLeft: "0.5rem", fontSize: getResponsiveFontSize() }}>Solo Cuadrados</label>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  <Checkbox
-                    inputId="soloDescuadrados"
-                    checked={soloDescuadrados}
-                    onChange={(e) => setSoloDescuadrados(e.checked)}
-                  />
-                  <label htmlFor="soloDescuadrados" style={{ marginLeft: "0.5rem", fontSize: getResponsiveFontSize() }}>Solo Descuadrados</label>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  <Checkbox
-                    inputId="soloConEntidad"
-                    checked={soloConEntidad}
-                    onChange={(e) => setSoloConEntidad(e.checked)}
-                  />
-                  <label htmlFor="soloConEntidad" style={{ marginLeft: "0.5rem", fontSize: getResponsiveFontSize() }}>Solo con Entidad</label>
-                </div>
-
-                <Button
-                  label={buttonConfig.label}
-                  severity={buttonConfig.severity}
-                  onClick={toggleFiltroSaldoInicial}
-                  style={{ fontSize: getResponsiveFontSize() }}
-                  size="small"
-                />
-
-                <Tag value={`${lineas.length} líneas`} severity="info" style={{ fontSize: getResponsiveFontSize() }} />
-                <Tag value={`Debe: S/ ${formatearNumero(totales.totalDebe, 2)}`} severity="success" style={{ fontSize: getResponsiveFontSize() }} />
-                <Tag value={`Haber: S/ ${formatearNumero(totales.totalHaber, 2)}`} severity="warning" style={{ fontSize: getResponsiveFontSize() }} />
-              </div>
-            </div>
-          }
+        {/* FILTROS */}
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            marginBottom: 15,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
         >
-          <Column field="asientoContable.numeroAsiento" header="Asiento" body={asientoTemplate} style={{ width: '120px' }} sortable />
-          <Column field="asientoContable.fechaAsiento" header="Fecha" body={fechaTemplate} style={{ width: '100px' }} sortable />
-          <Column field="numeroLinea" header="Línea" style={{ width: '70px' }} sortable />
-          <Column field="glosa" header="Glosa" style={{ minWidth: '250px' }} />
-          <Column field="tipoDocumentoOrigen.codigo" header="Tipo Doc" style={{ width: '90px' }} />
-          <Column field="numeroDocumentoOrigen" header="Nº Doc" style={{ width: '130px' }} />
-          <Column header="Cuenta" body={cuentaTemplate} style={{ minWidth: '200px' }} />
-          <Column header="Entidad" body={entidadTemplate} style={{ minWidth: '200px' }} />
-          <Column header="Debe" body={(rowData) => montoTemplate(rowData, 'debe')} style={{ width: '120px' }} align="right" />
-          <Column header="Haber" body={(rowData) => montoTemplate(rowData, 'haber')} style={{ width: '120px' }} align="right" />
-          <Column header="Tipo Libro" body={tipoLibroTemplate} style={{ width: '110px' }} />
-          <Column header="Estado" body={estadoTemplate} style={{ width: '110px' }} />
-          <Column header="Saldo Inicial" body={saldoInicialTemplate} style={{ width: '130px' }} />
-        </DataTable>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold" }}>Empresa*</label>
+            <EmpresaSelector
+              empresaId={usuario?.empresaId}
+              onEmpresaChange={(id) => setEmpresaIdSelector(id)}
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold" }}>Periodo*</label>
+            <Dropdown
+              value={periodoSeleccionado}
+              options={periodosFiltrados}
+              onChange={(e) => setPeriodoSeleccionado(e.value)}
+              optionLabel="nombrePeriodo"
+              optionValue="id"
+              placeholder="Seleccione periodo"
+              style={{ width: "100%" }}
+              filter
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold" }}>Rango de Fechas</label>
+            <Calendar
+              value={rangoFechas}
+              onChange={(e) => setRangoFechas(e.value)}
+              selectionMode="range"
+              dateFormat="dd/mm/yy"
+              placeholder="Seleccione rango"
+              style={{ width: "100%" }}
+              showIcon
+              readOnlyInput
+            />
+          </div>
+
+          <div style={{ flex: 0.25 }}>
+            <Button
+              icon="pi pi-filter-slash"
+              className="p-button-secondary"
+              outlined
+              onClick={limpiarFiltros}
+              disabled={loading}
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <Button
+              label="Exportar"
+              icon="pi pi-download"
+              className="p-button-success"
+              onClick={(e) => menuExport.current.toggle(e)}
+              disabled={!empresaIdSelector || !periodoSeleccionado}
+              style={{ width: "100%" }}
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            marginBottom: 15,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold" }}>Tipo Libro</label>
+            <Dropdown
+              value={tipoLibroFiltro}
+              options={[
+                { label: 'Todos', value: null },
+                { label: 'FISCAL', value: 'FISCAL' },
+                { label: 'GERENCIAL', value: 'GERENCIAL' }
+              ]}
+              onChange={(e) => setTipoLibroFiltro(e.value)}
+              placeholder="Todos"
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold" }}>Estado</label>
+            <Dropdown
+              value={estadoFiltro}
+              options={estadosAsiento}
+              onChange={(e) => setEstadoFiltro(e.value)}
+              optionLabel="descripcion"
+              optionValue="id"
+              placeholder="Todos"
+              style={{ width: "100%" }}
+              showClear
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold" }}>Nº Asiento</label>
+            <InputText
+              value={numeroAsientoFiltro}
+              onChange={(e) => setNumeroAsientoFiltro(e.target.value)}
+              placeholder="Buscar asiento"
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold" }}>Código Cuenta</label>
+            <InputText
+              value={codigoCuentaFiltro}
+              onChange={(e) => setCodigoCuentaFiltro(e.target.value)}
+              placeholder="Ej: 10, 40, 62"
+              style={{ width: "100%" }}
+              tooltip="Busca cuentas que INICIEN con este código"
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            alignItems: "center",
+            display: "flex",
+            gap: 15,
+            marginBottom: 15,
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <Checkbox
+              inputId="soloCuadrados"
+              checked={soloCuadrados}
+              onChange={(e) => setSoloCuadrados(e.checked)}
+            />
+            <label htmlFor="soloCuadrados" style={{ marginLeft: "0.5rem" }}>Solo Cuadrados</label>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <Checkbox
+              inputId="soloDescuadrados"
+              checked={soloDescuadrados}
+              onChange={(e) => setSoloDescuadrados(e.checked)}
+            />
+            <label htmlFor="soloDescuadrados" style={{ marginLeft: "0.5rem" }}>Solo Descuadrados</label>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <Checkbox
+              inputId="soloConEntidad"
+              checked={soloConEntidad}
+              onChange={(e) => setSoloConEntidad(e.checked)}
+            />
+            <label htmlFor="soloConEntidad" style={{ marginLeft: "0.5rem" }}>Solo con Entidad</label>
+          </div>
+
+          <Button
+            label={buttonConfig.label}
+            severity={buttonConfig.severity}
+            onClick={toggleFiltroSaldoInicial}
+            size="small"
+          />
+
+          <Tag value={`${estadisticas.totalAsientos} asientos`} severity="info" />
+          <Tag value={`${estadisticas.totalLineas} líneas`} severity="info" />
+          <Tag value={`Debe: S/ ${formatearNumero(totales.totalDebe, 2)}`} severity="success" />
+          <Tag value={`Haber: S/ ${formatearNumero(totales.totalHaber, 2)}`} severity="warning" />
+        </div>
+
+        {/* DATATABLE CONTINUA */}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>
+            <p>Cargando...</p>
+          </div>
+        ) : lineasFlat.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
+            Seleccione Empresa y Periodo para ver datos
+          </div>
+        ) : (
+          <DataTable
+            value={lineasFlat}
+            size="small"
+            showGridlines
+            paginator
+            rows={100}
+            rowsPerPageOptions={[50, 100, 200, 500]}
+            rowClassName={rowClassName}
+            style={{ fontSize: getResponsiveFontSize() }}
+          >
+            <Column body={lineaTemplate} header="Línea" style={{ width: '70px' }} />
+            <Column body={cuentaTemplate} header="Cuenta" style={{ minWidth: '200px' }} />
+            <Column body={glosaTemplate} header="Glosa / Detalle" style={{ minWidth: '350px' }} />
+            <Column body={documentoTemplate} header="Documento" style={{ width: '120px' }} />
+            <Column body={entidadTemplate} header="Entidad" style={{ minWidth: '200px' }} />
+            <Column body={debeTemplate} header="Debe" style={{ width: '130px' }} align="right" />
+            <Column body={haberTemplate} header="Haber" style={{ width: '130px' }} align="right" />
+            <Column body={cuadreTemplate} header="Cuadre" style={{ width: '150px' }} align="center" />
+          </DataTable>
+        )}
       </div>
     </div>
   );

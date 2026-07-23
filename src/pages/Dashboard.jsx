@@ -763,6 +763,12 @@ export default function Dashboard() {
           tab: "operaciones",
         },
         {
+          label: "Libro Mayor",
+          key: "detalleAsientoContableMayor",
+          icon: "pi-book",
+          tab: "operaciones",
+        },
+        {
           label: "Movimientos Activo Fijo",
           key: "movActivoFijo",
           icon: "pi-chart-line",
