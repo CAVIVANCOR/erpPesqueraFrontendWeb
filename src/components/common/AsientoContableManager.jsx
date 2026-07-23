@@ -143,14 +143,12 @@ const AsientoContableManager = ({
       setPeriodoContable(null);
     }
   };
-
   const cargarAsientos = async () => {
     if (!documentoId || !api) return [];
 
     try {
       setLoading(true);
       let documento;
-
       // Usar método específico según tipo de documento
       if (documentoTipo === 'PreFactura') {
         documento = await api.getPreFacturaPorId(documentoId);
@@ -175,7 +173,7 @@ const AsientoContableManager = ({
       setAsientos(asientosObtenidos);
       return asientosObtenidos;
     } catch (error) {
-      console.error("Error al cargar asientos:", error);
+      console.error("XXXX04❌ [AsientoContableManager] Error al cargar asientos:", error);
       setAsientos([]);
       return [];
     } finally {
@@ -332,7 +330,6 @@ const AsientoContableManager = ({
       } else {
         setWarnings([]);
       }
-
       // Guardar asiento según tipo de documento
       let asientoGuardado;
       if (documentoTipo === 'PreFactura') {
@@ -352,7 +349,6 @@ const AsientoContableManager = ({
       } else if (documentoTipo === 'MovimientoAlmacen') {
         asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
       }
-
       await cargarAsientos();
 
       toast.current?.show({
@@ -361,13 +357,12 @@ const AsientoContableManager = ({
         detail: "Asiento contable generado correctamente",
         life: 4000,
       });
-
       setShowListDialog(true);
-
       if (onAsientoChange) {
-        onAsientoChange();
+        await onAsientoChange();
       }
     } catch (error) {
+      console.error('NNNN04❌ [AsientoContableManager] Error en generarNuevoAsiento:', error);
       throw error;
     } finally {
       setLoading(false);

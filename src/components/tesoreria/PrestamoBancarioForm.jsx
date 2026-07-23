@@ -51,6 +51,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
     onSubmit,
     onCancel,
     onGenerarAsiento,
+    onRefresh,
     loading,
     readOnly = false,
   },
@@ -2094,6 +2095,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
             periodoContableId={undefined}
             showAsButton={true}
             onBeforeGenerate={handleBeforeGenerateAsiento}
+            onAsientoChange={onRefresh}
           />
         </div>
       )}

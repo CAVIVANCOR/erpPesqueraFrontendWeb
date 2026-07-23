@@ -1232,6 +1232,12 @@ export default function PrestamoBancario({ ruta }) {
           empresaFija={empresaSeleccionada}
           onSubmit={onSubmit}
           onCancel={onCancel}
+          onRefresh={async () => {
+            if (selected?.id) {
+              const prestamoActualizado = await getPrestamoBancarioById(selected.id);
+              setSelected(prestamoActualizado);
+            }
+          }}
           loading={loading}
         />
       </Dialog>

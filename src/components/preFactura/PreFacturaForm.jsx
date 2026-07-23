@@ -730,60 +730,86 @@ export default function PreFacturaForm({
     cargarCatalogosCxC();
   }, []);
 
-  // Guardar fecha inicial para evitar carga automática en mount
-  useEffect(() => {
-    if (fechaDocumento && fechaDocumentoInicial === null) {
-      setFechaDocumentoInicial(fechaDocumento);
-    }
-  }, [fechaDocumento, fechaDocumentoInicial]);
-
-  // Cargar tipo de cambio SUNAT solo cuando el usuario modifica manualmente fechaDocumento
+    // Cargar tipo de cambio SUNAT cuando cambia fechaDocumento (solo si NO existe fechaFacturacion)
   useEffect(() => {
     const cargarTipoCambio = async () => {
-      // No ejecutar si no hay fecha o si es la carga inicial
-      if (!fechaDocumento || fechaDocumentoInicial === null) return;
-
-      // Comparar fechas por valor (ISO string) en lugar de por referencia
-      const fechaActualISO = new Date(fechaDocumento).toISOString();
-      const fechaInicialISO = new Date(fechaDocumentoInicial).toISOString();
-
-      // No ejecutar si la fecha no ha cambiado realmente
-      if (fechaActualISO === fechaInicialISO) return;
+      if (!fechaDocumento) return;
+      if (formData.fechaFacturacion) return; // Si ya hay fechaFacturacion, no usar fechaDocumento
 
       try {
-        // Convertir fecha a formato YYYY-MM-DD
         const fecha = new Date(fechaDocumento);
         const fechaISO = fecha.toISOString().split("T")[0];
 
-        // Consultar tipo de cambio SUNAT
         const tipoCambioData = await consultarTipoCambioSunat({
           date: fechaISO,
         });
 
-        // Para VENTAS usamos sell_price (precio de venta del dólar)
         if (tipoCambioData && tipoCambioData.sell_price) {
           const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
           handleChange("tipoCambio", tipoCambioVenta.toFixed(3));
 
-          // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
-          setFechaDocumentoInicial(fechaDocumento);
-
           toast?.current?.show({
             severity: "success",
             summary: "Tipo de Cambio Actualizado",
-            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioVenta.toFixed(3)} por USD`,
+            detail: `TC SUNAT (Fecha Documento): S/ ${tipoCambioVenta.toFixed(3)} por USD`,
             life: 3000,
           });
         }
       } catch (error) {
         console.error("Error al cargar tipo de cambio SUNAT:", error);
-        // No mostrar error al usuario, solo log en consola
-        // El usuario puede ingresar el tipo de cambio manualmente si falla
       }
     };
 
     cargarTipoCambio();
-  }, [fechaDocumento, fechaDocumentoInicial]);
+  }, [fechaDocumento]);
+
+  // Cargar tipo de cambio SUNAT cuando cambia fechaFacturacion (PREDOMINA sobre fechaDocumento)
+  useEffect(() => {
+    const cargarTipoCambioFacturacion = async () => {
+      if (!formData.fechaFacturacion) return;
+
+      try {
+        const fecha = new Date(formData.fechaFacturacion);
+        const fechaISO = fecha.toISOString().split("T")[0];
+
+        const tipoCambioData = await consultarTipoCambioSunat({
+          date: fechaISO,
+        });
+
+        if (tipoCambioData && tipoCambioData.sell_price) {
+          const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
+          handleChange("tipoCambio", tipoCambioVenta.toFixed(3));
+
+          toast?.current?.show({
+            severity: "success",
+            summary: "Tipo de Cambio Actualizado",
+            detail: `TC SUNAT (Fecha Facturación): S/ ${tipoCambioVenta.toFixed(3)} por USD`,
+            life: 3000,
+          });
+        }
+      } catch (error) {
+        console.error("Error al cargar TC por fecha facturación:", error);
+      }
+    };
+
+    cargarTipoCambioFacturacion();
+  }, [formData.fechaFacturacion]);
+
+  // Recalcular totales cuando cambia tipoCambio
+  useEffect(() => {
+    if (!tipoCambio || !detallesCount) return;
+
+    const recalcularTotales = () => {
+      setTotales((prevTotales) => ({
+        ...prevTotales,
+        subtotal: prevTotales.subtotal,
+        igv: prevTotales.igv,
+        total: prevTotales.total,
+      }));
+    };
+
+    recalcularTotales();
+  }, [tipoCambio]);
 
   // Handler para cambio de serie
   const handleSerieDocChange = (serieId) => {
