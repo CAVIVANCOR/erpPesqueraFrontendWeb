@@ -17,6 +17,7 @@ import {
   crearDetalleMovimiento,
   actualizarDetalleMovimiento,
 } from "../../api/movimientoAlmacen";
+import BooleanToggleButton from "../common/BooleanToggleButton";
 
 /**
  * Formulario para agregar/editar detalles de movimiento
@@ -64,6 +65,9 @@ export default function DetalleMovimientoForm({
   const [observaciones, setObservaciones] = useState("");
   const [costoUnitario, setCostoUnitario] = useState(null);
   const [saldoOriginal, setSaldoOriginal] = useState(null);
+  const [usarUnidadComercial, setUsarUnidadComercial] = useState(false);
+  const [cantidadComercial, setCantidadComercial] = useState(null);
+  const [costoComercial, setCostoComercial] = useState(null);
   // Control del selector de productos
   const [showProductoSelector, setShowProductoSelector] = useState(false);
   // Determinar tipo de movimiento
@@ -118,6 +122,12 @@ export default function DetalleMovimientoForm({
       );
       setObservaciones(detalle.observaciones || "");
       setCostoUnitario(detalle.costoUnitario || null);
+      setCantidadComercial(detalle.cantidadComercial || null);
+      setCostoComercial(detalle.costoComercial || null);
+
+      // Activar toggle si tiene datos comerciales
+      const tieneUnidadComercial = detalle.cantidadComercial && detalle.costoComercial;
+      setUsarUnidadComercial(tieneUnidadComercial);
     } else {
       limpiarFormulario();
     }
@@ -141,6 +151,9 @@ export default function DetalleMovimientoForm({
     setSaldoOriginal(null);
     setUbicacionFisicaOrigenId(1); // Por defecto: ubicación física ID 1
     setUbicacionFisicaDestinoId(1); // Por defecto: ubicación física ID 1
+    setUsarUnidadComercial(false);
+    setCantidadComercial(null);
+    setCostoComercial(null);
   };
 
   const handleProductoSeleccionado = (data) => {
@@ -226,6 +239,45 @@ export default function DetalleMovimientoForm({
       }
     }
   };
+
+  // Calcular conversión de unidades
+  const calcularConversion = () => {
+    if (!productoSeleccionado?.unidadMedida?.factorConversion ||
+      !productoSeleccionado?.unidadMedidaComercial?.factorConversion) {
+      return null;
+    }
+
+    const factorAlmacen = Number(productoSeleccionado.unidadMedida.factorConversion);
+    const factorComercial = Number(productoSeleccionado.unidadMedidaComercial.factorConversion);
+
+    return factorComercial / factorAlmacen;
+  };
+
+  // Efecto para calcular valores automáticamente
+  useEffect(() => {
+    if (!productoSeleccionado) return;
+
+    const factorConversion = calcularConversion();
+    if (!factorConversion) return;
+
+    if (usarUnidadComercial) {
+      // Usuario ingresa en unidad comercial → calcular almacén
+      if (cantidadComercial) {
+        setCantidad(Number(cantidadComercial) * factorConversion);
+      }
+      if (costoComercial) {
+        setCostoUnitario(Number(costoComercial) / factorConversion);
+      }
+    } else {
+      // Usuario ingresa en unidad almacén → calcular comercial
+      if (cantidad) {
+        setCantidadComercial(Number(cantidad) / factorConversion);
+      }
+      if (costoUnitario) {
+        setCostoComercial(Number(costoUnitario) * factorConversion);
+      }
+    }
+  }, [usarUnidadComercial, cantidadComercial, costoComercial, cantidad, costoUnitario, productoSeleccionado]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -322,6 +374,8 @@ export default function DetalleMovimientoForm({
       empresaId: Number(movimientoAlmacen?.empresaId),
       observaciones: observaciones || null,
       costoUnitario: costoUnitario ? Number(costoUnitario) : null,
+      cantidadComercial: cantidadComercial ? Number(cantidadComercial) : null,
+      costoComercial: costoComercial ? Number(costoComercial) : null,
       creadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
       actualizadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
       // Incluir producto para mostrar en la tabla
@@ -643,18 +697,18 @@ export default function DetalleMovimientoForm({
                     value={ubicacionFisicaOrigenId ? Number(ubicacionFisicaOrigenId) : null}
                     options={(() => {
                       const ubicacionDefault = ubicacionesFisicas.find(u => Number(u.id) === 1);
-                      const filtradas = ubicacionesFisicas.filter(u => 
-                        conceptoMovAlmacen?.almacenOrigenId 
-                          ? Number(u.almacenId) === Number(conceptoMovAlmacen.almacenOrigenId) 
+                      const filtradas = ubicacionesFisicas.filter(u =>
+                        conceptoMovAlmacen?.almacenOrigenId
+                          ? Number(u.almacenId) === Number(conceptoMovAlmacen.almacenOrigenId)
                           : true
                       );
-                      
+
                       // Incluir siempre la ubicación con ID 1 si existe y no está ya en las filtradas
                       const opciones = [...filtradas];
                       if (ubicacionDefault && !opciones.find(u => Number(u.id) === 1)) {
                         opciones.unshift(ubicacionDefault);
                       }
-                      
+
                       return opciones.map((u) => ({
                         label: u.descripcion,
                         value: Number(u.id),
@@ -669,7 +723,7 @@ export default function DetalleMovimientoForm({
                   />
                 </div>
               )}
-              
+
               {/* Ubicación Física Destino (solo si llevaKardexDestino) */}
               {llevaKardexDestino && (
                 <div>
@@ -684,18 +738,18 @@ export default function DetalleMovimientoForm({
                     value={ubicacionFisicaDestinoId ? Number(ubicacionFisicaDestinoId) : null}
                     options={(() => {
                       const ubicacionDefault = ubicacionesFisicas.find(u => Number(u.id) === 1);
-                      const filtradas = ubicacionesFisicas.filter(u => 
-                        conceptoMovAlmacen?.almacenDestinoId 
-                          ? Number(u.almacenId) === Number(conceptoMovAlmacen.almacenDestinoId) 
+                      const filtradas = ubicacionesFisicas.filter(u =>
+                        conceptoMovAlmacen?.almacenDestinoId
+                          ? Number(u.almacenId) === Number(conceptoMovAlmacen.almacenDestinoId)
                           : true
                       );
-                      
+
                       // Incluir siempre la ubicación con ID 1 si existe y no está ya en las filtradas
                       const opciones = [...filtradas];
                       if (ubicacionDefault && !opciones.find(u => Number(u.id) === 1)) {
                         opciones.unshift(ubicacionDefault);
                       }
-                      
+
                       return opciones.map((u) => ({
                         label: u.descripcion,
                         value: Number(u.id),
@@ -816,32 +870,118 @@ export default function DetalleMovimientoForm({
           </div>
 
           {/* Costo Unitario y Observaciones */}
+          {/* Toggle para usar unidad comercial */}
+          {productoSeleccionado?.unidadMedidaComercial && (
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ fontWeight: "bold", display: "block", marginBottom: "0.5rem" }}>
+                Unidad de Medida para Ingreso
+              </label>
+              <BooleanToggleButton
+                value={usarUnidadComercial}
+                onChange={setUsarUnidadComercial}
+                labelTrue={`Unidad Comercial (${productoSeleccionado?.unidadMedidaComercial?.simbolo})`}
+                labelFalse={`Unidad Almacén (${productoSeleccionado?.unidadMedida?.simbolo})`}
+                severityTrue="info"
+                severityFalse="secondary"
+                icon={usarUnidadComercial ? "pi-shopping-cart" : "pi-box"}
+                disabled={loading || readOnly}
+              />
+            </div>
+          )}
+
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 2fr",
+              gridTemplateColumns: usarUnidadComercial ? "1fr 1fr" : "1fr 2fr",
               gap: "16px",
               marginBottom: "16px",
             }}
           >
-            <div>
-              <label htmlFor="costoUnitario" style={{ fontWeight: "bold" }}>
-                Costo Unitario
-              </label>
-              <InputNumber
-                id="costoUnitario"
-                value={costoUnitario}
-                onValueChange={(e) => setCostoUnitario(e.value)}
-                mode="currency"
-                currency="PEN"
-                locale="es-PE"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                min={0}
-                disabled={loading}
-              />
-            </div>
+            {usarUnidadComercial ? (
+              <>
+                <div>
+                  <label htmlFor="cantidadComercial" style={{ fontWeight: "bold" }}>
+                    Cantidad ({productoSeleccionado?.unidadMedidaComercial?.simbolo}) *
+                  </label>
+                  <InputNumber
+                    id="cantidadComercial"
+                    value={cantidadComercial}
+                    onValueChange={(e) => setCantidadComercial(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={4}
+                    min={0.0001}
+                    disabled={loading || readOnly}
+                  />
+                </div>
 
+                <div>
+                  <label htmlFor="costoComercial" style={{ fontWeight: "bold" }}>
+                    Costo Unitario ({productoSeleccionado?.unidadMedidaComercial?.simbolo}) *
+                  </label>
+                  <InputNumber
+                    id="costoComercial"
+                    value={costoComercial}
+                    onValueChange={(e) => setCostoComercial(e.value)}
+                    mode="currency"
+                    currency="PEN"
+                    locale="es-PE"
+                    minFractionDigits={2}
+                    maxFractionDigits={4}
+                    min={0}
+                    disabled={loading || readOnly}
+                  />
+                </div>
+              </>
+            ) : (
+              <div>
+                <label htmlFor="costoUnitario" style={{ fontWeight: "bold" }}>
+                  Costo Unitario
+                </label>
+                <InputNumber
+                  id="costoUnitario"
+                  value={costoUnitario}
+                  onValueChange={(e) => setCostoUnitario(e.value)}
+                  mode="currency"
+                  currency="PEN"
+                  locale="es-PE"
+                  minFractionDigits={2}
+                  maxFractionDigits={4}
+                  min={0}
+                  disabled={loading || readOnly}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Mostrar valores calculados */}
+          {usarUnidadComercial && cantidad > 0 && costoUnitario > 0 && (
+            <div style={{
+              padding: "0.75rem",
+              backgroundColor: "#e3f2fd",
+              borderRadius: "4px",
+              marginBottom: "1rem",
+              fontSize: "0.9rem",
+              border: "1px solid #90caf9"
+            }}>
+              <strong>📦 Valores en Almacén:</strong> {cantidad.toFixed(4)} {productoSeleccionado?.unidadMedida?.simbolo} × S/ {costoUnitario.toFixed(4)}
+            </div>
+          )}
+
+          {!usarUnidadComercial && cantidadComercial > 0 && costoComercial > 0 && productoSeleccionado?.unidadMedidaComercial && (
+            <div style={{
+              padding: "0.75rem",
+              backgroundColor: "#f3e5f5",
+              borderRadius: "4px",
+              marginBottom: "1rem",
+              fontSize: "0.9rem",
+              border: "1px solid #ce93d8"
+            }}>
+              <strong>🛒 Valores Comerciales:</strong> {cantidadComercial.toFixed(4)} {productoSeleccionado?.unidadMedidaComercial?.simbolo} × S/ {costoComercial.toFixed(4)}
+            </div>
+          )}
+
+          <div style={{ marginBottom: "16px" }}>
             <div>
               <label htmlFor="observaciones" style={{ fontWeight: "bold" }}>
                 Observaciones

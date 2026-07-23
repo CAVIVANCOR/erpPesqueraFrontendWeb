@@ -760,10 +760,10 @@ export default function PreFacturaForm({
           date: fechaISO,
         });
 
-        // Para VENTAS usamos buy_price (precio de compra del dólar)
-        if (tipoCambioData && tipoCambioData.buy_price) {
-          const tipoCambioCompra = parseFloat(tipoCambioData.buy_price);
-          handleChange("tipoCambio", tipoCambioCompra.toFixed(3));
+        // Para VENTAS usamos sell_price (precio de venta del dólar)
+        if (tipoCambioData && tipoCambioData.sell_price) {
+          const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
+          handleChange("tipoCambio", tipoCambioVenta.toFixed(3));
 
           // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
           setFechaDocumentoInicial(fechaDocumento);
@@ -771,7 +771,7 @@ export default function PreFacturaForm({
           toast?.current?.show({
             severity: "success",
             summary: "Tipo de Cambio Actualizado",
-            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioCompra.toFixed(3)} por USD`,
+            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioVenta.toFixed(3)} por USD`,
             life: 3000,
           });
         }
@@ -1071,6 +1071,14 @@ export default function PreFacturaForm({
       tipoDocumentoFinalId: formData.tipoDocumentoFinalId
         ? Number(formData.tipoDocumentoFinalId)
         : null,
+      serieDocFinalId: formData.serieDocFinalId
+        ? Number(formData.serieDocFinalId)
+        : null,
+      numeroDocumentoFinal: formData.numeroDocumentoFinal,
+      numSerieDocFinal: formData.numSerieDocFinal,
+      numCorreDocFinal: formData.numCorreDocFinal,
+      facturado: formData.facturado,
+      fechaFacturacion: formData.fechaFacturacion,
       serieDocId: formData.serieDocId ? Number(formData.serieDocId) : null,
       numSerieDoc: formData.numSerieDoc,
       numCorreDoc: formData.numCorreDoc,
