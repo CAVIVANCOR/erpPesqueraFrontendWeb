@@ -769,6 +769,12 @@ export default function Dashboard() {
           tab: "operaciones",
         },
         {
+          label: "Balance de Comprobación",
+          key: "detalleAsientoContableBalanceComprobacion",
+          icon: "pi-chart-bar",
+          tab: "operaciones",
+        },
+        {
           label: "Movimientos Activo Fijo",
           key: "movActivoFijo",
           icon: "pi-chart-line",

@@ -157,6 +157,8 @@ export default function DetalleMovimientoForm({
   };
 
   const handleProductoSeleccionado = (data) => {
+
+
     if (data.tipo === "producto") {
       // INGRESO: Producto seleccionado
       setProductoId(data.productoId);
@@ -964,7 +966,7 @@ export default function DetalleMovimientoForm({
               fontSize: "0.9rem",
               border: "1px solid #90caf9"
             }}>
-              <strong>📦 Valores en Almacén:</strong> {cantidad.toFixed(4)} {productoSeleccionado?.unidadMedida?.simbolo} × S/ {costoUnitario.toFixed(4)}
+              <strong>📦 Valores en Almacén:</strong> {Number(cantidad).toFixed(4)} {productoSeleccionado?.unidadMedida?.simbolo} × S/ {Number(costoUnitario).toFixed(4)}
             </div>
           )}
 
@@ -977,7 +979,7 @@ export default function DetalleMovimientoForm({
               fontSize: "0.9rem",
               border: "1px solid #ce93d8"
             }}>
-              <strong>🛒 Valores Comerciales:</strong> {cantidadComercial.toFixed(4)} {productoSeleccionado?.unidadMedidaComercial?.simbolo} × S/ {costoComercial.toFixed(4)}
+              <strong>🛒 Valores Comerciales:</strong> {Number(cantidadComercial).toFixed(4)} {productoSeleccionado?.unidadMedidaComercial?.simbolo} × S/ {Number(costoComercial).toFixed(4)}
             </div>
           )}
 

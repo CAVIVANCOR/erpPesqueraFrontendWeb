@@ -28,6 +28,70 @@ export default function DetalleMovimientoList({
       maximumFractionDigits: 2,
     });
   };
+  const familiaTemplate = (rowData) => {
+    return rowData.producto?.familia?.nombre || "-";
+  };
+
+  const subfamiliaTemplate = (rowData) => {
+    return rowData.producto?.subfamilia?.nombre || "-";
+  };
+
+  const unidadComercialTemplate = (rowData) => {
+    return rowData.producto?.unidadMedidaComercial?.simbolo || "-";
+  };
+
+  const cantidadComercialTemplate = (rowData) => {
+    if (!rowData.cantidadComercial) return "-";
+    return Number(rowData.cantidadComercial).toLocaleString("es-PE", {
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+    });
+  };
+
+  const costoComercialTemplate = (rowData) => {
+    if (!rowData.costoComercial) return "-";
+    return Number(rowData.costoComercial).toLocaleString("es-PE", {
+      style: "currency",
+      currency: "PEN",
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+    });
+  };
+
+  const totalComercialTemplate = (rowData) => {
+    if (!rowData.cantidadComercial || !rowData.costoComercial) return "-";
+    const total = Number(rowData.cantidadComercial) * Number(rowData.costoComercial);
+    return total.toLocaleString("es-PE", {
+      style: "currency",
+      currency: "PEN",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+    const calcularTotalComercial = () => {
+    const total = detalles.reduce((sum, detalle) => {
+      if (detalle.cantidadComercial && detalle.costoComercial) {
+        return sum + (Number(detalle.cantidadComercial) * Number(detalle.costoComercial));
+      }
+      return sum;
+    }, 0);
+    
+    return total.toLocaleString("es-PE", {
+      style: "currency",
+      currency: "PEN",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const footerTotalComercial = () => {
+    return (
+      <div style={{ textAlign: "right", fontWeight: "bold", fontSize: "1.1em" }}>
+        TOTAL: {calcularTotalComercial()}
+      </div>
+    );
+  };
 
   const pesoTemplate = (rowData) => {
     return rowData.peso ? `${formatearNumero(rowData.peso)} kg` : "-";
@@ -35,12 +99,12 @@ export default function DetalleMovimientoList({
 
   const loteContenedorSerieTemplate = (rowData) => {
     const items = [];
-    
+
     if (rowData.lote) {
       items.push(
-        <div 
-          key="lote" 
-          style={{ 
+        <div
+          key="lote"
+          style={{
             marginBottom: "4px",
             backgroundColor: "#fff9c4",
             padding: "4px 8px",
@@ -52,12 +116,12 @@ export default function DetalleMovimientoList({
         </div>
       );
     }
-    
+
     if (rowData.nroContenedor) {
       items.push(
-        <div 
-          key="contenedor" 
-          style={{ 
+        <div
+          key="contenedor"
+          style={{
             marginBottom: "4px",
             backgroundColor: "#e3f2fd",
             padding: "4px 8px",
@@ -69,12 +133,12 @@ export default function DetalleMovimientoList({
         </div>
       );
     }
-    
+
     if (rowData.nroSerie) {
       items.push(
-        <div 
-          key="serie" 
-          style={{ 
+        <div
+          key="serie"
+          style={{
             backgroundColor: "#fff3cd",
             padding: "4px 8px",
             borderRadius: "4px",
@@ -85,13 +149,13 @@ export default function DetalleMovimientoList({
         </div>
       );
     }
-    
+
     return items.length > 0 ? <div>{items}</div> : "-";
   };
 
   const fechasTemplate = (rowData) => {
     const items = [];
-    
+
     if (rowData.fechaIngreso) {
       const fechaFormateada = new Date(rowData.fechaIngreso).toLocaleDateString("es-PE", {
         day: "2-digit",
@@ -99,9 +163,9 @@ export default function DetalleMovimientoList({
         year: "numeric",
       });
       items.push(
-        <div 
-          key="ingreso" 
-          style={{ 
+        <div
+          key="ingreso"
+          style={{
             marginBottom: "4px",
             backgroundColor: "#fff9c4",
             padding: "4px 8px",
@@ -113,7 +177,7 @@ export default function DetalleMovimientoList({
         </div>
       );
     }
-    
+
     if (rowData.fechaProduccion) {
       const fechaFormateada = new Date(rowData.fechaProduccion).toLocaleDateString("es-PE", {
         day: "2-digit",
@@ -121,9 +185,9 @@ export default function DetalleMovimientoList({
         year: "numeric",
       });
       items.push(
-        <div 
-          key="produccion" 
-          style={{ 
+        <div
+          key="produccion"
+          style={{
             marginBottom: "4px",
             backgroundColor: "#e3f2fd",
             padding: "4px 8px",
@@ -135,22 +199,22 @@ export default function DetalleMovimientoList({
         </div>
       );
     }
-    
+
     if (rowData.fechaVencimiento) {
       const fechaVencimiento = new Date(rowData.fechaVencimiento);
       const hoy = new Date();
       hoy.setHours(0, 0, 0, 0);
       fechaVencimiento.setHours(0, 0, 0, 0);
       const estaVencido = fechaVencimiento < hoy;
-      
+
       const fechaFormateada = fechaVencimiento.toLocaleDateString("es-PE", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
       });
-      
+
       items.push(
-        <div 
+        <div
           key="vencimiento"
           style={{
             backgroundColor: "#fff3cd",
@@ -163,13 +227,13 @@ export default function DetalleMovimientoList({
         </div>
       );
     }
-    
+
     return items.length > 0 ? <div>{items}</div> : "-";
   };
 
   const estadosTemplate = (rowData) => {
     const items = [];
-    
+
     if (rowData.estadoMercaderia?.descripcion) {
       items.push(
         <div key="mercaderia" style={{ marginBottom: "4px" }}>
@@ -189,7 +253,7 @@ export default function DetalleMovimientoList({
         </div>
       );
     }
-    
+
     if (rowData.estadoCalidad?.descripcion) {
       items.push(
         <div key="calidad">
@@ -209,7 +273,7 @@ export default function DetalleMovimientoList({
         </div>
       );
     }
-    
+
     return items.length > 0 ? <div>{items}</div> : "-";
   };
 
@@ -217,12 +281,12 @@ export default function DetalleMovimientoList({
     const items = [];
     const llevaKardexOrigen = conceptoMovAlmacen?.llevaKardexOrigen || false;
     const llevaKardexDestino = conceptoMovAlmacen?.llevaKardexDestino || false;
-    
+
     if (llevaKardexOrigen && rowData.ubicacionFisicaOrigen?.descripcion) {
       items.push(
-        <div 
-          key="origen" 
-          style={{ 
+        <div
+          key="origen"
+          style={{
             marginBottom: "4px",
             backgroundColor: "#ffebee",
             padding: "4px 8px",
@@ -234,12 +298,12 @@ export default function DetalleMovimientoList({
         </div>
       );
     }
-    
+
     if (llevaKardexDestino && rowData.ubicacionFisicaDestino?.descripcion) {
       items.push(
-        <div 
-          key="destino" 
-          style={{ 
+        <div
+          key="destino"
+          style={{
             backgroundColor: "#e8f5e9",
             padding: "4px 8px",
             borderRadius: "4px",
@@ -250,7 +314,7 @@ export default function DetalleMovimientoList({
         </div>
       );
     }
-    
+
     return items.length > 0 ? <div>{items}</div> : "-";
   };
 
@@ -325,6 +389,18 @@ export default function DetalleMovimientoList({
           style={{ width: "40px", textAlign: "center", fontWeight: "bold" }}
         />
         <Column
+          field="familia"
+          header="Familia"
+          body={familiaTemplate}
+          style={{ width: "150px", fontWeight: "bold" }}
+        />
+        <Column
+          field="subfamilia"
+          header="Subfamilia"
+          body={subfamiliaTemplate}
+          style={{ width: "150px", fontWeight: "bold" }}
+        />
+        <Column
           field="productoId"
           header="Producto"
           body={productoTemplate}
@@ -342,13 +418,30 @@ export default function DetalleMovimientoList({
           body={unidadMedidaTemplate}
           style={{ width: "180px", textAlign: "center", fontWeight: "bold" }}
         />
-
         <Column
-          field="peso"
-          align="center"
-          header="Peso"
-          body={pesoTemplate}
-          style={{ width: "100px", textAlign: "right", fontWeight: "bold" }}
+          field="cantidadComercial"
+          header="Cant. Comercial"
+          body={cantidadComercialTemplate}
+          style={{ width: "120px", textAlign: "right", fontWeight: "bold" }}
+        />
+        <Column
+          field="unidadComercial"
+          header="Und. Comercial"
+          body={unidadComercialTemplate}
+          style={{ width: "100px", textAlign: "center", fontWeight: "bold" }}
+        />
+        <Column
+          field="costoComercial"
+          header="Costo Comercial"
+          body={costoComercialTemplate}
+          style={{ width: "130px", textAlign: "right", fontWeight: "bold" }}
+        />
+        <Column
+          field="totalComercial"
+          header="Total Comercial"
+          body={totalComercialTemplate}
+          footer={footerTotalComercial}
+          style={{ width: "130px", textAlign: "right", fontWeight: "bold", backgroundColor: "#e8f5e9" }}
         />
         <Column
           header="Ubicación Física"
