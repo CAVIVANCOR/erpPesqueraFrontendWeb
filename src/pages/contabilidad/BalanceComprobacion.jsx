@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -8,11 +8,9 @@ import { Tag } from "primereact/tag";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
-import { Checkbox } from "primereact/checkbox";
 import { Card } from "primereact/card";
 import { Sidebar } from "primereact/sidebar";
 import { SelectButton } from "primereact/selectbutton";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import { getBalanceComprobacion } from "../../api/contabilidad/balanceComprobacion";
@@ -54,9 +52,6 @@ const BalanceComprobacion = ({ ruta }) => {
 
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [cuentaSeleccionada, setCuentaSeleccionada] = useState(null);
-
-  const [opacity, setOpacity] = useState({ gastos: 1, ingresos: 1 });
-  const [activeKey, setActiveKey] = useState(null);
 
   const periodosFiltrados = useMemo(() => {
     if (!empresaIdSelector) return [];
@@ -138,6 +133,8 @@ const BalanceComprobacion = ({ ruta }) => {
   };
 
   const cargarDatos = async () => {
+    if (!empresaIdSelector || !periodoSeleccionado) return;
+
     setLoading(true);
     try {
       const params = {
@@ -181,7 +178,7 @@ const BalanceComprobacion = ({ ruta }) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Balance de Comprobación');
 
-    worksheet.mergeCells('A1:F1');
+    worksheet.mergeCells('A1:L1');
     const titleCell = worksheet.getCell('A1');
     titleCell.value = 'BALANCE DE COMPROBACIÓN';
     titleCell.font = { size: 16, bold: true };
@@ -190,21 +187,32 @@ const BalanceComprobacion = ({ ruta }) => {
     const empresa = empresas.find(e => Number(e.id) === Number(empresaIdSelector));
     const periodo = periodos.find(p => Number(p.id) === Number(periodoSeleccionado));
 
-    worksheet.mergeCells('A2:F2');
+    worksheet.mergeCells('A2:L2');
     const empresaCell = worksheet.getCell('A2');
     empresaCell.value = `Empresa: ${empresa?.razonSocial || ''}`;
     empresaCell.font = { size: 12 };
     empresaCell.alignment = { horizontal: 'center' };
-
-    worksheet.mergeCells('A3:F3');
+    worksheet.mergeCells('A3:L3');
     const periodoCell = worksheet.getCell('A3');
     periodoCell.value = `Período: ${periodo?.nombrePeriodo || ''}`;
     periodoCell.font = { size: 12 };
     periodoCell.alignment = { horizontal: 'center' };
-
     worksheet.addRow([]);
-
-    const headerRow = worksheet.addRow(['Código', 'Nombre de Cuenta', 'Debe', 'Haber', 'Saldo', 'Tipo']);
+    
+    const headerRow = worksheet.addRow([
+      'Código', 
+      'Denominación', 
+      'SI Debe', 
+      'SI Haber', 
+      'Mov Debe', 
+      'Mov Haber', 
+      'SF Debe', 
+      'SF Haber', 
+      'Activo', 
+      'Pasivo+Pat', 
+      'Pérdida', 
+      'Ganancia'
+    ]);
     headerRow.font = { bold: true };
     headerRow.fill = {
       type: 'pattern',
@@ -217,24 +225,62 @@ const BalanceComprobacion = ({ ruta }) => {
     });
 
     cuentasFiltradas.forEach(cuenta => {
-      const tipoSaldo = cuenta.saldo >= 0 ? 'D' : 'A';
+      const saldoFinalNeto = (cuenta.saldoFinalDebe || 0) - (cuenta.saldoFinalHaber || 0);
+      const activo = cuenta.tipoCuenta === 'ACTIVO' ? saldoFinalNeto : 0;
+      const pasivoPat = (cuenta.tipoCuenta === 'PASIVO' || cuenta.tipoCuenta === 'PATRIMONIO') ? Math.abs(saldoFinalNeto) : 0;
+      const perdida = cuenta.tipoCuenta === 'GASTO' ? (cuenta.debe || 0) : 0;
+      const ganancia = cuenta.tipoCuenta === 'INGRESO' ? (cuenta.haber || 0) : 0;
+
       worksheet.addRow([
         cuenta.codigoCuenta,
         cuenta.nombreCuenta,
-        cuenta.debe,
-        cuenta.haber,
-        Math.abs(cuenta.saldo),
-        tipoSaldo
+        cuenta.saldoInicialDebe || 0,
+        cuenta.saldoInicialHaber || 0,
+        cuenta.debe || 0,
+        cuenta.haber || 0,
+        cuenta.saldoFinalDebe || 0,
+        cuenta.saldoFinalHaber || 0,
+        activo,
+        pasivoPat,
+        perdida,
+        ganancia
       ]);
     });
+
+    const totalSIDebe = cuentasFiltradas.reduce((sum, c) => sum + (c.saldoInicialDebe || 0), 0);
+    const totalSIHaber = cuentasFiltradas.reduce((sum, c) => sum + (c.saldoInicialHaber || 0), 0);
+    const totalSFDebe = cuentasFiltradas.reduce((sum, c) => sum + (c.saldoFinalDebe || 0), 0);
+    const totalSFHaber = cuentasFiltradas.reduce((sum, c) => sum + (c.saldoFinalHaber || 0), 0);
+    const totalActivo = cuentasFiltradas.reduce((sum, c) => {
+      if (c.tipoCuenta === 'ACTIVO') {
+        const saldoNeto = (c.saldoFinalDebe || 0) - (c.saldoFinalHaber || 0);
+        return sum + saldoNeto;
+      }
+      return sum;
+    }, 0);
+    const totalPasivoPat = cuentasFiltradas.reduce((sum, c) => {
+      if (c.tipoCuenta === 'PASIVO' || c.tipoCuenta === 'PATRIMONIO') {
+        const saldoNeto = (c.saldoFinalDebe || 0) - (c.saldoFinalHaber || 0);
+        return sum + Math.abs(saldoNeto);
+      }
+      return sum;
+    }, 0);
+    const totalPerdida = cuentasFiltradas.reduce((sum, c) => c.tipoCuenta === 'GASTO' ? sum + (c.debe || 0) : sum, 0);
+    const totalGanancia = cuentasFiltradas.reduce((sum, c) => c.tipoCuenta === 'INGRESO' ? sum + (c.haber || 0) : sum, 0);
 
     const totalRow = worksheet.addRow([
       '',
       'TOTALES',
+      totalSIDebe,
+      totalSIHaber,
       totales.totalDebe,
       totales.totalHaber,
-      '',
-      ''
+      totalSFDebe,
+      totalSFHaber,
+      totalActivo,
+      totalPasivoPat,
+      totalPerdida,
+      totalGanancia
     ]);
     totalRow.font = { bold: true };
     totalRow.fill = {
@@ -244,12 +290,18 @@ const BalanceComprobacion = ({ ruta }) => {
     };
 
     worksheet.columns = [
-      { key: 'codigo', width: 15 },
-      { key: 'nombre', width: 50 },
-      { key: 'debe', width: 18, style: { numFmt: '#,##0.00' } },
-      { key: 'haber', width: 18, style: { numFmt: '#,##0.00' } },
-      { key: 'saldo', width: 18, style: { numFmt: '#,##0.00' } },
-      { key: 'tipo', width: 10 }
+      { key: 'codigo', width: 12 },
+      { key: 'nombre', width: 35 },
+      { key: 'siDebe', width: 12, style: { numFmt: '#,##0.00' } },
+      { key: 'siHaber', width: 12, style: { numFmt: '#,##0.00' } },
+      { key: 'mvDebe', width: 12, style: { numFmt: '#,##0.00' } },
+      { key: 'mvHaber', width: 12, style: { numFmt: '#,##0.00' } },
+      { key: 'sfDebe', width: 12, style: { numFmt: '#,##0.00' } },
+      { key: 'sfHaber', width: 12, style: { numFmt: '#,##0.00' } },
+      { key: 'activo', width: 12, style: { numFmt: '#,##0.00' } },
+      { key: 'pasivoPat', width: 12, style: { numFmt: '#,##0.00' } },
+      { key: 'perdida', width: 12, style: { numFmt: '#,##0.00' } },
+      { key: 'ganancia', width: 12, style: { numFmt: '#,##0.00' } }
     ];
 
     const buffer = await workbook.xlsx.writeBuffer();
@@ -272,6 +324,7 @@ const BalanceComprobacion = ({ ruta }) => {
     setCuentaSeleccionada(cuenta);
     setSidebarVisible(true);
   };
+
   const formatearNombre = (nombre) => {
     if (!nombre) return '';
     return nombre
@@ -280,62 +333,132 @@ const BalanceComprobacion = ({ ruta }) => {
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   };
-  const handleMouseEnter = useCallback((o) => {
-    const { dataKey } = o;
-    if (typeof dataKey === 'string') {
-      setOpacity(prev => ({ ...prev, [dataKey]: 0.5 }));
-      setActiveKey(dataKey);
-    }
-  }, []);
 
-  const handleMouseLeave = useCallback((o) => {
-    const { dataKey } = o;
-    if (typeof dataKey === 'string') {
-      setOpacity(prev => ({ ...prev, [dataKey]: 1 }));
-      setActiveKey(null);
-    }
-  }, []);
+  // Funciones para footers de totales
+  const footerGenerico = (field) => {
+    const total = cuentasFiltradas.reduce((sum, c) => sum + Number(c[field] || 0), 0);
+    return (
+      <div style={{ textAlign: "right", fontWeight: "bold", fontSize: '0.65rem' }}>
+        {total.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </div>
+    );
+  };
+
+  const footerBalanceGeneral = (tipo) => {
+    const total = cuentasFiltradas.reduce((sum, c) => {
+      if (tipo === 'ACTIVO' && c.tipoCuenta === 'ACTIVO') {
+        const saldoNeto = (c.saldoFinalDebe || 0) - (c.saldoFinalHaber || 0);
+        return sum + saldoNeto;
+      } else if (tipo === 'PASIVO_PAT' && (c.tipoCuenta === 'PASIVO' || c.tipoCuenta === 'PATRIMONIO')) {
+        const saldoNeto = (c.saldoFinalDebe || 0) - (c.saldoFinalHaber || 0);
+        return sum + Math.abs(saldoNeto);
+      }
+      return sum;
+    }, 0);
+    return (
+      <div style={{ textAlign: "right", fontWeight: "bold", fontSize: '0.65rem' }}>
+        {total.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </div>
+    );
+  };
+
+  const footerPyG = (tipo) => {
+    const total = cuentasFiltradas.reduce((sum, c) => {
+      if (tipo === 'PERDIDA' && c.tipoCuenta === 'GASTO') {
+        return sum + (c.debe || 0);
+      } else if (tipo === 'GANANCIA' && c.tipoCuenta === 'INGRESO') {
+        return sum + (c.haber || 0);
+      }
+      return sum;
+    }, 0);
+    return (
+      <div style={{ textAlign: "right", fontWeight: "bold", fontSize: '0.65rem' }}>
+        {total.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </div>
+    );
+  };
+
+  // Funciones para footers de detalle de cuenta
+  const footerDetalleDebeTotal = () => {
+    if (!cuentaSeleccionada?.movimientos) return null;
+    const total = cuentaSeleccionada.movimientos.reduce((sum, m) => sum + Number(m.debe || 0), 0);
+    return (
+      <div style={{ textAlign: "right", fontWeight: "bold" }}>
+        {total.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </div>
+    );
+  };
+
+  const footerDetalleHaberTotal = () => {
+    if (!cuentaSeleccionada?.movimientos) return null;
+    const total = cuentaSeleccionada.movimientos.reduce((sum, m) => sum + Number(m.haber || 0), 0);
+    return (
+      <div style={{ textAlign: "right", fontWeight: "bold" }}>
+        {total.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </div>
+    );
+  };
 
   const codigoTemplate = (rowData) => (
-    <span style={{ fontFamily: 'monospace', fontSize: '0.85rem', fontWeight: 'bold' }}>
+    <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', fontWeight: 'bold' }}>
       {rowData.codigoCuenta}
     </span>
   );
 
   const nombreTemplate = (rowData) => (
-    <span style={{ fontSize: '0.85rem' }}>{rowData.nombreCuenta}</span>
+    <span style={{ fontSize: '0.7rem' }}>{rowData.nombreCuenta}</span>
   );
 
-  const montoTemplate = (rowData, field) => {
-    const monto = Number(rowData[field]);
-    if (monto === 0) return <span style={{ color: '#999', fontSize: '0.75rem' }}>-</span>;
+  const numeroTemplate = (rowData, field) => {
+    const valor = Number(rowData[field] || 0);
+    if (valor === 0) return <span style={{ color: '#9CA3AF', fontSize: '0.7rem' }}>-</span>;
     return (
-      <span style={{ fontSize: '0.85rem', fontWeight: '500' }}>
-        {formatearNumero(monto, 2)}
+      <span style={{ fontSize: '0.7rem' }}>
+        {valor.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </span>
     );
   };
 
-  const saldoTemplate = (rowData) => {
-    const saldo = Number(rowData.saldo);
-    const color = saldo >= 0 ? '#22C55E' : '#EF4444';
-    return (
-      <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color }}>
-        {formatearNumero(Math.abs(saldo), 2)}
-      </span>
-    );
+  const balanceGeneralTemplate = (rowData, tipo) => {
+    if (tipo === 'ACTIVO' && rowData.tipoCuenta === 'ACTIVO') {
+      const saldoNeto = (rowData.saldoFinalDebe || 0) - (rowData.saldoFinalHaber || 0);
+      if (saldoNeto === 0) return <span style={{ color: '#9CA3AF', fontSize: '0.7rem' }}>-</span>;
+      return (
+        <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#3B82F6' }}>
+          {saldoNeto.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      );
+    } else if (tipo === 'PASIVO_PAT' && (rowData.tipoCuenta === 'PASIVO' || rowData.tipoCuenta === 'PATRIMONIO')) {
+      const saldoNeto = (rowData.saldoFinalDebe || 0) - (rowData.saldoFinalHaber || 0);
+      if (saldoNeto === 0) return <span style={{ color: '#9CA3AF', fontSize: '0.7rem' }}>-</span>;
+      return (
+        <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#F59E0B' }}>
+          {Math.abs(saldoNeto).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      );
+    }
+    return <span style={{ color: '#9CA3AF', fontSize: '0.7rem' }}>-</span>;
   };
 
-  const tipoSaldoTemplate = (rowData) => {
-    const saldo = Number(rowData.saldo);
-    const tipo = saldo >= 0 ? 'D' : 'A';
-    return (
-      <Tag
-        value={tipo}
-        severity={saldo >= 0 ? 'info' : 'warning'}
-        style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
-      />
-    );
+  const pygTemplate = (rowData, tipo) => {
+    if (tipo === 'PERDIDA' && rowData.tipoCuenta === 'GASTO') {
+      const valor = rowData.debe || 0;
+      if (valor === 0) return <span style={{ color: '#9CA3AF', fontSize: '0.7rem' }}>-</span>;
+      return (
+        <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#EF4444' }}>
+          {valor.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      );
+    } else if (tipo === 'GANANCIA' && rowData.tipoCuenta === 'INGRESO') {
+      const valor = rowData.haber || 0;
+      if (valor === 0) return <span style={{ color: '#9CA3AF', fontSize: '0.7rem' }}>-</span>;
+      return (
+        <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#22C55E' }}>
+          {valor.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      );
+    }
+    return <span style={{ color: '#9CA3AF', fontSize: '0.7rem' }}>-</span>;
   };
 
   const accionesTemplate = (rowData) => (
@@ -344,31 +467,18 @@ const BalanceComprobacion = ({ ruta }) => {
       size="small"
       text
       onClick={() => verDetalleCuenta(rowData)}
+      tooltip="Ver detalle"
+      tooltipOptions={{ position: 'left' }}
     />
   );
 
-const nivelesOptions = [
-  { label: '2️⃣ Clase (10, 12, 20)', value: 2 },
-  { label: '3️⃣ Cuenta (101, 121)', value: 3 },
-  { label: '4️⃣ Subcuenta (1011)', value: 4 },
-  { label: '5️⃣ Divisionaria (10111)', value: 5 },
-  { label: '6️⃣ Subdivisionaria (101110)', value: 6 }
-];
-
-  const dataGastosIngresos = estadisticas?.topGastos && estadisticas?.topIngresos ? [
-    { categoria: 'Gastos', monto: estadisticas.topGastos.reduce((sum, g) => sum + Number(g.monto || 0), 0) },
-    { categoria: 'Ingresos', monto: estadisticas.topIngresos.reduce((sum, i) => sum + Number(i.monto || 0), 0) }
-  ] : [];
-
-  const topGastosFormateados = estadisticas?.topGastos ? estadisticas.topGastos.map(g => ({
-    nombre: formatearNombre(g.nombre).substring(0, 20),
-    monto: Number(g.monto || 0)
-  })) : [];
-
-  const topIngresosFormateados = estadisticas?.topIngresos ? estadisticas.topIngresos.map(i => ({
-    nombre: formatearNombre(i.nombre).substring(0, 20),
-    monto: Number(i.monto || 0)
-  })) : [];
+  const nivelesOptions = [
+    { label: '2️⃣ Clase (10, 12, 20)', value: 2 },
+    { label: '3️⃣ Cuenta (101, 121)', value: 3 },
+    { label: '4️⃣ Subcuenta (1011)', value: 4 },
+    { label: '5️⃣ Divisionaria (10111)', value: 5 },
+    { label: '6️⃣ Subdivisionaria (101110)', value: 6 }
+  ];
 
   return (
     <div>
@@ -452,10 +562,13 @@ const nivelesOptions = [
         <div style={{ display: "flex", gap: 10, marginBottom: 15, flexWrap: "wrap", alignItems: 'end' }}>
           <div style={{ flex: 1.2, minWidth: '320px' }}>
             <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>📊 Nivel de Detalle</label>
-            <SelectButton
+            <Dropdown
               value={nivelDetalle}
               onChange={(e) => setNivelDetalle(e.value)}
               options={nivelesOptions}
+              optionLabel="label"
+              placeholder="Seleccione nivel"
+              style={{ width: '100%' }}
             />
           </div>
 
@@ -482,166 +595,142 @@ const nivelesOptions = [
           </div>
         </div>
 
-        {/* LAYOUT 2 COLUMNAS */}
-        <div style={{ display: 'grid', gridTemplateColumns: '60% 40%', gap: '1rem' }}>
-
-          {/* COLUMNA IZQUIERDA - TABLA */}
-          <div>
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
-                <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>
-                <p style={{ fontSize: '0.9rem' }}>Cargando...</p>
-              </div>
-            ) : cuentasFiltradas.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#666', fontSize: '0.9rem' }}>
-                Seleccione Empresa y Periodo
-              </div>
-            ) : (
-              <DataTable
-                value={cuentasFiltradas}
-                size="small"
-                showGridlines
-                stripedRows
-                paginator
-                rows={25}
-                rowsPerPageOptions={[25, 50, 100]}
-                style={{ fontSize: '0.85rem' }}
-                onRowClick={(e) => verDetalleCuenta(e.data)}
-                rowHover
-              >
-                <Column field="codigoCuenta" header="Código" body={codigoTemplate} style={{ width: '90px' }} sortable />
-                <Column field="nombreCuenta" header="Cuenta" body={nombreTemplate} sortable />
-                <Column header="Debe" body={(rowData) => montoTemplate(rowData, 'debe')} style={{ width: '110px' }} align="right" sortable />
-                <Column header="Haber" body={(rowData) => montoTemplate(rowData, 'haber')} style={{ width: '110px' }} align="right" sortable />
-                <Column header="Saldo" body={saldoTemplate} style={{ width: '110px' }} align="right" sortable />
-                <Column header="T" body={tipoSaldoTemplate} style={{ width: '50px' }} align="center" />
-                <Column body={accionesTemplate} style={{ width: '50px' }} />
-              </DataTable>
-            )}
+        {/* RESUMEN COMPACTO */}
+        {!loading && cuentasFiltradas.length > 0 && (
+          <div style={{ marginBottom: '0.5rem', padding: '0.3rem', backgroundColor: '#F3F4F6', borderRadius: '4px', display: 'flex', gap: '1rem', justifyContent: 'space-around', fontSize: '0.7rem' }}>
+            <span>✅ <strong>Balance:</strong> {totales.estaCuadrado ? 'Cuadrado' : 'Descuadrado'}</span>
+            <span>💰 <strong>Debe:</strong> {formatearNumero(totales.totalDebe, 2)}</span>
+            <span>💸 <strong>Haber:</strong> {formatearNumero(totales.totalHaber, 2)}</span>
+            <span>📋 <strong>Cuentas:</strong> {cuentas.length}</span>
           </div>
+        )}
 
-          {/* COLUMNA DERECHA - GRÁFICOS */}
-          <div style={{ position: 'sticky', top: '1rem', height: 'fit-content' }}>
-
-            {/* RESUMEN */}
-            {!loading && cuentasFiltradas.length > 0 && (
-              <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginBottom: '0.8rem' }}>
-                  <Card style={{ padding: '0.5rem', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.7rem', color: '#666' }}>💰 Debe</div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#22C55E' }}>
-                      {formatearNumero(totales.totalDebe, 2)}
-                    </div>
-                  </Card>
-
-                  <Card style={{ padding: '0.5rem', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.7rem', color: '#666' }}>💸 Haber</div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#F59E0B' }}>
-                      {formatearNumero(totales.totalHaber, 2)}
-                    </div>
-                  </Card>
-
-                  <Card style={{ padding: '0.5rem', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.7rem', color: '#666' }}>⚖️ Balance</div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: totales.estaCuadrado ? '#22C55E' : '#EF4444' }}>
-                      {formatearNumero(Math.abs(totales.diferencia), 2)} {totales.estaCuadrado ? '✅' : '❌'}
-                    </div>
-                  </Card>
-
-                  <Card style={{ padding: '0.5rem', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.7rem', color: '#666' }}>📋 Cuentas</div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#3B82F6' }}>
-                      {cuentasFiltradas.length}
-                    </div>
-                  </Card>
-                </div>
-
-                {estadisticas && dataGastosIngresos.length > 0 && (
-                  <Card style={{ padding: '0.5rem', marginBottom: '0.8rem' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '0.3rem' }}>💰 Gastos vs Ingresos</div>
-                    <ResponsiveContainer width="100%" height={140}>
-                      <BarChart data={dataGastosIngresos}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                        <XAxis
-                          dataKey="categoria"
-                          tick={{ fontSize: '0.7rem' }}
-                          height={25}
-                        />
-                        <YAxis
-                          tick={{ fontSize: '0.65rem' }}
-                          width={60}
-                          tickFormatter={(value) => formatearNumero(value, 0)}
-                        />
-                        <Tooltip
-                          formatter={(value) => `S/ ${formatearNumero(value, 2)}`}
-                          contentStyle={{ fontSize: '0.75rem' }}
-                        />
-                        <Bar dataKey="monto">
-                          {dataGastosIngresos.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.categoria === 'Gastos' ? '#EF4444' : '#22C55E'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Card>
-                )}
-
-                {/* TOP 5 GASTOS */}
-                {estadisticas && topGastosFormateados.length > 0 && (
-                  <Card style={{ padding: '0.5rem', marginBottom: '0.8rem' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '0.3rem' }}>🔥 Top 5 Gastos</div>
-                    <ResponsiveContainer width="100%" height={140}>
-                      <BarChart data={topGastosFormateados} layout="vertical">
-                        <XAxis
-                          type="number"
-                          tick={{ fontSize: '0.65rem' }}
-                          tickFormatter={(value) => formatearNumero(value, 0)}
-                        />
-                        <YAxis
-                          dataKey="nombre"
-                          type="category"
-                          width={120}
-                          tick={{ fontSize: '0.65rem' }}
-                        />
-                        <Tooltip
-                          formatter={(value) => `S/ ${formatearNumero(value, 2)}`}
-                          contentStyle={{ fontSize: '0.75rem' }}
-                        />
-                        <Bar dataKey="monto" fill="#EF4444" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Card>
-                )}
-
-                {/* TOP 5 INGRESOS */}
-                {estadisticas && topIngresosFormateados.length > 0 && (
-                  <Card style={{ padding: '0.5rem' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '0.3rem' }}>💰 Top 5 Ingresos</div>
-                    <ResponsiveContainer width="100%" height={140}>
-                      <BarChart data={topIngresosFormateados} layout="vertical">
-                        <XAxis
-                          type="number"
-                          tick={{ fontSize: '0.65rem' }}
-                          tickFormatter={(value) => formatearNumero(value, 0)}
-                        />
-                        <YAxis
-                          dataKey="nombre"
-                          type="category"
-                          width={120}
-                          tick={{ fontSize: '0.65rem' }}
-                        />
-                        <Tooltip
-                          formatter={(value) => `S/ ${formatearNumero(value, 2)}`}
-                          contentStyle={{ fontSize: '0.75rem' }}
-                        />
-                        <Bar dataKey="monto" fill="#22C55E" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Card>
-                )}
-              </>
-            )}
-          </div>
+        {/* TABLA */}
+        <div style={{ overflowX: 'auto' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>
+              <p style={{ fontSize: '0.9rem' }}>Cargando...</p>
+            </div>
+          ) : cuentasFiltradas.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem', color: '#666', fontSize: '0.9rem' }}>
+              Seleccione Empresa y Periodo
+            </div>
+          ) : (
+            <DataTable
+              value={cuentasFiltradas}
+              size="small"
+              showGridlines
+              stripedRows
+              paginator
+              rows={50}
+              rowsPerPageOptions={[50, 100, 150]}
+              style={{ fontSize: '0.7rem' }}
+              scrollable
+              scrollHeight="calc(100vh - 300px)"
+              onRowClick={(e) => verDetalleCuenta(e.data)}
+              rowHover
+            >
+              <Column 
+                field="codigoCuenta" 
+                header="Código" 
+                body={codigoTemplate} 
+                style={{ width: '70px', padding: '0.2rem' }} 
+                frozen
+                sortable 
+              />
+              <Column 
+                field="nombreCuenta" 
+                header="Denominación" 
+                body={nombreTemplate} 
+                style={{ width: '180px', padding: '0.2rem' }} 
+                frozen
+                sortable 
+              />
+              <Column
+                field="saldoInicialDebe"
+                header="SI Debe"
+                body={(row) => numeroTemplate(row, 'saldoInicialDebe')}
+                footer={() => footerGenerico('saldoInicialDebe')}
+                align="right"
+                style={{ width: '70px', padding: '0.2rem' }}
+              />
+              <Column
+                field="saldoInicialHaber"
+                header="SI Haber"
+                body={(row) => numeroTemplate(row, 'saldoInicialHaber')}
+                footer={() => footerGenerico('saldoInicialHaber')}
+                align="right"
+                style={{ width: '70px', padding: '0.2rem' }}
+              />
+              <Column
+                field="debe"
+                header="Mov Debe"
+                body={(row) => numeroTemplate(row, 'debe')}
+                footer={() => footerGenerico('debe')}
+                align="right"
+                style={{ width: '70px', padding: '0.2rem', fontWeight: 'bold' }}
+              />
+              <Column
+                field="haber"
+                header="Mov Haber"
+                body={(row) => numeroTemplate(row, 'haber')}
+                footer={() => footerGenerico('haber')}
+                align="right"
+                style={{ width: '70px', padding: '0.2rem', fontWeight: 'bold' }}
+              />
+              <Column
+                field="saldoFinalDebe"
+                header="SF Debe"
+                body={(row) => numeroTemplate(row, 'saldoFinalDebe')}
+                footer={() => footerGenerico('saldoFinalDebe')}
+                align="right"
+                style={{ width: '70px', padding: '0.2rem' }}
+              />
+              <Column
+                field="saldoFinalHaber"
+                header="SF Haber"
+                body={(row) => numeroTemplate(row, 'saldoFinalHaber')}
+                footer={() => footerGenerico('saldoFinalHaber')}
+                align="right"
+                style={{ width: '70px', padding: '0.2rem' }}
+              />
+              <Column
+                header="Activo"
+                body={(row) => balanceGeneralTemplate(row, 'ACTIVO')}
+                footer={() => footerBalanceGeneral('ACTIVO')}
+                align="right"
+                style={{ width: '70px', padding: '0.2rem' }}
+              />
+              <Column
+                header="Pasivo+Pat"
+                body={(row) => balanceGeneralTemplate(row, 'PASIVO_PAT')}
+                footer={() => footerBalanceGeneral('PASIVO_PAT')}
+                align="right"
+                style={{ width: '70px', padding: '0.2rem' }}
+              />
+              <Column
+                header="Pérdida"
+                body={(row) => pygTemplate(row, 'PERDIDA')}
+                footer={() => footerPyG('PERDIDA')}
+                align="right"
+                style={{ width: '70px', padding: '0.2rem' }}
+              />
+              <Column
+                header="Ganancia"
+                body={(row) => pygTemplate(row, 'GANANCIA')}
+                footer={() => footerPyG('GANANCIA')}
+                align="right"
+                style={{ width: '70px', padding: '0.2rem' }}
+              />
+              <Column 
+                body={accionesTemplate} 
+                style={{ width: '50px', padding: '0.2rem' }} 
+                frozen
+                alignFrozen="right"
+              />
+            </DataTable>
+          )}
         </div>
       </div>
 
@@ -662,14 +751,27 @@ const nivelesOptions = [
               showGridlines
               stripedRows
               paginator
-              rows={10}
+              rows={50}
+              rowsPerPageOptions={[50, 100, 150]}
               style={{ fontSize: '0.85rem' }}
             >
               <Column field="fechaAsiento" header="Fecha" body={(row) => formatearFecha(row.fechaAsiento)} style={{ width: '90px' }} />
               <Column field="numeroAsiento" header="Asiento" style={{ width: '120px' }} />
               <Column field="glosa" header="Glosa" />
-              <Column field="debe" header="Debe" body={(row) => row.debe > 0 ? formatearNumero(row.debe, 2) : '-'} align="right" />
-              <Column field="haber" header="Haber" body={(row) => row.haber > 0 ? formatearNumero(row.haber, 2) : '-'} align="right" />
+              <Column
+                field="debe"
+                header="Debe"
+                body={(row) => row.debe > 0 ? formatearNumero(row.debe, 2) : '-'}
+                footer={footerDetalleDebeTotal}
+                align="right"
+              />
+              <Column
+                field="haber"
+                header="Haber"
+                body={(row) => row.haber > 0 ? formatearNumero(row.haber, 2) : '-'}
+                footer={footerDetalleHaberTotal}
+                align="right"
+              />
               <Column
                 header="Origen"
                 body={(row) => row.submoduloOrigenLinea ? (

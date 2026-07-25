@@ -59,7 +59,7 @@ const MayorContable = ({ ruta }) => {
 
   const periodosFiltrados = useMemo(() => {
     if (!empresaIdSelector) return [];
-    
+
     const añoActual = new Date().getFullYear();
     return periodos.filter(p => {
       const año = p.año || p.anio || p.periodo?.substring(0, 4);
@@ -95,7 +95,7 @@ const MayorContable = ({ ruta }) => {
     if (periodosFiltrados.length > 0) {
       const mesActual = new Date().getMonth() + 1;
       const periodoActual = periodosFiltrados.find(p => Number(p.mes) === mesActual);
-      
+
       if (periodoActual) {
         setPeriodoSeleccionado(periodoActual.id);
       } else {
@@ -154,17 +154,23 @@ const MayorContable = ({ ruta }) => {
       };
 
       const response = await getLineasMayorContable(params);
-      
+
       let cuentasFiltradas = response.cuentas || [];
-      
+
       if (filtroSaldoInicial === 'SIN_SALDOS') {
         cuentasFiltradas = cuentasFiltradas.map(cuenta => ({
           ...cuenta,
           movimientos: cuenta.movimientos.filter(mov => !mov.asientoContable?.esSaldoInicial)
         })).filter(cuenta => cuenta.movimientos.length > 0);
       }
-      
-      setCuentas(cuentasFiltradas);
+
+      const cuentasOrdenadas = cuentasFiltradas.sort((a, b) => {
+        const codigoA = a.planCuenta?.codigoCuenta || '';
+        const codigoB = b.planCuenta?.codigoCuenta || '';
+        return codigoA.localeCompare(codigoB, undefined, { numeric: true });
+      });
+
+      setCuentas(cuentasOrdenadas);
       setTotales(response.totales || { totalDebe: 0, totalHaber: 0, saldoFinal: 0 });
     } catch (error) {
       toast.current?.show({
@@ -513,7 +519,7 @@ const MayorContable = ({ ruta }) => {
                         <Tag value={`${cuenta.movimientos.length} mov.`} severity="info" />
                         <Tag value={`Debe: S/ ${formatearNumero(cuenta.totales.debe, 2)}`} severity="success" />
                         <Tag value={`Haber: S/ ${formatearNumero(cuenta.totales.haber, 2)}`} severity="warning" />
-                        <Tag 
+                        <Tag
                           value={`Saldo: S/ ${formatearNumero(Math.abs(saldoFinalCuenta), 2)} ${tipoSaldo}`}
                           style={{ backgroundColor: colorSaldo, color: '#fff', fontWeight: 'bold' }}
                         />

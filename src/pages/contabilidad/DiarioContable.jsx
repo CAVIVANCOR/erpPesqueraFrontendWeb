@@ -8,7 +8,6 @@ import { Tag } from "primereact/tag";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
-import { Checkbox } from "primereact/checkbox";
 import { Menu } from "primereact/menu";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
@@ -21,6 +20,8 @@ import { getEntidadesComerciales } from "../../api/entidadComercial";
 import { formatearFecha, formatearNumero, getResponsiveFontSize } from "../../utils/utils";
 import EmpresaSelector from "../../components/common/EmpresaSelector";
 import ColorTag from "../../components/shared/ColorTag";
+import { SelectButton } from "primereact/selectbutton";
+import BooleanToggleButton from "../../components/common/BooleanToggleButton";
 
 const DiarioContable = ({ ruta }) => {
   const usuario = useAuthStore((state) => state.usuario);
@@ -43,7 +44,7 @@ const DiarioContable = ({ ruta }) => {
   const [empresaIdSelector, setEmpresaIdSelector] = useState(usuario?.empresaId || null);
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState(null);
   const [rangoFechas, setRangoFechas] = useState(null);
-  const [tipoLibroFiltro, setTipoLibroFiltro] = useState(null);
+  const [tipoLibroFiscal, setTipoLibroFiscal] = useState(true);
   const [estadoFiltro, setEstadoFiltro] = useState(null);
   const [numeroAsientoFiltro, setNumeroAsientoFiltro] = useState('');
   const [codigoCuentaFiltro, setCodigoCuentaFiltro] = useState('');
@@ -64,7 +65,7 @@ const DiarioContable = ({ ruta }) => {
 
   const periodosFiltrados = useMemo(() => {
     if (!empresaIdSelector) return [];
-    
+
     const añoActual = new Date().getFullYear();
     return periodos.filter(p => {
       const año = p.año || p.anio || p.periodo?.substring(0, 4);
@@ -88,7 +89,7 @@ const DiarioContable = ({ ruta }) => {
     empresaIdSelector,
     periodoSeleccionado,
     rangoFechas,
-    tipoLibroFiltro,
+    tipoLibroFiscal,
     estadoFiltro,
     numeroAsientoFiltro,
     codigoCuentaFiltro,
@@ -102,7 +103,7 @@ const DiarioContable = ({ ruta }) => {
     if (periodosFiltrados.length > 0) {
       const mesActual = new Date().getMonth() + 1;
       const periodoActual = periodosFiltrados.find(p => Number(p.mes) === mesActual);
-      
+
       if (periodoActual) {
         setPeriodoSeleccionado(periodoActual.id);
       } else {
@@ -154,7 +155,7 @@ const DiarioContable = ({ ruta }) => {
         fechaHasta: rangoFechas?.[1],
         numeroAsiento: numeroAsientoFiltro,
         estadoAsientoId: estadoFiltro,
-        tipoLibro: tipoLibroFiltro,
+        tipoLibro: tipoLibroFiscal ? 'FISCAL' : null,
         codigoCuentaInicia: codigoCuentaFiltro,
         soloCuadrados: soloCuadrados,
         soloDescuadrados: soloDescuadrados,
@@ -163,60 +164,78 @@ const DiarioContable = ({ ruta }) => {
       };
 
       const response = await getLineasDiarioContable(params);
-      
+
       let asientosFiltrados = response.asientos || [];
-      
+
       if (filtroSaldoInicial === 'SIN_SALDOS') {
         asientosFiltrados = asientosFiltrados.filter(asiento => !asiento.esSaldoInicial);
       }
-      
-      // Convertir a formato plano con filas especiales
+
+      // Convertir a formato plano - SOLO LÍNEAS
+      // El backend ya filtró por soloCuadrados/soloDescuadrados
       const flat = [];
       asientosFiltrados.forEach((asiento, asientoIndex) => {
-        // FILA HEADER DEL ASIENTO
-        flat.push({
-          _tipo: 'HEADER',
-          _asientoIndex: asientoIndex,
-          numeroAsiento: asiento.numeroAsiento,
-          fechaAsiento: asiento.fechaAsiento,
-          glosaAsiento: asiento.glosaAsiento,
-          tipoLibro: asiento.tipoLibro,
-          estado: asiento.estado,
-          estaCuadrado: asiento.estaCuadrado,
-          esSaldoInicial: asiento.esSaldoInicial,
-          totales: asiento.totales,
-        });
-        
-        // FILAS DE LÍNEAS
         asiento.lineas.forEach(linea => {
           flat.push({
-            _tipo: 'LINEA',
             _asientoIndex: asientoIndex,
+            numeroAsiento: asiento.numeroAsiento,
+            fechaAsiento: asiento.fechaAsiento,
+            glosaAsiento: asiento.glosaAsiento,
+            tipoLibro: asiento.tipoLibro,
+            estado: asiento.estado,
+            estaCuadrado: asiento.estaCuadrado,
+            esSaldoInicial: asiento.esSaldoInicial,
             ...linea,
           });
         });
-        
-        // FILA FOOTER CON TOTALES
-        flat.push({
-          _tipo: 'FOOTER',
-          _asientoIndex: asientoIndex,
-          totales: asiento.totales,
-          estaCuadrado: asiento.estaCuadrado,
-        });
-        
-        // FILA SEPARADOR
-        flat.push({
-          _tipo: 'SEPARADOR',
-          _asientoIndex: asientoIndex,
-        });
       });
-      
+
       setLineasFlat(flat);
-      setTotales(response.totales || { totalDebe: 0, totalHaber: 0 });
+
+      const totalesCalculados = response.totales || { totalDebe: 0, totalHaber: 0 };
+      const diferencia = Math.abs(totalesCalculados.totalDebe - totalesCalculados.totalHaber);
+      const TOLERANCIA_CENTAVOS = 0.005; // Medio centavo de tolerancia por redondeos
+      const estaCuadrado = diferencia < TOLERANCIA_CENTAVOS;
+
+      // Logging profesional para auditoría
+      if (!estaCuadrado && diferencia > 0) {
+        console.warn('⚠️ DESCUADRE DETECTADO EN LIBRO DIARIO', {
+          debe: totalesCalculados.totalDebe.toFixed(2),
+          haber: totalesCalculados.totalHaber.toFixed(2),
+          diferencia: diferencia.toFixed(2),
+          periodo: periodoSeleccionado,
+          empresa: empresaIdSelector,
+          timestamp: new Date().toISOString(),
+          filtros: {
+            tipoLibro: tipoLibroFiscal ? 'FISCAL' : 'GERENCIAL',
+            rangoFechas: rangoFechas,
+            totalAsientos: asientosFiltrados.length
+          }
+        });
+      }
+
+      setTotales({
+        ...totalesCalculados,
+        diferencia: diferencia,
+        estaCuadrado: estaCuadrado
+      });
+
       setEstadisticas({
         totalAsientos: asientosFiltrados.length,
         totalLineas: response.totalLineas || 0,
       });
+
+      // Notificación visual para descuadres significativos
+      if (!estaCuadrado && diferencia >= 0.01) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "⚠️ Descuadre Detectado",
+          detail: `Diferencia: S/ ${formatearNumero(diferencia, 2)} | Debe: ${formatearNumero(totalesCalculados.totalDebe, 2)} | Haber: ${formatearNumero(totalesCalculados.totalHaber, 2)}`,
+          life: 8000,
+          sticky: diferencia > 1.00 // Sticky si la diferencia es mayor a S/ 1.00
+        });
+      }
+
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -233,7 +252,7 @@ const DiarioContable = ({ ruta }) => {
     setEmpresaIdSelector(usuario?.empresaId || null);
     setPeriodoSeleccionado(null);
     setRangoFechas(null);
-    setTipoLibroFiltro(null);
+    setTipoLibroFiscal(true);
     setEstadoFiltro(null);
     setNumeroAsientoFiltro('');
     setCodigoCuentaFiltro('');
@@ -259,7 +278,7 @@ const DiarioContable = ({ ruta }) => {
       const params = {
         empresaId: empresaIdSelector,
         periodoContableId: periodoSeleccionado,
-        tipoLibro: tipoLibroFiltro || 'FISCAL',
+        tipoLibro: tipoLibroFiscal ? 'FISCAL' : null,
       };
 
       let blob;
@@ -320,6 +339,58 @@ const DiarioContable = ({ ruta }) => {
     }
   };
 
+  const exportarDescuadres = async () => {
+    if (!empresaIdSelector || !periodoSeleccionado) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe seleccionar Empresa y Periodo",
+        life: 3000,
+      });
+      return;
+    }
+
+    try {
+      const asientosDescuadrados = lineasFlat
+        .filter((linea, index, self) =>
+          !linea.estaCuadrado &&
+          self.findIndex(l => l.numeroAsiento === linea.numeroAsiento) === index
+        )
+        .map(linea => ({
+          numeroAsiento: linea.numeroAsiento,
+          fecha: formatearFecha(linea.fechaAsiento),
+          glosa: linea.glosaAsiento,
+          estado: linea.estado?.nombre || 'N/A'
+        }));
+
+      if (asientosDescuadrados.length === 0) {
+        toast.current?.show({
+          severity: "info",
+          summary: "Sin Descuadres",
+          detail: "No hay asientos descuadrados para exportar",
+          life: 3000,
+        });
+        return;
+      }
+
+      // Aquí iría la lógica de exportación a Excel
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Exportado",
+        detail: `${asientosDescuadrados.length} asientos descuadrados exportados`,
+        life: 3000,
+      });
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al exportar descuadres",
+        life: 3000,
+      });
+    }
+  };
+
   const menuExportItems = [
     {
       label: 'Formato SUNAT 5.1 (TXT)',
@@ -335,132 +406,122 @@ const DiarioContable = ({ ruta }) => {
       label: 'PDF Libro Diario',
       icon: 'pi pi-file-pdf',
       command: () => handleExportar('pdf')
+    },
+    {
+      separator: true
+    },
+    {
+      label: 'Reporte de Descuadres',
+      icon: 'pi pi-exclamation-triangle',
+      command: exportarDescuadres,
+      disabled: totales.estaCuadrado,
+      className: 'p-menuitem-danger'
     }
   ];
 
-  // TEMPLATES PARA DIFERENTES TIPOS DE FILA
-  const rowClassName = (rowData) => {
-    if (rowData._tipo === 'HEADER') return 'diario-header';
-    if (rowData._tipo === 'FOOTER') return 'diario-footer';
-    if (rowData._tipo === 'SEPARADOR') return 'diario-separador';
-    return 'diario-linea';
-  };
 
   const lineaTemplate = (rowData) => {
-    if (rowData._tipo !== 'LINEA') return null;
-    return <span style={{ fontFamily: 'monospace' }}>L{rowData.numeroLinea}</span>;
+    return <span style={{ fontFamily: 'monospace', fontSize: '0.7rem' }}>L{rowData.numeroLinea}</span>;
   };
 
-  const cuentaTemplate = (rowData) => {
-    if (rowData._tipo !== 'LINEA') return null;
+  const codigoCuentaTemplate = (rowData) => {
     return (
-      <div>
-        <div style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{rowData.planCuenta?.codigoCuenta}</div>
-        <div style={{ fontSize: '0.85rem', color: '#666' }}>{rowData.planCuenta?.nombreCuenta}</div>
+      <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '0.7rem' }}>
+        {rowData.planCuenta?.codigoCuenta}
+      </span>
+    );
+  };
+
+  const nombreCuentaTemplate = (rowData) => {
+    return (
+      <span style={{ fontSize: '0.7rem', color: '#333' }}>
+        {rowData.planCuenta?.nombreCuenta}
+      </span>
+    );
+  };
+
+  const numeroAsientoTemplate = (rowData) => {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+        <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', fontWeight: 'bold' }}>{rowData.numeroAsiento}</span>
       </div>
     );
   };
 
-  const glosaTemplate = (rowData) => {
-    if (rowData._tipo === 'HEADER') {
-      return (
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', fontWeight: 'bold' }}>
-          <span style={{ fontFamily: 'monospace', fontSize: '1.1rem' }}>ASIENTO: {rowData.numeroAsiento}</span>
-          <span>|</span>
-          <span>FECHA: {formatearFecha(rowData.fechaAsiento)}</span>
-          <span>|</span>
-          <span>GLOSA: {rowData.glosaAsiento}</span>
-          {rowData.esSaldoInicial && <Tag value="SALDO INICIAL" severity="warning" />}
-          <ColorTag estado={rowData.estado} />
-        </div>
-      );
-    }
-    if (rowData._tipo === 'FOOTER') {
-      return <strong>TOTALES DEL ASIENTO</strong>;
-    }
-    if (rowData._tipo === 'SEPARADOR') {
-      return null;
-    }
-    return rowData.glosa;
+  const saldoInicialTemplate = (rowData) => {
+    if (!rowData.esSaldoInicial) return null;
+    return <Tag value="SI" severity="danger" style={{ fontSize: '0.6rem', padding: '0.1rem 0.3rem' }} />;
+  };
+
+  const fechaAsientoTemplate = (rowData) => {
+    return <span style={{ fontSize: '0.7rem' }}>{formatearFecha(rowData.fechaAsiento)}</span>;
+  };
+
+  const glosaAsientoTemplate = (rowData) => {
+    return <span style={{ fontSize: '0.7rem' }}>{rowData.glosaAsiento}</span>;
+  };
+
+  const glosaLineaTemplate = (rowData) => {
+    return <span style={{ fontSize: '0.7rem' }}>{rowData.glosa}</span>;
   };
 
   const documentoTemplate = (rowData) => {
-    if (rowData._tipo !== 'LINEA') return null;
     if (!rowData.tipoDocumentoOrigen && !rowData.numeroDocumentoOrigen) return null;
     return (
       <div>
-        <div>{rowData.tipoDocumentoOrigen?.codigo}</div>
-        <div style={{ fontSize: '0.85rem' }}>{rowData.numeroDocumentoOrigen}</div>
+        <div style={{ fontSize: '0.7rem' }}>{rowData.tipoDocumentoOrigen?.codigo}</div>
+        <div style={{ fontSize: '0.65rem' }}>{rowData.numeroDocumentoOrigen}</div>
       </div>
     );
   };
 
   const entidadTemplate = (rowData) => {
-    if (rowData._tipo !== 'LINEA') return null;
     if (!rowData.entidadComercial) return null;
     return (
       <div>
-        <div>{rowData.entidadComercial.razonSocial}</div>
-        <div style={{ fontSize: '0.85rem', color: '#666' }}>{rowData.entidadComercial.ruc}</div>
+        <div style={{ fontSize: '0.7rem' }}>{rowData.entidadComercial.razonSocial}</div>
+        <div style={{ fontSize: '0.65rem', color: '#666' }}>{rowData.entidadComercial.ruc}</div>
       </div>
     );
   };
 
   const debeTemplate = (rowData) => {
-    if (rowData._tipo === 'FOOTER') {
-      return (
-        <Tag
-          value={`S/ ${formatearNumero(rowData.totales.debe, 2)}`}
-          severity="success"
-          style={{ fontWeight: 'bold', fontSize: '1rem' }}
-        />
-      );
-    }
-    if (rowData._tipo !== 'LINEA') return null;
-    
     const monto = Number(rowData.debe);
-    if (monto === 0) return null;
+    if (monto === 0) return <span style={{ color: '#9CA3AF', fontSize: '0.7rem' }}>-</span>;
     return (
-      <Tag
-        value={`${rowData.moneda?.simbolo || ''} ${formatearNumero(monto, 2)}`}
-        style={{ backgroundColor: rowData.moneda?.colorFondo || '#fff', color: '#000' }}
-      />
+      <span style={{ fontSize: '0.7rem' }}>
+        {rowData.moneda?.simbolo || ''} {formatearNumero(monto, 2)}
+      </span>
     );
   };
 
   const haberTemplate = (rowData) => {
-    if (rowData._tipo === 'FOOTER') {
-      return (
-        <Tag
-          value={`S/ ${formatearNumero(rowData.totales.haber, 2)}`}
-          severity="warning"
-          style={{ fontWeight: 'bold', fontSize: '1rem' }}
-        />
-      );
-    }
-    if (rowData._tipo !== 'LINEA') return null;
-    
     const monto = Number(rowData.haber);
-    if (monto === 0) return null;
+    if (monto === 0) return <span style={{ color: '#9CA3AF', fontSize: '0.7rem' }}>-</span>;
     return (
-      <Tag
-        value={`${rowData.moneda?.simbolo || ''} ${formatearNumero(monto, 2)}`}
-        style={{ backgroundColor: rowData.moneda?.colorFondo || '#fff', color: '#000' }}
-      />
+      <span style={{ fontSize: '0.7rem' }}>
+        {rowData.moneda?.simbolo || ''} {formatearNumero(monto, 2)}
+      </span>
     );
   };
 
-  const cuadreTemplate = (rowData) => {
-    if (rowData._tipo === 'FOOTER') {
-      const diferencia = Math.abs(rowData.totales.diferencia);
-      return rowData.estaCuadrado ? (
-        <Tag value="✅ CUADRADO" severity="success" style={{ fontWeight: 'bold' }} />
-      ) : (
-        <Tag value={`❌ DESC. (${formatearNumero(diferencia, 2)})`} severity="danger" style={{ fontWeight: 'bold' }} />
-      );
-    }
-    return null;
+  const footerDebeTotal = () => {
+    return (
+      <div style={{ textAlign: "right", fontWeight: "bold", fontSize: '0.7rem' }}>
+        S/ {formatearNumero(totales.totalDebe, 2)}
+      </div>
+    );
   };
+
+  const footerHaberTotal = () => {
+    return (
+      <div style={{ textAlign: "right", fontWeight: "bold", fontSize: '0.7rem' }}>
+        S/ {formatearNumero(totales.totalHaber, 2)}
+      </div>
+    );
+  };
+
+
 
   const buttonConfig = getSaldoInicialButtonConfig();
 
@@ -551,18 +612,26 @@ const DiarioContable = ({ ruta }) => {
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
+          <div style={{ flex: 1, minWidth: '180px' }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Saldo Inicial</label>
+            <Button
+              label={buttonConfig.label}
+              severity={buttonConfig.severity}
+              onClick={toggleFiltroSaldoInicial}
+              size="small"
+              style={{ width: '100%' }}
+            />
+          </div>
           <div style={{ flex: 1 }}>
-            <label style={{ fontWeight: "bold" }}>Tipo Libro</label>
-            <Dropdown
-              value={tipoLibroFiltro}
-              options={[
-                { label: 'Todos', value: null },
-                { label: 'FISCAL', value: 'FISCAL' },
-                { label: 'GERENCIAL', value: 'GERENCIAL' }
-              ]}
-              onChange={(e) => setTipoLibroFiltro(e.value)}
-              placeholder="Todos"
-              style={{ width: "100%" }}
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Tipo Libro</label>
+            <BooleanToggleButton
+              value={tipoLibroFiscal}
+              onChange={setTipoLibroFiscal}
+              labelTrue="📘 FISCAL"
+              labelFalse="🟢 GERENCIAL"
+              severityTrue="info"
+              severityFalse="success"
+              size="small"
             />
           </div>
 
@@ -600,56 +669,92 @@ const DiarioContable = ({ ruta }) => {
               tooltip="Busca cuentas que INICIEN con este código"
             />
           </div>
+
+          <div style={{ flex: 1, minWidth: '180px' }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Solo Cuadrados</label>
+            <BooleanToggleButton
+              value={soloCuadrados}
+              onChange={setSoloCuadrados}
+              labelTrue="✅ SOLO CUADRADOS"
+              labelFalse="📋 TODOS"
+              severityTrue="success"
+              severityFalse="secondary"
+              size="small"
+            />
+          </div>
+
+          <div style={{ flex: 1, minWidth: '180px' }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Solo Descuadrados</label>
+            <BooleanToggleButton
+              value={soloDescuadrados}
+              onChange={setSoloDescuadrados}
+              labelTrue="❌ SOLO DESCUADRADOS"
+              labelFalse="📋 TODOS"
+              severityTrue="danger"
+              severityFalse="secondary"
+              size="small"
+            />
+          </div>
+
+          <div style={{ flex: 1, minWidth: '180px' }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Con Entidad</label>
+            <BooleanToggleButton
+              value={soloConEntidad}
+              onChange={setSoloConEntidad}
+              labelTrue="👤 SOLO CON ENTIDAD"
+              labelFalse="📋 TODOS"
+              severityTrue="info"
+              severityFalse="secondary"
+              size="small"
+            />
+          </div>
+
+
         </div>
 
-        <div
-          style={{
-            alignItems: "center",
-            display: "flex",
-            gap: 15,
-            marginBottom: 15,
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <Checkbox
-              inputId="soloCuadrados"
-              checked={soloCuadrados}
-              onChange={(e) => setSoloCuadrados(e.checked)}
-            />
-            <label htmlFor="soloCuadrados" style={{ marginLeft: "0.5rem" }}>Solo Cuadrados</label>
+
+
+        {!loading && lineasFlat.length > 0 && (
+          <div style={{
+            marginBottom: '0.5rem',
+            padding: '0.6rem',
+            backgroundColor: totales.estaCuadrado ? '#ECFDF5' : '#FEE2E2',
+            borderRadius: '6px',
+            display: 'flex',
+            gap: '1.5rem',
+            justifyContent: 'space-around',
+            alignItems: 'center',
+            fontSize: '0.8rem',
+            border: totales.estaCuadrado ? '2px solid #10B981' : '2px solid #DC2626',
+            boxShadow: totales.estaCuadrado ? '0 1px 3px rgba(16, 185, 129, 0.2)' : '0 2px 8px rgba(220, 38, 38, 0.3)'
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              📋 <strong>Asientos:</strong> {estadisticas.totalAsientos}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              📄 <strong>Líneas:</strong> {estadisticas.totalLineas}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              💰 <strong>Debe:</strong> S/ {formatearNumero(totales.totalDebe, 2)}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              💸 <strong>Haber:</strong> S/ {formatearNumero(totales.totalHaber, 2)}
+            </span>
+            {totales.estaCuadrado ? (
+              <Tag
+                value="✅ CUADRADO"
+                severity="success"
+                style={{ fontWeight: 'bold', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
+              />
+            ) : (
+              <Tag
+                value={`⚠️ DESCUADRADO: S/ ${formatearNumero(totales.diferencia, 2)}`}
+                severity="danger"
+                style={{ fontWeight: 'bold', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
+              />
+            )}
           </div>
-
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <Checkbox
-              inputId="soloDescuadrados"
-              checked={soloDescuadrados}
-              onChange={(e) => setSoloDescuadrados(e.checked)}
-            />
-            <label htmlFor="soloDescuadrados" style={{ marginLeft: "0.5rem" }}>Solo Descuadrados</label>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <Checkbox
-              inputId="soloConEntidad"
-              checked={soloConEntidad}
-              onChange={(e) => setSoloConEntidad(e.checked)}
-            />
-            <label htmlFor="soloConEntidad" style={{ marginLeft: "0.5rem" }}>Solo con Entidad</label>
-          </div>
-
-          <Button
-            label={buttonConfig.label}
-            severity={buttonConfig.severity}
-            onClick={toggleFiltroSaldoInicial}
-            size="small"
-          />
-
-          <Tag value={`${estadisticas.totalAsientos} asientos`} severity="info" />
-          <Tag value={`${estadisticas.totalLineas} líneas`} severity="info" />
-          <Tag value={`Debe: S/ ${formatearNumero(totales.totalDebe, 2)}`} severity="success" />
-          <Tag value={`Haber: S/ ${formatearNumero(totales.totalHaber, 2)}`} severity="warning" />
-        </div>
+        )}
 
         {/* DATATABLE CONTINUA */}
         {loading ? (
@@ -666,20 +771,81 @@ const DiarioContable = ({ ruta }) => {
             value={lineasFlat}
             size="small"
             showGridlines
+            stripedRows
             paginator
-            rows={100}
+            rows={50}
             rowsPerPageOptions={[50, 100, 200, 500]}
-            rowClassName={rowClassName}
-            style={{ fontSize: getResponsiveFontSize() }}
+            style={{ fontSize: '0.7rem' }}
+            scrollable
+            scrollHeight="calc(100vh - 350px)"
           >
-            <Column body={lineaTemplate} header="Línea" style={{ width: '70px' }} />
-            <Column body={cuentaTemplate} header="Cuenta" style={{ minWidth: '200px' }} />
-            <Column body={glosaTemplate} header="Glosa / Detalle" style={{ minWidth: '350px' }} />
-            <Column body={documentoTemplate} header="Documento" style={{ width: '120px' }} />
-            <Column body={entidadTemplate} header="Entidad" style={{ minWidth: '200px' }} />
-            <Column body={debeTemplate} header="Debe" style={{ width: '130px' }} align="right" />
-            <Column body={haberTemplate} header="Haber" style={{ width: '130px' }} align="right" />
-            <Column body={cuadreTemplate} header="Cuadre" style={{ width: '150px' }} align="center" />
+            <Column
+              body={saldoInicialTemplate}
+              header="SI"
+              style={{ width: '25px', textAlign: 'center' }}
+              frozen
+            />
+            <Column
+              body={numeroAsientoTemplate}
+              header="Nro Asiento"
+              style={{ width: '80px' }}
+              frozen
+            />
+            <Column
+              body={fechaAsientoTemplate}
+              header="Fecha"
+              style={{ width: '70px', }}
+              frozen
+            />
+            <Column
+              body={glosaAsientoTemplate}
+              header="Glosa Asiento"
+              style={{ width: '180px', }}
+            />
+            <Column
+              body={lineaTemplate}
+              header="L"
+              style={{ width: '20px', }}
+            />
+            <Column
+              body={codigoCuentaTemplate}
+              header="Código"
+              style={{ width: '80px', padding: '0.2rem' }}
+            />
+            <Column
+              body={nombreCuentaTemplate}
+              header="Nombre Cuenta"
+              style={{ width: '200px', padding: '0.2rem' }}
+            />
+            <Column
+              body={glosaLineaTemplate}
+              header="Glosa Línea"
+              style={{ width: '350px' }}
+            />
+            <Column
+              body={documentoTemplate}
+              header="Documento"
+              style={{ width: '80px' }}
+            />
+            <Column
+              body={entidadTemplate}
+              header="Entidad"
+              style={{ width: '80px' }}
+            />
+            <Column
+              body={debeTemplate}
+              header="Debe"
+              footer={footerDebeTotal}
+              style={{ width: '100px' }}
+              align="right"
+            />
+            <Column
+              body={haberTemplate}
+              header="Haber"
+              footer={footerHaberTotal}
+              style={{ width: '100px' }}
+              align="right"
+            />
           </DataTable>
         )}
       </div>

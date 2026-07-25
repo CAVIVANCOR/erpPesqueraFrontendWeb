@@ -20,7 +20,6 @@ import {
   anularAsiento,
   unirAsientos,
 } from "../../api/contabilidad/asientoContable";
-import { getEmpresas } from "../../api/empresa";
 import { getPeriodosContables } from "../../api/contabilidad/periodoContable";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
 import { getMonedas } from "../../api/moneda";
@@ -28,6 +27,8 @@ import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import { getResponsiveFontSize } from "../../utils/utils";
 import { generarKardexValorizado } from "../../api/contabilidad/kardexValorizado";
+import EmpresaSelector from "../../components/common/EmpresaSelector";
+import { getEmpresas } from "../../api/empresa";
 
 export default function AsientoContable({ ruta }) {
   const { usuario } = useAuthStore();
@@ -43,11 +44,12 @@ export default function AsientoContable({ ruta }) {
   const [periodos, setPeriodos] = useState([]);
   const [estados, setEstados] = useState([]);
   const [monedas, setMonedas] = useState([]);
-  const [empresaFilter, setEmpresaFilter] = useState(null);
+  const [empresaFilter, setEmpresaFilter] = useState(usuario?.empresaId || null);
   const [periodoFilter, setPeriodoFilter] = useState(null);
   const [periodosFiltrados, setPeriodosFiltrados] = useState([]);
   const [estadoFilter, setEstadoFilter] = useState(null);
   const [rangoFechas, setRangoFechas] = useState(null);
+  const [filtroSaldoInicial, setFiltroSaldoInicial] = useState('TODOS');
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
@@ -71,7 +73,7 @@ export default function AsientoContable({ ruta }) {
 
   useEffect(() => {
     filtrarItems();
-  }, [items, empresaFilter, periodoFilter, estadoFilter, rangoFechas]);
+  }, [items, empresaFilter, periodoFilter, estadoFilter, rangoFechas, filtroSaldoInicial]);
 
   useEffect(() => {
     filtrarPeriodosPorEmpresa();
@@ -159,7 +161,36 @@ export default function AsientoContable({ ruta }) {
         return fechaAsiento >= fechaIni;
       });
     }
+
+    // Filtro por Saldo Inicial
+    if (filtroSaldoInicial === 'SOLO_SALDOS') {
+      filtrados = filtrados.filter((item) => item.esSaldoInicial === true);
+    } else if (filtroSaldoInicial === 'SIN_SALDOS') {
+      filtrados = filtrados.filter((item) => item.esSaldoInicial === false);
+    }
+
     setItemsFiltrados(filtrados);
+  };
+
+  const toggleFiltroSaldoInicial = () => {
+    if (filtroSaldoInicial === 'TODOS') {
+      setFiltroSaldoInicial('SOLO_SALDOS');
+    } else if (filtroSaldoInicial === 'SOLO_SALDOS') {
+      setFiltroSaldoInicial('SIN_SALDOS');
+    } else {
+      setFiltroSaldoInicial('TODOS');
+    }
+  };
+
+  const getSaldoInicialButtonConfig = () => {
+    switch (filtroSaldoInicial) {
+      case 'SOLO_SALDOS':
+        return { label: '✅ Solo Saldos Iniciales', severity: 'success' };
+      case 'SIN_SALDOS':
+        return { label: '❌ Sin Saldos Iniciales', severity: 'danger' };
+      default:
+        return { label: '📋 Todos los Asientos', severity: 'secondary' };
+    }
   };
 
   const onNew = () => {
@@ -707,6 +738,8 @@ export default function AsientoContable({ ruta }) {
     setPeriodoFilter(null);
   };
 
+  const buttonConfig = getSaldoInicialButtonConfig();
+
   return (
     <div className="p-m-4">
       <Toast ref={toast} />
@@ -1206,20 +1239,9 @@ export default function AsientoContable({ ruta }) {
                 </small>
               </div>
               <div style={{ flex: 1 }}>
-                <label htmlFor="empresaFilter">Filtrar por Empresa</label>
-                <Dropdown
-                  id="empresaFilter"
-                  value={empresaFilter}
-                  options={empresas.map((e) => ({
-                    label: e.razonSocial,
-                    value: Number(e.id),
-                  }))}
-                  onChange={(e) => handleEmpresaChange(e.value)}
-                  placeholder="Seleccionar empresa"
-                  showClear
-                  filter
-                  style={{ width: "100%" }}
-                  onClear={() => handleEmpresaChange(null)}
+                <EmpresaSelector
+                  empresaId={empresaFilter}
+                  onEmpresaChange={handleEmpresaChange}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -1340,9 +1362,18 @@ export default function AsientoContable({ ruta }) {
                   style={{ width: "100%" }}
                 />
               </div>
-              <div style={{ flex: 0.5 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold" }}>Saldo Inicial</label>
                 <Button
-                  label="Recargar BD"
+                  label={buttonConfig.label}
+                  severity={buttonConfig.severity}
+                  onClick={toggleFiltroSaldoInicial}
+                  style={{ width: '100%' }}
+                  tooltip="Filtrar por saldos iniciales"
+                />
+              </div>
+              <div style={{ flex: 0.25 }}>
+                <Button
                   icon="pi pi-refresh"
                   className="p-button-outlined p-button-info"
                   onClick={async () => {
@@ -1360,9 +1391,8 @@ export default function AsientoContable({ ruta }) {
                   style={{ width: "100%" }}
                 />
               </div>
-              <div style={{ flex: 0.5 }}>
+              <div style={{ flex: 0.25 }}>
                 <Button
-                  label="Limpiar"
                   icon="pi pi-filter-slash"
                   className="p-button-secondary"
                   outlined
