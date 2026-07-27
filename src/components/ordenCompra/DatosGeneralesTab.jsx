@@ -97,6 +97,7 @@ export default function DatosGeneralesTab({
   esParticionada,
   onEsParticionadaChange,
   onProveedorCreado, // ✅ NUEVO: callback para recargar proveedores
+  tiposAfectacionIGV = [], // AGREGADO
   cuentasCorrientes = [],
   estadosCxP = [],
   mediosPago = [],
@@ -1257,6 +1258,7 @@ export default function DatosGeneralesTab({
             monedas={monedas}
             monedaId={formData.monedaId}
             porcentajeIGV={formData.porcentajeIGV}
+            tiposAfectacionIGV={tiposAfectacionIGV} // AGREGADO
             readOnly={readOnly}
             permisos={permisos}
             empresaId={formData.empresaId}

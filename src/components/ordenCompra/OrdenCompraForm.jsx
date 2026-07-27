@@ -19,6 +19,7 @@ import { getAllCuentaCorriente } from "../../api/cuentaCorriente";
 import PdfComprobanteProveedorCard from "./PdfComprobanteProveedorCard";
 import { useForm } from "react-hook-form";
 import { getOrdenCompraPorId } from "../../api/ordenCompra";
+import { getTiposAfectacionIGVActivos } from "../../api/facturacionElectronica/tipoAfectacionIGV"; // AGREGADO
 
 export default function OrdenCompraForm({
   isEdit,
@@ -260,6 +261,7 @@ export default function OrdenCompraForm({
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [mediosPago, setMediosPago] = useState([]);
   const [showCambiarTipoSerieDialog, setShowCambiarTipoSerieDialog] = useState(false); // ✅ AGREGAR
+  const [tiposAfectacionIGV, setTiposAfectacionIGV] = useState([]); // AGREGADO
 
   // ════════════════════════════════════════════════════════════
   // EFECTO: CONCATENAR NÚMERO DOCUMENTO FINAL
@@ -608,11 +610,15 @@ export default function OrdenCompraForm({
         // Cuentas corrientes
         const CuentasCorrientesData = await getAllCuentaCorriente();
         setCuentasCorrientes(CuentasCorrientesData);
+        // AGREGADO: Cargar tipos de afectación IGV
+        const tiposAfectacionData = await getTiposAfectacionIGVActivos();
+        setTiposAfectacionIGV(tiposAfectacionData);
       } catch (err) {
         console.error("Error al cargar catálogos de CxC:", err);
         setMediosPago([]);
         setEstadosCxP([]);
         setCuentasCorrientes([]);
+        setTiposAfectacionIGV([]); // AGREGADO
       }
     };
     cargarCatalogosCxP();
@@ -1277,7 +1283,11 @@ export default function OrdenCompraForm({
     label: unidad.nombre,
     value: Number(unidad.id),
   }));
-
+  const tiposAfectacionIGVOptions = tiposAfectacionIGV.map((t) => ({ // AGREGADO
+    label: t.nombre,
+    value: Number(t.id),
+    codigo: t.codigo,
+  }));
   return (
     <div className="p-fluid">
       <TabView
@@ -1323,6 +1333,7 @@ export default function OrdenCompraForm({
             onCountChange={setDetallesCount}
             onDetallesChange={() => setDetallesCount((prev) => prev + 0.0001)} // ⭐ NUEVO: Forzar recálculo
             refreshTrigger={refreshDetalles}
+            tiposAfectacionIGV={tiposAfectacionIGVOptions} // AGREGADO
             showCambiarTipoSerieDialog={showCambiarTipoSerieDialog} // ✅ AGREGAR
             subtotal={totales.subtotal}
             totalIGV={totales.igv}

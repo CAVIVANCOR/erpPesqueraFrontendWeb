@@ -87,6 +87,7 @@ const Producto = ({ ruta }) => {
   const [unidadesMedida, setUnidadesMedida] = useState([]);
   const [tiposAlmacenamiento, setTiposAlmacenamiento] = useState([]);
   const [especiesFiltradas, setEspeciesFiltradas] = useState([]);
+  const [tiposAfectacionIGVFiltrados, setTiposAfectacionIGVFiltrados] = useState([]); // AGREGADO
 
   // Estados para catálogos COMPLETOS (FORMULARIO)
   const [familiasCatalogo, setFamiliasCatalogo] = useState([]);
@@ -117,6 +118,7 @@ const Producto = ({ ruta }) => {
   const [selectedTipoAlmacenamiento, setSelectedTipoAlmacenamiento] =
     useState(null);
   const [selectedUnidadMedida, setSelectedUnidadMedida] = useState(null);
+  const [selectedTipoAfectacionIGV, setSelectedTipoAfectacionIGV] = useState(null); // AGREGADO
 
   useEffect(() => {
     cargarProductos();
@@ -272,6 +274,12 @@ const Producto = ({ ruta }) => {
         (p) => Number(p.especieId) === Number(selectedEspecie.id)
       );
     }
+    // AGREGADO: Filtro de tipo afectación IGV
+    if (selectedTipoAfectacionIGV) {
+      resultado = resultado.filter(
+        (p) => Number(p.tipoAfectacionIGVId) === Number(selectedTipoAfectacionIGV.id)
+      );
+    }
     // Búsqueda global
     if (globalFilterValue) {
       const busqueda = globalFilterValue.toLowerCase();
@@ -356,6 +364,26 @@ const Producto = ({ ruta }) => {
         .map(p => [p.unidadMedida.id, p.unidadMedida])
     ).values()];
 
+    // AGREGADO: Tipos de afectación IGV únicos
+    const tiposAfectacionIGVIdsUnicos = [...new Set(
+      productosParaOpciones
+        .filter(p => p.tipoAfectacionIGVId)
+        .map(p => Number(p.tipoAfectacionIGVId))
+    )];
+
+    const tiposAfectacionIGVUnicos = tiposAfectacionIGVIdsUnicos
+      .map(tipoId => {
+        const tipoCatalogo = tiposAfectacionIGVCatalogo.find(t => Number(t.id) === tipoId);
+        if (tipoCatalogo) {
+          return tipoCatalogo;
+        }
+        return {
+          id: tipoId,
+          nombre: `Tipo ${tipoId}`
+        };
+      })
+      .filter(t => t !== null);
+
     return {
       empresasUnicas,
       clientesUnicos,
@@ -363,7 +391,8 @@ const Producto = ({ ruta }) => {
       subfamiliasUnicas,
       especiesUnicas,
       tiposAlmacenamientoUnicos,
-      unidadesMedidaUnicas
+      unidadesMedidaUnicas,
+      tiposAfectacionIGVUnicos // AGREGADO
     };
   };
 
@@ -381,6 +410,8 @@ const Producto = ({ ruta }) => {
     setEspeciesFiltradas(opciones.especiesUnicas);
     setTiposAlmacenamiento(opciones.tiposAlmacenamientoUnicos);
     setUnidadesMedida(opciones.unidadesMedidaUnicas);
+    setTiposAfectacionIGVFiltrados(opciones.tiposAfectacionIGVUnicos); // AGREGADO
+
     // ❌ NO tocar los catálogos completos (familiasCatalogo, subfamiliasCatalogo, etc.)
 
     // ⭐ Filtrar clientes por empresa seleccionada
@@ -412,17 +443,20 @@ const Producto = ({ ruta }) => {
     if (selectedTipoAlmacenamiento && !opciones.tiposAlmacenamientoUnicos.find(t => Number(t.id) === Number(selectedTipoAlmacenamiento.id))) {
       setSelectedTipoAlmacenamiento(null);
     }
-    if (selectedUnidadMedida && !opciones.unidadesMedidaUnicas.find(u => Number(u.id) === Number(selectedUnidadMedida.id))) {
+       if (selectedUnidadMedida && !opciones.unidadesMedidaUnicas.find(u => Number(u.id) === Number(selectedUnidadMedida.id))) {
       setSelectedUnidadMedida(null);
     }
-  }, [productosFiltrados, productos, selectedEmpresa, selectedFamilia, especiesCatalogo, clientesCatalogo]);
+    if (selectedTipoAfectacionIGV && opciones.tiposAfectacionIGVUnicos.length > 0 && !opciones.tiposAfectacionIGVUnicos.find(t => Number(t.id) === Number(selectedTipoAfectacionIGV.id))) {
+      setSelectedTipoAfectacionIGV(null);
+    }
+  }, [productosFiltrados, productos, selectedEmpresa, selectedFamilia, especiesCatalogo, clientesCatalogo, tiposAfectacionIGVCatalogo]);
 
   // Efecto para aplicar filtros cuando cambian los filtros o los productos
   useEffect(() => {
     if (productos.length > 0) {
       aplicarFiltros();
     }
-  }, [
+    }, [
     productos,
     selectedEmpresa,
     selectedCliente,
@@ -431,6 +465,7 @@ const Producto = ({ ruta }) => {
     selectedEspecie,
     selectedTipoAlmacenamiento,
     selectedUnidadMedida,
+    selectedTipoAfectacionIGV,
     globalFilterValue,
   ]);
   const handleExportarExcel = async () => {
@@ -478,6 +513,7 @@ const Producto = ({ ruta }) => {
     setSelectedFamilia(null);
     setSelectedSubfamilia(null);
     setSelectedEspecie(null);
+    setSelectedTipoAfectacionIGV(null); // AGREGADO
     setSelectedTipoAlmacenamiento(null);
     setSelectedUnidadMedida(null);
     setGlobalFilterValue("");
@@ -604,6 +640,11 @@ const Producto = ({ ruta }) => {
   };
   const onEspecieFilterChange = (e) => {
     setSelectedEspecie(e.value);
+  };
+
+  // AGREGADO: Handler para filtro de tipo afectación IGV
+  const onTipoAfectacionIGVFilterChange = (e) => {
+    setSelectedTipoAfectacionIGV(e.value);
   };
   const onUnidadMedidaFilterChange = (e) => {
     setSelectedUnidadMedida(e.value);
@@ -870,6 +911,7 @@ const Producto = ({ ruta }) => {
                 !selectedEspecie &&
                 !selectedTipoAlmacenamiento &&
                 !selectedUnidadMedida &&
+                !selectedTipoAfectacionIGV && // AGREGADO
                 !globalFilterValue
               }
               tooltip="Limpiar todos los filtros aplicados"
@@ -962,6 +1004,20 @@ const Producto = ({ ruta }) => {
               className="w-15rem"
               filter
               style={{ fontWeight: "bold" }}
+            />
+          </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <Dropdown
+              value={selectedTipoAfectacionIGV}
+              options={tiposAfectacionIGVFiltrados}
+              optionLabel="nombre"
+              placeholder="Tipo Afectación IGV"
+              showClear
+              onChange={onTipoAfectacionIGVFilterChange}
+              className="w-15rem"
+              filter
+              style={{ fontWeight: "bold" }}
+              emptyMessage="No hay tipos de afectación en los productos filtrados"
             />
           </div>
           <div style={{ flex: 1 }}>

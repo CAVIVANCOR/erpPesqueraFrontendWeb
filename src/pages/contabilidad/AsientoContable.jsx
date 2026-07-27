@@ -705,7 +705,7 @@ export default function AsientoContable({ ruta }) {
         <Button
           icon="pi pi-trash"
           className="p-button-text p-button-danger"
-          disabled={!permisos.puedeEliminar || !esPendiente}
+          disabled={!permisos.puedeEliminar}
           onClick={() => {
             if (permisos.puedeEliminar) {
               onDelete(rowData);

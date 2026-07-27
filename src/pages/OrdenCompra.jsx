@@ -64,6 +64,7 @@ import AsignarCentroCostoMasivo from "../components/common/AsignarCentroCostoMas
 import { asignarCentroCostoMasivo } from "../api/ordenCompra";
 import { formatearMontoConSigno } from "../utils/tiposDocumento.constants";
 import FiltroTipoLibroButton from "../components/common/FiltroTipoLibroButton";
+import { getTiposAfectacionIGVActivos } from "../api/facturacionElectronica/tipoAfectacionIGV"; // AGREGADO
 
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
@@ -110,6 +111,9 @@ export default function OrdenCompra({ ruta }) {
   const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [periodosContables, setPeriodosContables] = useState([]);
   const [motivosNCND, setMotivosNCND] = useState([]);
+  const [tiposAfectacionIGVCatalogo, setTiposAfectacionIGVCatalogo] = useState([]); // AGREGADO
+  const [tiposAfectacionIGVUnicos, setTiposAfectacionIGVUnicos] = useState([]); // AGREGADO
+  const [tipoAfectacionIGVSeleccionado, setTipoAfectacionIGVSeleccionado] = useState(null); // AGREGADO
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -197,6 +201,28 @@ export default function OrdenCompra({ ruta }) {
     }
   }, [ordenesFiltradas, productoSeleccionado]);
 
+  // ✅ Extraer tipos de afectación IGV únicos de los detalles
+  useEffect(() => {
+    const tiposMap = new Map();
+    ordenesFiltradas.forEach((orden) => {
+      if (orden.detalles && Array.isArray(orden.detalles)) {
+        orden.detalles.forEach((detalle) => {
+          if (detalle.tipoAfectacionIGVId && detalle.tipoAfectacionIGV) {
+            tiposMap.set(detalle.tipoAfectacionIGVId, detalle.tipoAfectacionIGV);
+          }
+        });
+      }
+    });
+    const tiposArray = Array.from(tiposMap.values()).sort((a, b) =>
+      (a.nombre || "").localeCompare(b.nombre || "")
+    );
+    setTiposAfectacionIGVUnicos(tiposArray);
+
+    // Limpiar selección si el tipo ya no existe
+    if (tipoAfectacionIGVSeleccionado && !tiposArray.find(t => Number(t.id) === Number(tipoAfectacionIGVSeleccionado))) {
+      setTipoAfectacionIGVSeleccionado(null);
+    }
+  }, [ordenesFiltradas, tipoAfectacionIGVSeleccionado]);
 
   // ✅ Calcular tipos de documento disponibles dinámicamente
   useEffect(() => {
@@ -307,6 +333,18 @@ export default function OrdenCompra({ ruta }) {
       });
     }
 
+    // ✅ Filtro por tipo de afectación IGV (en detalles)
+    if (tipoAfectacionIGVSeleccionado) {
+      filtered = filtered.filter((orden) => {
+        if (orden.detalles && Array.isArray(orden.detalles)) {
+          return orden.detalles.some((detalle) => {
+            return Number(detalle.tipoAfectacionIGVId) === Number(tipoAfectacionIGVSeleccionado);
+          });
+        }
+        return false;
+      });
+    }
+
     // Filtro por ID (#) o número de documento final
     if (busquedaDocumento && busquedaDocumento.trim() !== "") {
       const busqueda = busquedaDocumento.trim();
@@ -364,6 +402,7 @@ export default function OrdenCompra({ ruta }) {
     tiposDocFinalAplicados,
     centroCostoSeleccionado,
     productoSeleccionado,
+    tipoAfectacionIGVSeleccionado, // AGREGADO
     filtroTipoLibro,
     busquedaDocumento,
   ]);
@@ -375,6 +414,7 @@ export default function OrdenCompra({ ruta }) {
         ordenesData,
         empresasData,
         proveedoresData,
+        tiposAfectacionIGVData, // AGREGADO
         formasPagoData,
         productosData,
         personalData,
@@ -397,6 +437,7 @@ export default function OrdenCompra({ ruta }) {
         getOrdenesCompra(),
         getEmpresas(),
         getEntidadesComerciales(),
+        getTiposAfectacionIGVActivos(), // AGREGADO
         getFormasPago(),
         getProductos(),
         getPersonal(),
@@ -419,6 +460,7 @@ export default function OrdenCompra({ ruta }) {
       setEmpresas(empresasData);
       setProveedores(proveedoresData);
       setFormasPago(formasPagoData);
+      setTiposAfectacionIGVCatalogo(tiposAfectacionIGVData); // AGREGADO
       setProductos(productosData);
       setMonedas(monedasData);
       setCentrosCosto(centrosCostoData);
@@ -774,6 +816,7 @@ export default function OrdenCompra({ ruta }) {
     setProveedorSeleccionado(null);
     setEstadoSeleccionado(null);
     setProductoSeleccionado(null);
+    setTipoAfectacionIGVSeleccionado(null); // AGREGADO
     setRangoFechaFacturacion(null);
     setTipoDocumentoFinalIdSeleccionado(null);
     setTiposDocInternoAplicados([]);
@@ -1839,6 +1882,27 @@ export default function OrdenCompra({ ruta }) {
                   className="p-button-info"
                   tooltip="Consultar stock de productos"
                   tooltipOptions={{ position: "bottom" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="tipoAfectacionIGVFiltro" style={{ fontWeight: "bold" }}>
+                  Tipo Afectación IGV
+                </label>
+                <Dropdown
+                  id="tipoAfectacionIGVFiltro"
+                  value={tipoAfectacionIGVSeleccionado}
+                  options={tiposAfectacionIGVUnicos.map((t) => ({
+                    label: t.nombre,
+                    value: Number(t.id),
+                  }))}
+                  onChange={(e) => setTipoAfectacionIGVSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  filter
+                  disabled={loading}
+                  style={{ width: "100%" }}
                 />
               </div>
               <div style={{ flex: 0.25 }}>

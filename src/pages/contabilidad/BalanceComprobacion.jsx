@@ -10,7 +10,6 @@ import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Card } from "primereact/card";
 import { Sidebar } from "primereact/sidebar";
-import { SelectButton } from "primereact/selectbutton";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import { getBalanceComprobacion } from "../../api/contabilidad/balanceComprobacion";
@@ -19,6 +18,7 @@ import { getPeriodosContables } from "../../api/contabilidad/periodoContable";
 import { formatearFecha, formatearNumero } from "../../utils/utils";
 import EmpresaSelector from "../../components/common/EmpresaSelector";
 import ExcelJS from 'exceljs';
+import BooleanToggleButton from "../../components/common/BooleanToggleButton";
 
 const BalanceComprobacion = ({ ruta }) => {
   const usuario = useAuthStore((state) => state.usuario);
@@ -38,9 +38,9 @@ const BalanceComprobacion = ({ ruta }) => {
   const [empresaIdSelector, setEmpresaIdSelector] = useState(usuario?.empresaId || null);
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState(null);
   const [rangoFechas, setRangoFechas] = useState(null);
-  const [tipoLibroFiltro, setTipoLibroFiltro] = useState('FISCAL');
+  const [tipoLibroFiscal, setTipoLibroFiscal] = useState(true);
   const [nivelDetalle, setNivelDetalle] = useState(2);
-  const [tipoMovimiento, setTipoMovimiento] = useState('MOVIMIENTOS');
+  const [filtroSaldoInicial, setFiltroSaldoInicial] = useState('TODOS');
   const [buscarCuenta, setBuscarCuenta] = useState('');
 
   const [totales, setTotales] = useState({
@@ -95,9 +95,9 @@ const BalanceComprobacion = ({ ruta }) => {
     empresaIdSelector,
     periodoSeleccionado,
     rangoFechas,
-    tipoLibroFiltro,
+    tipoLibroFiscal,
     nivelDetalle,
-    tipoMovimiento,
+    filtroSaldoInicial,
   ]);
 
   useEffect(() => {
@@ -142,13 +142,20 @@ const BalanceComprobacion = ({ ruta }) => {
         periodoContableId: periodoSeleccionado,
         fechaDesde: rangoFechas?.[0],
         fechaHasta: rangoFechas?.[1],
-        tipoLibro: tipoLibroFiltro,
+        tipoLibro: tipoLibroFiscal ? 'FISCAL' : 'GERENCIAL',
         nivelDetalle: nivelDetalle,
-        tipoMovimiento: tipoMovimiento,
+        soloSaldosIniciales: filtroSaldoInicial === 'SOLO_SALDOS',
       };
 
       const response = await getBalanceComprobacion(params);
-      setCuentas(response.cuentas || []);
+      let cuentasFiltradas = response.cuentas || [];
+
+      if (filtroSaldoInicial === 'SIN_SALDOS') {
+        cuentasFiltradas = cuentasFiltradas.filter(cuenta => {
+          return cuenta.movimientos && cuenta.movimientos.every(m => !m.esSaldoInicial);
+        });
+      }
+      setCuentas(cuentasFiltradas);
       setTotales(response.totales || { totalDebe: 0, totalHaber: 0, diferencia: 0, estaCuadrado: false });
       setEstadisticas(response.estadisticas || null);
     } catch (error) {
@@ -163,13 +170,36 @@ const BalanceComprobacion = ({ ruta }) => {
     }
   };
 
+
+  const toggleFiltroSaldoInicial = () => {
+    if (filtroSaldoInicial === 'TODOS') {
+      setFiltroSaldoInicial('SOLO_SALDOS');
+    } else if (filtroSaldoInicial === 'SOLO_SALDOS') {
+      setFiltroSaldoInicial('SIN_SALDOS');
+    } else {
+      setFiltroSaldoInicial('TODOS');
+    }
+  };
+
+  const getSaldoInicialButtonConfig = () => {
+    switch (filtroSaldoInicial) {
+      case 'SOLO_SALDOS':
+        return { label: '✅ Solo Saldos Iniciales', severity: 'success' };
+      case 'SIN_SALDOS':
+        return { label: '❌ Sin Saldos Iniciales', severity: 'danger' };
+      default:
+        return { label: '📊 Todos los Movimientos', severity: 'secondary' };
+    }
+  };
+
+
   const limpiarFiltros = () => {
     setEmpresaIdSelector(usuario?.empresaId || null);
     setPeriodoSeleccionado(null);
     setRangoFechas(null);
-    setTipoLibroFiltro('FISCAL');
+    setTipoLibroFiscal(true);
     setNivelDetalle(2);
-    setTipoMovimiento('MOVIMIENTOS');
+    setFiltroSaldoInicial('TODOS');
     setBuscarCuenta('');
     setCuentas([]);
   };
@@ -198,19 +228,19 @@ const BalanceComprobacion = ({ ruta }) => {
     periodoCell.font = { size: 12 };
     periodoCell.alignment = { horizontal: 'center' };
     worksheet.addRow([]);
-    
+
     const headerRow = worksheet.addRow([
-      'Código', 
-      'Denominación', 
-      'SI Debe', 
-      'SI Haber', 
-      'Mov Debe', 
-      'Mov Haber', 
-      'SF Debe', 
-      'SF Haber', 
-      'Activo', 
-      'Pasivo+Pat', 
-      'Pérdida', 
+      'Código',
+      'Denominación',
+      'SI Debe',
+      'SI Haber',
+      'Mov Debe',
+      'Mov Haber',
+      'SF Debe',
+      'SF Haber',
+      'Activo',
+      'Pasivo+Pat',
+      'Pérdida',
       'Ganancia'
     ]);
     headerRow.font = { bold: true };
@@ -537,13 +567,14 @@ const BalanceComprobacion = ({ ruta }) => {
 
           <div style={{ flex: 0.8, minWidth: '200px' }}>
             <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Tipo Libro</label>
-            <SelectButton
-              value={tipoLibroFiltro}
-              onChange={(e) => setTipoLibroFiltro(e.value)}
-              options={[
-                { label: '📘 FISCAL', value: 'FISCAL' },
-                { label: '🟢 GERENCIAL', value: 'GERENCIAL' }
-              ]}
+            <BooleanToggleButton
+              value={tipoLibroFiscal}
+              onChange={setTipoLibroFiscal}
+              labelTrue="📘 FISCAL"
+              labelFalse="🟢 GERENCIAL"
+              severityTrue="info"
+              severityFalse="success"
+              size="small"
             />
           </div>
 
@@ -584,13 +615,12 @@ const BalanceComprobacion = ({ ruta }) => {
 
           <div style={{ flex: 0.8, minWidth: '220px' }}>
             <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Tipo Movimiento</label>
-            <SelectButton
-              value={tipoMovimiento}
-              onChange={(e) => setTipoMovimiento(e.value)}
-              options={[
-                { label: '🔄 MOVIMIENTOS', value: 'MOVIMIENTOS' },
-                { label: '🏁 SALDOS INICIALES', value: 'SALDOS_INICIALES' }
-              ]}
+            <Button
+              label={getSaldoInicialButtonConfig().label}
+              severity={getSaldoInicialButtonConfig().severity}
+              onClick={toggleFiltroSaldoInicial}
+              size="small"
+              style={{ width: '100%' }}
             />
           </div>
         </div>
@@ -631,21 +661,21 @@ const BalanceComprobacion = ({ ruta }) => {
               onRowClick={(e) => verDetalleCuenta(e.data)}
               rowHover
             >
-              <Column 
-                field="codigoCuenta" 
-                header="Código" 
-                body={codigoTemplate} 
-                style={{ width: '70px', padding: '0.2rem' }} 
+              <Column
+                field="codigoCuenta"
+                header="Código"
+                body={codigoTemplate}
+                style={{ width: '70px', padding: '0.2rem' }}
                 frozen
-                sortable 
+                sortable
               />
-              <Column 
-                field="nombreCuenta" 
-                header="Denominación" 
-                body={nombreTemplate} 
-                style={{ width: '180px', padding: '0.2rem' }} 
+              <Column
+                field="nombreCuenta"
+                header="Denominación"
+                body={nombreTemplate}
+                style={{ width: '180px', padding: '0.2rem' }}
                 frozen
-                sortable 
+                sortable
               />
               <Column
                 field="saldoInicialDebe"
@@ -723,9 +753,9 @@ const BalanceComprobacion = ({ ruta }) => {
                 align="right"
                 style={{ width: '70px', padding: '0.2rem' }}
               />
-              <Column 
-                body={accionesTemplate} 
-                style={{ width: '50px', padding: '0.2rem' }} 
+              <Column
+                body={accionesTemplate}
+                style={{ width: '50px', padding: '0.2rem' }}
                 frozen
                 alignFrozen="right"
               />

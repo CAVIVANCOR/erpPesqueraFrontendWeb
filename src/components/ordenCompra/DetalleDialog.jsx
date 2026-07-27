@@ -16,6 +16,7 @@ import {
   crearDetalleOrdenCompra,
   actualizarDetalleOrdenCompra,
 } from "../../api/detalleOrdenCompra";
+import { Dropdown } from "primereact/dropdown"; // AGREGADO
 
 export default function DetalleDialog({
   visible,
@@ -30,6 +31,7 @@ export default function DetalleDialog({
   porcentajeIGV = 0,        // ⭐ NUEVO: Recibir como prop separado
   esExoneradoIGV = false,   // ⭐ NUEVO: Recibir como prop separado
   puedeEditarDetalles,
+  tiposAfectacionIGV = [], // AGREGADO
   onSaveSuccess,
   toast,
 }) {
@@ -43,6 +45,8 @@ export default function DetalleDialog({
     observaciones: "",
     cantidadCompra: null,
     precioUnitarioCompra: null,
+    tipoAfectacionIGVId: null, // AGREGADO
+
   });
 
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
@@ -50,15 +54,24 @@ export default function DetalleDialog({
   const [saving, setSaving] = useState(false);
   const [usarUnidadComercial, setUsarUnidadComercial] = useState(false);
 
+  // AGREGADO: Determinar si el tipo de afectación aplica IGV
+  const aplicaIGVSegunTipo = (tipoAfectacionIGVId) => {
+    if (!tipoAfectacionIGVId) return !esExoneradoIGV; // Si no seleccionado, usar flag de orden
+    const tipo = tiposAfectacionIGV.find(t => t.value === tipoAfectacionIGVId);
+    // Códigos SUNAT: 10=Gravado (aplica IGV), otros no aplican
+    return tipo?.codigo === "10";
+  };
+
   useEffect(() => {
     if (visible) {
       if (detalle) {
         // EDICIÓN: Cargar datos existentes
         const tieneUnidadComercial = !!(detalle.cantidadCompra && detalle.precioUnitarioCompra);
-        const valorSinIGV = Number(detalle.precioUnitario || 0); // ⭐ BD guarda SIN IGV
-        const precioConIGV = esExoneradoIGV
-          ? valorSinIGV
-          : valorSinIGV * (1 + porcentajeIGV / 100);
+        const valorSinIGV = Number(detalle.precioUnitario || 0);
+        const aplicaIGV = aplicaIGVSegunTipo(detalle.tipoAfectacionIGVId);
+        const precioConIGV = aplicaIGV
+          ? valorSinIGV * (1 + porcentajeIGV / 100)
+          : valorSinIGV;
 
         setFormData({
           productoId: detalle.productoId,
@@ -70,6 +83,7 @@ export default function DetalleDialog({
           observaciones: detalle.observaciones || "",
           cantidadCompra: detalle.cantidadCompra ? Number(detalle.cantidadCompra) : null,
           precioUnitarioCompra: detalle.precioUnitarioCompra ? Number(detalle.precioUnitarioCompra) : null,
+          tipoAfectacionIGVId: detalle.tipoAfectacionIGVId ? Number(detalle.tipoAfectacionIGVId) : null, // AGREGADO
         });
 
         setUsarUnidadComercial(tieneUnidadComercial);
@@ -91,6 +105,7 @@ export default function DetalleDialog({
           observaciones: "",
           cantidadCompra: null,
           precioUnitarioCompra: null,
+          tipoAfectacionIGVId: null, // AGREGADO
         });
         setProductoSeleccionado(null);
         setUsarUnidadComercial(false);
@@ -110,9 +125,10 @@ export default function DetalleDialog({
       if (field === "valorUnitarioSinIGV") {
         // Usuario cambió VALOR SIN IGV → Calcular PRECIO CON IGV
         const valorSinIGV = Number(value || 0);
-        const precioConIGV = esExoneradoIGV
-          ? valorSinIGV
-          : valorSinIGV * (1 + porcentajeIGV / 100);
+        const aplicaIGV = aplicaIGVSegunTipo(formData.tipoAfectacionIGVId);
+        const precioConIGV = aplicaIGV
+          ? valorSinIGV * (1 + porcentajeIGV / 100)
+          : valorSinIGV;
 
         newFormData.precioUnitarioConIGV = precioConIGV;
         newFormData.precioUnitario = precioConIGV; // Este se guarda en BD
@@ -120,9 +136,10 @@ export default function DetalleDialog({
       } else if (field === "precioUnitarioConIGV") {
         // Usuario cambió PRECIO CON IGV → Calcular VALOR SIN IGV
         const precioConIGV = Number(value || 0);
-        const valorSinIGV = esExoneradoIGV
-          ? precioConIGV
-          : precioConIGV / (1 + porcentajeIGV / 100);
+        const aplicaIGV = aplicaIGVSegunTipo(formData.tipoAfectacionIGVId);
+        const valorSinIGV = aplicaIGV
+          ? precioConIGV / (1 + porcentajeIGV / 100)
+          : precioConIGV;
 
         newFormData.valorUnitarioSinIGV = valorSinIGV;
         newFormData.precioUnitario = precioConIGV; // Este se guarda en BD
@@ -147,6 +164,16 @@ export default function DetalleDialog({
       // El producto ya viene con todas las relaciones (familia, subfamilia, etc.)
       setProductoSeleccionado(producto);
       handleChange("productoId", productoId);
+
+      // AGREGADO: Auto-asignar tipo de afectación IGV desde producto
+      if (producto.tipoAfectacionIGVId) {
+        setFormData(prev => ({
+          ...prev,
+          productoId: productoId,
+          tipoAfectacionIGVId: Number(producto.tipoAfectacionIGVId),
+        }));
+      }
+
       setShowProductoSelector(false);
     }
   };
@@ -212,6 +239,7 @@ export default function DetalleDialog({
         ordenCompraId: Number(ordenCompraId),
         productoId: Number(formData.productoId),
         observaciones: formData.observaciones || null,
+        tipoAfectacionIGVId: formData.tipoAfectacionIGVId ? Number(formData.tipoAfectacionIGVId) : null, // AGREGADO
       };
 
       // Agregar datos según modo
@@ -484,8 +512,39 @@ export default function DetalleDialog({
           )}
         </div>
 
-        <Divider />
+        {/* AGREGADO: Tipo de Afectación IGV */}
+        <div style={{ marginBottom: "1rem" }}>
+          <label htmlFor="tipoAfectacionIGV">Tipo de Afectación IGV</label>
+          <Dropdown
+            id="tipoAfectacionIGV"
+            value={formData.tipoAfectacionIGVId}
+            options={tiposAfectacionIGV}
+            onChange={(e) => {
+              handleChange("tipoAfectacionIGVId", e.value);
+              // AGREGADO: Recalcular precio cuando cambia tipo de afectación
+              const aplicaIGV = aplicaIGVSegunTipo(e.value);
+              const valorSinIGV = formData.valorUnitarioSinIGV || 0;
+              const precioConIGV = aplicaIGV
+                ? valorSinIGV * (1 + porcentajeIGV / 100)
+                : valorSinIGV;
+              setFormData(prev => ({
+                ...prev,
+                tipoAfectacionIGVId: e.value,
+                precioUnitarioConIGV: precioConIGV,
+                precioUnitario: precioConIGV,
+                subtotal: prev.cantidad * precioConIGV,
+              }));
+            }}
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccione tipo de afectación"
+            disabled={saving || !puedeEditarDetalles}
+            filter
+            showClear
+          />
+        </div>
 
+        <Divider />
         {/* Observaciones */}
         <div style={{ marginBottom: "1rem" }}>
           <label htmlFor="observaciones">Observaciones</label>

@@ -46,6 +46,7 @@ export default function DetallesTab({
   permisos = {},
   empresaId,
   empresas = [],
+  tiposAfectacionIGV = [], // AGREGADO
 }) {
   const tipoDocSeleccionado = tiposDocumentoOptions.find(
     (t) => Number(t.value) === Number(tipoDocumentoId),
@@ -204,7 +205,7 @@ export default function DetallesTab({
   const totalMostrado = esSaldoInicial
     ? total - (pagosPreviosSI || 0)
     : total;
-
+  console.log("rowData", rowData)
 
   return (
     <div>
@@ -439,6 +440,12 @@ export default function DetallesTab({
           body={(rowData) => rowData.producto?.subfamilia?.nombre || "-"}
         />
         <Column field="producto.descripcionArmada" header="Producto" />
+        <Column // AGREGADO
+          field="tipoAfectacionIGV.nombre"
+          header="Tipo Afectación"
+          body={(rowData) => rowData.tipoAfectacionIGV?.nombre || "-"}
+          style={{ width: "150px" }}
+        />
         <Column
           header="% Detrac."
           body={(rowData) => {
@@ -497,6 +504,7 @@ export default function DetallesTab({
         empresas={empresas}
         porcentajeIGV={porcentajeIGV}
         esExoneradoIGV={datosGenerales?.esExoneradoAlIGV || false}
+        tiposAfectacionIGV={tiposAfectacionIGV} // AGREGADO
         puedeEditarDetalles={puedeEditar}
         onSaveSuccess={handleSaveSuccess}
         toast={toast}
