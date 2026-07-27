@@ -140,12 +140,15 @@ const BalanceComprobacion = ({ ruta }) => {
       const params = {
         empresaId: empresaIdSelector,
         periodoContableId: periodoSeleccionado,
-        fechaDesde: rangoFechas?.[0],
-        fechaHasta: rangoFechas?.[1],
         tipoLibro: tipoLibroFiscal ? 'FISCAL' : 'GERENCIAL',
         nivelDetalle: nivelDetalle,
-        soloSaldosIniciales: filtroSaldoInicial === 'SOLO_SALDOS',
       };
+
+      if (rangoFechas?.[0]) params.fechaDesde = rangoFechas[0];
+      if (rangoFechas?.[1]) params.fechaHasta = rangoFechas[1];
+      if (filtroSaldoInicial === 'SOLO_SALDOS') {
+        params.soloSaldosIniciales = true;
+      }
 
       const response = await getBalanceComprobacion(params);
       let cuentasFiltradas = response.cuentas || [];

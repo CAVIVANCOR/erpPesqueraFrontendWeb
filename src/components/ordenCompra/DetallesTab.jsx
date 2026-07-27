@@ -205,8 +205,7 @@ export default function DetallesTab({
   const totalMostrado = esSaldoInicial
     ? total - (pagosPreviosSI || 0)
     : total;
-  console.log("rowData", rowData)
-
+    
   return (
     <div>
       {/* FILA: TOTALES Y BOTÓN */}
