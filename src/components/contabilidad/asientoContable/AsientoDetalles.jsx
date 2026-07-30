@@ -14,6 +14,7 @@ import {
   obtenerMonedaExtranjera,
   calcularTotalesMonedaExtranjera,
 } from "./asientoHelpers";
+import { InputNumber } from "primereact/inputnumber";
 
 export default function AsientoDetalles({
   detalles,
@@ -368,6 +369,8 @@ export default function AsientoDetalles({
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
+
+
             <div style={{ flex: 1 }}>
               <label
                 htmlFor="filtroNumeroDocOrigen"
@@ -384,23 +387,6 @@ export default function AsientoDetalles({
               />
             </div>
 
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="filtroSubmodulo"
-                style={{ fontSize: getResponsiveFontSize() }}
-              >
-                Submódulo Origen
-              </label>
-              <Dropdown
-                id="filtroSubmodulo"
-                value={filtroSubmodulo}
-                options={submodulosFiltrados}
-                onChange={(e) => setFiltroSubmodulo(e.value)}
-                placeholder="Todos"
-                showClear
-                style={{ width: "100%" }}
-              />
-            </div>
 
             {/* FILTROS DE FECHAS */}
             <div style={{ flex: 1 }}>
@@ -448,6 +434,16 @@ export default function AsientoDetalles({
         <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
       )}
       <Column field="numeroLinea" header="#" style={{ width: "5%" }} />
+      <Column
+        header="Submódulo Origen"
+        body={(rowData) => rowData.submoduloOrigenLinea?.nombre || ""}
+        style={{ width: "12%" }}
+      />
+      <Column
+        field="procesoOrigenLineaId"
+        header="ID Proceso Origen"
+        style={{ width: "8%", textAlign: "center" }}
+      />
       <Column field="codigoCuenta" header="Código" style={{ width: "10%" }} />
       <Column field="nombreCuenta" header="Cuenta" style={{ width: "20%" }} />
       <Column

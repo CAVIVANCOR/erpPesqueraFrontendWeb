@@ -90,8 +90,9 @@ export default function SaldoCuentaCorrienteForm({
         detail: "Debe guardar el saldo antes de generar el asiento contable.",
         life: 5000,
       });
-      throw new Error("Saldo no guardado");
+      return false;
     }
+    return true;
   };
 
 

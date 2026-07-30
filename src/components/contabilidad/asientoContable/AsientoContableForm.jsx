@@ -70,6 +70,7 @@ export default function AsientoContableForm({
     setFiltroFechaVenceRango,
     filtroSubmodulo,
     setFiltroSubmodulo,
+    personal,
     handleChange,
     openNewDetalle,
     openEditDetalle,
@@ -128,7 +129,9 @@ export default function AsientoContableForm({
         asientoId={asientoId}
         onAprobar={onAprobar}      // ← DEBE ESTAR AQUÍ
         onAnular={onAnular}         // ← DEBE ESTAR AQUÍ
-        onRecargar={onRecargar}     // ← DEBE ESTAR AQUÍ
+        onRecargar={onRecargar}
+        personal={personal}
+        isEdit={isEdit}
       />
 
       {/* ✅ COMPONENTE DETALLES (DATATABLE) */}
@@ -198,6 +201,7 @@ export default function AsientoContableForm({
         setNombreUsuarioActualizador={setNombreUsuarioActualizador}
         isReadOnly={isReadOnly}
         toast={toast}
+        personal={personal}
       />
 
       {/* ✅ DIÁLOGO CLONAR */}

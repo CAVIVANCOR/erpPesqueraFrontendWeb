@@ -67,7 +67,7 @@ export async function generarBorradorAsiento(deudaId) {
 }
 
 export async function guardarAsientoContable(deudaId, borrador, usuarioId) {
-  const res = await axios.post(`${API_URL}/${deudaId}/guardar-asiento`, { asientos: borrador.asientos }, { headers: getAuthHeaders() });
+  const res = await axios.post(`${API_URL}/${deudaId}/guardar-asiento`, { asientos: borrador.asientos, usuarioId }, { headers: getAuthHeaders() });
   return res.data;
 }
 

@@ -5,7 +5,6 @@ import { getPlanCuentasContable } from "../../../api/contabilidad/planCuentasCon
 import { getTiposDocumento } from "../../../api/tipoDocumento";
 import { getCentrosCosto } from "../../../api/centroCosto";
 import { getEntidadesComercialesPorEmpresa } from "../../../api/entidadComercial";
-import { getPersonalPorId } from "../../../api/personal";
 import { getDocumentosOrigenPorModelo } from "../../../api/contabilidad/documentosOrigen";
 import { getSubmodulos } from "../../../api/submoduloSistema";
 import { consultarTipoCambioSunat } from "../../../api/consultaExterna";
@@ -19,6 +18,7 @@ import {
   validarDetalle,
   prepararDetalleParaGuardar,
 } from "./asientoHelpers";
+import { getPersonalPorId, getPersonal } from "../../../api/personal";
 
 export default function useAsientoLogic({
   isEdit,
@@ -57,8 +57,13 @@ export default function useAsientoLogic({
     diferencia: defaultValues?.diferencia || 0,
     estaCuadrado: defaultValues?.estaCuadrado || false,
     esSaldoInicial: defaultValues?.esSaldoInicial || false,
+    creadoEn: defaultValues?.creadoEn || null,
+    creadoPor: defaultValues?.creadoPor || null,
+    actualizadoEn: defaultValues?.actualizadoEn || null,
+    actualizadoPor: defaultValues?.actualizadoPor || null,
   });
 
+  const [personal, setPersonal] = useState([]);
   const [detalles, setDetalles] = useState(defaultValues?.detalles || []);
   const [planCuentas, setPlanCuentas] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
@@ -146,6 +151,7 @@ export default function useAsientoLogic({
     cargarTiposDocumento();
     cargarCentrosCosto();
     cargarActivos();
+    cargarPersonal(); // ← AGREGAR ESTA LÍNEA
   }, []);
 
   useEffect(() => {
@@ -311,6 +317,15 @@ export default function useAsientoLogic({
       setActivos(data);
     } catch (error) {
       console.error("Error al cargar activos:", error);
+    }
+  };
+
+  const cargarPersonal = async () => {
+    try {
+      const data = await getPersonal();
+      setPersonal(data || []);
+    } catch (error) {
+      console.error("❌ [ASIENTO] Error cargando personal:", error);
     }
   };
 
@@ -1230,6 +1245,7 @@ export default function useAsientoLogic({
     setFiltroFechaVenceRango,
     filtroSubmodulo,
     setFiltroSubmodulo,
+    personal, // ← AGREGAR ESTA LÍNEA
     obtenerOpcionesDinamicas,
     handleChange,
     openNewDetalle,

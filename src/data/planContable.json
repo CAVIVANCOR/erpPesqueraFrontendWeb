@@ -6143,7 +6143,7 @@
   {
     "id": 542,
     "codigoCuenta": 1411,
-    "nombreCuenta": "PRÃSTAMOS",
+    "nombreCuenta": "PRÉSTAMOS",
     "descripcion": "NULL",
     "nivel": "SUBCUENTA",
     "cuentaPadreId": 538,
@@ -6166,7 +6166,7 @@
   {
     "id": 543,
     "codigoCuenta": 14111,
-    "nombreCuenta": "PRÃSTAMOS",
+    "nombreCuenta": "PRÉSTAMOS",
     "descripcion": "NULL",
     "nivel": "DIVISIONARIA",
     "cuentaPadreId": 542,
@@ -6189,7 +6189,7 @@
   {
     "id": 544,
     "codigoCuenta": 141111,
-    "nombreCuenta": "PRÃSTAMOS A EMPLEADOS MN",
+    "nombreCuenta": "PRÉSTAMOS A EMPLEADOS MN",
     "descripcion": "NULL",
     "nivel": "SUBDIVISIONARIA",
     "cuentaPadreId": 543,
@@ -6419,7 +6419,7 @@
   {
     "id": 554,
     "codigoCuenta": 1422,
-    "nombreCuenta": "PRÃSTAMOS",
+    "nombreCuenta": "PRÉSTAMOS",
     "descripcion": "NULL",
     "nivel": "SUBCUENTA",
     "cuentaPadreId": 539,
@@ -6442,7 +6442,7 @@
   {
     "id": 555,
     "codigoCuenta": 14221,
-    "nombreCuenta": "PRÃSTAMOS",
+    "nombreCuenta": "PRÉSTAMOS",
     "descripcion": "NULL",
     "nivel": "DIVISIONARIA",
     "cuentaPadreId": 554,
@@ -6465,7 +6465,7 @@
   {
     "id": 556,
     "codigoCuenta": 1422101,
-    "nombreCuenta": "PRÃSTAMOS A ACCIONISTAS SOLES",
+    "nombreCuenta": "PRÉSTAMOS A ACCIONISTAS SOLES",
     "descripcion": "NULL",
     "nivel": "SUBDIVISIONARIA",
     "cuentaPadreId": 555,
@@ -6488,7 +6488,7 @@
   {
     "id": 557,
     "codigoCuenta": 1422102,
-    "nombreCuenta": "PRÃSTAMOS A ACCIONISTAS DOLARES",
+    "nombreCuenta": "PRÉSTAMOS A ACCIONISTAS DOLARES",
     "descripcion": "NULL",
     "nivel": "SUBDIVISIONARIA",
     "cuentaPadreId": 555,
@@ -6511,7 +6511,7 @@
   {
     "id": 558,
     "codigoCuenta": 1441,
-    "nombreCuenta": "PRÃSTAMOS",
+    "nombreCuenta": "PRÉSTAMOS",
     "descripcion": "NULL",
     "nivel": "SUBCUENTA",
     "cuentaPadreId": 540,
@@ -6534,7 +6534,7 @@
   {
     "id": 559,
     "codigoCuenta": 14411,
-    "nombreCuenta": "PRÃSTAMOS GERENTES",
+    "nombreCuenta": "PRÉSTAMOS GERENTES",
     "descripcion": "NULL",
     "nivel": "DIVISIONARIA",
     "cuentaPadreId": 558,
@@ -6557,7 +6557,7 @@
   {
     "id": 560,
     "codigoCuenta": 1441101,
-    "nombreCuenta": "PRÃSTAMOS A GERENTES SOLES",
+    "nombreCuenta": "PRÉSTAMOS A GERENTES SOLES",
     "descripcion": "NULL",
     "nivel": "SUBDIVISIONARIA",
     "cuentaPadreId": 559,
@@ -6580,7 +6580,7 @@
   {
     "id": 561,
     "codigoCuenta": 1441102,
-    "nombreCuenta": "PRÃSTAMOS A GERENTE DOLARES",
+    "nombreCuenta": "PRÉSTAMOS A GERENTE DOLARES",
     "descripcion": "NULL",
     "nivel": "SUBDIVISIONARIA",
     "cuentaPadreId": 559,
@@ -6948,7 +6948,7 @@
   {
     "id": 577,
     "codigoCuenta": 455,
-    "nombreCuenta": "COSTOS DE FINANCIACIÃN POR PAGAR",
+    "nombreCuenta": "COSTOS DE FINANCIACIÓN POR PAGAR",
     "descripcion": "NULL",
     "nivel": "CUENTA",
     "cuentaPadreId": 293,
@@ -7017,7 +7017,7 @@
   {
     "id": 580,
     "codigoCuenta": 451112,
-    "nombreCuenta": "PRESTAMO DE INSTITUCIONES FINANCIERAS DÃLARES",
+    "nombreCuenta": "PRESTAMO DE INSTITUCIONES FINANCIERAS DÓLARES",
     "descripcion": "NULL",
     "nivel": "SUBDIVISIONARIA",
     "cuentaPadreId": 578,
@@ -7454,7 +7454,7 @@
   {
     "id": 599,
     "codigoCuenta": 4551,
-    "nombreCuenta": "PRÃSTAMOS DE INSTITUCIONES FINANCIERAS Y OTRAS ENTIDADES",
+    "nombreCuenta": "PRÉSTAMOS DE INSTITUCIONES FINANCIERAS Y OTRAS ENTIDADES",
     "descripcion": "NULL",
     "nivel": "SUBCUENTA",
     "cuentaPadreId": 577,
@@ -7661,7 +7661,7 @@
   {
     "id": 608,
     "codigoCuenta": 16,
-    "nombreCuenta": "CUENTAS POR COBRAR DIVERSAS â TERCEROS",
+    "nombreCuenta": "CUENTAS POR COBRAR DIVERSAS – TERCEROS",
     "descripcion": "NULL",
     "nivel": "CLASE",
     "cuentaPadreId": "NULL",
@@ -9847,7 +9847,7 @@
     "id": 705,
     "codigoCuenta": 791101,
     "nombreCuenta": "CARGAS IMPUTABLES A CUENTAS DE COSTOS Y GASTOS",
-    "descripcion": "SU FUNCIÃN PRINCIPAL ES SER UNA CUENTA DE ENLACE.",
+    "descripcion": "SU FUNCIÓN PRINCIPAL ES SER UNA CUENTA DE ENLACE.",
     "nivel": "SUBDIVISIONARIA",
     "cuentaPadreId": 394,
     "naturaleza": "ACREEDORA",
@@ -10076,7 +10076,7 @@
   {
     "id": 715,
     "codigoCuenta": 901106,
-    "nombreCuenta": "SISTEMA DE COMUNICACIÃN Y NAVEGACION",
+    "nombreCuenta": "SISTEMA DE COMUNICACIÓN Y NAVEGACION",
     "descripcion": "NULL",
     "nivel": "SUBDIVISIONARIA",
     "cuentaPadreId": 706,
@@ -15573,8 +15573,8 @@
   {
     "id": 955,
     "codigoCuenta": 421201,
-    "nombreCuenta": "FACTURAS POR PAGAR  MN",
-    "descripcion": "NULL",
+    "nombreCuenta": "FACTURAS EMITIDAS POR PAGAR M.N. TERCEROS",
+    "descripcion": "FACTURAS EMITIDAS POR PAGAR M.N. TERCEROS",
     "nivel": "SUBDIVISIONARIA",
     "cuentaPadreId": 454,
     "naturaleza": "ACREEDORA",
@@ -15590,14 +15590,14 @@
     "activo": "True",
     "creadoEn": "2026-07-13 15:46:49.369",
     "creadoPor": "NULL",
-    "actualizadoEn": "2026-07-13 15:49:43.77",
+    "actualizadoEn": "2026-07-25 15:42:54.306",
     "actualizadoPor": "NULL"
   },
   {
     "id": 956,
     "codigoCuenta": 421202,
-    "nombreCuenta": "FACTURAS POR PAGAR ME",
-    "descripcion": "NULL",
+    "nombreCuenta": "FACTURAS EMITIDAS POR PAGAR M.E. TERCEROS",
+    "descripcion": "FACTURAS EMITIDAS POR PAGAR M.E. TERCEROS",
     "nivel": "SUBDIVISIONARIA",
     "cuentaPadreId": 454,
     "naturaleza": "ACREEDORA",
@@ -15613,7 +15613,7 @@
     "activo": "True",
     "creadoEn": "2026-07-13 15:47:28.942",
     "creadoPor": "NULL",
-    "actualizadoEn": "2026-07-13 15:49:47.08",
+    "actualizadoEn": "2026-07-25 15:43:04.804",
     "actualizadoPor": "NULL"
   },
   {
@@ -18627,6 +18627,29 @@
     "creadoEn": "2026-07-22 22:13:07.97",
     "creadoPor": "NULL",
     "actualizadoEn": "2026-07-22 22:13:07.97",
+    "actualizadoPor": "NULL"
+  },
+  {
+    "id": 1090,
+    "codigoCuenta": 682231,
+    "nombreCuenta": "DEPREC. UNIDADES DE TRANSPORTE .-COSTO",
+    "descripcion": "DEPREC. UNIDADES DE TRANSPORTE .-COSTO",
+    "nivel": "SUBDIVISIONARIA",
+    "cuentaPadreId": 305,
+    "naturaleza": "DEUDORA",
+    "esImputable": "False",
+    "requiereCentroCosto": "True",
+    "requiereEntidad": "False",
+    "requiereProyecto": "False",
+    "tipoCuenta": "GASTO",
+    "esActivoCorriente": "False",
+    "esActivoNoCorriente": "False",
+    "esPasivoCorriente": "False",
+    "esPasivoNoCorriente": "False",
+    "activo": "True",
+    "creadoEn": "2026-07-24 22:05:29.768",
+    "creadoPor": "NULL",
+    "actualizadoEn": "2026-07-24 22:05:29.768",
     "actualizadoPor": "NULL"
   }
 ]

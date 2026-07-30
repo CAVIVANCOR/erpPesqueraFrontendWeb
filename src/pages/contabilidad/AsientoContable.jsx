@@ -49,6 +49,8 @@ export default function AsientoContable({ ruta }) {
   const [periodosFiltrados, setPeriodosFiltrados] = useState([]);
   const [estadoFilter, setEstadoFilter] = useState(null);
   const [rangoFechas, setRangoFechas] = useState(null);
+  const [filtroSubmodulo, setFiltroSubmodulo] = useState(null);
+  const [filtroProcesoOrigenId, setFiltroProcesoOrigenId] = useState('');
   const [filtroSaldoInicial, setFiltroSaldoInicial] = useState('TODOS');
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -73,7 +75,7 @@ export default function AsientoContable({ ruta }) {
 
   useEffect(() => {
     filtrarItems();
-  }, [items, empresaFilter, periodoFilter, estadoFilter, rangoFechas, filtroSaldoInicial]);
+  }, [items, empresaFilter, periodoFilter, estadoFilter, rangoFechas, filtroSaldoInicial, filtroSubmodulo, filtroProcesoOrigenId]);
 
   useEffect(() => {
     filtrarPeriodosPorEmpresa();
@@ -167,6 +169,19 @@ export default function AsientoContable({ ruta }) {
       filtrados = filtrados.filter((item) => item.esSaldoInicial === true);
     } else if (filtroSaldoInicial === 'SIN_SALDOS') {
       filtrados = filtrados.filter((item) => item.esSaldoInicial === false);
+    }
+    // Filtro por Submódulo Origen
+    if (filtroSubmodulo) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.submoduloOrigenId) === Number(filtroSubmodulo)
+      );
+    }
+
+    // Filtro por Proceso Origen ID
+    if (filtroProcesoOrigenId) {
+      filtrados = filtrados.filter(
+        (item) => item.procesoOrigenId && item.procesoOrigenId.toString().includes(filtroProcesoOrigenId)
+      );
     }
 
     setItemsFiltrados(filtrados);
@@ -445,8 +460,9 @@ export default function AsientoContable({ ruta }) {
     setEstadoFilter(null);
     setRangoFechas(null);
     setGlobalFilter("");
+    setFiltroSubmodulo(null);
+    setFiltroProcesoOrigenId('');
   };
-
   const validarAsientosParaUnir = (asientos) => {
     // Validación 1: Cantidad mínima
     if (!asientos || asientos.length < 2) {
@@ -1209,7 +1225,7 @@ export default function AsientoContable({ ruta }) {
         selectionMode="checkbox"
         selection={asientosSeleccionados}
         onSelectionChange={(e) => setAsientosSeleccionados(e.value)}
-        onRowDoubleClick={
+        onRowClick={
           permisos.puedeVer || permisos.puedeEditar
             ? (e) => onEdit(e.data)
             : undefined
@@ -1363,6 +1379,38 @@ export default function AsientoContable({ ruta }) {
                 />
               </div>
               <div style={{ flex: 1 }}>
+                <label htmlFor="filtroSubmodulo">Submódulo Origen</label>
+                <Dropdown
+                  id="filtroSubmodulo"
+                  value={filtroSubmodulo}
+                  options={Array.from(
+                    new Map(
+                      items
+                        .filter(i => i.submoduloOrigen)
+                        .map(i => [i.submoduloOrigenId, {
+                          label: i.submoduloOrigen.nombre,
+                          value: Number(i.submoduloOrigenId)
+                        }])
+                    ).values()
+                  )}
+                  onChange={(e) => setFiltroSubmodulo(e.value)}
+                  placeholder="Todos"
+                  showClear
+                  style={{ width: "100%" }}
+                  onClear={() => setFiltroSubmodulo(null)}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="filtroProcesoOrigenId">ID Proceso Origen</label>
+                <InputText
+                  id="filtroProcesoOrigenId"
+                  value={filtroProcesoOrigenId}
+                  onChange={(e) => setFiltroProcesoOrigenId(e.target.value)}
+                  placeholder="Buscar ID..."
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
                 <label style={{ fontWeight: "bold" }}>Saldo Inicial</label>
                 <Button
                   label={buttonConfig.label}
@@ -1432,6 +1480,18 @@ export default function AsientoContable({ ruta }) {
           }
           sortable
           style={{ width: "120px" }}
+        />
+        <Column
+          field="submoduloOrigen.nombre"
+          header="Submódulo Origen"
+          sortable
+          style={{ minWidth: "150px" }}
+        />
+        <Column
+          field="procesoOrigenId"
+          header="ID Origen"
+          sortable
+          style={{ width: "100px" }}
         />
         <Column
           field="fechaAsiento"

@@ -9,6 +9,8 @@ import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
 import CrearEntidadComercialButton from "../../shared/CrearEntidadComercialButton";
 import PlanCuentaContableSelector from "../../common/PlanCuentaContableSelector";
+import AuditoriaDialog from "../../common/AuditoriaDialog";
+import { useAuthStore } from "../../../shared/stores/useAuthStore";
 
 export default function DetalleDialog({
   visible,
@@ -37,6 +39,7 @@ export default function DetalleDialog({
   setNombreUsuarioActualizador,
   isReadOnly,
   toast,
+  personal,
 }) {
 
 
@@ -113,33 +116,35 @@ export default function DetalleDialog({
             <label htmlFor="submoduloOrigenLineaId">Submódulo Origen</label>
             <Dropdown
               id="submoduloOrigenLineaId"
-              value={detalleFormData.submoduloOrigenLineaId}
+              value={Number(detalleFormData.submoduloOrigenLineaId) || null}
               options={submodulosOptions}
               onChange={(e) => handleSubmoduloOrigenChange(e.value)}
               placeholder="Seleccionar submódulo"
               showClear
-              disabled={!formData.empresaId}
+              disabled={true}
               filter
               filterBy="label"
             />
           </div>
 
           <div style={{ flex: 1 }}>
-            <label htmlFor="procesoOrigenLineaId">Documento Origen</label>
-            <Dropdown
-              id="procesoOrigenLineaId"
+            <label
+              htmlFor="procesoOrigenLineaIdDisplay"
+              style={{ fontWeight: "bold" }}
+            >
+              ID (Doc. Origen)
+            </label>
+            <InputNumber
+              id="procesoOrigenLineaIdDisplay"
               value={detalleFormData.procesoOrigenLineaId}
-              options={preFacturasOptions}
-              onChange={(e) => handlePreFacturaChange(e.value)}
-              placeholder={
-                detalleFormData.submoduloOrigenLineaId
-                  ? "Seleccionar documento"
-                  : "Primero seleccione submódulo"
+              onValueChange={(e) =>
+                setDetalleFormData({
+                  ...detalleFormData,
+                  procesoOrigenLineaId: e.value,
+                })
               }
-              disabled={!detalleFormData.submoduloOrigenLineaId}
-              showClear
-              filter
-              filterBy="label"
+              useGrouping={false}
+              disabled={true}
             />
           </div>
 
@@ -204,26 +209,7 @@ export default function DetalleDialog({
             />
           </div>
 
-          <div style={{ flex: 1 }}>
-            <label
-              htmlFor="procesoOrigenLineaIdDisplay"
-              style={{ fontWeight: "bold" }}
-            >
-              ID (Doc. Origen)
-            </label>
-            <InputNumber
-              id="procesoOrigenLineaIdDisplay"
-              value={detalleFormData.procesoOrigenLineaId}
-              onValueChange={(e) =>
-                setDetalleFormData({
-                  ...detalleFormData,
-                  procesoOrigenLineaId: e.value,
-                })
-              }
-              useGrouping={false}
-              disabled={true}
-            />
-          </div>
+
 
           <div style={{ flex: 1 }}>
             <label
@@ -551,6 +537,40 @@ export default function DetalleDialog({
             marginTop: 18,
           }}
         >
+          {/* ⭐ SECCIÓN DE AUDITORÍA (solo en edición) */}
+          {editingDetalle && detalleFormData.id && (
+            <div style={{ marginTop: "1rem" }}>
+              <AuditoriaDialog
+                data={detalleFormData}
+                fieldMapping={{
+                  fechaCreacion: "creadoEn",
+                  creadoPor: "creadoPor",
+                  fechaActualizacion: "actualizadoEn",
+                  actualizadoPor: "actualizadoPor",
+                }}
+                usuarios={personal?.map((p) => ({
+                  label: `${p.nombres || ""} ${p.apellidoPaterno || ""} ${p.apellidoMaterno || ""}`.trim(),
+                  value: Number(p.id),
+                })) || []}
+                esSuperUsuario={useAuthStore.getState().usuario?.rol === "SUPERUSUARIO"}
+                onSave={(datosCorregidos) => {
+                  setDetalleFormData({
+                    ...detalleFormData,
+                    creadoPor: datosCorregidos.creadoPor,
+                    actualizadoPor: datosCorregidos.actualizadoPor,
+                    creadoEn: datosCorregidos.fechaCreacion,
+                    actualizadoEn: datosCorregidos.fechaActualizacion,
+                  });
+                }}
+                buttonProps={{
+                  label: useAuthStore.getState().usuario?.rol === "SUPERUSUARIO" ? "Auditoría" : "Ver Auditoría",
+                  className: "p-button-info",
+                  icon: "pi pi-history",
+                  size: "small",
+                }}
+              />
+            </div>
+          )}
           <Button
             label="Cancelar"
             icon="pi pi-times"

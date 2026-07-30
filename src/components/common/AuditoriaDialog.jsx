@@ -66,6 +66,7 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { Message } from "primereact/message";
 import { formatearFecha } from "../../utils/utils";
+import { Avatar } from "primereact/avatar";
 
 const AuditoriaDialog = ({
   data = {},
@@ -92,7 +93,7 @@ const AuditoriaDialog = ({
   // Valores originales para comparación
   const [valoresOriginales, setValoresOriginales] = useState({});
 
-  // Extraer valores usando el mapeo
+  // Extraer valores originales usando el fieldMapping
   const fechaCreacionOriginal = data[fieldMapping.fechaCreacion];
   const creadoPorOriginal = data[fieldMapping.creadoPor];
   const fechaActualizacionOriginal = data[fieldMapping.fechaActualizacion];
@@ -117,15 +118,14 @@ const AuditoriaDialog = ({
     }
   }, [visible, creadoPorOriginal, actualizadoPorOriginal, fechaCreacionOriginal, fechaActualizacionOriginal]);
 
-  // Buscar nombres de usuarios
-  const getNombreUsuario = (userId) => {
-    if (!userId) return "N/A";
-    const usuario = usuarios.find((u) => Number(u.id) === Number(userId));
-    return usuario
-      ? `${usuario.nombres || ""} ${usuario.apellidos || ""}`.trim() ||
-      usuario.label ||
-      `ID: ${userId}`
-      : `ID: ${userId}`;
+  // Buscar datos del usuario
+  const getNombreUsuario = (userId, soloNombre = false) => {
+    if (!userId) return soloNombre ? "N/A" : null;
+    const usuario = usuarios.find((u) => Number(u.value) === Number(userId));
+    if (soloNombre) {
+      return usuario?.label || `ID: ${userId}`;
+    }
+    return usuario;
   };
 
   // Verificar si hay cambios
@@ -332,9 +332,25 @@ const AuditoriaDialog = ({
                             👤 Usuario:
                           </span>
                         )}
-                        <strong style={{ fontSize: "0.9rem" }}>
-                          {getNombreUsuario(editando ? creadoPor : creadoPorOriginal)}
-                        </strong>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          {(() => {
+                            const usuario = getNombreUsuario(editando ? creadoPor : creadoPorOriginal);
+                            return usuario ? (
+                              <>
+                                <Avatar
+                                  image={usuario.urlFotoPersona ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${usuario.urlFotoPersona}` : null}
+                                  icon={!usuario.urlFotoPersona ? "pi pi-user" : null}
+                                  size="normal"
+                                  shape="circle"
+                                  style={{ backgroundColor: !usuario.urlFotoPersona ? "#2196F3" : "transparent", color: "#fff" }}
+                                />
+                                <strong style={{ fontSize: "0.9rem" }}>{usuario.label}</strong>
+                              </>
+                            ) : (
+                              <strong style={{ fontSize: "0.9rem" }}>ID: {editando ? creadoPor : creadoPorOriginal}</strong>
+                            );
+                          })()}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -449,9 +465,25 @@ const AuditoriaDialog = ({
                             👤 Usuario:
                           </span>
                         )}
-                        <strong style={{ fontSize: "0.9rem" }}>
-                          {getNombreUsuario(editando ? actualizadoPor : actualizadoPorOriginal)}
-                        </strong>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          {(() => {
+                            const usuario = getNombreUsuario(editando ? actualizadoPor : actualizadoPorOriginal);
+                            return usuario ? (
+                              <>
+                                <Avatar
+                                  image={usuario.urlFotoPersona ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${usuario.urlFotoPersona}` : null}
+                                  icon={!usuario.urlFotoPersona ? "pi pi-user" : null}
+                                  size="normal"
+                                  shape="circle"
+                                  style={{ backgroundColor: !usuario.urlFotoPersona ? "#2196F3" : "transparent", color: "#fff" }}
+                                />
+                                <strong style={{ fontSize: "0.9rem" }}>{usuario.label}</strong>
+                              </>
+                            ) : (
+                              <strong style={{ fontSize: "0.9rem" }}>ID: {editando ? actualizadoPor : actualizadoPorOriginal}</strong>
+                            );
+                          })()}
+                        </div>
                       </div>
                     )}
                   </div>

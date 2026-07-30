@@ -34,7 +34,7 @@ const AsientoContableManager = ({
   onBeforeGenerate,
 }) => {
   const toast = useRef(null);
-  const usuario = useAuthStore((state) => state.user);
+  const usuario = useAuthStore((state) => state.usuario);
   // Estados
   const [asientos, setAsientos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -186,71 +186,83 @@ const AsientoContableManager = ({
     if (!puedeGenerar) {
       toast.current?.show({
         severity: "warn",
-        summary: "No se puede generar asiento",
+        summary: "No se puede generar",
         detail: periodoEstaCerrado
           ? "El período contable está cerrado"
-          : "Debe guardar el documento primero",
-        life: 4000,
+          : "Faltan datos necesarios para generar el asiento",
+        life: 3000,
       });
       return;
     }
 
     if (onBeforeGenerate) {
-      const continuar = await onBeforeGenerate();
-      if (continuar === false) return; // Solo detener si es explícitamente false
+      const canContinue = await onBeforeGenerate();
+      if (!canContinue) return;
     }
 
     setLoading(true);
 
     try {
-      const asientosActuales = await cargarAsientos();
-      if (asientosActuales.length > 0) {
-        // Verificar estados
-        const tieneAprobados = asientosActuales.some(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.APROBADO);
-        if (tieneAprobados) {
-          const pendientes = asientosActuales.filter(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.PENDIENTE).length;
-          const anulados = asientosActuales.filter(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.ANULADO).length;
-          const aprobados = asientosActuales.filter(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.APROBADO).length;
-          toast.current?.show({
-            severity: "warn",
-            summary: "No se puede regenerar",
-            detail: `Este documento tiene ${aprobados} asiento(s) APROBADO(s) que no pueden modificarse. Pendientes: ${pendientes}, Anulados: ${anulados}`,
-            life: 6000,
-          });
-          setShowListDialog(true);
-          setLoading(false);
-          return;
-        }
+      await cargarAsientos();
 
-        // Solo pendientes/anulados - preguntar
-        const pendientes = asientosActuales.filter(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.PENDIENTE);
-        const anulados = asientosActuales.filter(a => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.ANULADO);
-        const totalEliminar = pendientes.length + anulados.length;
+      if (!asientos || asientos.length === 0) {
+        await generarNuevoAsiento();
+        return;
+      }
+
+      const pendientes = asientos.filter(
+        (a) => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.PENDIENTE
+      );
+      const anulados = asientos.filter(
+        (a) => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.ANULADO
+      );
+      const aprobados = asientos.filter(
+        (a) => Number(a.estadoId) === ESTADO_ASIENTO_CONTABLE.APROBADO
+      );
+
+      const asientosARegenerar = [...pendientes, ...anulados];
+
+      if (aprobados.length > 0) {
         confirmDialog({
-          message: `Se eliminarán ${totalEliminar} asiento(s): ${pendientes.length} PENDIENTE(S) y ${anulados.length} ANULADO(S). ¿Desea continuar?`,
-          header: "Regenerar Asiento Contable",
+          message: `⚠️ ADVERTENCIA: Se encontraron ${aprobados.length} asiento(s) APROBADO(S).\n\n¿Desea eliminarlos y regenerarlos? Esta acción es irreversible.`,
+          header: "Regenerar Asientos Aprobados",
           icon: "pi pi-exclamation-triangle",
-          acceptLabel: "Sí, Regenerar",
-          rejectLabel: "No, Solo Mostrar",
+          acceptClassName: "p-button-danger",
+          acceptLabel: "Sí, Regenerar Todo",
+          rejectLabel: "No, Cancelar",
           accept: async () => {
-            await regenerarAsientos([...pendientes, ...anulados]);
+            await regenerarAsientos([...asientosARegenerar, ...aprobados]);
           },
           reject: () => {
             setShowListDialog(true);
             setLoading(false);
-          }
+          },
         });
-        return;
+      } else if (asientosARegenerar.length > 0) {
+        confirmDialog({
+          message: `Se encontraron ${asientosARegenerar.length} asiento(s) en estado PENDIENTE o ANULADO. ¿Desea eliminarlos y regenerar?`,
+          header: "Regenerar Asientos",
+          icon: "pi pi-exclamation-triangle",
+          acceptLabel: "Sí, Regenerar",
+          rejectLabel: "No, Solo Mostrar",
+          accept: async () => {
+            await regenerarAsientos(asientosARegenerar);
+          },
+          reject: () => {
+            setShowListDialog(true);
+            setLoading(false);
+          },
+        });
+      } else {
+        setShowListDialog(true);
+        setLoading(false);
       }
-
-      // No hay asientos - generar nuevo
-      await generarNuevoAsiento();
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error al verificar asientos:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.message || error.message || "Error al procesar asiento",
+        detail: error.response?.data?.message || error.message,
         life: 5000,
       });
       setLoading(false);
@@ -335,19 +347,19 @@ const AsientoContableManager = ({
       if (documentoTipo === 'PreFactura') {
         asientoGuardado = await api.guardarAsientoContable(documentoId, borrador);
       } else if (documentoTipo === 'SaldoCuentaCorriente') {
-        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.personalId || 1);
       } else if (documentoTipo === 'MovimientoActivoFijo') {
-        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1)
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.personalId || 1)
       } else if (documentoTipo === 'OrdenCompra') {
-        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.personalId || 1);
       } else if (documentoTipo === 'PrestamoBancario') {
-        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.personalId || 1);
       } else if (documentoTipo === 'DeudaConPersonal') {
-        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.personalId || 1);
       } else if (documentoTipo === 'DeudaTributaria') {
-        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.personalId || 1);
       } else if (documentoTipo === 'MovimientoAlmacen') {
-        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.id || 1);
+        asientoGuardado = await api.guardarAsientoContable(documentoId, borrador, usuario?.personalId || 1);
       }
       await cargarAsientos();
 

@@ -7,6 +7,8 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
 import BooleanToggleButton from "../../common/BooleanToggleButton";
+import AuditoriaDialog from "../../common/AuditoriaDialog";
+import { useAuthStore } from "../../../shared/stores/useAuthStore";
 
 export default function AsientoCabecera({
   formData,
@@ -26,7 +28,10 @@ export default function AsientoCabecera({
   onAprobar,
   onAnular,
   onRecargar,
+  personal,
+  isEdit,
 }) {
+
   return (
     <form onSubmit={onSubmit} className="p-fluid">
       {/* PRIMERA FILA: Empresa, Período, Fecha, Número, Tipo Libro, Moneda, TC */}
@@ -265,6 +270,38 @@ export default function AsientoCabecera({
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
+        {/* ⭐ SECCIÓN DE AUDITORÍA (solo en edición) */}
+        {isEdit && asientoId && (
+          <div style={{ marginTop: "1rem" }}>
+            <AuditoriaDialog
+              data={formData}
+              fieldMapping={{
+                fechaCreacion: "creadoEn",
+                creadoPor: "creadoPor",
+                fechaActualizacion: "actualizadoEn",
+                actualizadoPor: "actualizadoPor",
+              }}
+              usuarios={personal?.map((p) => ({
+                label: `${p.nombres || ""} ${p.apellidos || ""}`.trim(),
+                value: Number(p.id),
+                urlFotoPersona: p.urlFotoPersona,
+              })) || []}
+              esSuperUsuario={useAuthStore.getState().usuario?.rol === "SUPERUSUARIO"}
+              onSave={(datosCorregidos) => {
+                handleChange("creadoPor", datosCorregidos.creadoPor);
+                handleChange("actualizadoPor", datosCorregidos.actualizadoPor);
+                handleChange("creadoEn", datosCorregidos.fechaCreacion);
+                handleChange("actualizadoEn", datosCorregidos.fechaActualizacion);
+              }}
+              buttonProps={{
+                label: useAuthStore.getState().usuario?.rol === "SUPERUSUARIO" ? "Auditoría" : "Ver Auditoría",
+                className: "p-button-info",
+                icon: "pi pi-history",
+                size: "small",
+              }}
+            />
+          </div>
+        )}
         <div style={{ flex: 1 }}>
           <Button
             label="Cancelar"
@@ -327,6 +364,8 @@ export default function AsientoCabecera({
           </div>
         )}
       </div>
+
+
     </form>
   );
 }
