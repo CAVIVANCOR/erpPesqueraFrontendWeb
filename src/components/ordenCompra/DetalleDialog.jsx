@@ -45,8 +45,7 @@ export default function DetalleDialog({
     observaciones: "",
     cantidadCompra: null,
     precioUnitarioCompra: null,
-    tipoAfectacionIGVId: null, // AGREGADO
-
+    tipoAfectacionIGVId: null,
   });
 
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
@@ -105,7 +104,7 @@ export default function DetalleDialog({
           observaciones: "",
           cantidadCompra: null,
           precioUnitarioCompra: null,
-          tipoAfectacionIGVId: null, // AGREGADO
+          tipoAfectacionIGVId: esExoneradoIGV ? 9 : 1,
         });
         setProductoSeleccionado(null);
         setUsarUnidadComercial(false);

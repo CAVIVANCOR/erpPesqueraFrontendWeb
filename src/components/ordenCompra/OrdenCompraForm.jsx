@@ -447,6 +447,30 @@ export default function OrdenCompraForm({
       setNumCorreDocFinal(defaultValues.numCorreDocFinal || "");
       setComprobanteRecibido(defaultValues.comprobanteRecibido || false);
       setUrlDocumentoRef(defaultValues.urlDocumentoRef || null);
+
+
+            
+      // Actualizar totales desde defaultValues
+      if (defaultValues.subtotal !== undefined) {
+        setTotales({
+          subtotal: Number(defaultValues.subtotal || 0),
+          totalDescuentos: Number(defaultValues.totalDescuentos || 0),
+          igv: Number(defaultValues.totalIGV || 0),
+          impuestoRenta: Number(defaultValues.montoImpuestoRenta || 0),
+          total: Number(defaultValues.total || 0),
+          aplicaDetraccion: defaultValues.aplicaDetraccion || false,
+          montoDetraccion: Number(defaultValues.montoDetraccion || 0),
+          porcentajeDetraccion: Number(defaultValues.porcentajeDetraccion || 0),
+          aplicaRetencion: defaultValues.aplicaRetencion || false,
+          montoRetencion: Number(defaultValues.montoRetencion || 0),
+          porcentajeRetencion: Number(defaultValues.porcentajeRetencion || 0),
+          aplicaPercepcion: defaultValues.aplicaPercepcion || false,
+          montoPercepcion: Number(defaultValues.montoPercepcion || 0),
+          porcentajePercepcion: Number(defaultValues.porcentajePercepcion || 0),
+        });
+      }
+
+      
     }
   }, [defaultValues, empresaFija]);
 
@@ -1024,7 +1048,6 @@ export default function OrdenCompraForm({
   const handleSubmit = async () => {
     try {
       // ✅ Preparar datos (backend calculará totales)
-
       const data = {
         empresaId: empresaId ? Number(empresaId) : null,
         tipoDocumentoId: tipoDocumentoId ? Number(tipoDocumentoId) : null,

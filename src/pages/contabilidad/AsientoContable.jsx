@@ -29,6 +29,8 @@ import { getResponsiveFontSize } from "../../utils/utils";
 import { generarKardexValorizado } from "../../api/contabilidad/kardexValorizado";
 import EmpresaSelector from "../../components/common/EmpresaSelector";
 import { getEmpresas } from "../../api/empresa";
+import { getTiposLibroContableSunat } from "../../api/contabilidad/tipoLibroContableSunat";
+import BooleanToggleButton from "../../components/common/BooleanToggleButton";
 
 export default function AsientoContable({ ruta }) {
   const { usuario } = useAuthStore();
@@ -69,13 +71,17 @@ export default function AsientoContable({ ruta }) {
   const [asientosSeleccionados, setAsientosSeleccionados] = useState([]);
   const [showUnirDialog, setShowUnirDialog] = useState(false);
   const [validacionUnir, setValidacionUnir] = useState(null);
+  const [filtroEsGerencial, setFiltroEsGerencial] = useState('SOLO_FISCAL');
+  const [filtroTipoLibroId, setFiltroTipoLibroId] = useState(null);
+  const [tiposLibroSunat, setTiposLibroSunat] = useState([]);
+
   useEffect(() => {
     cargarDatos();
   }, []);
 
   useEffect(() => {
     filtrarItems();
-  }, [items, empresaFilter, periodoFilter, estadoFilter, rangoFechas, filtroSaldoInicial, filtroSubmodulo, filtroProcesoOrigenId]);
+  }, [items, empresaFilter, periodoFilter, estadoFilter, rangoFechas, filtroSaldoInicial, filtroSubmodulo, filtroProcesoOrigenId, filtroEsGerencial, filtroTipoLibroId]);
 
   useEffect(() => {
     filtrarPeriodosPorEmpresa();
@@ -90,18 +96,21 @@ export default function AsientoContable({ ruta }) {
         periodosData,
         estadosData,
         monedasData,
+        tiposLibroData,
       ] = await Promise.all([
         getAsientoContable(),
         getEmpresas(),
         getPeriodosContables(),
         getEstadosMultiFuncionPorTipoProviene(20),
         getMonedas(),
+        getTiposLibroContableSunat(),
       ]);
       setItems(asientosData);
       setEmpresas(empresasData);
       setPeriodos(periodosData);
       setEstados(estadosData);
       setMonedas(monedasData);
+      setTiposLibroSunat(tiposLibroData || []);
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -174,6 +183,20 @@ export default function AsientoContable({ ruta }) {
     if (filtroSubmodulo) {
       filtrados = filtrados.filter(
         (item) => Number(item.submoduloOrigenId) === Number(filtroSubmodulo)
+      );
+    }
+
+    // Filtro por Es Gerencial
+    if (filtroEsGerencial === 'SOLO_GERENCIAL') {
+      filtrados = filtrados.filter((item) => item.esGerencial === true);
+    } else if (filtroEsGerencial === 'SOLO_FISCAL') {
+      filtrados = filtrados.filter((item) => item.esGerencial === false);
+    }
+
+    // Filtro por Tipo Libro SUNAT
+    if (filtroTipoLibroId) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.tipoLibroId) === Number(filtroTipoLibroId)
       );
     }
 
@@ -454,7 +477,7 @@ export default function AsientoContable({ ruta }) {
     }
   };
 
-  const limpiarFiltros = () => {
+    const limpiarFiltros = () => {
     setEmpresaFilter(null);
     setPeriodoFilter(null);
     setEstadoFilter(null);
@@ -462,6 +485,8 @@ export default function AsientoContable({ ruta }) {
     setGlobalFilter("");
     setFiltroSubmodulo(null);
     setFiltroProcesoOrigenId('');
+    setFiltroEsGerencial('SOLO_FISCAL');
+    setFiltroTipoLibroId(null);
   };
   const validarAsientosParaUnir = (asientos) => {
     // Validación 1: Cantidad mínima
@@ -1408,6 +1433,52 @@ export default function AsientoContable({ ruta }) {
                   onChange={(e) => setFiltroProcesoOrigenId(e.target.value)}
                   placeholder="Buscar ID..."
                   style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold" }}>Es Gerencial</label>
+                <Button
+                  label={
+                    filtroEsGerencial === 'TODOS'
+                      ? 'Todos'
+                      : filtroEsGerencial === 'SOLO_GERENCIAL'
+                        ? 'Solo Gerencial'
+                        : 'Solo Fiscal'
+                  }
+                  severity={
+                    filtroEsGerencial === 'TODOS'
+                      ? 'secondary'
+                      : filtroEsGerencial === 'SOLO_GERENCIAL'
+                        ? 'success'
+                        : 'info'
+                  }
+                  onClick={() => {
+                    if (filtroEsGerencial === 'TODOS') {
+                      setFiltroEsGerencial('SOLO_GERENCIAL');
+                    } else if (filtroEsGerencial === 'SOLO_GERENCIAL') {
+                      setFiltroEsGerencial('SOLO_FISCAL');
+                    } else {
+                      setFiltroEsGerencial('TODOS');
+                    }
+                  }}
+                  style={{ width: '100%' }}
+                  tooltip="Filtrar por tipo de asiento"
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="filtroTipoLibroId">Libro SUNAT</label>
+                <Dropdown
+                  id="filtroTipoLibroId"
+                  value={filtroTipoLibroId}
+                  options={tiposLibroSunat.map((t) => ({
+                    label: `${t.codigoSunat} - ${t.descripcion}`,
+                    value: Number(t.id),
+                  }))}
+                  onChange={(e) => setFiltroTipoLibroId(e.value)}
+                  placeholder="Todos"
+                  showClear
+                  style={{ width: "100%" }}
+                  onClear={() => setFiltroTipoLibroId(null)}
                 />
               </div>
               <div style={{ flex: 1 }}>

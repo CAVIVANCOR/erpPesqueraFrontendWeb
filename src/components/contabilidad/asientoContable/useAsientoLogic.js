@@ -19,6 +19,7 @@ import {
   prepararDetalleParaGuardar,
 } from "./asientoHelpers";
 import { getPersonalPorId, getPersonal } from "../../../api/personal";
+import { getTiposLibroContableSunat } from "../../../api/contabilidad/tipoLibroContableSunat";
 
 export default function useAsientoLogic({
   isEdit,
@@ -48,6 +49,8 @@ export default function useAsientoLogic({
       : new Date(),
     glosa: defaultValues?.glosa || "",
     tipoLibro: defaultValues?.tipoLibro || "FISCAL",
+    tipoLibroId: defaultValues?.tipoLibroId ? Number(defaultValues.tipoLibroId) : null,
+    esGerencial: defaultValues?.esGerencial || false,
     origenAsiento: defaultValues?.origenAsiento || "MANUAL",
     estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 76,
     monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : 1,
@@ -68,6 +71,7 @@ export default function useAsientoLogic({
   const [planCuentas, setPlanCuentas] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [centrosCosto, setCentrosCosto] = useState([]);
+  const [tiposLibroSunat, setTiposLibroSunat] = useState([]);
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
   const [activos, setActivos] = useState([]);
   const [preFacturas, setPreFacturas] = useState([]);
@@ -151,7 +155,8 @@ export default function useAsientoLogic({
     cargarTiposDocumento();
     cargarCentrosCosto();
     cargarActivos();
-    cargarPersonal(); // ← AGREGAR ESTA LÍNEA
+    cargarPersonal();
+    cargarTiposLibroSunat();
   }, []);
 
   useEffect(() => {
@@ -260,6 +265,14 @@ export default function useAsientoLogic({
     filtroSubmodulo,
   ]);
 
+  const cargarTiposLibroSunat = async () => {
+    try {
+      const data = await getTiposLibroContableSunat();
+      setTiposLibroSunat(data || []);
+    } catch (error) {
+      console.error("Error al cargar tipos de libro contable SUNAT:", error);
+    }
+  };
   // Funciones de carga
   const cargarPlanCuentas = async () => {
     try {
@@ -953,6 +966,8 @@ export default function useAsientoLogic({
       fechaAsiento: formData.fechaAsiento?.toISOString(),
       glosa: formData.glosa,
       tipoLibro: formData.tipoLibro,
+      tipoLibroId: formData.tipoLibroId ? Number(formData.tipoLibroId) : null,
+      esGerencial: formData.esGerencial || false,
       origenAsiento: formData.origenAsiento,
       estadoId: Number(formData.estadoId),
       monedaId: Number(formData.monedaId),
@@ -1111,6 +1126,8 @@ export default function useAsientoLogic({
       fechaAsiento: formData.fechaAsiento?.toISOString(),
       glosa: formData.glosa,
       tipoLibro: formData.tipoLibro,
+      tipoLibroId: formData.tipoLibroId ? Number(formData.tipoLibroId) : null,
+      esGerencial: formData.esGerencial || false,
       origenAsiento: formData.origenAsiento,
       estadoId: Number(formData.estadoId),
       monedaId: Number(formData.monedaId),
@@ -1211,6 +1228,7 @@ export default function useAsientoLogic({
     entidadesComerciales,
     activos,
     preFacturas,
+    tiposLibroSunat,
     nombreUsuarioCreador,
     nombreUsuarioActualizador,
     showDetalleDialog,

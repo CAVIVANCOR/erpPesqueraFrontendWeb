@@ -647,6 +647,12 @@ export default function Dashboard() {
           tab: "tablas",
         },
         {
+          label: "Tipos Libro Contable SUNAT",
+          key: "tipoLibroContableSunat",
+          icon: "pi-book",
+          tab: "tablas",
+        },
+        {
           label: "Entidad Comercial",
           key: "entidadComercial",
           icon: "pi-building",

@@ -17,6 +17,7 @@ export default function AsientoCabecera({
   periodos,
   estados,
   monedas,
+  tiposLibroSunat,
   empresaFija,
   periodoFijo,
   isReadOnly,
@@ -103,7 +104,33 @@ export default function AsientoCabecera({
             disabled
           />
         </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="tipoLibroId">Libro SUNAT</label>
+          <Dropdown
+            id="tipoLibroId"
+            value={formData.tipoLibroId}
+            options={tiposLibroSunat?.map((t) => ({
+              label: `${t.codigoSunat} - ${t.descripcion}`,
+              value: Number(t.id),
+            })) || []}
+            onChange={(e) => handleChange("tipoLibroId", e.value)}
+            placeholder="Seleccione libro SUNAT"
+            disabled={isReadOnly}
+            filter
+            showClear
+          />
+        </div>
 
+        <div style={{ flex: 1 }}>
+          <label htmlFor="esGerencial">¿Es Gerencial?</label>
+          <BooleanToggleButton
+            labelTrue="Gerencial"
+            labelFalse="Fiscal"
+            value={formData.esGerencial || false}
+            onChange={(value) => handleChange("esGerencial", value)}
+            disabled={isReadOnly}
+          />
+        </div>
         <div style={{ flex: 1 }}>
           <label htmlFor="tipoLibro">Tipo Libro</label>
           <Dropdown

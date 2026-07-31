@@ -151,6 +151,8 @@ import MotivoSinFaena from "../../pages/MotivoSinFaena";
 import TipoMovimientoActivoFijo from "../../pages/TipoMovimientoActivoFijo";
 import MovimientoActivoFijo from "../../pages/MovimientoActivoFijo";
 import RendicionGastos from "../../pages/RendicionGastos/RendicionGastosList";
+import TipoLibroContableSunatList from "../../pages/TipoLibroContableSunatList";
+
 /**
  * BaseLayout - Layout principal con gestión de módulos
  *
@@ -278,6 +280,10 @@ export default function BaseLayout({ children, onLogout }) {
     tipoOperacionSunat: {
       label: "Tipos Operación SUNAT",
       componente: <TipoOperacionSunatList ruta="tipoOperacionSunat" />,
+    },
+    tipoLibroContableSunat: {
+      label: "Tipos Libro Contable SUNAT",
+      componente: <TipoLibroContableSunatList ruta="tipoLibroContableSunat" />,
     },
     tipoDetraccion: {
       label: "Tipos de Detracción",

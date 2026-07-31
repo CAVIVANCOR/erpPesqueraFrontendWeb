@@ -6,6 +6,7 @@ import AsientoCabecera from "./AsientoCabecera";
 import AsientoDetalles from "./AsientoDetalles";
 import DetalleDialog from "./DetalleDialog";
 import ClonarDialog from "./ClonarDialog";
+import { getTiposLibroContableSunat } from "../../../api/contabilidad/tipoLibroContableSunat";
 
 export default function AsientoContableForm({
   isEdit = false,
@@ -36,6 +37,7 @@ export default function AsientoContableForm({
     entidadesComerciales,
     activos,
     preFacturas,
+    tiposLibroSunat,
     nombreUsuarioCreador,
     nombreUsuarioActualizador,
     showDetalleDialog,
@@ -119,6 +121,7 @@ export default function AsientoContableForm({
         periodos={periodos}
         estados={estados}
         monedas={monedas}
+        tiposLibroSunat={tiposLibroSunat}
         empresaFija={empresaFija}
         periodoFijo={periodoFijo}
         isReadOnly={isReadOnly}
