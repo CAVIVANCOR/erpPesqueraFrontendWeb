@@ -1953,6 +1953,11 @@ const PreFactura = ({ ruta }) => {
                     style={{ width: "100%" }}
                   />
                 </div>
+
+                <div style={{ flex: 1 }}>
+                  {/* Filtro de Unidad de Negocio - Compacto */}
+                  <UnidadNegocioFilter />
+                </div>
                 {/* Filtro Tipo Libro */}
                 <div style={{ flex: 1, minWidth: "150px" }}>
                   <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
@@ -1964,11 +1969,6 @@ const PreFactura = ({ ruta }) => {
                     style={{ width: "100%" }}
                   />
                 </div>
-                <div style={{ flex: 1 }}>
-                  {/* Filtro de Unidad de Negocio - Compacto */}
-                  <UnidadNegocioFilter />
-                </div>
-
               </div>
               <div
                 style={{
