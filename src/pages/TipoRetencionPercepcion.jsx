@@ -1,5 +1,4 @@
 // src/pages/TipoRetencionPercepcion.jsx
-// Pantalla CRUD profesional para TipoRetencionPercepcion. Cumple la regla transversal ERP Megui.
 import React, { useRef, useState, useEffect } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -7,28 +6,21 @@ import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
-import { Tag } from "primereact/tag";
-import TipoRetencionPercepcionForm from "../components/tipoRetencionPercepcion/TipoRetencionPercepcionForm";
+import { InputText } from "primereact/inputtext";
+import { InputNumber } from "primereact/inputnumber";
+import { Dropdown } from "primereact/dropdown";
+import { Checkbox } from "primereact/checkbox";
 import {
-  getAllTipoRetencionPercepcion,
+  getTiposRetencionPercepcion,
   crearTipoRetencionPercepcion,
   actualizarTipoRetencionPercepcion,
   eliminarTipoRetencionPercepcion,
-} from "../api/tipoRetencionPercepcion";
+} from "../api/tesoreria/tipoRetencionPercepcion";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 import { Navigate } from "react-router-dom";
 
-/**
- * Pantalla profesional para gestión de Tipos de Retención/Percepción.
- * Cumple la regla transversal ERP Megui:
- * - Edición profesional por clic en fila (abre modal).
- * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin), usando useAuthStore.
- * - Confirmación de borrado con ConfirmDialog visual rojo.
- * - Feedback visual con Toast.
- * - Documentación de la regla en el encabezado.
- */
 export default function TipoRetencionPercepcion({ ruta }) {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
@@ -46,6 +38,19 @@ export default function TipoRetencionPercepcion({ ruta }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
 
+  const [formData, setFormData] = useState({
+    codigo: "",
+    nombre: "",
+    tipo: "RETENCION",
+    tasa: 0,
+    activo: true,
+  });
+
+  const tipoOptions = [
+    { label: "Retención", value: "RETENCION" },
+    { label: "Percepción", value: "PERCEPCION" },
+  ];
+
   useEffect(() => {
     cargarItems();
   }, []);
@@ -53,7 +58,7 @@ export default function TipoRetencionPercepcion({ ruta }) {
   const cargarItems = async () => {
     setLoading(true);
     try {
-      const data = await getAllTipoRetencionPercepcion();
+      const data = await getTiposRetencionPercepcion();
       setItems(data);
     } catch (err) {
       toast.current.show({
@@ -67,6 +72,13 @@ export default function TipoRetencionPercepcion({ ruta }) {
 
   const handleEdit = (rowData) => {
     setEditing(rowData);
+    setFormData({
+      codigo: rowData.codigo || "",
+      nombre: rowData.nombre || "",
+      tipo: rowData.tipo || "RETENCION",
+      tasa: rowData.tasa || 0,
+      activo: rowData.activo !== undefined ? rowData.activo : true,
+    });
     setShowDialog(true);
   };
 
@@ -91,25 +103,26 @@ export default function TipoRetencionPercepcion({ ruta }) {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo eliminar.",
+        detail: err.response?.data?.message || "No se pudo eliminar.",
       });
     }
     setLoading(false);
     setToDelete(null);
   };
 
-  const handleFormSubmit = async (data) => {
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
     try {
       if (editing && editing.id) {
-        await actualizarTipoRetencionPercepcion(editing.id, data);
+        await actualizarTipoRetencionPercepcion(editing.id, formData);
         toast.current.show({
           severity: "success",
           summary: "Actualizado",
           detail: "Registro actualizado.",
         });
       } else {
-        await crearTipoRetencionPercepcion(data);
+        await crearTipoRetencionPercepcion(formData);
         toast.current.show({
           severity: "success",
           summary: "Creado",
@@ -118,12 +131,13 @@ export default function TipoRetencionPercepcion({ ruta }) {
       }
       setShowDialog(false);
       setEditing(null);
+      resetForm();
       cargarItems();
     } catch (err) {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo guardar.",
+        detail: err.response?.data?.message || "No se pudo guardar.",
       });
     }
     setLoading(false);
@@ -131,7 +145,18 @@ export default function TipoRetencionPercepcion({ ruta }) {
 
   const handleAdd = () => {
     setEditing(null);
+    resetForm();
     setShowDialog(true);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      codigo: "",
+      nombre: "",
+      tipo: "RETENCION",
+      tasa: 0,
+      activo: true,
+    });
   };
 
   const actionBody = (rowData) => (
@@ -152,15 +177,6 @@ export default function TipoRetencionPercepcion({ ruta }) {
       )}
     </>
   );
-
-  const tipoOperacionBody = (rowData) => {
-    const severity = rowData.tipoOperacion === 'RETENCION' ? 'warning' : 'info';
-    return <Tag value={rowData.tipoOperacion} severity={severity} />;
-  };
-
-  const porcentajeBody = (rowData) => {
-    return `${Number(rowData.porcentaje).toFixed(2)}%`;
-  };
 
   return (
     <div className="p-fluid">
@@ -193,7 +209,7 @@ export default function TipoRetencionPercepcion({ ruta }) {
             }}
           >
             <div style={{ flex: 2 }}>
-              <h2>Gestión de Tipos de Retención/Percepción</h2>
+              <h2>Tipos de Retención/Percepción</h2>
             </div>
             <div style={{ flex: 2 }}>
               <Button
@@ -210,16 +226,27 @@ export default function TipoRetencionPercepcion({ ruta }) {
         }
       >
         <Column field="id" header="ID" sortable style={{ width: 80 }} />
+        <Column field="codigo" header="Código" sortable />
         <Column field="nombre" header="Nombre" sortable />
-        <Column field="tipoOperacion" header="Tipo" body={tipoOperacionBody} sortable style={{ width: 150 }} />
-        <Column field="porcentaje" header="Porcentaje" body={porcentajeBody} sortable style={{ width: 120 }} />
-        <Column field="codigoSunat" header="Código SUNAT" sortable style={{ width: 150 }} />
+        <Column
+          field="tipo"
+          header="Tipo"
+          body={(rowData) =>
+            rowData.tipo === "RETENCION" ? "Retención" : "Percepción"
+          }
+          sortable
+        />
+        <Column
+          field="tasa"
+          header="Tasa (%)"
+          body={(rowData) => `${Number(rowData.tasa).toFixed(2)}%`}
+          sortable
+        />
         <Column
           field="activo"
           header="Activo"
           body={(rowData) => (rowData.activo ? "Sí" : "No")}
           sortable
-          style={{ width: 100 }}
         />
         <Column
           body={actionBody}
@@ -228,20 +255,97 @@ export default function TipoRetencionPercepcion({ ruta }) {
         />
       </DataTable>
       <Dialog
-        header={editing ? "Editar Tipo de Retención/Percepción" : "Nuevo Tipo de Retención/Percepción"}
+        header={
+          editing
+            ? "Editar Tipo de Retención/Percepción"
+            : "Nuevo Tipo de Retención/Percepción"
+        }
         visible={showDialog}
-        style={{ width: 600 }}
+        style={{ width: 500 }}
         onHide={() => setShowDialog(false)}
         modal
       >
-        <TipoRetencionPercepcionForm
-          isEdit={!!editing}
-          defaultValues={editing || {}}
-          onSubmit={handleFormSubmit}
-          onCancel={() => setShowDialog(false)}
-          loading={loading}
-          readOnly={readOnly}
-        />
+        <form onSubmit={handleFormSubmit} className="p-fluid">
+          <div className="p-field">
+            <label htmlFor="codigo">Código*</label>
+            <InputText
+              id="codigo"
+              value={formData.codigo}
+              onChange={(e) =>
+                setFormData({ ...formData, codigo: e.target.value })
+              }
+              required
+              disabled={loading || readOnly}
+              maxLength={10}
+            />
+          </div>
+          <div className="p-field">
+            <label htmlFor="nombre">Nombre*</label>
+            <InputText
+              id="nombre"
+              value={formData.nombre}
+              onChange={(e) =>
+                setFormData({ ...formData, nombre: e.target.value })
+              }
+              required
+              disabled={loading || readOnly}
+              maxLength={200}
+            />
+          </div>
+          <div className="p-field">
+            <label htmlFor="tipo">Tipo*</label>
+            <Dropdown
+              id="tipo"
+              value={formData.tipo}
+              options={tipoOptions}
+              onChange={(e) => setFormData({ ...formData, tipo: e.value })}
+              disabled={loading || readOnly}
+            />
+          </div>
+          <div className="p-field">
+            <label htmlFor="tasa">Tasa (%)*</label>
+            <InputNumber
+              id="tasa"
+              value={formData.tasa}
+              onValueChange={(e) =>
+                setFormData({ ...formData, tasa: e.value })
+              }
+              mode="decimal"
+              minFractionDigits={2}
+              maxFractionDigits={2}
+              min={0}
+              max={100}
+              disabled={loading || readOnly}
+            />
+          </div>
+          <div className="p-field-checkbox">
+            <Checkbox
+              inputId="activo"
+              checked={formData.activo}
+              onChange={(e) =>
+                setFormData({ ...formData, activo: e.checked })
+              }
+              disabled={loading || readOnly}
+            />
+            <label htmlFor="activo">Activo</label>
+          </div>
+          <div className="p-d-flex p-jc-end" style={{ gap: 8 }}>
+            <Button
+              type="button"
+              label="Cancelar"
+              className="p-button-text"
+              onClick={() => setShowDialog(false)}
+              disabled={loading}
+            />
+            <Button
+              type="submit"
+              label={editing ? "Actualizar" : "Crear"}
+              icon="pi pi-save"
+              loading={loading}
+              disabled={readOnly}
+            />
+          </div>
+        </form>
       </Dialog>
     </div>
   );

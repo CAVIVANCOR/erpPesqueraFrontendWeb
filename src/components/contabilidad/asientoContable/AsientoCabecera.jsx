@@ -32,7 +32,6 @@ export default function AsientoCabecera({
   personal,
   isEdit,
 }) {
-
   return (
     <form onSubmit={onSubmit} className="p-fluid">
       {/* PRIMERA FILA: Empresa, Período, Fecha, Número, Tipo Libro, Moneda, TC */}
@@ -122,25 +121,12 @@ export default function AsientoCabecera({
         </div>
 
         <div style={{ flex: 1 }}>
-          <label htmlFor="esGerencial">¿Es Gerencial?</label>
+          <label htmlFor="esGerencial">Tipo</label>
           <BooleanToggleButton
-            labelTrue="Gerencial"
-            labelFalse="Fiscal"
+            labelTrue="GERENCIAL"
+            labelFalse="FISCAL"
             value={formData.esGerencial || false}
             onChange={(value) => handleChange("esGerencial", value)}
-            disabled={isReadOnly}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="tipoLibro">Tipo Libro</label>
-          <Dropdown
-            id="tipoLibro"
-            value={formData.tipoLibro}
-            options={[
-              { label: "FISCAL", value: "FISCAL" },
-              { label: "GERENCIAL", value: "GERENCIAL" },
-            ]}
-            onChange={(e) => handleChange("tipoLibro", e.value)}
             disabled={isReadOnly}
           />
         </div>
@@ -293,6 +279,7 @@ export default function AsientoCabecera({
       <div
         style={{
           display: "flex",
+          alignItems:"end",
           gap: 10,
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}

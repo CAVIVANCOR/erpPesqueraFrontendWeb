@@ -1,424 +1,348 @@
 // src/pages/TipoDetraccion.jsx
-import React, { useState, useEffect, useRef } from "react";
-import { Navigate } from "react-router-dom";
+import React, { useRef, useState, useEffect } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
-import { Tag } from "primereact/tag";
-import TipoDetraccionForm from "../components/tipoDetraccion/TipoDetraccionForm";
+import { InputNumber } from "primereact/inputnumber";
+import { Checkbox } from "primereact/checkbox";
 import {
-  getTiposDetraccion,
-  getTipoDetraccionPorId,
+  getAllTiposDetraccion,
   crearTipoDetraccion,
   actualizarTipoDetraccion,
   eliminarTipoDetraccion,
 } from "../api/tipoDetraccion";
 import { useAuthStore } from "../shared/stores/useAuthStore";
-import { getResponsiveFontSize } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
+import { getResponsiveFontSize } from "../utils/utils";
+import { Navigate } from "react-router-dom";
 
 export default function TipoDetraccion({ ruta }) {
-  const { usuario } = useAuthStore();
+  const toast = useRef(null);
+  const usuario = useAuthStore((state) => state.usuario);
   const permisos = usePermissions(ruta);
 
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
 
-  const toast = useRef(null);
-  const [tipos, setTipos] = useState([]);
-  const [selectedTipo, setSelectedTipo] = useState(null);
-  const [tipoDialog, setTipoDialog] = useState(false);
-  const [deleteTipoDialog, setDeleteTipoDialog] = useState(false);
-  const [isEdit, setIsEdit] = useState(false);
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [formData, setFormData] = useState({});
+  const [showDialog, setShowDialog] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [toDelete, setToDelete] = useState(null);
+
+  const [formData, setFormData] = useState({
+    codigo: "",
+    nombre: "",
+    tasa: 0,
+    montoMinimo: null,
+    activo: true,
+  });
 
   useEffect(() => {
-    loadData();
+    cargarItems();
   }, []);
 
-  const loadData = async () => {
+  const cargarItems = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const tiposData = await getTiposDetraccion();
-      setTipos(tiposData || []);
-    } catch (error) {
-      console.error("Error al cargar tipos de detracción:", error);
-      toast.current?.show({
+      const data = await getAllTiposDetraccion();
+      setItems(data);
+    } catch (err) {
+      toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar tipos de detracción",
-        life: 3000,
+        detail: "No se pudo cargar la lista.",
       });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
-  const openNew = () => {
-    setFormData({});
-    setSelectedTipo(null);
-    setIsEdit(false);
-    setTipoDialog(true);
+  const handleEdit = (rowData) => {
+    setEditing(rowData);
+    setFormData({
+      codigo: rowData.codigo || "",
+      nombre: rowData.nombre || "",
+      tasa: rowData.tasa || 0,
+      montoMinimo: rowData.montoMinimo || null,
+      activo: rowData.activo !== undefined ? rowData.activo : true,
+    });
+    setShowDialog(true);
   };
 
-  const hideDialog = () => {
-    setTipoDialog(false);
-    setFormData({});
-    setSelectedTipo(null);
+  const handleDelete = (rowData) => {
+    setToDelete(rowData);
+    setShowConfirm(true);
   };
 
-  const editTipo = async (tipo) => {
+  const handleDeleteConfirm = async () => {
+    setShowConfirm(false);
+    if (!toDelete) return;
+    setLoading(true);
     try {
-      setLoading(true);
-      const tipoCompleto = await getTipoDetraccionPorId(tipo.id);
-      setFormData(tipoCompleto);
-      setSelectedTipo(tipo);
-      setIsEdit(true);
-      setTipoDialog(true);
-    } catch (error) {
-      console.error("Error al cargar tipo de detracción:", error);
-      toast.current?.show({
+      await eliminarTipoDetraccion(toDelete.id);
+      toast.current.show({
+        severity: "success",
+        summary: "Eliminado",
+        detail: "Registro eliminado correctamente.",
+      });
+      cargarItems();
+    } catch (err) {
+      toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar tipo de detracción",
-        life: 3000,
+        detail: err.response?.data?.message || "No se pudo eliminar.",
       });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
+    setToDelete(null);
   };
 
-  const saveTipo = async (data) => {
-    const esEdicion = isEdit && selectedTipo;
-
-    if (esEdicion && !permisos.puedeEditar) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Acceso Denegado",
-        detail: "No tiene permisos para editar",
-        life: 3000,
-      });
-      return;
-    }
-    if (!esEdicion && !permisos.puedeCrear) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Acceso Denegado",
-        detail: "No tiene permisos para crear",
-        life: 3000,
-      });
-      return;
-    }
-
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
     try {
-      setLoading(true);
-
-      if (esEdicion) {
-        await actualizarTipoDetraccion(selectedTipo.id, data);
-        toast.current?.show({
+      if (editing && editing.id) {
+        await actualizarTipoDetraccion(editing.id, formData);
+        toast.current.show({
           severity: "success",
-          summary: "Éxito",
-          detail: "Tipo de detracción actualizado correctamente",
-          life: 3000,
+          summary: "Actualizado",
+          detail: "Registro actualizado.",
         });
       } else {
-        await crearTipoDetraccion(data);
-        toast.current?.show({
+        await crearTipoDetraccion(formData);
+        toast.current.show({
           severity: "success",
-          summary: "Éxito",
-          detail: "Tipo de detracción creado correctamente",
-          life: 3000,
+          summary: "Creado",
+          detail: "Registro creado.",
         });
       }
-
-      hideDialog();
-      loadData();
-    } catch (error) {
-      console.error("Error al guardar tipo de detracción:", error);
-      toast.current?.show({
+      setShowDialog(false);
+      setEditing(null);
+      resetForm();
+      cargarItems();
+    } catch (err) {
+      toast.current.show({
         severity: "error",
         summary: "Error",
-        detail:
-          error.response?.data?.message ||
-          "Error al guardar tipo de detracción",
-        life: 3000,
+        detail: err.response?.data?.message || "No se pudo guardar.",
       });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
-  const confirmDeleteTipo = (tipo) => {
-    if (!permisos.puedeEliminar) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Acceso Denegado",
-        detail: "No tiene permisos para eliminar",
-        life: 3000,
-      });
-      return;
-    }
-    setSelectedTipo(tipo);
-    setDeleteTipoDialog(true);
+  const handleAdd = () => {
+    setEditing(null);
+    resetForm();
+    setShowDialog(true);
   };
 
-  const deleteTipoConfirmed = async () => {
-    try {
-      setLoading(true);
-      await eliminarTipoDetraccion(selectedTipo.id);
-
-      toast.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "Tipo de detracción eliminado correctamente",
-        life: 3000,
-      });
-
-      setDeleteTipoDialog(false);
-      setSelectedTipo(null);
-      loadData();
-    } catch (error) {
-      console.error("Error al eliminar tipo de detracción:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail:
-          error.response?.data?.message ||
-          "Error al eliminar tipo de detracción",
-        life: 3000,
-      });
-    } finally {
-      setLoading(false);
-    }
+  const resetForm = () => {
+    setFormData({
+      codigo: "",
+      nombre: "",
+      tasa: 0,
+      montoMinimo: null,
+      activo: true,
+    });
   };
 
-  const hideDeleteTipoDialog = () => {
-    setDeleteTipoDialog(false);
-    setSelectedTipo(null);
-  };
-
-  const activoBodyTemplate = (rowData) => {
-    return (
-      <Tag
-        value={rowData.activo ? "ACTIVO" : "INACTIVO"}
-        severity={rowData.activo ? "success" : "danger"}
-      />
-    );
-  };
-
-  const tasaBodyTemplate = (rowData) => {
-    return `${Number(rowData.tasa).toFixed(2)}%`;
-  };
-
-  const actionBodyTemplate = (rowData) => {
-    return (
-      <div className="flex gap-2">
-        <Button
-          icon="pi pi-pencil"
-          rounded
-          outlined
-          className="p-button-warning"
-          onClick={() => editTipo(rowData)}
-          disabled={!permisos.puedeEditar}
-          tooltip="Editar"
-          tooltipOptions={{ position: "top" }}
-        />
-        <Button
-          icon="pi pi-trash"
-          rounded
-          outlined
-          severity="danger"
-          onClick={() => confirmDeleteTipo(rowData)}
-          disabled={!permisos.puedeEliminar}
-          tooltip="Eliminar"
-          tooltipOptions={{ position: "top" }}
-        />
-      </div>
-    );
-  };
-
-  const headerTemplate = () => {
-    const hasFilters = globalFilter !== "";
-    const clearFilters = () => {
-      setGlobalFilter("");
-    };
-
-    return (
-      <div
-        style={{
-          alignItems: "end",
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <h2>Tipos de Detracción</h2>
-        </div>
-        <div style={{ flex: 1 }}>
-          <Button
-            label="Nuevo"
-            icon="pi pi-plus"
-            severity="success"
-            onClick={openNew}
-            disabled={!permisos.puedeCrear}
-            style={{ width: "100%" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <span className="p-input-icon-left">
-            <i className="pi pi-search" />
-            <InputText
-              type="search"
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              placeholder="Buscar..."
-              style={{ width: "100%" }}
-            />
-          </span>
-        </div>
-        {hasFilters && (
-          <div style={{ flex: 1 }}>
-            <Button
-              icon="pi pi-filter-slash"
-              label="Limpiar"
-              outlined
-              onClick={clearFilters}
-              tooltip="Limpiar todos los filtros"
-              tooltipOptions={{ position: "top" }}
-              style={{ width: "100%" }}
-            />
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const deleteDialogFooter = (
+  const actionBody = (rowData) => (
     <>
       <Button
-        label="No"
-        icon="pi pi-times"
-        outlined
-        onClick={hideDeleteTipoDialog}
+        icon="pi pi-pencil"
+        className="p-button-text p-button-sm"
+        onClick={() => handleEdit(rowData)}
+        aria-label="Editar"
       />
-      <Button
-        label="Sí"
-        icon="pi pi-check"
-        severity="danger"
-        onClick={deleteTipoConfirmed}
-      />
+      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger p-button-sm"
+          onClick={() => handleDelete(rowData)}
+          aria-label="Eliminar"
+        />
+      )}
     </>
   );
 
   return (
-    <div className="card">
+    <div className="p-fluid">
       <Toast ref={toast} />
+      <ConfirmDialog
+        visible={showConfirm}
+        onHide={() => setShowConfirm(false)}
+        message="¿Está seguro que desea eliminar este registro?"
+        header="Confirmar eliminación"
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        accept={handleDeleteConfirm}
+        reject={() => setShowConfirm(false)}
+      />
       <DataTable
-        value={tipos}
+        value={items}
         loading={loading}
-        globalFilter={globalFilter}
-        emptyMessage="No se encontraron tipos de detracción"
+        dataKey="id"
         paginator
-        rows={20}
-        rowsPerPageOptions={[20, 40, 80, 150]}
-        size="small"
-        stripedRows
-        showGridlines
-        onRowClick={(e) => editTipo(e.data)}
-        selectionMode="single"
-        style={{ fontSize: getResponsiveFontSize(), cursor: "pointer" }}
-        header={headerTemplate}
+        rows={10}
+        onRowClick={(e) => handleEdit(e.data)}
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        header={
+          <div
+            style={{
+              alignItems: "center",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h2>Tipos de Detracción</h2>
+            </div>
+            <div style={{ flex: 2 }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                className="p-button-success"
+                size="small"
+                outlined
+                onClick={handleAdd}
+                disabled={loading || !permisos.puedeCrear}
+              />
+            </div>
+          </div>
+        }
       >
+        <Column field="id" header="ID" sortable style={{ width: 80 }} />
+        <Column field="codigo" header="Código" sortable />
+        <Column field="nombre" header="Nombre" sortable />
         <Column
-          field="id"
-          header="ID"
+          field="tasa"
+          header="Tasa (%)"
+          body={(rowData) => `${Number(rowData.tasa).toFixed(2)}%`}
           sortable
-          style={{ width: "80px" }}
         />
         <Column
-          field="codigo"
-          header="Código"
+          field="montoMinimo"
+          header="Monto Mínimo"
+          body={(rowData) =>
+            rowData.montoMinimo
+              ? `S/ ${Number(rowData.montoMinimo).toFixed(2)}`
+              : "-"
+          }
           sortable
-          filter
-          filterPlaceholder="Buscar por código"
-          style={{ width: "120px" }}
-        />
-        <Column
-          field="nombre"
-          header="Nombre"
-          sortable
-          filter
-          filterPlaceholder="Buscar por nombre"
-        />
-        <Column
-          header="Tasa"
-          body={tasaBodyTemplate}
-          sortable
-          style={{ width: "120px" }}
         />
         <Column
           field="activo"
-          header="Estado"
-          body={activoBodyTemplate}
+          header="Activo"
+          body={(rowData) => (rowData.activo ? "Sí" : "No")}
           sortable
-          style={{ width: "120px" }}
         />
         <Column
-          body={actionBodyTemplate}
-          exportable={false}
-          style={{ width: "120px" }}
+          body={actionBody}
           header="Acciones"
+          style={{ width: 130, textAlign: "center" }}
         />
       </DataTable>
-
       <Dialog
-        visible={tipoDialog}
-        style={{ width: "600px" }}
-        header={
-          isEdit
-            ? "Editar Tipo de Detracción"
-            : "Nuevo Tipo de Detracción"
-        }
+        header={editing ? "Editar Tipo de Detracción" : "Nuevo Tipo de Detracción"}
+        visible={showDialog}
+        style={{ width: 500 }}
+        onHide={() => setShowDialog(false)}
         modal
-        className="p-fluid"
-        onHide={hideDialog}
       >
-        <TipoDetraccionForm
-          isEdit={isEdit}
-          defaultValues={formData}
-          onSubmit={saveTipo}
-          onCancel={hideDialog}
-          loading={loading}
-        />
-      </Dialog>
-
-      <Dialog
-        visible={deleteTipoDialog}
-        style={{ width: "450px" }}
-        header="Confirmar"
-        modal
-        footer={deleteDialogFooter}
-        onHide={hideDeleteTipoDialog}
-      >
-        <div className="confirmation-content">
-          <i
-            className="pi pi-exclamation-triangle mr-3"
-            style={{ fontSize: "2rem" }}
-          />
-          {selectedTipo && (
-            <span>
-              ¿Está seguro de eliminar el tipo de detracción{" "}
-              <b>{selectedTipo.nombre}</b>?
-            </span>
-          )}
-        </div>
+        <form onSubmit={handleFormSubmit} className="p-fluid">
+          <div className="p-field">
+            <label htmlFor="codigo">Código*</label>
+            <InputText
+              id="codigo"
+              value={formData.codigo}
+              onChange={(e) =>
+                setFormData({ ...formData, codigo: e.target.value })
+              }
+              required
+              disabled={loading || readOnly}
+              maxLength={10}
+            />
+          </div>
+          <div className="p-field">
+            <label htmlFor="nombre">Nombre*</label>
+            <InputText
+              id="nombre"
+              value={formData.nombre}
+              onChange={(e) =>
+                setFormData({ ...formData, nombre: e.target.value })
+              }
+              required
+              disabled={loading || readOnly}
+              maxLength={200}
+            />
+          </div>
+          <div className="p-field">
+            <label htmlFor="tasa">Tasa (%)*</label>
+            <InputNumber
+              id="tasa"
+              value={formData.tasa}
+              onValueChange={(e) =>
+                setFormData({ ...formData, tasa: e.value })
+              }
+              mode="decimal"
+              minFractionDigits={2}
+              maxFractionDigits={2}
+              min={0}
+              max={100}
+              disabled={loading || readOnly}
+            />
+          </div>
+          <div className="p-field">
+            <label htmlFor="montoMinimo">Monto Mínimo (S/)</label>
+            <InputNumber
+              id="montoMinimo"
+              value={formData.montoMinimo}
+              onValueChange={(e) =>
+                setFormData({ ...formData, montoMinimo: e.value })
+              }
+              mode="decimal"
+              minFractionDigits={2}
+              maxFractionDigits={2}
+              min={0}
+              disabled={loading || readOnly}
+            />
+          </div>
+          <div className="p-field-checkbox">
+            <Checkbox
+              inputId="activo"
+              checked={formData.activo}
+              onChange={(e) =>
+                setFormData({ ...formData, activo: e.checked })
+              }
+              disabled={loading || readOnly}
+            />
+            <label htmlFor="activo">Activo</label>
+          </div>
+          <div className="p-d-flex p-jc-end" style={{ gap: 8 }}>
+            <Button
+              type="button"
+              label="Cancelar"
+              className="p-button-text"
+              onClick={() => setShowDialog(false)}
+              disabled={loading}
+            />
+            <Button
+              type="submit"
+              label={editing ? "Actualizar" : "Crear"}
+              icon="pi pi-save"
+              loading={loading}
+              disabled={readOnly}
+            />
+          </div>
+        </form>
       </Dialog>
     </div>
   );

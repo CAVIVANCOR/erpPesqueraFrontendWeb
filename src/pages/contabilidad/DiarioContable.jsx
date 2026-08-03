@@ -12,11 +12,17 @@ import { Menu } from "primereact/menu";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import { getLineasDiarioContable, exportarSUNAT51, exportarExcel, exportarPDF } from "../../api/contabilidad/diarioContable";
+import { getTiposLibroContableSunat } from "../../api/contabilidad/tipoLibroContableSunat";
+import { getMonedas } from "../../api/moneda";
 import { getEmpresas } from "../../api/empresa";
 import { getPeriodosContables } from "../../api/contabilidad/periodoContable";
 import { getEstadosMultiFuncion } from "../../api/estadoMultiFuncion";
 import { getPlanCuentasContable } from "../../api/contabilidad/planCuentasContable";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
+import { getCentrosCosto } from "../../api/centroCosto";
+import { getActivos } from "../../api/activo";
+import { getSubmodulos } from "../../api/submoduloSistema";
+import { getTiposDocumento } from "../../api/tipoDocumento";
 import { formatearFecha, formatearNumero, getResponsiveFontSize } from "../../utils/utils";
 import EmpresaSelector from "../../components/common/EmpresaSelector";
 import ColorTag from "../../components/shared/ColorTag";
@@ -40,11 +46,25 @@ const DiarioContable = ({ ruta }) => {
   const [estados, setEstados] = useState([]);
   const [cuentas, setCuentas] = useState([]);
   const [entidades, setEntidades] = useState([]);
-
+  const [tiposLibro, setTiposLibro] = useState([]);
+  const [monedas, setMonedas] = useState([]);
+  const [centrosCosto, setCentrosCosto] = useState([]);
+  const [activos, setActivos] = useState([]);
+  const [submodulos, setSubmodulos] = useState([]);
+  const [tiposDocumento, setTiposDocumento] = useState([]);
   const [empresaIdSelector, setEmpresaIdSelector] = useState(usuario?.empresaId || null);
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState(null);
   const [rangoFechas, setRangoFechas] = useState(null);
-  const [tipoLibroFiscal, setTipoLibroFiscal] = useState(true);
+  const [filtroEsGerencial, setFiltroEsGerencial] = useState(false);
+  const [tipoLibroIdFiltro, setTipoLibroIdFiltro] = useState(null);
+  const [monedaIdFiltro, setMonedaIdFiltro] = useState(null);
+  const [centroCostoIdFiltro, setCentroCostoIdFiltro] = useState(null);
+  const [entidadComercialIdFiltro, setEntidadComercialIdFiltro] = useState(null);
+  const [activoIdFiltro, setActivoIdFiltro] = useState(null);
+  const [submoduloOrigenLineaIdFiltro, setSubmoduloOrigenLineaIdFiltro] = useState(null);
+  const [tipoDocumentoOrigenIdFiltro, setTipoDocumentoOrigenIdFiltro] = useState(null);
+  const [numeroDocumentoOrigenFiltro, setNumeroDocumentoOrigenFiltro] = useState('');
+  const [rangoFechasDocumento, setRangoFechasDocumento] = useState(null);
   const [estadoFiltro, setEstadoFiltro] = useState(null);
   const [numeroAsientoFiltro, setNumeroAsientoFiltro] = useState('');
   const [codigoCuentaFiltro, setCodigoCuentaFiltro] = useState('');
@@ -73,6 +93,65 @@ const DiarioContable = ({ ruta }) => {
     });
   }, [periodos, empresaIdSelector]);
 
+
+  const centrosCostoOptions = useMemo(() => {
+    if (lineasFlat.length === 0) return [];
+    const idsUnicos = [...new Set(lineasFlat.map(l => l.centroCostoId).filter(Boolean))];
+    return centrosCosto
+      .filter(cc => idsUnicos.includes(cc.id))
+      .map(cc => ({
+        ...cc,
+        displayLabel: `${cc.Codigo} - ${cc.Descripcion || cc.Nombre}`
+      }));
+  }, [lineasFlat, centrosCosto]);
+
+  const entidadesOptions = useMemo(() => {
+    if (lineasFlat.length === 0) return [];
+    const idsUnicos = [...new Set(lineasFlat.map(l => l.entidadComercialId).filter(Boolean))];
+    return entidades.filter(e => idsUnicos.includes(e.id));
+  }, [lineasFlat, entidades]);
+
+  const activosOptions = useMemo(() => {
+    if (lineasFlat.length === 0) return [];
+    const idsUnicos = [...new Set(lineasFlat.map(l => l.activoId).filter(Boolean))];
+    return activos.filter(a => idsUnicos.includes(a.id));
+  }, [lineasFlat, activos]);
+
+  const submodulosOptions = useMemo(() => {
+    if (lineasFlat.length === 0) return [];
+    const idsUnicos = [...new Set(lineasFlat.map(l => l.submoduloOrigenLineaId).filter(Boolean))];
+    return submodulos.filter(s => idsUnicos.includes(s.id));
+  }, [lineasFlat, submodulos]);
+
+  const tiposDocumentoOptions = useMemo(() => {
+    if (lineasFlat.length === 0) return [];
+    const idsUnicos = [...new Set(lineasFlat.map(l => l.tipoDocumentoOrigenId).filter(Boolean))];
+    return tiposDocumento
+      .filter(td => idsUnicos.includes(td.id))
+      .map(td => ({
+        ...td,
+        displayLabel: `${td.codigo} - ${td.descripcion || 'Sin descripción'}`
+      }));
+  }, [lineasFlat, tiposDocumento]);
+
+  const monedasOptions = useMemo(() => {
+    if (lineasFlat.length === 0) return [];
+    const idsUnicos = [...new Set(lineasFlat.map(l => l.monedaId).filter(Boolean))];
+    return monedas.filter(m => idsUnicos.includes(m.id));
+  }, [lineasFlat, monedas]);
+
+  // LÍNEA 143 - AGREGAR DEBUG:
+const tiposLibroOptions = useMemo(() => {
+  if (lineasFlat.length === 0) return [];
+  const idsUnicos = [...new Set(
+    lineasFlat
+      .map(l => l.tipoLibroId)
+      .filter(id => id !== null && id !== undefined)
+      .map(id => Number(id))
+  )];
+  return tiposLibro.filter(tl => idsUnicos.includes(Number(tl.id)));
+}, [lineasFlat, tiposLibro]);
+
   const estadosAsiento = useMemo(() => {
     return estados.filter(e => [76, 77, 78].includes(Number(e.id)));
   }, [estados]);
@@ -89,7 +168,16 @@ const DiarioContable = ({ ruta }) => {
     empresaIdSelector,
     periodoSeleccionado,
     rangoFechas,
-    tipoLibroFiscal,
+    filtroEsGerencial,
+    tipoLibroIdFiltro,
+    monedaIdFiltro,
+    centroCostoIdFiltro,
+    entidadComercialIdFiltro,
+    activoIdFiltro,
+    submoduloOrigenLineaIdFiltro,
+    tipoDocumentoOrigenIdFiltro,
+    numeroDocumentoOrigenFiltro,
+    rangoFechasDocumento,
     estadoFiltro,
     numeroAsientoFiltro,
     codigoCuentaFiltro,
@@ -122,12 +210,24 @@ const DiarioContable = ({ ruta }) => {
         estadosData,
         cuentasData,
         entidadesData,
+        tiposLibroData,
+        monedasData,
+        centrosCostoData,
+        activosData,
+        submodulosData,
+        tiposDocumentoData,
       ] = await Promise.all([
         getEmpresas(),
         getPeriodosContables(),
         getEstadosMultiFuncion(),
         getPlanCuentasContable(),
         getEntidadesComerciales(),
+        getTiposLibroContableSunat(),
+        getMonedas(),
+        getCentrosCosto(),
+        getActivos(),
+        getSubmodulos(),
+        getTiposDocumento(),
       ]);
 
       setEmpresas(empresasData);
@@ -135,6 +235,12 @@ const DiarioContable = ({ ruta }) => {
       setEstados(estadosData);
       setCuentas(cuentasData);
       setEntidades(entidadesData);
+      setTiposLibro(tiposLibroData);
+      setMonedas(monedasData);
+      setCentrosCosto(centrosCostoData);
+      setActivos(activosData);
+      setSubmodulos(submodulosData);
+      setTiposDocumento(tiposDocumentoData);
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -155,7 +261,17 @@ const DiarioContable = ({ ruta }) => {
         fechaHasta: rangoFechas?.[1],
         numeroAsiento: numeroAsientoFiltro,
         estadoAsientoId: estadoFiltro,
-        tipoLibro: tipoLibroFiscal ? 'FISCAL' : null,
+        esGerencial: filtroEsGerencial,
+        tipoLibroId: tipoLibroIdFiltro,
+        monedaId: monedaIdFiltro,
+        centroCostoId: centroCostoIdFiltro,
+        entidadComercialId: entidadComercialIdFiltro,
+        activoId: activoIdFiltro,
+        submoduloOrigenLineaId: submoduloOrigenLineaIdFiltro,
+        tipoDocumentoOrigenId: tipoDocumentoOrigenIdFiltro,
+        numeroDocumentoOrigen: numeroDocumentoOrigenFiltro,
+        fechaDocumentoDesde: rangoFechasDocumento?.[0],
+        fechaDocumentoHasta: rangoFechasDocumento?.[1],
         codigoCuentaInicia: codigoCuentaFiltro,
         soloCuadrados: soloCuadrados,
         soloDescuadrados: soloDescuadrados,
@@ -171,8 +287,6 @@ const DiarioContable = ({ ruta }) => {
         asientosFiltrados = asientosFiltrados.filter(asiento => !asiento.esSaldoInicial);
       }
 
-      // Convertir a formato plano - SOLO LÍNEAS
-      // El backend ya filtró por soloCuadrados/soloDescuadrados
       const flat = [];
       asientosFiltrados.forEach((asiento, asientoIndex) => {
         asiento.lineas.forEach(linea => {
@@ -181,7 +295,8 @@ const DiarioContable = ({ ruta }) => {
             numeroAsiento: asiento.numeroAsiento,
             fechaAsiento: asiento.fechaAsiento,
             glosaAsiento: asiento.glosaAsiento,
-            tipoLibro: asiento.tipoLibro,
+            esGerencial: asiento.esGerencial,
+            tipoLibroId: asiento.tipoLibroId,
             estado: asiento.estado,
             estaCuadrado: asiento.estaCuadrado,
             esSaldoInicial: asiento.esSaldoInicial,
@@ -194,10 +309,9 @@ const DiarioContable = ({ ruta }) => {
 
       const totalesCalculados = response.totales || { totalDebe: 0, totalHaber: 0 };
       const diferencia = Math.abs(totalesCalculados.totalDebe - totalesCalculados.totalHaber);
-      const TOLERANCIA_CENTAVOS = 0.005; // Medio centavo de tolerancia por redondeos
+      const TOLERANCIA_CENTAVOS = 0.005;
       const estaCuadrado = diferencia < TOLERANCIA_CENTAVOS;
 
-      // Logging profesional para auditoría
       if (!estaCuadrado && diferencia > 0) {
         console.warn('⚠️ DESCUADRE DETECTADO EN LIBRO DIARIO', {
           debe: totalesCalculados.totalDebe.toFixed(2),
@@ -207,7 +321,7 @@ const DiarioContable = ({ ruta }) => {
           empresa: empresaIdSelector,
           timestamp: new Date().toISOString(),
           filtros: {
-            tipoLibro: tipoLibroFiscal ? 'FISCAL' : 'GERENCIAL',
+            tipoLibro: filtroEsGerencial ? 'GERENCIAL' : 'FISCAL',
             rangoFechas: rangoFechas,
             totalAsientos: asientosFiltrados.length
           }
@@ -225,14 +339,13 @@ const DiarioContable = ({ ruta }) => {
         totalLineas: response.totalLineas || 0,
       });
 
-      // Notificación visual para descuadres significativos
       if (!estaCuadrado && diferencia >= 0.01) {
         toast.current?.show({
           severity: "warn",
           summary: "⚠️ Descuadre Detectado",
           detail: `Diferencia: S/ ${formatearNumero(diferencia, 2)} | Debe: ${formatearNumero(totalesCalculados.totalDebe, 2)} | Haber: ${formatearNumero(totalesCalculados.totalHaber, 2)}`,
           life: 8000,
-          sticky: diferencia > 1.00 // Sticky si la diferencia es mayor a S/ 1.00
+          sticky: diferencia > 1.00
         });
       }
 
@@ -252,7 +365,16 @@ const DiarioContable = ({ ruta }) => {
     setEmpresaIdSelector(usuario?.empresaId || null);
     setPeriodoSeleccionado(null);
     setRangoFechas(null);
-    setTipoLibroFiscal(true);
+    setFiltroEsGerencial(false);
+    setTipoLibroIdFiltro(null);
+    setMonedaIdFiltro(null);
+    setCentroCostoIdFiltro(null);
+    setEntidadComercialIdFiltro(null);
+    setActivoIdFiltro(null);
+    setSubmoduloOrigenLineaIdFiltro(null);
+    setTipoDocumentoOrigenIdFiltro(null);
+    setNumeroDocumentoOrigenFiltro('');
+    setRangoFechasDocumento(null);
     setEstadoFiltro(null);
     setNumeroAsientoFiltro('');
     setCodigoCuentaFiltro('');
@@ -278,7 +400,9 @@ const DiarioContable = ({ ruta }) => {
       const params = {
         empresaId: empresaIdSelector,
         periodoContableId: periodoSeleccionado,
-        tipoLibro: tipoLibroFiscal ? 'FISCAL' : null,
+        esGerencial: filtroEsGerencial,
+        tipoLibroId: tipoLibroIdFiltro,
+        monedaId: monedaIdFiltro,
       };
 
       let blob;
@@ -372,8 +496,6 @@ const DiarioContable = ({ ruta }) => {
         });
         return;
       }
-
-      // Aquí iría la lógica de exportación a Excel
 
       toast.current?.show({
         severity: "success",
@@ -535,7 +657,6 @@ const DiarioContable = ({ ruta }) => {
           <h2>📘 Libro Diario</h2>
         </div>
 
-        {/* FILTROS */}
         <div
           style={{
             alignItems: "end",
@@ -623,18 +744,175 @@ const DiarioContable = ({ ruta }) => {
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Tipo Libro</label>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Tipo Asiento</label>
             <BooleanToggleButton
-              value={tipoLibroFiscal}
-              onChange={setTipoLibroFiscal}
-              labelTrue="📘 FISCAL"
-              labelFalse="🟢 GERENCIAL"
-              severityTrue="info"
-              severityFalse="success"
+              value={filtroEsGerencial}
+              onChange={setFiltroEsGerencial}
+              labelTrue="🟢 GERENCIAL"
+              labelFalse="📘 FISCAL"
+              severityTrue="success"
+              severityFalse="info"
               size="small"
             />
           </div>
 
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Tipo Libro SUNAT</label>
+            <Dropdown
+              value={tipoLibroIdFiltro}
+              options={tiposLibroOptions}
+              onChange={(e) => setTipoLibroIdFiltro(e.value)}
+              optionLabel="descripcion"
+              optionValue="id"
+              placeholder="Todos"
+              style={{ width: "100%" }}
+              showClear
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Moneda</label>
+            <Dropdown
+              value={monedaIdFiltro}
+              options={monedasOptions}
+              onChange={(e) => setMonedaIdFiltro(e.value)}
+              optionLabel="simbolo"
+              optionValue="id"
+              placeholder="Todas"
+              style={{ width: "100%" }}
+              showClear
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            marginBottom: 15,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Centro de Costo</label>
+            <Dropdown
+              value={centroCostoIdFiltro}
+              options={centrosCostoOptions}
+              onChange={(e) => setCentroCostoIdFiltro(e.value)}
+              optionLabel="displayLabel"
+              optionValue="id"
+              placeholder="Todos"
+              style={{ width: "100%" }}
+              filter
+              showClear
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Entidad Comercial</label>
+            <Dropdown
+              value={entidadComercialIdFiltro}
+              options={entidadesOptions}
+              onChange={(e) => setEntidadComercialIdFiltro(e.value)}
+              optionLabel="razonSocial"
+              optionValue="id"
+              placeholder="Todas"
+              style={{ width: "100%" }}
+              filter
+              showClear
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Activo</label>
+            <Dropdown
+              value={activoIdFiltro}
+              options={activosOptions}
+              onChange={(e) => setActivoIdFiltro(e.value)}
+              optionLabel="nombre"
+              optionValue="id"
+              placeholder="Todos"
+              style={{ width: "100%" }}
+              filter
+              showClear
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Submódulo Origen</label>
+            <Dropdown
+              value={submoduloOrigenLineaIdFiltro}
+              options={submodulosOptions}
+              onChange={(e) => setSubmoduloOrigenLineaIdFiltro(e.value)}
+              optionLabel="nombre"
+              optionValue="id"
+              placeholder="Todos"
+              style={{ width: "100%" }}
+              filter
+              showClear
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            marginBottom: 15,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Tipo Documento Origen</label>
+            <Dropdown
+              value={tipoDocumentoOrigenIdFiltro}
+              options={tiposDocumentoOptions}
+              onChange={(e) => setTipoDocumentoOrigenIdFiltro(e.value)}
+              optionLabel="displayLabel"
+              optionValue="id"
+              placeholder="Todos"
+              style={{ width: "100%" }}
+              filter
+              showClear
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Número Documento Origen</label>
+            <InputText
+              value={numeroDocumentoOrigenFiltro}
+              onChange={(e) => setNumeroDocumentoOrigenFiltro(e.target.value)}
+              placeholder="Ej: F001-00001234"
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Rango Fechas Documento</label>
+            <Calendar
+              value={rangoFechasDocumento}
+              onChange={(e) => setRangoFechasDocumento(e.value)}
+              selectionMode="range"
+              dateFormat="dd/mm/yy"
+              placeholder="Opcional"
+              style={{ width: "100%" }}
+              showIcon
+              readOnlyInput
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            marginBottom: 15,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
           <div style={{ flex: 1 }}>
             <label style={{ fontWeight: "bold" }}>Estado</label>
             <Dropdown
@@ -708,12 +986,7 @@ const DiarioContable = ({ ruta }) => {
               size="small"
             />
           </div>
-
-
         </div>
-
-
-
         {!loading && lineasFlat.length > 0 && (
           <div style={{
             marginBottom: '0.5rem',
@@ -756,7 +1029,6 @@ const DiarioContable = ({ ruta }) => {
           </div>
         )}
 
-        {/* DATATABLE CONTINUA */}
         {loading ? (
           <div style={{ textAlign: 'center', padding: '2rem' }}>
             <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>

@@ -23,7 +23,7 @@ export default function BooleanToggleButton({
   labelTrue,
   labelFalse,
   severityTrue = "success",
-  severityFalse = "secondary",
+  severityFalse = "primary",
   icon = null,
   size,
   disabled = false,

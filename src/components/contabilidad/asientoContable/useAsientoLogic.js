@@ -29,7 +29,6 @@ export default function useAsientoLogic({
   toast,
 }) {
   const { usuario } = useAuthStore();
-
   // Estados principales
   const [formData, setFormData] = useState({
     empresaId: defaultValues?.empresaId

@@ -9,6 +9,7 @@ import { useForm, Controller } from "react-hook-form";
 import EntidadComercialSelector from "../common/EntidadComercialSelector";
 import PlanCuentaContableSelector from "../common/PlanCuentaContableSelector";
 import { getCategoriaTipoDeudaTributariaActivos } from "../../api/tesoreria/categoriaTipoDeudaTributaria";
+import { getTiposLibroContableSunat } from "../../api/contabilidad/tipoLibroContableSunat";
 import { FRECUENCIA_PAGO_OPTIONS } from "../../utils/utils";
 
 const TipoDeudaTributariaForm = ({
@@ -20,6 +21,8 @@ const TipoDeudaTributariaForm = ({
 }) => {
   const [categorias, setCategorias] = useState([]);
   const [loadingCategorias, setLoadingCategorias] = useState(false);
+  const [tiposLibro, setTiposLibro] = useState([]);
+  const [loadingTiposLibro, setLoadingTiposLibro] = useState(false);
 
   const {
     control,
@@ -35,12 +38,13 @@ const TipoDeudaTributariaForm = ({
       entidadRecaudadoraId: null,
       periodicidad: "MENSUAL",
       cuentaContableId: null,
+      tipoLibroId: null,
       activo: true,
     },
     mode: "onChange",
   });
 
-  // Cargar categorías
+  // Cargar categorías y tipos de libro
   useEffect(() => {
     const loadCategorias = async () => {
       try {
@@ -53,7 +57,21 @@ const TipoDeudaTributariaForm = ({
         setLoadingCategorias(false);
       }
     };
+
+    const loadTiposLibro = async () => {
+      try {
+        setLoadingTiposLibro(true);
+        const tiposLibroData = await getTiposLibroContableSunat();
+        setTiposLibro(tiposLibroData || []);
+      } catch (error) {
+        console.error("Error al cargar tipos de libro:", error);
+      } finally {
+        setLoadingTiposLibro(false);
+      }
+    };
+
     loadCategorias();
+    loadTiposLibro();
   }, []);
 
   useEffect(() => {
@@ -67,6 +85,7 @@ const TipoDeudaTributariaForm = ({
       );
       setValue("periodicidad", defaultValues.periodicidad || "MENSUAL");
       setValue("cuentaContableId", defaultValues.cuentaContableId || null);
+      setValue("tipoLibroId", defaultValues.tipoLibroId || null);
       setValue(
         "activo",
         defaultValues.activo !== undefined ? defaultValues.activo : true
@@ -79,6 +98,7 @@ const TipoDeudaTributariaForm = ({
         entidadRecaudadoraId: null,
         periodicidad: "MENSUAL",
         cuentaContableId: null,
+        tipoLibroId: null,
         activo: true,
       });
     }
@@ -96,6 +116,7 @@ const TipoDeudaTributariaForm = ({
       cuentaContableId: data.cuentaContableId
         ? Number(data.cuentaContableId)
         : null,
+      tipoLibroId: data.tipoLibroId ? Number(data.tipoLibroId) : null,
       activo: Boolean(data.activo),
     };
     onSubmit(datosNormalizados);
@@ -294,6 +315,42 @@ const TipoDeudaTributariaForm = ({
         />
       </div>
 
+      <div className="field mt-4">
+        <label
+          htmlFor="tipoLibroId"
+          className={classNames("font-medium", {
+            "p-error": errors.tipoLibroId,
+          })}
+        >
+          Tipo de Libro Contable SUNAT
+        </label>
+        <Controller
+          name="tipoLibroId"
+          control={control}
+          render={({ field, fieldState }) => (
+            <div className="p-inputgroup">
+              <span className="p-inputgroup-addon">
+                <i className="pi pi-book" />
+              </span>
+              <Dropdown
+                id={field.name}
+                value={field.value}
+                options={tiposLibro}
+                optionLabel="descripcion"
+                optionValue="id"
+                onChange={(e) => field.onChange(e.value)}
+                placeholder="Seleccione un tipo de libro"
+                className={classNames({ "p-invalid": fieldState.error })}
+                disabled={loading || loadingTiposLibro}
+                filter
+                showClear
+                emptyMessage="No hay tipos de libro disponibles"
+              />
+            </div>
+          )}
+        />
+        {getFormErrorMessage("tipoLibroId")}
+      </div>
       <div className="field mt-4">
         <label htmlFor="activo" className="font-medium">
           Estado

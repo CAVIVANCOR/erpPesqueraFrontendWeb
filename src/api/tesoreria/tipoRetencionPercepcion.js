@@ -9,32 +9,32 @@ function getAuthHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
-/**
- * Obtiene todos los tipos de retención/percepción
- */
 export async function getTiposRetencionPercepcion() {
-  try {
-    const response = await axios.get(API_URL, {
-      headers: getAuthHeaders(),
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error al obtener tipos de retención/percepción:', error);
-    throw error;
-  }
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  return res.data;
 }
 
-/**
- * Obtiene un tipo de retención/percepción por ID
- */
 export async function getTipoRetencionPercepcionById(id) {
-  try {
-    const response = await axios.get(`${API_URL}/${id}`, {
-      headers: getAuthHeaders(),
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error al obtener tipo de retención/percepción:', error);
-    throw error;
-  }
+  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function getTiposPorTipo(tipo) {
+  const res = await axios.get(`${API_URL}/tipo/${tipo}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function crearTipoRetencionPercepcion(data) {
+  const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function actualizarTipoRetencionPercepcion(id, data) {
+  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function eliminarTipoRetencionPercepcion(id) {
+  const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
 }

@@ -90,6 +90,7 @@ import TipoDeudaPersonal from "../../pages/TipoDeudaPersonal";
 import TipoAfectacionIGVList from "../../pages/TipoAfectacionIGVList";
 import TipoOperacionSunatList from "../../pages/TipoOperacionSunatList";
 import TipoDetraccion from "../../pages/TipoDetraccion";
+import TipoRetencionPercepcion from "../../pages/TipoRetencionPercepcion";
 import DeudaConPersonal from "../../pages/DeudaConPersonal";
 import PagoDeudaPersonal from "../../pages/PagoDeudaPersonal";
 import TipoDeudaTributaria from "../../pages/TipoDeudaTributaria";
@@ -127,6 +128,9 @@ import Videoconferencia from "../../pages/Videoconferencia";
 import PlanCuentasContable from "../../pages/contabilidad/PlanCuentasContable";
 import PeriodoContable from "../../pages/contabilidad/PeriodoContable";
 import AsientoContable from "../../pages/contabilidad/AsientoContable";
+import Detraccion from "../../pages/contabilidad/Detraccion";
+import Retencion from "../../pages/contabilidad/Retencion";
+import Percepcion from "../../pages/contabilidad/Percepcion";
 import DiarioContable from "../../pages/contabilidad/DiarioContable";
 import MayorContable from "../../pages/contabilidad/MayorContable";
 import BalanceComprobacion from "../../pages/contabilidad/BalanceComprobacion";
@@ -141,9 +145,6 @@ import LetraCambio from "../../pages/LetraCambio";
 import EndosoLetraCambio from "../../pages/EndosoLetraCambio";
 import PagoLetraCambio from "../../pages/PagoLetraCambio";
 import UbicacionLetra from "../../pages/UbicacionLetra";
-import Retencion from "../../pages/Retencion";
-import Percepcion from "../../pages/Percepcion";
-import TipoRetencionPercepcion from "../../pages/TipoRetencionPercepcion";
 import FlujoCajaProyectado from "../../pages/FlujoCajaProyectado";
 import PresupuestoAnual from "../../pages/PresupuestoAnual";
 import EjecucionPresupuestal from "../../pages/EjecucionPresupuestal";
@@ -288,6 +289,10 @@ export default function BaseLayout({ children, onLogout }) {
     tipoDetraccion: {
       label: "Tipos de Detracción",
       componente: <TipoDetraccion ruta="tipoDetraccion" />,
+    },
+    "tipo-retencion-percepcion": {
+      label: "Tipo Retención/Percepción",
+      componente: <TipoRetencionPercepcion ruta="tipo-retencion-percepcion" />,
     },
     deudaConPersonal: {
       label: "Deudas con el Personal",
@@ -512,18 +517,7 @@ export default function BaseLayout({ children, onLogout }) {
       label: "Ubicación de Letra",
       componente: <UbicacionLetra ruta="ubicacion-letra" />,
     },
-    retencion: {
-      label: "Retención",
-      componente: <Retencion ruta="retencion" />,
-    },
-    percepcion: {
-      label: "Percepción",
-      componente: <Percepcion ruta="percepcion" />,
-    },
-    "tipo-retencion-percepcion": {
-      label: "Tipo Retención/Percepción",
-      componente: <TipoRetencionPercepcion ruta="tipo-retencion-percepcion" />,
-    },
+
     "flujo-caja-proyectado": {
       label: "Flujo de Caja Proyectado",
       componente: <FlujoCajaProyectado ruta="flujo-caja-proyectado" />,
@@ -683,6 +677,18 @@ export default function BaseLayout({ children, onLogout }) {
     asientoContable: {
       label: "Asientos Contables",
       componente: <AsientoContable ruta="asientoContable" />,
+    },
+    detraccion: {
+      label: "Detracciones",
+      componente: <Detraccion ruta="detraccion" />,
+    },
+    retencion: {
+      label: "Retenciones",
+      componente: <Retencion ruta="retencion" />,
+    },
+    percepcion: {
+      label: "Percepciones",
+      componente: <Percepcion ruta="percepcion" />,
     },
     detalleAsientoContable: {
       label: "Libro Diario",

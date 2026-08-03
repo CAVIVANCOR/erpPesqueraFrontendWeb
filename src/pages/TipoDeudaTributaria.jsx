@@ -258,9 +258,14 @@ export default function TipoDeudaTributaria({ ruta }) {
       : "-";
   };
 
-const periodicidadBodyTemplate = (rowData) => getFrecuenciaPagoLabel(rowData.periodicidad);
+  const periodicidadBodyTemplate = (rowData) => getFrecuenciaPagoLabel(rowData.periodicidad);
 
 
+  const tipoLibroBodyTemplate = (rowData) => {
+    return rowData.tipoLibroContableSunat
+      ? `${rowData.tipoLibroContableSunat.codigoSunat} - ${rowData.tipoLibroContableSunat.descripcion}`
+      : "-";
+  };
   const actionBodyTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
@@ -457,6 +462,12 @@ const periodicidadBodyTemplate = (rowData) => getFrecuenciaPagoLabel(rowData.per
           body={periodicidadBodyTemplate}
           sortable
           style={{ width: "150px" }}
+        />
+        <Column
+          header="Tipo Libro SUNAT"
+          body={tipoLibroBodyTemplate}
+          sortable
+          style={{ minWidth: "250px" }}
         />
         <Column
           field="activo"

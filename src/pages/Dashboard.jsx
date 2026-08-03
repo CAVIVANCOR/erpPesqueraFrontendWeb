@@ -507,18 +507,6 @@ export default function Dashboard() {
           tab: "operaciones", // ← NUEVO
         },
         {
-          label: "Retención",
-          key: "retencion",
-          icon: "pi-minus-circle",
-          tab: "operaciones", // ← NUEVO
-        },
-        {
-          label: "Percepción",
-          key: "percepcion",
-          icon: "pi-plus-circle",
-          tab: "operaciones", // ← NUEVO
-        },
-        {
           label: "Flujo de Caja Proyectado",
           key: "flujo-caja-proyectado",
           icon: "pi-chart-line",
@@ -587,12 +575,6 @@ export default function Dashboard() {
           tab: "tablas", // ← NUEVO
         },
         {
-          label: "Tipo Retención/Percepción",
-          key: "tipo-retencion-percepcion",
-          icon: "pi-percentage",
-          tab: "tablas", // ← NUEVO
-        },
-        {
           label: "Presupuesto Anual",
           key: "presupuesto-anual",
           icon: "pi-calendar",
@@ -634,6 +616,13 @@ export default function Dashboard() {
           icon: "pi-percentage",
           tab: "tablas", // ← NUEVO
         },
+        {
+          label: "Tipo Retención/Percepción",
+          key: "tipo-retencion-percepcion",
+          icon: "pi-percentage",
+          tab: "tablas", // ← NUEVO
+        },
+
         {
           label: "Tipos Afectación IGV",
           key: "tipoAfectacionIGV",
@@ -747,7 +736,7 @@ export default function Dashboard() {
       titulo: "CONTABILIDAD",
       descripcion: "Plan Contable, Asientos, Períodos y Activos Fijos",
       icono: "pi-calculator",
-      modulos: 11,
+      modulos: 14,
       color: "#E74C3C",
       submenu: [
         {
@@ -784,6 +773,24 @@ export default function Dashboard() {
           label: "Movimientos Activo Fijo",
           key: "movActivoFijo",
           icon: "pi-chart-line",
+          tab: "operaciones",
+        },
+        {
+          label: "Comprobantes de Detraccion",
+          key: "detraccion",
+          icon: "pi-minus-circle",
+          tab: "operaciones",
+        },
+        {
+          label: "Comprobantes de Retenciones",
+          key: "retencion",
+          icon: "pi-percentage",
+          tab: "operaciones",
+        },
+        {
+          label: "Comprobantes de Percepciones",
+          key: "percepcion",
+          icon: "pi-plus-circle",
           tab: "operaciones",
         },
         {

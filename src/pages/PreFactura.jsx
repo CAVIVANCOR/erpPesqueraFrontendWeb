@@ -454,25 +454,23 @@ const PreFactura = ({ ruta }) => {
       }
     }
 
-    // Filtro por tipo de libro
+    // Filtro por tipo de libro (usando PreFactura.esGerencial)
     if (filtroTipoLibro === "FISCAL_SSI") {
-      // Fiscal sin saldos iniciales: FAC, BV, NC, ND
+      // Fiscal sin saldos iniciales: Ventas BLANCAS (esGerencial=false) con FAC, BV, NC, ND
       filtrados = filtrados.filter((item) => {
         const codigo = item.tipoDocumentoFinal?.codigo || item.tipoDocumento?.codigo || "";
-        return ["FAC", "BV", "NC", "ND"].includes(codigo);
+        return item.esGerencial === false && ["FAC", "BV", "NC", "ND"].includes(codigo);
       });
     } else if (filtroTipoLibro === "FISCAL_CSI") {
-      // Fiscal con saldos iniciales: FAC, BV, NC, ND + todos los SI-*
+      // Fiscal con saldos iniciales: Ventas BLANCAS (esGerencial=false) con FAC, BV, NC, ND + SI-*
       filtrados = filtrados.filter((item) => {
         const codigo = item.tipoDocumentoFinal?.codigo || item.tipoDocumento?.codigo || "";
-        return ["FAC", "BV", "NC", "ND"].includes(codigo) || codigo.startsWith("SI-");
+        return item.esGerencial === false && (["FAC", "BV", "NC", "ND"].includes(codigo) || codigo.startsWith("SI-"));
       });
     } else if (filtroTipoLibro === "GERENCIAL") {
-      // Solo gerenciales: codigoSunat="00" excepto OTROS y SI-*
+      // Solo gerenciales: Ventas NEGRAS (esGerencial=true)
       filtrados = filtrados.filter((item) => {
-        const codigo = item.tipoDocumentoFinal?.codigo || item.tipoDocumento?.codigo || "";
-        const codigoSunat = item.tipoDocumentoFinal?.codigoSunat || item.tipoDocumento?.codigoSunat || "";
-        return codigoSunat === "00" && codigo !== "00" && !codigo.startsWith("SI-");
+        return item.esGerencial === true;
       });
     }
     // Si es "TODOS", no se filtra

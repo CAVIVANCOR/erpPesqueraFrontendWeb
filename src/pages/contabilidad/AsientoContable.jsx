@@ -477,7 +477,7 @@ export default function AsientoContable({ ruta }) {
     }
   };
 
-    const limpiarFiltros = () => {
+  const limpiarFiltros = () => {
     setEmpresaFilter(null);
     setPeriodoFilter(null);
     setEstadoFilter(null);
@@ -711,6 +711,10 @@ export default function AsientoContable({ ruta }) {
       style: "currency",
       currency: rowData.moneda?.codigoSunat || "PEN",
     }).format(rowData[field] || 0);
+  };
+  const tipoLibroBodyTemplate = (rowData) => {
+    if (!rowData.tipoLibroContableSunat) return '-';
+    return `${rowData.tipoLibroContableSunat.codigoSunat} - ${rowData.tipoLibroContableSunat.descripcion}`;
   };
 
   const fechaBodyTemplate = (rowData) => {
@@ -1569,6 +1573,13 @@ export default function AsientoContable({ ruta }) {
           header="Fecha"
           body={fechaBodyTemplate}
           sortable
+        />
+        <Column
+          field="tipoLibroContableSunat.descripcion"
+          header="Libro SUNAT"
+          body={tipoLibroBodyTemplate}
+          sortable
+          style={{ minWidth: "100px" }}
         />
         <Column field="glosa" header="Glosa" sortable />
         <Column
