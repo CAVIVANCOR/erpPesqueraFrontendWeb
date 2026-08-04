@@ -17,7 +17,7 @@ export async function getLineasDiarioContable(params) {
 }
 
 export async function exportarSUNAT51(params) {
-  const res = await axios.get(`${API_URL}/contabilidad/diario-contable/exportar/sunat-51`, {
+  const res = await axios.get(`${API_URL}/contabilidad/diario-contable/export/sunat-51`, {
     headers: getAuthHeaders(),
     params,
     responseType: 'blob'
@@ -26,7 +26,7 @@ export async function exportarSUNAT51(params) {
 }
 
 export async function exportarExcel(params) {
-  const res = await axios.get(`${API_URL}/contabilidad/diario-contable/exportar/excel`, {
+  const res = await axios.get(`${API_URL}/contabilidad/diario-contable/export/excel`, {
     headers: getAuthHeaders(),
     params,
     responseType: 'blob'
@@ -35,7 +35,7 @@ export async function exportarExcel(params) {
 }
 
 export async function exportarPDF(params) {
-  const res = await axios.get(`${API_URL}/contabilidad/diario-contable/exportar/pdf`, {
+  const res = await axios.get(`${API_URL}/contabilidad/diario-contable/export/pdf`, {
     headers: getAuthHeaders(),
     params,
     responseType: 'blob'

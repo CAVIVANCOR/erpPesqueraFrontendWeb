@@ -12,6 +12,10 @@ import { Menu } from "primereact/menu";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import { getLineasDiarioContable, exportarSUNAT51, exportarExcel, exportarPDF } from "../../api/contabilidad/diarioContable";
+import { generarLibroDiarioExcel } from "../../components/contabilidad/reports/generarLibroDiarioExcel";
+import { generarLibroDiarioPDF } from "../../components/contabilidad/reports/generarLibroDiarioPDF";
+import TemporaryPDFViewer from "../../components/reports/TemporaryPDFViewer";
+import TemporaryExcelViewer from "../../components/reports/TemporaryExcelViewer";
 import { getTiposLibroContableSunat } from "../../api/contabilidad/tipoLibroContableSunat";
 import { getMonedas } from "../../api/moneda";
 import { getEmpresas } from "../../api/empresa";
@@ -72,6 +76,9 @@ const DiarioContable = ({ ruta }) => {
   const [soloDescuadrados, setSoloDescuadrados] = useState(false);
   const [soloConEntidad, setSoloConEntidad] = useState(false);
   const [filtroSaldoInicial, setFiltroSaldoInicial] = useState('TODOS');
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [showExcelViewer, setShowExcelViewer] = useState(false);
+  const [reportData, setReportData] = useState(null);
 
   const [totales, setTotales] = useState({
     totalDebe: 0,
@@ -141,16 +148,16 @@ const DiarioContable = ({ ruta }) => {
   }, [lineasFlat, monedas]);
 
   // LÍNEA 143 - AGREGAR DEBUG:
-const tiposLibroOptions = useMemo(() => {
-  if (lineasFlat.length === 0) return [];
-  const idsUnicos = [...new Set(
-    lineasFlat
-      .map(l => l.tipoLibroId)
-      .filter(id => id !== null && id !== undefined)
-      .map(id => Number(id))
-  )];
-  return tiposLibro.filter(tl => idsUnicos.includes(Number(tl.id)));
-}, [lineasFlat, tiposLibro]);
+  const tiposLibroOptions = useMemo(() => {
+    if (lineasFlat.length === 0) return [];
+    const idsUnicos = [...new Set(
+      lineasFlat
+        .map(l => l.tipoLibroId)
+        .filter(id => id !== null && id !== undefined)
+        .map(id => Number(id))
+    )];
+    return tiposLibro.filter(tl => idsUnicos.includes(Number(tl.id)));
+  }, [lineasFlat, tiposLibro]);
 
   const estadosAsiento = useMemo(() => {
     return estados.filter(e => [76, 77, 78].includes(Number(e.id)));
@@ -401,8 +408,8 @@ const tiposLibroOptions = useMemo(() => {
         empresaId: empresaIdSelector,
         periodoContableId: periodoSeleccionado,
         esGerencial: filtroEsGerencial,
-        tipoLibroId: tipoLibroIdFiltro,
-        monedaId: monedaIdFiltro,
+        tipoLibroId: tipoLibroIdFiltro || null,
+        monedaId: monedaIdFiltro || null,
       };
 
       let blob;
@@ -411,14 +418,62 @@ const tiposLibroOptions = useMemo(() => {
       if (tipo === 'sunat') {
         blob = await exportarSUNAT51(params);
         filename = `LE_DIARIO_${params.empresaId}_${params.periodoContableId}.txt`;
-      } else if (tipo === 'excel') {
-        blob = await exportarExcel(params);
-        filename = `DiarioContable_${params.empresaId}_${params.periodoContableId}.xlsx`;
-      } else if (tipo === 'pdf') {
-        blob = await exportarPDF(params);
-        filename = `DiarioContable_${params.empresaId}_${params.periodoContableId}.pdf`;
-      }
+      } else if (tipo === 'excel' || tipo === 'pdf') {
+        if (lineasFlat.length === 0) {
+          toast.current?.show({
+            severity: "warn",
+            summary: "Sin datos",
+            detail: "No hay líneas para exportar",
+            life: 3000,
+          });
+          return;
+        }
+        const empresaData = empresas.find(e => Number(e.id) === Number(empresaIdSelector));
+        const periodoData = periodos.find(p => Number(p.id) === Number(periodoSeleccionado));
+        if (!empresaData || !periodoData) {
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "No se encontraron datos de empresa o periodo",
+            life: 3000,
+          });
+          return;
+        }
+        const monedaData = lineasFlat[0]?.moneda || { nombreLargo: "SOLES" };
 
+        const reportDataPrepared = {
+          empresa: {
+            ruc: empresaData?.ruc || "",
+            razonSocial: empresaData?.razonSocial || ""
+          },
+          periodo: {
+            nombrePeriodo: periodoData?.nombrePeriodo || ""
+          },
+          lineas: (() => {
+            console.log('═══════════════════════════════════════════════════');
+            console.log('📊 DIAGNÓSTICO COMPLETO - DiarioContable.jsx');
+            console.log('═══════════════════════════════════════════════════');
+            console.log('Total líneas:', lineasFlat.length);
+            console.log('Primera línea COMPLETA:', lineasFlat[0]);
+            console.log('Campos disponibles:', Object.keys(lineasFlat[0] || {}));
+            console.log('═══════════════════════════════════════════════════');
+            return lineasFlat;
+          })(),
+          totales: {
+            totalDebe: totales.totalDebe,
+            totalHaber: totales.totalHaber
+          }
+        };
+
+        setReportData(reportDataPrepared);
+
+        if (tipo === 'excel') {
+          setShowExcelViewer(true);
+        } else {
+          setShowPDFViewer(true);
+        }
+        return;
+      }
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -1121,6 +1176,24 @@ const tiposLibroOptions = useMemo(() => {
           </DataTable>
         )}
       </div>
+
+      <TemporaryPDFViewer
+        visible={showPDFViewer}
+        onHide={() => setShowPDFViewer(false)}
+        generatePDF={generarLibroDiarioPDF}
+        data={reportData}
+        fileName={`LibroDiario_${empresaIdSelector}_${periodoSeleccionado}.pdf`}
+        title="Libro Diario - Formato 5.1"
+      />
+
+      <TemporaryExcelViewer
+        visible={showExcelViewer}
+        onHide={() => setShowExcelViewer(false)}
+        generateExcel={generarLibroDiarioExcel}
+        data={reportData}
+        fileName={`LibroDiario_${empresaIdSelector}_${periodoSeleccionado}.xlsx`}
+        title="Libro Diario - Formato 5.1"
+      />
     </div>
   );
 };
