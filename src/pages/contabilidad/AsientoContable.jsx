@@ -74,6 +74,10 @@ export default function AsientoContable({ ruta }) {
   const [filtroEsGerencial, setFiltroEsGerencial] = useState('SOLO_FISCAL');
   const [filtroTipoLibroId, setFiltroTipoLibroId] = useState(null);
   const [tiposLibroSunat, setTiposLibroSunat] = useState([]);
+  const [filtroEntidadComercialId, setFiltroEntidadComercialId] = useState(null);
+  const [filtroActivoId, setFiltroActivoId] = useState(null);
+  const [entidadesDisponibles, setEntidadesDisponibles] = useState([]);
+  const [activosDisponibles, setActivosDisponibles] = useState([]);
 
   useEffect(() => {
     cargarDatos();
@@ -81,11 +85,14 @@ export default function AsientoContable({ ruta }) {
 
   useEffect(() => {
     filtrarItems();
-  }, [items, empresaFilter, periodoFilter, estadoFilter, rangoFechas, filtroSaldoInicial, filtroSubmodulo, filtroProcesoOrigenId, filtroEsGerencial, filtroTipoLibroId]);
-
+  }, [items, empresaFilter, periodoFilter, estadoFilter, rangoFechas, filtroSaldoInicial, filtroSubmodulo, filtroProcesoOrigenId, filtroEsGerencial, filtroTipoLibroId, filtroEntidadComercialId, filtroActivoId]);
   useEffect(() => {
     filtrarPeriodosPorEmpresa();
   }, [empresaFilter, periodos]);
+
+  useEffect(() => {
+    extraerEntidadesYActivosUnicos();
+  }, [itemsFiltrados]);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -94,23 +101,17 @@ export default function AsientoContable({ ruta }) {
         asientosData,
         empresasData,
         periodosData,
-        estadosData,
         monedasData,
-        tiposLibroData,
       ] = await Promise.all([
         getAsientoContable(),
         getEmpresas(),
         getPeriodosContables(),
-        getEstadosMultiFuncionPorTipoProviene(20),
         getMonedas(),
-        getTiposLibroContableSunat(),
       ]);
       setItems(asientosData);
       setEmpresas(empresasData);
       setPeriodos(periodosData);
-      setEstados(estadosData);
       setMonedas(monedasData);
-      setTiposLibroSunat(tiposLibroData || []);
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -121,6 +122,91 @@ export default function AsientoContable({ ruta }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const extraerEntidadesYActivosUnicos = () => {
+    // Extraer todas las opciones únicas de los registros VISIBLES (itemsFiltrados)
+    const entidadesMap = new Map();
+    const activosMap = new Map();
+    const estadosMap = new Map();
+    const submodulosMap = new Map();
+    const tiposLibroMap = new Map();
+
+    itemsFiltrados.forEach(asiento => {
+      // Estados
+      if (asiento.estadoId && asiento.estado) {
+        estadosMap.set(
+          Number(asiento.estadoId),
+          {
+            id: Number(asiento.estadoId),
+            descripcion: asiento.estado.descripcion
+          }
+        );
+      }
+
+      // Submódulos Origen
+      if (asiento.submoduloOrigenId && asiento.submoduloOrigen) {
+        submodulosMap.set(
+          Number(asiento.submoduloOrigenId),
+          {
+            id: Number(asiento.submoduloOrigenId),
+            nombre: asiento.submoduloOrigen.nombre
+          }
+        );
+      }
+
+      // Tipos de Libro SUNAT
+      if (asiento.tipoLibroId && asiento.tipoLibroContableSunat) {
+        tiposLibroMap.set(
+          Number(asiento.tipoLibroId),
+          {
+            id: Number(asiento.tipoLibroId),
+            codigoSunat: asiento.tipoLibroContableSunat.codigoSunat,
+            descripcion: asiento.tipoLibroContableSunat.descripcion
+          }
+        );
+      }
+
+      // Extraer de detalles
+      if (asiento.detalles && Array.isArray(asiento.detalles)) {
+        asiento.detalles.forEach(detalle => {
+          // Entidades Comerciales
+          if (detalle.entidadComercialId && detalle.entidadComercial) {
+            entidadesMap.set(
+              Number(detalle.entidadComercialId),
+              {
+                id: Number(detalle.entidadComercialId),
+                razonSocial: detalle.entidadComercial.razonSocial || 'Sin nombre'
+              }
+            );
+          }
+          // Activos
+          if (detalle.activoId && detalle.activo) {
+            activosMap.set(
+              Number(detalle.activoId),
+              {
+                id: Number(detalle.activoId),
+                nombre: detalle.activo.nombre || 'Sin nombre'
+              }
+            );
+          }
+        });
+      }
+    });
+
+    // Actualizar estados con datos dinámicos
+    setEntidadesDisponibles(Array.from(entidadesMap.values()).sort((a, b) =>
+      a.razonSocial.localeCompare(b.razonSocial)
+    ));
+    setActivosDisponibles(Array.from(activosMap.values()).sort((a, b) =>
+      a.nombre.localeCompare(b.nombre)
+    ));
+    setEstados(Array.from(estadosMap.values()).sort((a, b) =>
+      a.descripcion.localeCompare(b.descripcion)
+    ));
+    setTiposLibroSunat(Array.from(tiposLibroMap.values()).sort((a, b) =>
+      a.codigoSunat.localeCompare(b.codigoSunat)
+    ));
   };
 
   const filtrarPeriodosPorEmpresa = () => {
@@ -205,6 +291,26 @@ export default function AsientoContable({ ruta }) {
       filtrados = filtrados.filter(
         (item) => item.procesoOrigenId && item.procesoOrigenId.toString().includes(filtroProcesoOrigenId)
       );
+    }
+
+    // Filtro por Entidad Comercial (desde detalles)
+    if (filtroEntidadComercialId) {
+      filtrados = filtrados.filter((item) => {
+        if (!item.detalles || !Array.isArray(item.detalles)) return false;
+        return item.detalles.some(d =>
+          Number(d.entidadComercialId) === Number(filtroEntidadComercialId)
+        );
+      });
+    }
+
+    // Filtro por Activo (desde detalles)
+    if (filtroActivoId) {
+      filtrados = filtrados.filter((item) => {
+        if (!item.detalles || !Array.isArray(item.detalles)) return false;
+        return item.detalles.some(d =>
+          Number(d.activoId) === Number(filtroActivoId)
+        );
+      });
     }
 
     setItemsFiltrados(filtrados);
@@ -487,6 +593,8 @@ export default function AsientoContable({ ruta }) {
     setFiltroProcesoOrigenId('');
     setFiltroEsGerencial('SOLO_FISCAL');
     setFiltroTipoLibroId(null);
+    setFiltroEntidadComercialId(null);
+    setFiltroActivoId(null);
   };
   const validarAsientosParaUnir = (asientos) => {
     // Validación 1: Cantidad mínima
@@ -1414,7 +1522,7 @@ export default function AsientoContable({ ruta }) {
                   value={filtroSubmodulo}
                   options={Array.from(
                     new Map(
-                      items
+                      itemsFiltrados
                         .filter(i => i.submoduloOrigen)
                         .map(i => [i.submoduloOrigenId, {
                           label: i.submoduloOrigen.nombre,
@@ -1493,6 +1601,42 @@ export default function AsientoContable({ ruta }) {
                   onClick={toggleFiltroSaldoInicial}
                   style={{ width: '100%' }}
                   tooltip="Filtrar por saldos iniciales"
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="filtroEntidadComercial">Cliente/Proveedor</label>
+                <Dropdown
+                  id="filtroEntidadComercial"
+                  value={filtroEntidadComercialId}
+                  options={entidadesDisponibles.map((e) => ({
+                    label: e.razonSocial,
+                    value: Number(e.id),
+                  }))}
+                  onChange={(e) => setFiltroEntidadComercialId(e.value)}
+                  placeholder="Todos"
+                  showClear
+                  style={{ width: "100%" }}
+                  onClear={() => setFiltroEntidadComercialId(null)}
+                  filter
+                  filterBy="label"
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="filtroActivo">Activo Fijo</label>
+                <Dropdown
+                  id="filtroActivo"
+                  value={filtroActivoId}
+                  options={activosDisponibles.map((a) => ({
+                    label: a.nombre,
+                    value: Number(a.id),
+                  }))}
+                  onChange={(e) => setFiltroActivoId(e.value)}
+                  placeholder="Todos"
+                  showClear
+                  style={{ width: "100%" }}
+                  onClear={() => setFiltroActivoId(null)}
+                  filter
+                  filterBy="label"
                 />
               </div>
               <div style={{ flex: 0.25 }}>

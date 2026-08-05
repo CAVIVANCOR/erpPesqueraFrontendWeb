@@ -465,6 +465,12 @@ export default function MovimientoActivoFijo({ ruta }) {
         className="cursor-pointer"
       >
         <Column
+          field="id"
+          header="ID"
+          sortable
+          style={{ minWidth: "80px" }}
+        />
+        <Column
           field="empresa.razonSocial"
           header="Empresa"
           body={empresaBodyTemplate}
