@@ -2,7 +2,7 @@
 import ExcelJS from "exceljs";
 
 export async function generarLibroDiarioExcel(data) {
-  const { empresa, periodo, lineas, totales } = data;
+  const { empresa, periodo, lineas, totales, moneda } = data;
 
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Libro Diario");
@@ -128,7 +128,7 @@ export async function generarLibroDiarioExcel(data) {
     // FILA 5: Expresado en
     worksheet.mergeCells(`A${row}:${lastCol}${row}`);
     const cellMoneda = worksheet.getCell(`A${row}`);
-    cellMoneda.value = `Expresado en ${lineas[0]?.moneda?.nombreLargo || "SOLES"}`;
+    cellMoneda.value = `Expresado en ${moneda?.nombreLargo || "SOLES"}`;
     cellMoneda.font = { size: 9 };
     cellMoneda.alignment = { horizontal: "left", vertical: "middle" };
     worksheet.getRow(row).height = 14;
@@ -141,7 +141,7 @@ export async function generarLibroDiarioExcel(data) {
       "DESCRIPCION\nOPERACION",
       "CL",
       "CORRELATIVO",
-      "N°\nDOCUMENT",
+      "N°\nDOCUMENTO",
       "CODIGO",
       "DENOMINACION",
       "ANEXO",
@@ -198,7 +198,7 @@ export async function generarLibroDiarioExcel(data) {
     worksheet.getCell(row, 2).font = { size: 8 };
 
     // DESCRIPCION OPERACION
-    const descripcion = `${linea.glosaAsiento || ""} ${linea.glosa || ""}`.trim();
+    const descripcion = `${linea.glosa || ""}`.trim();
     worksheet.getCell(row, 3).value = descripcion;
     worksheet.getCell(row, 3).alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
     worksheet.getCell(row, 3).border = borderThin;

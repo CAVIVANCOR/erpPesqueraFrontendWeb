@@ -439,7 +439,10 @@ const DiarioContable = ({ ruta }) => {
           });
           return;
         }
-        const monedaData = lineasFlat[0]?.moneda || { nombreLargo: "SOLES" };
+        // REGLA: El reporte SIEMPRE debe mostrar "Expresado en SOLES"
+        // Buscamos la moneda con id="1" en el array de monedas disponibles
+        const monedaSoles = monedas.find(m => m.id === "1" || Number(m.id) === 1);
+        const monedaData = monedaSoles || { id: "1", nombreLargo: "SOLES" };
 
         const reportDataPrepared = {
           empresa: {
@@ -449,16 +452,8 @@ const DiarioContable = ({ ruta }) => {
           periodo: {
             nombrePeriodo: periodoData?.nombrePeriodo || ""
           },
-          lineas: (() => {
-            console.log('═══════════════════════════════════════════════════');
-            console.log('📊 DIAGNÓSTICO COMPLETO - DiarioContable.jsx');
-            console.log('═══════════════════════════════════════════════════');
-            console.log('Total líneas:', lineasFlat.length);
-            console.log('Primera línea COMPLETA:', lineasFlat[0]);
-            console.log('Campos disponibles:', Object.keys(lineasFlat[0] || {}));
-            console.log('═══════════════════════════════════════════════════');
-            return lineasFlat;
-          })(),
+          moneda: monedaData,
+         lineas: lineasFlat,
           totales: {
             totalDebe: totales.totalDebe,
             totalHaber: totales.totalHaber
