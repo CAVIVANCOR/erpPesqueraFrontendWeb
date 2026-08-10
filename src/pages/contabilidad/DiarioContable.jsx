@@ -295,10 +295,9 @@ const DiarioContable = ({ ruta }) => {
       }
 
       const flat = [];
-      asientosFiltrados.forEach((asiento, asientoIndex) => {
+      asientosFiltrados.forEach((asiento) => {
         asiento.lineas.forEach(linea => {
           flat.push({
-            _asientoIndex: asientoIndex,
             numeroAsiento: asiento.numeroAsiento,
             fechaAsiento: asiento.fechaAsiento,
             glosaAsiento: asiento.glosaAsiento,
@@ -307,6 +306,8 @@ const DiarioContable = ({ ruta }) => {
             estado: asiento.estado,
             estaCuadrado: asiento.estaCuadrado,
             esSaldoInicial: asiento.esSaldoInicial,
+            asientoContable: asiento.asientoContable,
+            planCuentaContable: linea.planCuenta,
             ...linea,
           });
         });
@@ -330,7 +331,7 @@ const DiarioContable = ({ ruta }) => {
           filtros: {
             tipoLibro: filtroEsGerencial ? 'GERENCIAL' : 'FISCAL',
             rangoFechas: rangoFechas,
-            totalAsientos: asientosFiltrados.length
+            totalAsientos: response.totalAsientos || 0
           }
         });
       }
@@ -342,7 +343,7 @@ const DiarioContable = ({ ruta }) => {
       });
 
       setEstadisticas({
-        totalAsientos: asientosFiltrados.length,
+        totalAsientos: response.totalAsientos || 0,
         totalLineas: response.totalLineas || 0,
       });
 
@@ -453,7 +454,7 @@ const DiarioContable = ({ ruta }) => {
             nombrePeriodo: periodoData?.nombrePeriodo || ""
           },
           moneda: monedaData,
-         lineas: lineasFlat,
+          lineas: lineasFlat,
           totales: {
             totalDebe: totales.totalDebe,
             totalHaber: totales.totalHaber
@@ -997,7 +998,6 @@ const DiarioContable = ({ ruta }) => {
               tooltip="Busca cuentas que INICIEN con este código"
             />
           </div>
-
           <div style={{ flex: 1, minWidth: '180px' }}>
             <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Solo Cuadrados</label>
             <BooleanToggleButton

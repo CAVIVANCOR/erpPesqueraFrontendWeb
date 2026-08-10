@@ -1,5 +1,6 @@
 // src/components/contabilidad/asientoContable/AsientoCabecera.jsx
-import React from "react";
+// src/components/contabilidad/asientoContable/AsientoCabecera.jsx
+import React, { useState } from "react";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { InputText } from "primereact/inputtext";
@@ -9,6 +10,7 @@ import { Button } from "primereact/button";
 import BooleanToggleButton from "../../common/BooleanToggleButton";
 import AuditoriaDialog from "../../common/AuditoriaDialog";
 import { useAuthStore } from "../../../shared/stores/useAuthStore";
+import OrigenAsientoViewer from "../../common/origenAsiento/OrigenAsientoViewer";
 
 export default function AsientoCabecera({
   formData,
@@ -32,6 +34,8 @@ export default function AsientoCabecera({
   personal,
   isEdit,
 }) {
+  const [showOrigenViewer, setShowOrigenViewer] = useState(false);
+
   return (
     <form onSubmit={onSubmit} className="p-fluid">
       {/* PRIMERA FILA: Empresa, Período, Fecha, Número, Tipo Libro, Moneda, TC */}
@@ -279,7 +283,7 @@ export default function AsientoCabecera({
       <div
         style={{
           display: "flex",
-          alignItems:"end",
+          alignItems: "end",
           gap: 10,
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
@@ -316,6 +320,24 @@ export default function AsientoCabecera({
             />
           </div>
         )}
+
+        {/* Botón Ver Origen: Solo si tiene submoduloOrigen y procesoOrigenId */}
+        {isEdit && formData.submoduloOrigen?.nombreModeloOrigen && formData.procesoOrigenId && (
+          <div style={{ flex: 1 }}>
+            <Button
+              label="Ver Origen"
+              icon="pi pi-eye"
+              severity="info"
+              size="small"
+              raised
+              type="button"
+              onClick={() => setShowOrigenViewer(true)}
+              tooltip={`Ver ${formData.submoduloOrigen?.nombreModeloOrigen}`}
+              tooltipOptions={{ position: 'top' }}
+            />
+          </div>
+        )}
+
         <div style={{ flex: 1 }}>
           <Button
             label="Cancelar"
@@ -379,7 +401,13 @@ export default function AsientoCabecera({
         )}
       </div>
 
-
+      {/* Viewer de Origen del Asiento */}
+      <OrigenAsientoViewer
+        nombreModeloOrigen={formData.submoduloOrigen?.nombreModeloOrigen}
+        procesoOrigenId={formData.procesoOrigenId}
+        visible={showOrigenViewer}
+        onHide={() => setShowOrigenViewer(false)}
+      />
     </form>
   );
 }

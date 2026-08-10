@@ -8,24 +8,38 @@ import { Tag } from "primereact/tag";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
-import { Checkbox } from "primereact/checkbox";
+import { Menu } from "primereact/menu";
 import { Accordion, AccordionTab } from "primereact/accordion";
+import { SelectButton } from "primereact/selectbutton";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import { getLineasMayorContable } from "../../api/contabilidad/mayorContable";
+import { getTiposLibroContableSunat } from "../../api/contabilidad/tipoLibroContableSunat";
+import { getMonedas } from "../../api/moneda";
 import { getEmpresas } from "../../api/empresa";
 import { getPeriodosContables } from "../../api/contabilidad/periodoContable";
 import { getEstadosMultiFuncion } from "../../api/estadoMultiFuncion";
 import { getPlanCuentasContable } from "../../api/contabilidad/planCuentasContable";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
+import { getCentrosCosto } from "../../api/centroCosto";
+import { getActivos } from "../../api/activo";
+import { getSubmodulos } from "../../api/submoduloSistema";
+import { getTiposDocumento } from "../../api/tipoDocumento";
 import { formatearFecha, formatearNumero, getResponsiveFontSize } from "../../utils/utils";
 import EmpresaSelector from "../../components/common/EmpresaSelector";
 import ColorTag from "../../components/shared/ColorTag";
+import BooleanToggleButton from "../../components/common/BooleanToggleButton";
+import { exportarSUNAT61, exportarExcel, exportarPDF } from "../../api/contabilidad/mayorContable";
+import { generarLibroMayorExcel } from "../../components/contabilidad/reports/generarLibroMayorExcel";
+import { generarLibroMayorPDF } from "../../components/contabilidad/reports/generarLibroMayorPDF";
+import TemporaryPDFViewer from "../../components/reports/TemporaryPDFViewer";
+import TemporaryExcelViewer from "../../components/reports/TemporaryExcelViewer";
 
 const MayorContable = ({ ruta }) => {
   const usuario = useAuthStore((state) => state.usuario);
   const permisos = usePermissions(ruta);
   const toast = useRef(null);
+  const menuExport = useRef(null);
 
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
@@ -38,16 +52,37 @@ const MayorContable = ({ ruta }) => {
   const [estados, setEstados] = useState([]);
   const [planCuentas, setPlanCuentas] = useState([]);
   const [entidades, setEntidades] = useState([]);
+  const [tiposLibro, setTiposLibro] = useState([]);
+  const [monedas, setMonedas] = useState([]);
+  const [centrosCosto, setCentrosCosto] = useState([]);
+  const [activos, setActivos] = useState([]);
+  const [submodulos, setSubmodulos] = useState([]);
+  const [tiposDocumento, setTiposDocumento] = useState([]);
 
   const [empresaIdSelector, setEmpresaIdSelector] = useState(usuario?.empresaId || null);
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState(null);
   const [rangoFechas, setRangoFechas] = useState(null);
-  const [tipoLibroFiltro, setTipoLibroFiltro] = useState(null);
+  const [filtroEsGerencial, setFiltroEsGerencial] = useState(false);
+  const [tipoLibroIdFiltro, setTipoLibroIdFiltro] = useState(null);
+  const [monedaIdFiltro, setMonedaIdFiltro] = useState(null);
+  const [centroCostoIdFiltro, setCentroCostoIdFiltro] = useState(null);
+  const [entidadComercialIdFiltro, setEntidadComercialIdFiltro] = useState(null);
+  const [activoIdFiltro, setActivoIdFiltro] = useState(null);
+  const [submoduloOrigenLineaIdFiltro, setSubmoduloOrigenLineaIdFiltro] = useState(null);
+  const [tipoDocumentoOrigenIdFiltro, setTipoDocumentoOrigenIdFiltro] = useState(null);
+  const [numeroDocumentoOrigenFiltro, setNumeroDocumentoOrigenFiltro] = useState('');
+  const [rangoFechasDocumento, setRangoFechasDocumento] = useState(null);
   const [estadoFiltro, setEstadoFiltro] = useState(null);
   const [cuentaFiltro, setCuentaFiltro] = useState(null);
+  const [numeroAsientoFiltro, setNumeroAsientoFiltro] = useState('');
   const [codigoCuentaFiltro, setCodigoCuentaFiltro] = useState('');
+  const [soloCuadrados, setSoloCuadrados] = useState(false);
+  const [soloDescuadrados, setSoloDescuadrados] = useState(false);
   const [soloConEntidad, setSoloConEntidad] = useState(false);
   const [filtroSaldoInicial, setFiltroSaldoInicial] = useState('TODOS');
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [showExcelViewer, setShowExcelViewer] = useState(false);
+  const [reportData, setReportData] = useState(null);
 
   const [totales, setTotales] = useState({
     totalDebe: 0,
@@ -67,6 +102,70 @@ const MayorContable = ({ ruta }) => {
     });
   }, [periodos, empresaIdSelector]);
 
+  const centrosCostoOptions = useMemo(() => {
+    if (cuentas.length === 0) return [];
+    const movimientos = cuentas.flatMap(c => c.movimientos || []);
+    const idsUnicos = [...new Set(movimientos.map(l => l.centroCostoId).filter(Boolean))];
+    return centrosCosto
+      .filter(cc => idsUnicos.includes(cc.id))
+      .map(cc => ({
+        ...cc,
+        displayLabel: `${cc.Codigo} - ${cc.Descripcion || cc.Nombre}`
+      }));
+  }, [cuentas, centrosCosto]);
+
+  const entidadesOptions = useMemo(() => {
+    if (cuentas.length === 0) return [];
+    const movimientos = cuentas.flatMap(c => c.movimientos || []);
+    const idsUnicos = [...new Set(movimientos.map(l => l.entidadComercialId).filter(Boolean))];
+    return entidades.filter(e => idsUnicos.includes(e.id));
+  }, [cuentas, entidades]);
+
+  const activosOptions = useMemo(() => {
+    if (cuentas.length === 0) return [];
+    const movimientos = cuentas.flatMap(c => c.movimientos || []);
+    const idsUnicos = [...new Set(movimientos.map(l => l.activoId).filter(Boolean))];
+    return activos.filter(a => idsUnicos.includes(a.id));
+  }, [cuentas, activos]);
+
+  const submodulosOptions = useMemo(() => {
+    if (cuentas.length === 0) return [];
+    const movimientos = cuentas.flatMap(c => c.movimientos || []);
+    const idsUnicos = [...new Set(movimientos.map(l => l.submoduloOrigenLineaId).filter(Boolean))];
+    return submodulos.filter(s => idsUnicos.includes(s.id));
+  }, [cuentas, submodulos]);
+
+  const tiposDocumentoOptions = useMemo(() => {
+    if (cuentas.length === 0) return [];
+    const movimientos = cuentas.flatMap(c => c.movimientos || []);
+    const idsUnicos = [...new Set(movimientos.map(l => l.tipoDocumentoOrigenId).filter(Boolean))];
+    return tiposDocumento
+      .filter(td => idsUnicos.includes(td.id))
+      .map(td => ({
+        ...td,
+        displayLabel: `${td.codigo} - ${td.descripcion || 'Sin descripción'}`
+      }));
+  }, [cuentas, tiposDocumento]);
+
+  const monedasOptions = useMemo(() => {
+    if (cuentas.length === 0) return [];
+    const movimientos = cuentas.flatMap(c => c.movimientos || []);
+    const idsUnicos = [...new Set(movimientos.map(l => l.monedaId).filter(Boolean))];
+    return monedas.filter(m => idsUnicos.includes(m.id));
+  }, [cuentas, monedas]);
+
+  const tiposLibroOptions = useMemo(() => {
+    if (cuentas.length === 0) return [];
+    const movimientos = cuentas.flatMap(c => c.movimientos || []);
+    const idsUnicos = [...new Set(
+      movimientos
+        .map(l => l.asientoContable?.tipoLibroId)
+        .filter(id => id !== null && id !== undefined)
+        .map(id => Number(id))
+    )];
+    return tiposLibro.filter(tl => idsUnicos.includes(Number(tl.id)));
+  }, [cuentas, tiposLibro]);
+
   const estadosAsiento = useMemo(() => {
     return estados.filter(e => [76, 77, 78].includes(Number(e.id)));
   }, [estados]);
@@ -83,10 +182,22 @@ const MayorContable = ({ ruta }) => {
     empresaIdSelector,
     periodoSeleccionado,
     rangoFechas,
-    tipoLibroFiltro,
+    filtroEsGerencial,
+    tipoLibroIdFiltro,
+    monedaIdFiltro,
+    centroCostoIdFiltro,
+    entidadComercialIdFiltro,
+    activoIdFiltro,
+    submoduloOrigenLineaIdFiltro,
+    tipoDocumentoOrigenIdFiltro,
+    numeroDocumentoOrigenFiltro,
+    rangoFechasDocumento,
     estadoFiltro,
     cuentaFiltro,
+    numeroAsientoFiltro,
     codigoCuentaFiltro,
+    soloCuadrados,
+    soloDescuadrados,
     soloConEntidad,
     filtroSaldoInicial,
   ]);
@@ -114,12 +225,24 @@ const MayorContable = ({ ruta }) => {
         estadosData,
         cuentasData,
         entidadesData,
+        tiposLibroData,
+        monedasData,
+        centrosCostoData,
+        activosData,
+        submodulosData,
+        tiposDocumentoData,
       ] = await Promise.all([
         getEmpresas(),
         getPeriodosContables(),
         getEstadosMultiFuncion(),
         getPlanCuentasContable(),
         getEntidadesComerciales(),
+        getTiposLibroContableSunat(),
+        getMonedas(),
+        getCentrosCosto(),
+        getActivos(),
+        getSubmodulos(),
+        getTiposDocumento(),
       ]);
 
       setEmpresas(empresasData);
@@ -127,6 +250,12 @@ const MayorContable = ({ ruta }) => {
       setEstados(estadosData);
       setPlanCuentas(cuentasData);
       setEntidades(entidadesData);
+      setTiposLibro(tiposLibroData);
+      setMonedas(monedasData);
+      setCentrosCosto(centrosCostoData);
+      setActivos(activosData);
+      setSubmodulos(submodulosData);
+      setTiposDocumento(tiposDocumentoData);
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -146,13 +275,25 @@ const MayorContable = ({ ruta }) => {
         fechaDesde: rangoFechas?.[0],
         fechaHasta: rangoFechas?.[1],
         estadoAsientoId: estadoFiltro,
-        tipoLibro: tipoLibroFiltro,
+        numeroAsiento: numeroAsientoFiltro,
+        esGerencial: filtroEsGerencial,
+        tipoLibroId: tipoLibroIdFiltro,
+        monedaId: monedaIdFiltro,
+        centroCostoId: centroCostoIdFiltro,
+        entidadComercialId: entidadComercialIdFiltro,
+        activoId: activoIdFiltro,
+        submoduloOrigenLineaId: submoduloOrigenLineaIdFiltro,
+        tipoDocumentoOrigenId: tipoDocumentoOrigenIdFiltro,
+        numeroDocumentoOrigen: numeroDocumentoOrigenFiltro,
+        fechaDocumentoDesde: rangoFechasDocumento?.[0],
+        fechaDocumentoHasta: rangoFechasDocumento?.[1],
         planCuentaId: cuentaFiltro,
         codigoCuentaInicia: codigoCuentaFiltro,
+        soloCuadrados: soloCuadrados,
+        soloDescuadrados: soloDescuadrados,
         soloConEntidad: soloConEntidad,
         soloSaldosIniciales: filtroSaldoInicial === 'SOLO_SALDOS',
       };
-
       const response = await getLineasMayorContable(params);
 
       let cuentasFiltradas = response.cuentas || [];
@@ -164,13 +305,7 @@ const MayorContable = ({ ruta }) => {
         })).filter(cuenta => cuenta.movimientos.length > 0);
       }
 
-      const cuentasOrdenadas = cuentasFiltradas.sort((a, b) => {
-        const codigoA = a.planCuenta?.codigoCuenta || '';
-        const codigoB = b.planCuenta?.codigoCuenta || '';
-        return codigoA.localeCompare(codigoB, undefined, { numeric: true });
-      });
-
-      setCuentas(cuentasOrdenadas);
+      setCuentas(cuentasFiltradas);
       setTotales(response.totales || { totalDebe: 0, totalHaber: 0, saldoFinal: 0 });
     } catch (error) {
       toast.current?.show({
@@ -188,14 +323,144 @@ const MayorContable = ({ ruta }) => {
     setEmpresaIdSelector(usuario?.empresaId || null);
     setPeriodoSeleccionado(null);
     setRangoFechas(null);
-    setTipoLibroFiltro(null);
+    setFiltroEsGerencial(false);
+    setTipoLibroIdFiltro(null);
+    setMonedaIdFiltro(null);
+    setCentroCostoIdFiltro(null);
+    setEntidadComercialIdFiltro(null);
+    setActivoIdFiltro(null);
+    setSubmoduloOrigenLineaIdFiltro(null);
+    setTipoDocumentoOrigenIdFiltro(null);
+    setNumeroDocumentoOrigenFiltro('');
+    setRangoFechasDocumento(null);
     setEstadoFiltro(null);
     setCuentaFiltro(null);
+    setNumeroAsientoFiltro('');
     setCodigoCuentaFiltro('');
+    setSoloCuadrados(false);
+    setSoloDescuadrados(false);
     setSoloConEntidad(false);
     setFiltroSaldoInicial('TODOS');
     setCuentas([]);
   };
+
+  const handleExportar = async (tipo) => {
+    if (!empresaIdSelector || !periodoSeleccionado) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe seleccionar Empresa y Periodo",
+        life: 3000,
+      });
+      return;
+    }
+
+    try {
+      const params = {
+        empresaId: empresaIdSelector,
+        periodoContableId: periodoSeleccionado,
+        esGerencial: filtroEsGerencial,
+        tipoLibroId: tipoLibroIdFiltro || null,
+        monedaId: monedaIdFiltro || null,
+      };
+
+      let blob;
+      let filename;
+
+      if (tipo === 'sunat') {
+        blob = await exportarSUNAT61(params);
+        filename = `LE_MAYOR_${params.empresaId}_${params.periodoContableId}.txt`;
+      } else if (tipo === 'excel' || tipo === 'pdf') {
+        if (cuentas.length === 0) {
+          toast.current?.show({
+            severity: "warn",
+            summary: "Sin datos",
+            detail: "No hay cuentas para exportar",
+            life: 3000,
+          });
+          return;
+        }
+
+        const empresaData = empresas.find(e => Number(e.id) === Number(empresaIdSelector));
+        const periodoData = periodos.find(p => Number(p.id) === Number(periodoSeleccionado));
+
+        if (!empresaData || !periodoData) {
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "No se encontraron datos de empresa o periodo",
+            life: 3000,
+          });
+          return;
+        }
+
+        const monedaSoles = monedas.find(m => m.id === "1" || Number(m.id) === 1);
+        const monedaData = monedaSoles || { id: "1", nombreLargo: "SOLES" };
+
+        const reportDataPrepared = {
+          empresa: {
+            ruc: empresaData?.ruc || "",
+            razonSocial: empresaData?.razonSocial || ""
+          },
+          periodo: {
+            nombrePeriodo: periodoData?.nombrePeriodo || ""
+          },
+          moneda: monedaData,
+          cuentas: cuentas,
+          totales: totales
+        };
+
+        setReportData(reportDataPrepared);
+
+        if (tipo === 'excel') {
+          setShowExcelViewer(true);
+        } else {
+          setShowPDFViewer(true);
+        }
+        return;
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(url);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Exportado",
+        detail: "Archivo generado correctamente",
+        life: 3000,
+      });
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al exportar",
+        life: 3000,
+      });
+    }
+  };
+
+  const menuExportItems = [
+    {
+      label: 'Formato SUNAT 6.1 (TXT)',
+      icon: 'pi pi-file',
+      command: () => handleExportar('sunat')
+    },
+    {
+      label: 'Excel Detallado',
+      icon: 'pi pi-file-excel',
+      command: () => handleExportar('excel')
+    },
+    {
+      label: 'PDF Libro Mayor',
+      icon: 'pi pi-file-pdf',
+      command: () => handleExportar('pdf')
+    }
+  ];
+
 
   const toggleFiltroSaldoInicial = () => {
     if (filtroSaldoInicial === 'TODOS') {
@@ -282,9 +547,28 @@ const MayorContable = ({ ruta }) => {
     );
   };
 
-  const estadoTemplate = (rowData) => (
-    <ColorTag estado={rowData.asientoContable?.estado} />
-  );
+  const estadoTemplate = (rowData) => {
+    const estado = rowData.asientoContable?.estado;
+    if (!estado) return null;
+
+    return (
+      <Tag
+        value={estado.descripcion}
+        severity={
+          estado.descripcion === 'APROBADO' ? 'success' :
+            estado.descripcion === 'PENDIENTE' ? 'warning' :
+              estado.descripcion === 'ANULADO' ? 'danger' :
+                'info'
+        }
+        style={{
+          fontSize: getResponsiveFontSize(),
+          backgroundColor: estado.colorFondo || undefined,
+          color: estado.colorTexto || undefined
+        }}
+      />
+    );
+  };
+
 
   const tipoLibroTemplate = (rowData) => (
     <Tag
@@ -312,7 +596,7 @@ const MayorContable = ({ ruta }) => {
   return (
     <div>
       <Toast ref={toast} />
-
+      <Menu model={menuExportItems} popup ref={menuExport} />
       <div className="card">
         <div style={{ marginBottom: '1rem' }}>
           <h2>📗 Libro Mayor</h2>
@@ -373,6 +657,16 @@ const MayorContable = ({ ruta }) => {
               disabled={loading}
             />
           </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              label="Exportar"
+              icon="pi pi-download"
+              className="p-button-success"
+              onClick={(e) => menuExport.current.toggle(e)}
+              disabled={!empresaIdSelector || !periodoSeleccionado}
+              style={{ width: "100%" }}
+            />
+          </div>
         </div>
 
         <div
@@ -385,21 +679,6 @@ const MayorContable = ({ ruta }) => {
           }}
         >
           <div style={{ flex: 1 }}>
-            <label style={{ fontWeight: "bold" }}>Tipo Libro</label>
-            <Dropdown
-              value={tipoLibroFiltro}
-              options={[
-                { label: 'Todos', value: null },
-                { label: 'FISCAL', value: 'FISCAL' },
-                { label: 'GERENCIAL', value: 'GERENCIAL' }
-              ]}
-              onChange={(e) => setTipoLibroFiltro(e.value)}
-              placeholder="Todos"
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          <div style={{ flex: 1 }}>
             <label style={{ fontWeight: "bold" }}>Estado</label>
             <Dropdown
               value={estadoFiltro}
@@ -410,6 +689,16 @@ const MayorContable = ({ ruta }) => {
               placeholder="Todos"
               style={{ width: "100%" }}
               showClear
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold" }}>Nº Asiento</label>
+            <InputText
+              value={numeroAsientoFiltro}
+              onChange={(e) => setNumeroAsientoFiltro(e.target.value)}
+              placeholder="Buscar asiento"
+              style={{ width: "100%" }}
             />
           </div>
 
@@ -438,6 +727,44 @@ const MayorContable = ({ ruta }) => {
               tooltip="Busca cuentas que INICIEN con este código"
             />
           </div>
+          <div style={{ flex: 1, minWidth: '180px' }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Solo Cuadrados</label>
+            <BooleanToggleButton
+              value={soloCuadrados}
+              onChange={setSoloCuadrados}
+              labelTrue="✅ SOLO CUADRADOS"
+              labelFalse="📋 TODOS"
+              severityTrue="success"
+              severityFalse="secondary"
+              size="small"
+            />
+          </div>
+
+          <div style={{ flex: 1, minWidth: '180px' }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Solo Descuadrados</label>
+            <BooleanToggleButton
+              value={soloDescuadrados}
+              onChange={setSoloDescuadrados}
+              labelTrue="❌ SOLO DESCUADRADOS"
+              labelFalse="📋 TODOS"
+              severityTrue="danger"
+              severityFalse="secondary"
+              size="small"
+            />
+          </div>
+
+          <div style={{ flex: 1, minWidth: '180px' }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Con Entidad</label>
+            <BooleanToggleButton
+              value={soloConEntidad}
+              onChange={setSoloConEntidad}
+              labelTrue="👤 SOLO CON ENTIDAD"
+              labelFalse="📋 TODOS"
+              severityTrue="info"
+              severityFalse="secondary"
+              size="small"
+            />
+          </div>
         </div>
 
         <div
@@ -449,23 +776,6 @@ const MayorContable = ({ ruta }) => {
             flexWrap: "wrap",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <Checkbox
-              inputId="soloConEntidad"
-              checked={soloConEntidad}
-              onChange={(e) => setSoloConEntidad(e.checked)}
-            />
-            <label htmlFor="soloConEntidad" style={{ marginLeft: "0.5rem", fontSize: getResponsiveFontSize() }}>Solo con Entidad</label>
-          </div>
-
-          <Button
-            label={buttonConfig.label}
-            severity={buttonConfig.severity}
-            onClick={toggleFiltroSaldoInicial}
-            style={{ fontSize: getResponsiveFontSize() }}
-            size="small"
-          />
-
           <Button
             label="Expandir Todas"
             icon="pi pi-angle-double-down"
@@ -489,6 +799,185 @@ const MayorContable = ({ ruta }) => {
           <Tag value={`Saldo: S/ ${formatearNumero(totales.saldoFinal, 2)}`} severity="info" style={{ fontSize: getResponsiveFontSize() }} />
         </div>
 
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            marginBottom: 15,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1, minWidth: '180px' }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Saldo Inicial</label>
+            <Button
+              label={buttonConfig.label}
+              severity={buttonConfig.severity}
+              onClick={toggleFiltroSaldoInicial}
+              size="small"
+              style={{ width: '100%' }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Tipo Asiento</label>
+            <BooleanToggleButton
+              value={filtroEsGerencial}
+              onChange={setFiltroEsGerencial}
+              labelTrue="🟢 GERENCIAL"
+              labelFalse="📘 FISCAL"
+              severityTrue="success"
+              severityFalse="info"
+              size="small"
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Tipo Libro SUNAT</label>
+            <Dropdown
+              value={tipoLibroIdFiltro}
+              options={tiposLibroOptions}
+              onChange={(e) => setTipoLibroIdFiltro(e.value)}
+              optionLabel="descripcion"
+              optionValue="id"
+              placeholder="Todos"
+              style={{ width: "100%" }}
+              showClear
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Moneda</label>
+            <Dropdown
+              value={monedaIdFiltro}
+              options={monedasOptions}
+              onChange={(e) => setMonedaIdFiltro(e.value)}
+              optionLabel="simbolo"
+              optionValue="id"
+              placeholder="Todas"
+              style={{ width: "100%" }}
+              showClear
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            marginBottom: 15,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Centro de Costo</label>
+            <Dropdown
+              value={centroCostoIdFiltro}
+              options={centrosCostoOptions}
+              onChange={(e) => setCentroCostoIdFiltro(e.value)}
+              optionLabel="displayLabel"
+              optionValue="id"
+              placeholder="Todos"
+              style={{ width: "100%" }}
+              filter
+              showClear
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Entidad Comercial</label>
+            <Dropdown
+              value={entidadComercialIdFiltro}
+              options={entidadesOptions}
+              onChange={(e) => setEntidadComercialIdFiltro(e.value)}
+              optionLabel="razonSocial"
+              optionValue="id"
+              placeholder="Todas"
+              style={{ width: "100%" }}
+              filter
+              showClear
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Activo</label>
+            <Dropdown
+              value={activoIdFiltro}
+              options={activosOptions}
+              onChange={(e) => setActivoIdFiltro(e.value)}
+              optionLabel="nombre"
+              optionValue="id"
+              placeholder="Todos"
+              style={{ width: "100%" }}
+              filter
+              showClear
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Submódulo Origen</label>
+            <Dropdown
+              value={submoduloOrigenLineaIdFiltro}
+              options={submodulosOptions}
+              onChange={(e) => setSubmoduloOrigenLineaIdFiltro(e.value)}
+              optionLabel="nombre"
+              optionValue="id"
+              placeholder="Todos"
+              style={{ width: "100%" }}
+              filter
+              showClear
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            marginBottom: 15,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Tipo Documento Origen</label>
+            <Dropdown
+              value={tipoDocumentoOrigenIdFiltro}
+              options={tiposDocumentoOptions}
+              onChange={(e) => setTipoDocumentoOrigenIdFiltro(e.value)}
+              optionLabel="displayLabel"
+              optionValue="id"
+              placeholder="Todos"
+              style={{ width: "100%" }}
+              filter
+              showClear
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Número Documento Origen</label>
+            <InputText
+              value={numeroDocumentoOrigenFiltro}
+              onChange={(e) => setNumeroDocumentoOrigenFiltro(e.target.value)}
+              placeholder="Ej: F001-00001234"
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: "bold", fontSize: '0.9rem' }}>Rango Fechas Documento</label>
+            <Calendar
+              value={rangoFechasDocumento}
+              onChange={(e) => setRangoFechasDocumento(e.value)}
+              selectionMode="range"
+              dateFormat="dd/mm/yy"
+              placeholder="Opcional"
+              style={{ width: "100%" }}
+              showIcon
+              readOnlyInput
+            />
+          </div>
+        </div>
         {/* ACCORDION POR CUENTA */}
         {loading ? (
           <div style={{ textAlign: 'center', padding: '2rem' }}>
@@ -502,13 +991,22 @@ const MayorContable = ({ ruta }) => {
         ) : (
           <Accordion multiple activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
             {cuentas.map((cuenta, index) => {
-              const saldoFinalCuenta = cuenta.totales.saldo;
+              // CALCULAR TOTALES POR CUENTA EN EL FRONTEND
+              let totalDebeCuenta = 0;
+              let totalHaberCuenta = 0;
+
+              cuenta.movimientos.forEach(mov => {
+                totalDebeCuenta += Number(mov.debe) || 0;
+                totalHaberCuenta += Number(mov.haber) || 0;
+              });
+
+              const saldoFinalCuenta = totalDebeCuenta - totalHaberCuenta;
               const tipoSaldo = saldoFinalCuenta >= 0 ? 'Deudor' : 'Acreedor';
               const colorSaldo = saldoFinalCuenta >= 0 ? '#4caf50' : '#f44336';
 
               return (
                 <AccordionTab
-                  key={cuenta.cuentaId}
+                  key={`cuenta-${index}-${cuenta.codigoCuenta}`}
                   header={
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', paddingRight: '1rem' }}>
                       <div>
@@ -517,8 +1015,8 @@ const MayorContable = ({ ruta }) => {
                       </div>
                       <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                         <Tag value={`${cuenta.movimientos.length} mov.`} severity="info" />
-                        <Tag value={`Debe: S/ ${formatearNumero(cuenta.totales.debe, 2)}`} severity="success" />
-                        <Tag value={`Haber: S/ ${formatearNumero(cuenta.totales.haber, 2)}`} severity="warning" />
+                        <Tag value={`Debe: S/ ${formatearNumero(totalDebeCuenta, 2)}`} severity="success" />
+                        <Tag value={`Haber: S/ ${formatearNumero(totalHaberCuenta, 2)}`} severity="warning" />
                         <Tag
                           value={`Saldo: S/ ${formatearNumero(Math.abs(saldoFinalCuenta), 2)} ${tipoSaldo}`}
                           style={{ backgroundColor: colorSaldo, color: '#fff', fontWeight: 'bold' }}
@@ -540,9 +1038,9 @@ const MayorContable = ({ ruta }) => {
                     <Column field="tipoDocumentoOrigen.codigo" header="Tipo Doc" style={{ width: '90px' }} />
                     <Column field="numeroDocumentoOrigen" header="Nº Doc" style={{ width: '130px' }} />
                     <Column header="Entidad" body={entidadTemplate} style={{ minWidth: '200px' }} />
-                    <Column header="Debe" body={(rowData) => montoTemplate(rowData, 'debe')} style={{ width: '120px' }} align="right" />
-                    <Column header="Haber" body={(rowData) => montoTemplate(rowData, 'haber')} style={{ width: '120px' }} align="right" />
-                    <Column header="Saldo" body={saldoTemplate} style={{ width: '120px' }} align="right" />
+                    <Column header="Debe" body={(rowData) => montoTemplate(rowData, 'debe')} style={{ width: '180px' }} align="right" />
+                    <Column header="Haber" body={(rowData) => montoTemplate(rowData, 'haber')} style={{ width: '180px' }} align="right" />
+                    <Column header="Saldo" body={saldoTemplate} style={{ width: '180px' }} align="right" />
                     <Column header="Tipo" body={tipoSaldoTemplate} style={{ width: '100px' }} />
                     <Column header="Estado" body={estadoTemplate} style={{ width: '110px' }} />
                     <Column header="Saldo Inicial" body={saldoInicialTemplate} style={{ width: '130px' }} />
@@ -553,6 +1051,25 @@ const MayorContable = ({ ruta }) => {
           </Accordion>
         )}
       </div>
+
+      {showPDFViewer && (
+        <TemporaryPDFViewer
+          visible={showPDFViewer}
+          onHide={() => setShowPDFViewer(false)}
+          generatePDF={() => generarLibroMayorPDF(reportData)}
+          fileName={`LibroMayor_${reportData?.empresa?.ruc}_${reportData?.periodo?.nombrePeriodo}.pdf`}
+        />
+      )}
+
+      {showExcelViewer && (
+        <TemporaryExcelViewer
+          visible={showExcelViewer}
+          onHide={() => setShowExcelViewer(false)}
+          generateExcel={() => generarLibroMayorExcel(reportData)}
+          fileName={`LibroMayor_${reportData?.empresa?.ruc}_${reportData?.periodo?.nombrePeriodo}.xlsx`}
+        />
+      )}
+
     </div>
   );
 };

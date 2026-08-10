@@ -1,7 +1,7 @@
 // src/pages/contabilidad/PlanCuentasContable.jsx
 import React, { useRef, useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
-import { DataTable } from "primereact/datatable";
+import { TreeTable } from "primereact/treetable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
@@ -40,11 +40,12 @@ export default function PlanCuentasContable({ ruta }) {
     row: null,
   });
   const [globalFilter, setGlobalFilter] = useState("");
-  const [nivelFilter, setNivelFilter] = useState(null);
   const [nivelEnumFilter, setNivelEnumFilter] = useState(null);
   const [naturalezaFilter, setNaturalezaFilter] = useState(null);
   const [tipoCuentaFilter, setTipoCuentaFilter] = useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
+  const [treeNodes, setTreeNodes] = useState([]);
+  const [expandedKeys, setExpandedKeys] = useState({});
 
   useEffect(() => {
     cargarDatos();
@@ -52,8 +53,7 @@ export default function PlanCuentasContable({ ruta }) {
 
   useEffect(() => {
     filtrarItems();
-  }, [items, nivelFilter, nivelEnumFilter, naturalezaFilter, tipoCuentaFilter, globalFilter]);
-
+  }, [items, nivelEnumFilter, naturalezaFilter, tipoCuentaFilter, globalFilter]);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -71,54 +71,114 @@ export default function PlanCuentasContable({ ruta }) {
     setLoading(false);
   };
 
+
+  const construirArbolJerarquico = (cuentas) => {
+    const cuentasMap = new Map();
+    const raices = [];
+
+    cuentas.forEach(cuenta => {
+      cuentasMap.set(cuenta.id, {
+        key: cuenta.id.toString(),
+        data: cuenta,
+        children: []
+      });
+    });
+
+    cuentas.forEach(cuenta => {
+      const nodo = cuentasMap.get(cuenta.id);
+      if (cuenta.cuentaPadreId) {
+        const padre = cuentasMap.get(cuenta.cuentaPadreId);
+        if (padre) {
+          padre.children.push(nodo);
+        } else {
+          raices.push(nodo);
+        }
+      } else {
+        raices.push(nodo);
+      }
+    });
+
+    raices.sort((a, b) => {
+      const codigoA = a.data.codigoCuenta || '';
+      const codigoB = b.data.codigoCuenta || '';
+      return codigoA.localeCompare(codigoB, undefined, { numeric: true });
+    });
+
+    const ordenarHijos = (nodo) => {
+      if (nodo.children && nodo.children.length > 0) {
+        nodo.children.sort((a, b) => {
+          const codigoA = a.data.codigoCuenta || '';
+          const codigoB = b.data.codigoCuenta || '';
+          return codigoA.localeCompare(codigoB, undefined, { numeric: true });
+        });
+        nodo.children.forEach(ordenarHijos);
+      }
+    };
+
+    raices.forEach(ordenarHijos);
+    return raices;
+  };
+
   const filtrarItems = () => {
     let filtrados = [...items];
 
-    // Filtro por cantidad de dígitos
-    if (nivelFilter) {
-      filtrados = filtrados.filter((item) => {
-        const longitudCodigo = item.codigoCuenta ? item.codigoCuenta.length : 0;
-        return longitudCodigo === nivelFilter;
-      });
-    }
-
-    // Filtro por Nivel (ENUM)
     if (nivelEnumFilter) {
       filtrados = filtrados.filter((item) => item.nivel === nivelEnumFilter);
     }
 
-    // Filtro por Naturaleza
     if (naturalezaFilter) {
       filtrados = filtrados.filter((item) => item.naturaleza === naturalezaFilter);
     }
 
-    // Filtro por Tipo de Cuenta
     if (tipoCuentaFilter) {
       filtrados = filtrados.filter((item) => item.tipoCuenta === tipoCuentaFilter);
     }
 
-    // Filtro personalizado por búsqueda
     if (globalFilter && globalFilter.trim() !== "") {
       const busqueda = globalFilter.trim().toLowerCase();
-      filtrados = filtrados.filter((item) => {
+      const idsCoincidentes = new Set();
+
+      filtrados.forEach((item) => {
         const codigo = item.codigoCuenta ? item.codigoCuenta.toLowerCase() : "";
         const nombre = item.nombreCuenta ? item.nombreCuenta.toLowerCase() : "";
         const descripcion = item.descripcion ? item.descripcion.toLowerCase() : "";
 
-        // codigoCuenta: buscar por PREFIJO (que empiece con)
-        const coincideCodigo = codigo.startsWith(busqueda);
+        const coincide = codigo.startsWith(busqueda) ||
+          nombre.includes(busqueda) ||
+          descripcion.includes(busqueda);
 
-        // nombreCuenta y descripcion: buscar por CONTENIDO (que contenga)
-        const coincideNombre = nombre.includes(busqueda);
-        const coincideDescripcion = descripcion.includes(busqueda);
-
-        return coincideCodigo || coincideNombre || coincideDescripcion;
+        if (coincide) {
+          idsCoincidentes.add(item.id);
+          let padreId = item.cuentaPadreId;
+          while (padreId) {
+            idsCoincidentes.add(padreId);
+            const padre = items.find(c => c.id === padreId);
+            padreId = padre?.cuentaPadreId;
+          }
+        }
       });
+
+      filtrados = items.filter(item => idsCoincidentes.has(item.id));
     }
 
     setItemsFiltrados(filtrados);
-  };
+    const arbol = construirArbolJerarquico(filtrados);
+    setTreeNodes(arbol);
 
+    if (globalFilter && globalFilter.trim() !== "") {
+      const keys = {};
+      const expandirTodo = (nodos) => {
+        nodos.forEach(nodo => {
+          keys[nodo.key] = true;
+          if (nodo.children) expandirTodo(nodo.children);
+        });
+      };
+      expandirTodo(arbol);
+      setExpandedKeys(keys);
+    } else if (!nivelEnumFilter) {
+      setExpandedKeys({});
+    }
+  };
   const onNew = () => {
     if (!permisos.puedeCrear) {
       toast.current?.show({
@@ -200,6 +260,21 @@ export default function PlanCuentasContable({ ruta }) {
     }
   };
 
+  const expandirTodo = () => {
+    const keys = {};
+    const expandir = (nodos) => {
+      nodos.forEach(nodo => {
+        keys[nodo.key] = true;
+        if (nodo.children) expandir(nodo.children);
+      });
+    };
+    expandir(treeNodes);
+    setExpandedKeys(keys);
+  };
+
+  const colapsarTodo = () => {
+    setExpandedKeys({});
+  };
   const onCancel = () => {
     setShowDialog(false);
     setSelected(null);
@@ -244,7 +319,6 @@ export default function PlanCuentasContable({ ruta }) {
 
   const limpiarFiltros = () => {
     setGlobalFilter("");
-    setNivelFilter(null);
     setNivelEnumFilter(null);
     setNaturalezaFilter(null);
     setTipoCuentaFilter(null);
@@ -257,6 +331,13 @@ export default function PlanCuentasContable({ ruta }) {
   };
 
   const nivelTemplate = (rowData) => {
+    const iconos = {
+      CLASE: "pi-folder",
+      CUENTA: "pi-folder-open",
+      SUBCUENTA: "pi-file",
+      DIVISIONARIA: "pi-file-o",
+      SUBDIVISIONARIA: "pi-file-edit",
+    };
     const colores = {
       CLASE: "info",
       CUENTA: "success",
@@ -265,7 +346,11 @@ export default function PlanCuentasContable({ ruta }) {
       SUBDIVISIONARIA: "danger",
     };
     return (
-      <Tag value={rowData.nivel} severity={colores[rowData.nivel] || "info"} />
+      <Tag
+        value={rowData.nivel}
+        severity={colores[rowData.nivel] || "info"}
+        icon={`pi ${iconos[rowData.nivel] || 'pi-file'}`}
+      />
     );
   };
 
@@ -274,10 +359,43 @@ export default function PlanCuentasContable({ ruta }) {
       <Tag
         value={rowData.naturaleza}
         severity={rowData.naturaleza === "DEUDORA" ? "info" : "success"}
+        icon={rowData.naturaleza === "DEUDORA" ? "pi pi-arrow-up" : "pi pi-arrow-down"}
       />
     );
   };
 
+  const codigoCuentaTemplate = (node) => {
+    const coloresFondo = {
+      CLASE: "#e3f2fd",
+      CUENTA: "#e8f5e9",
+      SUBCUENTA: "#fff3e0",
+      DIVISIONARIA: "#f3e5f5",
+      SUBDIVISIONARIA: "#fce4ec",
+    };
+    return (
+      <span style={{
+        fontWeight: node.data.nivel === 'CLASE' ? 'bold' : 'normal',
+        fontSize: node.data.nivel === 'CLASE' ? '1.1em' : '1em',
+        backgroundColor: coloresFondo[node.data.nivel] || 'transparent',
+        padding: '4px 8px',
+        borderRadius: '4px',
+        display: 'inline-block'
+      }}>
+        {node.data.codigoCuenta}
+      </span>
+    );
+  };
+
+  const nombreCuentaTemplate = (node) => {
+    return (
+      <span style={{
+        fontWeight: node.data.nivel === 'CLASE' ? 'bold' : 'normal',
+        fontSize: node.data.nivel === 'CLASE' ? '1.05em' : '1em',
+      }}>
+        {node.data.nombreCuenta}
+      </span>
+    );
+  };
   const activoTemplate = (rowData) => {
     return rowData.activo ? (
       <Tag value="SÍ" severity="success" icon="pi pi-check" />
@@ -345,9 +463,11 @@ export default function PlanCuentasContable({ ruta }) {
         reject={() => setConfirmState({ visible: false, row: null })}
         style={{ minWidth: 400 }}
       />
-      <DataTable
-        value={itemsFiltrados}
+      <TreeTable
+        value={treeNodes}
         loading={loading}
+        expandedKeys={expandedKeys}
+        onToggle={(e) => setExpandedKeys(e.value)}
         size="small"
         stripedRows
         showGridlines
@@ -356,22 +476,28 @@ export default function PlanCuentasContable({ ruta }) {
         rowsPerPageOptions={[40, 80, 160, 320]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cuentas"
-        sortField="codigoCuenta"
-        sortOrder={1}
         selectionMode="single"
-        selection={selected}
-        onSelectionChange={(e) => setSelected(e.value)}
-        onRowClick={
-          permisos.puedeVer || permisos.puedeEditar
-            ? (e) => onEdit(e.data)
-            : undefined
-        }
-        globalFilter={null}
-        globalFilterFields={[]}
+        selectionKeys={selected ? { [selected.id]: true } : {}}
+        onSelectionChange={(e) => {
+          const selectedNode = Object.keys(e.value)[0];
+          if (selectedNode) {
+            const findNode = (nodes) => {
+              for (const node of nodes) {
+                if (node.key === selectedNode) return node.data;
+                if (node.children) {
+                  const found = findNode(node.children);
+                  if (found) return found;
+                }
+              }
+              return null;
+            };
+            const data = findNode(treeNodes);
+            if (data) onEdit(data);
+          }
+        }}
         emptyMessage="No se encontraron registros que coincidan con la búsqueda."
         style={{
-          cursor:
-            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          cursor: permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
           fontSize: getResponsiveFontSize(),
         }}
         header={
@@ -413,8 +539,7 @@ export default function PlanCuentasContable({ ruta }) {
                     toast.current?.show({
                       severity: "success",
                       summary: "Actualizado",
-                      detail:
-                        "Datos actualizados correctamente desde el servidor",
+                      detail: "Datos actualizados correctamente desde el servidor",
                       life: 3000,
                     });
                   }}
@@ -430,15 +555,35 @@ export default function PlanCuentasContable({ ruta }) {
                   outlined
                   onClick={limpiarFiltros}
                   disabled={loading}
+                  tooltip="Limpiar filtros"
+                />
+              </div>
+              <div style={{ flex: 0.25 }}>
+                <Button
+                  icon="pi pi-angle-double-down"
+                  className="p-button-outlined p-button-secondary"
+                  size="small"
+                  onClick={expandirTodo}
+                  disabled={loading}
+                  tooltip="Expandir todo"
+                />
+              </div>
+              <div style={{ flex: 0.25 }}>
+                <Button
+                  icon="pi pi-angle-double-up"
+                  className="p-button-outlined p-button-secondary"
+                  size="small"
+                  onClick={colapsarTodo}
+                  disabled={loading}
+                  tooltip="Colapsar todo"
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label htmlFor="nivelEnumFilter">Filtrar por Nivel (Tipo)</label>
+                <label htmlFor="nivelEnumFilter">Filtrar por Nivel</label>
                 <Dropdown
                   id="nivelEnumFilter"
                   value={nivelEnumFilter}
                   options={[
-                    { label: "Todos", value: null },
                     { label: "CLASE", value: "CLASE" },
                     { label: "CUENTA", value: "CUENTA" },
                     { label: "SUBCUENTA", value: "SUBCUENTA" },
@@ -490,27 +635,6 @@ export default function PlanCuentasContable({ ruta }) {
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label htmlFor="nivelFilter">Filtrar por Nivel</label>
-                <Dropdown
-                  id="nivelFilter"
-                  value={nivelFilter}
-                  options={[
-                    { label: "Todos los niveles", value: null },
-                    { label: "Nivel 2 - Rubro (2 dígitos)", value: 2 },
-                    { label: "Nivel 3 - Subcuenta (3 dígitos)", value: 3 },
-                    { label: "Nivel 4 - Divisionaria (4 dígitos)", value: 4 },
-                    { label: "Nivel 5 - Subdivisionaria (5 dígitos)", value: 5 },
-                    { label: "Nivel 6 - Detalle (6 dígitos)", value: 6 },
-                    { label: "Nivel 7 - Subdetalle (7 dígitos)", value: 7 },
-                  ]}
-                  onChange={(e) => setNivelFilter(e.value)}
-                  placeholder="Seleccionar nivel"
-                  showClear
-                  style={{ width: "100%" }}
-                  onClear={() => setNivelFilter(null)}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
                 <label htmlFor="globalFilter">Buscar</label>
                 <span className="p-input-icon-left">
                   <InputText
@@ -526,49 +650,25 @@ export default function PlanCuentasContable({ ruta }) {
           </div>
         }
       >
-        <Column field="id" header="ID" sortable />
-        <Column field="codigoCuenta" header="Código" sortable />
-        <Column field="nombreCuenta" header="Nombre" sortable />
-        <Column
-          field="cuentaPadreId"
-          header="Cuenta Padre"
-          body={cuentaPadreNombre}
-          style={{ width: 200 }}
-        />
-        <Column
-          field="nivel"
-          header="Nivel"
-          body={nivelTemplate}
-          style={{ width: 150 }}
-          sortable
-        />
-        <Column
-          field="naturaleza"
-          header="Naturaleza"
-          body={naturalezaTemplate}
-          style={{ width: 130 }}
-          sortable
-        />
+        <Column field="codigoCuenta" header="Código" body={codigoCuentaTemplate} expander style={{ width: '200px' }} />
+        <Column field="nombreCuenta" header="Nombre" body={nombreCuentaTemplate} />
+        <Column field="nivel" header="Nivel" body={nivelTemplate} style={{ width: '90px' }} />
+        <Column field="naturaleza" header="Naturaleza" body={naturalezaTemplate} style={{ width: '90px' }} />
         <Column
           field="esImputable"
           header="Imputable"
-          body={(rowData) =>
-            rowData.esImputable ? (
+          body={(node) =>
+            node.data.esImputable ? (
               <Tag value="SÍ" severity="success" icon="pi pi-check" />
             ) : (
               <Tag value="NO" severity="secondary" />
             )
           }
-          style={{ width: 110 }}
+          style={{ width: '120px' }}
         />
-        <Column
-          field="activo"
-          header="Activo"
-          body={activoTemplate}
-          style={{ width: 100 }}
-        />
-        <Column body={actionBodyTemplate} header="Acciones" />
-      </DataTable>
+        <Column field="activo" header="Activo" body={(node) => activoTemplate(node.data)} style={{ width: '100px' }} />
+        <Column body={(node) => actionBodyTemplate(node.data)} header="Acciones" style={{ width: '150px' }} />
+      </TreeTable>
       <Dialog
         header={
           isEdit

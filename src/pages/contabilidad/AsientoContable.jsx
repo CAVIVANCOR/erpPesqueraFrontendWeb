@@ -384,6 +384,7 @@ export default function AsientoContable({ ruta }) {
 
     try {
       const asientoCompleto = await getAsientoContableById(rowData.id);
+
       setSelected(asientoCompleto);
       setIsEdit(true);
       setShowDialog(true);
