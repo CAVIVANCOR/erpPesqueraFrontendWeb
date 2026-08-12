@@ -8,22 +8,61 @@ function getAuthHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
-export async function getBalanceComprobacion(params) {  
+export async function getBalanceComprobacion(params) {
   const res = await axios.get(`${API_URL}/contabilidad/balance-comprobacion`, {
     headers: getAuthHeaders(),
-    params,
-    paramsSerializer: {
-      serialize: (params) => {
-        const searchParams = new URLSearchParams();
-        Object.entries(params).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            searchParams.append(key, value);
-          }
-        });
-        const serialized = searchParams.toString();
-        return serialized;
-      }
-    }
+    params
   });
   return res.data;
 }
+
+export async function exportarSUNATBalance(params) {
+  const res = await axios.get(`${API_URL}/contabilidad/balance-comprobacion/export/sunat-08`, {
+    headers: getAuthHeaders(),
+    params,
+    responseType: 'blob'
+  });
+  return res.data;
+}
+
+export const exportarSUNATBalanceGeneral = async (params) => {
+  const queryParams = new URLSearchParams();
+  Object.keys(params).forEach(key => {
+    if (params[key] !== null && params[key] !== undefined) {
+      queryParams.append(key, params[key]);
+    }
+  });
+  
+  const response = await fetch(`${API_URL}/contabilidad/balance-comprobacion/exportar-sunat-316?${queryParams}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Error al exportar Balance General SUNAT');
+  }
+
+  return await response.blob();
+};
+
+export const exportarSUNATEstadoGyP = async (params) => {
+  const queryParams = new URLSearchParams();
+  Object.keys(params).forEach(key => {
+    if (params[key] !== null && params[key] !== undefined) {
+      queryParams.append(key, params[key]);
+    }
+  });
+  
+  const response = await fetch(`${API_URL}/contabilidad/balance-comprobacion/exportar-sunat-320?${queryParams}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Error al exportar Estado de G&P SUNAT');
+  }
+
+  return await response.blob();
+};

@@ -770,6 +770,18 @@ export default function Dashboard() {
           tab: "operaciones",
         },
         {
+          label: "Balance General",
+          key: "detalleAsientoContableBalanceGeneral",
+          icon: "pi-chart-pie",
+          tab: "operaciones",
+        },
+        {
+          label: "Estado de Ganancias y Pérdidas",
+          key: "detalleAsientoContableEstadoGyP",
+          icon: "pi-dollar",
+          tab: "operaciones",
+        },
+        {
           label: "Movimientos Activo Fijo",
           key: "movActivoFijo",
           icon: "pi-chart-line",

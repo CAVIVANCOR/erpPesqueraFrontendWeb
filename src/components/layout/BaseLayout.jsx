@@ -134,6 +134,8 @@ import Percepcion from "../../pages/contabilidad/Percepcion";
 import DiarioContable from "../../pages/contabilidad/DiarioContable";
 import MayorContable from "../../pages/contabilidad/MayorContable";
 import BalanceComprobacion from "../../pages/contabilidad/BalanceComprobacion";
+import BalanceGeneral from "../../pages/contabilidad/BalanceGeneral";
+import EstadoGananciasYPerdidas from "../../pages/contabilidad/EstadoGananciasYPerdidas";
 import PrestamoBancario from "../../pages/tesoreria/PrestamoBancario";
 import TipoPrestamo from "../../pages/tesoreria/TipoPrestamo";
 import LineaCredito from "../../pages/tesoreria/LineaCredito";
@@ -701,6 +703,14 @@ export default function BaseLayout({ children, onLogout }) {
     detalleAsientoContableBalanceComprobacion: {
       label: "Balance de Comprobación",
       componente: <BalanceComprobacion ruta="detalleAsientoContableBalanceComprobacion" />,
+    },
+    detalleAsientoContableBalanceGeneral: {
+      label: "Balance General",
+      componente: <BalanceGeneral ruta="detalleAsientoContableBalanceGeneral" />,
+    },
+    detalleAsientoContableEstadoGyP: {
+      label: "Estado de Ganancias y Pérdidas",
+      componente: <EstadoGananciasYPerdidas ruta="detalleAsientoContableEstadoGyP" />,
     },
     tipoPrestamo: {
       label: "Tipos de Préstamo",
