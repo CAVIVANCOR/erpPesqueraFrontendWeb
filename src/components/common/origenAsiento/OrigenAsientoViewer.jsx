@@ -8,6 +8,7 @@ import SaldoCuentaCorrienteViewer from './viewers/SaldoCuentaCorrienteViewer';
 import DeudaConPersonalViewer from './viewers/DeudaConPersonalViewer';
 import DeudaTributariaViewer from './viewers/DeudaTributariaViewer';
 import MovimientoCajaViewer from './viewers/MovimientoCajaViewer';
+import DetMovsEntregaRendirViewer from './viewers/DetMovsEntregaRendirViewer';
 
 const MODELO_VIEWERS = {
   MovimientoActivoFijo: MovimientoActivoFijoViewer,
@@ -19,6 +20,7 @@ const MODELO_VIEWERS = {
   DeudaConPersonal: DeudaConPersonalViewer,
   DeudaTributaria: DeudaTributariaViewer,
   MovimientoCaja: MovimientoCajaViewer,
+  DetMovsEntregaRendir: DetMovsEntregaRendirViewer,
 };
 
 export default function OrigenAsientoViewer({ nombreModeloOrigen, procesoOrigenId, visible, onHide }) {

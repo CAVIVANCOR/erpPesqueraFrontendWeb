@@ -167,8 +167,9 @@ export default function AsientoContableForm({
         filtroSubmodulo={filtroSubmodulo}
         setFiltroSubmodulo={setFiltroSubmodulo}
         asientoId={asientoId}
-        isReadOnly={isReadOnly}
+        isReadOnly={readOnly}
         obtenerOpcionesDinamicas={obtenerOpcionesDinamicas}
+        toast={toast}
       />
 
       {/* ✅ DIÁLOGO DETALLE */}

@@ -229,7 +229,7 @@ const AsientoContableManager = ({
           icon: "pi pi-exclamation-triangle",
           acceptClassName: "p-button-danger",
           acceptLabel: "Sí, Regenerar Todo",
-          rejectLabel: "No, Cancelar",
+          rejectLabel: "No, Solo Mostrar",
           accept: async () => {
             await regenerarAsientos([...asientosARegenerar, ...aprobados]);
           },

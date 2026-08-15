@@ -46,11 +46,12 @@ export default function AsientoDetalles({
   setFiltroSubmodulo,
   asientoId,
   isReadOnly,
-  obtenerOpcionesDinamicas, // ✅ NUEVO PROP
+  obtenerOpcionesDinamicas,
+  toast,
 }) {
   const estadoId = Number(formData.estadoId);
   const esPendiente = estadoId === 76;
-  const isTableReadOnly = isReadOnly || !esPendiente;
+  const isTableReadOnly = isReadOnly;
   // ✅ OBTENER OPCIONES DINÁMICAS
   const { entidadesComercialesFiltradas, submodulosFiltrados } =
     obtenerOpcionesDinamicas();
@@ -183,22 +184,47 @@ export default function AsientoDetalles({
   };
 
   const actionBodyTemplate = (rowData) => {
-    if (isTableReadOnly) return null;
+    const handleEditClick = () => {
+      if (!esPendiente) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Acción no permitida",
+          detail: "No se puede editar un asiento que no está en estado PENDIENTE",
+          life: 3000,
+        });
+        return;
+      }
+      openEditDetalle(rowData);
+    };
+
+    const handleDeleteClick = () => {
+      if (!esPendiente) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Acción no permitida",
+          detail: "No se puede eliminar líneas de un asiento que no está en estado PENDIENTE",
+          life: 3000,
+        });
+        return;
+      }
+      handleDeleteDetalle(rowData.id);
+    };
+
     return (
-      <div onClick={(e) => e.stopPropagation()}>
+      <div style={{ display: "flex", gap: "0.25rem" }}>
         <Button
           icon="pi pi-pencil"
-          className="p-button-text p-button-warning"
-          onClick={() => openEditDetalle(rowData)}
+          className="p-button-rounded p-button-text p-button-sm"
+          onClick={handleEditClick}
           tooltip="Editar"
-          type="button"
+          tooltipOptions={{ position: "top" }}
         />
         <Button
           icon="pi pi-trash"
-          className="p-button-text p-button-danger"
-          onClick={() => handleDeleteDetalle(rowData)}
+          className="p-button-rounded p-button-text p-button-danger p-button-sm"
+          onClick={handleDeleteClick}
           tooltip="Eliminar"
-          type="button"
+          tooltipOptions={{ position: "top" }}
         />
       </div>
     );
@@ -430,9 +456,7 @@ export default function AsientoDetalles({
         </>
       }
     >
-      {!isTableReadOnly && (
-        <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
-      )}
+      <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
       <Column field="numeroLinea" header="#" style={{ width: "5%" }} />
       <Column
         header="Submódulo Origen"
@@ -541,23 +565,21 @@ export default function AsientoDetalles({
           backgroundColor: "#fef2f2",
         }}
       />
-      {!isTableReadOnly && (
-        <Column
-          header="Acciones"
-          body={actionBodyTemplate}
-          style={{ width: "8%" }}
-          headerStyle={{
-            whiteSpace: "nowrap",
-            paddingTop: "0.25rem",
-            paddingBottom: "0.25rem",
-          }}
-          bodyStyle={{
-            whiteSpace: "nowrap",
-            paddingTop: "0.15rem",
-            paddingBottom: "0.15rem",
-          }}
-        />
-      )}
+      <Column
+        header="Acciones"
+        body={actionBodyTemplate}
+        style={{ width: "8%" }}
+        headerStyle={{
+          whiteSpace: "nowrap",
+          paddingTop: "0.25rem",
+          paddingBottom: "0.25rem",
+        }}
+        bodyStyle={{
+          whiteSpace: "nowrap",
+          paddingTop: "0.15rem",
+          paddingBottom: "0.15rem",
+        }}
+      />
     </DataTable>
   );
 }

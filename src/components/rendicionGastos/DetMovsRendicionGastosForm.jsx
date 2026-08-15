@@ -33,6 +33,7 @@ import {
   obtenerTodasAsignacionesNoLiquidadas,
   obtenerValoresIniciales,
 } from "../../api/detMovsEntregaRendir";
+import GeneradorDocumentosFinancierosDialog from "../common/GeneradorDocumentosFinancierosDialog";
 import { getEmbarcaciones } from "../../api/embarcacion";
 import { getDocumentosPorModelo } from "../../api/documentoDinamico";
 
@@ -72,6 +73,7 @@ const DetMovsRendicionGastosForm = ({
     useState(null);
   const [refreshEntidadesComerciales, setRefreshEntidadesComerciales] =
     useState(null);
+  const [generadorDocumentosVisible, setGeneradorDocumentosVisible] = useState(false);
   const {
     control,
     handleSubmit,
@@ -882,6 +884,71 @@ const DetMovsRendicionGastosForm = ({
   };
 
   const formularioDeshabilitado = getValues("validadoTesoreria");
+  const handleGeneracionDocumentosExitosa = (resultado) => {
+    // El Dialog ya muestra un toast de éxito, no duplicar
+    // Solo cerrar el dialog y actualizar el estado local si es necesario
+    setGeneradorDocumentosVisible(false);
+
+    // Opcional: Actualizar solo el movimiento actual sin recargar toda la lista
+    // Si necesitas refrescar datos específicos, hazlo aquí de forma selectiva
+  };
+
+  const validarRequisitosGeneracion = () => {
+    const errores = [];
+
+    if (!isEditing || !movimiento) {
+      errores.push("Debe guardar el movimiento primero");
+      return { valido: false, errores };
+    }
+
+    if (!movimiento.entidadComercialId) {
+      errores.push("Debe especificar un proveedor");
+    }
+
+    // Solo validar comprobante si NO es operación sin factura
+    if (!movimiento.operacionSinFactura) {
+      if (!movimiento.tipoDocumentoId) {
+        errores.push("Debe especificar el tipo de comprobante");
+      }
+
+      if (!movimiento.numeroSerieComprobante || !movimiento.numeroCorrelativoComprobante) {
+        errores.push("Debe ingresar serie y correlativo del comprobante");
+      }
+    }
+
+    if (!movimiento.monto || movimiento.monto <= 0) {
+      errores.push("El monto debe ser mayor a cero");
+    }
+
+    if (!movimiento.productoId) {
+      errores.push("Debe especificar un producto/servicio");
+    }
+
+    if (!movimiento.centroCostoId) {
+      errores.push("Debe especificar un centro de costo");
+    }
+
+    return { valido: errores.length === 0, errores };
+  };
+
+  const handleClickGenerarDocumentos = () => {
+    const { valido, errores } = validarRequisitosGeneracion();
+
+    if (!valido) {
+      const mensajeDetalle = errores.map((error, index) => `${index + 1}. ${error}`).join('\n');
+
+      toast.current.show({
+        severity: "warn",
+        summary: "⚠️ Requisitos Faltantes para Generar Documentos",
+        detail: mensajeDetalle,
+        life: 8000,
+        sticky: false,
+      });
+      return;
+    }
+
+    setGeneradorDocumentosVisible(true);
+  };
 
   return (
     <div className="p-fluid">
@@ -2065,6 +2132,21 @@ const DetMovsRendicionGastosForm = ({
             severity="warning"
             onClick={onCancelar}
           />
+
+          {isEditing && (
+            <Button
+              type="button"
+              label="🔄 Generar Documentos Financieros"
+              icon="pi pi-file-export"
+              className="p-button-info"
+              size="small"
+              severity="info"
+              onClick={handleClickGenerarDocumentos}
+              tooltip="Genera automáticamente: OC, CxP, Pago y Asientos Contables"
+              tooltipOptions={{ position: "top" }}
+            />
+          )}
+
           <Button
             type="button"
             label={isEditing ? "Actualizar" : "Crear"}
@@ -2086,6 +2168,15 @@ const DetMovsRendicionGastosForm = ({
         onCancel={() => setModuloDocumentoDialogVisible(false)}
         moduloLabel="Módulo Origen"
         documentoLabel="Documento Origen"
+      />
+
+      {/* Modal de Generación de Documentos Financieros */}
+      <GeneradorDocumentosFinancierosDialog
+        visible={generadorDocumentosVisible}
+        onHide={() => setGeneradorDocumentosVisible(false)}
+        detMovEntregaRendir={movimiento}
+        onGeneracionExitosa={handleGeneracionDocumentosExitosa}
+        toast={toast}
       />
     </div>
   );

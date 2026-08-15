@@ -80,6 +80,23 @@ export const eliminarDetMovsEntregaRendir = async (id) => {
 };
 
 /**
+ * Obtiene un detalle de movimientos entrega a rendir por ID
+ * @param {number} id - ID del detalle de movimientos entrega a rendir
+ * @returns {Promise<Object>} Detalle de movimientos entrega a rendir
+ */
+export const getDetMovsEntregaRendirPorId = async (id) => {
+  try {
+    const response = await axios.get(`${API_URL}/${id}`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener detalle de movimientos entrega a rendir por ID:', error);
+    throw error;
+  }
+};
+
+/**
  * Obtiene un detalle de movimientos entrega a rendir con gastos asociados
  * @param {number} id - ID del detalle de movimientos entrega a rendir
  * @returns {Promise<Object>} Detalle con gastos asociados
@@ -237,3 +254,22 @@ export const asignarCentroCostoMasivo = async (centroCostoId, movimientosIds) =>
   }
 };
 
+/**
+ * Genera documentos financieros automáticamente desde DetMovsEntregaRendir
+ * Genera: OrdenCompra → CuentaPorPagar → Pago → 2 Asientos Contables
+ * @param {number} id - ID del detalle de movimientos entrega a rendir
+ * @returns {Promise<Object>} Resultado de la generación con IDs de documentos creados
+ */
+export const generarDocumentosFinancieros = async (id) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/${id}/generar-documentos-financieros`,
+      {},
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error al generar documentos financieros:', error);
+    throw error;
+  }
+};
