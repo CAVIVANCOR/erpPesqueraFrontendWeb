@@ -481,6 +481,18 @@ export default function PreFacturaForm({
     }
   }, [defaultValues, empresaFija]);
 
+  // ════════════════════════════════════════════════════════════
+  // EFECTO: CONCATENAR NÚMERO DOCUMENTO FINAL
+  // ════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (formData.numSerieDocFinal && formData.numCorreDocFinal) {
+      const numeroCompleto = `${formData.numSerieDocFinal}-${formData.numCorreDocFinal}`;
+      handleChange("numeroDocumentoFinal", numeroCompleto);
+    } else {
+      handleChange("numeroDocumentoFinal", "");
+    }
+  }, [formData.numSerieDocFinal, formData.numCorreDocFinal]);
+
   // Estados auxiliares
   const [clientes, setClientes] = useState(clientesProp);
   const [seriesDoc, setSeriesDoc] = useState([]);
@@ -507,6 +519,7 @@ export default function PreFacturaForm({
   });
   const [estadosPreFactura, setEstadosPreFactura] = useState([]);
   const [fechaDocumentoInicial, setFechaDocumentoInicial] = useState(null);
+  const [fechaFacturacionInicial, setFechaFacturacionInicial] = useState(null);
   const [mediosPago, setMediosPago] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [estadosCxC, setEstadosCxC] = useState([]);
@@ -730,15 +743,29 @@ export default function PreFacturaForm({
     cargarCatalogosCxC();
   }, []);
 
-    // Cargar tipo de cambio SUNAT cuando cambia fechaDocumento (solo si NO existe fechaFacturacion)
+  // Cargar tipo de cambio SUNAT cuando cambia fechaDocumento (solo si NO existe fechaFacturacion)
+  useEffect(() => {
+    if (fechaDocumento && fechaDocumentoInicial === null) {
+      setFechaDocumentoInicial(fechaDocumento);
+    }
+  }, [fechaDocumento, fechaDocumentoInicial]);
+
   useEffect(() => {
     const cargarTipoCambio = async () => {
-      if (!fechaDocumento) return;
-      if (formData.fechaFacturacion) return; // Si ya hay fechaFacturacion, no usar fechaDocumento
+      if (!fechaDocumento || fechaDocumentoInicial === null) return;
+      if (formData.fechaFacturacion) return;
+
+      const fechaActualISO = new Date(fechaDocumento).toISOString();
+      const fechaInicialISO = new Date(fechaDocumentoInicial).toISOString();
+
+      if (fechaActualISO === fechaInicialISO) return;
 
       try {
         const fecha = new Date(fechaDocumento);
-        const fechaISO = fecha.toISOString().split("T")[0];
+        const year = fecha.getFullYear();
+        const month = String(fecha.getMonth() + 1).padStart(2, '0');
+        const day = String(fecha.getDate()).padStart(2, '0');
+        const fechaISO = `${year}-${month}-${day}`;
 
         const tipoCambioData = await consultarTipoCambioSunat({
           date: fechaISO,
@@ -747,6 +774,7 @@ export default function PreFacturaForm({
         if (tipoCambioData && tipoCambioData.sell_price) {
           const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
           handleChange("tipoCambio", tipoCambioVenta.toFixed(3));
+          setFechaDocumentoInicial(fechaDocumento);
 
           toast?.current?.show({
             severity: "success",
@@ -761,16 +789,30 @@ export default function PreFacturaForm({
     };
 
     cargarTipoCambio();
-  }, [fechaDocumento]);
+  }, [fechaDocumento, fechaDocumentoInicial]);
 
   // Cargar tipo de cambio SUNAT cuando cambia fechaFacturacion (PREDOMINA sobre fechaDocumento)
   useEffect(() => {
+    if (formData.fechaFacturacion && fechaFacturacionInicial === null) {
+      setFechaFacturacionInicial(formData.fechaFacturacion);
+    }
+  }, [formData.fechaFacturacion, fechaFacturacionInicial]);
+
+  useEffect(() => {
     const cargarTipoCambioFacturacion = async () => {
-      if (!formData.fechaFacturacion) return;
+      if (!formData.fechaFacturacion || fechaFacturacionInicial === null) return;
+
+      const fechaActualISO = new Date(formData.fechaFacturacion).toISOString();
+      const fechaInicialISO = new Date(fechaFacturacionInicial).toISOString();
+
+      if (fechaActualISO === fechaInicialISO) return;
 
       try {
         const fecha = new Date(formData.fechaFacturacion);
-        const fechaISO = fecha.toISOString().split("T")[0];
+        const year = fecha.getFullYear();
+        const month = String(fecha.getMonth() + 1).padStart(2, '0');
+        const day = String(fecha.getDate()).padStart(2, '0');
+        const fechaISO = `${year}-${month}-${day}`;
 
         const tipoCambioData = await consultarTipoCambioSunat({
           date: fechaISO,
@@ -779,6 +821,7 @@ export default function PreFacturaForm({
         if (tipoCambioData && tipoCambioData.sell_price) {
           const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
           handleChange("tipoCambio", tipoCambioVenta.toFixed(3));
+          setFechaFacturacionInicial(formData.fechaFacturacion);
 
           toast?.current?.show({
             severity: "success",
@@ -793,7 +836,7 @@ export default function PreFacturaForm({
     };
 
     cargarTipoCambioFacturacion();
-  }, [formData.fechaFacturacion]);
+  }, [formData.fechaFacturacion, fechaFacturacionInicial]);
 
   // Recalcular totales cuando cambia tipoCambio
   useEffect(() => {

@@ -142,7 +142,7 @@ export default function SelectorDocumentoAfecto({
   const tipoDocumentoTemplate = (rowData) => {
     return (
       <Tag
-        value={rowData.tipoDocumentoFinal?.descripcion || rowData.tipoDocumento?.descripcion || "N/A"}
+        value={rowData.tipoDocumentoFinal?.codigo || rowData.tipoDocumento?.codigo || "N/A"}
         severity="info"
       />
     );
@@ -161,9 +161,9 @@ export default function SelectorDocumentoAfecto({
         >
           {documentoSeleccionado ? (
             <span style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-              <Tag value={documentoSeleccionado.tipoDocumentoFinal?.descripcion} severity="success" />
-              <Tag value={documentoSeleccionado.numeroDocumentoFinal} severity="info" style={{ fontWeight: "bold" }} />
-              <Tag value={formatearFecha(documentoSeleccionado.fechaFacturacion)} severity="warning" />
+              <Tag value={documentoSeleccionado.tipoDocumentoFinal?.codigo || documentoSeleccionado.tipoDocumento?.codigo || "DOC"} severity="info" />
+              <Tag value={documentoSeleccionado.numeroDocumentoFinal || documentoSeleccionado.numeroDocumento} severity="success" style={{ fontWeight: "bold" }} />
+              <Tag value={formatearFecha(documentoSeleccionado.fechaFacturacion || documentoSeleccionado.fechaDocumento)} severity="warning" />
               <span style={{
                 backgroundColor: documentoSeleccionado.moneda?.colorFondo || '#FFFFE0',
                 padding: '0.25rem 0.5rem',
@@ -210,8 +210,13 @@ export default function SelectorDocumentoAfecto({
           size="small"
           emptyMessage="No se encontraron documentos"
         >
-          <Column field="tipoDocumentoFinal.descripcion" header="Tipo" body={tipoDocumentoTemplate} sortable />
-          <Column field="numeroDocumentoFinal" header="Número" sortable />
+          <Column field="tipoDocumentoFinal.codigo" header="Tipo" body={tipoDocumentoTemplate} sortable />
+          <Column
+            field="numeroDocumentoFinal"
+            header="Número"
+            body={(rowData) => rowData.numeroDocumentoFinal || rowData.numeroDocumento}
+            sortable
+          />
           <Column field="fechaFacturacion" header="Fecha" body={fechaTemplate} sortable />
           <Column field="total" header="Total" body={montoTemplate} sortable />
           <Column header="Acciones" body={accionesTemplate} style={{ width: "150px" }} />
