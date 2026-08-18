@@ -73,6 +73,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     return fechaA - fechaB;
   });
 
+
   // Obtener usuario logueado para firma de liquidación
   const usuarioLogueado = useAuthStore.getState().usuario;
 
@@ -101,7 +102,13 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
   // ⭐ FUNCIÓN PARA DIVIDIR TEXTO EN LÍNEAS SIN CORTAR PALABRAS
   const dividirTextoEnLineas = (texto, anchoMaximo, font, size) => {
-    const palabras = texto.split(' ');
+    // 🔧 FIX: Sanitizar texto - eliminar saltos de línea y caracteres especiales
+    const textoSanitizado = String(texto || '')
+      .replace(/[\n\r\t]/g, ' ')  // Reemplazar \n, \r, \t por espacio
+      .replace(/\s+/g, ' ')        // Reemplazar múltiples espacios por uno solo
+      .trim();                      // Eliminar espacios al inicio y final
+
+    const palabras = textoSanitizado.split(' ');
     const lineas = [];
     let lineaActual = '';
 
@@ -229,7 +236,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
     datosIzquierda.forEach(([label, value]) => {
       pag.drawText(label, {
-        x: margin,
+        x: margin + 5,
         y: yPos,
         size: 8,
         font: fontBold,
@@ -279,7 +286,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
     // TÍTULO DETALLE DE GASTOS
     pag.drawText("DETALLE DE GASTOS", {
-      x: margin,
+      x: margin + 5,
       y: yPos,
       size: 10,
       font: fontBold,
@@ -291,12 +298,12 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     const colX = [
       margin, // Id
       margin + 25, // Fecha
-      margin + 75, // N° Dcmto
-      margin + 125, // Categoría/Tipo/Desc
-      margin + 410, // Moneda
-      margin + 435, // T/C
-      margin + 475, // Monto
-      margin + 540, // Saldo
+      margin + 75, // N° Dcmto (ampliado +50%)
+      margin + 150, // Categoría/Tipo/Desc (ajustado)
+      margin + 420, // Moneda
+      margin + 455, // T/C
+      margin + 499, // Monto
+      margin + 555, // Saldo
     ];
 
     const headers = [
@@ -413,11 +420,11 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
   ];
 
   // Anchos de columnas para alineación
-  const anchoColMon = colX[4] - colX[3];
-  const anchoColTC = colX[5] - colX[4];
-  const anchoColMonto = colX[7] - colX[6];
-  const anchoColSaldo = width - margin - colX[7];
-  const anchoDisponibleTexto = colX[4] - colX[3] - 10;
+  const anchoColMon = colX[5] - colX[4];  // 🔧 Moneda: 440 - 415 = 25pt
+  const anchoColTC = colX[6] - colX[5];   // 🔧 T/C: 480 - 440 = 40pt
+  const anchoColMonto = colX[7] - colX[6]; // Monto: 545 - 480 = 65pt
+  const anchoColSaldo = width - margin - colX[7]; // Saldo: resto
+  const anchoDisponibleTexto = colX[4] - colX[3] - 5; // Descripción: 260pt
 
   // ⭐ DECLARAR VARIABLES PRIMERO
   const saldoInicial = Number(liquidacion.saldoInicialAsignacion || 0);
@@ -476,9 +483,9 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
   // ========== PRIMERA FILA: ASIGNACIÓN ORIGEN ==========
 
   // ⭐ CONSTRUIR TEXTO COMPLETO: CATEGORÍA - TIPO - DESCRIPCIÓN
-  const categoria = liquidacion.tipoMovimiento?.categoria?.nombre || "";
-  const tipoMov = liquidacion.tipoMovimiento?.nombre || "";
-  const desc = liquidacion.descripcion || "";
+  const categoria = (liquidacion.tipoMovimiento?.categoria?.nombre || "").replace(/[\n\r\t]/g, ' ').trim();
+  const tipoMov = (liquidacion.tipoMovimiento?.nombre || "").replace(/[\n\r\t]/g, ' ').trim();
+  const desc = (liquidacion.descripcion || "").replace(/[\n\r\t]/g, ' ').trim();
 
   let textoCompleto = "";
   if (categoria) textoCompleto += categoria;
@@ -556,11 +563,10 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
   // ⭐ EMBARCACIÓN - SOLO SI EXISTE
   if (liquidacion.embarcacion) {
-    const textoEmbarcacion = `Embarcación: ${
-      liquidacion.embarcacion.activo?.nombre ||
+    const textoEmbarcacion = `Embarcación: ${liquidacion.embarcacion.activo?.nombre ||
       liquidacion.embarcacion.matricula ||
       "N/A"
-    }`;
+      }`;
     page.drawText(textoEmbarcacion, {
       x: colX[3],
       y: yLineaDesc,
@@ -610,32 +616,35 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
   for (const gasto of gastosAsociados) {
     // ⭐ CONSTRUIR TEXTO COMPLETO: CATEGORÍA - TIPO - DESCRIPCIÓN
-    const catGasto = gasto.tipoMovimiento?.categoria?.nombre || "";
-    const tipoGasto = gasto.tipoMovimiento?.nombre || "";
-    const descGasto = gasto.descripcion || "";
+    const catGasto = (gasto.tipoMovimiento?.categoria?.nombre || "").replace(/[\n\r\t]/g, ' ').trim();
+    const tipoGasto = (gasto.tipoMovimiento?.nombre || "").replace(/[\n\r\t]/g, ' ').trim();
+    const descGasto = (gasto.descripcion || "").replace(/[\n\r\t]/g, ' ').trim();
 
-    let textoCompletoGasto = "";
-    if (catGasto) textoCompletoGasto += catGasto;
+    // 🔧 Separar: Categoría + Tipo (normal) vs Descripción (verde)
+    let textoCatTipoGasto = "";
+    if (catGasto) textoCatTipoGasto += catGasto;
     if (tipoGasto)
-      textoCompletoGasto += (textoCompletoGasto ? " - " : "") + tipoGasto;
-    if (descGasto)
-      textoCompletoGasto += (textoCompletoGasto ? " - " : "") + descGasto;
+      textoCatTipoGasto += (textoCatTipoGasto ? " - " : "") + tipoGasto;
 
-    // Dividir texto en líneas si es necesario
-    const lineasTextoGasto = dividirTextoEnLineas(
-      textoCompletoGasto,
-      anchoDisponibleTexto,
-      fontNormal,
-      7
-    );
+    // Dividir texto Categoría + Tipo en líneas
+    const lineasCatTipoGasto = textoCatTipoGasto
+      ? dividirTextoEnLineas(textoCatTipoGasto, anchoDisponibleTexto, fontNormal, 7)
+      : [];
+
+    // Dividir descripción en líneas (verde oscuro)
+    const lineasDescGasto = descGasto
+      ? dividirTextoEnLineas(descGasto, anchoDisponibleTexto, fontBold, 7)
+      : [];
+
+    const lineasTextoGasto = [...lineasCatTipoGasto, ...lineasDescGasto];
 
     // CALCULAR ALTURA DINÁMICA DE LA FILA
     let numLineasGasto = lineasTextoGasto.length;
-    if (gasto.embarcacion) numLineasGasto++; // ⭐ SOLO SI HAY EMBARCACIÓN
+    // 🔧 NO sumar línea por embarcación (ahora va en columna N° Dcmto)
     const alturaFilaGasto = Math.max(14, numLineasGasto * 8 + 6);
 
     // Verificar si hay espacio para la fila
-    if (yPosition < 180) {
+    if (yPosition < 40) {
       page = pdfDoc.addPage([595.28, 841.89]);
       pages.push(page);
       yPosition = height - 25;
@@ -705,9 +714,9 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
       font: fontNormal,
     });
 
-    // ⭐ IMPRIMIR TEXTO COMPLETO EN MÚLTIPLES LÍNEAS
+    // ⭐ IMPRIMIR CATEGORÍA + TIPO (normal)
     let yLineaDescGasto = yTopCeldaGasto;
-    lineasTextoGasto.forEach((linea) => {
+    lineasCatTipoGasto.forEach((linea) => {
       page.drawText(linea, {
         x: colX[3],
         y: yLineaDescGasto,
@@ -717,24 +726,45 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
       yLineaDescGasto -= 8;
     });
 
-    // ⭐ EMBARCACIÓN - SOLO SI EXISTE
-    if (gasto.embarcacion) {
-      const textoEmbarcacion = `Embarcación: ${
-        gasto.embarcacion.activo?.nombre ||
-        gasto.embarcacion.matricula ||
-        "N/A"
-      }`;
-      page.drawText(textoEmbarcacion, {
+    // ⭐ IMPRIMIR DESCRIPCIÓN (verde oscuro y negrita)
+    lineasDescGasto.forEach((linea) => {
+      page.drawText(linea, {
         x: colX[3],
         y: yLineaDescGasto,
-        size: 6,
-        font: fontOblique,
-        color: rgb(0.2, 0.2, 0.6),
+        size: 7,
+        font: fontBold,
+        color: rgb(0, 0.4, 0),  // Verde oscuro
       });
+      yLineaDescGasto -= 8;
+    });
+
+    // ⭐ EMBARCACIÓN - DEBAJO DE N° DCMTO
+    if (gasto.embarcacion) {
+      const nombreEmbarcacion = gasto.embarcacion.activo?.nombre ||
+        gasto.embarcacion.matricula ||
+        "";
+
+      if (nombreEmbarcacion) {
+        // Dividir en líneas si es necesario (máx 70pt de ancho)
+        const lineasEmb = dividirTextoEnLineas(nombreEmbarcacion, 70, fontOblique, 6);
+        let yEmb = yTopCeldaGasto - 7;
+
+        lineasEmb.forEach(linea => {
+          page.drawText(linea, {
+            x: colX[2] + 2,
+            y: yEmb,
+            size: 6,
+            font: fontOblique,
+            color: rgb(0.2, 0.2, 0.6),
+          });
+          yEmb -= 7;
+        });
+      }
     }
 
     // Moneda, T/C, Monto, Saldo
     const monGasto = gasto.moneda?.simbolo || "S/";
+
     page.drawText(monGasto, {
       x: alinearDerecha(monGasto, colX[4], anchoColMon, fontNormal, 7),
       y: yTopCeldaGasto,
@@ -1076,7 +1106,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
     // TÍTULO DETALLE DE GASTOS PLANIFICADOS
     page.drawText("DETALLE DE GASTOS PLANIFICADOS", {
-      x: margin,
+      x: margin + 5,
       y: yPosition,
       size: 10,
       font: fontBold,
@@ -1231,7 +1261,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     });
   }
 
-    // Agregar documentos adjuntos si existen
+  // Agregar documentos adjuntos si existen
   await agregarDocumentosAdjuntos(
     pdfDoc,
     liquidacion.gastosAsociados || [],
@@ -1245,6 +1275,27 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
   );
 
   // Serializar el PDF
+  // ========== AGREGAR NUMERACIÓN DE PÁGINAS (ESQUINA SUPERIOR DERECHA) ==========
+  const totalPaginas = pages.length;
+
+  pages.forEach((pag, index) => {
+    const numeroPagina = index + 1;
+    const textoPagina = `Página ${numeroPagina} de ${totalPaginas}`;
+    const anchoTextoPagina = fontNormal.widthOfTextAtSize(textoPagina, 8);
+
+    // Posición: esquina superior derecha
+    const xPagina = width - margin - anchoTextoPagina - 5; // 5pt adicional de margen
+    const yPagina = height - 10; // 10pt desde el borde superior
+
+    pag.drawText(textoPagina, {
+      x: xPagina,
+      y: yPagina,
+      size: 8,
+      font: fontNormal,
+      color: rgb(0.4, 0.4, 0.4), // Gris medio profesional
+    });
+  });
+
   const pdfBytes = await pdfDoc.save();
   return pdfBytes;
 }

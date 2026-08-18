@@ -107,6 +107,7 @@ const LiquidacionRendicionGastosCard = ({
         }
 
         const movimientoCompleto = await response.json();
+
         const gastosAsociados = movimientoCompleto.gastosAsociados || [];
 
         // Si no hay gastos, el saldo final real es el de la asignación

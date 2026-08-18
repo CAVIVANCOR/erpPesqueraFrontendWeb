@@ -65,6 +65,7 @@ import { asignarCentroCostoMasivo } from "../api/ordenCompra";
 import { formatearMontoConSigno } from "../utils/tiposDocumento.constants";
 import FiltroTipoLibroButton from "../components/common/FiltroTipoLibroButton";
 import { getTiposAfectacionIGVActivos } from "../api/facturacionElectronica/tipoAfectacionIGV"; // AGREGADO
+import OrigenAsientoViewer from "../components/common/origenAsiento/OrigenAsientoViewer";
 
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
@@ -155,7 +156,10 @@ export default function OrdenCompra({ ruta }) {
   const [showAsignarCentroCostoDialog, setShowAsignarCentroCostoDialog] = useState(false);
   const [filtroTipoLibro, setFiltroTipoLibro] = useState("FISCAL_SSI");
   const [busquedaDocumento, setBusquedaDocumento] = useState("");
-
+  const [showOrigenViewer, setShowOrigenViewer] = useState(false);
+  const [origenData, setOrigenData] = useState(null);
+  const [submoduloOrigenSeleccionado, setSubmoduloOrigenSeleccionado] = useState(null);
+  const [submodulosOrigenUnicos, setSubmodulosOrigenUnicos] = useState([]);
   // ========================================
   // 🆕 CARGAR DATOS AL MONTAR EL COMPONENTE
   // ========================================
@@ -223,6 +227,24 @@ export default function OrdenCompra({ ruta }) {
       setTipoAfectacionIGVSeleccionado(null);
     }
   }, [ordenesFiltradas, tipoAfectacionIGVSeleccionado]);
+
+  // ✅ Extraer submódulos origen únicos
+  useEffect(() => {
+    const submodulosMap = new Map();
+    ordenesFiltradas.forEach((orden) => {
+      if (orden.submoduloOrigen) {
+        submodulosMap.set(orden.submoduloOrigen.id, orden.submoduloOrigen);
+      }
+    });
+    const submodulosArray = Array.from(submodulosMap.values()).sort((a, b) =>
+      (a.nombre || "").localeCompare(b.nombre || "")
+    );
+    setSubmodulosOrigenUnicos(submodulosArray);
+
+    if (submoduloOrigenSeleccionado && !submodulosArray.find(s => Number(s.id) === Number(submoduloOrigenSeleccionado))) {
+      setSubmoduloOrigenSeleccionado(null);
+    }
+  }, [ordenesFiltradas, submoduloOrigenSeleccionado]);
 
   // ✅ Calcular tipos de documento disponibles dinámicamente
   useEffect(() => {
@@ -345,6 +367,13 @@ export default function OrdenCompra({ ruta }) {
       });
     }
 
+    // ✅ Filtro por submódulo origen
+    if (submoduloOrigenSeleccionado) {
+      filtered = filtered.filter((orden) => {
+        return Number(orden.submoduloOrigenId) === Number(submoduloOrigenSeleccionado);
+      });
+    }
+
     // Filtro por ID (#) o número de documento final
     if (busquedaDocumento && busquedaDocumento.trim() !== "") {
       const busqueda = busquedaDocumento.trim();
@@ -401,6 +430,8 @@ export default function OrdenCompra({ ruta }) {
     centroCostoSeleccionado,
     productoSeleccionado,
     tipoAfectacionIGVSeleccionado, // AGREGADO
+    tipoAfectacionIGVSeleccionado,
+    submoduloOrigenSeleccionado,
     filtroTipoLibro,
     busquedaDocumento,
   ]);
@@ -815,6 +846,7 @@ export default function OrdenCompra({ ruta }) {
     setEstadoSeleccionado(null);
     setProductoSeleccionado(null);
     setTipoAfectacionIGVSeleccionado(null); // AGREGADO
+    setSubmoduloOrigenSeleccionado(null);
     setRangoFechaFacturacion(null);
     setTipoDocumentoFinalIdSeleccionado(null);
     setTiposDocInternoAplicados([]);
@@ -1478,6 +1510,70 @@ export default function OrdenCompra({ ruta }) {
     );
   };
 
+  // Template para Submódulo Origen con color dinámico
+  const submoduloOrigenTemplate = (rowData) => {
+    if (!rowData.submoduloOrigen) {
+      return <span style={{ color: "#999" }}>-</span>;
+    }
+
+    // Mapeo de colores por submódulo
+    const coloresSubmodulo = {
+      "Rendición de Gastos": "#9333EA", // Morado
+      "CXP": "#EF4444", // Rojo
+      "RRHH": "#3B82F6", // Azul
+      "Inventario": "#10B981", // Verde
+      "Producción": "#F59E0B", // Naranja
+      "Compras": "#EAB308", // Amarillo
+    };
+
+    const nombreSubmodulo = rowData.submoduloOrigen.nombre || "";
+    const colorFondo = coloresSubmodulo[nombreSubmodulo] || "#6B7280"; // Gris por defecto
+
+    return (
+      <Tag
+        value={nombreSubmodulo}
+        style={{
+          backgroundColor: colorFondo,
+          color: "#FFFFFF",
+          fontWeight: "600",
+          fontSize: "0.7rem",
+          padding: "0.25rem 0.5rem",
+        }}
+      />
+    );
+  };
+
+  // Template para Proceso Origen ID (compacto)
+  const procesoOrigenIdTemplate = (rowData) => {
+    if (!rowData.procesoOrigenId) {
+      return <span style={{ color: "#999" }}>-</span>;
+    }
+    return (
+      <span style={{ fontSize: "0.75rem", color: "#374151" }}>
+        {rowData.procesoOrigenId}
+      </span>
+    );
+  };
+
+  // Handler para ver origen de la orden
+  const handleVerOrigen = (rowData) => {
+    if (!rowData.submoduloOrigen?.nombreModeloOrigen || !rowData.procesoOrigenId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Sin Origen",
+        detail: "Esta orden no tiene un origen asociado",
+        life: 3000,
+      });
+      return;
+    }
+
+    setOrigenData({
+      nombreModeloOrigen: rowData.submoduloOrigen.nombreModeloOrigen,
+      procesoOrigenId: rowData.procesoOrigenId,
+    });
+    setShowOrigenViewer(true);
+  };
+
   // Template para Tipo Documento Interno
   const tipoDocumentoInternoTemplate = (rowData) => {
     return rowData.tipoDocumento?.codigo || "-";
@@ -1739,36 +1835,49 @@ export default function OrdenCompra({ ruta }) {
       </div>
     );
   };
-  const actionBody = (rowData) => (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "row",
-        gap: "4px",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Button
-        icon="pi pi-pencil"
-        className="p-button-text p-button-sm"
-        onClick={() => handleEdit(rowData)}
-        disabled={!permisos.puedeVer && !permisos.puedeEditar}
-        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
-        aria-label={permisos.puedeEditar ? "Editar" : "Ver"}
-        style={{ padding: "0.25rem" }}
-      />
-      <Button
-        icon="pi pi-trash"
-        className="p-button-text p-button-danger p-button-sm"
-        onClick={() => handleDelete(rowData)}
-        aria-label="Eliminar"
-        tooltip="Eliminar"
-        disabled={!permisos.puedeEliminar}
-        style={{ padding: "0.25rem" }}
-      />
-    </div>
-  );
+  const accionesTemplate = (rowData) => {
+    const tieneOrigen = rowData.submoduloOrigen?.nombreModeloOrigen && rowData.procesoOrigenId;
+    const tooltipOrigen = tieneOrigen
+      ? `Ver ${rowData.submoduloOrigen.nombre} #${rowData.procesoOrigenId}`
+      : "Esta orden no tiene origen";
+
+    return (
+      <div style={{ display: "flex", gap: "0.25rem", justifyContent: "center" }}>
+        <Button
+          icon="pi pi-link"
+          rounded
+          text
+          severity="info"
+          onClick={() => handleVerOrigen(rowData)}
+          disabled={!tieneOrigen}
+          tooltip={tooltipOrigen}
+          tooltipOptions={{ position: "top" }}
+          style={{
+            opacity: tieneOrigen ? 1 : 0.3,
+            cursor: tieneOrigen ? "pointer" : "not-allowed",
+          }}
+        />
+        <Button
+          icon="pi pi-pencil"
+          rounded
+          text
+          severity="warning"
+          onClick={() => handleEdit(rowData)}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+        />
+        <Button
+          icon="pi pi-trash"
+          rounded
+          text
+          severity="danger"
+          onClick={() => handleDelete(rowData)}
+          tooltip="Eliminar"
+          tooltipOptions={{ position: "top" }}
+        />
+      </div>
+    );
+  };
 
   return (
     <div className="p-fluid">
@@ -1920,6 +2029,56 @@ export default function OrdenCompra({ ruta }) {
                   onClick={handleExportarExcel}
                   disabled={loading}
                   tooltip="Exportar todas las Compras a Excel"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              {/* Filtro por Submódulo Origen */}
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="filtroSubmoduloOrigen"
+                  style={{
+                    display: "block",
+                    marginBottom: "0.5rem",
+                    fontWeight: "500",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  Origen
+                </label>
+                <Dropdown
+                  id="filtroSubmoduloOrigen"
+                  value={submoduloOrigenSeleccionado}
+                  options={submodulosOrigenUnicos}
+                  onChange={(e) => setSubmoduloOrigenSeleccionado(e.value)}
+                  optionLabel="nombre"
+                  optionValue="id"
+                  placeholder="Todos los orígenes"
+                  showClear
+                  filter
+                  itemTemplate={(option) => {
+                    const coloresSubmodulo = {
+                      "Rendición de Gastos": "#9333EA",
+                      "CXP": "#EF4444",
+                      "RRHH": "#3B82F6",
+                      "Inventario": "#10B981",
+                      "Producción": "#F59E0B",
+                      "Compras": "#EAB308",
+                    };
+                    const colorFondo = coloresSubmodulo[option.nombre] || "#6B7280";
+                    return (
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <div
+                          style={{
+                            width: "12px",
+                            height: "12px",
+                            borderRadius: "50%",
+                            backgroundColor: colorFondo,
+                          }}
+                        />
+                        <span>{option.nombre}</span>
+                      </div>
+                    );
+                  }}
                   style={{ width: "100%" }}
                 />
               </div>
@@ -2344,12 +2503,31 @@ export default function OrdenCompra({ ruta }) {
           header="Centro de Costo"
           body={centroCostoTemplate}
           sortable
-          style={{ minWidth: "300px" }}
+          style={{ minWidth: "150px" }}
+        />
+        {/* Submódulo Origen */}
+        <Column
+          field="submoduloOrigen.nombre"
+          header="Origen"
+          body={submoduloOrigenTemplate}
+          style={{ width: 100, textAlign: "center" }}
+          sortable
+        />
+
+        {/* Proceso Origen ID */}
+        <Column
+          field="procesoOrigenId"
+          header="Proc.ID"
+          body={procesoOrigenIdTemplate}
+          style={{ width: 70, textAlign: "center" }}
+          sortable
         />
         <Column
-          body={actionBody}
           header="Acciones"
-          style={{ width: 100, textAlign: "center" }}
+          body={accionesTemplate}
+          style={{ width: 150, textAlign: "center" }}
+          frozen
+          alignFrozen="right"
         />
       </DataTable>
       <Dialog
@@ -2510,6 +2688,14 @@ export default function OrdenCompra({ ruta }) {
         registrosSeleccionados={ordenesSeleccionadas.map(o => o.id)}
         onAsignar={handleAsignarCentroCosto}
         nombreModulo="órdenes de compra"
+      />
+
+      {/* Viewer de Origen de la Orden */}
+      <OrigenAsientoViewer
+        nombreModeloOrigen={origenData?.nombreModeloOrigen}
+        procesoOrigenId={origenData?.procesoOrigenId}
+        visible={showOrigenViewer}
+        onHide={() => setShowOrigenViewer(false)}
       />
     </div>
   );
