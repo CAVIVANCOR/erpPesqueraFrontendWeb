@@ -1285,7 +1285,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
     // Posición: esquina superior derecha
     const xPagina = width - margin - anchoTextoPagina - 5; // 5pt adicional de margen
-    const yPagina = height - 10; // 10pt desde el borde superior
+    const yPagina = height - 20; // 10pt desde el borde superior
 
     pag.drawText(textoPagina, {
       x: xPagina,
