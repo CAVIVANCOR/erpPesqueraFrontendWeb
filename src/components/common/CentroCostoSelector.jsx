@@ -163,15 +163,28 @@ const CentroCostoSelector = ({
     }
   }, [refreshTrigger]);
 
-  // Obtener el centro seleccionado
+  // Obtener el centro seleccionado CON categoría poblada manualmente
   const centroSeleccionado = useMemo(() => {
     if (!value) {
       return null;
     }
 
     const centro = centros.find((c) => Number(c.id) === Number(value));
-    return centro;
-  }, [centros, value]);
+
+    if (!centro) {
+      return null;
+    }
+
+    // ✅ POBLAR MANUALMENTE LA RELACIÓN categoria
+    const categoriaEncontrada = categorias.find(
+      (cat) => Number(cat.id) === Number(centro.CategoriaID)
+    );
+
+    return {
+      ...centro,
+      categoria: categoriaEncontrada || null,
+    };
+  }, [centros, categorias, value]);
 
   // Filtrar centros por categoría seleccionada
   const centrosFiltrados = useMemo(() => {

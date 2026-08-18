@@ -84,17 +84,17 @@ const getEmpresaNombre = (empresaId, empresas) => {
   if (!empresaId) {
     return "Sin empresa";
   }
-  
+
   if (!empresas || empresas.length === 0) {
     return `ID: ${empresaId}`;
   }
-  
+
   const empresa = empresas.find((e) => Number(e.id) === Number(empresaId));
-  
+
   if (!empresa) {
     return `ID: ${empresaId}`;
   }
-  
+
   return empresa.nombre || empresa.razonSocial || `ID: ${empresaId}`;
 };
 
@@ -188,7 +188,7 @@ const EntidadComercialSelector = ({
       recargarDatos();
     }
   }, [refreshTrigger]);
-  
+
   // Actualizar empresaFiltro si cambia la preselección
   useEffect(() => {
     if (empresaIdPreseleccionada) {
@@ -201,7 +201,7 @@ const EntidadComercialSelector = ({
     if (!value) {
       return null;
     }
-    
+
     const entidad = entidades.find((e) => Number(e.id) === Number(value));
     return entidad;
   }, [entidades, value]);
@@ -246,7 +246,7 @@ const EntidadComercialSelector = ({
           return entidadesConFiltroEstado;
       }
     }
-    
+
     // Si hay empresa seleccionada, mostrar TODAS sus entidades (sin filtro de tipo)
     const filtradas = entidadesConFiltroEstado.filter(
       (entidad) => Number(entidad.empresaId) === Number(empresaFiltro)
@@ -321,7 +321,7 @@ const EntidadComercialSelector = ({
     if (onChange) {
       onChange(Number(entidad.id));
     }
-    
+
     setDialogVisible(false);
     setGlobalFilterValue("");
     // No resetear empresaFiltro para mantener la preselección
@@ -382,7 +382,7 @@ const EntidadComercialSelector = ({
   const documentoTemplate = (rowData) => {
     const tipoDoc = rowData.tipoDocumento?.codigo || rowData.tipoDocumento?.nombre || "";
     const numeroDoc = rowData.numeroDocumento || "N/A";
-    
+
     return (
       <span style={{ fontSize: "0.9rem" }}>
         {tipoDoc && <span style={{ fontWeight: "bold", color: "#666" }}>{tipoDoc}: </span>}
@@ -467,10 +467,6 @@ const EntidadComercialSelector = ({
           <span style={{ color: "#999" }}>Cargando...</span>
         ) : entidadSeleccionada ? (
           <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-            <span style={{ color: COLORES_TEXTO.empresa }}>
-              {getEmpresaNombre(entidadSeleccionada.empresaId, empresas)}
-            </span>
-            <span style={{ color: COLORES_TEXTO.separador }}> - </span>
             <span style={{ color: COLORES_TEXTO.tipo }}>
               {entidadSeleccionada.tipoEntidad?.nombre || "Sin tipo"}
             </span>
@@ -501,86 +497,15 @@ const EntidadComercialSelector = ({
         maximizable
       >
         {/* Layout de 3 columnas */}
-        <div style={{ 
-          display: "grid", 
-          gridTemplateColumns: "180px 180px 1fr", 
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "180px 1fr",
           gap: "1rem",
           height: "600px"
         }}>
-          
-          {/* ========== COLUMNA 1: EMPRESAS ========== */}
-          <div style={{ 
-            display: "flex", 
-            flexDirection: "column",
-            borderRight: "1px solid #dee2e6"
-          }}>
-            <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: "600" }}>
-              Empresas
-            </h4>
-            <div style={{ 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: "0.35rem",
-              overflowY: "auto",
-              paddingRight: "0.5rem"
-            }}>
-              {/* Botón TODAS */}
-              <Button
-                type="button"
-                label="TODAS"
-                size="small"
-                onClick={() => handleEmpresaChange(null)}
-                style={{
-                  backgroundColor: !empresaFiltro ? COLOR_TODAS.bg : "#FFFFFF",
-                  color: !empresaFiltro ? COLOR_TODAS.text : COLOR_TODAS.bg,
-                  borderColor: COLOR_TODAS.border,
-                  fontWeight: "500",
-                  fontSize: "0.75rem",
-                  padding: "0.35rem 0.5rem",
-                  justifyContent: "flex-start",
-                  textAlign: "left",
-                }}
-                className={!empresaFiltro ? "" : "p-button-outlined"}
-              />
-
-              {/* Botones de empresas */}
-              {empresasUnicas.map((empresa, index) => {
-                const color = getColorCategoria(index);
-                const isActive = Number(empresaFiltro) === Number(empresa.id);
-                const nombreEmpresa = empresa.nombre || empresa.razonSocial || `ID: ${empresa.id}`;
-
-                return (
-                  <Button
-                    key={empresa.id}
-                    type="button"
-                    label={nombreEmpresa}
-                    size="small"
-                    onClick={() => handleEmpresaChange(Number(empresa.id))}
-                    style={{
-                      backgroundColor: isActive ? color.bg : "#FFFFFF",
-                      color: isActive ? color.text : color.bg,
-                      borderColor: color.border,
-                      fontWeight: "500",
-                      fontSize: "0.75rem",
-                      padding: "0.35rem 0.5rem",
-                      justifyContent: "flex-start",
-                      textAlign: "left",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                    className={isActive ? "" : "p-button-outlined"}
-                    tooltip={nombreEmpresa}
-                    tooltipOptions={{ position: 'right' }}
-                  />
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ========== COLUMNA 2: TIPOS DE ENTIDAD ========== */}
-          <div style={{ 
-            display: "flex", 
+          {/* ========== COLUMNA 1: TIPOS DE ENTIDAD ========== */}
+          <div style={{
+            display: "flex",
             flexDirection: "column",
             borderRight: "1px solid #dee2e6"
           }}>
@@ -588,9 +513,9 @@ const EntidadComercialSelector = ({
               Tipos de Entidad
             </h4>
             {empresaFiltro && tiposUnicos.length > 0 ? (
-              <div style={{ 
-                display: "flex", 
-                flexDirection: "column", 
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
                 gap: "0.35rem",
                 overflowY: "auto",
                 paddingRight: "0.5rem"
@@ -653,10 +578,10 @@ const EntidadComercialSelector = ({
             )}
           </div>
 
-          {/* ========== COLUMNA 3: TABLA DE ENTIDADES ========== */}
+          {/* ========== COLUMNA 2: TABLA DE ENTIDADES ========== */}
           <div style={{ display: "flex", flexDirection: "column" }}>
             {header}
-            
+
             <DataTable
               ref={dt}
               value={entidadesOrdenadas}
@@ -680,13 +605,6 @@ const EntidadComercialSelector = ({
               loading={loading}
               style={{ fontSize: getResponsiveFontSize() }}
             >
-              <Column
-                field="empresaId"
-                header="Empresa"
-                body={empresaTemplate}
-                sortable
-                style={{ minWidth: "200px" }}
-              />
               <Column
                 field="tipoEntidad.nombre"
                 header="Tipo"

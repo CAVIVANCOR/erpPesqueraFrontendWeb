@@ -36,6 +36,7 @@ import {
 import GeneradorDocumentosFinancierosDialog from "../common/GeneradorDocumentosFinancierosDialog";
 import { getEmbarcaciones } from "../../api/embarcacion";
 import { getDocumentosPorModelo } from "../../api/documentoDinamico";
+import CentroCostoSelector from "../common/CentroCostoSelector"; // ✅ AGREGAR
 
 const DetMovsRendicionGastosForm = ({
   movimiento = null,
@@ -227,51 +228,6 @@ const DetMovsRendicionGastosForm = ({
           saldoInicialAsignacion: Number(movimiento.saldoInicialAsignacion || 0),
           saldoFinalAsignacion: Number(movimiento.saldoFinalAsignacion || 0),
         });
-
-        if (
-          movimiento.moduloOrigenId &&
-          movimiento.documentoOrigenId &&
-          modulos.length > 0
-        ) {
-          try {
-            const modulo = modulos.find(
-              (m) => Number(m.id) === Number(movimiento.moduloOrigenId),
-            );
-
-            if (modulo && modulo.modeloDocumentoOrigen) {
-              const response = await getDocumentosPorModelo(
-                modulo.modeloDocumentoOrigen,
-              );
-              const { modulo: moduloInfo, config, documentos } = response;
-
-              const documento = documentos.find(
-                (d) => Number(d.id) === Number(movimiento.documentoOrigenId),
-              );
-
-              if (documento) {
-                const getNestedValue = (obj, path) => {
-                  if (!path) return null;
-                  return path
-                    .split(".")
-                    .reduce((acc, part) => acc?.[part], obj);
-                };
-
-                setModuloDocumentoSeleccionado({
-                  moduloId: Number(movimiento.moduloOrigenId),
-                  documentoId: Number(movimiento.documentoOrigenId),
-                  moduloNombre: moduloInfo.nombre,
-                  documentoNumero: documento[config.campoNumero] || "N/A",
-                  documentoFecha: documento[config.campoFecha] || null,
-                  entidad: config.campoEntidad
-                    ? getNestedValue(documento, config.campoEntidad)
-                    : null,
-                });
-              }
-            }
-          } catch (error) {
-            console.error("Error al cargar datos del módulo/documento:", error);
-          }
-        }
       } else {
         if (rendicionGastos) {
           setValue("empresaId", Number(rendicionGastos.empresaId) || 1);
@@ -369,6 +325,55 @@ const DetMovsRendicionGastosForm = ({
     };
     cargarModulos();
   }, []);
+
+  // ✅ AGREGAR ESTE NUEVO useEffect AQUÍ (después de línea 371)
+  useEffect(() => {
+    const cargarModuloDocumentoEdicion = async () => {
+      if (!isEditing || !movimiento || modulos.length === 0) return;
+
+      if (movimiento.moduloOrigenId && movimiento.documentoOrigenId) {
+        try {
+          const modulo = modulos.find(
+            (m) => Number(m.id) === Number(movimiento.moduloOrigenId),
+          );
+
+          if (modulo && modulo.modeloDocumentoOrigen) {
+            const response = await getDocumentosPorModelo(
+              modulo.modeloDocumentoOrigen,
+            );
+            const { modulo: moduloInfo, config, documentos } = response;
+
+            const documento = documentos.find(
+              (d) => Number(d.id) === Number(movimiento.documentoOrigenId),
+            );
+
+            if (documento) {
+              const getNestedValue = (obj, path) => {
+                if (!path) return null;
+                return path
+                  .split(".")
+                  .reduce((acc, part) => acc?.[part], obj);
+              };
+
+              setModuloDocumentoSeleccionado({
+                moduloId: Number(movimiento.moduloOrigenId),
+                documentoId: Number(movimiento.documentoOrigenId),
+                moduloNombre: moduloInfo.nombre,
+                documentoNumero: documento[config.campoNumero] || "N/A",
+                documentoFecha: documento[config.campoFecha] || null,
+                entidad: config.campoEntidad
+                  ? getNestedValue(documento, config.campoEntidad)
+                  : null,
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Error al cargar datos del módulo/documento:", error);
+        }
+      }
+    };
+    cargarModuloDocumentoEdicion();
+  }, [modulos, isEditing, movimiento]);
 
   useEffect(() => {
     try {
@@ -487,7 +492,8 @@ const DetMovsRendicionGastosForm = ({
 
   useEffect(() => {
     try {
-      if (asignacionOrigenId && asignacionOrigenId > 0) {
+      // ✅ SOLO autocompletar centroCosto si NO estamos editando
+      if (!isEditing && asignacionOrigenId && asignacionOrigenId > 0) {
         const asignacionOrigen = movimientosAsignacionEntregaRendir.find(
           (mov) => Number(mov.id) === Number(asignacionOrigenId),
         );
@@ -498,7 +504,7 @@ const DetMovsRendicionGastosForm = ({
     } catch (error) {
       throw error;
     }
-  }, [asignacionOrigenId, movimientosAsignacionEntregaRendir, setValue]);
+  }, [asignacionOrigenId, movimientosAsignacionEntregaRendir, setValue, isEditing]);
 
   const handleEntidadCreada = async (entidad) => {
     try {
@@ -556,11 +562,6 @@ const DetMovsRendicionGastosForm = ({
   const empresaOptions = empresas.map((e) => ({
     label: e.razonSocial || e.nombre || "N/A",
     value: Number(e.id),
-  }));
-
-  const centroCostoOptions = centrosCosto.map((cc) => ({
-    label: cc.Codigo + " - " + cc.Nombre || "N/A",
-    value: Number(cc.id),
   }));
 
   const monedaOptions = (monedas || []).map((m) => ({
@@ -1477,41 +1478,22 @@ const DetMovsRendicionGastosForm = ({
               }}
             >
               <div style={{ flex: 2 }}>
-                <label
-                  htmlFor="centroCostoId"
-                  className="block text-900 font-medium mb-2"
-                >
-                  Centro de Costo *
-                </label>
                 <Controller
                   name="centroCostoId"
                   control={control}
                   rules={{ required: "El centro de costo es obligatorio" }}
                   render={({ field }) => (
-                    <Dropdown
-                      id="centroCostoId"
-                      {...field}
+                    <CentroCostoSelector
                       value={field.value}
-                      options={centroCostoOptions}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccione centro de costo"
-                      className={classNames({
-                        "p-invalid": errors.centroCostoId,
-                      })}
-                      filter
-                      showClear
-                      style={{ fontWeight: "bold" }}
+                      onChange={field.onChange}
                       disabled={formularioDeshabilitado}
+                      required={true}
+                      error={!!errors.centroCostoId}
+                      errorMessage={errors.centroCostoId?.message}
+                      placeholder="Elegir Centro de Costo..."
                     />
                   )}
                 />
-                {errors.centroCostoId && (
-                  <Message
-                    severity="error"
-                    text={errors.centroCostoId.message}
-                  />
-                )}
               </div>
 
               <div style={{ flex: 3 }}>
