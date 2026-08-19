@@ -34,7 +34,7 @@ const PendientesTable = ({
   const documentoTemplate = (rowData) => {
     return (
       <div>
-        <div className="text-sm text-gray-600">{rowData.documentoTipo} {rowData.documentoNumero}</div>
+        <div className="text-sm text-gray-600">{rowData.documentoNumero}</div>
       </div>
     );
   };
