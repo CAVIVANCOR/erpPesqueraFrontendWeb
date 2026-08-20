@@ -35,6 +35,7 @@ import { getProductos } from "../../api/producto";
 import { getAllCategoriaTipoMovEntregaRendir } from "../../api/categoriaTipoMovEntregaRendir";
 import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
 import { ProgressBar } from "primereact/progressbar";
+import CentroCostoFilterSelector from "../../components/common/CentroCostoFilterSelector";
 
 export default function RendicionGastosList({ ruta }) {
   const toast = useRef(null);
@@ -641,26 +642,20 @@ export default function RendicionGastosList({ ruta }) {
     filtroRangoFechas,
   ]);
 
-  // 🔄 OPCIONES DINÁMICAS PARA CENTROS DE COSTO
-  const obtenerOpcionesCentrosCostoDisponibles = useMemo(() => {
+  // 🔄 CENTROS DE COSTO DISPONIBLES (DINÁMICO)
+  const centrosDisponibles = useMemo(() => {
     const movimientosBase = obtenerMovimientosBase("centroCosto");
-    const centrosConMovimientos = [
-      ...new Set(
-        movimientosBase
-          .filter((m) => m.centroCostoId)
-          .map((m) => Number(m.centroCostoId)),
-      ),
-    ];
+    const centrosUnicos = new Set();
 
-    return centrosCosto
-      .filter((c) => centrosConMovimientos.includes(Number(c.id)))
-      .map((centro) => ({
-        ...centro,
-        displayLabel: centro.Codigo + " - " + centro.Nombre,
-      }));
+    movimientosBase.forEach(mov => {
+      if (mov.centroCostoId) {
+        centrosUnicos.add(Number(mov.centroCostoId));
+      }
+    });
+
+    return Array.from(centrosUnicos);
   }, [
     movimientos,
-    centrosCosto,
     filtroTipoMovimiento,
     filtroEntregaARendir,
     filtroCategoriaMovimiento,
@@ -914,9 +909,9 @@ export default function RendicionGastosList({ ruta }) {
 
   const obtenerPropiedadesFiltroGastosARendir = () => {
     if (filtroCategoriaMovimiento === 17) {
-      return { label: "Gastos a Rendir", severity: "success" };
+      return { label: "Asignaciones", severity: "success" };
     } else {
-      return { label: "Todos los Gastos", severity: "secondary" };
+      return { label: "Todos", severity: "secondary" };
     }
   };
 
@@ -1420,14 +1415,13 @@ export default function RendicionGastosList({ ruta }) {
                   marginTop: 18,
                 }}
               >
-                <div style={{ flex: 1 }}>
-                  <h1>Rendición de Gastos</h1>
+                <div style={{ flex: 0.5 }}>
+                  <h3>Rendición de Gastos</h3>
                 </div>
                 <div style={{ flex: 0.25 }}>
                   <Button
                     label="Nuevo"
                     icon="pi pi-plus"
-                    className="p-button-success"
                     severity="success"
                     onClick={handleNuevoMovimiento}
                     disabled={!permisos?.puedeCrear}
@@ -1438,12 +1432,11 @@ export default function RendicionGastosList({ ruta }) {
                     }
                     tooltipOptions={{ position: "top" }}
                     type="button"
-                    raised
                     style={{ width: "100%" }}
                   />
                 </div>
-                <div style={{ flex: 0.5 }}>
-                  <label htmlFor="">Gastos a Rendir</label>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="">Asignaciones</label>
                   <Button
                     label={obtenerPropiedadesFiltroGastosARendir().label}
                     icon="pi pi-filter"
@@ -1454,7 +1447,7 @@ export default function RendicionGastosList({ ruta }) {
                     style={{ width: "100%" }}
                   />
                 </div>
-                <div style={{ flex: 0.25 }}>
+                <div style={{ flex: 1 }}>
                   <label htmlFor="">Entrega a Rendir</label>
                   <Button
                     label={obtenerPropiedadesFiltroEntregaARendir().label}
@@ -1466,7 +1459,7 @@ export default function RendicionGastosList({ ruta }) {
                     style={{ width: "100%" }}
                   />
                 </div>
-                <div style={{ flex: 0.25 }}>
+                <div style={{ flex: 1 }}>
                   <label htmlFor="">Validación Tesorería</label>
                   <Button
                     label={obtenerPropiedadesFiltroValidacionTesoreria().label}
@@ -1492,9 +1485,9 @@ export default function RendicionGastosList({ ruta }) {
                     tooltipOptions={{ position: "top" }}
                   />
                 </div>
-                <div style={{ flex: 0.35 }}>
+                <div style={{ flex: 1 }}>
                   <Button
-                    label="Asignar Centro Costo"
+                    label="Asignar C.Costo"
                     icon="pi pi-tag"
                     className="p-button-help"
                     onClick={() => setShowAsignarCentroCostoDialog(true)}
@@ -1512,7 +1505,7 @@ export default function RendicionGastosList({ ruta }) {
                 </div>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <Button
-                    label="Recalcular Saldos"
+                    label="Recalcular"
                     icon={
                       recalculandoSaldos
                         ? "pi pi-spin pi-spinner"
@@ -1593,16 +1586,11 @@ export default function RendicionGastosList({ ruta }) {
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <Dropdown
+                  <CentroCostoFilterSelector
                     value={filtroCentroCosto}
-                    options={obtenerOpcionesCentrosCostoDisponibles}
-                    optionLabel="displayLabel"
-                    optionValue="id"
-                    placeholder="Filtrar por Centro de Costo"
-                    onChange={(e) => setFiltroCentroCosto(e.value)}
-                    style={{ width: "100%" }}
-                    showClear
-                    filter
+                    onChange={(id) => setFiltroCentroCosto(id)}
+                    label="Centro de Costo"
+                    availableCentros={centrosDisponibles}
                   />
                 </div>
               </div>
@@ -1707,7 +1695,7 @@ export default function RendicionGastosList({ ruta }) {
             </div>
           }
         >
-        <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
+          <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
           <Column field="id" header="Id" sortable />
           <Column
             field="fechaMovimiento"

@@ -1,5 +1,5 @@
 // src/pages/contabilidad/PlanCuentasContable.jsx
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import { Navigate } from "react-router-dom";
 import { TreeTable } from "primereact/treetable";
 import { Column } from "primereact/column";
@@ -19,6 +19,7 @@ import {
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import { getResponsiveFontSize } from "../../utils/utils";
+import CentroCostoFilterSelector from "../../components/common/CentroCostoFilterSelector";
 
 export default function PlanCuentasContable({ ruta }) {
   const { usuario } = useAuthStore();
@@ -46,6 +47,7 @@ export default function PlanCuentasContable({ ruta }) {
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [treeNodes, setTreeNodes] = useState([]);
   const [expandedKeys, setExpandedKeys] = useState({});
+  const [centroCostoFilter, setCentroCostoFilter] = useState(null);
 
   useEffect(() => {
     cargarDatos();
@@ -53,7 +55,7 @@ export default function PlanCuentasContable({ ruta }) {
 
   useEffect(() => {
     filtrarItems();
-  }, [items, nivelEnumFilter, naturalezaFilter, tipoCuentaFilter, globalFilter]);
+  }, [items, nivelEnumFilter, naturalezaFilter, tipoCuentaFilter, centroCostoFilter, globalFilter]);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -70,7 +72,6 @@ export default function PlanCuentasContable({ ruta }) {
     }
     setLoading(false);
   };
-
 
   const construirArbolJerarquico = (cuentas) => {
     const cuentasMap = new Map();
@@ -134,6 +135,10 @@ export default function PlanCuentasContable({ ruta }) {
       filtrados = filtrados.filter((item) => item.tipoCuenta === tipoCuentaFilter);
     }
 
+    if (centroCostoFilter) {
+      filtrados = filtrados.filter((item) => Number(item.centroCostoId) === Number(centroCostoFilter));
+    }
+
     if (globalFilter && globalFilter.trim() !== "") {
       const busqueda = globalFilter.trim().toLowerCase();
       const idsCoincidentes = new Set();
@@ -179,6 +184,19 @@ export default function PlanCuentasContable({ ruta }) {
       setExpandedKeys({});
     }
   };
+
+
+  // Calcular centros de costo disponibles dinámicamente
+  const centrosDisponibles = useMemo(() => {
+    const centrosUnicos = new Set();
+    itemsFiltrados.forEach(item => {
+      if (item.centroCostoId) {
+        centrosUnicos.add(Number(item.centroCostoId));
+      }
+    });
+    return Array.from(centrosUnicos);
+  }, [itemsFiltrados]);
+
   const onNew = () => {
     if (!permisos.puedeCrear) {
       toast.current?.show({
@@ -322,6 +340,7 @@ export default function PlanCuentasContable({ ruta }) {
     setNivelEnumFilter(null);
     setNaturalezaFilter(null);
     setTipoCuentaFilter(null);
+    setCentroCostoFilter(null);
   };
 
   const cuentaPadreNombre = (rowData) => {
@@ -330,7 +349,7 @@ export default function PlanCuentasContable({ ruta }) {
       : "RAÍZ";
   };
 
-  const nivelTemplate = (rowData) => {
+  const nivelTemplate = (node) => {
     const iconos = {
       CLASE: "pi-folder",
       CUENTA: "pi-folder-open",
@@ -347,19 +366,19 @@ export default function PlanCuentasContable({ ruta }) {
     };
     return (
       <Tag
-        value={rowData.nivel}
-        severity={colores[rowData.nivel] || "info"}
-        icon={`pi ${iconos[rowData.nivel] || 'pi-file'}`}
+        value={node.data.nivel}
+        severity={colores[node.data.nivel] || "info"}
+        icon={`pi ${iconos[node.data.nivel] || 'pi-file'}`}
       />
     );
   };
 
-  const naturalezaTemplate = (rowData) => {
+  const naturalezaTemplate = (node) => {
     return (
       <Tag
-        value={rowData.naturaleza}
-        severity={rowData.naturaleza === "DEUDORA" ? "info" : "success"}
-        icon={rowData.naturaleza === "DEUDORA" ? "pi pi-arrow-up" : "pi pi-arrow-down"}
+        value={node.data.naturaleza}
+        severity={node.data.naturaleza === "DEUDORA" ? "info" : "success"}
+        icon={node.data.naturaleza === "DEUDORA" ? "pi pi-arrow-up" : "pi pi-arrow-down"}
       />
     );
   };
@@ -404,6 +423,47 @@ export default function PlanCuentasContable({ ruta }) {
     );
   };
 
+  const tipoCuentaTemplate = (node) => {
+    if (!node.data.tipoCuenta) return <Tag value="-" severity="secondary" />;
+    const colores = {
+      ACTIVO: "success",
+      PASIVO: "danger",
+      PATRIMONIO: "info",
+      INGRESO: "warning",
+      GASTO: "help"
+    };
+    const iconos = {
+      ACTIVO: "pi-arrow-up",
+      PASIVO: "pi-arrow-down",
+      PATRIMONIO: "pi-wallet",
+      INGRESO: "pi-plus-circle",
+      GASTO: "pi-minus-circle"
+    };
+    return (
+      <Tag
+        value={node.data.tipoCuenta}
+        severity={colores[node.data.tipoCuenta]}
+        icon={`pi ${iconos[node.data.tipoCuenta]}`}
+      />
+    );
+  };
+
+  const clasificacionTemplate = (node) => {
+    const tags = [];
+    if (node.data.esActivoCorriente) tags.push(<Tag key="ac" value="ActivoCorriente" severity="success" className="p-mr-1" style={{ fontSize: '0.7rem' }} />);
+    if (node.data.esActivoNoCorriente) tags.push(<Tag key="anc" value="ActivoNOCorriente" severity="info" className="p-mr-1" style={{ fontSize: '0.7rem' }} />);
+    if (node.data.esPasivoCorriente) tags.push(<Tag key="pc" value="PasivoCorriente" severity="warning" className="p-mr-1" style={{ fontSize: '0.7rem' }} />);
+    if (node.data.esPasivoNoCorriente) tags.push(<Tag key="pnc" value="PasivoNOCorriente" severity="danger" className="p-mr-1" style={{ fontSize: '0.7rem' }} />);
+    return tags.length > 0 ? <div style={{ display: 'flex', gap: '2px' }}>{tags}</div> : <Tag value="-" severity="secondary" />;
+  };
+
+  const cuentaPadreTemplate = (node) => {
+    return node.data.cuentaPadre ? (
+      <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{node.data.cuentaPadre.codigoCuenta}</span>
+    ) : (
+      <Tag value="RAÍZ" severity="secondary" icon="pi pi-home" style={{ fontSize: '0.7rem' }} />
+    );
+  };
   const actionBodyTemplate = (rowData) => (
     <div onClick={(e) => e.stopPropagation()}>
       <Button
@@ -511,7 +571,7 @@ export default function PlanCuentasContable({ ruta }) {
               }}
             >
               <div style={{ flex: 2 }}>
-                <h2>Plan de Cuentas Contable</h2>
+                <h3>Plan de Cuentas</h3>
                 <small style={{ color: "#666", fontWeight: "normal" }}>
                   Total de registros: {itemsFiltrados.length}
                 </small>
@@ -520,20 +580,18 @@ export default function PlanCuentasContable({ ruta }) {
                 <Button
                   label="Nuevo"
                   icon="pi pi-plus"
-                  className="p-button-success"
-                  size="small"
+                  severity="primary"
                   raised
                   disabled={!permisos.puedeCrear}
                   tooltip="Nueva Cuenta Contable"
-                  outlined
                   onClick={onNew}
+                  style={{ width: "100%" }}
                 />
               </div>
               <div style={{ flex: 0.25 }}>
                 <Button
                   icon="pi pi-refresh"
-                  className="p-button-outlined p-button-info"
-                  size="small"
+                  severity="info"
                   onClick={async () => {
                     await cargarDatos();
                     toast.current?.show({
@@ -543,6 +601,7 @@ export default function PlanCuentasContable({ ruta }) {
                       life: 3000,
                     });
                   }}
+                  style={{ width: "100%" }}
                   loading={loading}
                   tooltip="Actualizar todos los datos desde el servidor"
                 />
@@ -550,36 +609,16 @@ export default function PlanCuentasContable({ ruta }) {
               <div style={{ flex: 0.25 }}>
                 <Button
                   icon="pi pi-filter-slash"
-                  className="p-button-secondary"
-                  size="small"
-                  outlined
+                  severity="secondary"
                   onClick={limpiarFiltros}
                   disabled={loading}
+                  style={{ width: "100%" }}
                   tooltip="Limpiar filtros"
                 />
               </div>
-              <div style={{ flex: 0.25 }}>
-                <Button
-                  icon="pi pi-angle-double-down"
-                  className="p-button-outlined p-button-secondary"
-                  size="small"
-                  onClick={expandirTodo}
-                  disabled={loading}
-                  tooltip="Expandir todo"
-                />
-              </div>
-              <div style={{ flex: 0.25 }}>
-                <Button
-                  icon="pi pi-angle-double-up"
-                  className="p-button-outlined p-button-secondary"
-                  size="small"
-                  onClick={colapsarTodo}
-                  disabled={loading}
-                  tooltip="Colapsar todo"
-                />
-              </div>
+
               <div style={{ flex: 1 }}>
-                <label htmlFor="nivelEnumFilter">Filtrar por Nivel</label>
+                <label htmlFor="nivelEnumFilter">Por Nivel</label>
                 <Dropdown
                   id="nivelEnumFilter"
                   value={nivelEnumFilter}
@@ -591,14 +630,14 @@ export default function PlanCuentasContable({ ruta }) {
                     { label: "SUBDIVISIONARIA", value: "SUBDIVISIONARIA" },
                   ]}
                   onChange={(e) => setNivelEnumFilter(e.value)}
-                  placeholder="Seleccionar nivel"
                   showClear
                   style={{ width: "100%" }}
                   onClear={() => setNivelEnumFilter(null)}
+                  placeholder="Seleccionar Nivel"
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label htmlFor="naturalezaFilter">Filtrar por Naturaleza</label>
+                <label htmlFor="naturalezaFilter">Por Naturaleza</label>
                 <Dropdown
                   id="naturalezaFilter"
                   value={naturalezaFilter}
@@ -608,14 +647,14 @@ export default function PlanCuentasContable({ ruta }) {
                     { label: "ACREEDORA", value: "ACREEDORA" },
                   ]}
                   onChange={(e) => setNaturalezaFilter(e.value)}
-                  placeholder="Seleccionar naturaleza"
                   showClear
                   style={{ width: "100%" }}
                   onClear={() => setNaturalezaFilter(null)}
+                  placeholder="Seleccionar Naturaleza"
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label htmlFor="tipoCuentaFilter">Filtrar por Tipo de Cuenta</label>
+                <label htmlFor="tipoCuentaFilter">Tipo de Cuenta</label>
                 <Dropdown
                   id="tipoCuentaFilter"
                   value={tipoCuentaFilter}
@@ -628,32 +667,72 @@ export default function PlanCuentasContable({ ruta }) {
                     { label: "GASTO", value: "GASTO" },
                   ]}
                   onChange={(e) => setTipoCuentaFilter(e.value)}
-                  placeholder="Seleccionar tipo"
                   showClear
                   style={{ width: "100%" }}
                   onClear={() => setTipoCuentaFilter(null)}
+                  placeholder="Seleccionar Tipo de Cuenta"
+                />
+              </div>
+
+            </div>
+
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 0.5 }}>
+                <Button
+                  label="Expandir Todo"
+                  icon="pi pi-angle-double-down"
+                  severity="success"
+                  onClick={expandirTodo}
+                  disabled={loading}
+                  tooltip="Expandir todo"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 0.5 }}>
+                <Button
+                  label="Contraer Todo"
+                  icon="pi pi-angle-double-up"
+                  severity="warning"
+                  onClick={colapsarTodo}
+                  disabled={loading}
+                  tooltip="Colapsar todo"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <CentroCostoFilterSelector
+                  value={centroCostoFilter}
+                  onChange={(id) => setCentroCostoFilter(id)}
+                  label="Centro de Costo"
+                  availableCentros={centrosDisponibles}
                 />
               </div>
               <div style={{ flex: 1 }}>
                 <label htmlFor="globalFilter">Buscar</label>
-                <span className="p-input-icon-left">
                   <InputText
                     id="globalFilter"
                     value={globalFilter}
                     onChange={(e) => setGlobalFilter(e.target.value)}
-                    placeholder="Buscar por código o nombre..."
+                    placeholder="Buscar x Código, Nombre..."
                     style={{ width: "100%" }}
                   />
-                </span>
               </div>
             </div>
+
           </div>
         }
       >
         <Column field="codigoCuenta" header="Código" body={codigoCuentaTemplate} expander style={{ width: '200px' }} />
         <Column field="nombreCuenta" header="Nombre" body={nombreCuentaTemplate} />
-        <Column field="nivel" header="Nivel" body={nivelTemplate} style={{ width: '90px' }} />
-        <Column field="naturaleza" header="Naturaleza" body={naturalezaTemplate} style={{ width: '90px' }} />
+        <Column field="nivel" header="Nivel" body={nivelTemplate} style={{ width: '130px' }} />
+        <Column field="naturaleza" header="Naturaleza" body={naturalezaTemplate} style={{ width: '120px' }} />
         <Column
           field="esImputable"
           header="Imputable"
@@ -666,7 +745,43 @@ export default function PlanCuentasContable({ ruta }) {
           }
           style={{ width: '120px' }}
         />
-        <Column field="activo" header="Activo" body={(node) => activoTemplate(node.data)} style={{ width: '100px' }} />
+        <Column field="tipoCuenta" header="Tipo" body={tipoCuentaTemplate} style={{ width: '110px' }} />
+        <Column field="cuentaPadre.codigoCuenta" header="Padre" body={cuentaPadreTemplate} style={{ width: '90px' }} />
+        <Column header="Clasificacion" body={clasificacionTemplate} style={{ width: '150px' }} />
+        <Column
+          field="centroCosto.Nombre"
+          header="Centro Costo"
+          body={(node) => {
+            if (!node.data.centroCosto) {
+              return <Tag value="-" severity="secondary" />;
+            }
+            const centro = node.data.centroCosto;
+            return (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap', fontSize: '0.75rem' }}>
+                {centro.categoria && (
+                  <Tag
+                    value={centro.categoria.nombre}
+                    severity="info"
+                    style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem' }}
+                  />
+                )}
+                {centro.ParentCentroID && (
+                  <Tag
+                    value={centro.ParentCentroID}
+                    severity="warning"
+                    style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem' }}
+                  />
+                )}
+                <Tag
+                  value={centro.Descripcion || centro.Nombre}
+                  severity="success"
+                  style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem' }}
+                />
+              </span>
+            );
+          }}
+          style={{ width: '250px' }}
+        />
         <Column body={(node) => actionBodyTemplate(node.data)} header="Acciones" style={{ width: '150px' }} />
       </TreeTable>
       <Dialog

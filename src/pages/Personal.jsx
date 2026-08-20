@@ -2,7 +2,7 @@
 // Página principal de gestión de personal en el ERP Megui.
 // Reutiliza patrones de Usuarios.jsx y documenta en español técnico.
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -23,7 +23,6 @@ import {
 import { getEmpresas } from "../api/empresa";
 import { Dialog } from "primereact/dialog";
 import { getCargosPersonal } from "../api/cargosPersonal";
-import { getCentrosCosto } from "../api/centroCosto"; // ⭐ NUEVO - API de Centros de Costo
 import { getSedes } from "../api/sedes";
 import { getAreasFisicas } from "../api/areasFisicas";
 import { Avatar } from "primereact/avatar";
@@ -31,6 +30,7 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 import EmpresaSelector from "../components/common/EmpresaSelector";
+import CentroCostoFilterSelector from "../components/common/CentroCostoFilterSelector";
 
 /**
  * Página de gestión de personal.
@@ -89,37 +89,22 @@ export default function PersonalPage({ ruta }) {
   };
 
 
+  // 🔄 CENTROS DE COSTO DISPONIBLES (DINÁMICO)
+  const centrosDisponibles = useMemo(() => {
+    // Usar filteredPersonales en lugar de personales para que sea dinámico
+    const centrosUnicos = new Set();
+
+    filteredPersonales.forEach(personal => {
+      if (personal.centroCostoId) {
+        centrosUnicos.add(Number(personal.centroCostoId));
+      }
+    });
+
+    return Array.from(centrosUnicos);
+  }, [filteredPersonales]);
   const getCargoDescripcion = (id) => {
     const cargo = cargosLista.find((c) => Number(c.id) === Number(id));
     return cargo ? cargo.descripcion : "";
-  };
-
-  /**
-   * ⭐ NUEVO - Carga los centros de costo desde el backend.
-   * Utiliza la función getCentrosCosto para obtener los datos.
-   * Si hay un error, muestra un toast con el mensaje de error.
-   */
-  const [centrosCostoLista, setCentrosCostoLista] = useState([]);
-  useEffect(() => {
-    loadCentrosCosto();
-  }, []);
-
-  const loadCentrosCosto = async () => {
-    try {
-      const data = await getCentrosCosto();
-      setCentrosCostoLista(data);
-    } catch (err) {
-      toast?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cargar los centros de costo",
-      });
-    }
-  };
-
-  const getCentroCostoInfo = (id) => {
-    const centro = centrosCostoLista.find((c) => Number(c.id) === Number(id));
-    return centro ? { codigo: centro.Codigo, nombre: centro.Nombre } : null;
   };
 
   /**
@@ -199,7 +184,6 @@ export default function PersonalPage({ ruta }) {
   useEffect(() => {
     loadPersonal();
     loadCargos();
-    loadCentrosCosto(); // ⭐ NUEVO
     loadEmpresas();
     loadSedes();
     loadAreasFisicas();
@@ -803,144 +787,145 @@ export default function PersonalPage({ ruta }) {
         selection={selected}
         onSelectionChange={(e) => setSelected(e.value)}
         header={
-          <div
-            style={{
-              alignItems: "end",
-              display: "flex",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <h2>Personal</h2>
-              <small style={{ color: "#666", fontWeight: "normal" }}>
-                Total de registros: {filteredPersonales.length}
-              </small>
+          <>
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <h3>Personal</h3>
+                <small style={{ color: "#666", fontWeight: "normal" }}>
+                  Total de registros: {filteredPersonales.length}
+                </small>
+              </div>
+              <div style={{ flex: 0.5 }}>
+                <Button
+                  label="Nuevo"
+                  icon="pi pi-plus"
+                  severity="primary"
+                  raised
+                  disabled={!permisos.puedeCrear}
+                  tooltip="Nuevo Personal"
+                  onClick={onNew}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label>Filtrar por Empresa</label>
+                <EmpresaSelector
+                  empresaId={usuario?.empresaId}
+                  onEmpresaChange={(id) => {
+                    setEmpresaIdSelector(id);
+                    setEmpresaFilter(id);
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="descripcion">Filtrar por Cargo</label>
+                <Dropdown
+                  value={cargoFilter}
+                  options={cargosLista}
+                  optionLabel="descripcion"
+                  optionValue="id"
+                  placeholder="Filtrar por cargo"
+                  onChange={(e) => setCargoFilter(e.value)}
+                  showClear
+                  style={{ width: "100%" }}
+                  filter
+                  filterBy="descripcion"
+                />
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label htmlFor="estado">Filtrar por Estado</label>
+                <Button
+                  label={obtenerConfigFiltroEstado().label}
+                  icon={obtenerConfigFiltroEstado().icon}
+                  severity={obtenerConfigFiltroEstado().severity}
+                  onClick={cambiarFiltroEstado}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="tipoPesca">Filtrar por Tipo de Pesca</label>
+                <Button
+                  label={obtenerConfigFiltro().label}
+                  icon={obtenerConfigFiltro().icon}
+                  severity={obtenerConfigFiltro().severity}
+                  onClick={cambiarFiltroTipoPesca}
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+
             </div>
-            <div style={{ flex: 0.5 }}>
-              <Button
-                label="Nuevo"
-                icon="pi pi-plus"
-                className="p-button-success"
-                size="small"
-                raised
-                disabled={!permisos.puedeCrear}
-                tooltip="Nuevo Personal"
-                outlined
-                onClick={onNew}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label>Filtrar por Empresa</label>
-              <EmpresaSelector
-                empresaId={usuario?.empresaId}
-                onEmpresaChange={(id) => {
-                  setEmpresaIdSelector(id);
-                  setEmpresaFilter(id);
-                }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="descripcion">Filtrar por Cargo</label>
-              <Dropdown
-                value={cargoFilter}
-                options={cargosLista}
-                optionLabel="descripcion"
-                optionValue="id"
-                placeholder="Filtrar por cargo"
-                onChange={(e) => setCargoFilter(e.value)}
-                showClear
-                style={{ minWidth: "200px" }}
-                filter
-                filterBy="descripcion"
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="centroCosto">Filtrar por Centro de Costo</label>
-              <Dropdown
-                value={centroCostoFilter}
-                options={centrosCostoLista}
-                optionLabel="Nombre"
-                optionValue="id"
-                placeholder="Filtrar por centro de costo"
-                onChange={(e) => setCentroCostoFilter(e.value)}
-                showClear
-                style={{ minWidth: "200px" }}
-                filter
-                filterBy="Nombre,Codigo"
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="estado">Filtrar por Estado</label>
-              <Button
-                label={obtenerConfigFiltroEstado().label}
-                icon={obtenerConfigFiltroEstado().icon}
-                severity={obtenerConfigFiltroEstado().severity}
-                outlined
-                onClick={cambiarFiltroEstado}
-                style={{ width: "100%" }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="tipoPesca">Filtrar por Tipo de Pesca</label>
-              <Button
-                label={obtenerConfigFiltro().label}
-                icon={obtenerConfigFiltro().icon}
-                severity={obtenerConfigFiltro().severity}
-                outlined
-                onClick={cambiarFiltroTipoPesca}
-                style={{ width: "100%" }}
-              />
-            </div>
-            <div style={{ flex: 0.5 }}>
-              <label htmlFor="globalFilter">Buscar por Nombres</label>
-              <span className="p-input-icon-left">
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <CentroCostoFilterSelector
+                  value={centroCostoFilter}
+                  onChange={(id) => setCentroCostoFilter(id)}
+                  label="Centro de Costo"
+                  availableCentros={centrosDisponibles}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="globalFilter">Buscar por Nombres</label>
                 <InputText
                   value={globalFilter}
                   onChange={(e) => setGlobalFilter(e.target.value)}
                   placeholder="Buscar personal..."
-                  style={{ width: "150px" }}
+                  style={{ width: "100%" }}
                 />
-              </span>
+              </div>
+              <div style={{ flex: 0.25 }}>
+                <Button
+                  icon="pi pi-refresh"
+                  severity="info"
+                  onClick={async () => {
+                    await loadPersonal();
+                    toast.current?.show({
+                      severity: "success",
+                      summary: "Actualizado",
+                      detail:
+                        "Datos actualizados correctamente desde el servidor",
+                      life: 3000,
+                    });
+                  }}
+                  loading={loading}
+                  tooltip="Actualizar todos los datos desde el servidor"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 0.25 }}>
+                <Button
+                  icon="pi pi-filter-slash"
+                  severity="secondary"
+                  raised
+                  tooltip="Limpiar todos los filtros"
+                  style={{ width: "100%" }}
+                  onClick={() => {
+                    setCargoFilter(null);
+                    setCentroCostoFilter(null);
+                    setGlobalFilter("");
+                    setFiltroTipoPesca("todos");
+                    setFiltroEstado("activos");
+                  }}
+                />
+              </div>
             </div>
-            <div style={{ flex: 0.5 }}>
-              <Button
-                icon="pi pi-refresh"
-                className="p-button-outlined p-button-info"
-                size="small"
-                onClick={async () => {
-                  await loadPersonal();
-                  toast.current?.show({
-                    severity: "success",
-                    summary: "Actualizado",
-                    detail:
-                      "Datos actualizados correctamente desde el servidor",
-                    life: 3000,
-                  });
-                }}
-                loading={loading}
-                tooltip="Actualizar todos los datos desde el servidor"
-              />
-            </div>
-            <div style={{ flex: 0.5 }}>
-              <Button
-                label="Limpiar"
-                icon="pi pi-filter-slash"
-                className="p-button-secondary"
-                size="small"
-                raised
-                tooltip="Limpiar todos los filtros"
-                outlined
-                onClick={() => {
-                  setEmpresaFilter(null);
-                  setCargoFilter(null);
-                  setGlobalFilter("");
-                  setFiltroTipoPesca("todos");
-                  setFiltroEstado("activos");
-                }}
-              />
-            </div>
-          </div>
+          </>
+
         }
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar
@@ -1022,21 +1007,38 @@ export default function PersonalPage({ ruta }) {
         <Column
           header="Centro de Costo"
           body={(row) => {
-            const info = getCentroCostoInfo(row.centroCostoId);
-            return info ? (
-              <Tag
-                value={`${info.codigo} - ${info.nombre}`}
-                severity="info"
-                style={{
-                  fontSize: "0.75rem",
-                  padding: "0.25rem 0.5rem",
-                }}
-              />
-            ) : (
-              <span style={{ color: "#999", fontStyle: "italic" }}>Sin asignar</span>
+            if (!row.centroCosto) {
+              return <Tag value="-" severity="secondary" />;
+            }
+
+            const centro = row.centroCosto;
+
+            return (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap', fontSize: '0.75rem' }}>
+                {centro.categoria && (
+                  <Tag
+                    value={centro.categoria.nombre}
+                    severity="info"
+                    style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem' }}
+                  />
+                )}
+                {centro.ParentCentroID && (
+                  <Tag
+                    value={centro.ParentCentroID}
+                    severity="warning"
+                    style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem' }}
+                  />
+                )}
+                <Tag
+                  value={centro.Descripcion || centro.Nombre}
+                  severity="success"
+                  style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem' }}
+                />
+              </span>
             );
           }}
           sortable
+          style={{ minWidth: '250px' }}
         />
         <Column
           header="Empresa"

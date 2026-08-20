@@ -10,6 +10,7 @@ import {
 } from "../../api/contabilidad/planCuentasContable";
 import { getEnumsContabilidad } from "../../api/contabilidad/enumsContabilidad";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import CentroCostoSelector from "../common/CentroCostoSelector";
 
 export default function PlanCuentasContableForm({
   isEdit = false,
@@ -41,6 +42,7 @@ export default function PlanCuentasContableForm({
     esPasivoCorriente: defaultValues?.esPasivoCorriente || false,
     esPasivoNoCorriente: defaultValues?.esPasivoNoCorriente || false,
     activo: defaultValues?.activo !== undefined ? defaultValues.activo : true,
+    centroCostoId: defaultValues?.centroCostoId ? Number(defaultValues.centroCostoId) : null,
   });
 
   const [enums, setEnums] = useState({
@@ -92,6 +94,7 @@ export default function PlanCuentasContableForm({
         esPasivoNoCorriente: defaultValues?.esPasivoNoCorriente || false,
         activo:
           defaultValues?.activo !== undefined ? defaultValues.activo : true,
+        centroCostoId: defaultValues?.centroCostoId ? Number(defaultValues.centroCostoId) : null,
       });
     }
   }, [defaultValues]);
@@ -123,6 +126,7 @@ export default function PlanCuentasContableForm({
       esPasivoCorriente: formData.esPasivoCorriente,
       esPasivoNoCorriente: formData.esPasivoNoCorriente,
       activo: formData.activo,
+      centroCostoId: formData.centroCostoId ? Number(formData.centroCostoId) : null,
     };
 
     if (isEdit && defaultValues) {
@@ -305,6 +309,25 @@ export default function PlanCuentasContableForm({
         </div>
       </div>
 
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <CentroCostoSelector
+            value={formData.centroCostoId}
+            onChange={(id) => handleChange("centroCostoId", id)}
+            label="Centro de Costo por Defecto"
+            placeholder="Seleccionar Centro de Costo"
+            disabled={readOnly}
+            required={false}
+            showClearButton={true}
+          />
+        </div>
+      </div>
       <div style={{ marginTop: "1rem" }}>
         <label
           style={{
