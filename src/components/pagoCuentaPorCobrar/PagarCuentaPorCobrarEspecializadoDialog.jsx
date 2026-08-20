@@ -150,7 +150,12 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   // ════════════════════════════════════════════════════════════
   useEffect(() => {
     const consultarTipoCambio = async () => {
-      if (!fechaPago) return;
+      if (!fechaPago || !visible) return;
+
+      if (monedaPagoId === cuentaPorCobrar?.monedaId) {
+        setTipoCambio(1);
+        return;
+      }
 
       try {
         const year = fechaPago.getFullYear();
@@ -170,7 +175,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
     };
 
     consultarTipoCambio();
-  }, [fechaPago]);
+  }, [fechaPago, visible, monedaPagoId, cuentaPorCobrar?.monedaId]);
   // ════════════════════════════════════════════════════════════
   // EFECTOS: CALCULAR MONTO APLICADO A LA DEUDA
   // ════════════════════════════════════════════════════════════
@@ -744,100 +749,10 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
     return (
       <Panel header="📄 Información del Documento" className="mb-3">
         <div className="p-fluid">
-          {/* Información resumida con Tags */}
-          <div style={{
-            display: "flex",
-            gap: "1rem",
-            marginBottom: "1rem",
-            flexWrap: "wrap",
-            alignItems: "center"
-          }}>
-            <div>
-              <label className="font-bold" style={{ display: "block", marginBottom: "0.25rem" }}>
-                Cliente:
-              </label>
-              <Tag
-                value={cuentaPorCobrar.cliente?.razonSocial || 'N/A'}
-                severity="info"
-                style={{ fontSize: "0.9rem" }}
-              />
-            </div>
-
-            <div>
-              <label className="font-bold" style={{ display: "block", marginBottom: "0.25rem" }}>
-                Fecha Emisión:
-              </label>
-              <Tag
-                value={formatearFecha(cuentaPorCobrar.fechaEmision)}
-                severity="info"
-                style={{ fontSize: "0.9rem" }}
-              />
-            </div>
-
-            <div>
-              <label className="font-bold" style={{ display: "block", marginBottom: "0.25rem" }}>
-                Fecha Vencimiento:
-              </label>
-              <Tag
-                value={formatearFecha(cuentaPorCobrar.fechaVencimiento)}
-                severity="warning"
-                style={{ fontSize: "0.9rem" }}
-              />
-            </div>
-
-            <div>
-              <label className="font-bold" style={{ display: "block", marginBottom: "0.25rem" }}>
-                Monto Total:
-              </label>
-              <Tag
-                value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.montoTotal || 0)}`}
-                severity="info"
-                style={{ fontSize: "0.9rem", fontWeight: "600" }}
-              />
-            </div>
-
-            <div>
-              <label className="font-bold" style={{ display: "block", marginBottom: "0.25rem" }}>
-                Monto Pagado:
-              </label>
-              <Tag
-                value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.montoPagado || 0)}`}
-                severity="success"
-                style={{ fontSize: "0.9rem", fontWeight: "600" }}
-              />
-            </div>
-
-            <div>
-              <label className="font-bold" style={{ display: "block", marginBottom: "0.25rem" }}>
-                Saldo Pendiente:
-              </label>
-              <Tag
-                value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.saldoPendiente || 0)}`}
-                severity="warning"
-                style={{ fontSize: "0.9rem", fontWeight: "600" }}
-              />
-            </div>
-          </div>
-
-          {/* Botón para ver detalles completos - Solo si hay datos disponibles */}
-          {empresas?.length > 0 && clientes?.length > 0 && estadosCxC?.length > 0 ? (
-            <CuentaPorCobrarInfoButton
-              cuentaPorCobrar={cuentaPorCobrar}
-              monedas={monedas}
-              empresas={empresas}
-              clientes={clientes}
-              estados={estadosCxC}
-              periodosContables={periodosContables}
-              mediosPago={mediosPago}
-              bancos={bancos}
-              cuentasCorrientes={cuentasCorrientes}
-              toast={toast}
-              buttonLabel="Ver Detalles Completos de la Cuenta por Cobrar"
-              buttonIcon="pi pi-eye"
-              buttonSeverity="secondary"
-              outlined={true}
-            />
-          ) : null}
+          <CuentaPorCobrarInfoButton
+            cuentaPorCobrarId={cuentaPorCobrar.id}
+            outlined={true}
+          />
         </div>
       </Panel>
     );

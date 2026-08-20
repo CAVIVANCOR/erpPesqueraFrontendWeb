@@ -15,7 +15,8 @@ import EntregarFondosForm from "../../components/entregaFondos/EntregarFondosFor
 import PagarDeudaPersonalDialog from "../../components/tesoreria/PagarDeudaPersonalDialog";
 import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ AGREGAR
 import PagarDeudaTributariaDialog from "../../components/tesoreria/PagarDeudaTributariaDialog";
-import { getEntidadesComerciales } from "../../api/entidadComercial";
+import { getEntidadComercialPorId } from "../../api/entidadComercial";
+import { getCuentaPorCobrarById } from "../../api/cuentasPorCobrarPagar/cuentaPorCobrar";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
 // Hooks
 import usePendientesData from "./hooks/usePendientesData";
@@ -168,7 +169,6 @@ const TesoreriaPendientes = () => {
           tiposMovimientoData,
           tiposDetraccionData,
           tiposRetencionPercepcionData,
-          clientesData,
           estadosCxCData,
         ] = await Promise.all([
           getAllMonedas(),
@@ -180,7 +180,6 @@ const TesoreriaPendientes = () => {
           getAllTipoMovEntregaRendir(),
           getAllTiposDetraccion(),
           getTiposRetencionPercepcion(),
-          getEntidadesComerciales(),
           getEstadosMultiFuncionPorTipoProviene(24), // Estados de Cuenta por Cobrar
         ]);
         setMonedas(monedasData);
@@ -192,7 +191,6 @@ const TesoreriaPendientes = () => {
         setTiposMovimiento(tiposMovimientoData || []);
         setTiposDetraccion(tiposDetraccionData || []);
         setTiposRetencionPercepcion(tiposRetencionPercepcionData || []);
-        setClientes(clientesData || []);
         setEstadosCxC(estadosCxCData || []);
       } catch (error) {
         console.error("Error al cargar catálogos:", error);
@@ -313,25 +311,35 @@ const TesoreriaPendientes = () => {
     await entregarFondos(formData);
   };
 
-  const handlePagoEspecializado = (documento) => {
-    // Convertir documento de pendientes a formato de cuenta por cobrar
-    const cuentaPorCobrar = {
-      id: documento.origenId,
-      empresaId: documento.empresa?.id,
-      numeroPreFactura: documento.documentoNumero,
-      fechaEmision: documento.fechaEmision,
-      fechaVencimiento: documento.fechaVencimiento,
-      monedaId: documento.moneda?.id,
-      montoTotal: documento.montoTotal,
-      montoPagado: documento.montoPagado || 0,
-      saldoPendiente: documento.saldoPendiente,
-      cliente: documento.entidadComercial,
-      moneda: documento.moneda,
-      estado: documento.estado,
-    };
+  const handlePagoEspecializado = async (documento) => {
+    try {
 
-    setCuentaPorCobrarEspecializada(cuentaPorCobrar);
-    setShowPagoEspecializadoDialog(true);
+      // Cargar el cliente específico de esta CxC
+      const clienteData = await getEntidadComercialPorId(documento.entidadComercial?.id);
+      setClientes([clienteData]);
+
+      // Cargar la CuentaPorCobrar completa desde el backend para obtener periodoContableId
+      const cuentaPorCobrarCompleta = await getCuentaPorCobrarById(documento.origenId);
+
+      // Convertir documento de pendientes a formato de cuenta por cobrar
+      const cuentaPorCobrar = {
+        ...cuentaPorCobrarCompleta, // ⭐ Usar todos los datos del backend
+        cliente: documento.entidadComercial, // Mantener el objeto cliente del documento
+        moneda: documento.moneda, // Mantener el objeto moneda del documento
+        estado: documento.estado, // Mantener el objeto estado del documento
+      };
+
+      setCuentaPorCobrarEspecializada(cuentaPorCobrar);
+      setShowPagoEspecializadoDialog(true);
+    } catch (error) {
+      console.error("Error al cargar cliente:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar la información del cliente",
+        life: 3000,
+      });
+    }
   };
   const handleCancelarPagoEspecializado = () => {
     setShowPagoEspecializadoDialog(false);
@@ -590,26 +598,28 @@ const TesoreriaPendientes = () => {
 
 
       {/* Diálogo para pago especializado de cuenta por cobrar */}
-      {cuentaPorCobrarEspecializada && (
-        <PagarCuentaPorCobrarEspecializadoDialog
-          visible={showPagoEspecializadoDialog}
-          onHide={handleCancelarPagoEspecializado}
-          cuentaPorCobrar={cuentaPorCobrarEspecializada}
-          monedas={monedas}
-          mediosPago={mediosPago}
-          bancos={bancos}
-          cuentasCorrientes={saldosCuentas}
-          tiposMovimiento={tiposMovimiento}
-          tiposDetraccion={tiposDetraccion}
-          tiposRetencionPercepcion={tiposRetencionPercepcion}
-          periodosContables={periodosContables}
-          empresas={empresas}
-          clientes={clientes}
-          estadosCxC={estadosCxC}
-          toast={toast}
-          onSuccess={handleSuccessPagoEspecializado}
-        />
-      )}
+      {cuentaPorCobrarEspecializada && (() => {
+        return (
+          <PagarCuentaPorCobrarEspecializadoDialog
+            visible={showPagoEspecializadoDialog}
+            onHide={handleCancelarPagoEspecializado}
+            cuentaPorCobrar={cuentaPorCobrarEspecializada}
+            monedas={monedas}
+            mediosPago={mediosPago}
+            bancos={bancos}
+            cuentasCorrientes={saldosCuentas}
+            tiposMovimiento={tiposMovimiento}
+            tiposDetraccion={tiposDetraccion}
+            tiposRetencionPercepcion={tiposRetencionPercepcion}
+            periodosContables={periodosContables}
+            empresas={empresas}
+            clientes={clientes}
+            estadosCxC={estadosCxC}
+            toast={toast}
+            onSuccess={handleSuccessPagoEspecializado}
+          />
+        );
+      })()}
 
       {/* 🆕 Diálogos de Operaciones (Placeholders) */}
       <Dialog

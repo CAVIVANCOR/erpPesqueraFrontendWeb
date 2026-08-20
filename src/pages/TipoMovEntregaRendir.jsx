@@ -9,6 +9,7 @@ import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { Tag } from "primereact/tag";
 import { Dropdown } from "primereact/dropdown";
+import { InputText } from "primereact/inputtext";
 
 import ReportFormatSelector from "../components/reports/ReportFormatSelector";
 import TemporaryPDFViewer from "../components/reports/TemporaryPDFViewer";
@@ -37,6 +38,7 @@ export default function TipoMovEntregaRendir() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [categorias, setCategorias] = useState([]);
+  const [busquedaTexto, setBusquedaTexto] = useState("");
   // Filtros
   const [categoriaFiltro, setCategoriaFiltro] = useState(null);
   const [tipoFiltro, setTipoFiltro] = useState("TODOS");
@@ -56,7 +58,7 @@ export default function TipoMovEntregaRendir() {
     if (todosLosItems.length > 0) {
       aplicarFiltros();
     }
-  }, [categoriaFiltro, tipoFiltro, transferenciaFiltro]);
+  }, [categoriaFiltro, tipoFiltro, transferenciaFiltro, busquedaTexto]);
 
   const cargarItems = async () => {
     setLoading(true);
@@ -113,13 +115,24 @@ export default function TipoMovEntregaRendir() {
       );
     }
 
+    // Aplicar filtro por búsqueda de texto
+    if (busquedaTexto && busquedaTexto.trim() !== "") {
+      const textoBusqueda = busquedaTexto.toLowerCase().trim();
+      itemsFiltrados = itemsFiltrados.filter((item) => {
+        const nombre = (item.nombre || "").toLowerCase();
+        const descripcion = (item.descripcion || "").toLowerCase();
+        return nombre.includes(textoBusqueda) || descripcion.includes(textoBusqueda);
+      });
+    }
+
     setItems(itemsFiltrados);
 
     // Mostrar mensaje con cantidad de registros
     if (
       categoriaFiltro ||
       tipoFiltro !== "TODOS" ||
-      transferenciaFiltro !== "TODOS"
+      transferenciaFiltro !== "TODOS" ||
+      (busquedaTexto && busquedaTexto.trim() !== "")
     ) {
       toast.current.show({
         severity: "info",
@@ -134,6 +147,7 @@ export default function TipoMovEntregaRendir() {
     setCategoriaFiltro(null);
     setTipoFiltro("TODOS");
     setTransferenciaFiltro("TODOS");
+    setBusquedaTexto("");
     toast.current.show({
       severity: "success",
       summary: "Filtros Limpiados",
@@ -376,12 +390,12 @@ export default function TipoMovEntregaRendir() {
               {(categoriaFiltro ||
                 tipoFiltro !== "TODOS" ||
                 transferenciaFiltro !== "TODOS") && (
-                <Tag
-                  severity="info"
-                  value={`Total sin filtros: ${todosLosItems.length}`}
-                  icon="pi pi-filter"
-                />
-              )}
+                  <Tag
+                    severity="info"
+                    value={`Total sin filtros: ${todosLosItems.length}`}
+                    icon="pi pi-filter"
+                  />
+                )}
             </div>
             <div style={{ flex: 0.5 }}>
               <Button
@@ -475,6 +489,16 @@ export default function TipoMovEntregaRendir() {
                 }
                 onClick={handleTransferenciaFiltroClick}
                 style={{ width: "100%", fontWeight: "bold" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="busquedaTexto">Buscar por Nombre o Descripción</label>
+              <InputText
+                id="busquedaTexto"
+                value={busquedaTexto}
+                onChange={(e) => setBusquedaTexto(e.target.value)}
+                placeholder="Buscar Nombre,Descripcion..."
+                style={{ width: "100%" }}
               />
             </div>
             <div style={{ flex: 0.1 }}>

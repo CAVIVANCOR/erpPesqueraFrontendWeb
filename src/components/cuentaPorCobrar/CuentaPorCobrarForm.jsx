@@ -8,7 +8,6 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { TabView, TabPanel } from "primereact/tabview";
 import { Panel } from "primereact/panel";
 import { Dialog } from "primereact/dialog";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
@@ -17,7 +16,6 @@ import {
   formatearNumero,
   formatearFecha,
 } from "../../utils/utils";
-import CardAsientoContable from "../common/CardAsientoContable";
 import PagoCuentaPorCobrarForm from "../pagoCuentaPorCobrar/PagoCuentaPorCobrarForm";
 import {
   getPagosByCuentaPorCobrar,
@@ -42,15 +40,15 @@ const CuentaPorCobrarForm = forwardRef(({
   cuentasCorrientes,
   onSubmit,
   onCancel,
-  onGenerarAsiento,
   onSaveSuccess,
   loading,
   readOnly = false,
   permisos = {},
   toast,
 }, ref) => {
+
+
   const usuario = useAuthStore((state) => state.usuario);
-  const [activeTab, setActiveTab] = useState(0);
 
   // Estados principales
   const [preFacturaId, setPreFacturaId] = useState(
@@ -563,483 +561,491 @@ const CuentaPorCobrarForm = forwardRef(({
     <div className="p-fluid">
       <ConfirmDialog />
 
-      <TabView
-        activeIndex={activeTab}
-        onTabChange={(e) => setActiveTab(e.index)}
-      >
-        {/* TAB 1: DATOS GENERALES */}
-        <TabPanel header="Datos Generales" leftIcon="pi pi-file">
-          {/* INFORMACIÓN GENERAL */}
-          <div className="p-fluid">
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <label htmlFor="empresaId">Empresa *</label>
-                <Dropdown
-                  id="empresaId"
-                  value={empresaId}
-                  options={empresasOptions}
-                  onChange={(e) => setEmpresaId(e.value)}
-                  placeholder="Seleccione empresa"
-                  disabled={!puedeEditar || isEdit}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="clienteId">Cliente *</label>
-                <Dropdown
-                  id="clienteId"
-                  value={clienteId}
-                  options={clientesOptions}
-                  onChange={(e) => setClienteId(e.value)}
-                  placeholder="Seleccione cliente"
-                  disabled={!puedeEditar || isEdit}
-                  filter
-                />
-              </div>
-              <div style={{ flex: 0.5 }}>
-                <label htmlFor="tipoDoc">Tipo Documento</label>
-                <InputText
-                  id="tipoDoc"
-                  value={esSaldoInicial ? "SI-CXC" : "FACTURA"}
-                  disabled
-                />
-              </div>
-              <div style={{ flex: 0.5 }}>
-                <label htmlFor="numeroPreFactura">Documento *</label>
-                <InputText
-                  id="numeroPreFactura"
-                  value={numeroPreFactura}
-                  onChange={(e) => setNumeroPreFactura(e.target.value)}
-                  disabled={!puedeEditar}
-                />
-              </div>
-              <div style={{ flex: 0.5 }}>
-                <label htmlFor="origen">Referencia</label>
-                <InputText
-                  id="origen"
-                  value={defaultValues?.preFactura?.nroLiquidacionFacturacion}
-                  disabled
-                />
-              </div>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 0.7, color: "blue" }}>
-                <label htmlFor="fechaEmision">Fecha Emisión *</label>
-                <Calendar
-                  id="fechaEmision"
-                  value={fechaEmision}
-                  onChange={(e) => setFechaEmision(e.value)}
-                  dateFormat="dd/mm/yy"
-                  showIcon
-                  disabled
-                  style={{ fontSize: getResponsiveFontSize() }}
-                />
-              </div>
-
-              <div style={{ flex: 0.7, color: "red" }}>
-                <label htmlFor="fechaVencimiento">Fecha Vence *</label>
-                <Calendar
-                  id="fechaVencimiento"
-                  value={fechaVencimiento}
-                  onChange={(e) => setFechaVencimiento(e.value)}
-                  dateFormat="dd/mm/yy"
-                  showIcon
-                  disabled
-                  style={{ fontSize: getResponsiveFontSize() }}
-                />
-              </div>
-              <div style={{ flex: 0.7, color: "green" }}>
-                <label htmlFor="fechaContable">Fecha Contable *</label>
-                <Calendar
-                  id="fechaContable"
-                  value={fechaContable}
-                  onChange={(e) => setFechaContable(e.value)}
-                  dateFormat="dd/mm/yy"
-                  showIcon
-                  disabled
-                  style={{ fontSize: getResponsiveFontSize() }}
-                />
-              </div>
-              <div style={{ flex: 1, color: "green" }}>
-                <label htmlFor="periodoContableId">Periodo Contable</label>
-                <Dropdown
-                  id="periodoContableId"
-                  value={periodoContableId}
-                  options={
-                    periodosContables
-                      ?.filter((p) => {
-                        // Filtrar por empresa
-                        return Number(p.empresaId) === Number(empresaId);
-                      })
-                      .sort((a, b) => {
-                        // Ordenar por fecha de inicio descendente (más recientes primero)
-                        return (
-                          new Date(b.fechaInicio) - new Date(a.fechaInicio)
-                        );
-                      })
-                      .map((p) => {
-                        // Agregar indicador visual del estado
-                        let estadoLabel = "";
-                        const estadoId = Number(p.estadoId);
-
-                        // IDs de estados para PERIODO CONTABLE:
-                        // 73 = ABIERTO, 74 = CERRADO, 75 = BLOQUEADO
-                        if (estadoId === 73) {
-                          estadoLabel = "🟢 ABIERTO";
-                        } else if (estadoId === 74) {
-                          estadoLabel = "🔴 CERRADO";
-                        } else if (estadoId === 75) {
-                          estadoLabel = "🔒 BLOQUEADO";
-                        } else {
-                          estadoLabel =
-                            p.estado?.descripcion || "⚪ SIN ESTADO";
-                        }
-
-                        return {
-                          label: `${p.nombrePeriodo} - ${estadoLabel}`,
-                          value: Number(p.id),
-                          estadoId: estadoId,
-                          disabled: estadoId !== 73 && !isEdit, // Deshabilitar si no está ABIERTO (solo en creación)
-                        };
-                      }) || []
-                  }
-                  onChange={(e) => setPeriodoContableId(e.value)}
-                  placeholder="Seleccione periodo contable"
-                  showClear
-                  filter
-                  optionDisabled="disabled"
-                  disabled
-                  style={{ fontSize: getResponsiveFontSize() }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="monedaId">Moneda *</label>
-                <Dropdown
-                  id="monedaId"
-                  value={monedaId}
-                  options={monedasOptions}
-                  onChange={(e) => setMonedaId(e.value)}
-                  placeholder="Seleccione moneda"
-                  disabled
-                  style={{ fontSize: getResponsiveFontSize() }}
-                />
-              </div>
-
-              <div style={{ flex: 1 }}>
-                <label htmlFor="estadoId">Estado *</label>
-                <Dropdown
-                  id="estadoId"
-                  value={estadoId}
-                  options={estadosOptions}
-                  onChange={(e) => setEstadoId(e.value)}
-                  placeholder="Seleccione estado"
-                  disabled
-                  style={{ fontSize: getResponsiveFontSize() }}
-                />
-              </div>
-            </div>
+      {/* DATOS GENERALES */}
+      {/* INFORMACIÓN GENERAL */}
+      <div className="p-fluid">
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label htmlFor="empresaId">Empresa *</label>
+            <Dropdown
+              id="empresaId"
+              value={empresaId}
+              options={empresasOptions}
+              onChange={(e) => setEmpresaId(e.value)}
+              placeholder="Seleccione empresa"
+              disabled={!puedeEditar || isEdit}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="clienteId">Cliente *</label>
+            <Dropdown
+              id="clienteId"
+              value={clienteId}
+              options={clientesOptions}
+              onChange={(e) => setClienteId(e.value)}
+              placeholder="Seleccione cliente"
+              disabled={!puedeEditar || isEdit}
+              filter
+            />
+          </div>
+          <div style={{ flex: 0.5 }}>
+            <label htmlFor="tipoDoc">Tipo Documento</label>
+            <InputText
+              id="tipoDoc"
+              value={esSaldoInicial ? "SI-CXC" : "FACTURA"}
+              disabled
+            />
+          </div>
+          <div style={{ flex: 0.5 }}>
+            <label htmlFor="numeroPreFactura">Documento *</label>
+            <InputText
+              id="numeroPreFactura"
+              value={numeroPreFactura}
+              onChange={(e) => setNumeroPreFactura(e.target.value)}
+              disabled={!puedeEditar}
+            />
+          </div>
+          <div style={{ flex: 0.5 }}>
+            <label htmlFor="origen">Referencia</label>
+            <InputText
+              id="origen"
+              value={defaultValues?.preFactura?.nroLiquidacionFacturacion}
+              disabled
+            />
+          </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 0.7, color: "blue" }}>
+            <label htmlFor="fechaEmision">Fecha Emisión *</label>
+            <Calendar
+              id="fechaEmision"
+              value={fechaEmision}
+              onChange={(e) => setFechaEmision(e.value)}
+              dateFormat="dd/mm/yy"
+              showIcon
+              disabled
+              style={{ fontSize: getResponsiveFontSize() }}
+            />
           </div>
 
-          {/* PAGOS RECIBIDOS */}
-          {isEdit && (
-            <div>
-              {/* Fila de totales */}
-              {/* MONTOS Y SALDOS */}
-              <div
-                style={{
-                  display: "flex",
-                  gap: 5,
-                  marginTop: 10,
-                  padding: 5,
-                  alignItems: "end",
-                  backgroundColor: "#f0f8ff",
-                  borderRadius: 8,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              >
-                <div style={{ flex: 0.5 }}>
-                  <label style={{ opacity: 0 }}>.</label>
-                  <Button
-                    label="Pago"
-                    icon="pi pi-plus"
-                    className="p-button-success"
-                    onClick={handleRegistrarPago}
-                    disabled={readOnly || !permisos.puedeEditar || loadingPagos}
-                    style={{ width: "100%", fontWeight: "bold" }}
-                    tooltip={"Registrar un Nuevo Pago"}
-                    tooltipOptions={{ position: "top" }}
-                  />
-                </div>
-                <div style={{ flex: 0.5 }}>
-                  <label>Detracción</label>
-                  <InputNumber
-                    value={montoDetraccionTotal}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    disabled
-                    inputStyle={{
-                      fontSize: getResponsiveFontSize(),
-                      width: "100%",
-                      backgroundColor: getColorPorMoneda(),
-                    }}
-                  />
-                </div>
-                <div style={{ flex: 0.5 }}>
-                  <label>% Retención</label>
-                  <InputNumber
-                    value={porcentajeRetencion}
-                    onValueChange={(e) => setPorcentajeRetencion(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    disabled
-                    suffix="%"
-                    inputStyle={{
-                      fontSize: getResponsiveFontSize(),
-                      width: "100%",
-                      backgroundColor: getColorPorMoneda(),
-                    }}
-                  />
-                </div>
-                <div style={{ flex: 0.5 }}>
-                  <label>Retención</label>
-                  <InputNumber
-                    value={montoRetencionTotal}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    disabled
-                    inputStyle={{
-                      fontSize: getResponsiveFontSize(),
-                      width: "100%",
-                      backgroundColor: getColorPorMoneda(),
-                    }}
-                  />
-                </div>
-
-                <div style={{ flex: 0.5 }}>
-                  <label>Percepción</label>
-                  <InputNumber
-                    value={montoPercepcionTotal}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    disabled
-                    inputStyle={{
-                      fontSize: getResponsiveFontSize(),
-                      width: "100%",
-                      backgroundColor: getColorPorMoneda(),
-                    }}
-                  />
-                </div>
-                <div style={{ flex: 1, color: "blue" }}>
-                  <label htmlFor="montoTotal">Monto Total *</label>
-                  <InputNumber
-                    id="montoTotal"
-                    value={montoTotal}
-                    onValueChange={(e) => setMontoTotal(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    disabled
-                    inputStyle={{
-                      fontWeight: "bold",
-                      width: "100%",
-                      textAlign: "right",
-                      backgroundColor: getColorPorMoneda(),
-                    }}
-                  />
-                </div>
-                <div style={{ flex: 1, color: "blue" }}>
-                  <label htmlFor="montoPagado">Monto Pagado</label>
-                  <InputNumber
-                    id="montoPagado"
-                    value={montoPagado}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    disabled
-                    inputStyle={{
-                      fontWeight: "bold",
-                      width: "100%",
-                      textAlign: "right",
-                      backgroundColor: getColorPorMoneda(),
-                    }}
-                  />
-                </div>
-                <div style={{ flex: 1, color: "blue" }}>
-                  <label htmlFor="saldoPendiente">Saldo Pendiente</label>
-                  <InputNumber
-                    id="saldoPendiente"
-                    value={saldoPendiente}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    disabled
-                    inputStyle={{
-                      fontWeight: "bold",
-                      width: "100%",
-                      textAlign: "right",
-                      backgroundColor: getColorPorMoneda(),
-                    }}
-                  />
-                </div>
-              </div>
-              <DataTable
-                value={pagos}
-                showGridlines
-                stripedRows
-                loading={loadingPagos}
-                emptyMessage="No hay pagos registrados"
-                size="small"
-                style={{ fontSize: getResponsiveFontSize() }}
-              >
-                <Column
-                  field="fechaPago"
-                  header="Fecha Pago"
-                  body={fechaTemplate}
-                  style={{ width: "120px" }}
-                />
-                <Column
-                  header="Moneda Pago"
-                  body={monedaPagoTemplate}
-                  style={{ width: "100px" }}
-                />
-                <Column
-                  header="Monto Pagado"
-                  body={montoTemplate}
-                  style={{ width: "120px", textAlign: "right" }}
-                />
-                <Column
-                  header="Medio Pago"
-                  body={medioPagoTemplate}
-                  style={{ width: "150px" }}
-                />
-                <Column
-                  field="numeroOperacion"
-                  header="N° Operación"
-                  style={{ width: "150px" }}
-                />
-                <Column
-                  header="Cuenta Corriente"
-                  body={cuentaCorrienteUnificadaTemplate}
-                  style={{ minWidth: "350px" }}
-                />
-                <Column
-                  header="Moneda Deuda"
-                  body={monedaDeudaTemplate}
-                  style={{ width: "100px" }}
-                />
-                <Column
-                  header="Monto Aplicado"
-                  body={montoAplicadoTemplate}
-                  style={{ width: "120px", textAlign: "right" }}
-                />
-                <Column
-                  header="Acciones"
-                  body={accionesTemplate}
-                  style={{ width: "100px" }}
-                />
-              </DataTable>
-            </div>
-          )}
-          <Panel header="Información Adicional" toggleable collapsed>
-            {/* Sección de Auditoría */}
-            {isEdit && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  marginTop: 20,
-                  padding: 15,
-                  backgroundColor: "#e9ecef",
-                  borderRadius: 8,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <label>Creado Por</label>
-                  <InputText
-                    value={creadoPor ? `Usuario ID: ${creadoPor}` : "N/A"}
-                    disabled
-                    style={{ fontSize: getResponsiveFontSize(), width: "100%" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label>Fecha Creación</label>
-                  <Calendar
-                    value={fechaCreacion}
-                    disabled
-                    showTime
-                    dateFormat="dd/mm/yy"
-                    style={{ fontSize: getResponsiveFontSize(), width: "100%" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label>Actualizado Por</label>
-                  <InputText
-                    value={
-                      actualizadoPor ? `Usuario ID: ${actualizadoPor}` : "N/A"
-                    }
-                    disabled
-                    style={{ fontSize: getResponsiveFontSize(), width: "100%" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label>Fecha Actualización</label>
-                  <Calendar
-                    value={fechaActualizacion}
-                    disabled
-                    showTime
-                    dateFormat="dd/mm/yy"
-                    style={{ fontSize: getResponsiveFontSize(), width: "100%" }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* OBSERVACIONES */}
-            <div className="grid mb-3">
-              <div className="col-12">
-                <label htmlFor="observaciones">Observaciones</label>
-                <InputTextarea
-                  id="observaciones"
-                  value={observaciones}
-                  onChange={(e) => setObservaciones(e.target.value)}
-                  rows={3}
-                  disabled={!puedeEditar}
-                  style={{ fontSize: getResponsiveFontSize() }}
-                />
-              </div>
-            </div>
-          </Panel>
-        </TabPanel>
-
-        {/* TAB 2: ASIENTO CONTABLE */}
-        {isEdit && (
-          <TabPanel header="Asiento Contable" leftIcon="pi pi-book">
-            <CardAsientoContable
-              asientoContableId={defaultValues?.asientoContableId}
-              onGenerarAsiento={() => onGenerarAsiento(defaultValues)}
-              permisos={permisos}
-              loading={loading}
-              tituloCard="Asiento Contable"
+          <div style={{ flex: 0.7, color: "red" }}>
+            <label htmlFor="fechaVencimiento">Fecha Vence *</label>
+            <Calendar
+              id="fechaVencimiento"
+              value={fechaVencimiento}
+              onChange={(e) => setFechaVencimiento(e.value)}
+              dateFormat="dd/mm/yy"
+              showIcon
+              disabled
+              style={{ fontSize: getResponsiveFontSize() }}
             />
-          </TabPanel>
+          </div>
+          <div style={{ flex: 1, color: "green" }}>
+            <label htmlFor="periodoContableId">Periodo Contable</label>
+            {(() => {
+              const periodosOptions = periodosContables
+                ?.filter((p) => {
+                  // Filtrar por empresa
+                  const match = Number(p.empresaId) === Number(empresaId);
+                  return match;
+                })
+                .sort((a, b) => {
+                  // Ordenar por fecha de inicio descendente (más recientes primero)
+                  return (
+                    new Date(b.fechaInicio) - new Date(a.fechaInicio)
+                  );
+                })
+                .map((p) => {
+                  // Agregar indicador visual del estado
+                  let estadoLabel = "";
+                  const estadoId = Number(p.estadoId);
+
+                  // IDs de estados para PERIODO CONTABLE:
+                  // 73 = ABIERTO, 74 = CERRADO, 75 = BLOQUEADO
+                  if (estadoId === 73) {
+                    estadoLabel = "🟢 ABIERTO";
+                  } else if (estadoId === 74) {
+                    estadoLabel = "🔴 CERRADO";
+                  } else if (estadoId === 75) {
+                    estadoLabel = "🔒 BLOQUEADO";
+                  } else {
+                    estadoLabel =
+                      p.estado?.descripcion || "⚪ SIN ESTADO";
+                  }
+                  return {
+                    label: `${p.nombrePeriodo} - ${estadoLabel}`,
+                    value: Number(p.id),
+                    estadoId: estadoId,
+                    disabled: estadoId !== 73 && !isEdit, // Deshabilitar si no está ABIERTO (solo en creación)
+                  };
+                }) || [];
+
+              return null;
+            })()}
+            <Dropdown
+              id="periodoContableId"
+              value={periodoContableId}
+              options={
+                periodosContables
+                  ?.filter((p) => {
+                    // Filtrar por empresa
+                    return Number(p.empresaId) === Number(empresaId);
+                  })
+                  .sort((a, b) => {
+                    // Ordenar por fecha de inicio descendente (más recientes primero)
+                    return (
+                      new Date(b.fechaInicio) - new Date(a.fechaInicio)
+                    );
+                  })
+                  .map((p) => {
+                    // Agregar indicador visual del estado
+                    let estadoLabel = "";
+                    const estadoId = Number(p.estadoId);
+
+                    // IDs de estados para PERIODO CONTABLE:
+                    // 73 = ABIERTO, 74 = CERRADO, 75 = BLOQUEADO
+                    if (estadoId === 73) {
+                      estadoLabel = "🟢 ABIERTO";
+                    } else if (estadoId === 74) {
+                      estadoLabel = "🔴 CERRADO";
+                    } else if (estadoId === 75) {
+                      estadoLabel = "🔒 BLOQUEADO";
+                    } else {
+                      estadoLabel =
+                        p.estado?.descripcion || "⚪ SIN ESTADO";
+                    }
+
+                    return {
+                      label: `${p.nombrePeriodo} - ${estadoLabel}`,
+                      value: Number(p.id),
+                      estadoId: estadoId,
+                      disabled: estadoId !== 73 && !isEdit, // Deshabilitar si no está ABIERTO (solo en creación)
+                    };
+                  }) || []
+              }
+              onChange={(e) => setPeriodoContableId(e.value)}
+              placeholder="Seleccione periodo contable"
+              showClear
+              filter
+              // optionDisabled="disabled"
+              //disabled
+              style={{ fontSize: getResponsiveFontSize() }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="monedaId">Moneda *</label>
+            <Dropdown
+              id="monedaId"
+              value={monedaId}
+              options={monedasOptions}
+              onChange={(e) => setMonedaId(e.value)}
+              placeholder="Seleccione moneda"
+              disabled
+              style={{ fontSize: getResponsiveFontSize() }}
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label htmlFor="estadoId">Estado *</label>
+            <Dropdown
+              id="estadoId"
+              value={estadoId}
+              options={estadosOptions}
+              onChange={(e) => setEstadoId(e.value)}
+              placeholder="Seleccione estado"
+              disabled
+              style={{ fontSize: getResponsiveFontSize() }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* PAGOS RECIBIDOS */}
+      {isEdit && (
+        <div>
+          {/* Fila de totales */}
+          {/* MONTOS Y SALDOS */}
+          <div
+            style={{
+              display: "flex",
+              gap: 5,
+              marginTop: 10,
+              padding: 5,
+              alignItems: "end",
+              backgroundColor: "#f0f8ff",
+              borderRadius: 8,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 0.5 }}>
+              <label style={{ opacity: 0 }}>.</label>
+              <Button
+                label="Pago"
+                icon="pi pi-plus"
+                className="p-button-success"
+                onClick={handleRegistrarPago}
+                disabled={readOnly || !permisos.puedeEditar || loadingPagos}
+                style={{ width: "100%", fontWeight: "bold" }}
+                tooltip={"Registrar un Nuevo Pago"}
+                tooltipOptions={{ position: "top" }}
+              />
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <label>Detracción</label>
+              <InputNumber
+                value={montoDetraccionTotal}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                disabled
+                inputStyle={{
+                  fontSize: getResponsiveFontSize(),
+                  width: "100%",
+                  backgroundColor: getColorPorMoneda(),
+                }}
+              />
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <label>% Retención</label>
+              <InputNumber
+                value={porcentajeRetencion}
+                onValueChange={(e) => setPorcentajeRetencion(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                disabled
+                suffix="%"
+                inputStyle={{
+                  fontSize: getResponsiveFontSize(),
+                  width: "100%",
+                  backgroundColor: getColorPorMoneda(),
+                }}
+              />
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <label>Retención</label>
+              <InputNumber
+                value={montoRetencionTotal}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                disabled
+                inputStyle={{
+                  fontSize: getResponsiveFontSize(),
+                  width: "100%",
+                  backgroundColor: getColorPorMoneda(),
+                }}
+              />
+            </div>
+
+            <div style={{ flex: 0.5 }}>
+              <label>Percepción</label>
+              <InputNumber
+                value={montoPercepcionTotal}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                disabled
+                inputStyle={{
+                  fontSize: getResponsiveFontSize(),
+                  width: "100%",
+                  backgroundColor: getColorPorMoneda(),
+                }}
+              />
+            </div>
+            <div style={{ flex: 1, color: "blue" }}>
+              <label htmlFor="montoTotal">Monto Total *</label>
+              <InputNumber
+                id="montoTotal"
+                value={montoTotal}
+                onValueChange={(e) => setMontoTotal(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                disabled
+                inputStyle={{
+                  fontWeight: "bold",
+                  width: "100%",
+                  textAlign: "right",
+                  backgroundColor: getColorPorMoneda(),
+                }}
+              />
+            </div>
+            <div style={{ flex: 1, color: "blue" }}>
+              <label htmlFor="montoPagado">Monto Pagado</label>
+              <InputNumber
+                id="montoPagado"
+                value={montoPagado}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                disabled
+                inputStyle={{
+                  fontWeight: "bold",
+                  width: "100%",
+                  textAlign: "right",
+                  backgroundColor: getColorPorMoneda(),
+                }}
+              />
+            </div>
+            <div style={{ flex: 1, color: "blue" }}>
+              <label htmlFor="saldoPendiente">Saldo Pendiente</label>
+              <InputNumber
+                id="saldoPendiente"
+                value={saldoPendiente}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                disabled
+                inputStyle={{
+                  fontWeight: "bold",
+                  width: "100%",
+                  textAlign: "right",
+                  backgroundColor: getColorPorMoneda(),
+                }}
+              />
+            </div>
+          </div>
+          <DataTable
+            value={pagos}
+            showGridlines
+            stripedRows
+            loading={loadingPagos}
+            emptyMessage="No hay pagos registrados"
+            size="small"
+            style={{ fontSize: getResponsiveFontSize() }}
+          >
+            <Column
+              field="fechaPago"
+              header="Fecha Pago"
+              body={fechaTemplate}
+              style={{ width: "120px" }}
+            />
+            <Column
+              header="Moneda Pago"
+              body={monedaPagoTemplate}
+              style={{ width: "100px" }}
+            />
+            <Column
+              header="Monto Pagado"
+              body={montoTemplate}
+              style={{ width: "120px", textAlign: "right" }}
+            />
+            <Column
+              header="Medio Pago"
+              body={medioPagoTemplate}
+              style={{ width: "150px" }}
+            />
+            <Column
+              field="numeroOperacion"
+              header="N° Operación"
+              style={{ width: "150px" }}
+            />
+            <Column
+              header="Cuenta Corriente"
+              body={cuentaCorrienteUnificadaTemplate}
+              style={{ minWidth: "350px" }}
+            />
+            <Column
+              header="Moneda Deuda"
+              body={monedaDeudaTemplate}
+              style={{ width: "100px" }}
+            />
+            <Column
+              header="Monto Aplicado"
+              body={montoAplicadoTemplate}
+              style={{ width: "120px", textAlign: "right" }}
+            />
+            <Column
+              header="Acciones"
+              body={accionesTemplate}
+              style={{ width: "100px" }}
+            />
+          </DataTable>
+        </div>
+      )}
+      <Panel header="Información Adicional" toggleable collapsed>
+        {/* Sección de Auditoría */}
+        {isEdit && (
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              marginTop: 20,
+              padding: 15,
+              backgroundColor: "#e9ecef",
+              borderRadius: 8,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label>Creado Por</label>
+              <InputText
+                value={creadoPor ? `Usuario ID: ${creadoPor}` : "N/A"}
+                disabled
+                style={{ fontSize: getResponsiveFontSize(), width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label>Fecha Creación</label>
+              <Calendar
+                value={fechaCreacion}
+                disabled
+                showTime
+                dateFormat="dd/mm/yy"
+                style={{ fontSize: getResponsiveFontSize(), width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label>Actualizado Por</label>
+              <InputText
+                value={
+                  actualizadoPor ? `Usuario ID: ${actualizadoPor}` : "N/A"
+                }
+                disabled
+                style={{ fontSize: getResponsiveFontSize(), width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label>Fecha Actualización</label>
+              <Calendar
+                value={fechaActualizacion}
+                disabled
+                showTime
+                dateFormat="dd/mm/yy"
+                style={{ fontSize: getResponsiveFontSize(), width: "100%" }}
+              />
+            </div>
+          </div>
         )}
-      </TabView>
+
+        {/* OBSERVACIONES */}
+        <div className="grid mb-3">
+          <div className="col-12">
+            <label htmlFor="observaciones">Observaciones</label>
+            <InputTextarea
+              id="observaciones"
+              value={observaciones}
+              onChange={(e) => setObservaciones(e.target.value)}
+              rows={3}
+              disabled={!puedeEditar}
+              style={{ fontSize: getResponsiveFontSize() }}
+            />
+          </div>
+        </div>
+      </Panel>
 
       {/* Botones de acción */}
       <div

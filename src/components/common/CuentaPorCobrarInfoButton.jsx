@@ -1,144 +1,319 @@
 // src/components/common/CuentaPorCobrarInfoButton.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "primereact/button";
-import { Dialog } from "primereact/dialog";
 import { Tag } from "primereact/tag";
+import { Dialog } from "primereact/dialog";
+import { getCuentaPorCobrarById } from "../../api/cuentasPorCobrarPagar/cuentaPorCobrar";
+import { formatearFecha, formatearNumero } from "../../utils/utils";
 import CuentaPorCobrarForm from "../cuentaPorCobrar/CuentaPorCobrarForm";
+import { getEmpresaPorId } from "../../api/empresa";
+import { getEntidadComercialPorId } from "../../api/entidadComercial";
+import { getMonedaPorId } from "../../api/moneda";
+import { getEstadoMultiFuncionPorId } from "../../api/estadoMultiFuncion";
+import { getPeriodoContableById } from "../../api/contabilidad/periodoContable";
+import { getMediosPago } from "../../api/medioPago";
+import { getAllBancos } from "../../api/banco";
+import { getAllCuentaCorriente } from "../../api/cuentaCorriente";
+import { getTipoProductoPorId } from "../../api/tipoProducto";
 
-/**
- * Componente reutilizable para mostrar información resumida de una CxC
- * con botón que abre diálogo completo en modo lectura
- * 
- * @param {Object} props
- * @param {Object} props.cuentaPorCobrar - Objeto de Cuenta por Cobrar (OBLIGATORIO)
- * @param {Array} props.monedas - Lista de monedas (OBLIGATORIO)
- * @param {Array} props.empresas - Lista de empresas para el formulario (OBLIGATORIO)
- * @param {Array} props.clientes - Lista de clientes para el formulario (OBLIGATORIO)
- * @param {Array} props.estados - Lista de estados de CxC (OBLIGATORIO)
- * @param {Array} props.periodosContables - Lista de períodos contables (OBLIGATORIO)
- * @param {Array} props.mediosPago - Lista de medios de pago (OBLIGATORIO)
- * @param {Array} props.bancos - Lista de bancos (OBLIGATORIO)
- * @param {Array} props.cuentasCorrientes - Lista de cuentas corrientes (OBLIGATORIO)
- * @param {Object} props.toast - Referencia al toast (opcional)
- * @param {string} props.buttonLabel - Label personalizado del botón (opcional)
- * @param {string} props.buttonIcon - Ícono del botón (default: "pi-info-circle")
- * @param {string} props.buttonSeverity - Severidad del botón (default: "info")
- * @param {boolean} props.outlined - Si el botón es outlined (default: true)
- */
-export default function CuentaPorCobrarInfoButton({
-  cuentaPorCobrar,
-  monedas = [],
-  empresas = [],
-  clientes = [],
-  estados = [],
-  periodosContables = [],
-  mediosPago = [],
-  bancos = [],
-  cuentasCorrientes = [],
-  toast = null,
-  buttonLabel = null,
-  buttonIcon = "pi pi-info-circle",
-  buttonSeverity = "info",
+const CuentaPorCobrarInfoButton = ({
+  cuentaPorCobrarId,
+  onButtonClick,
   outlined = true,
-}) {
+  className = "",
+  style = {},
+}) => {
+  const [cuentaPorCobrar, setCuentaPorCobrar] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
+  const [empresas, setEmpresas] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [monedas, setMonedas] = useState([]);
+  const [estados, setEstados] = useState([]);
+  const [periodosContables, setPeriodosContables] = useState([]);
+  const [mediosPago, setMediosPago] = useState([]);
+  const [bancos, setBancos] = useState([]);
+  const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
+  const [tiposProducto, setTiposProducto] = useState([]);
 
-  if (!cuentaPorCobrar) return null;
+  useEffect(() => {
+    cargarDatos();
+  }, [cuentaPorCobrarId]);
 
-  const moneda = monedas.find(m => Number(m.id) === Number(cuentaPorCobrar.monedaId));
-  const simboloMoneda = moneda?.simbolo || '';
+  const cargarDatos = async () => {
+    try {
+      setLoading(true);
+      const cxcData = await getCuentaPorCobrarById(cuentaPorCobrarId);
+      setCuentaPorCobrar(cxcData);
 
-  const handleOpenDialog = () => {
-    setShowDialog(true);
+      const tipoProductoId = cxcData.preFactura?.tipoProductoId;
+
+      const [
+        empresaData,
+        clienteData,
+        monedaData,
+        estadoData,
+        periodoData,
+        tipoProductoData,
+        mediosData,
+        bancosData,
+        cuentasData,
+      ] = await Promise.all([
+        cxcData.empresaId ? getEmpresaById(cxcData.empresaId) : null,
+        cxcData.clienteId ? getEntidadComercialPorId(cxcData.clienteId) : null,
+        cxcData.monedaId ? getMonedaById(cxcData.monedaId) : null,
+        cxcData.estadoId ? getEstadoMultiFuncionById(cxcData.estadoId) : null,
+        cxcData.periodoContableId ? getPeriodoContableById(cxcData.periodoContableId) : null,
+        tipoProductoId ? getTipoProductoPorId(tipoProductoId) : null,
+        getAllMediosPago(),
+        getAllBancos(),
+        getAllCuentasCorrientes(),
+      ]);
+
+      setEmpresas(empresaData ? [empresaData] : []);
+      setClientes(clienteData ? [clienteData] : []);
+      setMonedas(monedaData ? [monedaData] : []);
+      setEstados(estadoData ? [estadoData] : []);
+      setPeriodosContables(periodoData ? [periodoData] : []);
+      setTiposProducto(tipoProductoData ? [tipoProductoData] : []);
+      setMediosPago(mediosData || []);
+      setBancos(bancosData || []);
+      setCuentasCorrientes(cuentasData || []);
+    } catch (error) {
+      console.error("Error al cargar datos:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const determinarImpuesto = () => {
+    if (!cuentaPorCobrar) return { tipo: "N/A", monto: 0, severity: "secondary" };
+
+    if (cuentaPorCobrar.tieneDetraccion) {
+      return {
+        tipo: "Detracción",
+        monto: cuentaPorCobrar.montoDetraccionTotal || 0,
+        severity: "danger",
+      };
+    }
+    if (cuentaPorCobrar.tieneRetencion) {
+      return {
+        tipo: "Retención",
+        monto: cuentaPorCobrar.montoRetencionTotal || 0,
+        severity: "warning",
+      };
+    }
+    if (cuentaPorCobrar.tienePercepcion) {
+      return {
+        tipo: "Percepción",
+        monto: cuentaPorCobrar.montoPercepcionTotal || 0,
+        severity: "info",
+      };
+    }
+
+    return { tipo: "N/A", monto: 0, severity: "secondary" };
+  };
+
+  const handleClick = () => {
+    if (onButtonClick) {
+      onButtonClick({
+        cuentaPorCobrarId,
+        cuentaPorCobrarCompleta: cuentaPorCobrar,
+      });
+    } else {
+      setShowDialog(true);
+    }
   };
 
   const handleCloseDialog = () => {
     setShowDialog(false);
   };
 
-  // Label del botón con información resumida
-  const getButtonContent = () => {
-    if (buttonLabel) return buttonLabel;
-    
-    const saldoPendiente = Number(cuentaPorCobrar.saldoPendiente || 0);
+  if (loading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%" }}>
-        <span style={{ fontWeight: "600" }}>
-          {cuentaPorCobrar.numeroPreFactura || 'N/A'}
-        </span>
-        <Tag 
-          value={`Saldo: ${simboloMoneda} ${saldoPendiente.toFixed(2)}`}
-          severity={saldoPendiente > 0 ? "warning" : "success"}
-          style={{ marginLeft: "auto" }}
-        />
+      <Button
+        label="Cargando..."
+        icon="pi pi-spin pi-spinner"
+        disabled
+        outlined={outlined}
+        className={className}
+        style={{ width: "100%", ...style }}
+      />
+    );
+  }
+
+  if (!cuentaPorCobrar) {
+    return (
+      <Button
+        label="Error al cargar datos"
+        icon="pi pi-exclamation-triangle"
+        severity="danger"
+        outlined={outlined}
+        className={className}
+        style={{ width: "100%", ...style }}
+      />
+    );
+  }
+
+  const simboloMoneda = cuentaPorCobrar.moneda?.simbolo || "S/";
+  const impuesto = determinarImpuesto();
+  const tipoProducto = cuentaPorCobrar.preFactura?.tipoProducto?.nombre || "N/A";
+
+  const renderButtonLabel = () => {
+    const isSmallScreen = window.innerWidth < 768;
+    const isMediumScreen = window.innerWidth >= 768 && window.innerWidth < 1200;
+
+    if (isSmallScreen) {
+      return (
+        <div style={{ width: "100%", padding: "8px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: "bold" }}>Cliente:</span>
+              <Tag value={cuentaPorCobrar.cliente?.razonSocial || "N/A"} severity="info" style={{ fontSize: "0.75rem" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: "bold" }}>F.Emisión:</span>
+              <Tag value={formatearFecha(cuentaPorCobrar.fechaEmision)} severity="info" style={{ fontSize: "0.75rem" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: "bold" }}>F.Venc:</span>
+              <Tag value={formatearFecha(cuentaPorCobrar.fechaVencimiento)} severity="warning" style={{ fontSize: "0.75rem" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: "bold" }}>Producto:</span>
+              <Tag value={tipoProducto} severity="danger" style={{ fontSize: "0.75rem", fontWeight: "bold" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: "bold" }}>Total:</span>
+              <Tag value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.montoTotal || 0)}`} severity="info" style={{ fontSize: "0.75rem", fontWeight: "600" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: "bold" }}>Pagado:</span>
+              <Tag value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.montoPagado || 0)}`} severity="success" style={{ fontSize: "0.75rem", fontWeight: "600" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: "bold" }}>Saldo:</span>
+              <Tag value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.saldoPendiente || 0)}`} severity="warning" style={{ fontSize: "0.75rem", fontWeight: "600" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: "bold" }}>Imp.SUNAT:</span>
+              <Tag value={impuesto.tipo} severity={impuesto.severity} style={{ fontSize: "0.75rem" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: "bold" }}>Monto Imp:</span>
+              <Tag value={`${simboloMoneda} ${formatearNumero(impuesto.monto)}`} severity={impuesto.severity} style={{ fontSize: "0.75rem", fontWeight: "600" }} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (isMediumScreen) {
+      return (
+        <div style={{ width: "100%", padding: "8px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px", marginBottom: "8px" }}>
+            <span style={{ fontSize: "0.8rem", fontWeight: "bold", textAlign: "center" }}>Cliente</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "bold", textAlign: "center" }}>F.Emisión</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "bold", textAlign: "center" }}>F.Venc</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "bold", textAlign: "center" }}>Producto</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "bold", textAlign: "center" }}>Total</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px", marginBottom: "8px" }}>
+            <Tag value={cuentaPorCobrar.cliente?.razonSocial || "N/A"} severity="info" style={{ fontSize: "0.8rem" }} />
+            <Tag value={formatearFecha(cuentaPorCobrar.fechaEmision)} severity="info" style={{ fontSize: "0.8rem" }} />
+            <Tag value={formatearFecha(cuentaPorCobrar.fechaVencimiento)} severity="warning" style={{ fontSize: "0.8rem" }} />
+            <Tag value={tipoProducto} severity="danger" style={{ fontSize: "0.8rem", fontWeight: "bold" }} />
+            <Tag value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.montoTotal || 0)}`} severity="info" style={{ fontSize: "0.8rem", fontWeight: "600" }} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", marginBottom: "8px" }}>
+            <span style={{ fontSize: "0.8rem", fontWeight: "bold", textAlign: "center" }}>Pagado</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "bold", textAlign: "center" }}>Saldo</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "bold", textAlign: "center" }}>Imp.SUNAT</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "bold", textAlign: "center" }}>Monto Imp</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px" }}>
+            <Tag value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.montoPagado || 0)}`} severity="success" style={{ fontSize: "0.8rem", fontWeight: "600" }} />
+            <Tag value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.saldoPendiente || 0)}`} severity="warning" style={{ fontSize: "0.8rem", fontWeight: "600" }} />
+            <Tag value={impuesto.tipo} severity={impuesto.severity} style={{ fontSize: "0.8rem" }} />
+            <Tag value={`${simboloMoneda} ${formatearNumero(impuesto.monto)}`} severity={impuesto.severity} style={{ fontSize: "0.8rem", fontWeight: "600" }} />
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ width: "100%", padding: "8px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: "8px", marginBottom: "8px" }}>
+          <span style={{ fontSize: "0.85rem", fontWeight: "bold", textAlign: "center" }}>Cliente</span>
+          <span style={{ fontSize: "0.85rem", fontWeight: "bold", textAlign: "center" }}>F.Emisión</span>
+          <span style={{ fontSize: "0.85rem", fontWeight: "bold", textAlign: "center" }}>F.Venc</span>
+          <span style={{ fontSize: "0.85rem", fontWeight: "bold", textAlign: "center" }}>Producto</span>
+          <span style={{ fontSize: "0.85rem", fontWeight: "bold", textAlign: "center" }}>Total</span>
+          <span style={{ fontSize: "0.85rem", fontWeight: "bold", textAlign: "center" }}>Pagado</span>
+          <span style={{ fontSize: "0.85rem", fontWeight: "bold", textAlign: "center" }}>Saldo</span>
+          <span style={{ fontSize: "0.85rem", fontWeight: "bold", textAlign: "center" }}>Imp.SUNAT</span>
+          <span style={{ fontSize: "0.85rem", fontWeight: "bold", textAlign: "center" }}>Monto Imp</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: "8px" }}>
+          <Tag value={cuentaPorCobrar.cliente?.razonSocial || "N/A"} severity="info" style={{ fontSize: "0.85rem" }} />
+          <Tag value={formatearFecha(cuentaPorCobrar.fechaEmision)} severity="info" style={{ fontSize: "0.85rem" }} />
+          <Tag value={formatearFecha(cuentaPorCobrar.fechaVencimiento)} severity="warning" style={{ fontSize: "0.85rem" }} />
+          <Tag value={tipoProducto} severity="danger" style={{ fontSize: "0.85rem", fontWeight: "bold" }} />
+          <Tag value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.montoTotal || 0)}`} severity="info" style={{ fontSize: "0.85rem", fontWeight: "600" }} />
+          <Tag value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.montoPagado || 0)}`} severity="success" style={{ fontSize: "0.85rem", fontWeight: "600" }} />
+          <Tag value={`${simboloMoneda} ${formatearNumero(cuentaPorCobrar.saldoPendiente || 0)}`} severity="warning" style={{ fontSize: "0.85rem", fontWeight: "600" }} />
+          <Tag value={impuesto.tipo} severity={impuesto.severity} style={{ fontSize: "0.85rem" }} />
+          <Tag value={`${simboloMoneda} ${formatearNumero(impuesto.monto)}`} severity={impuesto.severity} style={{ fontSize: "0.85rem", fontWeight: "600" }} />
+        </div>
       </div>
     );
   };
 
   return (
     <>
-      {/* Botón con información resumida */}
       <Button
-        type="button"
-        label={typeof buttonLabel === 'string' ? buttonLabel : null}
-        icon={buttonIcon}
-        severity={buttonSeverity}
+        label={renderButtonLabel()}
+        onClick={handleClick}
         outlined={outlined}
-        onClick={handleOpenDialog}
-        tooltip="Ver detalles de la Cuenta por Cobrar"
-        tooltipOptions={{ position: "top" }}
-        style={{ 
-          width: "100%", 
-          justifyContent: "flex-start",
-          fontWeight: "bold"
-        }}
-      >
-        {!buttonLabel && getButtonContent()}
-      </Button>
+        className={className}
+        style={{ width: "100%", height: "auto", padding: "0", ...style }}
+      />
 
-      {/* Diálogo con formulario en modo lectura */}
-      <Dialog
-        header={
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <i className="pi pi-money-bill" />
-            <span>Cuenta por Cobrar #{cuentaPorCobrar.id}</span>
-            <Tag 
-              value={cuentaPorCobrar.numeroPreFactura || 'N/A'}
-              severity="info"
-            />
-          </div>
-        }
-        visible={showDialog}
-        style={{ width: "95vw", maxWidth: "1400px" }}
-        onHide={handleCloseDialog}
-        modal
-        maximizable
-        blockScroll
-      >
-        <CuentaPorCobrarForm
-          isEdit={true}
-          defaultValues={{
-            ...cuentaPorCobrar,
-            fechaEmision: cuentaPorCobrar.fechaEmision ? new Date(cuentaPorCobrar.fechaEmision) : null,
-            fechaVencimiento: cuentaPorCobrar.fechaVencimiento ? new Date(cuentaPorCobrar.fechaVencimiento) : null,
-            fechaContable: cuentaPorCobrar.fechaContable ? new Date(cuentaPorCobrar.fechaContable) : null,
-          }}
-          empresas={empresas}
-          clientes={clientes}
-          monedas={monedas}
-          estados={estados}
-          periodosContables={periodosContables}
-          mediosPago={mediosPago}
-          bancos={bancos}
-          cuentasCorrientes={cuentasCorrientes}
-          onSubmit={() => {}} // No hacer nada en modo lectura
-          onCancel={handleCloseDialog}
-          loading={false}
-          readOnly={true} // ⭐ MODO SOLO LECTURA
-          permisos={{}}
-          toast={toast}
-        />
-      </Dialog>
+      {!onButtonClick && (
+        <Dialog
+          header={`Cuenta por Cobrar #${cuentaPorCobrar.id}`}
+          visible={showDialog}
+          style={{ width: "95vw", maxWidth: "1400px" }}
+          onHide={handleCloseDialog}
+          modal
+          maximizable
+        >
+          <CuentaPorCobrarForm
+            isEdit={true}
+            empresas={empresas}
+            clientes={clientes}
+            monedas={monedas}
+            estados={estados}
+            periodosContables={periodosContables}
+            mediosPago={mediosPago}
+            bancos={bancos}
+            cuentasCorrientes={cuentasCorrientes}
+            defaultValues={{
+              ...cuentaPorCobrar,
+              fechaEmision: cuentaPorCobrar.fechaEmision ? new Date(cuentaPorCobrar.fechaEmision) : null,
+              fechaVencimiento: cuentaPorCobrar.fechaVencimiento ? new Date(cuentaPorCobrar.fechaVencimiento) : null,
+              fechaContable: cuentaPorCobrar.fechaContable ? new Date(cuentaPorCobrar.fechaContable) : null,
+            }}
+            onSubmit={() => { }}
+            onCancel={handleCloseDialog}
+            loading={false}
+            readOnly={true}
+            permisos={{}}
+          />
+        </Dialog>
+      )}
     </>
   );
-}
+};
+
+export default CuentaPorCobrarInfoButton;
