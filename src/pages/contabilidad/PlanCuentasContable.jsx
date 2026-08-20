@@ -450,11 +450,22 @@ export default function PlanCuentasContable({ ruta }) {
 
   const clasificacionTemplate = (node) => {
     const tags = [];
-    if (node.data.esActivoCorriente) tags.push(<Tag key="ac" value="ActivoCorriente" severity="success" className="p-mr-1" style={{ fontSize: '0.7rem' }} />);
-    if (node.data.esActivoNoCorriente) tags.push(<Tag key="anc" value="ActivoNOCorriente" severity="info" className="p-mr-1" style={{ fontSize: '0.7rem' }} />);
-    if (node.data.esPasivoCorriente) tags.push(<Tag key="pc" value="PasivoCorriente" severity="warning" className="p-mr-1" style={{ fontSize: '0.7rem' }} />);
-    if (node.data.esPasivoNoCorriente) tags.push(<Tag key="pnc" value="PasivoNOCorriente" severity="danger" className="p-mr-1" style={{ fontSize: '0.7rem' }} />);
-    return tags.length > 0 ? <div style={{ display: 'flex', gap: '2px' }}>{tags}</div> : <Tag value="-" severity="secondary" />;
+    if (node.data.esActivoCorriente) tags.push(<Tag key="ac" value="ActivoCorriente" severity="success" style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem' }} />);
+    if (node.data.esActivoNoCorriente) tags.push(<Tag key="anc" value="ActivoNOCorriente" severity="info" style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem' }} />);
+    if (node.data.esPasivoCorriente) tags.push(<Tag key="pc" value="PasivoCorriente" severity="warning" style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem' }} />);
+    if (node.data.esPasivoNoCorriente) tags.push(<Tag key="pnc" value="PasivoNOCorriente" severity="danger" style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem' }} />);
+    return tags.length > 0 ? (
+      <div style={{
+        display: 'flex',
+        gap: '0.25rem',
+        flexWrap: 'wrap',
+        alignItems: 'center'
+      }}>
+        {tags}
+      </div>
+    ) : (
+      <Tag value="-" severity="secondary" style={{ fontSize: '0.65rem' }} />
+    );
   };
 
   const cuentaPadreTemplate = (node) => {
@@ -716,13 +727,13 @@ export default function PlanCuentasContable({ ruta }) {
               </div>
               <div style={{ flex: 1 }}>
                 <label htmlFor="globalFilter">Buscar</label>
-                  <InputText
-                    id="globalFilter"
-                    value={globalFilter}
-                    onChange={(e) => setGlobalFilter(e.target.value)}
-                    placeholder="Buscar x Código, Nombre..."
-                    style={{ width: "100%" }}
-                  />
+                <InputText
+                  id="globalFilter"
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  placeholder="Buscar x Código, Nombre..."
+                  style={{ width: "100%" }}
+                />
               </div>
             </div>
 
@@ -747,7 +758,7 @@ export default function PlanCuentasContable({ ruta }) {
         />
         <Column field="tipoCuenta" header="Tipo" body={tipoCuentaTemplate} style={{ width: '130px' }} />
         <Column field="cuentaPadre.codigoCuenta" header="Padre" body={cuentaPadreTemplate} style={{ width: '90px' }} />
-        <Column header="Clasificacion" body={clasificacionTemplate} style={{ width: '150px' }} />
+        <Column header="Clasificación" body={clasificacionTemplate} style={{ minWidth: '150px', maxWidth: '250px' }} />
         <Column
           field="centroCosto.Nombre"
           header="Centro Costo"
