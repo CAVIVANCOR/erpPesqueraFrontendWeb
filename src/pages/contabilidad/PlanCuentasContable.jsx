@@ -731,7 +731,7 @@ export default function PlanCuentasContable({ ruta }) {
       >
         <Column field="codigoCuenta" header="Código" body={codigoCuentaTemplate} expander style={{ width: '200px' }} />
         <Column field="nombreCuenta" header="Nombre" body={nombreCuentaTemplate} />
-        <Column field="nivel" header="Nivel" body={nivelTemplate} style={{ width: '130px' }} />
+        <Column field="nivel" header="Nivel" body={nivelTemplate} style={{ width: '150px' }} />
         <Column field="naturaleza" header="Naturaleza" body={naturalezaTemplate} style={{ width: '120px' }} />
         <Column
           field="esImputable"
@@ -745,7 +745,7 @@ export default function PlanCuentasContable({ ruta }) {
           }
           style={{ width: '120px' }}
         />
-        <Column field="tipoCuenta" header="Tipo" body={tipoCuentaTemplate} style={{ width: '110px' }} />
+        <Column field="tipoCuenta" header="Tipo" body={tipoCuentaTemplate} style={{ width: '130px' }} />
         <Column field="cuentaPadre.codigoCuenta" header="Padre" body={cuentaPadreTemplate} style={{ width: '90px' }} />
         <Column header="Clasificacion" body={clasificacionTemplate} style={{ width: '150px' }} />
         <Column
