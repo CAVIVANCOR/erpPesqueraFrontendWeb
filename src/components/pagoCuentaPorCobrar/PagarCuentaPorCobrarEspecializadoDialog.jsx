@@ -18,7 +18,7 @@ import { useAuthStore } from '../../shared/stores/useAuthStore';
 import { getResponsiveFontSize, formatearFecha, formatearNumero } from '../../utils/utils';
 import ConfirmacionPagoDialog from './ConfirmacionPagoDialog';
 import TipoMovimientoSelector from '../common/TipoMovimientoSelector';
-import CuentaPorCobrarInfoButton from '../common/CuentaPorCobrarInfoButton';
+import IrACxCEditar from '../common/IrACxCEditar';
 import { generarYSubirVoucherConsolidado } from './VoucherConsolidadoPagoCxCPDF';
 import { generarYSubirVoucherMovimiento } from './VoucherMovimientoCajaPDF';
 
@@ -559,7 +559,8 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
         montoITF: montoITF ? Number(montoITF) : 0,
         montoComision: montoComision ? Number(montoComision) : 0,
         observaciones: observaciones || null,
-        periodoContableId: periodoContableId ? Number(periodoContableId) : null
+        periodoContableId: periodoContableId ? Number(periodoContableId) : null,
+        usuarioId: usuario.id  // ⭐ NUEVO: Usuario que procesa el pago
       };
 
       // Agregar detracción si aplica
@@ -749,9 +750,19 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
     return (
       <Panel header="📄 Información del Documento" className="mb-3">
         <div className="p-fluid">
-          <CuentaPorCobrarInfoButton
-            cuentaPorCobrarId={cuentaPorCobrar.id}
-            outlined={true}
+          <IrACxCEditar
+            preFacturaId={cuentaPorCobrar.preFacturaId}
+            preFactura={cuentaPorCobrar.preFactura}
+            empresas={empresas}
+            clientes={[cuentaPorCobrar.cliente]}
+            monedas={monedas}
+            estados={[cuentaPorCobrar.estado]}
+            periodosContables={periodosContables}
+            mediosPago={mediosPago}
+            bancos={bancos}
+            cuentasCorrientes={cuentasCorrientes}
+            permisos={{}}
+            compact={false}
           />
         </div>
       </Panel>

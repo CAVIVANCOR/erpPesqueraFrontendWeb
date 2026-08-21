@@ -313,6 +313,135 @@ export default function ConfirmacionPagoDialog({
   };
 
   // ════════════════════════════════════════════════════════════
+  // RENDER: ASIENTOS CONTABLES GENERADOS
+  // ════════════════════════════════════════════════════════════
+  const renderAsientosContables = () => {
+    if (!resultadoPago?.asientosContables) return null;
+
+    const { pagoCxC, itf, comision } = resultadoPago.asientosContables;
+
+    if (!pagoCxC && !itf && !comision) return null;
+
+    const asientos = [];
+
+    if (pagoCxC) {
+      asientos.push({
+        tipo: 'Pago CxC',
+        numeroAsiento: pagoCxC.numeroAsiento,
+        correlativo: pagoCxC.correlativo,
+        totalDebe: pagoCxC.totalDebe,
+        totalHaber: pagoCxC.totalHaber,
+        estaCuadrado: pagoCxC.estaCuadrado
+      });
+    }
+
+    if (itf) {
+      asientos.push({
+        tipo: 'ITF',
+        numeroAsiento: itf.numeroAsiento,
+        correlativo: itf.correlativo,
+        totalDebe: itf.totalDebe,
+        totalHaber: itf.totalHaber,
+        estaCuadrado: itf.estaCuadrado
+      });
+    }
+
+    if (comision) {
+      asientos.push({
+        tipo: 'Comisión Bancaria',
+        numeroAsiento: comision.numeroAsiento,
+        correlativo: comision.correlativo,
+        totalDebe: comision.totalDebe,
+        totalHaber: comision.totalHaber,
+        estaCuadrado: comision.estaCuadrado
+      });
+    }
+
+    return (
+      <Panel header="📊 Asientos Contables Generados" className="mb-3">
+        <DataTable value={asientos} size="small">
+          <Column field="tipo" header="Tipo" />
+          <Column field="numeroAsiento" header="Nº Asiento" />
+          <Column field="correlativo" header="Correlativo" />
+          <Column
+            field="totalDebe"
+            header="Total Debe"
+            body={(rowData) => Number(rowData.totalDebe || 0).toFixed(2)}
+          />
+          <Column
+            field="totalHaber"
+            header="Total Haber"
+            body={(rowData) => Number(rowData.totalHaber || 0).toFixed(2)}
+          />
+          <Column
+            field="estaCuadrado"
+            header="Estado"
+            body={(rowData) => (
+              <Tag
+                value={rowData.estaCuadrado ? 'Cuadrado' : 'Descuadrado'}
+                severity={rowData.estaCuadrado ? 'success' : 'danger'}
+              />
+            )}
+          />
+        </DataTable>
+      </Panel>
+    );
+  };
+
+  // ════════════════════════════════════════════════════════════
+  // RENDER: SALDOS DE CUENTA CORRIENTE
+  // ════════════════════════════════════════════════════════════
+  const renderSaldosCuentaCorriente = () => {
+    if (!resultadoPago?.saldosCuentaCorriente) return null;
+
+    const saldos = resultadoPago.saldosCuentaCorriente;
+
+    if (!saldos || saldos.length === 0) return null;
+
+    return (
+      <Panel header="💳 Saldos de Cuenta Corriente Actualizados" className="mb-3">
+        <DataTable value={saldos} size="small">
+          <Column field="tipo" header="Movimiento" />
+          <Column
+            field="saldoAnterior"
+            header="Saldo Anterior"
+            body={(rowData) => Number(rowData.saldoAnterior || 0).toFixed(2)}
+          />
+          <Column
+            field="ingresos"
+            header="Ingresos"
+            body={(rowData) => (
+              <span className="text-green-600 font-bold">
+                +{Number(rowData.ingresos || 0).toFixed(2)}
+              </span>
+            )}
+          />
+          <Column
+            field="egresos"
+            header="Egresos"
+            body={(rowData) => (
+              <span className="text-red-600 font-bold">
+                -{Number(rowData.egresos || 0).toFixed(2)}
+              </span>
+            )}
+          />
+          <Column
+            field="saldoActual"
+            header="Saldo Actual"
+            body={(rowData) => (
+              <Tag
+                value={Number(rowData.saldoActual || 0).toFixed(2)}
+                severity="info"
+                style={{ fontSize: '1rem' }}
+              />
+            )}
+          />
+        </DataTable>
+      </Panel>
+    );
+  };
+
+  // ════════════════════════════════════════════════════════════
   // RENDER: FOOTER
   // ════════════════════════════════════════════════════════════
   const renderFooter = () => {
@@ -344,6 +473,8 @@ export default function ConfirmacionPagoDialog({
       {renderResumen()}
       {renderMovimientos()}
       {renderConceptosSunat()}
+      {renderAsientosContables()}
+      {renderSaldosCuentaCorriente()}
 
       {/* Voucher Consolidado Automático */}
       {resultadoPago?.urlVoucherConsolidado && (

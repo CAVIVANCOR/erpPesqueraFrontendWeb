@@ -8,7 +8,7 @@ import { formatearFecha, formatearNumero } from "../../utils/utils";
 import CuentaPorCobrarForm from "../cuentaPorCobrar/CuentaPorCobrarForm";
 import { getEmpresaPorId } from "../../api/empresa";
 import { getEntidadComercialPorId } from "../../api/entidadComercial";
-import { getMonedaPorId } from "../../api/moneda";
+import { getAllMonedas } from "../../api/moneda";
 import { getEstadoMultiFuncionPorId } from "../../api/estadoMultiFuncion";
 import { getPeriodoContableById } from "../../api/contabilidad/periodoContable";
 import { getMediosPago } from "../../api/medioPago";
@@ -61,18 +61,18 @@ const CuentaPorCobrarInfoButton = ({
       ] = await Promise.all([
         cxcData.empresaId ? getEmpresaById(cxcData.empresaId) : null,
         cxcData.clienteId ? getEntidadComercialPorId(cxcData.clienteId) : null,
-        cxcData.monedaId ? getMonedaById(cxcData.monedaId) : null,
+        getAllMonedas(),
         cxcData.estadoId ? getEstadoMultiFuncionById(cxcData.estadoId) : null,
         cxcData.periodoContableId ? getPeriodoContableById(cxcData.periodoContableId) : null,
         tipoProductoId ? getTipoProductoPorId(tipoProductoId) : null,
         getAllMediosPago(),
         getAllBancos(),
-        getAllCuentasCorrientes(),
+        getAllCuentaCorriente(),
       ]);
 
       setEmpresas(empresaData ? [empresaData] : []);
       setClientes(clienteData ? [clienteData] : []);
-      setMonedas(monedaData ? [monedaData] : []);
+      setMonedas(monedaData || []);
       setEstados(estadoData ? [estadoData] : []);
       setPeriodosContables(periodoData ? [periodoData] : []);
       setTiposProducto(tipoProductoData ? [tipoProductoData] : []);

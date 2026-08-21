@@ -58,7 +58,6 @@ export default function IrACxCEditar({
   tooltip = null,
   disabled = false,
   estadoIdMinimo = 48,
-  compact = false,
   ...rest
 }) {
   const [cxcData, setCxcData] = useState(null);
@@ -158,103 +157,22 @@ export default function IrACxCEditar({
     return "Ir a CxC";
   };
 
-  const renderCompactMode = () => (
-    <Button
-      type="button"
-      label={getButtonLabel()}
-      icon={icon}
-      severity={severity}
-      outlined={outlined}
-      onClick={handleClick}
-      className={className}
-      tooltip={tooltip || (cxcData ? `Editar Cuenta por Cobrar ID ${cxcData.id}` : "Cargando...")}
-      tooltipOptions={{ position: "top" }}
-      loading={loading}
-      disabled={loading}
-      {...rest}
-    />
-  );
-
-  const renderExpandedMode = () => {
-    if (loading) {
-      return <div style={{ padding: '1rem', textAlign: 'center' }}>Cargando CxC...</div>;
-    }
-
-    if (!cxcData) {
-      return null;
-    }
-
-    const formatearNumero = (num) => {
-      return new Intl.NumberFormat('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num || 0);
-    };
-
-    const formatearFecha = (fecha) => {
-      if (!fecha) return '-';
-      return new Date(fecha).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    };
-
-    const moneda = monedas?.find(m => m.id === cxcData.monedaId);
-    const simboloMoneda = moneda?.simbolo || 'S/.';
-
-    return (
-      <div
-        onClick={handleClick}
-        style={{
-          display: 'flex',
-          gap: '0.5rem',
-          padding: '0.5rem',
-          border: '1px solid #dee2e6',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          transition: 'all 0.2s',
-          backgroundColor: '#fff'
-        }}
-        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
-      >
-        <div style={{ flex: 1, backgroundColor: '#0d6efd', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Cliente</div>
-          <div>{cxcData.cliente?.razonSocial || '-'}</div>
-        </div>
-        <div style={{ flex: 0.6, backgroundColor: '#0dcaf0', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>F.Emisión</div>
-          <div>{formatearFecha(cxcData.fechaEmision)}</div>
-        </div>
-        <div style={{ flex: 0.6, backgroundColor: '#fd7e14', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>F.Venc</div>
-          <div>{formatearFecha(cxcData.fechaVencimiento)}</div>
-        </div>
-        <div style={{ flex: 1, backgroundColor: '#dc3545', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Producto</div>
-          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cxcData.preFactura?.tipoProducto?.nombre || 'N/A'}</div>
-        </div>
-        <div style={{ flex: 0.7, backgroundColor: '#6f42c1', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Total</div>
-          <div>{simboloMoneda} {formatearNumero(cxcData.montoTotal)}</div>
-        </div>
-        <div style={{ flex: 0.7, backgroundColor: '#198754', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Pagado</div>
-          <div>{simboloMoneda} {formatearNumero(cxcData.montoPagado)}</div>
-        </div>
-        <div style={{ flex: 0.7, backgroundColor: '#fd7e14', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Saldo</div>
-          <div>{simboloMoneda} {formatearNumero(cxcData.saldoPendiente)}</div>
-        </div>
-        <div style={{ flex: 0.6, backgroundColor: '#0d6efd', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Imp.SUNAT</div>
-          <div>{cxcData.tieneDetraccion ? 'DET' : cxcData.tieneRetencion ? 'RET' : cxcData.tienePercepcion ? 'PER' : 'N/A'}</div>
-        </div>
-        <div style={{ flex: 0.7, backgroundColor: '#dc3545', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Monto Imp</div>
-          <div>{simboloMoneda} {formatearNumero(cxcData.montoDetraccionTotal || cxcData.montoRetencionTotal || cxcData.montoPercepcionTotal || 0)}</div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <>
-      {compact ? renderCompactMode() : renderExpandedMode()}
+      <Button
+        type="button"
+        label={getButtonLabel()}
+        icon={icon}
+        severity={severity}
+        outlined={outlined}
+        onClick={handleClick}
+        className={className}
+        tooltip={tooltip || (cxcData ? `Editar Cuenta por Cobrar ID ${cxcData.id}` : "Cargando...")}
+        tooltipOptions={{ position: "top" }}
+        loading={loading}
+        disabled={loading}
+        {...rest}
+      />
 
       <Dialog
         header={

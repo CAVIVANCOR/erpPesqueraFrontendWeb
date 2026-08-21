@@ -504,6 +504,7 @@ export default function DatosGeneralesTab({
               outlined={true}
               icon="pi pi-arrow-right"
               style={{ width: "100%", fontWeight: "bold" }}
+              compact={true}
             />
           </div>
 
