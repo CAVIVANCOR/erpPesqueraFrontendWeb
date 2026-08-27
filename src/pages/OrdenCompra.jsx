@@ -28,6 +28,7 @@ import {
   generarOrdenDesdeRequerimiento,
   generarMovimientoAlmacen,
   regenerarKardexOrdenCompra,
+  generarCuentaPorPagar,
 } from "../api/ordenCompra";
 import { getEmpresas } from "../api/empresa";
 import { getEntidadesComerciales } from "../api/entidadComercial";
@@ -66,6 +67,7 @@ import { formatearMontoConSigno } from "../utils/tiposDocumento.constants";
 import FiltroTipoLibroButton from "../components/common/FiltroTipoLibroButton";
 import { getTiposAfectacionIGVActivos } from "../api/facturacionElectronica/tipoAfectacionIGV"; // AGREGADO
 import OrigenAsientoViewer from "../components/common/origenAsiento/OrigenAsientoViewer";
+import RegeneracionMasivaCompras from "../components/common/RegeneracionMasivaCompras";
 
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
@@ -160,6 +162,8 @@ export default function OrdenCompra({ ruta }) {
   const [origenData, setOrigenData] = useState(null);
   const [submoduloOrigenSeleccionado, setSubmoduloOrigenSeleccionado] = useState(null);
   const [submodulosOrigenUnicos, setSubmodulosOrigenUnicos] = useState([]);
+  const [showRegeneracionMasiva, setShowRegeneracionMasiva] = useState(false);
+
   // ========================================
   // 🆕 CARGAR DATOS AL MONTAR EL COMPONENTE
   // ========================================
@@ -1274,7 +1278,6 @@ export default function OrdenCompra({ ruta }) {
         accept: async () => {
           setLoading(true);
           try {
-            const { generarCuentaPorPagar } = await import("../api/ordenCompra");
             const resultado = await generarCuentaPorPagar(id);
 
             // Validar que la respuesta tenga la estructura esperada
@@ -1945,7 +1948,7 @@ export default function OrdenCompra({ ruta }) {
                 />
               </div>
 
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.5 }}>
                 <Button
                   label="Nuevo"
                   icon="pi pi-plus"
@@ -2021,6 +2024,13 @@ export default function OrdenCompra({ ruta }) {
                   disabled={loading}
                 />
               </div>
+              <Button
+                label="Regeneración Masiva"
+                icon="pi pi-refresh"
+                className="p-button-warning"
+                onClick={() => setShowRegeneracionMasiva(true)}
+                tooltip="Regenerar CxP y Asientos de todas las órdenes filtradas"
+              />
               <div style={{ flex: 1 }}>
                 <Button
                   label="Exportar Excel"
@@ -2697,6 +2707,45 @@ export default function OrdenCompra({ ruta }) {
         visible={showOrigenViewer}
         onHide={() => setShowOrigenViewer(false)}
       />
+
+      <RegeneracionMasivaCompras
+        visible={showRegeneracionMasiva}
+        onHide={() => setShowRegeneracionMasiva(false)}
+        registros={ordenesFiltradas
+          .filter(oc => {
+            if (oc.estadoId === 41) return false;
+            if (oc.estadoId === 38 && (!oc.detalles || oc.detalles.length === 0)) return false;
+            return true;
+          })
+          .map(oc => ({
+            id: oc.id,
+            numeroDocumento: oc.numeroDocumento,
+            estadoId: oc.estadoId,
+            esGerencial: oc.esGerencial,
+            detalles: oc.detalles ? [{ id: 1 }] : [],
+            total: oc.total,
+            monedaId: oc.monedaId
+          }))
+        }
+        onComplete={(resultados) => {
+          const exitosos = resultados.filter(r => r.estado === "EXITOSO").length;
+          const errores = resultados.filter(r => r.estado === "ERROR").length;
+
+          toast.current?.show({
+            severity: exitosos > 0 ? "success" : "error",
+            summary: "Regeneración Completada",
+            detail: `${exitosos} exitosos, ${errores} errores`,
+            life: 5000
+          });
+
+          cargarOrdenesCompra();
+        }}
+        toast={toast}
+        aprobarOrdenCompra={aprobarOrdenCompra}
+        generarCuentaPorPagar={generarCuentaPorPagar}
+      />
+
+
     </div>
   );
 }

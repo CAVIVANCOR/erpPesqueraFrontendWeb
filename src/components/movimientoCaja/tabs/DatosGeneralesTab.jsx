@@ -79,7 +79,7 @@ export default function DatosGeneralesTab({ movimiento, empresas, toast }) {
                 textTransform: "uppercase"
               }}
             >
-              {movimiento.empresaOrigen?.razonSocial || "-"}
+              {movimiento.empresa?.razonSocial || movimiento.empresa?.nombreComercial || "-"}
             </div>
           </div>
           <div style={{ flex: 1 }}>
@@ -291,9 +291,8 @@ export default function DatosGeneralesTab({ movimiento, empresas, toast }) {
               }}
             >
               {movimiento.cuentaCorrienteOrigen
-                ? `${movimiento.cuentaCorrienteOrigen.banco?.nombre || ""} - ${
-                    movimiento.cuentaCorrienteOrigen.numeroCuenta || ""
-                  }`
+                ? `${movimiento.cuentaCorrienteOrigen.banco?.nombre || ""} - ${movimiento.cuentaCorrienteOrigen.numeroCuenta || ""
+                }`
                 : "-"}
             </div>
           </div>
@@ -315,9 +314,8 @@ export default function DatosGeneralesTab({ movimiento, empresas, toast }) {
               }}
             >
               {movimiento.cuentaCorrienteDestino
-                ? `${movimiento.cuentaCorrienteDestino.banco?.nombre || ""} - ${
-                    movimiento.cuentaCorrienteDestino.numeroCuenta || ""
-                  }`
+                ? `${movimiento.cuentaCorrienteDestino.banco?.nombre || ""} - ${movimiento.cuentaCorrienteDestino.numeroCuenta || ""
+                }`
                 : "-"}
             </div>
           </div>

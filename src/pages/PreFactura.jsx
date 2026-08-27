@@ -26,6 +26,9 @@ import {
   actualizarPreFactura,
   actualizarTipoOperacionSunatMasivo,
   actualizarTipoAfectacionIGVMasivo,
+  facturarPreFacturaNegra,
+  facturarPreFacturaBlanca,
+  aprobarPreFactura,
 } from "../api/preFactura";
 import { getMotivoNotaCreditoDebitoActivos } from "../api/ventas/motivoNotaCreditoDebito";
 import PreFacturaForm from "../components/preFactura/PreFacturaForm";
@@ -73,6 +76,7 @@ import FiltroTipoLibroButton from "../components/common/FiltroTipoLibroButton";
 import { formatearMontoConSigno, TIPO_DOC_ID } from "../utils/tiposDocumento.constants";
 import { MultiSelect } from "primereact/multiselect";
 import { OverlayPanel } from "primereact/overlaypanel";
+import RegeneracionMasicaVentas from "../components/common/RegeneracionMasicaVentas";
 
 /**
  * Componente PreFactura
@@ -147,6 +151,7 @@ const PreFactura = ({ ruta }) => {
   const [navigationStack, setNavigationStack] = useState([]); // Stack para navegación de PreFacturas
   const [filtroTipoLibro, setFiltroTipoLibro] = useState("FISCAL_SSI");
   const [showConsultaStock, setShowConsultaStock] = useState(false);
+  const [showRegenerarMasivoDialog, setShowRegenerarMasivoDialog] = useState(false);
 
   // Estados temporales para filtros avanzados (no aplicados aún)
   const [tiposDocInternoTemp, setTiposDocInternoTemp] = useState([]);
@@ -490,6 +495,39 @@ const PreFactura = ({ ruta }) => {
     items,
   ]);
 
+  const handleRegenerarMasivoClick = () => {
+    const registrosValidos = preFacturasFiltradas.filter(pf => {
+      if (pf.estadoId === 47) return false;
+      if (pf.estadoId === 45 && (!pf.detalles || pf.detalles.length === 0)) return false;
+      return true;
+    });
+
+    if (registrosValidos.length === 0) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Sin registros válidos",
+        detail: "No hay registros válidos para regenerar. Verifique que las PreFacturas PENDIENTES tengan items.",
+        life: 5000
+      });
+      return;
+    }
+
+    setShowRegenerarMasivoDialog(true);
+  };
+
+  const handleRegeneracionComplete = (resultados) => {
+    const exitosos = resultados.filter(r => r.estado === "EXITOSO").length;
+    const errores = resultados.filter(r => r.estado === "ERROR").length;
+
+    toast.current?.show({
+      severity: exitosos > 0 ? "success" : "error",
+      summary: "Regeneración Completada",
+      detail: `${exitosos} exitosos, ${errores} errores`,
+      life: 5000
+    });
+
+    cargarDatos();
+  };
 
   // ✅ Calcular totales por tipo de documento y moneda
   const calcularTotalesPorTipoYMoneda = () => {
@@ -1916,6 +1954,32 @@ const PreFactura = ({ ruta }) => {
                     disabled={loading}
                   />
                 </div>
+                {permisos.puedeReactivarDocs && (
+                  <div style={{ flex: 1 }}>
+                    <Button
+                      label="Regenerar CxC y Asientos Masivo"
+                      icon="pi pi-refresh"
+                      className="p-button-warning p-button-outlined"
+                      onClick={handleRegenerarMasivoClick}
+                      disabled={loading || preFacturasFiltradas.filter(pf => {
+                        if (pf.estadoId === 47) return false;
+                        if (pf.estadoId === 45 && (!pf.detalles || pf.detalles.length === 0)) return false;
+                        return true;
+                      }).length === 0}
+                      tooltip={`Regenerar CxC y Asientos de ${preFacturasFiltradas.filter(pf => {
+                        if (pf.estadoId === 47) return false;
+                        if (pf.estadoId === 45 && (!pf.detalles || pf.detalles.length === 0)) return false;
+                        return true;
+                      }).length} registros válidos`}
+                      badge={preFacturasFiltradas.filter(pf => {
+                        if (pf.estadoId === 47) return false;
+                        if (pf.estadoId === 45 && (!pf.detalles || pf.detalles.length === 0)) return false;
+                        return true;
+                      }).length.toString()}
+                      badgeClassName="p-badge-warning"
+                    />
+                  </div>
+                )}
                 <div style={{ flex: 1 }}>
                   <Button
                     label="Asignar Tipo Operación SUNAT"
@@ -2676,6 +2740,22 @@ const PreFactura = ({ ruta }) => {
         entidadNombre="PreFacturas"
       />
       <ConfirmDialog />
+
+      <RegeneracionMasicaVentas
+        visible={showRegenerarMasivoDialog}
+        onHide={() => setShowRegenerarMasivoDialog(false)}
+        registros={preFacturasFiltradas.filter(pf => {
+          if (pf.estadoId === 47) return false;
+          if (pf.estadoId === 45 && (!pf.detalles || pf.detalles.length === 0)) return false;
+          return true;
+        })}
+        onComplete={handleRegeneracionComplete}
+        toast={toast}
+        facturarNegra={facturarPreFacturaNegra}
+        facturarBlanca={facturarPreFacturaBlanca}
+        aprobarPreFactura={aprobarPreFactura}
+      />
+
     </div>
   );
 };

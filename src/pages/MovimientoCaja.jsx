@@ -136,7 +136,7 @@ export default function MovimientoCaja({ ruta }) {
     let filtrados = [...movimientos];
 
     if (empresaSeleccionada) {
-      filtrados = filtrados.filter(m => Number(m.empresaOrigenId) === Number(empresaSeleccionada));
+      filtrados = filtrados.filter(m => Number(m.empresaId) === Number(empresaSeleccionada));
     }
 
     if (rangoFechas && rangoFechas[0]) {
@@ -303,11 +303,11 @@ export default function MovimientoCaja({ ruta }) {
   };
 
   const empresaTemplate = (rowData) => {
-    if (!rowData.empresaOrigen) return "N/A";
+    if (!rowData.empresa) return "N/A";
     return (
       <div>
         <div className="font-medium text-blue-600">
-          {rowData.empresaOrigen.razonSocial || "Sin nombre"}
+          {rowData.empresa.razonSocial || rowData.empresa.nombreComercial || "Sin nombre"}
         </div>
       </div>
     );
@@ -449,7 +449,7 @@ export default function MovimientoCaja({ ruta }) {
             sortable
           />
           <Column
-            field="empresaOrigenId"
+            field="empresaId"
             header="Empresa"
             body={empresaTemplate}
             style={{ verticalAlign: "top" }}
