@@ -15,7 +15,6 @@ import { getSeriesDoc } from "../../api/oTMantenimiento";
 import PdfFotosAntesCard from "./PdfFotosAntesCard";
 import PdfFotosDespuesCard from "./PdfFotosDespuesCard";
 import VerImpresionOTMantenimientoPDF from "./VerImpresionOTMantenimientoPDF";
-import EntregaARendirOTMantenimientoCard from "./EntregaARendirOTMantenimientoCard";
 import DetContratistasOTCard from "./DetContratistasOTCard";
 import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 import ActivoSelector from "../common/ActivoSelector";
@@ -52,7 +51,6 @@ const OTMantenimientoForm = ({
   const [loading, setLoading] = useState(false);
   const toast = useRef(toastProp || null);
   const [seriesDoc, setSeriesDoc] = useState([]);
-  const [countEntregasRendir, setCountEntregasRendir] = useState(0);
   const [countContratistas, setCountContratistas] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -104,8 +102,8 @@ const OTMantenimientoForm = ({
     estadoId: defaultValues?.estadoId
       ? Number(defaultValues.estadoId)
       : estadosDoc.find((e) => e.descripcion === "PENDIENTE")?.id ||
-        estadosDoc[0]?.id ||
-        null,
+      estadosDoc[0]?.id ||
+      null,
     fechaProgramada: defaultValues?.fechaProgramada
       ? new Date(defaultValues.fechaProgramada)
       : null,
@@ -116,8 +114,8 @@ const OTMantenimientoForm = ({
     monedaId: defaultValues?.monedaId
       ? Number(defaultValues.monedaId)
       : monedas.find((m) => m.codigoSunat === "PEN")?.id ||
-        monedas[0]?.id ||
-        null,
+      monedas[0]?.id ||
+      null,
     solicitanteId: defaultValues?.solicitanteId
       ? Number(defaultValues.solicitanteId)
       : null,
@@ -223,9 +221,7 @@ const OTMantenimientoForm = ({
     if (!formData.motivoOriginoId) camposFaltantes.push("Motivo de Origen");
     if (!formData.estadoId) camposFaltantes.push("Estado");
     if (!formData.monedaId) camposFaltantes.push("Moneda");
-    if (!formData.responsableId || Number(formData.responsableId) <= 0) {
-      camposFaltantes.push("Responsable (necesario para Entrega a Rendir)");
-    }
+  
 
     if (camposFaltantes.length > 0) {
       toast?.current?.show({
@@ -286,7 +282,6 @@ const OTMantenimientoForm = ({
       >
         {/* TAB 1: DATOS GENERALES */}
         <TabPanel header="Datos Generales">
-          <Panel header="Información Principal" className="mb-3">
             {/* FILA: Empresa, Sede */}
             <div
               style={{
@@ -542,9 +537,7 @@ const OTMantenimientoForm = ({
                 />
               </div>
             </div>
-          </Panel>
 
-          <Panel header="Fechas de Ejecución" className="mb-3">
             {/* FILA: Fecha Programada, Fecha Inicio, Fecha Fin */}
             <div
               style={{
@@ -605,9 +598,7 @@ const OTMantenimientoForm = ({
                 />
               </div>
             </div>
-          </Panel>
 
-          <Panel header="Responsables" className="mb-3">
             {/* FILA: Solicitante, Responsable */}
             <div
               style={{
@@ -656,19 +647,7 @@ const OTMantenimientoForm = ({
                   style={{ width: "100%" }}
                 />
               </div>
-            </div>
-
-            {/* FILA: Autorizado Por, Validado Por */}
-            <div
-              style={{
-                marginTop: "0.5rem",
-                alignItems: "end",
-                display: "flex",
-                gap: 3,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 1 }}>
+                         <div style={{ flex: 1 }}>
                 <label htmlFor="autorizadoPorId" style={{ fontWeight: "bold" }}>
                   Autorizado Por
                 </label>
@@ -707,64 +686,69 @@ const OTMantenimientoForm = ({
                 />
               </div>
             </div>
-          </Panel>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              {/* FILA: Descripción del Problema */}
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="descripcionProblema"
+                  style={{ fontWeight: "bold" }}
+                >
+                  Descripción del Problema
+                </label>
+                <InputTextarea
+                  id="descripcionProblema"
+                  value={formData.descripcionProblema}
+                  onChange={(e) =>
+                    handleChange("descripcionProblema", e.target.value)
+                  }
+                  rows={3}
+                  placeholder="Describa el problema o necesidad de mantenimiento"
+                  disabled={disabled}
+                  style={{ width: "100%" }}
+                />
+              </div>
 
-          <Panel header="Descripción y Observaciones" className="mb-3">
-            {/* FILA: Descripción del Problema */}
-            <div style={{ marginTop: "0.5rem" }}>
-              <label
-                htmlFor="descripcionProblema"
-                style={{ fontWeight: "bold" }}
-              >
-                Descripción del Problema
-              </label>
-              <InputTextarea
-                id="descripcionProblema"
-                value={formData.descripcionProblema}
-                onChange={(e) =>
-                  handleChange("descripcionProblema", e.target.value)
-                }
-                rows={3}
-                placeholder="Describa el problema o necesidad de mantenimiento"
-                disabled={disabled}
-                style={{ width: "100%" }}
-              />
+              {/* FILA: Solución Aplicada */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="solucionAplicada" style={{ fontWeight: "bold" }}>
+                  Solución Aplicada
+                </label>
+                <InputTextarea
+                  id="solucionAplicada"
+                  value={formData.solucionAplicada}
+                  onChange={(e) =>
+                    handleChange("solucionAplicada", e.target.value)
+                  }
+                  rows={3}
+                  placeholder="Describa la solución aplicada"
+                  disabled={disabled}
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              {/* FILA: Observaciones */}
+              <div style={{ flex: 1 }}>
+                <label htmlFor="observaciones" style={{ fontWeight: "bold" }}>
+                  Observaciones
+                </label>
+                <InputTextarea
+                  id="observaciones"
+                  value={formData.observaciones}
+                  onChange={(e) => handleChange("observaciones", e.target.value)}
+                  rows={3}
+                  placeholder="Observaciones adicionales"
+                  disabled={disabled}
+                  style={{ width: "100%" }}
+                />
+              </div>
             </div>
 
-            {/* FILA: Solución Aplicada */}
-            <div style={{ marginTop: "0.5rem" }}>
-              <label htmlFor="solucionAplicada" style={{ fontWeight: "bold" }}>
-                Solución Aplicada
-              </label>
-              <InputTextarea
-                id="solucionAplicada"
-                value={formData.solucionAplicada}
-                onChange={(e) =>
-                  handleChange("solucionAplicada", e.target.value)
-                }
-                rows={3}
-                placeholder="Describa la solución aplicada"
-                disabled={disabled}
-                style={{ width: "100%" }}
-              />
-            </div>
-
-            {/* FILA: Observaciones */}
-            <div style={{ marginTop: "0.5rem" }}>
-              <label htmlFor="observaciones" style={{ fontWeight: "bold" }}>
-                Observaciones
-              </label>
-              <InputTextarea
-                id="observaciones"
-                value={formData.observaciones}
-                onChange={(e) => handleChange("observaciones", e.target.value)}
-                rows={3}
-                placeholder="Observaciones adicionales"
-                disabled={disabled}
-                style={{ width: "100%" }}
-              />
-            </div>
-          </Panel>
         </TabPanel>
 
         {/* TAB 2: CONTRATISTAS */}
@@ -851,41 +835,6 @@ const OTMantenimientoForm = ({
               <p style={{ marginTop: "0.5rem" }}>
                 Guarde primero la orden de trabajo para poder gestionar
                 documentos.
-              </p>
-            </div>
-          )}
-        </TabPanel>
-
-        {/* TAB 4: ENTREGAS A RENDIR */}
-        <TabPanel
-          header={`Entregas a Rendir ${countEntregasRendir > 0 ? `(${countEntregasRendir})` : ""}`}
-          leftIcon="pi pi-money-bill"
-        >
-          <EntregaARendirOTMantenimientoCard
-            otMantenimiento={formData}
-            personal={personalOptions}
-            centrosCosto={centrosCosto}
-            tiposMovimiento={tiposMovimiento}
-            entidadesComerciales={entidadesComerciales}
-            monedas={monedas}
-            tiposDocumento={tiposDocumento}
-            puedeEditar={isEdit}
-            onCountChange={setCountEntregasRendir}
-            readOnly={readOnly}
-            permisos={permisos}
-          />
-
-          {!formData.id && (
-            <div
-              style={{ padding: "1rem", textAlign: "center", color: "#666" }}
-            >
-              <i
-                className="pi pi-info-circle"
-                style={{ fontSize: "1.5rem" }}
-              ></i>
-              <p style={{ marginTop: "0.5rem" }}>
-                Guarde primero la orden de trabajo para poder gestionar entregas
-                a rendir.
               </p>
             </div>
           )}

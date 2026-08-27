@@ -358,7 +358,7 @@ const OTMantenimiento = ({ ruta }) => {
         toast.current.show({
           severity: "success",
           summary: "Creado",
-          detail: `Orden de trabajo creada con código: ${resultado.codigo}. Ahora puedes agregar detalles.`,
+          detail: `Orden de trabajo creada con código: ${resultado.numeroCompleto}. Ahora puedes agregar detalles.`,
           life: 5000,
         });
 
@@ -425,7 +425,7 @@ const OTMantenimiento = ({ ruta }) => {
     }
 
     confirmDialog({
-      message: `¿Está seguro de eliminar la orden de trabajo "${orden.codigo}"?`,
+      message: `¿Está seguro de eliminar la orden de trabajo "${orden.numeroCompleto}"?`,
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-danger",
@@ -479,21 +479,6 @@ const OTMantenimiento = ({ ruta }) => {
     setFechaFin(null);
   };
 
-  /**
-   * Template para el código de la orden
-   */
-  const codigoTemplate = (rowData) => {
-    return (
-      <div>
-        <div className="font-bold text-primary">
-          {rowData.codigo || `ID: ${rowData.id}`}
-        </div>
-        <div className="text-sm text-gray-600">
-          {formatearFecha(rowData.fechaCreacion)}
-        </div>
-      </div>
-    );
-  };
 
   /**
    * Template para prioridad
@@ -859,7 +844,7 @@ const OTMantenimiento = ({ ruta }) => {
         style={{ width: "1300px" }}
         header={
           isEditing
-            ? `Editar Orden de Trabajo: ${ordenSeleccionada?.codigo || ""}`
+            ? `Editar Orden de Trabajo: ${ordenSeleccionada?.numeroCompleto || ""}`
             : "Nueva Orden de Trabajo"
         }
         modal
@@ -895,7 +880,7 @@ const OTMantenimiento = ({ ruta }) => {
           permisos={permisos}
           readOnly={
             !!ordenSeleccionada &&
-            !!ordenSeleccionada.codigo &&
+            !!ordenSeleccionada.numeroCompleto &&
             !permisos.puedeEditar
           }
           loading={loading}
