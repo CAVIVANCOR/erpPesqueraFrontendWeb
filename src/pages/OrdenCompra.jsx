@@ -140,7 +140,7 @@ export default function OrdenCompra({ ruta }) {
   const [showConsultaStock, setShowConsultaStock] = useState(false);
 
   // Estados para filtros de rango de fechas
-  const [rangoFechaFacturacion, setRangoFechaFacturacion] = useState(null);
+  const [rangoFechaDocumento, setRangoFechaDocumento] = useState(null);
   const [tipoDocumentoFinalIdSeleccionado, setTipoDocumentoFinalIdSeleccionado] = useState(null);
 
   // Estados para filtros avanzados de tipo documento
@@ -304,17 +304,20 @@ export default function OrdenCompra({ ruta }) {
     }
 
 
-    // ✅ Filtro por rango de fecha facturación
-    if (rangoFechaFacturacion && rangoFechaFacturacion[0] && rangoFechaFacturacion[1]) {
-      const fechaInicio = new Date(rangoFechaFacturacion[0]);
+    // ✅ Filtro por rango de fecha documento
+    if (rangoFechaDocumento && rangoFechaDocumento[0]) {
+      const fechaInicio = new Date(rangoFechaDocumento[0]);
       fechaInicio.setHours(0, 0, 0, 0);
-      const fechaFin = new Date(rangoFechaFacturacion[1]);
-      fechaFin.setHours(23, 59, 59, 999);
 
       filtered = filtered.filter((orden) => {
-        if (!orden.fechaFacturacion) return false;
-        const fechaFact = new Date(orden.fechaFacturacion);
-        return fechaFact >= fechaInicio && fechaFact <= fechaFin;
+        const fechaDoc = new Date(orden.fechaDocumento);
+
+        if (rangoFechaDocumento[1]) {
+          const fechaFin = new Date(rangoFechaDocumento[1]);
+          fechaFin.setHours(23, 59, 59, 999);
+          return fechaDoc >= fechaInicio && fechaDoc <= fechaFin;
+        }
+        return fechaDoc >= fechaInicio;
       });
     }
 
@@ -427,7 +430,7 @@ export default function OrdenCompra({ ruta }) {
     empresaSeleccionada,
     estadoSeleccionado,
     proveedorSeleccionado,
-    rangoFechaFacturacion,
+    rangoFechaDocumento,
     tipoDocumentoFinalIdSeleccionado,
     tiposDocInternoAplicados,
     tiposDocFinalAplicados,
@@ -851,7 +854,7 @@ export default function OrdenCompra({ ruta }) {
     setProductoSeleccionado(null);
     setTipoAfectacionIGVSeleccionado(null); // AGREGADO
     setSubmoduloOrigenSeleccionado(null);
-    setRangoFechaFacturacion(null);
+    setRangoFechaDocumento(null);
     setTipoDocumentoFinalIdSeleccionado(null);
     setTiposDocInternoAplicados([]);
     setTiposDocFinalAplicados([]);
@@ -2292,11 +2295,11 @@ export default function OrdenCompra({ ruta }) {
               </div>
               <div style={{ flex: 1, minWidth: "200px" }}>
                 <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
-                  Rango Fecha Facturación:
+                  Rango Fecha Documento:
                 </label>
                 <Calendar
-                  value={rangoFechaFacturacion}
-                  onChange={(e) => setRangoFechaFacturacion(e.value)}
+                  value={rangoFechaDocumento}
+                  onChange={(e) => setRangoFechaDocumento(e.value)}
                   selectionMode="range"
                   dateFormat="dd/mm/yy"
                   placeholder="Seleccione rango"

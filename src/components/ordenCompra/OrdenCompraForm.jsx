@@ -257,6 +257,8 @@ export default function OrdenCompraForm({
     porcentajePercepcion: 0,
   });
   const [fechaDocumentoInicial, setFechaDocumentoInicial] = useState(null);
+  const [fechaFacturacionInicial, setFechaFacturacionInicial] = useState(null);
+  const [alertaFechaFacturacionMostrada, setAlertaFechaFacturacionMostrada] = useState(false);
   const [estadosCxP, setEstadosCxP] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [mediosPago, setMediosPago] = useState([]);
@@ -449,7 +451,7 @@ export default function OrdenCompraForm({
       setUrlDocumentoRef(defaultValues.urlDocumentoRef || null);
 
 
-            
+
       // Actualizar totales desde defaultValues
       if (defaultValues.subtotal !== undefined) {
         setTotales({
@@ -470,7 +472,7 @@ export default function OrdenCompraForm({
         });
       }
 
-      
+
     }
   }, [defaultValues, empresaFija]);
 
@@ -503,6 +505,13 @@ export default function OrdenCompraForm({
     }
   }, [isEdit, usuario?.personalId, toast]);
 
+
+  useEffect(() => {
+    if (fechaFacturacion && fechaFacturacionInicial === null) {
+      setFechaFacturacionInicial(fechaFacturacion);
+    }
+  }, [fechaFacturacion, fechaFacturacionInicial]);
+
   useEffect(() => {
     if (fechaDocumento && fechaDocumentoInicial === null) {
       setFechaDocumentoInicial(fechaDocumento);
@@ -511,16 +520,28 @@ export default function OrdenCompraForm({
 
   useEffect(() => {
     const cargarTipoCambio = async () => {
-      if (!fechaDocumento || fechaDocumentoInicial === null) return;
+      if (!fechaFacturacion) {
+        if (!alertaFechaFacturacionMostrada) {
+          toast?.current?.show({
+            severity: "warn",
+            summary: "Fecha Facturación Requerida",
+            detail: "Debe ingresar la fecha de facturación para consultar el tipo de cambio",
+            life: 4000,
+          });
+          setAlertaFechaFacturacionMostrada(true);
+        }
+        return;
+      }
 
-      const fechaActualISO = new Date(fechaDocumento).toISOString();
-      const fechaInicialISO = new Date(fechaDocumentoInicial).toISOString();
+      if (fechaFacturacionInicial === null) return;
+
+      const fechaActualISO = new Date(fechaFacturacion).toISOString();
+      const fechaInicialISO = new Date(fechaFacturacionInicial).toISOString();
 
       if (fechaActualISO === fechaInicialISO) return;
 
       try {
-        const fecha = new Date(fechaDocumento);
-        // Usar hora local en lugar de UTC
+        const fecha = new Date(fechaFacturacion);
         const year = fecha.getFullYear();
         const month = String(fecha.getMonth() + 1).padStart(2, '0');
         const day = String(fecha.getDate()).padStart(2, '0');
@@ -532,14 +553,12 @@ export default function OrdenCompraForm({
         if (tipoCambioData && tipoCambioData.sell_price) {
           const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
           setTipoCambio(tipoCambioVenta.toFixed(3));
-          setFechaDocumentoInicial(fechaDocumento);
+          setFechaFacturacionInicial(fechaFacturacion);
 
           toast?.current?.show({
             severity: "success",
             summary: "Tipo de Cambio Actualizado",
-            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioVenta.toFixed(
-              3,
-            )} por USD`,
+            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioVenta.toFixed(3)} por USD`,
             life: 3000,
           });
         }
@@ -548,8 +567,8 @@ export default function OrdenCompraForm({
       }
     };
     cargarTipoCambio();
-  }, [fechaDocumento, fechaDocumentoInicial]);
-
+  }, [fechaFacturacion, fechaFacturacionInicial, alertaFechaFacturacionMostrada]);
+  
   useEffect(() => {
     const obtenerTotalesDelBackend = async () => {
       if (!defaultValues?.id || !isEdit) {
