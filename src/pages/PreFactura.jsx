@@ -1,13 +1,13 @@
 // src/pages/PreFactura.jsx
 // Pantalla CRUD profesional para PreFactura. Cumple regla transversal ERP Megui:
 // - Edición por clic en fila, borrado seguro con roles, ConfirmDialog, Toast
-// - Autenticación JWT desde Zustand, normalización de IDs, documentación en español
+// - Autenticación JWT desde Zustand, normalización de IDs, documentación en espanol
 // ════════════════════════════════════════════════════════════
 // CONSTANTES DE MÓDULOS DEL SISTEMA
 // Usadas para obtener ParametroAprobador por módulo
 // ════════════════════════════════════════════════════════════
 const MODULO_VENTAS = 5; // Módulo de Ventas - usado para obtener respVentasId desde ParametroAprobador
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -18,6 +18,7 @@ import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { Badge } from "primereact/badge";
+import { Menu } from "primereact/menu";
 import {
   getPreFacturas,
   getPreFacturaPorId,
@@ -29,6 +30,7 @@ import {
   facturarPreFacturaNegra,
   facturarPreFacturaBlanca,
   aprobarPreFactura,
+  exportarRegistroVentasSUNAT,
 } from "../api/preFactura";
 import { getMotivoNotaCreditoDebitoActivos } from "../api/ventas/motivoNotaCreditoDebito";
 import PreFacturaForm from "../components/preFactura/PreFacturaForm";
@@ -77,6 +79,10 @@ import { formatearMontoConSigno, TIPO_DOC_ID } from "../utils/tiposDocumento.con
 import { MultiSelect } from "primereact/multiselect";
 import { OverlayPanel } from "primereact/overlaypanel";
 import RegeneracionMasicaVentas from "../components/common/RegeneracionMasicaVentas";
+import TemporaryPDFViewer from "../components/reports/TemporaryPDFViewer";
+import TemporaryExcelViewer from "../components/reports/TemporaryExcelViewer";
+import { generarRegistroVentasExcel } from "../components/preFactura/reports/generarRegistroVentasExcel";
+import { generarRegistroVentasPDF } from "../components/preFactura/reports/generarRegistroVentasPDF";
 
 /**
  * Componente PreFactura
@@ -116,6 +122,7 @@ const PreFactura = ({ ruta }) => {
   const [toDelete, setToDelete] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
+  const [periodoSeleccionado, setPeriodoSeleccionado] = useState(null);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [rangoFechas, setRangoFechas] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
@@ -152,13 +159,50 @@ const PreFactura = ({ ruta }) => {
   const [filtroTipoLibro, setFiltroTipoLibro] = useState("FISCAL_SSI");
   const [showConsultaStock, setShowConsultaStock] = useState(false);
   const [showRegenerarMasivoDialog, setShowRegenerarMasivoDialog] = useState(false);
-
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [showExcelViewer, setShowExcelViewer] = useState(false);
+  const [reportData, setReportData] = useState(null);
   // Estados temporales para filtros avanzados (no aplicados aún)
   const [tiposDocInternoTemp, setTiposDocInternoTemp] = useState([]);
   const [tiposDocFinalTemp, setTiposDocFinalTemp] = useState([]);
 
   const toast = useRef(null);
+  const menuExport = useRef(null);
   const opFiltrosAvanzados = useRef(null);
+
+  const periodosFiltrados = useMemo(() => {
+
+    if (!empresaIdSelector) {
+      console.log('❌ No hay empresaIdSelector');
+      return [];
+    }
+
+    const anoActual = new Date().getFullYear();
+
+    const filtrados = periodosContables.filter(p => {
+      const ano = p.año || p.anio || p.periodo?.substring(0, 4);
+      const matchEmpresa = Number(p.empresaId) === Number(empresaIdSelector);
+      const matchAno = Number(ano) === anoActual;
+      return matchEmpresa && matchAno;
+    });
+
+    return filtrados;
+  }, [periodosContables, empresaIdSelector]);
+
+  useEffect(() => {
+    if (periodosFiltrados.length > 0) {
+      const mesActual = new Date().getMonth() + 1;
+      const periodoActual = periodosFiltrados.find(p => Number(p.mes) === mesActual);
+
+      if (periodoActual) {
+        setPeriodoSeleccionado(periodoActual.id);
+      } else {
+        setPeriodoSeleccionado(periodosFiltrados[0].id);
+      }
+    } else {
+      setPeriodoSeleccionado(null);
+    }
+  }, [periodosFiltrados]);
 
   useEffect(() => {
     cargarDatos();
@@ -271,6 +315,130 @@ const PreFactura = ({ ruta }) => {
     }
     setLoading(false);
   };
+
+  const handleExportar = async (tipo) => {
+    if (!empresaIdSelector || !periodoSeleccionado) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe seleccionar Empresa y Periodo",
+        life: 3000,
+      });
+      return;
+    }
+
+    try {
+      const params = {
+        empresaId: empresaIdSelector,
+        periodoContableId: periodoSeleccionado,
+      };
+
+      let blob;
+      let filename;
+
+      if (tipo === 'sunat') {
+        blob = await exportarRegistroVentasSUNAT(params);
+        const empresaData = empresas.find(e => Number(e.id) === Number(empresaIdSelector));
+        const periodoData = periodosContables.find(p => Number(p.id) === Number(periodoSeleccionado));
+        const ruc = empresaData?.ruc || "00000000000";
+        const anio = periodoData?.anio || new Date().getFullYear();
+        const mes = String(periodoData?.mes || 1).padStart(2, '0');
+        filename = `LE_${ruc}_${anio}${mes}00_140100_00_1_1_1.txt`;
+      } else if (tipo === 'excel' || tipo === 'pdf') {
+        // Usar preFacturasFiltradas que ya tiene TODOS los filtros aplicados
+        // (empresa, periodo, unidad negocio, cliente, fechas, estados, etc.)
+        const preFacturasParaExportar = preFacturasFiltradas.filter(pf =>
+          pf.facturado === true &&
+          [95, 96, 97, 98].includes(Number(pf.estadoId))
+        );
+
+        if (preFacturasParaExportar.length === 0) {
+          toast.current?.show({
+            severity: "warn",
+            summary: "Sin datos",
+            detail: "No hay pre-facturas facturadas en los filtros aplicados",
+            life: 3000,
+          });
+          return;
+        }
+
+        const empresaData = empresas.find(e => Number(e.id) === Number(empresaIdSelector));
+        const periodoData = periodosContables.find(p => Number(p.id) === Number(periodoSeleccionado));
+        const monedaData = monedas.find(m => m.id === "1" || Number(m.id) === 1) || { id: "1", nombreLargo: "SOLES" };
+
+        if (!empresaData || !periodoData) {
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "No se encontraron datos de empresa o periodo",
+            life: 3000,
+          });
+          return;
+        }
+
+        const reportDataPrepared = {
+          empresa: {
+            ruc: empresaData?.ruc || "",
+            razonSocial: empresaData?.razonSocial || ""
+          },
+          periodo: {
+            nombrePeriodo: periodoData?.nombrePeriodo || ""
+          },
+          moneda: monedaData,
+          preFacturas: preFacturasParaExportar
+        };
+
+        setReportData(reportDataPrepared);
+
+        if (tipo === 'excel') {
+          setShowExcelViewer(true);
+        } else {
+          setShowPDFViewer(true);
+        }
+        return;
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(url);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Exportado",
+        detail: "Archivo generado correctamente",
+        life: 3000,
+      });
+    } catch (error) {
+      console.error('❌ ERROR AL EXPORTAR:', error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || error.message || "Error al exportar",
+        life: 3000,
+      });
+    }
+  };
+
+  const menuExportItems = [
+    {
+      label: 'Formato SUNAT 14.1 (TXT)',
+      icon: 'pi pi-file',
+      command: () => handleExportar('sunat')
+    },
+    {
+      label: 'Excel Registro Ventas',
+      icon: 'pi pi-file-excel',
+      command: () => handleExportar('excel')
+    },
+    {
+      label: 'PDF Registro Ventas',
+      icon: 'pi pi-file-pdf',
+      command: () => handleExportar('pdf')
+    }
+  ];
 
   // Obtener opciones únicas de los datos filtrados
   const obtenerOpcionesDinamicas = () => {
@@ -479,6 +647,12 @@ const PreFactura = ({ ruta }) => {
       });
     }
     // Si es "TODOS", no se filtra
+    // Filtrar por periodo contable
+    if (periodoSeleccionado) {
+      filtrados = filtrados.filter((item) => {
+        return Number(item.periodoContableId) === Number(periodoSeleccionado);
+      });
+    }
 
     setItemsFiltrados(filtrados);
   }, [
@@ -492,6 +666,7 @@ const PreFactura = ({ ruta }) => {
     productoSeleccionado,
     nroLiquidacionBusqueda,
     filtroTipoLibro,
+    periodoSeleccionado,
     items,
   ]);
 
@@ -1053,35 +1228,7 @@ const PreFactura = ({ ruta }) => {
       throw error;
     }
   };
-  const handleExportarExcel = async () => {
-    try {
-      setLoading(true);
-      const response = await getPreFacturas();
-      const blob = await generarPreFacturasExcel(response);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `PreFacturas_${new Date().toISOString().split('T')[0]}.xlsx`;
-      link.click();
-      URL.revokeObjectURL(url);
-      toast.current.show({
-        severity: 'success',
-        summary: 'Exportado',
-        detail: 'Excel generado correctamente',
-        life: 3000
-      });
-    } catch (error) {
-      console.error('Error al exportar:', error);
-      toast.current.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al generar Excel',
-        life: 3000
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+ 
   const cerrarDialogo = () => {
     // Si hay una PreFactura en el stack de navegación, volver a ella
     if (navigationStack.length > 0) {
@@ -1821,6 +1968,7 @@ const PreFactura = ({ ruta }) => {
     setFiltroParticionadas(null);
     setProductoSeleccionado(null);
     setNroLiquidacionBusqueda("");
+    setPeriodoSeleccionado(null);
   };
 
 
@@ -1864,6 +2012,7 @@ const PreFactura = ({ ruta }) => {
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
+      <Menu model={menuExportItems} popup ref={menuExport} />
       <div className="card">
         <DataTable
           value={preFacturasFiltradas}
@@ -1916,7 +2065,20 @@ const PreFactura = ({ ruta }) => {
                     }}
                   />
                 </div>
-
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontWeight: "bold" }}>Periodo Contable</label>
+                  <Dropdown
+                    value={periodoSeleccionado}
+                    options={periodosFiltrados}
+                    onChange={(e) => setPeriodoSeleccionado(e.value)}
+                    optionLabel="nombrePeriodo"
+                    optionValue="id"
+                    placeholder="Seleccione periodo"
+                    style={{ width: "100%" }}
+                    filter
+                    showClear
+                  />
+                </div>
                 <div style={{ flex: 1 }}>
                   <Button
                     label="Nuevo"
@@ -1952,6 +2114,16 @@ const PreFactura = ({ ruta }) => {
                     outlined
                     onClick={limpiarFiltros}
                     disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Exportar"
+                    icon="pi pi-download"
+                    className="p-button-success"
+                    onClick={(e) => menuExport.current.toggle(e)}
+                    disabled={!empresaIdSelector || !periodoSeleccionado}
+                    style={{ width: "100%" }}
                   />
                 </div>
                 {permisos.puedeReactivarDocs && (
@@ -2004,18 +2176,7 @@ const PreFactura = ({ ruta }) => {
                     style={{ width: "100%" }}
                   />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <Button
-                    label="Exportar Excel"
-                    icon="pi pi-file-excel"
-                    className="p-button-success"
-                    onClick={handleExportarExcel}
-                    disabled={loading}
-                    tooltip="Exportar todas las Ventas a Excel"
-                    style={{ width: "100%" }}
-                  />
-                </div>
-
+                
                 <div style={{ flex: 1 }}>
                   {/* Filtro de Unidad de Negocio - Compacto */}
                   <UnidadNegocioFilter />
@@ -2755,6 +2916,25 @@ const PreFactura = ({ ruta }) => {
         facturarBlanca={facturarPreFacturaBlanca}
         aprobarPreFactura={aprobarPreFactura}
       />
+
+
+      {showExcelViewer && (
+        <TemporaryExcelViewer
+          visible={showExcelViewer}
+          onHide={() => setShowExcelViewer(false)}
+          data={reportData}
+          generateExcel={generarRegistroVentasExcel}
+        />
+      )}
+
+      {showPDFViewer && (
+        <TemporaryPDFViewer
+          visible={showPDFViewer}
+          onHide={() => setShowPDFViewer(false)}
+          data={reportData}
+          generatePDF={generarRegistroVentasPDF}
+        />
+      )}
 
     </div>
   );

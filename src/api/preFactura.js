@@ -401,3 +401,14 @@ export async function actualizarTipoAfectacionIGVMasivo(ids, tipoAfectacionIGVId
   );
   return res.data;
 }
+/**
+ * Exporta Registro de Ventas SUNAT 14.1 (TXT)
+ */
+export async function exportarRegistroVentasSUNAT(params) {
+  const res = await axios.get(`${API_URL}/exportar-registro-ventas-sunat`, {
+    headers: getAuthHeaders(),
+    params,
+    responseType: 'blob'
+  });
+  return res.data;
+}

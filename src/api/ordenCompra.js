@@ -213,3 +213,14 @@ export async function getOrdenesCompraParaDocumentoAfecto(empresaId, proveedorId
   }
 }
 
+/**
+ * Exporta Registro de Compras SUNAT 8.1 (TXT)
+ */
+export async function exportarRegistroComprasSUNAT(params) {
+  const res = await axios.get(`${API_URL}/exportar-registro-compras-sunat`, {
+    headers: getAuthHeaders(),
+    params,
+    responseType: 'blob'
+  });
+  return res.data;
+}

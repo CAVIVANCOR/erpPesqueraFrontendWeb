@@ -1,5 +1,5 @@
 // src/pages/OrdenCompra.jsx
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -12,6 +12,7 @@ import { MultiSelect } from "primereact/multiselect";
 import { OverlayPanel } from "primereact/overlaypanel";
 import { Calendar } from "primereact/calendar";
 import { Tag } from "primereact/tag";
+import { Menu } from 'primereact/menu';
 import { InputText } from "primereact/inputtext";
 import { confirmDialog } from "primereact/confirmdialog";
 import OrdenCompraForm from "../components/ordenCompra/OrdenCompraForm";
@@ -68,6 +69,11 @@ import FiltroTipoLibroButton from "../components/common/FiltroTipoLibroButton";
 import { getTiposAfectacionIGVActivos } from "../api/facturacionElectronica/tipoAfectacionIGV"; // AGREGADO
 import OrigenAsientoViewer from "../components/common/origenAsiento/OrigenAsientoViewer";
 import RegeneracionMasivaCompras from "../components/common/RegeneracionMasivaCompras";
+import { exportarRegistroComprasSUNAT } from '../api/ordenCompra';
+import TemporaryPDFViewer from "../components/reports/TemporaryPDFViewer";
+import TemporaryExcelViewer from "../components/reports/TemporaryExcelViewer";
+import { generarRegistroComprasExcel } from "../components/ordenCompra/reports/generarRegistroComprasExcel";
+import { generarRegistroComprasPDF } from "../components/ordenCompra/reports/generarRegistroComprasPDF";
 
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
@@ -77,6 +83,7 @@ export default function OrdenCompra({ ruta }) {
     return <Navigate to="/sin-acceso" replace />;
   }
   const toast = useRef(null);
+  const menuExport = useRef(null);
   const opFiltrosAvanzados = useRef(null);
 
   const [items, setItems] = useState([]);
@@ -133,11 +140,15 @@ export default function OrdenCompra({ ruta }) {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [centroCostoSeleccionado, setCentroCostoSeleccionado] = useState(null);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+  const [periodoSeleccionado, setPeriodoSeleccionado] = useState(null);
   const [productosUnicos, setProductosUnicos] = useState([]);
   const [proveedoresUnicos, setProveedoresUnicos] = useState([]);
   const [showKardexDialog, setShowKardexDialog] = useState(false);
   const [kardexDocumentoActual, setKardexDocumentoActual] = useState(null);
   const [showConsultaStock, setShowConsultaStock] = useState(false);
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [showExcelViewer, setShowExcelViewer] = useState(false);
+  const [reportData, setReportData] = useState(null);
 
   // Estados para filtros de rango de fechas
   const [rangoFechaDocumento, setRangoFechaDocumento] = useState(null);
@@ -170,6 +181,38 @@ export default function OrdenCompra({ ruta }) {
   useEffect(() => {
     cargarDatos();
   }, []);
+
+  const periodosFiltrados = useMemo(() => {
+    if (!empresaIdSelector) {
+      return [];
+    }
+
+    const anoActual = new Date().getFullYear();
+
+    return periodosContables.filter(p => {
+      const ano = p.año || p.anio || p.periodo?.substring(0, 4);
+      const matchEmpresa = Number(p.empresaId) === Number(empresaIdSelector);
+      const matchAno = Number(ano) === anoActual;
+      return matchEmpresa && matchAno;
+    });
+  }, [periodosContables, empresaIdSelector]);
+
+
+  useEffect(() => {
+    if (periodosFiltrados.length > 0) {
+      const mesActual = new Date().getMonth() + 1;
+      const periodoActual = periodosFiltrados.find(p => Number(p.mes) === mesActual);
+
+      if (periodoActual) {
+        setPeriodoSeleccionado(periodoActual.id);
+      } else {
+        setPeriodoSeleccionado(periodosFiltrados[0].id);
+      }
+    } else {
+      setPeriodoSeleccionado(null);
+    }
+  }, [periodosFiltrados]);
+
 
 
   useEffect(() => {
@@ -403,6 +446,13 @@ export default function OrdenCompra({ ruta }) {
       }
     }
 
+    // Filtro por periodo contable
+    if (periodoSeleccionado) {
+      filtered = filtered.filter((orden) => {
+        return Number(orden.periodoContableId) === Number(periodoSeleccionado);
+      });
+    }
+
     // Filtro por tipo de libro (usando OrdenCompra.esGerencial)
     if (filtroTipoLibro === "FISCAL_SSI") {
       // Fiscal sin saldos iniciales: Compras BLANCAS (esGerencial=false) con FAC, BV, NC, ND
@@ -428,6 +478,7 @@ export default function OrdenCompra({ ruta }) {
   }, [
     items,
     empresaSeleccionada,
+    periodoSeleccionado,
     estadoSeleccionado,
     proveedorSeleccionado,
     rangoFechaDocumento,
@@ -436,7 +487,6 @@ export default function OrdenCompra({ ruta }) {
     tiposDocFinalAplicados,
     centroCostoSeleccionado,
     productoSeleccionado,
-    tipoAfectacionIGVSeleccionado, // AGREGADO
     tipoAfectacionIGVSeleccionado,
     submoduloOrigenSeleccionado,
     filtroTipoLibro,
@@ -1421,35 +1471,132 @@ export default function OrdenCompra({ ruta }) {
       setLoading(false);
     }
   };
-  const handleExportarExcel = async () => {
+
+  const handleExportar = async (tipo) => {
+    if (!empresaIdSelector || !periodoSeleccionado) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe seleccionar Empresa y Periodo",
+        life: 3000,
+      });
+      return;
+    }
+
     try {
-      setLoading(true);
-      const response = await getOrdenesCompra();
-      const blob = await generarOrdenesCompraExcel(response);
-      const url = URL.createObjectURL(blob);
+      const params = {
+        empresaId: empresaIdSelector,
+        periodoContableId: periodoSeleccionado,
+      };
+
+      let blob;
+      let filename;
+
+      if (tipo === 'sunat') {
+        blob = await exportarRegistroComprasSUNAT(params);
+        const empresaData = empresas.find(e => Number(e.id) === Number(empresaIdSelector));
+        const periodoData = periodosContables.find(p => Number(p.id) === Number(periodoSeleccionado));
+        const ruc = empresaData?.ruc || "00000000000";
+        const anio = periodoData?.anio || new Date().getFullYear();
+        const mes = String(periodoData?.mes || 1).padStart(2, '0');
+        filename = `LE_${ruc}_${anio}${mes}00_080100_00_1_1_1.txt`;
+      } else if (tipo === 'excel' || tipo === 'pdf') {
+        // Usar ordenesFiltradas que ya tiene TODOS los filtros aplicados
+        const ordenesParaExportar = ordenesFiltradas.filter(oc =>
+          oc.comprobanteRecibido === true &&
+          ![38, 40].includes(Number(oc.estadoId))
+        );
+
+        if (ordenesParaExportar.length === 0) {
+          toast.current?.show({
+            severity: "warn",
+            summary: "Sin datos",
+            detail: "No hay órdenes de compra facturadas en los filtros aplicados",
+            life: 3000,
+          });
+          return;
+        }
+
+        const empresaData = empresas.find(e => Number(e.id) === Number(empresaIdSelector));
+        const periodoData = periodosContables.find(p => Number(p.id) === Number(periodoSeleccionado));
+        const monedaData = monedas.find(m => m.id === "1" || Number(m.id) === 1) || { id: "1", nombreLargo: "SOLES" };
+
+        if (!empresaData || !periodoData) {
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "No se encontraron datos de empresa o periodo",
+            life: 3000,
+          });
+          return;
+        }
+
+        const reportDataPrepared = {
+          empresa: {
+            ruc: empresaData?.ruc || "",
+            razonSocial: empresaData?.razonSocial || ""
+          },
+          periodo: {
+            nombrePeriodo: periodoData?.nombrePeriodo || ""
+          },
+          moneda: monedaData,
+          ordenesCompra: ordenesParaExportar
+        };
+
+        setReportData(reportDataPrepared);
+
+        if (tipo === 'excel') {
+          setShowExcelViewer(true);
+        } else {
+          setShowPDFViewer(true);
+        }
+        return;
+      }
+
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `OrdenesCompra_${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.download = filename;
       link.click();
-      URL.revokeObjectURL(url);
-      toast.current.show({
-        severity: 'success',
-        summary: 'Exportado',
-        detail: 'Excel generado correctamente',
-        life: 3000
+      window.URL.revokeObjectURL(url);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Exportado",
+        detail: "Archivo generado correctamente",
+        life: 3000,
       });
     } catch (error) {
-      console.error('Error al exportar:', error);
-      toast.current.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al generar Excel',
-        life: 3000
+      console.error('❌ ERROR AL EXPORTAR:', error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || error.message || "Error al exportar",
+        life: 3000,
       });
-    } finally {
-      setLoading(false);
     }
   };
+
+
+  const menuExportItems = [
+    {
+      label: 'Formato SUNAT 8.1 (TXT)',
+      icon: 'pi pi-file',
+      command: () => handleExportar('sunat')
+    },
+    {
+      label: 'Excel Registro Compras',
+      icon: 'pi pi-file-excel',
+      command: () => handleExportar('excel')
+    },
+    {
+      label: 'PDF Registro Compras',
+      icon: 'pi pi-file-pdf',
+      command: () => handleExportar('pdf')
+    }
+  ];
+
+
   const empresaNombre = (rowData) => {
     return rowData.empresa?.razonSocial || "";
   };
@@ -1888,6 +2035,7 @@ export default function OrdenCompra({ ruta }) {
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
+      <Menu model={menuExportItems} popup ref={menuExport} />
       <ConfirmDialog
         visible={showConfirm}
         onHide={() => setShowConfirm(false)}
@@ -1936,7 +2084,7 @@ export default function OrdenCompra({ ruta }) {
               }}
             >
               <div style={{ flex: 2 }}>
-                <h2>Compras y Gastos</h2>
+                <h3>Compras y Gastos</h3>
               </div>
               <div style={{ flex: 2 }}>
                 <label style={{ fontWeight: "bold" }}>
@@ -1968,6 +2116,21 @@ export default function OrdenCompra({ ruta }) {
                   style={{ fontWeight: "bold" }}
                 />
               </div>
+              <div style={{ flex: 1 }}>
+                <Dropdown
+                  value={periodoSeleccionado}
+                  options={periodosFiltrados}
+                  onChange={(e) => setPeriodoSeleccionado(e.value)}
+                  optionLabel="nombrePeriodo"
+                  optionValue="id"
+                  placeholder="Seleccione Periodo"
+                  filter
+                  showClear
+                  className="w-full"
+                  disabled={!empresaIdSelector}
+                />
+              </div>
+
               <div style={{ flex: 1 }}>
                 <Button
                   icon="pi pi-refresh"
@@ -2036,12 +2199,11 @@ export default function OrdenCompra({ ruta }) {
               />
               <div style={{ flex: 1 }}>
                 <Button
-                  label="Exportar Excel"
-                  icon="pi pi-file-excel"
+                  label="Exportar"
+                  icon="pi pi-download"
                   className="p-button-success"
-                  onClick={handleExportarExcel}
-                  disabled={loading}
-                  tooltip="Exportar todas las Compras a Excel"
+                  onClick={(e) => menuExport.current.toggle(e)}
+                  disabled={!empresaIdSelector || !periodoSeleccionado}
                   style={{ width: "100%" }}
                 />
               </div>
@@ -2748,6 +2910,24 @@ export default function OrdenCompra({ ruta }) {
         generarCuentaPorPagar={generarCuentaPorPagar}
       />
 
+           {/* Viewers de Reportes */}
+      {showPDFViewer && (
+        <TemporaryPDFViewer
+          visible={showPDFViewer}
+          onHide={() => setShowPDFViewer(false)}
+          data={reportData}
+          generatePDF={generarRegistroComprasPDF}
+        />
+      )}
+
+      {showExcelViewer && (
+        <TemporaryExcelViewer
+          visible={showExcelViewer}
+          onHide={() => setShowExcelViewer(false)}
+          data={reportData}
+          generateExcel={generarRegistroComprasExcel}
+        />
+      )}
 
     </div>
   );
