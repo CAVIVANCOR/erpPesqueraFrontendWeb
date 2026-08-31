@@ -874,7 +874,7 @@ export const ANEXOS_CONFIG = {
   'N°15': {
     numero: 'N°15',
     titulo: 'CUENTAS POR PAGAR DIVERSAS - TERCEROS - LARGO PLAZO',
-    cuentas: ['4699'],
+    cuentas: ['46'],
     tipo: 'detalle_agrupado',
     columnas: [
       { field: 'razonSocial', header: 'DENOMINACIÓN O RAZÓN SOCIAL', width: '40%', align: 'left' },

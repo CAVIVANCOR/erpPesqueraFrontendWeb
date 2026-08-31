@@ -127,7 +127,7 @@ const BalanceGeneral = ({ ruta }) => {
       nombre: 'PASIVO NO CORRIENTE',
       anexo: null,
       rubros: [
-        { nombre: 'Deudas a Largo Plazo', cuentas: ['4699'], anexo: "N°15" }
+        { nombre: 'Deudas a Largo Plazo', cuentas: ['46'], anexo: "N°15" }
       ]
     },
     PATRIMONIO_NETO: {
@@ -415,7 +415,7 @@ const BalanceGeneral = ({ ruta }) => {
     // Para "Deudas a Largo Plazo", incluir:
     // - Solo la subcuenta 469904
     // ═══════════════════════════════════════════════════════════════════════
-    if (rubro.anexo === 'N°15' && rubro.cuentas.includes('4699')) {
+    if (rubro.anexo === 'N°15' && rubro.cuentas.includes('46')) {
       cuentasRubro = cuentasRubro.filter(cuenta => {
         const codigoCuenta = cuenta.codigoCuenta || '';
         // Solo incluir cuentas que empiecen con 469904
