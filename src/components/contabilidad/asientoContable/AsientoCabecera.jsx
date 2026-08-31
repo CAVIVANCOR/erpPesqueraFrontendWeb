@@ -150,15 +150,23 @@ export default function AsientoCabecera({
         </div>
 
         <div style={{ flex: 0.5 }}>
-          <label htmlFor="tipoCambio">Tipo Cambio</label>
+          <label htmlFor="tipoCambio">
+            Tipo Cambio
+            {formData.submoduloOrigenId && (
+              <span style={{ fontSize: '0.8em', color: '#2196F3', marginLeft: '5px' }}>
+                (Heredado)
+              </span>
+            )}
+          </label>
           <InputNumber
             id="tipoCambio"
             value={formData.tipoCambio}
             onValueChange={(e) => handleChange("tipoCambio", e.value)}
             mode="decimal"
-            minFractionDigits={2}
-            maxFractionDigits={4}
+            minFractionDigits={3}
+            maxFractionDigits={3}
             disabled={isReadOnly}
+            placeholder="Tipo de cambio"
           />
         </div>
         <div style={{ flex: 1 }}>

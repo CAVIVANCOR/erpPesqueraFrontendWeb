@@ -219,8 +219,14 @@ export default function useAsientoLogic({
   }, [formData.fechaAsiento, fechaAsientoInicial]);
 
   // Cargar tipo de cambio SUNAT
+  // Solo para asientos MANUALES (sin submoduloOrigenId)
+  // Los asientos automáticos heredan el TC del documento origen y NO se actualizan
   useEffect(() => {
     const cargarTipoCambio = async () => {
+      // No actualizar si es asiento automático (submoduloOrigenId > 0)
+      // Estos asientos heredan el TC del documento origen y debe respetarse
+      if (formData.submoduloOrigenId) return;
+
       if (!formData.fechaAsiento || fechaAsientoInicial === null) return;
 
       const fechaActualISO = new Date(formData.fechaAsiento).toISOString();
@@ -237,12 +243,12 @@ export default function useAsientoLogic({
 
         if (tipoCambioData && tipoCambioData.buy_price) {
           const tipoCambioCompra = parseFloat(tipoCambioData.buy_price);
-          handleChange("tipoCambio", tipoCambioCompra.toFixed(4));
+          handleChange("tipoCambio", tipoCambioCompra.toFixed(3));
           setFechaAsientoInicial(formData.fechaAsiento);
           toast?.current?.show({
             severity: "success",
             summary: "Tipo de Cambio Actualizado",
-            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioCompra.toFixed(4)} por USD`,
+            detail: `TC SUNAT: S/ ${tipoCambioCompra.toFixed(3)} por USD`,
             life: 3000,
           });
         }
@@ -251,7 +257,7 @@ export default function useAsientoLogic({
       }
     };
     cargarTipoCambio();
-  }, [formData.fechaAsiento, fechaAsientoInicial]);
+  }, [formData.fechaAsiento, fechaAsientoInicial, formData.submoduloOrigenId]);
 
   // Aplicar filtros
   useEffect(() => {
