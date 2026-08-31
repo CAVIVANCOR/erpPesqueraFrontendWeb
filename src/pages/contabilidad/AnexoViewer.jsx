@@ -38,25 +38,47 @@ const AnexoViewer = ({
   // Procesar datos según configuración
   const datosAnexo = useMemo(() => {
     if (!config || cuentasAnexo.length === 0) return [];
-    return procesarDatosAnexo(numeroAnexo, cuentasAnexo);
-  }, [numeroAnexo, cuentasAnexo, config]);
+    // Pasar todas las cuentas para anexos que necesitan cuentas relacionadas (ej: Anexo N°08)
+    return procesarDatosAnexo(numeroAnexo, cuentasAnexo, todasLasCuentas);
+  }, [numeroAnexo, cuentasAnexo, todasLasCuentas, config]);
 
-  // Calcular total
+  /**
+   * Calcular totales por columna
+   * Para anexos con múltiples columnas de montos (como Anexo N°08),
+   * calcula la suma de cada columna tipo 'monto'
+   */
+  const totalesPorColumna = useMemo(() => {
+    if (datosAnexo.length === 0 || !config) return {};
+    
+    const totales = {};
+    
+    // Calcular total para cada columna tipo 'monto'
+    config.columnas.forEach(columna => {
+      if (columna.tipo === 'monto') {
+        totales[columna.field] = datosAnexo.reduce((sum, row) => {
+          const valor = Number(row[columna.field] || 0);
+          return sum + (isNaN(valor) ? 0 : valor);
+        }, 0);
+      }
+    });
+    
+    return totales;
+  }, [datosAnexo, config]);
+
+  // Calcular total principal (para el footer del diálogo)
   const totalAnexo = useMemo(() => {
     if (datosAnexo.length === 0) return 0;
     
     // Buscar el campo que contiene el monto principal
+    // Para Anexo N°08, usar 'valorNeto' (última columna)
     const campoMonto = config?.columnas.find(col => 
-      col.tipo === 'monto' && (col.field === 'saldo' || col.field === 'importe' || col.field === 'total' || col.field === 'costoTotal')
+      col.tipo === 'monto' && (col.field === 'saldo' || col.field === 'importe' || col.field === 'total' || col.field === 'costoTotal' || col.field === 'valorNeto')
     );
     
     if (!campoMonto) return 0;
     
-    return datosAnexo.reduce((sum, row) => {
-      const valor = Number(row[campoMonto.field] || 0);
-      return sum + (isNaN(valor) ? 0 : valor);
-    }, 0);
-  }, [datosAnexo, config]);
+    return totalesPorColumna[campoMonto.field] || 0;
+  }, [totalesPorColumna, config]);
 
   if (!config) {
     return (
@@ -71,7 +93,17 @@ const AnexoViewer = ({
     );
   }
 
-  // Template para renderizar celdas según tipo
+  /**
+   * Template para renderizar celdas según tipo
+   * 
+   * Maneja diferentes tipos de datos:
+   * - monto: Números con formato de moneda
+   * - cantidad: Números sin símbolo de moneda
+   * - porcentaje: Números con símbolo %
+   * - texto: Valores de texto normales
+   * 
+   * También aplica estilos especiales para grupos y detalles jerárquicos
+   */
   const cellTemplate = (rowData, column) => {
     const valor = rowData[column.field];
     
@@ -89,10 +121,22 @@ const AnexoViewer = ({
       case 'monto':
         if (valor === null || valor === undefined || valor === '') return '-';
         const num = Number(valor);
-        if (isNaN(num) || Math.abs(num) < 0.01) return '-';
+        if (isNaN(num)) return '-';
+        
+        // Para el Anexo N°08, mostrar depreciación acumulada como positivo
+        // pero en color diferente para indicar que es una resta
+        const esDepreciacion = column.field === 'depreciacionAcumulada';
+        const esValorNeto = column.field === 'valorNeto';
+        
+        // Mostrar guion para valores muy pequeños (excepto si es exactamente 0)
+        if (Math.abs(num) < 0.01 && num !== 0) return '-';
+        
         return (
-          <span style={{ fontWeight: rowData.esGrupo ? 'bold' : 'normal' }}>
-            {formatearNumero(num, 2)}
+          <span style={{ 
+            fontWeight: rowData.esGrupo ? 'bold' : 'normal',
+            color: esDepreciacion ? '#D32F2F' : (esValorNeto ? '#1976D2' : 'inherit')
+          }}>
+            {esDepreciacion && num > 0 ? `(${formatearNumero(num, 2)})` : formatearNumero(num, 2)}
           </span>
         );
       
@@ -185,7 +229,15 @@ const AnexoViewer = ({
           </div>
         </div>
         <div style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>
-          Cuenta{config.cuentas.length > 1 ? 's' : ''}: {config.cuentas.join(', ')}
+          {/* Mostrar información de cuentas involucradas */}
+          {config.cuentasRestar ? (
+            <div>
+              <div>Cuenta{config.cuentas.length > 1 ? 's' : ''}: {config.cuentas.join(', ')} (Costo)</div>
+              <div>(-) Cuenta{config.cuentasRestar.length > 1 ? 's' : ''}: {config.cuentasRestar.join(', ')} (Depreciación)</div>
+            </div>
+          ) : (
+            <div>Cuenta{config.cuentas.length > 1 ? 's' : ''}: {config.cuentas.join(', ')}</div>
+          )}
         </div>
       </div>
     </div>
@@ -240,6 +292,37 @@ const AnexoViewer = ({
     >
       {renderEncabezadoAdicional()}
       
+      {/* Nota explicativa especial para Anexo N°08 */}
+      {numeroAnexo === 'N°08' && (
+        <div style={{ 
+          backgroundColor: '#FFF3E0', 
+          border: '2px solid #FF9800',
+          padding: '1rem', 
+          marginBottom: '1rem',
+          borderRadius: '4px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <i className="pi pi-info-circle" style={{ fontSize: '1.2rem', color: '#FF9800' }}></i>
+            <strong style={{ fontSize: '1rem', color: '#E65100' }}>CÁLCULO DEL VALOR NETO:</strong>
+          </div>
+          <div style={{ fontSize: '0.9rem', lineHeight: '1.6' }}>
+            <div>• <strong style={{ color: '#1976D2' }}>Costo Histórico (Cuenta 33)</strong>: Valor de adquisición del activo fijo</div>
+            <div>• <strong style={{ color: '#D32F2F' }}>Depreciación Acumulada (Cuenta 39)</strong>: Desgaste acumulado del activo (se resta)</div>
+            <div>• <strong style={{ color: '#1976D2' }}>Valor Neto</strong>: Resultado de <code>Cuenta 33 - Cuenta 39</code></div>
+          </div>
+          <div style={{ 
+            marginTop: '0.5rem', 
+            padding: '0.5rem', 
+            backgroundColor: '#FFFFFF', 
+            borderRadius: '4px',
+            fontSize: '0.85rem',
+            fontStyle: 'italic'
+          }}>
+            💡 <strong>Nota:</strong> Los valores de depreciación acumulada se muestran en <span style={{ color: '#D32F2F' }}>rojo entre paréntesis</span> para indicar que se restan del costo histórico.
+          </div>
+        </div>
+      )}
+      
       <DataTable
         value={datosAnexo}
         size="small"
@@ -249,25 +332,62 @@ const AnexoViewer = ({
         scrollHeight="60vh"
         showGridlines
       >
-        {config.columnas.map((columna, index) => (
-          <Column
-            key={index}
-            field={columna.field}
-            header={columna.header}
-            body={(rowData) => cellTemplate(rowData, columna)}
-            style={{ 
-              width: columna.width, 
-              textAlign: columna.align,
-              fontSize: '0.85rem'
-            }}
-            headerStyle={{ 
-              fontSize: '0.8rem', 
-              fontWeight: 'bold',
-              textAlign: columna.align,
-              backgroundColor: '#E3F2FD'
-            }}
-          />
-        ))}
+        {config.columnas.map((columna, index) => {
+          // Template para el footer de cada columna (totales)
+          const footerTemplate = () => {
+            // Solo mostrar total para columnas tipo 'monto'
+            if (columna.tipo !== 'monto') {
+              // Para la primera columna, mostrar etiqueta "TOTAL"
+              if (index === 0) {
+                return <strong style={{ fontSize: '0.9rem' }}>TOTAL</strong>;
+              }
+              return null;
+            }
+            
+            const total = totalesPorColumna[columna.field] || 0;
+            const esDepreciacion = columna.field === 'depreciacionAcumulada';
+            const esValorNeto = columna.field === 'valorNeto';
+            
+            return (
+              <div style={{ 
+                textAlign: columna.align,
+                fontWeight: 'bold',
+                fontSize: '0.9rem',
+                padding: '0.5rem',
+                backgroundColor: '#FFEB3B',
+                color: esDepreciacion ? '#D32F2F' : (esValorNeto ? '#1976D2' : '#000000')
+              }}>
+                {esDepreciacion && total > 0 ? `(${formatearNumero(total, 2)})` : formatearNumero(total, 2)}
+              </div>
+            );
+          };
+
+          return (
+            <Column
+              key={index}
+              field={columna.field}
+              header={columna.header}
+              body={(rowData) => cellTemplate(rowData, columna)}
+              footer={footerTemplate}
+              style={{ 
+                width: columna.width, 
+                textAlign: columna.align,
+                fontSize: '0.85rem'
+              }}
+              headerStyle={{ 
+                fontSize: '0.8rem', 
+                fontWeight: 'bold',
+                textAlign: columna.align,
+                backgroundColor: '#E3F2FD'
+              }}
+              footerStyle={{
+                backgroundColor: '#FFEB3B',
+                borderTop: '3px solid #FBC02D',
+                padding: '0'
+              }}
+            />
+          );
+        })}
       </DataTable>
       
       <Divider />

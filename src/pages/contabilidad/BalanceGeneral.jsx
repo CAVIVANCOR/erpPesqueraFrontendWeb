@@ -108,16 +108,16 @@ const BalanceGeneral = ({ ruta }) => {
       nombre: 'ACTIVO NO CORRIENTE',
       anexo: null,
       rubros: [
-        { nombre: 'Inmuebles, Maquinaria y Equipo (neto de depreciación acumulada)', cuentas: ['33', '34'], anexo: "N°08" },
-        { nombre: 'Otros Activos', cuentas: ['39', '40'], anexo: "N°09" }
+        { nombre: 'Inmuebles, Maquinaria y Equipo (neto de depreciación acumulada)', cuentas: ['33'], cuentasRestar: ['39'], anexo: "N°08" },
+        { nombre: 'Otros Activos No Corrientes - Depósitos en Garantía', cuentas: ['16'], anexo: "N°09" }
       ]
     },
     PASIVO_CORRIENTE: {
       nombre: 'PASIVO CORRIENTE',
       anexo: null,
       rubros: [
-        { nombre: 'Tributos y aportes sistema de pensión y salud por pagar', cuentas: ['40'], anexo: "N°10" },
-        { nombre: 'Remuneración y participación por pagar', cuentas: ['41'], anexo: "N°11" },
+        { nombre: 'Tributos, aportes y remuneraciones por pagar', cuentas: ['40', '41'], anexo: "N°10", filtrarSubcuentas: ['4171'] },
+        { nombre: 'Otras remuneraciones y participaciones por pagar', cuentas: ['41'], anexo: "N°11", excluirSubcuentas: ['4171'] },
         { nombre: 'Cuentas por Pagar Comerciales', cuentas: ['42'], anexo: "N°12" },
         { nombre: 'Cuentas por Pagar Financieras', cuentas: ['45'], anexo: "N°13" },
         { nombre: 'Cuentas por Pagar Diversas CP', cuentas: ['46', '47'], anexo: "N°14" }
@@ -137,8 +137,8 @@ const BalanceGeneral = ({ ruta }) => {
         { nombre: 'Capital', cuentas: ['50'], anexo: "N°16" },
         { nombre: 'Excedentes de Revaluación', cuentas: ['57'], anexo: "N°17" },
         { nombre: 'Reservas Legales', cuentas: ['58'], anexo: null },
-        { nombre: 'Resultados Acumulados', cuentas: ['59'], anexo: null },
-        { nombre: 'Utilidad del ejercicio', cuentas: ['59'], anexo: "N°18" }
+        { nombre: 'Resultados Acumulados', cuentas: ['59'], anexo: null, soloSaldoInicial: true },
+        { nombre: 'Utilidad del ejercicio', cuentas: ['59'], anexo: "N°18", excluirSaldoInicial: true }
       ]
     }
   };
@@ -303,18 +303,96 @@ const BalanceGeneral = ({ ruta }) => {
    * Construye Nivel 2: Rubro (Caja y Bancos, etc.)
    */
   const construirNivelRubro = (key, rubro, cuentasConSaldos, tipoCuenta) => {
-    // Filtrar cuentas que pertenecen a este rubro
-    const cuentasRubro = cuentasConSaldos.filter(cuenta => {
+    // PASO 1: FILTRAR CUENTAS PRINCIPALES DEL RUBRO
+    let cuentasRubro = cuentasConSaldos.filter(cuenta => {
       const codigoClase = cuenta.codigoCuenta.substring(0, 2);
       return rubro.cuentas.includes(codigoClase);
     });
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // FILTRO ESPECIAL 1: ANEXO N°09 - SOLO CUENTA 1624
+    // Para "Otros Activos No Corrientes", filtrar solo cuenta 1624
+    // (Depósitos en Garantía)
+    // ═══════════════════════════════════════════════════════════════════════
+    if (rubro.anexo === 'N°09' && rubro.cuentas.includes('16')) {
+      cuentasRubro = cuentasRubro.filter(cuenta => {
+        const codigoCuenta = cuenta.codigoCuenta || '';
+        // Solo incluir cuentas que empiecen con 1624
+        return codigoCuenta.startsWith('1624');
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FILTRO ESPECIAL 2: ANEXO N°10 - CUENTA 40 + CUENTA 4171
+    // Para "Tributos, aportes y remuneraciones", incluir:
+    // - Toda la cuenta 40
+    // - Solo la subcuenta 4171 de la cuenta 41
+    // ═══════════════════════════════════════════════════════════════════════
+    if (rubro.anexo === 'N°10' && rubro.filtrarSubcuentas) {
+      cuentasRubro = cuentasRubro.filter(cuenta => {
+        const codigoCuenta = cuenta.codigoCuenta || '';
+        
+        // Incluir toda la cuenta 40
+        if (codigoCuenta.startsWith('40')) {
+          return true;
+        }
+        
+        // Para cuenta 41, solo incluir subcuentas especificadas (4171)
+        if (codigoCuenta.startsWith('41')) {
+          return rubro.filtrarSubcuentas.some(subcuenta => 
+            codigoCuenta.startsWith(subcuenta)
+          );
+        }
+        
+        return false;
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FILTRO ESPECIAL 3: ANEXO N°11 - CUENTA 41 EXCEPTO 4171
+    // Para "Otras remuneraciones y participaciones", incluir:
+    // - Toda la cuenta 41 EXCEPTO la subcuenta 4171
+    // ═══════════════════════════════════════════════════════════════════════
+    if (rubro.anexo === 'N°11' && rubro.excluirSubcuentas) {
+      cuentasRubro = cuentasRubro.filter(cuenta => {
+        const codigoCuenta = cuenta.codigoCuenta || '';
+        
+        if (!codigoCuenta.startsWith('41')) return true;
+        
+        // Excluir subcuentas especificadas (4171)
+        const esExcluida = rubro.excluirSubcuentas.some(subcuenta => 
+          codigoCuenta.startsWith(subcuenta)
+        );
+        
+        // Retornar true si NO está excluida
+        return !esExcluida;
+      });
+    }
+
     if (cuentasRubro.length === 0) return null;
 
-    // Calcular monto del rubro
-    const montoRubro = cuentasRubro.reduce((sum, cuenta) => {
-      const debe = Number(cuenta.saldoFinalDebe || 0);
-      const haber = Number(cuenta.saldoFinalHaber || 0);
+    // PASO 2: CALCULAR MONTO DEL RUBRO
+    let montoRubro = cuentasRubro.reduce((sum, cuenta) => {
+      let debe = Number(cuenta.saldoFinalDebe || 0);
+      let haber = Number(cuenta.saldoFinalHaber || 0);
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // BIFURCACIÓN DE CUENTA 59: Resultados Acumulados vs Resultado del Ejercicio
+      // ═══════════════════════════════════════════════════════════════════════
+      
+      // Para "Resultados Acumulados": Solo tomar saldo inicial
+      if (rubro.soloSaldoInicial) {
+        debe = Number(cuenta.saldoInicialDebe || 0);
+        haber = Number(cuenta.saldoInicialHaber || 0);
+      }
+      
+      // Para "Resultado del Ejercicio": Excluir saldo inicial (solo movimientos del periodo)
+      if (rubro.excluirSaldoInicial) {
+        const debeInicial = Number(cuenta.saldoInicialDebe || 0);
+        const haberInicial = Number(cuenta.saldoInicialHaber || 0);
+        debe = debe - debeInicial;
+        haber = haber - haberInicial;
+      }
 
       if (tipoCuenta === 'ACTIVO') {
         return sum + (debe - haber);
@@ -322,6 +400,26 @@ const BalanceGeneral = ({ ruta }) => {
         return sum + (haber - debe);
       }
     }, 0);
+
+    // PASO 3: RESTAR CUENTAS SI ES NECESARIO (Para Anexo N°08)
+    if (rubro.cuentasRestar && cuentasConSaldos) {
+      rubro.cuentasRestar.forEach(cuentaRestar => {
+        const cuentasARestar = cuentasConSaldos.filter(cuenta => {
+          const codigoClase = cuenta.codigoCuenta.substring(0, 2);
+          return codigoClase === cuentaRestar;
+        });
+
+        cuentasARestar.forEach(cuenta => {
+          const debe = Number(cuenta.saldoFinalDebe || 0);
+          const haber = Number(cuenta.saldoFinalHaber || 0);
+          
+          // Depreciación tiene naturaleza acreedora, se resta del activo
+          if (tipoCuenta === 'ACTIVO') {
+            montoRubro -= (haber - debe);
+          }
+        });
+      });
+    }
 
     if (Math.abs(montoRubro) < 0.01) return null;
 
@@ -585,7 +683,7 @@ const BalanceGeneral = ({ ruta }) => {
         const ruc = empresaData?.ruc || '00000000000';
         const año = periodoData?.año || periodoData?.anio || new Date().getFullYear();
         const mes = String(periodoData?.mes || 1).padStart(2, '0');
-        const filename = `LE${ruc}${año}${mes}000316001111.txt`;
+        const filename = `LE${ruc}${año}${mes}00031000001111.txt`;
 
         // Descargar archivo
         const url = window.URL.createObjectURL(blob);

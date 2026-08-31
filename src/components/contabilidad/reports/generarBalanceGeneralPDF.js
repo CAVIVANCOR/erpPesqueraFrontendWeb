@@ -310,7 +310,8 @@ export async function generarBalanceGeneralPDF(data) {
     const cuentasAnexo = getCuentasParaAnexo(numeroAnexo, cuentas);
     if (cuentasAnexo.length === 0) continue;
 
-    const datosAnexo = procesarDatosAnexo(numeroAnexo, cuentasAnexo);
+    // Pasar todas las cuentas para anexos que necesitan cuentas relacionadas (ej: Anexo N°08)
+    const datosAnexo = procesarDatosAnexo(numeroAnexo, cuentasAnexo, cuentas);
     if (datosAnexo.length === 0) continue;
 
     // Nueva página

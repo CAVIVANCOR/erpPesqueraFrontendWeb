@@ -213,7 +213,8 @@ export const generarBalanceGeneralExcel = async (data) => {
     const cuentasAnexo = getCuentasParaAnexo(numeroAnexo, cuentas);
     if (cuentasAnexo.length === 0) return;
 
-    const datosAnexo = procesarDatosAnexo(numeroAnexo, cuentasAnexo);
+    // Pasar todas las cuentas para anexos que necesitan cuentas relacionadas (ej: Anexo N°08)
+    const datosAnexo = procesarDatosAnexo(numeroAnexo, cuentasAnexo, cuentas);
     if (datosAnexo.length === 0) return;
 
     // Crear hoja para el anexo
@@ -358,7 +359,8 @@ export const generarBalanceGeneralExcel = async (data) => {
             cell.numFmt = '#,##0.00';
             
             // Sumar al total si es el campo principal
-            if (col.field === 'saldo' || col.field === 'importe' || col.field === 'total' || col.field === 'costoTotal') {
+            // Para Anexo N°08, sumar el valorNeto (columna final)
+            if (col.field === 'saldo' || col.field === 'importe' || col.field === 'total' || col.field === 'costoTotal' || col.field === 'valorNeto') {
               totalAnexo += Number(valor) || 0;
             }
           } else {
