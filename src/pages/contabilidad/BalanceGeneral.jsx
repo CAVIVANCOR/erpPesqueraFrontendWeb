@@ -98,7 +98,7 @@ const BalanceGeneral = ({ ruta }) => {
         { nombre: 'Valores Negociables', cuentas: ['11'], anexo: "N°02" },
         { nombre: 'Cuentas por Cobrar Comerciales', cuentas: ['12'], anexo: "N°02" },
         { nombre: 'Cuentas por Cobrar al personal', cuentas: ['14'], anexo: "N°03" },
-        { nombre: 'Cuentas por Cobrar accionistas, directores y gerentes', cuentas: ['16'], anexo: "N°04" },
+        { nombre: 'Cuentas por Cobrar accionistas, directores y gerentes', cuentas: ['16'], anexo: "N°04", excluirSubcuentas: ['1624'] },
         { nombre: 'Otras Cuentas por Cobrar diversas', cuentas: ['18', '19'], anexo: "N°05" },
         { nombre: 'Existencias', cuentas: ['20', '21', '22', '23', '24', '25', '26', '27', '28', '29'], anexo: "N°06" },
         { nombre: 'Gastos Pagados por Anticipado', cuentas: ['18'], anexo: "N°07" }
@@ -120,14 +120,14 @@ const BalanceGeneral = ({ ruta }) => {
         { nombre: 'Otras remuneraciones y participaciones por pagar', cuentas: ['41'], anexo: "N°11", excluirSubcuentas: ['4171'] },
         { nombre: 'Cuentas por Pagar Comerciales', cuentas: ['42'], anexo: "N°12" },
         { nombre: 'Cuentas por Pagar Financieras', cuentas: ['45'], anexo: "N°13" },
-        { nombre: 'Cuentas por Pagar Diversas CP', cuentas: ['46', '47'], anexo: "N°14" }
+        { nombre: 'Cuentas por Pagar Diversas CP', cuentas: ['46', '47'], anexo: "N°14", excluirSubcuentas: ['469904'] }
       ]
     },
     PASIVO_NO_CORRIENTE: {
       nombre: 'PASIVO NO CORRIENTE',
       anexo: null,
       rubros: [
-        { nombre: 'Deudas a Largo Plazo', cuentas: ['45', '46', '47'], anexo: "N°15" }
+        { nombre: 'Deudas a Largo Plazo', cuentas: ['4699'], anexo: "N°15" }
       ]
     },
     PATRIMONIO_NETO: {
@@ -323,7 +323,28 @@ const BalanceGeneral = ({ ruta }) => {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // FILTRO ESPECIAL 2: ANEXO N°10 - CUENTA 40 + CUENTA 4171
+    // FILTRO ESPECIAL 2: ANEXO N°04 - CUENTA 16 EXCEPTO 1624
+    // Para "Cuentas por Cobrar accionistas, directores y gerentes", incluir:
+    // - Toda la cuenta 16 EXCEPTO la subcuenta 1624 (ya en Anexo N°09)
+    // ═══════════════════════════════════════════════════════════════════════
+    if (rubro.anexo === 'N°04' && rubro.excluirSubcuentas) {
+      cuentasRubro = cuentasRubro.filter(cuenta => {
+        const codigoCuenta = cuenta.codigoCuenta || '';
+        
+        if (!codigoCuenta.startsWith('16')) return true;
+        
+        // Excluir subcuentas especificadas (1624)
+        const esExcluida = rubro.excluirSubcuentas.some(subcuenta => 
+          codigoCuenta.startsWith(subcuenta)
+        );
+        
+        // Retornar true si NO está excluida
+        return !esExcluida;
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FILTRO ESPECIAL 3: ANEXO N°10 - CUENTA 40 + CUENTA 4171
     // Para "Tributos, aportes y remuneraciones", incluir:
     // - Toda la cuenta 40
     // - Solo la subcuenta 4171 de la cuenta 41
@@ -349,7 +370,7 @@ const BalanceGeneral = ({ ruta }) => {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // FILTRO ESPECIAL 3: ANEXO N°11 - CUENTA 41 EXCEPTO 4171
+    // FILTRO ESPECIAL 4: ANEXO N°11 - CUENTA 41 EXCEPTO 4171
     // Para "Otras remuneraciones y participaciones", incluir:
     // - Toda la cuenta 41 EXCEPTO la subcuenta 4171
     // ═══════════════════════════════════════════════════════════════════════
@@ -366,6 +387,39 @@ const BalanceGeneral = ({ ruta }) => {
         
         // Retornar true si NO está excluida
         return !esExcluida;
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FILTRO ESPECIAL 5: ANEXO N°14 - CUENTA 46 Y 47 EXCEPTO 469904
+    // Para "Cuentas por Pagar Diversas CP", incluir:
+    // - Toda la cuenta 46 EXCEPTO la subcuenta 469904 (va en Anexo N°15)
+    // - Toda la cuenta 47
+    // ═══════════════════════════════════════════════════════════════════════
+    if (rubro.anexo === 'N°14' && rubro.excluirSubcuentas) {
+      cuentasRubro = cuentasRubro.filter(cuenta => {
+        const codigoCuenta = cuenta.codigoCuenta || '';
+        
+        // Excluir subcuentas especificadas (469904)
+        const esExcluida = rubro.excluirSubcuentas.some(subcuenta => 
+          codigoCuenta.startsWith(subcuenta)
+        );
+        
+        // Retornar true si NO está excluida
+        return !esExcluida;
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FILTRO ESPECIAL 6: ANEXO N°15 - SOLO CUENTA 469904
+    // Para "Deudas a Largo Plazo", incluir:
+    // - Solo la subcuenta 469904
+    // ═══════════════════════════════════════════════════════════════════════
+    if (rubro.anexo === 'N°15' && rubro.cuentas.includes('4699')) {
+      cuentasRubro = cuentasRubro.filter(cuenta => {
+        const codigoCuenta = cuenta.codigoCuenta || '';
+        // Solo incluir cuentas que empiecen con 469904
+        return codigoCuenta.startsWith('469904');
       });
     }
 

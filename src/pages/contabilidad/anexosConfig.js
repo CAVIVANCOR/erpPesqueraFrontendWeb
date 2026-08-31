@@ -139,6 +139,26 @@ export const ANEXOS_CONFIG = {
     }
   },
 
+  /**
+   * ANEXO N°04: CUENTAS POR COBRAR ACCIONISTAS, DIRECTORES Y GERENTES
+   * 
+   * IMPORTANTE - CUENTA 16 EXCEPTO 1624:
+   * -------------------------------------
+   * Este anexo debe mostrar la cuenta 16 EXCEPTO la subcuenta 1624 (Depósitos en Garantía)
+   * porque la cuenta 1624 ya está incluida en el Anexo N°09.
+   * 
+   * SUBCUENTAS INCLUIDAS:
+   * • 161 - Préstamos
+   * • 162 - Reclamaciones a terceros (EXCEPTO 1624)
+   *   - 1621 - Letras por cobrar
+   *   - 1622 - Anticipos de contratos
+   *   - 1623 - Adelantos al personal
+   * • 163 - Intereses, regalías y dividendos
+   * • 169 - Otras cuentas por cobrar diversas
+   * 
+   * SUBCUENTA EXCLUIDA:
+   * • 1624 - Depósitos en Garantía ← YA EN ANEXO N°09
+   */
   'N°04': {
     numero: 'N°04',
     titulo: 'CUENTAS POR COBRAR ACCIONISTAS, DIRECTORES Y GERENTES',
@@ -151,9 +171,29 @@ export const ANEXOS_CONFIG = {
       { field: 'total', header: 'TOTAL', width: '20%', align: 'right', tipo: 'monto' }
     ],
     procesarDatos: (cuentas) => {
+      // ═══════════════════════════════════════════════════════════════════════
+      // FILTRAR CUENTA 16 EXCEPTO SUBCUENTA 1624
+      // ═══════════════════════════════════════════════════════════════════════
+      const cuentasFiltradas = cuentas.filter(cuenta => {
+        const codigoCuenta = cuenta.codigoCuenta || '';
+        
+        // Incluir todas las cuentas que empiecen con 16
+        if (!codigoCuenta.startsWith('16')) {
+          return false;
+        }
+        
+        // EXCLUIR la subcuenta 1624 (ya está en Anexo N°09)
+        if (codigoCuenta.startsWith('1624')) {
+          return false;
+        }
+        
+        // Incluir todas las demás subcuentas de la cuenta 16
+        return true;
+      });
+      
       const agrupado = {};
       
-      cuentas.forEach(cuenta => {
+      cuentasFiltradas.forEach(cuenta => {
         const persona = cuenta.terceroNombre || cuenta.nombreCuenta || 'VARIOS';
         if (!agrupado[persona]) {
           agrupado[persona] = {
@@ -658,6 +698,20 @@ export const ANEXOS_CONFIG = {
     }
   },
 
+  /**
+   * ANEXO N°13: CUENTAS POR PAGAR FINANCIERAS - CORTO PLAZO
+   * 
+   * CUENTA INCLUIDA:
+   * ----------------
+   * • CUENTA 45 COMPLETA: Obligaciones Financieras
+   *   - 451: Préstamos de instituciones financieras
+   *   - 452: Contratos de arrendamiento financiero
+   *   - 453: Obligaciones emitidas
+   *   - 454: Otros instrumentos financieros por pagar
+   *   - 455: Costos de financiación por pagar
+   * 
+   * NATURALEZA: PASIVO CORRIENTE (Acreedora)
+   */
   'N°13': {
     numero: 'N°13',
     titulo: 'CUENTAS POR PAGAR FINANCIERAS - CORTO PLAZO',
@@ -715,6 +769,18 @@ export const ANEXOS_CONFIG = {
     }
   },
 
+  /**
+   * ANEXO N°14: CUENTAS POR PAGAR DIVERSAS - TERCEROS - CORTO PLAZO
+   * 
+   * CUENTAS INCLUIDAS:
+   * ------------------
+   * 1. CUENTA 46 COMPLETA: Cuentas por Pagar Diversas - Terceros
+   *    (EXCEPTO 469904 que va en Anexo N°15)
+   * 
+   * 2. CUENTA 469903: Subcuenta específica incluida
+   * 
+   * NATURALEZA: PASIVO CORRIENTE (Acreedora)
+   */
   'N°14': {
     numero: 'N°14',
     titulo: 'CUENTAS POR PAGAR DIVERSAS - TERCEROS - CORTO PLAZO',
@@ -727,9 +793,27 @@ export const ANEXOS_CONFIG = {
       { field: 'total', header: 'TOTAL', width: '20%', align: 'right', tipo: 'monto' }
     ],
     procesarDatos: (cuentas) => {
+      // ═══════════════════════════════════════════════════════════════════════
+      // FILTRAR CUENTAS:
+      // - Toda la cuenta 46 (incluye 469903)
+      // - Toda la cuenta 47
+      // - EXCLUIR 469904 (va en Anexo N°15)
+      // ═══════════════════════════════════════════════════════════════════════
+      const cuentasFiltradas = cuentas.filter(cuenta => {
+        const codigoCuenta = cuenta.codigoCuenta || '';
+        
+        // EXCLUIR 469904 (va en Anexo N°15)
+        if (codigoCuenta.startsWith('469904')) {
+          return false;
+        }
+        
+        // Incluir todo lo demás
+        return true;
+      });
+      
       const agrupado = {};
       
-      cuentas.forEach(cuenta => {
+      cuentasFiltradas.forEach(cuenta => {
         const tercero = cuenta.terceroNombre || cuenta.nombreCuenta || 'VARIOS';
         if (!agrupado[tercero]) {
           agrupado[tercero] = {
@@ -772,10 +856,25 @@ export const ANEXOS_CONFIG = {
     }
   },
 
+  /**
+   * ANEXO N°15: CUENTAS POR PAGAR DIVERSAS - LARGO PLAZO
+   * 
+   * IMPORTANTE - SOLO CUENTA 469904:
+   * ---------------------------------
+   * Este anexo debe mostrar ÚNICAMENTE la cuenta 469904.
+   * 
+   * Cuenta 469904: Subcuenta específica de largo plazo
+   * - Parte de la cuenta 4699 (Otras cuentas por pagar diversas)
+   * - Representa: Obligaciones de largo plazo con terceros
+   * - Naturaleza: ACREEDORA (Pasivo)
+   * - Clasificación: PASIVO NO CORRIENTE (largo plazo)
+   * 
+   * NOTA: El resto de la cuenta 46 está en el Anexo N°14
+   */
   'N°15': {
     numero: 'N°15',
-    titulo: 'CUENTAS POR PAGAR FINANCIERAS Y DIVERSAS - TERCEROS - LARGO PLAZO',
-    cuentas: ['45', '46', '47'],
+    titulo: 'CUENTAS POR PAGAR DIVERSAS - TERCEROS - LARGO PLAZO',
+    cuentas: ['4699'],
     tipo: 'detalle_agrupado',
     columnas: [
       { field: 'razonSocial', header: 'DENOMINACIÓN O RAZÓN SOCIAL', width: '40%', align: 'left' },
@@ -784,9 +883,18 @@ export const ANEXOS_CONFIG = {
       { field: 'total', header: 'TOTAL', width: '20%', align: 'right', tipo: 'monto' }
     ],
     procesarDatos: (cuentas) => {
+      // ═══════════════════════════════════════════════════════════════════════
+      // FILTRAR SOLO CUENTA 469904
+      // ═══════════════════════════════════════════════════════════════════════
+      const cuentasFiltradas = cuentas.filter(cuenta => {
+        const codigoCuenta = cuenta.codigoCuenta || '';
+        // Solo incluir cuentas que empiecen con 469904
+        return codigoCuenta.startsWith('469904');
+      });
+      
       const agrupado = {};
       
-      cuentas.forEach(cuenta => {
+      cuentasFiltradas.forEach(cuenta => {
         const entidad = cuenta.terceroNombre || cuenta.nombreCuenta || 'VARIOS';
         if (!agrupado[entidad]) {
           agrupado[entidad] = {
