@@ -284,7 +284,7 @@ export default function TipoDocumento({ ruta }) {
         value={tiposFiltrados}
         loading={loading}
         paginator
-        rows={10}
+        rows={40}
         selectionMode="single"
         selection={selected}
         onSelectionChange={(e) => setSelected(e.value)}

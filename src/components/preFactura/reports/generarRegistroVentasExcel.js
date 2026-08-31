@@ -118,10 +118,26 @@ export async function generarRegistroVentasExcel(data) {
     const fechaVenc = pf.fechaVencimiento ? formatearFecha(pf.fechaVencimiento) : "";
     const fechaContable = fechaCont ? formatearFecha(pf.fechaContable) : "";
     
+    const tipoDocCodigo = pf.tipoDocumentoFinal?.codigoSunat || "";
+    
+    // Usar campos *PEN calculados por el backend (ya vienen convertidos)
+    let subtotalPEN = Number(pf.subtotalPEN || pf.subtotal || 0);
+    let totalDescuentosPEN = Number(pf.totalDescuentosPEN || pf.totalDescuentos || 0);
+    let totalIGVPEN = Number(pf.totalIGVPEN || pf.totalIGV || 0);
+    let totalPEN = Number(pf.totalPEN || pf.total || 0);
+    
+    // Si es Nota de Crédito (07), los montos deben ser negativos
+    if (tipoDocCodigo === "07") {
+      subtotalPEN = Math.abs(subtotalPEN) * -1;
+      totalDescuentosPEN = Math.abs(totalDescuentosPEN) * -1;
+      totalIGVPEN = Math.abs(totalIGVPEN) * -1;
+      totalPEN = Math.abs(totalPEN) * -1;
+    }
+    
     const esExportacion = pf.tipoOperacionSunat?.codigo === "0200";
-    const valorExportacion = esExportacion ? Number(pf.total || 0) : 0;
-    const baseGravada = !pf.exoneradoIgv && !esExportacion ? Number(pf.subtotal || 0) : 0;
-    const exonerado = pf.exoneradoIgv ? Number(pf.subtotal || 0) : 0;
+    const valorExportacion = esExportacion ? totalPEN : 0;
+    const baseGravada = !pf.exoneradoIgv && !esExportacion ? subtotalPEN : 0;
+    const exonerado = pf.exoneradoIgv ? subtotalPEN : 0;
     
     // Estado SUNAT: 
     // 1 = Comprobante válido (EMITIDA=96, FACTURADA=95, CE GENERADO=97, VALIDADO SUNAT=98)
@@ -135,11 +151,10 @@ export async function generarRegistroVentasExcel(data) {
     }
     
     // Documento modificado (para NC/ND)
-    const tipoDocCodigo = pf.tipoDocumentoFinal?.codigo || "";
-    const esNCND = ["07", "08", "NC", "ND"].includes(tipoDocCodigo);
+    const esNCND = ["07", "08"].includes(tipoDocCodigo);
     
     const fechaDocMod = esNCND && pf.fechaDcmtoAfectoNCND ? formatearFecha(pf.fechaDcmtoAfectoNCND) : "";
-    const tipoDocMod = esNCND && pf.dcmtoAfectoNCND ? pf.dcmtoAfectoNCND.tipoDocumentoFinal?.codigo || "" : "";
+    const tipoDocMod = esNCND && pf.dcmtoAfectoNCND ? pf.dcmtoAfectoNCND.tipoDocumentoFinal?.codigoSunat || "" : "";
     const serieDocMod = esNCND && pf.dcmtoAfectoNCND ? pf.dcmtoAfectoNCND.numSerieDocFinal || "" : "";
     const nroDocMod = esNCND && pf.dcmtoAfectoNCND ? pf.dcmtoAfectoNCND.numCorreDocFinal || "" : "";
 
@@ -161,9 +176,9 @@ export async function generarRegistroVentasExcel(data) {
     worksheet.getCell(currentRow, 15).numFmt = '#,##0.00';
     worksheet.getCell(currentRow, 16).value = baseGravada;
     worksheet.getCell(currentRow, 16).numFmt = '#,##0.00';
-    worksheet.getCell(currentRow, 17).value = Number(pf.totalDescuentos || 0);
+    worksheet.getCell(currentRow, 17).value = totalDescuentosPEN;
     worksheet.getCell(currentRow, 17).numFmt = '#,##0.00';
-    worksheet.getCell(currentRow, 18).value = Number(pf.totalIGV || 0);
+    worksheet.getCell(currentRow, 18).value = totalIGVPEN;
     worksheet.getCell(currentRow, 18).numFmt = '#,##0.00';
     worksheet.getCell(currentRow, 19).value = 0; // Descuento IGV
     worksheet.getCell(currentRow, 19).numFmt = '#,##0.00';
@@ -181,10 +196,10 @@ export async function generarRegistroVentasExcel(data) {
     worksheet.getCell(currentRow, 25).numFmt = '#,##0.00';
     worksheet.getCell(currentRow, 26).value = 0; // Otros tributos
     worksheet.getCell(currentRow, 26).numFmt = '#,##0.00';
-    worksheet.getCell(currentRow, 27).value = Number(pf.total || 0);
+    worksheet.getCell(currentRow, 27).value = totalPEN;
     worksheet.getCell(currentRow, 27).numFmt = '#,##0.00';
-    worksheet.getCell(currentRow, 28).value = pf.moneda?.codigoSunat || "";
-    worksheet.getCell(currentRow, 29).value = Number(pf.tipoCambio || 0);
+    worksheet.getCell(currentRow, 28).value = pf.moneda?.codigoSunat || "PEN";
+    worksheet.getCell(currentRow, 29).value = Number(pf.tipoCambio || 1);
     worksheet.getCell(currentRow, 29).numFmt = '0.000';
     worksheet.getCell(currentRow, 30).value = fechaDocMod;
     worksheet.getCell(currentRow, 31).value = tipoDocMod;

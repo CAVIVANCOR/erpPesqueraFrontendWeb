@@ -125,8 +125,22 @@ export async function generarRegistroComprasExcel(data) {
     const fechaVenc = oc.fechaVencimiento ? formatearFecha(oc.fechaVencimiento) : "";
     const fechaContable = fechaCont ? formatearFecha(oc.fechaContable) : "";
     
-    const baseGravada = !oc.esExoneradoAlIGV ? Number(oc.subtotal || 0) : 0;
-    const baseNoGravada = oc.esExoneradoAlIGV ? Number(oc.subtotal || 0) : 0;
+    const tipoDocCodigo = oc.tipoDocumentoFinal?.codigoSunat || "";
+    
+    // Usar campos *PEN calculados por el backend (ya vienen convertidos)
+    let subtotalPEN = Number(oc.subtotalPEN || oc.subtotal || 0);
+    let totalIGVPEN = Number(oc.totalIGVPEN || oc.totalIGV || 0);
+    let totalPEN = Number(oc.totalPEN || oc.total || 0);
+    
+    // Si es Nota de Crédito (07), los montos deben ser negativos
+    if (tipoDocCodigo === "07") {
+      subtotalPEN = Math.abs(subtotalPEN) * -1;
+      totalIGVPEN = Math.abs(totalIGVPEN) * -1;
+      totalPEN = Math.abs(totalPEN) * -1;
+    }
+    
+    const baseGravada = !oc.esExoneradoAlIGV ? subtotalPEN : 0;
+    const baseNoGravada = oc.esExoneradoAlIGV ? subtotalPEN : 0;
     
     // Estado SUNAT: 
     // 1 = Comprobante válido
@@ -140,11 +154,10 @@ export async function generarRegistroComprasExcel(data) {
     }
     
     // Documento modificado (para NC/ND)
-    const tipoDocCodigo = oc.tipoDocumentoFinal?.codigo || "";
-    const esNCND = ["07", "08", "NC", "ND"].includes(tipoDocCodigo);
+    const esNCND = ["07", "08"].includes(tipoDocCodigo);
     
     const fechaDocMod = esNCND && oc.fechaDcmtoAfectoNCND ? formatearFecha(oc.fechaDcmtoAfectoNCND) : "";
-    const tipoDocMod = esNCND && oc.dcmtoAfectoNCND ? oc.dcmtoAfectoNCND.tipoDocumentoFinal?.codigo || "" : "";
+    const tipoDocMod = esNCND && oc.dcmtoAfectoNCND ? oc.dcmtoAfectoNCND.tipoDocumentoFinal?.codigoSunat || "" : "";
     const serieDocMod = esNCND && oc.dcmtoAfectoNCND ? oc.dcmtoAfectoNCND.numSerieDocFinal || "" : "";
     const nroDocMod = esNCND && oc.dcmtoAfectoNCND ? oc.dcmtoAfectoNCND.numCorreDocFinal || "" : "";
 
@@ -164,7 +177,7 @@ export async function generarRegistroComprasExcel(data) {
     worksheet.getCell(currentRow, 14).value = oc.proveedor?.razonSocial || "";
     worksheet.getCell(currentRow, 15).value = baseGravada;
     worksheet.getCell(currentRow, 15).numFmt = '#,##0.00';
-    worksheet.getCell(currentRow, 16).value = Number(oc.totalIGV || 0);
+    worksheet.getCell(currentRow, 16).value = totalIGVPEN;
     worksheet.getCell(currentRow, 16).numFmt = '#,##0.00';
     worksheet.getCell(currentRow, 17).value = 0; // Base No Gravada
     worksheet.getCell(currentRow, 17).numFmt = '#,##0.00';
@@ -184,10 +197,10 @@ export async function generarRegistroComprasExcel(data) {
     worksheet.getCell(currentRow, 24).numFmt = '#,##0.00';
     worksheet.getCell(currentRow, 25).value = 0; // Otros Tributos
     worksheet.getCell(currentRow, 25).numFmt = '#,##0.00';
-    worksheet.getCell(currentRow, 26).value = Number(oc.total || 0);
+    worksheet.getCell(currentRow, 26).value = totalPEN;
     worksheet.getCell(currentRow, 26).numFmt = '#,##0.00';
-    worksheet.getCell(currentRow, 27).value = oc.moneda?.codigoSunat || "";
-    worksheet.getCell(currentRow, 28).value = Number(oc.tipoCambio || 0);
+    worksheet.getCell(currentRow, 27).value = oc.moneda?.codigoSunat || "PEN";
+    worksheet.getCell(currentRow, 28).value = Number(oc.tipoCambio || 1);
     worksheet.getCell(currentRow, 28).numFmt = '0.000';
     worksheet.getCell(currentRow, 29).value = fechaDocMod;
     worksheet.getCell(currentRow, 30).value = tipoDocMod;

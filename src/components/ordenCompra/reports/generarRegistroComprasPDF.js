@@ -272,24 +272,36 @@ export async function generarRegistroComprasPDF(data) {
     const fechaVenc = oc.fechaVencimiento ? formatearFecha(oc.fechaVencimiento) : "";
     const fechaContable = fechaCont ? formatearFecha(oc.fechaContable) : "";
     
-    const tipoDocCodigo = oc.tipoDocumentoFinal?.codigo || "";
+    const tipoDocCodigo = oc.tipoDocumentoFinal?.codigoSunat || "";
     const serie = oc.numSerieDocFinal || "";
     const numero = oc.numCorreDocFinal || "";
     const tipoDocProveedor = oc.proveedor?.tipoDocumento?.codSunat || "";
     const nroDocProveedor = oc.proveedor?.numeroDocumento || "";
     const razonSocial = (oc.proveedor?.razonSocial || "").substring(0, 28);
     
-    const baseGravada = !oc.esExoneradoAlIGV ? formatearNumero(oc.subtotal, 2) : "0.00";
-    const igv = formatearNumero(oc.totalIGV, 2);
-    const baseNoGravada = oc.esExoneradoAlIGV ? formatearNumero(oc.subtotal, 2) : "0.00";
-    const otrosTributos = formatearNumero(oc.montoImpuestoRenta || 0, 2);
-    const total = formatearNumero(oc.total, 2);
-    const moneda = oc.moneda?.codigoSunat || "";
-    const tipoCambio = Number(oc.tipoCambio || 0).toFixed(3);
+    // Usar campos *PEN calculados por el backend (ya vienen convertidos)
+    let subtotalPEN = Number(oc.subtotalPEN || oc.subtotal || 0);
+    let totalIGVPEN = Number(oc.totalIGVPEN || oc.totalIGV || 0);
+    let totalPEN = Number(oc.totalPEN || oc.total || 0);
     
-    const esNCND = ["07", "08", "NC", "ND"].includes(tipoDocCodigo);
+    // Si es Nota de Crédito (07), los montos deben ser negativos
+    if (tipoDocCodigo === "07") {
+      subtotalPEN = Math.abs(subtotalPEN) * -1;
+      totalIGVPEN = Math.abs(totalIGVPEN) * -1;
+      totalPEN = Math.abs(totalPEN) * -1;
+    }
+    
+    const baseGravada = !oc.esExoneradoAlIGV ? formatearNumero(subtotalPEN, 2) : "0.00";
+    const igv = formatearNumero(totalIGVPEN, 2);
+    const baseNoGravada = oc.esExoneradoAlIGV ? formatearNumero(subtotalPEN, 2) : "0.00";
+    const otrosTributos = formatearNumero(oc.montoImpuestoRenta || 0, 2);
+    const total = formatearNumero(totalPEN, 2);
+    const moneda = oc.moneda?.codigoSunat || "PEN";
+    const tipoCambio = Number(oc.tipoCambio || 1).toFixed(3);
+    
+    const esNCND = ["07", "08"].includes(tipoDocCodigo);
     const fechaDocMod = esNCND && oc.fechaDcmtoAfectoNCND ? formatearFecha(oc.fechaDcmtoAfectoNCND) : "";
-    const tipoDocMod = esNCND && oc.dcmtoAfectoNCND ? oc.dcmtoAfectoNCND.tipoDocumentoFinal?.codigo || "" : "";
+    const tipoDocMod = esNCND && oc.dcmtoAfectoNCND ? oc.dcmtoAfectoNCND.tipoDocumentoFinal?.codigoSunat || "" : "";
     const serieDocMod = esNCND && oc.dcmtoAfectoNCND ? oc.dcmtoAfectoNCND.numSerieDocFinal || "" : "";
     const nroDocMod = esNCND && oc.dcmtoAfectoNCND ? oc.dcmtoAfectoNCND.numCorreDocFinal || "" : "";
     

@@ -455,16 +455,24 @@ export default function OrdenCompra({ ruta }) {
 
     // Filtro por tipo de libro (usando OrdenCompra.esGerencial)
     if (filtroTipoLibro === "FISCAL_SSI") {
-      // Fiscal sin saldos iniciales: Compras BLANCAS (esGerencial=false) con FAC, BV, NC, ND
+      // Fiscal sin saldos iniciales: Compras BLANCAS (esGerencial=false) sin SI-*
       filtered = filtered.filter((orden) => {
-        const codigo = orden.tipoDocumentoFinal?.codigo || orden.tipoDocumento?.codigo || "";
-        return orden.esGerencial === false && ["FAC", "BV", "NC", "ND"].includes(codigo);
+        if (orden.esGerencial !== false) return false;
+        
+        const codigoTipo = orden.tipoDocumento?.codigo || "";
+        const descripcionTipo = orden.tipoDocumento?.descripcion || "";
+        
+        // Excluir si el código o descripción contiene "SI" o "SALDO INICIAL"
+        const esSaldoInicial = codigoTipo.startsWith("SI") || 
+                               codigoTipo.includes("SI-") ||
+                               descripcionTipo.toUpperCase().includes("SALDO INICIAL");
+        
+        return !esSaldoInicial;
       });
     } else if (filtroTipoLibro === "FISCAL_CSI") {
-      // Fiscal con saldos iniciales: Compras BLANCAS (esGerencial=false) con FAC, BV, NC, ND + SI-*
+      // Fiscal con saldos iniciales: Compras BLANCAS (esGerencial=false) con todo
       filtered = filtered.filter((orden) => {
-        const codigo = orden.tipoDocumentoFinal?.codigo || orden.tipoDocumento?.codigo || "";
-        return orden.esGerencial === false && (["FAC", "BV", "NC", "ND"].includes(codigo) || codigo.startsWith("SI-"));
+        return orden.esGerencial === false;
       });
     } else if (filtroTipoLibro === "GERENCIAL") {
       // Solo gerenciales: Compras NEGRAS (esGerencial=true)
@@ -1502,7 +1510,7 @@ export default function OrdenCompra({ ruta }) {
         filename = `LE_${ruc}_${anio}${mes}00_080100_00_1_1_1.txt`;
       } else if (tipo === 'excel' || tipo === 'pdf') {
         // Usar ordenesFiltradas que ya tiene TODOS los filtros aplicados
-        const ordenesParaExportar = ordenesFiltradas.filter(oc =>
+        let ordenesParaExportar = ordenesFiltradas.filter(oc =>
           oc.comprobanteRecibido === true &&
           ![38, 40].includes(Number(oc.estadoId))
         );
@@ -1516,6 +1524,13 @@ export default function OrdenCompra({ ruta }) {
           });
           return;
         }
+
+        // Ordenar por fecha de documento ASC (más antigua primero)
+        ordenesParaExportar = ordenesParaExportar.sort((a, b) => {
+          const fechaA = a.fechaDocumento ? new Date(a.fechaDocumento).getTime() : 0;
+          const fechaB = b.fechaDocumento ? new Date(b.fechaDocumento).getTime() : 0;
+          return fechaA - fechaB;
+        });
 
         const empresaData = empresas.find(e => Number(e.id) === Number(empresaIdSelector));
         const periodoData = periodosContables.find(p => Number(p.id) === Number(periodoSeleccionado));

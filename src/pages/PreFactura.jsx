@@ -347,7 +347,7 @@ const PreFactura = ({ ruta }) => {
       } else if (tipo === 'excel' || tipo === 'pdf') {
         // Usar preFacturasFiltradas que ya tiene TODOS los filtros aplicados
         // (empresa, periodo, unidad negocio, cliente, fechas, estados, etc.)
-        const preFacturasParaExportar = preFacturasFiltradas.filter(pf =>
+        let preFacturasParaExportar = preFacturasFiltradas.filter(pf =>
           pf.facturado === true &&
           [95, 96, 97, 98].includes(Number(pf.estadoId))
         );
@@ -361,6 +361,13 @@ const PreFactura = ({ ruta }) => {
           });
           return;
         }
+
+        // Ordenar por fecha de documento ASC (más antigua primero)
+        preFacturasParaExportar = preFacturasParaExportar.sort((a, b) => {
+          const fechaA = a.fechaDocumento ? new Date(a.fechaDocumento).getTime() : 0;
+          const fechaB = b.fechaDocumento ? new Date(b.fechaDocumento).getTime() : 0;
+          return fechaA - fechaB;
+        });
 
         const empresaData = empresas.find(e => Number(e.id) === Number(empresaIdSelector));
         const periodoData = periodosContables.find(p => Number(p.id) === Number(periodoSeleccionado));
@@ -629,16 +636,24 @@ const PreFactura = ({ ruta }) => {
 
     // Filtro por tipo de libro (usando PreFactura.esGerencial)
     if (filtroTipoLibro === "FISCAL_SSI") {
-      // Fiscal sin saldos iniciales: Ventas BLANCAS (esGerencial=false) con FAC, BV, NC, ND
+      // Fiscal sin saldos iniciales: Ventas BLANCAS (esGerencial=false) sin SI-*
       filtrados = filtrados.filter((item) => {
-        const codigo = item.tipoDocumentoFinal?.codigo || item.tipoDocumento?.codigo || "";
-        return item.esGerencial === false && ["FAC", "BV", "NC", "ND"].includes(codigo);
+        if (item.esGerencial !== false) return false;
+        
+        const codigoTipo = item.tipoDocumento?.codigo || "";
+        const descripcionTipo = item.tipoDocumento?.descripcion || "";
+        
+        // Excluir si el código o descripción contiene "SI" o "SALDO INICIAL"
+        const esSaldoInicial = codigoTipo.startsWith("SI") || 
+                               codigoTipo.includes("SI-") ||
+                               descripcionTipo.toUpperCase().includes("SALDO INICIAL");
+        
+        return !esSaldoInicial;
       });
     } else if (filtroTipoLibro === "FISCAL_CSI") {
-      // Fiscal con saldos iniciales: Ventas BLANCAS (esGerencial=false) con FAC, BV, NC, ND + SI-*
+      // Fiscal con saldos iniciales: Ventas BLANCAS (esGerencial=false) con todo
       filtrados = filtrados.filter((item) => {
-        const codigo = item.tipoDocumentoFinal?.codigo || item.tipoDocumento?.codigo || "";
-        return item.esGerencial === false && (["FAC", "BV", "NC", "ND"].includes(codigo) || codigo.startsWith("SI-"));
+        return item.esGerencial === false;
       });
     } else if (filtroTipoLibro === "GERENCIAL") {
       // Solo gerenciales: Ventas NEGRAS (esGerencial=true)

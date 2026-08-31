@@ -272,26 +272,40 @@ export async function generarRegistroVentasPDF(data) {
     const fechaVenc = pf.fechaVencimiento ? formatearFecha(pf.fechaVencimiento) : "";
     const fechaContable = fechaCont ? formatearFecha(pf.fechaContable) : "";
     
-    const tipoDocCodigo = pf.tipoDocumentoFinal?.codigo || "";
+    const tipoDocCodigo = pf.tipoDocumentoFinal?.codigoSunat || "";
     const serie = pf.numSerieDocFinal || "";
     const numero = pf.numCorreDocFinal || "";
     const tipoDocCliente = pf.cliente?.tipoDocumento?.codSunat || "";
     const nroDocCliente = pf.cliente?.numeroDocumento || "";
     const razonSocial = (pf.cliente?.razonSocial || "").substring(0, 28);
     
-    const esExportacion = pf.tipoOperacionSunat?.codigo === "0200";
-    const valorExportacion = esExportacion ? formatearNumero(pf.total, 2) : "0.00";
-    const baseGravada = !pf.exoneradoIgv && !esExportacion ? formatearNumero(pf.subtotal, 2) : "0.00";
-    const descuento = formatearNumero(pf.totalDescuentos || 0, 2);
-    const igv = formatearNumero(pf.totalIGV, 2);
-    const exonerado = pf.exoneradoIgv ? formatearNumero(pf.subtotal, 2) : "0.00";
-    const total = formatearNumero(pf.total, 2);
-    const moneda = pf.moneda?.codigoSunat || "";
-    const tipoCambio = Number(pf.tipoCambio || 0).toFixed(3);
+    // Usar campos *PEN calculados por el backend (ya vienen convertidos)
+    let subtotalPEN = Number(pf.subtotalPEN || pf.subtotal || 0);
+    let totalDescuentosPEN = Number(pf.totalDescuentosPEN || pf.totalDescuentos || 0);
+    let totalIGVPEN = Number(pf.totalIGVPEN || pf.totalIGV || 0);
+    let totalPEN = Number(pf.totalPEN || pf.total || 0);
     
-    const esNCND = ["07", "08", "NC", "ND"].includes(tipoDocCodigo);
+    // Si es Nota de Crédito (07), los montos deben ser negativos
+    if (tipoDocCodigo === "07") {
+      subtotalPEN = Math.abs(subtotalPEN) * -1;
+      totalDescuentosPEN = Math.abs(totalDescuentosPEN) * -1;
+      totalIGVPEN = Math.abs(totalIGVPEN) * -1;
+      totalPEN = Math.abs(totalPEN) * -1;
+    }
+    
+    const esExportacion = pf.tipoOperacionSunat?.codigo === "0200";
+    const valorExportacion = esExportacion ? formatearNumero(totalPEN, 2) : "0.00";
+    const baseGravada = !pf.exoneradoIgv && !esExportacion ? formatearNumero(subtotalPEN, 2) : "0.00";
+    const descuento = formatearNumero(totalDescuentosPEN, 2);
+    const igv = formatearNumero(totalIGVPEN, 2);
+    const exonerado = pf.exoneradoIgv ? formatearNumero(subtotalPEN, 2) : "0.00";
+    const total = formatearNumero(totalPEN, 2);
+    const moneda = pf.moneda?.codigoSunat || "PEN";
+    const tipoCambio = Number(pf.tipoCambio || 1).toFixed(3);
+    
+    const esNCND = ["07", "08"].includes(tipoDocCodigo);
     const fechaDocMod = esNCND && pf.fechaDcmtoAfectoNCND ? formatearFecha(pf.fechaDcmtoAfectoNCND) : "";
-    const tipoDocMod = esNCND && pf.dcmtoAfectoNCND ? pf.dcmtoAfectoNCND.tipoDocumentoFinal?.codigo || "" : "";
+    const tipoDocMod = esNCND && pf.dcmtoAfectoNCND ? pf.dcmtoAfectoNCND.tipoDocumentoFinal?.codigoSunat || "" : "";
     const serieDocMod = esNCND && pf.dcmtoAfectoNCND ? pf.dcmtoAfectoNCND.numSerieDocFinal || "" : "";
     const nroDocMod = esNCND && pf.dcmtoAfectoNCND ? pf.dcmtoAfectoNCND.numCorreDocFinal || "" : "";
     
