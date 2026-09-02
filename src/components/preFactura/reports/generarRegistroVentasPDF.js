@@ -264,11 +264,12 @@ export async function generarRegistroVentasPDF(data) {
       });
     }
 
-    const fechaDoc = pf.fechaDocumento ? new Date(pf.fechaDocumento) : null;
+    // Fecha de emisión SUNAT = fechaFacturacion (comprobante emitido), no fechaDocumento (PreFactura interna)
+    const fechaDoc = pf.fechaFacturacion ? new Date(pf.fechaFacturacion) : null;
     const fechaCont = pf.fechaContable ? new Date(pf.fechaContable) : null;
     const periodo = fechaCont ? `${fechaCont.getFullYear()}${String(fechaCont.getMonth() + 1).padStart(2, '0')}00` : "";
     const correlativoStr = `M${String(correlativo).padStart(9, '0')}`;
-    const fechaEmision = fechaDoc ? formatearFecha(pf.fechaDocumento) : "";
+    const fechaEmision = fechaDoc ? formatearFecha(pf.fechaFacturacion) : "";
     const fechaVenc = pf.fechaVencimiento ? formatearFecha(pf.fechaVencimiento) : "";
     const fechaContable = fechaCont ? formatearFecha(pf.fechaContable) : "";
     

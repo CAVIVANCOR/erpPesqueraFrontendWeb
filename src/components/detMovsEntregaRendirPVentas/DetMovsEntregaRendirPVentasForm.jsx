@@ -94,10 +94,10 @@ const DetMovsEntregaRendirPVentasForm = ({ movimiento, onSave, onCancel }) => {
         // Consultar tipo de cambio SUNAT
         const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
         
-        // Para VENTAS usamos buy_price (precio de compra del dólar)
-        if (tipoCambioData && tipoCambioData.buy_price) {
-          const tipoCambioCompra = parseFloat(tipoCambioData.buy_price);
-          setValue('tipoCambio', tipoCambioCompra);
+        // Estándar del sistema: siempre TC VENTA SUNAT (sell_price)
+        if (tipoCambioData && tipoCambioData.sell_price) {
+          const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
+          setValue('tipoCambio', tipoCambioVenta);
           
           // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
           setFechaMovimientoInicial(fechaMovimiento);
@@ -105,7 +105,7 @@ const DetMovsEntregaRendirPVentasForm = ({ movimiento, onSave, onCancel }) => {
           toast?.current?.show({
             severity: 'success',
             summary: 'Tipo de Cambio Actualizado',
-            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioCompra.toFixed(3)} por USD`,
+            detail: `TC Venta SUNAT: S/ ${tipoCambioVenta.toFixed(3)} por USD`,
             life: 3000,
           });
         }

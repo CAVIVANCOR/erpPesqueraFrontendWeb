@@ -516,7 +516,9 @@ export default function PagoCuentaPorCobrarForm({
           date: fechaISO,
         });
 
-        // Para COBROS usamos buy_price (precio de compra del dólar)
+        // COBROS (ingreso de divisas a caja/bancos): se usa TC COMPRA (buy_price).
+        // Coherente con PagarCuentaPorCobrarEspecializadoDialog y con NIC 21 / LIR art. 61 inc. a)
+        // (activos en moneda extranjera se valorizan al TC compra).
         if (tipoCambioData && tipoCambioData.buy_price) {
           const tipoCambioCompra = parseFloat(tipoCambioData.buy_price);
           setTipoCambio(tipoCambioCompra.toFixed(3));
@@ -528,7 +530,7 @@ export default function PagoCuentaPorCobrarForm({
           toast?.current?.show({
             severity: "success",
             summary: "Tipo de Cambio Actualizado",
-            detail: `T.C. SUNAT: S/ ${tipoCambioCompra.toFixed(3)} por USD (Fecha: ${fechaISO})`,
+            detail: `T.C. Compra SUNAT: S/ ${tipoCambioCompra.toFixed(3)} por USD (Fecha: ${fechaISO})`,
             life: 3000,
           });
         }

@@ -1,5 +1,5 @@
 // src/components/ordenCompra/OrdenCompraForm.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Button } from "primereact/button";
 import { confirmDialog } from "primereact/confirmdialog";
@@ -258,6 +258,10 @@ export default function OrdenCompraForm({
   });
   const [fechaDocumentoInicial, setFechaDocumentoInicial] = useState(null);
   const [fechaFacturacionInicial, setFechaFacturacionInicial] = useState(null);
+  // Indica que la "foto" inicial de fechaFacturacion ya fue tomada desde defaultValues.
+  // Necesario porque el valor inicial legítimo puede ser null (OC nueva o sin comprobante aún)
+  // y no se puede distinguir "no inicializado" de "inicializado en null" solo con el estado.
+  const fechaFacturacionInicializadaRef = useRef(false);
   const [alertaFechaFacturacionMostrada, setAlertaFechaFacturacionMostrada] = useState(false);
   const [estadosCxP, setEstadosCxP] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
@@ -401,11 +405,15 @@ export default function OrdenCompraForm({
           : null,
       );
       setFacturado(defaultValues.facturado || false);
-      setFechaFacturacion(
-        defaultValues.fechaFacturacion
-          ? new Date(defaultValues.fechaFacturacion)
-          : null,
-      );
+      const fechaFactInicial = defaultValues.fechaFacturacion
+        ? new Date(defaultValues.fechaFacturacion)
+        : null;
+      setFechaFacturacion(fechaFactInicial);
+      // "Foto" de la fecha de facturación tal como viene guardada (puede ser null).
+      // Sirve para NO consultar SUNAT al abrir el formulario y SÍ consultarlo
+      // en cuanto el usuario la cambie (incluida la primera vez que la ingresa).
+      setFechaFacturacionInicial(fechaFactInicial);
+      fechaFacturacionInicializadaRef.current = true;
       setEsGerencial(defaultValues.esGerencial || false);
       setOrdenCompraOrigenId(
         defaultValues.ordenCompraOrigenId
@@ -506,11 +514,14 @@ export default function OrdenCompraForm({
   }, [isEdit, usuario?.personalId, toast]);
 
 
+  // Formulario NUEVO (sin defaultValues): la foto inicial es null y se marca como inicializada
+  // para que la primera fecha que ingrese el usuario dispare la consulta a SUNAT.
   useEffect(() => {
-    if (fechaFacturacion && fechaFacturacionInicial === null) {
-      setFechaFacturacionInicial(fechaFacturacion);
+    if (!fechaFacturacionInicializadaRef.current && (!defaultValues || Object.keys(defaultValues).length === 0)) {
+      setFechaFacturacionInicial(null);
+      fechaFacturacionInicializadaRef.current = true;
     }
-  }, [fechaFacturacion, fechaFacturacionInicial]);
+  }, [defaultValues]);
 
   useEffect(() => {
     if (fechaDocumento && fechaDocumentoInicial === null) {
@@ -518,8 +529,13 @@ export default function OrdenCompraForm({
     }
   }, [fechaDocumento, fechaDocumentoInicial]);
 
+  // Consulta el TC VENTA SUNAT (Decolecta) cada vez que el usuario CAMBIA fechaFacturacion.
+  // No se consulta al abrir el formulario: se compara contra la "foto" tomada de defaultValues.
   useEffect(() => {
     const cargarTipoCambio = async () => {
+      // Aún no se tomó la foto inicial: no hacer nada (evita falsos disparos en el montaje)
+      if (!fechaFacturacionInicializadaRef.current) return;
+
       if (!fechaFacturacion) {
         if (!alertaFechaFacturacionMostrada) {
           toast?.current?.show({
@@ -533,37 +549,49 @@ export default function OrdenCompraForm({
         return;
       }
 
-      if (fechaFacturacionInicial === null) return;
+      // Comparar por día (YYYY-MM-DD), no por timestamp: evita disparos por diferencias de hora/zona
+      const aFechaISO = (d) => {
+        const f = new Date(d);
+        return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, "0")}-${String(f.getDate()).padStart(2, "0")}`;
+      };
+      const fechaActualISO = aFechaISO(fechaFacturacion);
+      const fechaInicialISO = fechaFacturacionInicial ? aFechaISO(fechaFacturacionInicial) : null;
 
-      const fechaActualISO = new Date(fechaFacturacion).toISOString();
-      const fechaInicialISO = new Date(fechaFacturacionInicial).toISOString();
-
+      // Misma fecha que la guardada: no consultar (es la apertura del formulario)
       if (fechaActualISO === fechaInicialISO) return;
 
       try {
-        const fecha = new Date(fechaFacturacion);
-        const year = fecha.getFullYear();
-        const month = String(fecha.getMonth() + 1).padStart(2, '0');
-        const day = String(fecha.getDate()).padStart(2, '0');
-        const fechaISO = `${year}-${month}-${day}`;
-        const tipoCambioData = await consultarTipoCambioSunat({
-          date: fechaISO,
-        });
+        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaActualISO });
 
+        // Estándar del sistema para COMPRAS: TC VENTA SUNAT (sell_price)
         if (tipoCambioData && tipoCambioData.sell_price) {
           const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
           setTipoCambio(tipoCambioVenta.toFixed(3));
+          // Actualizar la foto para no re-consultar mientras la fecha no vuelva a cambiar
           setFechaFacturacionInicial(fechaFacturacion);
 
           toast?.current?.show({
             severity: "success",
             summary: "Tipo de Cambio Actualizado",
-            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioVenta.toFixed(3)} por USD`,
+            detail: `TC Venta SUNAT ${fechaActualISO}: S/ ${tipoCambioVenta.toFixed(3)} por USD`,
             life: 3000,
+          });
+        } else {
+          toast?.current?.show({
+            severity: "warn",
+            summary: "Tipo de Cambio no disponible",
+            detail: `SUNAT no publicó TC para ${fechaActualISO}. Ingrese el tipo de cambio manualmente.`,
+            life: 4000,
           });
         }
       } catch (error) {
         console.error("Error al cargar tipo de cambio SUNAT:", error);
+        toast?.current?.show({
+          severity: "error",
+          summary: "Error al consultar SUNAT",
+          detail: "No se pudo obtener el tipo de cambio. Ingrese el valor manualmente.",
+          life: 4000,
+        });
       }
     };
     cargarTipoCambio();

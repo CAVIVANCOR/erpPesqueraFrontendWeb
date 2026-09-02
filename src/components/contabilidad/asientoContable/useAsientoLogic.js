@@ -241,14 +241,15 @@ export default function useAsientoLogic({
           date: fechaISO,
         });
 
-        if (tipoCambioData && tipoCambioData.buy_price) {
-          const tipoCambioCompra = parseFloat(tipoCambioData.buy_price);
-          handleChange("tipoCambio", tipoCambioCompra.toFixed(3));
+        // Estándar del sistema: siempre TC VENTA SUNAT (sell_price)
+        if (tipoCambioData && tipoCambioData.sell_price) {
+          const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
+          handleChange("tipoCambio", tipoCambioVenta.toFixed(3));
           setFechaAsientoInicial(formData.fechaAsiento);
           toast?.current?.show({
             severity: "success",
             summary: "Tipo de Cambio Actualizado",
-            detail: `TC SUNAT: S/ ${tipoCambioCompra.toFixed(3)} por USD`,
+            detail: `TC Venta SUNAT: S/ ${tipoCambioVenta.toFixed(3)} por USD`,
             life: 3000,
           });
         }

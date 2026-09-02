@@ -198,20 +198,27 @@ export default function OrdenCompra({ ruta }) {
   }, [periodosContables, empresaIdSelector]);
 
 
+  // Inicializa el periodo contable por defecto (mes actual) SOLO cuando:
+  //   a) aún no hay periodo seleccionado, o
+  //   b) el periodo seleccionado ya no pertenece a la lista (ej. cambio de empresa).
+  // No se sobreescribe la selección del usuario cuando cargarDatos() recarga
+  // periodosContables tras guardar/aprobar/regenerar (eso generaba una nueva
+  // referencia del array y reseteaba el filtro al mes en curso).
   useEffect(() => {
-    if (periodosFiltrados.length > 0) {
-      const mesActual = new Date().getMonth() + 1;
-      const periodoActual = periodosFiltrados.find(p => Number(p.mes) === mesActual);
-
-      if (periodoActual) {
-        setPeriodoSeleccionado(periodoActual.id);
-      } else {
-        setPeriodoSeleccionado(periodosFiltrados[0].id);
-      }
-    } else {
-      setPeriodoSeleccionado(null);
+    if (periodosFiltrados.length === 0) {
+      if (periodoSeleccionado !== null) setPeriodoSeleccionado(null);
+      return;
     }
-  }, [periodosFiltrados]);
+
+    const seleccionVigente = periodosFiltrados.some(
+      (p) => Number(p.id) === Number(periodoSeleccionado)
+    );
+    if (seleccionVigente) return;
+
+    const mesActual = new Date().getMonth() + 1;
+    const periodoActual = periodosFiltrados.find((p) => Number(p.mes) === mesActual);
+    setPeriodoSeleccionado(periodoActual ? periodoActual.id : periodosFiltrados[0].id);
+  }, [periodosFiltrados, periodoSeleccionado]);
 
 
 
@@ -1525,10 +1532,10 @@ export default function OrdenCompra({ ruta }) {
           return;
         }
 
-        // Ordenar por fecha de documento ASC (más antigua primero)
+        // Ordenar por fecha de emisión del comprobante (fechaFacturacion) ASC, igual que el TXT SUNAT
         ordenesParaExportar = ordenesParaExportar.sort((a, b) => {
-          const fechaA = a.fechaDocumento ? new Date(a.fechaDocumento).getTime() : 0;
-          const fechaB = b.fechaDocumento ? new Date(b.fechaDocumento).getTime() : 0;
+          const fechaA = a.fechaFacturacion ? new Date(a.fechaFacturacion).getTime() : 0;
+          const fechaB = b.fechaFacturacion ? new Date(b.fechaFacturacion).getTime() : 0;
           return fechaA - fechaB;
         });
 

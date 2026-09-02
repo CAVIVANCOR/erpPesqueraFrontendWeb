@@ -264,11 +264,12 @@ export async function generarRegistroComprasPDF(data) {
       });
     }
 
-    const fechaDoc = oc.fechaDocumento ? new Date(oc.fechaDocumento) : null;
+    // Fecha de emisión SUNAT = fechaFacturacion (comprobante del proveedor), no fechaDocumento (OC interna)
+    const fechaDoc = oc.fechaFacturacion ? new Date(oc.fechaFacturacion) : null;
     const fechaCont = oc.fechaContable ? new Date(oc.fechaContable) : null;
     const periodo = fechaCont ? `${fechaCont.getFullYear()}${String(fechaCont.getMonth() + 1).padStart(2, '0')}00` : "";
     const correlativoStr = `M${String(correlativo).padStart(9, '0')}`;
-    const fechaEmision = fechaDoc ? formatearFecha(oc.fechaDocumento) : "";
+    const fechaEmision = fechaDoc ? formatearFecha(oc.fechaFacturacion) : "";
     const fechaVenc = oc.fechaVencimiento ? formatearFecha(oc.fechaVencimiento) : "";
     const fechaContable = fechaCont ? formatearFecha(oc.fechaContable) : "";
     
