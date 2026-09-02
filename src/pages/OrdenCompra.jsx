@@ -182,42 +182,53 @@ export default function OrdenCompra({ ruta }) {
     cargarDatos();
   }, []);
 
+  // Valor de UI (no de BD) para la opción "Todos los periodos" del filtro.
+  // periodoContableId es numérico, por lo que un string no colisiona con ningún id real.
+  const PERIODO_TODOS = "TODOS";
+
+  // Periodos de la empresa seleccionada, de TODOS los años, más recientes primero.
+  // La primera opción es "Todos los periodos" para consultar el histórico completo
+  // de un proveedor sin cambiar de periodo uno a uno.
   const periodosFiltrados = useMemo(() => {
     if (!empresaIdSelector) {
       return [];
     }
 
-    const anoActual = new Date().getFullYear();
+    const delaEmpresa = periodosContables
+      .filter(p => Number(p.empresaId) === Number(empresaIdSelector))
+      .sort((a, b) => (Number(b.anio) - Number(a.anio)) || (Number(b.mes) - Number(a.mes)));
 
-    return periodosContables.filter(p => {
-      const ano = p.año || p.anio || p.periodo?.substring(0, 4);
-      const matchEmpresa = Number(p.empresaId) === Number(empresaIdSelector);
-      const matchAno = Number(ano) === anoActual;
-      return matchEmpresa && matchAno;
-    });
+    return [
+      { id: PERIODO_TODOS, nombrePeriodo: "TODOS LOS PERIODOS", anio: null, mes: null },
+      ...delaEmpresa,
+    ];
   }, [periodosContables, empresaIdSelector]);
 
 
-  // Inicializa el periodo contable por defecto (mes actual) SOLO cuando:
+  // Inicializa el periodo contable por defecto (mes/año actual) SOLO cuando:
   //   a) aún no hay periodo seleccionado, o
   //   b) el periodo seleccionado ya no pertenece a la lista (ej. cambio de empresa).
-  // No se sobreescribe la selección del usuario cuando cargarDatos() recarga
-  // periodosContables tras guardar/aprobar/regenerar (eso generaba una nueva
-  // referencia del array y reseteaba el filtro al mes en curso).
+  // No se sobreescribe la selección del usuario (incluida "Todos los periodos") cuando
+  // cargarDatos() recarga periodosContables tras guardar/aprobar/regenerar (eso generaba
+  // una nueva referencia del array y reseteaba el filtro al mes en curso).
   useEffect(() => {
-    if (periodosFiltrados.length === 0) {
+    // Solo la opción "Todos" → no hay periodos reales para la empresa
+    if (periodosFiltrados.length <= 1) {
       if (periodoSeleccionado !== null) setPeriodoSeleccionado(null);
       return;
     }
 
-    const seleccionVigente = periodosFiltrados.some(
-      (p) => Number(p.id) === Number(periodoSeleccionado)
-    );
+    const seleccionVigente =
+      periodoSeleccionado === PERIODO_TODOS ||
+      periodosFiltrados.some((p) => p.id !== PERIODO_TODOS && Number(p.id) === Number(periodoSeleccionado));
     if (seleccionVigente) return;
 
-    const mesActual = new Date().getMonth() + 1;
-    const periodoActual = periodosFiltrados.find((p) => Number(p.mes) === mesActual);
-    setPeriodoSeleccionado(periodoActual ? periodoActual.id : periodosFiltrados[0].id);
+    const hoy = new Date();
+    const periodoActual = periodosFiltrados.find(
+      (p) => Number(p.mes) === hoy.getMonth() + 1 && Number(p.anio) === hoy.getFullYear()
+    );
+    // Fallback: el periodo real más reciente (índice 1, porque el 0 es "Todos")
+    setPeriodoSeleccionado(periodoActual ? periodoActual.id : periodosFiltrados[1].id);
   }, [periodosFiltrados, periodoSeleccionado]);
 
 
@@ -453,8 +464,8 @@ export default function OrdenCompra({ ruta }) {
       }
     }
 
-    // Filtro por periodo contable
-    if (periodoSeleccionado) {
+    // Filtro por periodo contable ("Todos" no filtra: histórico completo de la empresa)
+    if (periodoSeleccionado && periodoSeleccionado !== PERIODO_TODOS) {
       filtered = filtered.filter((orden) => {
         return Number(orden.periodoContableId) === Number(periodoSeleccionado);
       });
@@ -1488,7 +1499,8 @@ export default function OrdenCompra({ ruta }) {
   };
 
   const handleExportar = async (tipo) => {
-    if (!empresaIdSelector || !periodoSeleccionado) {
+    // El Registro de Compras SUNAT es por periodo: no se exporta con "Todos" seleccionado
+    if (!empresaIdSelector || !periodoSeleccionado || periodoSeleccionado === PERIODO_TODOS) {
       toast.current?.show({
         severity: "warn",
         summary: "Advertencia",
@@ -2225,7 +2237,9 @@ export default function OrdenCompra({ ruta }) {
                   icon="pi pi-download"
                   className="p-button-success"
                   onClick={(e) => menuExport.current.toggle(e)}
-                  disabled={!empresaIdSelector || !periodoSeleccionado}
+                  disabled={!empresaIdSelector || !periodoSeleccionado || periodoSeleccionado === PERIODO_TODOS}
+                  tooltip={periodoSeleccionado === PERIODO_TODOS ? "Seleccione un periodo específico para exportar" : undefined}
+                  tooltipOptions={{ position: "top" }}
                   style={{ width: "100%" }}
                 />
               </div>
@@ -2911,7 +2925,11 @@ export default function OrdenCompra({ ruta }) {
             esGerencial: oc.esGerencial,
             detalles: oc.detalles ? [{ id: 1 }] : [],
             total: oc.total,
-            monedaId: oc.monedaId
+            monedaId: oc.monedaId,
+            // Datos para FASE 0 (corrección de TC con SUNAT por fechaFacturacion)
+            monedaCodigoSunat: oc.moneda?.codigoSunat || null,
+            fechaFacturacion: oc.fechaFacturacion || null,
+            tipoCambio: oc.tipoCambio
           }))
         }
         onComplete={(resultados) => {

@@ -33,6 +33,20 @@ export async function actualizarOrdenCompra(id, data) {
   return res.data;
 }
 
+/**
+ * Actualiza SOLO el tipo de cambio de una OC (Regeneración Masiva - FASE 0).
+ * No usar actualizarOrdenCompra() para esto: el PUT genérico recalcula totales
+ * y anula pagosPreviosSI con payloads parciales.
+ */
+export async function actualizarTipoCambioOrdenCompra(id, tipoCambio) {
+  const res = await axios.put(
+    `${API_URL}/${id}/tipo-cambio`,
+    { tipoCambio },
+    { headers: getAuthHeaders() },
+  );
+  return res.data;
+}
+
 export async function eliminarOrdenCompra(id) {
   const res = await axios.delete(`${API_URL}/${id}`, {
     headers: getAuthHeaders(),
