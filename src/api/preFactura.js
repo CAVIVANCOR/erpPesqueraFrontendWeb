@@ -82,6 +82,23 @@ export async function actualizarPreFactura(id, preFacturaData) {
   }
 }
 
+/**
+ * Actualiza SOLO el tipo de cambio de una PreFactura (Regeneración Masiva Ventas - FASE 0).
+ * No usar actualizarPreFactura() para esto: el PUT genérico recalcula totales e impuestos
+ * y valida el TC con fechaDocumento en lugar de fechaFacturacion.
+ * @param {number} id - ID de la pre-factura
+ * @param {number} tipoCambio - TC Venta SUNAT (3 decimales)
+ * @returns {Promise<{id, tipoCambioAnterior, tipoCambioNuevo}>}
+ */
+export async function actualizarTipoCambioPreFactura(id, tipoCambio) {
+  const response = await axios.put(
+    `${API_URL}/${id}/tipo-cambio`,
+    { tipoCambio },
+    { headers: getAuthHeaders() },
+  );
+  return response.data;
+}
+
 
 /**
  * Elimina una pre-factura
