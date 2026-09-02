@@ -298,7 +298,8 @@ export async function generarRegistroComprasPDF(data) {
     const otrosTributos = formatearNumero(oc.montoImpuestoRenta || 0, 2);
     const total = formatearNumero(totalPEN, 2);
     const moneda = oc.moneda?.codigoSunat || "PEN";
-    const tipoCambio = Number(oc.tipoCambio || 1).toFixed(3);
+    // TC efectivo: NC/ND usan TC del doc afectado, FAC/BV el propio (calculado en backend)
+    const tipoCambio = Number(oc.tipoCambioAplicado || oc.tipoCambio || 1).toFixed(3);
     
     const esNCND = ["07", "08"].includes(tipoDocCodigo);
     const fechaDocMod = esNCND && oc.fechaDcmtoAfectoNCND ? formatearFecha(oc.fechaDcmtoAfectoNCND) : "";

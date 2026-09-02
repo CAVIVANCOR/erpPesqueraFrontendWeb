@@ -118,11 +118,11 @@ export default function RegeneracionMasivaCompras({
     let registrosActualizados = [...registros];
 
     // ═══════════════════════════════════════════════════════
-    // FASE 0: CORREGIR TIPO DE CAMBIO (TC VENTA SUNAT POR fechaFacturacion)
+    // FASE 0: CORREGIR TIPO DE CAMBIO (TC VENTA SUNAT)
     // ═══════════════════════════════════════════════════════
-    // Solo OC en moneda extranjera. Criterio del sistema para COMPRAS: sell_price, 3 decimales,
-    // consultado con la fecha del comprobante del proveedor (fechaFacturacion).
-    // Reglas: sin fechaFacturacion → se omite; SUNAT sin publicación ese día → se conserva el TC
+    // Solo OC en moneda extranjera. Criterio del sistema para COMPRAS: sell_price, 3 decimales.
+    // Fecha de consulta: FAC/BV → fechaFacturacion; NC/ND → fechaDcmtoAfectoNCND (doc afectado).
+    // Reglas: sin fecha → se omite; SUNAT sin publicación ese día → se conserva el TC
     // actual; CxP con pagos → el backend rechaza y se omite. Nunca se inventa un TC.
     setLog(prev => [...prev, "═══════════════════════════════════════════"]);
     setLog(prev => [...prev, "🔄 FASE 0: CORRIGIENDO TIPO DE CAMBIO (SUNAT)..."]);
@@ -143,13 +143,20 @@ export default function RegeneracionMasivaCompras({
       const registro = enME[i];
       setProgreso(prev => ({ ...prev, procesados: i + 1 }));
 
-      if (!registro.fechaFacturacion) {
+      // Determinar la fecha efectiva para consultar el TC:
+      // - NC/ND (07, 08): usar fechaDcmtoAfectoNCND (fecha del documento afectado)
+      // - FAC/BV (01, 03): usar fechaFacturacion
+      const esNCND = ["07", "08"].includes(registro.tipoDocumentoCodigoSunat);
+      const fechaParaTC = esNCND ? registro.fechaDcmtoAfectoNCND : registro.fechaFacturacion;
+
+      if (!fechaParaTC) {
         resumenTCTemp.sinFechaFacturacion.push(registro);
-        setLog(prev => [...prev, `  ⚠️ #${registro.id} ${registro.numeroDocumento} - sin fechaFacturacion, TC no modificado`]);
+        const motivoSinFecha = esNCND ? "sin fechaDcmtoAfectoNCND" : "sin fechaFacturacion";
+        setLog(prev => [...prev, `  ⚠️ #${registro.id} ${registro.numeroDocumento} - ${motivoSinFecha}, TC no modificado`]);
         continue;
       }
 
-      const fechaISO = aFechaISO(registro.fechaFacturacion);
+      const fechaISO = aFechaISO(fechaParaTC);
 
       try {
         let tcSunat = cacheTC.get(fechaISO);

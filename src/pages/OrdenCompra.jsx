@@ -2926,10 +2926,13 @@ export default function OrdenCompra({ ruta }) {
             detalles: oc.detalles ? [{ id: 1 }] : [],
             total: oc.total,
             monedaId: oc.monedaId,
-            // Datos para FASE 0 (corrección de TC con SUNAT por fechaFacturacion)
+            // Datos para FASE 0 (corrección de TC con SUNAT)
             monedaCodigoSunat: oc.moneda?.codigoSunat || null,
             fechaFacturacion: oc.fechaFacturacion || null,
-            tipoCambio: oc.tipoCambio
+            tipoCambio: oc.tipoCambio,
+            // Datos para NC/ND: tipo de documento y fecha del documento afectado
+            tipoDocumentoCodigoSunat: oc.tipoDocumentoFinal?.codigoSunat || null,
+            fechaDcmtoAfectoNCND: oc.fechaDcmtoAfectoNCND || null
           }))
         }
         onComplete={(resultados) => {

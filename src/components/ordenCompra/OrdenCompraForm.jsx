@@ -596,6 +596,65 @@ export default function OrdenCompraForm({
     };
     cargarTipoCambio();
   }, [fechaFacturacion, fechaFacturacionInicial, alertaFechaFacturacionMostrada]);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EFECTO: Consultar TC para NC/ND usando fechaDcmtoAfectoNCND
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Para NC/ND, el TC debe consultarse con la fecha del documento afectado, no con fechaFacturacion
+  const [fechaDcmtoAfectoNCNDInicial, setFechaDcmtoAfectoNCNDInicial] = useState(null);
+  
+  useEffect(() => {
+    // Solo aplicar para NC/ND (códigos SUNAT 07 y 08)
+    const tipoDocSunat = tiposDocumento.find(td => td.id === tipoDocumentoFinalId)?.codigoSunat;
+    const esNCND = ["07", "08"].includes(tipoDocSunat);
+    
+    if (!esNCND || !fechaDcmtoAfectoNCND || !esMonedaExtranjera) return;
+
+    const cargarTCParaNCND = async () => {
+      const aFechaISO = (d) => {
+        const f = new Date(d);
+        return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, "0")}-${String(f.getDate()).padStart(2, "0")}`;
+      };
+      const fechaActualISO = aFechaISO(fechaDcmtoAfectoNCND);
+      const fechaInicialISO = fechaDcmtoAfectoNCNDInicial ? aFechaISO(fechaDcmtoAfectoNCNDInicial) : null;
+
+      // Misma fecha que la guardada: no consultar
+      if (fechaActualISO === fechaInicialISO) return;
+
+      try {
+        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaActualISO });
+
+        if (tipoCambioData && tipoCambioData.sell_price) {
+          const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
+          setTipoCambio(tipoCambioVenta.toFixed(3));
+          setFechaDcmtoAfectoNCNDInicial(fechaDcmtoAfectoNCND);
+
+          toast?.current?.show({
+            severity: "success",
+            summary: "TC NC/ND Actualizado",
+            detail: `TC del documento afectado (${fechaActualISO}): S/ ${tipoCambioVenta.toFixed(3)} por USD`,
+            life: 3000,
+          });
+        } else {
+          toast?.current?.show({
+            severity: "warn",
+            summary: "TC no disponible",
+            detail: `SUNAT no publicó TC para ${fechaActualISO}. Ingrese el tipo de cambio manualmente.`,
+            life: 4000,
+          });
+        }
+      } catch (error) {
+        console.error("Error al cargar TC SUNAT para NC/ND:", error);
+        toast?.current?.show({
+          severity: "error",
+          summary: "Error al consultar SUNAT",
+          detail: "No se pudo obtener el tipo de cambio. Ingrese el valor manualmente.",
+          life: 4000,
+        });
+      }
+    };
+    cargarTCParaNCND();
+  }, [fechaDcmtoAfectoNCND, fechaDcmtoAfectoNCNDInicial, tipoDocumentoFinalId, tiposDocumento, esMonedaExtranjera]);
   
   useEffect(() => {
     const obtenerTotalesDelBackend = async () => {

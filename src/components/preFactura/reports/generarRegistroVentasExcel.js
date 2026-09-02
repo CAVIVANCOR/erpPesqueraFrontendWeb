@@ -135,10 +135,45 @@ export async function generarRegistroVentasExcel(data) {
       totalPEN = Math.abs(totalPEN) * -1;
     }
     
-    const esExportacion = pf.tipoOperacionSunat?.codigo === "0200";
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CLASIFICACIÓN TRIBUTARIA PARA REGISTRO DE VENTAS SUNAT (Formato 14.1)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Se utilizan DOS campos para clasificar correctamente las operaciones:
+    // 1. tipoOperacionSunat: Define el tipo de operación (PRIORIDAD para Exportación)
+    // 2. tipoAfectacionIGV: Define el tratamiento del IGV (catálogo 07 SUNAT)
+    //
+    // REGLAS DE CLASIFICACIÓN (según normativa SUNAT):
+    // - EXPORTACIÓN: Determinada por Tipo Operación 02XX (independiente de afectación)
+    // - GRAVADO (10-17): Base Imponible + IGV (solo ventas internas)
+    // - EXONERADO (20-21): Solo si NO es exportación (evitar duplicación)
+    // - INAFECTO (30-36): Solo ventas internas
+    //
+    // IMPORTANTE: La columna EXPORTACIÓN se determina ÚNICAMENTE por el
+    // Tipo de Operación SUNAT (02XX), no por el Tipo de Afectación IGV.
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    const codigoAfectacionIGV = pf.tipoAfectacionIGV?.codigo || "";
+    const codigoOperacionSunat = pf.tipoOperacionSunat?.codigo || "";
+
+    // EXPORTACIÓN: Determinada por Tipo de Operación SUNAT (códigos 02XX)
+    // Incluye: 0200 (Bienes), 0201-0208 (Servicios)
+    const esExportacion = codigoOperacionSunat.startsWith("02");
     const valorExportacion = esExportacion ? totalPEN : 0;
-    const baseGravada = !pf.exoneradoIgv && !esExportacion ? subtotalPEN : 0;
-    const exonerado = pf.exoneradoIgv ? subtotalPEN : 0;
+
+    // BASE IMPONIBLE GRAVADA: Códigos 10-17 (operaciones gravadas con IGV)
+    // Solo aplica para ventas internas (NO exportaciones)
+    const esGravado = ["10", "11", "12", "13", "14", "15", "16", "17"].includes(codigoAfectacionIGV);
+    const baseGravada = esGravado && !esExportacion ? subtotalPEN : 0;
+
+    // EXONERADO: Códigos 20 (exonerado oneroso) o 21 (exonerado gratuito)
+    // NUNCA debe incluir exportaciones (para evitar duplicación)
+    const esExonerado = ["20", "21"].includes(codigoAfectacionIGV) && !esExportacion;
+    const exonerado = esExonerado ? subtotalPEN : 0;
+
+    // INAFECTO: Códigos 30-36 (operaciones inafectas)
+    // Solo aplica para ventas internas (NO exportaciones)
+    const esInafecto = ["30", "31", "32", "33", "34", "35", "36"].includes(codigoAfectacionIGV);
+    const inafecto = esInafecto && !esExportacion ? subtotalPEN : 0;
     
     // Estado SUNAT: 
     // 1 = Comprobante válido (EMITIDA=96, FACTURADA=95, CE GENERADO=97, VALIDADO SUNAT=98)
@@ -173,19 +208,30 @@ export async function generarRegistroVentasExcel(data) {
     worksheet.getCell(currentRow, 12).value = pf.cliente?.tipoDocumento?.codSunat || "";
     worksheet.getCell(currentRow, 13).value = pf.cliente?.numeroDocumento || "";
     worksheet.getCell(currentRow, 14).value = pf.cliente?.razonSocial || "";
+    // ═══════════════════════════════════════════════════════════════════════════
+    // MONTOS TRIBUTARIOS - REGISTRO DE VENTAS SUNAT (Formato 14.1)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Columna 15: Valor Exportación (solo código 40 + operación 02XX)
+    // Columna 16: Base Imponible Gravada (códigos 10-17)
+    // Columna 17: Descuento Base Imponible
+    // Columna 18: IGV (solo para operaciones gravadas 10-17)
+    // Columna 19: Descuento IGV
+    // Columna 20: Exonerado (códigos 20-21, NUNCA exportación)
+    // Columna 21: Inafecto (códigos 30-36)
+    // ═══════════════════════════════════════════════════════════════════════════
     worksheet.getCell(currentRow, 15).value = valorExportacion;
     worksheet.getCell(currentRow, 15).numFmt = '#,##0.00';
     worksheet.getCell(currentRow, 16).value = baseGravada;
     worksheet.getCell(currentRow, 16).numFmt = '#,##0.00';
     worksheet.getCell(currentRow, 17).value = totalDescuentosPEN;
     worksheet.getCell(currentRow, 17).numFmt = '#,##0.00';
-    worksheet.getCell(currentRow, 18).value = totalIGVPEN;
+    worksheet.getCell(currentRow, 18).value = esGravado && !esExportacion ? totalIGVPEN : 0; // IGV solo para gravados internos
     worksheet.getCell(currentRow, 18).numFmt = '#,##0.00';
     worksheet.getCell(currentRow, 19).value = 0; // Descuento IGV
     worksheet.getCell(currentRow, 19).numFmt = '#,##0.00';
     worksheet.getCell(currentRow, 20).value = exonerado;
     worksheet.getCell(currentRow, 20).numFmt = '#,##0.00';
-    worksheet.getCell(currentRow, 21).value = 0; // Inafecto
+    worksheet.getCell(currentRow, 21).value = inafecto; // Inafecto (30-36)
     worksheet.getCell(currentRow, 21).numFmt = '#,##0.00';
     worksheet.getCell(currentRow, 22).value = 0; // ISC
     worksheet.getCell(currentRow, 22).numFmt = '#,##0.00';
@@ -200,7 +246,8 @@ export async function generarRegistroVentasExcel(data) {
     worksheet.getCell(currentRow, 27).value = totalPEN;
     worksheet.getCell(currentRow, 27).numFmt = '#,##0.00';
     worksheet.getCell(currentRow, 28).value = pf.moneda?.codigoSunat || "PEN";
-    worksheet.getCell(currentRow, 29).value = Number(pf.tipoCambio || 1);
+    // TC efectivo: NC/ND usan TC del doc afectado, FAC/BV el propio (calculado en backend)
+    worksheet.getCell(currentRow, 29).value = Number(pf.tipoCambioAplicado || pf.tipoCambio || 1);
     worksheet.getCell(currentRow, 29).numFmt = '0.000';
     worksheet.getCell(currentRow, 30).value = fechaDocMod;
     worksheet.getCell(currentRow, 31).value = tipoDocMod;

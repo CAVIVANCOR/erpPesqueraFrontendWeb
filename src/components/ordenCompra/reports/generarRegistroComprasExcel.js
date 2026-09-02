@@ -201,7 +201,8 @@ export async function generarRegistroComprasExcel(data) {
     worksheet.getCell(currentRow, 26).value = totalPEN;
     worksheet.getCell(currentRow, 26).numFmt = '#,##0.00';
     worksheet.getCell(currentRow, 27).value = oc.moneda?.codigoSunat || "PEN";
-    worksheet.getCell(currentRow, 28).value = Number(oc.tipoCambio || 1);
+    // TC efectivo: NC/ND usan TC del doc afectado, FAC/BV el propio (calculado en backend)
+    worksheet.getCell(currentRow, 28).value = Number(oc.tipoCambioAplicado || oc.tipoCambio || 1);
     worksheet.getCell(currentRow, 28).numFmt = '0.000';
     worksheet.getCell(currentRow, 29).value = fechaDocMod;
     worksheet.getCell(currentRow, 30).value = tipoDocMod;

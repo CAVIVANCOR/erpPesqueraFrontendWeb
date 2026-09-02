@@ -71,20 +71,31 @@ export async function generarRegistroVentasPDF(data) {
   });
   yPos -= 14;
 
-  // CABECERA (28 columnas - SUNAT 14.1)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CABECERA PDF - REGISTRO DE VENTAS SUNAT (Formato 14.1)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 29 columnas (agregada "Inafecto" para evitar duplicación con Exportación):
+  // - Export.: Valor Exportación (código 40 + operación 02XX)
+  // - Base Grav.: Base Imponible Gravada (códigos 10-17)
+  // - Desc.: Descuento Base Imponible
+  // - IGV: Impuesto General a las Ventas (solo gravados)
+  // - D.IGV: Descuento IGV
+  // - Exon.: Exonerado (códigos 20-21, NUNCA exportación)
+  // - Inaf.: Inafecto (códigos 30-36)
+  // ═══════════════════════════════════════════════════════════════════════════
   const headers = [
     "Periodo", "Correlativo", "F.Emis", "F.Venc", "F.Cont", "T.Doc",
     "Serie", "Número", "N.Final", "T.Doc\nCli", "Nro Doc\nCliente", "Razón Social",
-    "Export.", "Base\nGrav.", "Desc.", "IGV", "D.IGV", "Exon.",
+    "Export.", "Base\nGrav.", "Desc.", "IGV", "D.IGV", "Exon.", "Inaf.",
     "Total", "Mon", "T.C.", "F.D.Mod", "T.D.M", "S.D.M", "N.D.M",
     "Contr", "Det", "Est"
   ];
   
-  // Anchos balanceados para 825px (28 columnas)
+  // Anchos balanceados para 825px (29 columnas - agregada "Inafecto")
   const colWidths = [
     25, 38, 28, 28, 28, 18,  // Periodo, Correlativo, F.Emis, F.Venc, F.Cont, T.Doc
     24, 28, 24, 18, 40, 110,  // Serie, Número, N.Final, T.Doc Cli, Nro Doc Cli, Razón Social
-    30, 34, 22, 34, 22, 34,  // Export, Base Grav, Desc, IGV, D.IGV, Exon
+    30, 34, 22, 34, 22, 30, 30,  // Export, Base Grav, Desc, IGV, D.IGV, Exon, Inaf (ajustado)
     36, 18, 24, 28, 18, 24, 28,  // Total, Mon, T.C., F.D.Mod, T.D.M, S.D.M, N.D.M
     28, 18, 20  // Contr, Det, Est
   ];
@@ -294,15 +305,53 @@ export async function generarRegistroVentasPDF(data) {
       totalPEN = Math.abs(totalPEN) * -1;
     }
     
-    const esExportacion = pf.tipoOperacionSunat?.codigo === "0200";
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CLASIFICACIÓN TRIBUTARIA PARA REGISTRO DE VENTAS SUNAT (Formato 14.1)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Se utilizan DOS campos para clasificar correctamente las operaciones:
+    // 1. tipoOperacionSunat: Define el tipo de operación (PRIORIDAD para Exportación)
+    // 2. tipoAfectacionIGV: Define el tratamiento del IGV (catálogo 07 SUNAT)
+    //
+    // REGLAS DE CLASIFICACIÓN (según normativa SUNAT):
+    // - EXPORTACIÓN: Determinada por Tipo Operación 02XX (independiente de afectación)
+    // - GRAVADO (10-17): Base Imponible + IGV (solo ventas internas)
+    // - EXONERADO (20-21): Solo si NO es exportación (evitar duplicación)
+    // - INAFECTO (30-36): Solo ventas internas
+    //
+    // IMPORTANTE: La columna EXPORTACIÓN se determina ÚNICAMENTE por el
+    // Tipo de Operación SUNAT (02XX), no por el Tipo de Afectación IGV.
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    const codigoAfectacionIGV = pf.tipoAfectacionIGV?.codigo || "";
+    const codigoOperacionSunat = pf.tipoOperacionSunat?.codigo || "";
+
+    // EXPORTACIÓN: Determinada por Tipo de Operación SUNAT (códigos 02XX)
+    // Incluye: 0200 (Bienes), 0201-0208 (Servicios)
+    const esExportacion = codigoOperacionSunat.startsWith("02");
     const valorExportacion = esExportacion ? formatearNumero(totalPEN, 2) : "0.00";
-    const baseGravada = !pf.exoneradoIgv && !esExportacion ? formatearNumero(subtotalPEN, 2) : "0.00";
+
+    // BASE IMPONIBLE GRAVADA: Códigos 10-17 (operaciones gravadas con IGV)
+    // Solo aplica para ventas internas (NO exportaciones)
+    const esGravado = ["10", "11", "12", "13", "14", "15", "16", "17"].includes(codigoAfectacionIGV);
+    const baseGravada = esGravado && !esExportacion ? formatearNumero(subtotalPEN, 2) : "0.00";
+
+    // EXONERADO: Códigos 20 (exonerado oneroso) o 21 (exonerado gratuito)
+    // NUNCA debe incluir exportaciones (para evitar duplicación)
+    const esExonerado = ["20", "21"].includes(codigoAfectacionIGV) && !esExportacion;
+    const exonerado = esExonerado ? formatearNumero(subtotalPEN, 2) : "0.00";
+
+    // INAFECTO: Códigos 30-36 (operaciones inafectas)
+    // Solo aplica para ventas internas (NO exportaciones)
+    const esInafecto = ["30", "31", "32", "33", "34", "35", "36"].includes(codigoAfectacionIGV);
+    const inafecto = esInafecto && !esExportacion ? formatearNumero(subtotalPEN, 2) : "0.00";
+
+    // Otros campos del reporte
     const descuento = formatearNumero(totalDescuentosPEN, 2);
-    const igv = formatearNumero(totalIGVPEN, 2);
-    const exonerado = pf.exoneradoIgv ? formatearNumero(subtotalPEN, 2) : "0.00";
+    const igv = esGravado && !esExportacion ? formatearNumero(totalIGVPEN, 2) : "0.00"; // IGV solo para gravados internos
     const total = formatearNumero(totalPEN, 2);
     const moneda = pf.moneda?.codigoSunat || "PEN";
-    const tipoCambio = Number(pf.tipoCambio || 1).toFixed(3);
+    // TC efectivo: NC/ND usan TC del doc afectado, FAC/BV el propio (calculado en backend)
+    const tipoCambio = Number(pf.tipoCambioAplicado || pf.tipoCambio || 1).toFixed(3);
     
     const esNCND = ["07", "08"].includes(tipoDocCodigo);
     const fechaDocMod = esNCND && pf.fechaDcmtoAfectoNCND ? formatearFecha(pf.fechaDcmtoAfectoNCND) : "";
@@ -315,11 +364,23 @@ export async function generarRegistroVentasPDF(data) {
     const estadoId = Number(pf.estadoId);
     const estadoSunat = [95, 96, 97, 98].includes(estadoId) ? "1" : ([47, 99].includes(estadoId) ? "2" : "");
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ARRAY DE VALORES PARA PDF - REGISTRO DE VENTAS SUNAT (Formato 14.1)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Orden de columnas tributarias:
+    // - Valor Exportación (40 + 02XX)
+    // - Base Imponible Gravada (10-17)
+    // - Descuento Base Imponible
+    // - IGV (solo gravados)
+    // - Descuento IGV
+    // - Exonerado (20-21, NO exportación)
+    // - Inafecto (30-36)
+    // ═══════════════════════════════════════════════════════════════════════════
     const values = [
       periodo, correlativoStr, fechaEmision, fechaVenc, fechaContable, tipoDocCodigo,
       serie, numero, numero,
       tipoDocCliente, nroDocCliente, razonSocial,
-      valorExportacion, baseGravada, descuento, igv, "0.00", exonerado,
+      valorExportacion, baseGravada, descuento, igv, "0.00", exonerado, inafecto,
       total, moneda, tipoCambio, fechaDocMod, tipoDocMod, serieDocMod, nroDocMod,
       contratoId, detraccion, estadoSunat
     ];
