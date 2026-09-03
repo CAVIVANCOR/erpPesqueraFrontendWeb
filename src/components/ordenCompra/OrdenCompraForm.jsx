@@ -608,6 +608,10 @@ export default function OrdenCompraForm({
     const tipoDocSunat = tiposDocumento.find(td => td.id === tipoDocumentoFinalId)?.codigoSunat;
     const esNCND = ["07", "08"].includes(tipoDocSunat);
     
+    // Verificar si es moneda extranjera
+    const monedaSeleccionada = monedas.find(m => m.id === monedaId);
+    const esMonedaExtranjera = monedaSeleccionada?.codigoSunat !== "PEN";
+    
     if (!esNCND || !fechaDcmtoAfectoNCND || !esMonedaExtranjera) return;
 
     const cargarTCParaNCND = async () => {
@@ -654,7 +658,7 @@ export default function OrdenCompraForm({
       }
     };
     cargarTCParaNCND();
-  }, [fechaDcmtoAfectoNCND, fechaDcmtoAfectoNCNDInicial, tipoDocumentoFinalId, tiposDocumento, esMonedaExtranjera]);
+  }, [fechaDcmtoAfectoNCND, fechaDcmtoAfectoNCNDInicial, tipoDocumentoFinalId, tiposDocumento, monedaId, monedas]);
   
   useEffect(() => {
     const obtenerTotalesDelBackend = async () => {
