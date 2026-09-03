@@ -82,6 +82,11 @@ const schema = Yup.object().shape({
   nubefactToken: Yup.string()
     .nullable()
     .max(500, "El token no puede exceder 500 caracteres"),
+  // Campos SUNAT SIRE
+  sunatUsuarioSol: Yup.string().nullable().max(100, "Máximo 100 caracteres"),
+  sunatClaveSol: Yup.string().nullable().max(100, "Máximo 100 caracteres"),
+  sunatClientId: Yup.string().nullable().max(100, "Máximo 100 caracteres"),
+  sunatClientSecret: Yup.string().nullable().max(255, "Máximo 255 caracteres"),
 });
 
 /**
@@ -249,6 +254,12 @@ export default function EmpresaForm({
       cantPersonalCalcComisionMotorista: defaultValues.cantPersonalCalcComisionMotorista ?? null,
       cantDivisoriaCalcComisionMotorista: defaultValues.cantDivisoriaCalcComisionMotorista ?? null,
       porcentajeCalcComisionPanguero: defaultValues.porcentajeCalcComisionPanguero ?? null,
+      nubefactUrl: defaultValues.nubefactUrl ?? null,
+      nubefactToken: defaultValues.nubefactToken ?? null,
+      sunatUsuarioSol: defaultValues.sunatUsuarioSol ?? null,
+      sunatClaveSol: defaultValues.sunatClaveSol ?? null,
+      sunatClientId: defaultValues.sunatClientId ?? null,
+      sunatClientSecret: defaultValues.sunatClientSecret ?? null,
     });
     // Actualiza el preview del logo si cambia la empresa
     /**
@@ -1326,6 +1337,104 @@ export default function EmpresaForm({
             </div>
           </div>
 
+          {/* SECCIÓN: SUNAT SIRE */}
+          <div
+            style={{
+              padding: 24,
+              border: "2px solid #4caf50",
+              borderRadius: 12,
+              backgroundColor: "#f1f8e9",
+              marginBottom: 24,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+              <i className="pi pi-shield" style={{ fontSize: "1.5em", color: "#388e3c" }}></i>
+              <h3 style={{ margin: 0, color: "#388e3c" }}>SUNAT SIRE</h3>
+            </div>
+            <small style={{ display: "block", color: "#2e7d32", marginBottom: 12 }}>
+              Credenciales para integración con SUNAT SIRE.
+            </small>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+              <div>
+                <label htmlFor="sunatUsuarioSol">
+                  Usuario SOL {!esSuperUsuario && <span style={{ color: "#e91e63", fontSize: "0.85em" }}>(Solo SuperUsuario)</span>}
+                </label>
+                <InputText
+                  id="sunatUsuarioSol"
+                  {...register("sunatUsuarioSol")}
+                  className={errors.sunatUsuarioSol ? "p-invalid" : ""}
+                  placeholder="Usuario SOL"
+                  disabled={readOnly || !esSuperUsuario}
+                  style={{
+                    fontWeight: "bold",
+                    backgroundColor: !esSuperUsuario ? "#f5f5f5" : undefined,
+                    cursor: !esSuperUsuario ? "not-allowed" : undefined
+                  }}
+                />
+                {errors.sunatUsuarioSol && <small className="p-error">{errors.sunatUsuarioSol.message}</small>}
+              </div>
+
+              <div>
+                <label htmlFor="sunatClaveSol">
+                  Clave SOL {!esSuperUsuario && <span style={{ color: "#e91e63", fontSize: "0.85em" }}>(Solo SuperUsuario)</span>}
+                </label>
+                <InputText
+                  id="sunatClaveSol"
+                  {...register("sunatClaveSol")}
+                  className={errors.sunatClaveSol ? "p-invalid" : ""}
+                  placeholder="Clave SOL"
+                  disabled={readOnly || !esSuperUsuario}
+                  type="password"
+                  style={{
+                    fontWeight: "bold",
+                    backgroundColor: !esSuperUsuario ? "#f5f5f5" : undefined,
+                    cursor: !esSuperUsuario ? "not-allowed" : undefined
+                  }}
+                />
+                {errors.sunatClaveSol && <small className="p-error">{errors.sunatClaveSol.message}</small>}
+              </div>
+
+              <div>
+                <label htmlFor="sunatClientId">
+                  Client ID {!esSuperUsuario && <span style={{ color: "#e91e63", fontSize: "0.85em" }}>(Solo SuperUsuario)</span>}
+                </label>
+                <InputText
+                  id="sunatClientId"
+                  {...register("sunatClientId")}
+                  className={errors.sunatClientId ? "p-invalid" : ""}
+                  placeholder="Client ID"
+                  disabled={readOnly || !esSuperUsuario}
+                  style={{
+                    fontWeight: "bold",
+                    backgroundColor: !esSuperUsuario ? "#f5f5f5" : undefined,
+                    cursor: !esSuperUsuario ? "not-allowed" : undefined
+                  }}
+                />
+                {errors.sunatClientId && <small className="p-error">{errors.sunatClientId.message}</small>}
+              </div>
+
+              <div>
+                <label htmlFor="sunatClientSecret">
+                  Client Secret {!esSuperUsuario && <span style={{ color: "#e91e63", fontSize: "0.85em" }}>(Solo SuperUsuario)</span>}
+                </label>
+                <InputText
+                  id="sunatClientSecret"
+                  {...register("sunatClientSecret")}
+                  className={errors.sunatClientSecret ? "p-invalid" : ""}
+                  placeholder="Client Secret"
+                  disabled={readOnly || !esSuperUsuario}
+                  type="password"
+                  style={{
+                    fontWeight: "bold",
+                    backgroundColor: !esSuperUsuario ? "#f5f5f5" : undefined,
+                    cursor: !esSuperUsuario ? "not-allowed" : undefined
+                  }}
+                />
+                {errors.sunatClientSecret && <small className="p-error">{errors.sunatClientSecret.message}</small>}
+              </div>
+            </div>
+          </div>
           <div
             style={{
               marginTop: 24,

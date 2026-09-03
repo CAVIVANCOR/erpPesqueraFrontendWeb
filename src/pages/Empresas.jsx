@@ -134,6 +134,11 @@ export default function Empresas({ ruta }) {
         // Campos Nubefact
         nubefactUrl: data.nubefactUrl,
         nubefactToken: data.nubefactToken,
+        // Campos SUNAT SIRE
+        sunatUsuarioSol: data.sunatUsuarioSol,
+        sunatClaveSol: data.sunatClaveSol,
+        sunatClientId: data.sunatClientId,
+        sunatClientSecret: data.sunatClientSecret,
       };
 
       if (modoEdicion && empresaEdit) {
