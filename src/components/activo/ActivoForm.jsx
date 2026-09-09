@@ -163,10 +163,11 @@ const ActivoForm = ({
       setValue("depreciacionAcumulada", activo.depreciacionAcumulada || null);
       setValue("vidaUtilAnios", activo.vidaUtilAnios || null);
       setValue("monedaId", activo.monedaId ? Number(activo.monedaId) : null);
-      setValue("cuentaContableId", activo.cuentaContableId ? Number(activo.cuentaContableId) : null);
+      // IMPORTANTE: Permitir valor 0 para cuentas contables (usado al limpiar)
+      setValue("cuentaContableId", (activo.cuentaContableId !== null && activo.cuentaContableId !== undefined) ? Number(activo.cuentaContableId) : null);
       setValue("productoId", activo.productoId ? Number(activo.productoId) : null);
-      setValue("cuentaDepreciacionId", activo.cuentaDepreciacionId ? Number(activo.cuentaDepreciacionId) : null);
-      setValue("cuentaGastoDepId", activo.cuentaGastoDepId ? Number(activo.cuentaGastoDepId) : null);
+      setValue("cuentaDepreciacionId", (activo.cuentaDepreciacionId !== null && activo.cuentaDepreciacionId !== undefined) ? Number(activo.cuentaDepreciacionId) : null);
+      setValue("cuentaGastoDepId", (activo.cuentaGastoDepId !== null && activo.cuentaGastoDepId !== undefined) ? Number(activo.cuentaGastoDepId) : null);
     } else {
       // Modo creación: usar filtros iniciales si existen
       reset({
@@ -231,10 +232,12 @@ const ActivoForm = ({
         depreciacionAcumulada: data.depreciacionAcumulada || null,
         vidaUtilAnios: data.vidaUtilAnios || null,
         monedaId: data.monedaId ? Number(data.monedaId) : null,
-        cuentaContableId: data.cuentaContableId ? Number(data.cuentaContableId) : null,
+        // IMPORTANTE: Permitir valor 0 para limpiar cuentas contables
+        // El componente PlanCuentaContableSelector envía 0 cuando se limpia
+        cuentaContableId: (data.cuentaContableId !== null && data.cuentaContableId !== undefined) ? Number(data.cuentaContableId) : null,
         productoId: data.productoId ? Number(data.productoId) : null,
-        cuentaDepreciacionId: data.cuentaDepreciacionId ? Number(data.cuentaDepreciacionId) : null,
-        cuentaGastoDepId: data.cuentaGastoDepId ? Number(data.cuentaGastoDepId) : null,
+        cuentaDepreciacionId: (data.cuentaDepreciacionId !== null && data.cuentaDepreciacionId !== undefined) ? Number(data.cuentaDepreciacionId) : null,
+        cuentaGastoDepId: (data.cuentaGastoDepId !== null && data.cuentaGastoDepId !== undefined) ? Number(data.cuentaGastoDepId) : null,
       };
 
       if (esEdicion) {
@@ -457,7 +460,7 @@ const ActivoForm = ({
             control={control}
             render={({ field }) => (
               <PlanCuentaContableSelector
-                value={field.value ? Number(field.value) : null}
+                value={(field.value !== null && field.value !== undefined) ? Number(field.value) : null}
                 onChange={(id) => field.onChange(id)}
                 label="Cuenta Contable (Clase 33)"
                 placeholder="Seleccionar Cuenta Contable"
@@ -479,7 +482,7 @@ const ActivoForm = ({
             control={control}
             render={({ field }) => (
               <PlanCuentaContableSelector
-                value={field.value ? Number(field.value) : null}
+                value={(field.value !== null && field.value !== undefined) ? Number(field.value) : null}
                 onChange={(id) => field.onChange(id)}
                 label="Cuenta Depreciación Acumulada (Clase 39)"
                 placeholder="Seleccionar Cuenta Depreciación"
@@ -500,7 +503,7 @@ const ActivoForm = ({
             control={control}
             render={({ field }) => (
               <PlanCuentaContableSelector
-                value={field.value ? Number(field.value) : null}
+                value={(field.value !== null && field.value !== undefined) ? Number(field.value) : null}
                 onChange={(id) => field.onChange(id)}
                 label="Cuenta Gasto Depreciación (Clase 68)"
                 placeholder="Seleccionar Cuenta Gasto"

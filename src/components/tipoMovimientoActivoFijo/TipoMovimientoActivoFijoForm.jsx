@@ -123,8 +123,9 @@ const TipoMovimientoActivoFijoForm = ({
         generaAsientoAutomatico: Boolean(tipo.generaAsientoAutomatico),
         requiereProducto: Boolean(tipo.requiereProducto),
         dasDeBajaActivo: Boolean(tipo.dasDeBajaActivo),
-        cuentaDebeId: tipo.cuentaDebeId ? Number(tipo.cuentaDebeId) : null,
-        cuentaHaberId: tipo.cuentaHaberId ? Number(tipo.cuentaHaberId) : null,
+        // IMPORTANTE: Permitir valor 0 para cuentas contables (usado al limpiar)
+        cuentaDebeId: (tipo.cuentaDebeId !== null && tipo.cuentaDebeId !== undefined) ? Number(tipo.cuentaDebeId) : null,
+        cuentaHaberId: (tipo.cuentaHaberId !== null && tipo.cuentaHaberId !== undefined) ? Number(tipo.cuentaHaberId) : null,
         usaCuentasActivo: Boolean(tipo.usaCuentasActivo),
         usaCuentasProducto: Boolean(tipo.usaCuentasProducto),
       });
@@ -165,8 +166,10 @@ const TipoMovimientoActivoFijoForm = ({
         generaAsientoAutomatico: Boolean(data.generaAsientoAutomatico),
         requiereProducto: Boolean(data.requiereProducto),
         dasDeBajaActivo: Boolean(data.dasDeBajaActivo),
-        cuentaDebeId: data.cuentaDebeId ? Number(data.cuentaDebeId) : null,
-        cuentaHaberId: data.cuentaHaberId ? Number(data.cuentaHaberId) : null,
+        // IMPORTANTE: Permitir valor 0 para limpiar cuentas contables
+        // El componente PlanCuentaContableSelector envía 0 cuando se limpia
+        cuentaDebeId: (data.cuentaDebeId !== null && data.cuentaDebeId !== undefined) ? Number(data.cuentaDebeId) : null,
+        cuentaHaberId: (data.cuentaHaberId !== null && data.cuentaHaberId !== undefined) ? Number(data.cuentaHaberId) : null,
         usaCuentasActivo: Boolean(data.usaCuentasActivo),
         usaCuentasProducto: Boolean(data.usaCuentasProducto),
       };
@@ -475,7 +478,7 @@ const TipoMovimientoActivoFijoForm = ({
               control={control}
               render={({ field }) => (
                 <PlanCuentaContableSelector
-                  value={field.value ? Number(field.value) : null}
+                  value={(field.value !== null && field.value !== undefined) ? Number(field.value) : null}
                   onChange={(id) => field.onChange(id)}
                   label="Cuenta DEBE Principal"
                   placeholder="Seleccionar Cuenta DEBE"
@@ -499,7 +502,7 @@ const TipoMovimientoActivoFijoForm = ({
               control={control}
               render={({ field }) => (
                 <PlanCuentaContableSelector
-                  value={field.value ? Number(field.value) : null}
+                  value={(field.value !== null && field.value !== undefined) ? Number(field.value) : null}
                   onChange={(id) => field.onChange(id)}
                   label="Cuenta HABER Principal"
                   placeholder="Seleccionar Cuenta HABER"

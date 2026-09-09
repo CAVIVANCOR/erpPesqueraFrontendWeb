@@ -179,7 +179,8 @@ const PlanCuentaContableSelector = ({
 
   // Obtener la cuenta seleccionada
   const cuentaSeleccionada = useMemo(() => {
-    if (!value) {
+    // Validar que value sea un valor válido (no null, undefined, "", 0)
+    if (value === null || value === undefined || value === "" || value === 0) {
       return null;
     }
 
@@ -315,11 +316,18 @@ const PlanCuentaContableSelector = ({
 
   /**
    * Maneja la limpieza de selección
+   * 
+   * IMPORTANTE: Se envía 0 (cero) en lugar de null o undefined porque:
+   * - Algunos formularios eliminan campos null/undefined antes de enviar al backend
+   * - El valor 0 NO se elimina y llega correctamente al backend
+   * - El backend interpreta 0 como "sin cuenta asignada" y limpia el campo en BD
+   * - Esta solución es genérica y funciona en todos los módulos sin modificarlos
    */
   const handleClear = (e) => {
+    e.preventDefault();
     e.stopPropagation();
     if (onChange) {
-      onChange(null);
+      onChange(0);
     }
   };
 
@@ -443,8 +451,8 @@ const PlanCuentaContableSelector = ({
         {label} {required && <span style={{ color: "red" }}>*</span>}
       </label>
 
-      {/* Botón selector */}
-      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+      {/* Botón selector con X integrada */}
+      <div style={{ position: "relative", width: "100%" }}>
         <Button
           type="button"
           icon="pi pi-book"
@@ -460,7 +468,8 @@ const PlanCuentaContableSelector = ({
           style={{
             justifyContent: "flex-start",
             textAlign: "left",
-            flex: 1,
+            width: "100%",
+            paddingRight: cuentaSeleccionada && showClearButton && !disabled ? "3rem" : undefined,
           }}
         >
           {loading ? (
@@ -482,16 +491,42 @@ const PlanCuentaContableSelector = ({
           )}
         </Button>
 
-        {/* Botón Clear */}
+        {/* Botón Clear integrado dentro del botón */}
         {showClearButton && cuentaSeleccionada && !disabled && (
-          <Button
+          <button
             type="button"
-            icon="pi pi-times"
             onClick={handleClear}
-            className="p-button-rounded p-button-text p-button-danger"
-            tooltip="Limpiar selección"
-            tooltipOptions={{ position: 'top' }}
-          />
+            title="Limpiar selección"
+            style={{
+              position: "absolute",
+              right: "0.5rem",
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "transparent",
+              border: "none",
+              color: "#ef4444",
+              cursor: "pointer",
+              padding: "0.25rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "50%",
+              width: "1.5rem",
+              height: "1.5rem",
+              transition: "all 0.2s",
+              zIndex: 10,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#fee2e2";
+              e.currentTarget.style.color = "#dc2626";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "#ef4444";
+            }}
+          >
+            <i className="pi pi-times" style={{ fontSize: "0.875rem" }}></i>
+          </button>
         )}
       </div>
 

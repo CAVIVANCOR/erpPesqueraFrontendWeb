@@ -19,11 +19,10 @@ import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { InputText } from "primereact/inputtext";
-import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
 import { classNames } from "primereact/utils";
 import { crearTipoActivo, actualizarTipoActivo } from "../../api/tipoActivo";
-import { getPlanCuentasContableActivas } from "../../api/contabilidad/planCuentasContable";
+import PlanCuentaContableSelector from "../common/PlanCuentaContableSelector";
 
 // Esquema de validación con Yup
 const esquemaValidacion = yup.object().shape({
@@ -64,7 +63,6 @@ const TipoActivoForm = ({
   toast,
 }) => {
   const [loading, setLoading] = useState(false);
-  const [cuentasContables, setCuentasContables] = useState([]);
   const esEdicion = !!tipoActivo;
 
   // Configuración del formulario con React Hook Form
@@ -93,30 +91,28 @@ const TipoActivoForm = ({
     },
   });
 
-  // Cargar cuentas contables al montar
-  useEffect(() => {
-    cargarCuentasContables();
-  }, []);
-
   // Efecto para resetear formulario cuando cambia tipoActivo
   useEffect(() => {
     if (tipoActivo) {
       setValue("codigo", tipoActivo.codigo || "");
       setValue("nombre", tipoActivo.nombre || "");
       setValue("descripcion", tipoActivo.descripcion || "");
+      // IMPORTANTE: Permitir valor 0 para cuentas contables (usado al limpiar)
       setValue(
         "cuentaActivoId",
-        tipoActivo.cuentaActivoId ? Number(tipoActivo.cuentaActivoId) : null,
+        (tipoActivo.cuentaActivoId !== null && tipoActivo.cuentaActivoId !== undefined)
+          ? Number(tipoActivo.cuentaActivoId)
+          : null,
       );
       setValue(
         "cuentaDepreciacionId",
-        tipoActivo.cuentaDepreciacionId
+        (tipoActivo.cuentaDepreciacionId !== null && tipoActivo.cuentaDepreciacionId !== undefined)
           ? Number(tipoActivo.cuentaDepreciacionId)
           : null,
       );
       setValue(
         "cuentaDepreciacionAcumuladaId",
-        tipoActivo.cuentaDepreciacionAcumuladaId
+        (tipoActivo.cuentaDepreciacionAcumuladaId !== null && tipoActivo.cuentaDepreciacionAcumuladaId !== undefined)
           ? Number(tipoActivo.cuentaDepreciacionAcumuladaId)
           : null,
       );
@@ -135,26 +131,6 @@ const TipoActivoForm = ({
   }, [tipoActivo, setValue, reset]);
 
   /**
-   * Cargar cuentas contables activas
-   */
-  const cargarCuentasContables = async () => {
-    try {
-      const data = await getPlanCuentasContableActivas();
-      setCuentasContables(data);
-    } catch (error) {
-      console.error("Error al cargar cuentas contables:", error);
-      if (toast?.current) {
-        toast.current.show({
-          severity: "error",
-          summary: "Error",
-          detail: "Error al cargar cuentas contables",
-          life: 3000,
-        });
-      }
-    }
-  };
-
-  /**
    * Maneja el envío del formulario
    * @param {Object} data - Datos del formulario
    */
@@ -167,13 +143,15 @@ const TipoActivoForm = ({
         codigo: data.codigo.trim().toUpperCase(),
         nombre: data.nombre.trim().toUpperCase(),
         descripcion: data.descripcion?.trim().toUpperCase() || null,
-        cuentaActivoId: data.cuentaActivoId
+        // IMPORTANTE: Permitir valor 0 para limpiar cuentas contables
+        // El componente PlanCuentaContableSelector envía 0 cuando se limpia
+        cuentaActivoId: (data.cuentaActivoId !== null && data.cuentaActivoId !== undefined)
           ? Number(data.cuentaActivoId)
           : null,
-        cuentaDepreciacionId: data.cuentaDepreciacionId
+        cuentaDepreciacionId: (data.cuentaDepreciacionId !== null && data.cuentaDepreciacionId !== undefined)
           ? Number(data.cuentaDepreciacionId)
           : null,
-        cuentaDepreciacionAcumuladaId: data.cuentaDepreciacionAcumuladaId
+        cuentaDepreciacionAcumuladaId: (data.cuentaDepreciacionAcumuladaId !== null && data.cuentaDepreciacionAcumuladaId !== undefined)
           ? Number(data.cuentaDepreciacionAcumuladaId)
           : null,
         cesado: data.cesado,
@@ -223,12 +201,6 @@ const TipoActivoForm = ({
       "p-invalid": errors[fieldName],
     });
   };
-
-  // Opciones para dropdowns de cuentas contables
-  const cuentasOptions = cuentasContables.map((cuenta) => ({
-    label: `${cuenta.codigoCuenta} - ${cuenta.nombreCuenta}`,
-    value: Number(cuenta.id),
-  }));
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
@@ -356,32 +328,23 @@ const TipoActivoForm = ({
       >
         {/* Campo Cuenta Activo (33x) */}
         <div style={{ flex: 1 }}>
-          <label htmlFor="cuentaActivoId" className="p-d-block">
-            Cuenta del Activo (33x)
-          </label>
           <Controller
             name="cuentaActivoId"
             control={control}
             render={({ field }) => (
-              <Dropdown
-                id="cuentaActivoId"
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                options={cuentasOptions}
-                placeholder="Seleccione cuenta del activo"
-                className={getFieldClass("cuentaActivoId")}
-                style={{ textTransform: "uppercase", fontWeight: "bold" }}
-                filter
-                showClear
+              <PlanCuentaContableSelector
+                value={(field.value !== null && field.value !== undefined) ? Number(field.value) : null}
+                onChange={(id) => field.onChange(id)}
+                label="Cuenta del Activo (33x)"
+                placeholder="Seleccionar Cuenta del Activo"
                 disabled={readOnly}
+                required={false}
+                error={!!errors.cuentaActivoId}
+                errorMessage={errors.cuentaActivoId?.message}
+                showClearButton={true}
               />
             )}
           />
-          {errors.cuentaActivoId && (
-            <small className="p-error p-d-block">
-              {errors.cuentaActivoId.message}
-            </small>
-          )}
         </div>
       </div>
 
@@ -393,32 +356,23 @@ const TipoActivoForm = ({
         }}
       >
         <div style={{ flex: 1 }}>
-          <label htmlFor="cuentaDepreciacionId" className="p-d-block">
-            Cuenta de Gasto Depreciación (68x)
-          </label>
           <Controller
             name="cuentaDepreciacionId"
             control={control}
             render={({ field }) => (
-              <Dropdown
-                id="cuentaDepreciacionId"
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                options={cuentasOptions}
-                placeholder="Seleccione cuenta de depreciación"
-                className={getFieldClass("cuentaDepreciacionId")}
-                style={{ textTransform: "uppercase", fontWeight: "bold" }}
-                filter
-                showClear
+              <PlanCuentaContableSelector
+                value={(field.value !== null && field.value !== undefined) ? Number(field.value) : null}
+                onChange={(id) => field.onChange(id)}
+                label="Cuenta de Gasto Depreciación (68x)"
+                placeholder="Seleccionar Cuenta de Depreciación"
                 disabled={readOnly}
+                required={false}
+                error={!!errors.cuentaDepreciacionId}
+                errorMessage={errors.cuentaDepreciacionId?.message}
+                showClearButton={true}
               />
             )}
           />
-          {errors.cuentaDepreciacionId && (
-            <small className="p-error p-d-block">
-              {errors.cuentaDepreciacionId.message}
-            </small>
-          )}
         </div>
       </div>
       <div
@@ -431,32 +385,23 @@ const TipoActivoForm = ({
       >
         {/* Campo Cuenta Depreciación Acumulada (39x) */}
         <div style={{ flex: 1 }}>
-          <label htmlFor="cuentaDepreciacionAcumuladaId" className="p-d-block">
-            Cuenta de Depreciación Acumulada (39x)
-          </label>
           <Controller
             name="cuentaDepreciacionAcumuladaId"
             control={control}
             render={({ field }) => (
-              <Dropdown
-                id="cuentaDepreciacionAcumuladaId"
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                options={cuentasOptions}
-                placeholder="Seleccione cuenta de depreciación acumulada"
-                className={getFieldClass("cuentaDepreciacionAcumuladaId")}
-                style={{ textTransform: "uppercase", fontWeight: "bold" }}
-                filter
-                showClear
+              <PlanCuentaContableSelector
+                value={(field.value !== null && field.value !== undefined) ? Number(field.value) : null}
+                onChange={(id) => field.onChange(id)}
+                label="Cuenta de Depreciación Acumulada (39x)"
+                placeholder="Seleccionar Cuenta de Depreciación Acumulada"
                 disabled={readOnly}
+                required={false}
+                error={!!errors.cuentaDepreciacionAcumuladaId}
+                errorMessage={errors.cuentaDepreciacionAcumuladaId?.message}
+                showClearButton={true}
               />
             )}
           />
-          {errors.cuentaDepreciacionAcumuladaId && (
-            <small className="p-error p-d-block">
-              {errors.cuentaDepreciacionAcumuladaId.message}
-            </small>
-          )}
         </div>
       </div>
 

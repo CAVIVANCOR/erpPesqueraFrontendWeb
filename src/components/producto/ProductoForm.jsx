@@ -331,11 +331,11 @@ export default function ProductoForm({
       especieId: producto?.especieId ? Number(producto.especieId) : null,
       tipoDetraccionId: producto?.tipoDetraccionId ? Number(producto.tipoDetraccionId) : null,
       tipoAfectacionIGVId: producto?.tipoAfectacionIGVId ? Number(producto.tipoAfectacionIGVId) : null,
-      cuentaComprasId: producto?.cuentaComprasId ? Number(producto.cuentaComprasId) : null,
-      cuentaInventarioId: producto?.cuentaInventarioId ? Number(producto.cuentaInventarioId) : null,
-      cuentaCostoVentasId: producto?.cuentaCostoVentasId ? Number(producto.cuentaCostoVentasId) : null,
-      cuentaVariacionId: producto?.cuentaVariacionId ? Number(producto.cuentaVariacionId) : null,
-      cuentaVentasId: producto?.cuentaVentasId ? Number(producto.cuentaVentasId) : null,
+      cuentaComprasId: (producto?.cuentaComprasId !== null && producto?.cuentaComprasId !== undefined) ? Number(producto.cuentaComprasId) : null,
+      cuentaInventarioId: (producto?.cuentaInventarioId !== null && producto?.cuentaInventarioId !== undefined) ? Number(producto.cuentaInventarioId) : null,
+      cuentaCostoVentasId: (producto?.cuentaCostoVentasId !== null && producto?.cuentaCostoVentasId !== undefined) ? Number(producto.cuentaCostoVentasId) : null,
+      cuentaVariacionId: (producto?.cuentaVariacionId !== null && producto?.cuentaVariacionId !== undefined) ? Number(producto.cuentaVariacionId) : null,
+      cuentaVentasId: (producto?.cuentaVentasId !== null && producto?.cuentaVentasId !== undefined) ? Number(producto.cuentaVentasId) : null,
       exoneradoRetencion: producto?.exoneradoRetencion || false,
       sujetoDetraccion: producto?.sujetoDetraccion || false,
       aplicaSubfamilia: producto?.aplicaSubfamilia || false,
@@ -453,11 +453,11 @@ export default function ProductoForm({
         especieId: data.especieId ? Number(data.especieId) : null,
         tipoAfectacionIGVId: data.tipoAfectacionIGVId ? Number(data.tipoAfectacionIGVId) : null,
         tipoDetraccionId: data.tipoDetraccionId ? Number(data.tipoDetraccionId) : null,
-        cuentaComprasId: data.cuentaComprasId ? Number(data.cuentaComprasId) : null,
-        cuentaInventarioId: data.cuentaInventarioId ? Number(data.cuentaInventarioId) : null,
-        cuentaCostoVentasId: data.cuentaCostoVentasId ? Number(data.cuentaCostoVentasId) : null,
-        cuentaVariacionId: data.cuentaVariacionId ? Number(data.cuentaVariacionId) : null,
-        cuentaVentasId: data.cuentaVentasId ? Number(data.cuentaVentasId) : null,
+        cuentaComprasId: (data.cuentaComprasId !== null && data.cuentaComprasId !== undefined) ? Number(data.cuentaComprasId) : null,
+        cuentaInventarioId: (data.cuentaInventarioId !== null && data.cuentaInventarioId !== undefined) ? Number(data.cuentaInventarioId) : null,
+        cuentaCostoVentasId: (data.cuentaCostoVentasId !== null && data.cuentaCostoVentasId !== undefined) ? Number(data.cuentaCostoVentasId) : null,
+        cuentaVariacionId: (data.cuentaVariacionId !== null && data.cuentaVariacionId !== undefined) ? Number(data.cuentaVariacionId) : null,
+        cuentaVentasId: (data.cuentaVentasId !== null && data.cuentaVentasId !== undefined) ? Number(data.cuentaVentasId) : null,
         porcentajeDetraccion: data.porcentajeDetraccion,
         exoneradoIgv: data.exoneradoIgv,
         exoneradoRetencion: data.exoneradoRetencion,
@@ -476,12 +476,12 @@ export default function ProductoForm({
 
       
       // Eliminar propiedades que son null o undefined (pero mantener false y 0)
-      // EXCEPCIÓN: Mantener tipoDetraccionId null para permitir limpiar el campo
+      // Los campos con valor 0 se mantienen porque algunos componentes (como PlanCuentaContableSelector)
+      // usan 0 para indicar "limpiar campo" y el backend lo interpreta correctamente
       Object.keys(datosParaEnviar).forEach((key) => {
         const value = datosParaEnviar[key];
         // Solo eliminar si es null o undefined, mantener false, 0 y strings vacíos
-        // EXCEPCIÓN: No eliminar tipoDetraccionId cuando es null (necesario para limpiar)
-        if ((value === null || value === undefined) && key !== 'tipoDetraccionId') {
+        if (value === null || value === undefined) {
           delete datosParaEnviar[key];
         }
       });

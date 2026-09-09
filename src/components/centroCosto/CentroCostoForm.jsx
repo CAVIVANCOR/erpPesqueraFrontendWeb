@@ -32,9 +32,10 @@ export default function CentroCostoForm({
       ? Number(defaultValues.CategoriaID)
       : null,
     ParentCentroID: defaultValues?.ParentCentroID || "",
-    cuentaContableId: defaultValues?.cuentaContableId
+    // IMPORTANTE: Permitir valor 0 para cuentas contables (usado al limpiar)
+    cuentaContableId: (defaultValues?.cuentaContableId !== null && defaultValues?.cuentaContableId !== undefined)
       ? Number(defaultValues.cuentaContableId)
-      : null,  // ⭐ NUEVO
+      : null,
   });
 
   useEffect(() => {
@@ -46,9 +47,10 @@ export default function CentroCostoForm({
         ? Number(defaultValues.CategoriaID)
         : null,
       ParentCentroID: (defaultValues?.ParentCentroID || "").toUpperCase(),
-      cuentaContableId: defaultValues?.cuentaContableId
+      // IMPORTANTE: Permitir valor 0 para cuentas contables (usado al limpiar)
+      cuentaContableId: (defaultValues?.cuentaContableId !== null && defaultValues?.cuentaContableId !== undefined)
         ? Number(defaultValues.cuentaContableId)
-        : null,  // ⭐ NUEVO
+        : null,
     });
   }, [defaultValues]);
 
@@ -102,19 +104,23 @@ export default function CentroCostoForm({
       ParentCentroID: formData.ParentCentroID
         ? formData.ParentCentroID.toUpperCase()
         : null,
-      cuentaContableId: formData.cuentaContableId
+      // IMPORTANTE: Permitir valor 0 para limpiar cuenta contable
+      // El componente PlanCuentaContableSelector envía 0 cuando se limpia
+      cuentaContableId: (formData.cuentaContableId !== null && formData.cuentaContableId !== undefined)
         ? Number(formData.cuentaContableId)
-        : null,  // ⭐ NUEVO
+        : null,
     };
 
     setGuardando(true);
     try {
+      let centroGuardado;
       if (isEdit) {
-        await actualizarCentroCosto(defaultValues.id, dataToSend);
+        centroGuardado = await actualizarCentroCosto(defaultValues.id, dataToSend);
       } else {
-        await crearCentroCosto(dataToSend);
+        centroGuardado = await crearCentroCosto(dataToSend);
       }
-      onSubmit(dataToSend);
+      // Pasar el centro guardado completo con todas sus relaciones
+      onSubmit(centroGuardado);
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -124,6 +130,8 @@ export default function CentroCostoForm({
           "Error al guardar centro de costo",
         life: 5000,
       });
+      // Re-lanzar el error para que la página lo maneje
+      throw error;
     } finally {
       setGuardando(false);
     }

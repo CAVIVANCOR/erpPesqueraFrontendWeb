@@ -19,7 +19,12 @@ export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, l
     return 1; // Perú por defecto para nuevos bancos
   });
   const [activo, setActivo] = React.useState(defaultValues.activo !== undefined ? !!defaultValues.activo : true);
-  const [cuentaContableId, setCuentaContableId] = React.useState(defaultValues.cuentaContableId ? Number(defaultValues.cuentaContableId) : null);
+  // IMPORTANTE: Permitir valor 0 para cuentas contables (usado al limpiar)
+  const [cuentaContableId, setCuentaContableId] = React.useState(
+    (defaultValues.cuentaContableId !== null && defaultValues.cuentaContableId !== undefined)
+      ? Number(defaultValues.cuentaContableId)
+      : null
+  );
 
   React.useEffect(() => {
     setNombre(defaultValues.nombre || '');
@@ -32,7 +37,12 @@ export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, l
       setPaisId(1); // Perú por defecto
     }
     setActivo(defaultValues.activo !== undefined ? !!defaultValues.activo : true);
-    setCuentaContableId(defaultValues.cuentaContableId ? Number(defaultValues.cuentaContableId) : null);
+    // IMPORTANTE: Permitir valor 0 para cuentas contables (usado al limpiar)
+    setCuentaContableId(
+      (defaultValues.cuentaContableId !== null && defaultValues.cuentaContableId !== undefined)
+        ? Number(defaultValues.cuentaContableId)
+        : null
+    );
 
   }, [defaultValues]);
 
@@ -44,7 +54,11 @@ export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, l
       codigoBcrp,
       paisId: paisId ? Number(paisId) : null,
       activo,
-      cuentaContableId: cuentaContableId ? Number(cuentaContableId) : null,
+      // IMPORTANTE: Permitir valor 0 para limpiar cuenta contable
+      // El componente PlanCuentaContableSelector envía 0 cuando se limpia
+      cuentaContableId: (cuentaContableId !== null && cuentaContableId !== undefined)
+        ? Number(cuentaContableId)
+        : null,
     });
   };
 

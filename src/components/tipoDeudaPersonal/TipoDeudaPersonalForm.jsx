@@ -78,7 +78,11 @@ const TipoDeudaPersonalForm = ({
       nombre: data.nombre.trim(),
       descripcion: data.descripcion?.trim() || null,
       categoriaId: data.categoriaId ? Number(data.categoriaId) : null,
-      cuentaContableId: data.cuentaContableId ? Number(data.cuentaContableId) : null,
+      // IMPORTANTE: Permitir valor 0 para limpiar cuenta contable
+      // El componente PlanCuentaContableSelector envía 0 cuando se limpia
+      cuentaContableId: (data.cuentaContableId !== null && data.cuentaContableId !== undefined)
+        ? Number(data.cuentaContableId)
+        : null,
       periodicidad: data.periodicidad || null,
       activo: Boolean(data.activo),
     };
@@ -207,7 +211,7 @@ const TipoDeudaPersonalForm = ({
           control={control}
           render={({ field }) => (
             <PlanCuentaContableSelector
-              value={field.value ? Number(field.value) : null}
+              value={(field.value !== null && field.value !== undefined) ? Number(field.value) : null}
               onChange={(id) => field.onChange(id)}
               label="Cuenta Contable"
               placeholder="Elegir Cuenta Contable"

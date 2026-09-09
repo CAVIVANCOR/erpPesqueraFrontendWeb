@@ -169,7 +169,7 @@ export default function CentroCosto({ ruta }) {
     setIsEdit(false);
   };
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (centroGuardado) => {
     // Validar permisos antes de guardar
     if (isEdit && !permisos.puedeEditar) {
       return;
@@ -180,7 +180,20 @@ export default function CentroCosto({ ruta }) {
 
     setLoading(true);
     try {
-      await data; // El formulario ya maneja la llamada a la API
+      // El formulario ya maneja la llamada a la API y devuelve el centro guardado completo
+      
+      if (isEdit) {
+        // Actualizar el registro en el estado local con los datos completos del servidor
+        setItems(prevItems => 
+          prevItems.map(item => 
+            item.id === selected.id ? centroGuardado : item
+          )
+        );
+      } else {
+        // Agregar el nuevo registro al inicio de la lista
+        setItems(prevItems => [centroGuardado, ...prevItems]);
+      }
+      
       toast.current?.show({
         severity: "success",
         summary: isEdit ? "Centro actualizado" : "Centro creado",
@@ -192,7 +205,6 @@ export default function CentroCosto({ ruta }) {
       setShowDialog(false);
       setSelected(null);
       setIsEdit(false);
-      cargarDatos();
     } catch (err) {
       toast.current?.show({
         severity: "error",

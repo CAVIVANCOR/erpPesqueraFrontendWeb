@@ -74,6 +74,8 @@ import TemporaryPDFViewer from "../components/reports/TemporaryPDFViewer";
 import TemporaryExcelViewer from "../components/reports/TemporaryExcelViewer";
 import { generarRegistroComprasExcel } from "../components/ordenCompra/reports/generarRegistroComprasExcel";
 import { generarRegistroComprasPDF } from "../components/ordenCompra/reports/generarRegistroComprasPDF";
+import ImportadorSIRECompras from '../components/sire/ImportadorSIRECompras';
+import BotonDescargarPDFsMasivoSunat from '../components/common/BotonDescargarPDFsMasivoSunat';
 
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
@@ -476,15 +478,15 @@ export default function OrdenCompra({ ruta }) {
       // Fiscal sin saldos iniciales: Compras BLANCAS (esGerencial=false) sin SI-*
       filtered = filtered.filter((orden) => {
         if (orden.esGerencial !== false) return false;
-        
+
         const codigoTipo = orden.tipoDocumento?.codigo || "";
         const descripcionTipo = orden.tipoDocumento?.descripcion || "";
-        
+
         // Excluir si el código o descripción contiene "SI" o "SALDO INICIAL"
-        const esSaldoInicial = codigoTipo.startsWith("SI") || 
-                               codigoTipo.includes("SI-") ||
-                               descripcionTipo.toUpperCase().includes("SALDO INICIAL");
-        
+        const esSaldoInicial = codigoTipo.startsWith("SI") ||
+          codigoTipo.includes("SI-") ||
+          descripcionTipo.toUpperCase().includes("SALDO INICIAL");
+
         return !esSaldoInicial;
       });
     } else if (filtroTipoLibro === "FISCAL_CSI") {
@@ -1838,6 +1840,57 @@ export default function OrdenCompra({ ruta }) {
     );
   };
 
+  // ========================================
+  // TEMPLATE: Impuestos Tributarios Unificado
+  // ========================================
+  // Muestra en una sola columna: Detracción, Retención o Percepción
+  // REGLA CONTABLE: Solo uno aplica por documento (nunca se mezclan)
+  // Prioridad: Detracción > Retención > Percepción
+  // ========================================
+  const impuestoTributarioTemplate = (rowData) => {
+    // Detracción (prioridad 1)
+    if (rowData.aplicaDetraccion) {
+      return (
+        <div style={{ textAlign: "center" }}>
+          <Tag
+            value={`📊 Detrac ${Number(rowData.porcentajeDetraccion || 0).toFixed(2)}%`}
+            severity="warning"
+            style={{ fontSize: "0.75rem" }}
+          />
+        </div>
+      );
+    }
+
+    // Retención (prioridad 2 - solo si NO hay detracción)
+    if (rowData.aplicaRetencion) {
+      return (
+        <div style={{ textAlign: "center" }}>
+          <Tag
+            value={`💰 Reten ${Number(rowData.porcentajeRetencion || 0).toFixed(2)}%`}
+            severity="help"
+            style={{ fontSize: "0.75rem" }}
+          />
+        </div>
+      );
+    }
+
+    // Percepción (prioridad 3 - solo si NO hay detracción ni retención)
+    if (rowData.aplicaPercepcion) {
+      return (
+        <div style={{ textAlign: "center" }}>
+          <Tag
+            value={`📈 Percep ${Number(rowData.porcentajePercepcion || 0).toFixed(2)}%`}
+            severity="info"
+            style={{ fontSize: "0.75rem" }}
+          />
+        </div>
+      );
+    }
+
+    // Sin impuestos tributarios
+    return <span style={{ color: "#999" }}>-</span>;
+  };
+
   // ✅ Calcular totales por tipo de documento y moneda
   const calcularTotalesPorTipoYMoneda = () => {
     const totalesPorTipo = {};
@@ -2120,7 +2173,7 @@ export default function OrdenCompra({ ruta }) {
               <div style={{ flex: 2 }}>
                 <h3>Compras y Gastos</h3>
               </div>
-              <div style={{ flex: 2 }}>
+              <div style={{ flex: 2.5 }}>
                 <label style={{ fontWeight: "bold" }}>
                   Empresa*
                 </label>
@@ -2132,7 +2185,6 @@ export default function OrdenCompra({ ruta }) {
                   }}
                 />
               </div>
-
               <div style={{ flex: 0.5 }}>
                 <Button
                   label="Nuevo"
@@ -2151,6 +2203,9 @@ export default function OrdenCompra({ ruta }) {
                 />
               </div>
               <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold" }}>
+                  Periodo Contable*
+                </label>
                 <Dropdown
                   value={periodoSeleccionado}
                   options={periodosFiltrados}
@@ -2164,141 +2219,80 @@ export default function OrdenCompra({ ruta }) {
                   disabled={!empresaIdSelector}
                 />
               </div>
-
               <div style={{ flex: 1 }}>
-                <Button
-                  icon="pi pi-refresh"
-                  className="p-button-outlined p-button-info"
-                  onClick={async () => {
-                    await cargarDatos();
-                    toast.current?.show({
-                      severity: "success",
-                      summary: "Actualizado",
-                      detail:
-                        "Datos actualizados correctamente desde el servidor",
-                      life: 3000,
-                    });
+                <label style={{ fontWeight: "bold" }}>
+                  Conciliar
+                </label>
+                <ImportadorSIRECompras
+                  empresas={empresas}
+                  empresaIdPadre={empresaIdSelector}
+                  periodoIdPadre={periodoSeleccionado}
+                  periodosContables={periodosContables}
+                  onImportComplete={cargarDatos}
+                  toast={toast}
+                />
+              </div>
+              <div style={{ flex: 1.5 }}>
+                <label style={{ fontWeight: "bold" }}>
+                  Obtener
+                </label>
+                <BotonDescargarPDFsMasivoSunat
+                  documentosSeleccionados={ordenesSeleccionadas.map(orden => ({
+                    id: orden.id,
+                    empresaId: orden.empresaId,
+                    rucEmisorReceptor: orden.proveedor?.numeroDocumento,
+                    tipoDocCodigo: orden.tipoDocumentoFinal?.codigoSunat,
+                    serie: orden.numSerieDocFinal,
+                    numero: orden.numCorreDocFinal,
+                    fechaEmision: orden.fechaDocumento,
+                    moduloDestino: "orden-compra"
+                  }))}
+                  onComplete={(resultados) => {
+                    console.log('PDFs generados:', resultados);
+                    cargarDatos();
                   }}
-                  loading={loading}
-                  tooltip="Actualizar todos los datos desde el servidor"
-                  tooltipOptions={{ position: "bottom" }}
+                  disabled={!empresaIdSelector || !periodoSeleccionado || ordenesSeleccionadas.length === 0}
+                  tooltip={
+                    !empresaIdSelector
+                      ? "Seleccione una empresa primero"
+                      : !periodoSeleccionado
+                        ? "Seleccione un periodo primero"
+                        : ordenesSeleccionadas.length === 0
+                          ? "Seleccione al menos una orden de compra"
+                          : `Generar PDFs de ${ordenesSeleccionadas.length} documentos seleccionados`
+                  }
+                  toast={toast}
                 />
               </div>
               <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold" }}>
+                  Regeneración
+                </label>
+                <Button
+                  label="Masiva"
+                  icon="pi pi-refresh"
+                  className="p-button-warning"
+                  onClick={() => setShowRegeneracionMasiva(true)}
+                  tooltip="Regenerar CxP y Asientos de todas las órdenes filtradas"
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold" }}>
+                  Consultar
+                </label>
                 <Button
                   icon="pi pi-search"
-                  label="Consultar Stock"
+                  label="Stock"
                   onClick={() => setShowConsultaStock(true)}
                   className="p-button-info"
                   tooltip="Consultar stock de productos"
                   tooltipOptions={{ position: "bottom" }}
                 />
               </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="tipoAfectacionIGVFiltro" style={{ fontWeight: "bold" }}>
-                  Tipo Afectación IGV
-                </label>
-                <Dropdown
-                  id="tipoAfectacionIGVFiltro"
-                  value={tipoAfectacionIGVSeleccionado}
-                  options={tiposAfectacionIGVUnicos.map((t) => ({
-                    label: t.nombre,
-                    value: Number(t.id),
-                  }))}
-                  onChange={(e) => setTipoAfectacionIGVSeleccionado(e.value)}
-                  placeholder="Todos"
-                  optionLabel="label"
-                  optionValue="value"
-                  showClear
-                  filter
-                  disabled={loading}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 0.25 }}>
-                <Button
-                  icon="pi pi-filter-slash"
-                  className="p-button-secondary"
-                  outlined
-                  onClick={limpiarFiltros}
-                  disabled={loading}
-                />
-              </div>
-              <Button
-                label="Regeneración Masiva"
-                icon="pi pi-refresh"
-                className="p-button-warning"
-                onClick={() => setShowRegeneracionMasiva(true)}
-                tooltip="Regenerar CxP y Asientos de todas las órdenes filtradas"
-              />
-              <div style={{ flex: 1 }}>
-                <Button
-                  label="Exportar"
-                  icon="pi pi-download"
-                  className="p-button-success"
-                  onClick={(e) => menuExport.current.toggle(e)}
-                  disabled={!empresaIdSelector || !periodoSeleccionado || periodoSeleccionado === PERIODO_TODOS}
-                  tooltip={periodoSeleccionado === PERIODO_TODOS ? "Seleccione un periodo específico para exportar" : undefined}
-                  tooltipOptions={{ position: "top" }}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              {/* Filtro por Submódulo Origen */}
-              <div style={{ flex: 1 }}>
-                <label
-                  htmlFor="filtroSubmoduloOrigen"
-                  style={{
-                    display: "block",
-                    marginBottom: "0.5rem",
-                    fontWeight: "500",
-                    fontSize: "0.875rem",
-                  }}
-                >
-                  Origen
-                </label>
-                <Dropdown
-                  id="filtroSubmoduloOrigen"
-                  value={submoduloOrigenSeleccionado}
-                  options={submodulosOrigenUnicos}
-                  onChange={(e) => setSubmoduloOrigenSeleccionado(e.value)}
-                  optionLabel="nombre"
-                  optionValue="id"
-                  placeholder="Todos los orígenes"
-                  showClear
-                  filter
-                  itemTemplate={(option) => {
-                    const coloresSubmodulo = {
-                      "Rendición de Gastos": "#9333EA",
-                      "CXP": "#EF4444",
-                      "RRHH": "#3B82F6",
-                      "Inventario": "#10B981",
-                      "Producción": "#F59E0B",
-                      "Compras": "#EAB308",
-                    };
-                    const colorFondo = coloresSubmodulo[option.nombre] || "#6B7280";
-                    return (
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <div
-                          style={{
-                            width: "12px",
-                            height: "12px",
-                            borderRadius: "50%",
-                            backgroundColor: colorFondo,
-                          }}
-                        />
-                        <span>{option.nombre}</span>
-                      </div>
-                    );
-                  }}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                {/* Filtro de Unidad de Negocio - Compacto */}
-                <UnidadNegocioFilter />
-              </div>
               {/* Filtro Tipo Libro */}
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1.5 }}>
                 <label style={{ fontWeight: "bold" }}>
                   Tipo Libro
                 </label>
@@ -2308,6 +2302,7 @@ export default function OrdenCompra({ ruta }) {
                   style={{ width: "100%" }}
                 />
               </div>
+
             </div>
             <div
               style={{
@@ -2317,54 +2312,12 @@ export default function OrdenCompra({ ruta }) {
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <div style={{ flex: 1 }}>
-                <label htmlFor="proveedorFiltro" style={{ fontWeight: "bold" }}>
-                  Proveedor
-                </label>
-                <Dropdown
-                  id="proveedorFiltro"
-                  value={proveedorSeleccionado}
-                  options={proveedoresUnicos.map((p) => ({
-                    label: p.razonSocial,
-                    value: Number(p.id),
-                  }))}
-                  onChange={(e) => setProveedorSeleccionado(e.value)}
-                  placeholder="Todos"
-                  optionLabel="label"
-                  optionValue="value"
-                  showClear
-                  filter
-                  disabled={loading}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="productoFiltro" style={{ fontWeight: "bold" }}>
-                  Producto
-                </label>
-                <Dropdown
-                  id="productoFiltro"
-                  value={productoSeleccionado}
-                  options={productosUnicos.map((p) => ({
-                    label: p.descripcionArmada,
-                    value: Number(p.id),
-                  }))}
-                  onChange={(e) => setProductoSeleccionado(e.value)}
-                  placeholder="Todos los productos"
-                  optionLabel="label"
-                  optionValue="value"
-                  showClear
-                  filter
-                  disabled={loading}
-                  style={{ width: "100%" }}
-                />
-              </div>
               <div style={{ flex: 1, minWidth: "200px" }}>
-                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                <label style={{ fontWeight: "bold" }}>
                   Filtros Avanzados:
                 </label>
                 <Button
-                  label="Tipos de Documento"
+                  label="Tipos de Dcmto"
                   icon="pi pi-filter"
                   onClick={abrirFiltrosAvanzados}
                   className="p-button-outlined"
@@ -2387,7 +2340,6 @@ export default function OrdenCompra({ ruta }) {
                   }
                   tooltipOptions={{ position: "top" }}
                 />
-
                 {/* OverlayPanel de Filtros Avanzados */}
                 <OverlayPanel ref={opFiltrosAvanzados} style={{ width: "450px" }}>
                   <div style={{ padding: "10px" }}>
@@ -2486,13 +2438,13 @@ export default function OrdenCompra({ ruta }) {
                   id="busquedaDocumento"
                   value={busquedaDocumento}
                   onChange={(e) => setBusquedaDocumento(e.target.value)}
-                  placeholder="N° Doc (#ID para buscar por ID)..."
+                  placeholder="N°Doc (#ID buscar)"
                   style={{ width: "100%" }}
                   disabled={loading}
                 />
               </div>
               <div style={{ flex: 1, minWidth: "200px" }}>
-                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                <label style={{ fontWeight: "bold" }}>
                   Rango Fecha Documento:
                 </label>
                 <Calendar
@@ -2505,7 +2457,122 @@ export default function OrdenCompra({ ruta }) {
                   style={{ width: "100%" }}
                 />
               </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Asignar C.Costo"
+                  icon="pi pi-tag"
+                  className="p-button-help"
+                  onClick={() => setShowAsignarCentroCostoDialog(true)}
+                  disabled={loading || ordenesSeleccionadas.length === 0}
+                  tooltip={
+                    ordenesSeleccionadas.length === 0
+                      ? "Seleccione órdenes primero"
+                      : `Asignar centro de costo a ${ordenesSeleccionadas.length} órdenes`
+                  }
+                  tooltipOptions={{ position: "bottom" }}
+                />
+              </div>
+              <div style={{ flex: 1.5 }}>
+                <Button
+                  label="Exportar XLS PDF TXT SUNAT"
+                  icon="pi pi-download"
+                  className="p-button-secondary"
+                  onClick={(e) => menuExport.current.toggle(e)}
+                  disabled={!empresaIdSelector || !periodoSeleccionado || periodoSeleccionado === PERIODO_TODOS}
+                  tooltip={periodoSeleccionado === PERIODO_TODOS ? "Seleccione un periodo específico para exportar" : undefined}
+                  tooltipOptions={{ position: "top" }}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 0.25 }}>
+                <Button
+                  icon="pi pi-refresh"
+                  className="p-button-outlined p-button-info"
+                  onClick={async () => {
+                    await cargarDatos();
+                    toast.current?.show({
+                      severity: "success",
+                      summary: "Actualizado",
+                      detail:
+                        "Datos actualizados correctamente desde el servidor",
+                      life: 3000,
+                    });
+                  }}
+                  loading={loading}
+                  tooltip="Actualizar todos los datos desde el servidor"
+                  tooltipOptions={{ position: "bottom" }}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 0.25 }}>
+                <Button
+                  icon="pi pi-filter-slash"
+                  className="p-button-secondary"
+                  outlined
+                  onClick={limpiarFiltros}
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold" }}>
+                  Unidad Negocio
+                </label>
+                {/* Filtro de Unidad de Negocio - Compacto */}
+                <UnidadNegocioFilter />
+              </div>
 
+            </div>
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="proveedorFiltro" style={{ fontWeight: "bold" }}>
+                  Proveedor
+                </label>
+                <Dropdown
+                  id="proveedorFiltro"
+                  value={proveedorSeleccionado}
+                  options={proveedoresUnicos.map((p) => ({
+                    label: p.razonSocial,
+                    value: Number(p.id),
+                  }))}
+                  onChange={(e) => setProveedorSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  filter
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="productoFiltro" style={{ fontWeight: "bold" }}>
+                  Producto
+                </label>
+                <Dropdown
+                  id="productoFiltro"
+                  value={productoSeleccionado}
+                  options={productosUnicos.map((p) => ({
+                    label: p.descripcionArmada,
+                    value: Number(p.id),
+                  }))}
+                  onChange={(e) => setProductoSeleccionado(e.value)}
+                  placeholder="Todos los productos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  filter
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
               <div style={{ flex: 1 }}>
                 <label htmlFor="estadoFiltro" style={{ fontWeight: "bold" }}>
                   Estado
@@ -2522,21 +2589,6 @@ export default function OrdenCompra({ ruta }) {
                   disabled={loading}
                   filter
                   style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <Button
-                  label="Asignar Centro Costo"
-                  icon="pi pi-tag"
-                  className="p-button-help"
-                  onClick={() => setShowAsignarCentroCostoDialog(true)}
-                  disabled={loading || ordenesSeleccionadas.length === 0}
-                  tooltip={
-                    ordenesSeleccionadas.length === 0
-                      ? "Seleccione órdenes primero"
-                      : `Asignar centro de costo a ${ordenesSeleccionadas.length} órdenes`
-                  }
-                  tooltipOptions={{ position: "bottom" }}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -2561,7 +2613,80 @@ export default function OrdenCompra({ ruta }) {
 
                 />
               </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="tipoAfectacionIGVFiltro" style={{ fontWeight: "bold" }}>
+                  Tipo Afectación IGV
+                </label>
+                <Dropdown
+                  id="tipoAfectacionIGVFiltro"
+                  value={tipoAfectacionIGVSeleccionado}
+                  options={tiposAfectacionIGVUnicos.map((t) => ({
+                    label: t.nombre,
+                    value: Number(t.id),
+                  }))}
+                  onChange={(e) => setTipoAfectacionIGVSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  filter
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              {/* Filtro por Submódulo Origen */}
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="filtroSubmoduloOrigen"
+                  style={{
+                    display: "block",
+                    marginBottom: "0.5rem",
+                    fontWeight: "500",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  Origen
+                </label>
+                <Dropdown
+                  id="filtroSubmoduloOrigen"
+                  value={submoduloOrigenSeleccionado}
+                  options={submodulosOrigenUnicos}
+                  onChange={(e) => setSubmoduloOrigenSeleccionado(e.value)}
+                  optionLabel="nombre"
+                  optionValue="id"
+                  placeholder="Todos los orígenes"
+                  showClear
+                  filter
+                  itemTemplate={(option) => {
+                    const coloresSubmodulo = {
+                      "Rendición de Gastos": "#9333EA",
+                      "CXP": "#EF4444",
+                      "RRHH": "#3B82F6",
+                      "Inventario": "#10B981",
+                      "Producción": "#F59E0B",
+                      "Compras": "#EAB308",
+                    };
+                    const colorFondo = coloresSubmodulo[option.nombre] || "#6B7280";
+                    return (
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <div
+                          style={{
+                            width: "12px",
+                            height: "12px",
+                            borderRadius: "50%",
+                            backgroundColor: colorFondo,
+                          }}
+                        />
+                        <span>{option.nombre}</span>
+                      </div>
+                    );
+                  }}
+                  style={{ width: "100%" }}
+                />
+              </div>
             </div>
+
+
           </div>
         }
       >
@@ -2616,7 +2741,7 @@ export default function OrdenCompra({ ruta }) {
           field="total"
           header="Total"
           body={totalTemplate}
-          style={{ width: 140 }}
+          style={{ width: 160 }}
           sortable
         />
 
@@ -2644,7 +2769,6 @@ export default function OrdenCompra({ ruta }) {
           style={{ width: 150, textAlign: "center" }}
           sortable
         />
-
         <Column
           field="esExoneradoAlIGV"
           header="IGV"
@@ -2652,62 +2776,18 @@ export default function OrdenCompra({ ruta }) {
           style={{ width: 110, textAlign: "center" }}
           sortable
         />
-
+        {/* ========================================
+            COLUMNA UNIFICADA: Impuestos Tributarios
+            Reemplaza 3 columnas (Detrac/Reten/Percep) por 1
+            Ahorra espacio y mejora legibilidad
+            ======================================== */}
         <Column
-          header="Detrac."
-          body={(rowData) => {
-            if (!rowData.aplicaDetraccion) return "-";
-            return (
-              <div style={{ textAlign: "center" }}>
-                <Tag
-                  value={`${Number(rowData.porcentajeDetraccion || 0).toFixed(2)}%`}
-                  severity="warning"
-                  icon="pi pi-percentage"
-                  style={{ fontSize: "0.75rem" }}
-                />
-              </div>
-            );
-          }}
-          style={{ width: 90, textAlign: "center", verticalAlign: "top" }}
+          header="Imp. Trib."
+          body={impuestoTributarioTemplate}
+          style={{ width: 120, textAlign: "center" }}
           bodyStyle={{ textAlign: "center" }}
+          tooltip="Impuestos Tributarios: Detracción, Retención o Percepción"
         />
-        <Column
-          header="Reten."
-          body={(rowData) => {
-            if (!rowData.aplicaRetencion) return "-";
-            return (
-              <div style={{ textAlign: "center" }}>
-                <Tag
-                  value={`${Number(rowData.porcentajeRetencion || 0).toFixed(2)}%`}
-                  severity="help"
-                  icon="pi pi-percentage"
-                  style={{ fontSize: "0.75rem" }}
-                />
-              </div>
-            );
-          }}
-          style={{ width: 90, textAlign: "center", verticalAlign: "top" }}
-          bodyStyle={{ textAlign: "center" }}
-        />
-        <Column
-          header="Percep."
-          body={(rowData) => {
-            if (!rowData.aplicaPercepcion) return "-";
-            return (
-              <div style={{ textAlign: "center" }}>
-                <Tag
-                  value={`${Number(rowData.porcentajePercepcion || 0).toFixed(2)}%`}
-                  severity="info"
-                  icon="pi pi-percentage"
-                  style={{ fontSize: "0.75rem" }}
-                />
-              </div>
-            );
-          }}
-          style={{ width: 90, textAlign: "center", verticalAlign: "top" }}
-          bodyStyle={{ textAlign: "center" }}
-        />
-
         {/* Centro de Costo */}
         <Column
           field="centroCostoId"
@@ -2953,7 +3033,7 @@ export default function OrdenCompra({ ruta }) {
         generarCuentaPorPagar={generarCuentaPorPagar}
       />
 
-           {/* Viewers de Reportes */}
+      {/* Viewers de Reportes */}
       {showPDFViewer && (
         <TemporaryPDFViewer
           visible={showPDFViewer}

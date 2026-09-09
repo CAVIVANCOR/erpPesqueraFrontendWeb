@@ -20,6 +20,7 @@ import PdfComprobanteProveedorCard from "./PdfComprobanteProveedorCard";
 import { useForm } from "react-hook-form";
 import { getOrdenCompraPorId } from "../../api/ordenCompra";
 import { getTiposAfectacionIGVActivos } from "../../api/facturacionElectronica/tipoAfectacionIGV"; // AGREGADO
+import BotonDescargarPDFSunat from '../common/BotonDescargarPDFSunat';
 
 export default function OrdenCompraForm({
   isEdit,
@@ -239,6 +240,7 @@ export default function OrdenCompraForm({
   const [activeTab, setActiveTab] = useState(0);
   const [detallesCount, setDetallesCount] = useState(0);
   const [datosAdicionalesCount, setDatosAdicionalesCount] = useState(0);
+
   const [totales, setTotales] = useState({
     subtotal: 0,
     totalDescuentos: 0,
@@ -602,16 +604,16 @@ export default function OrdenCompraForm({
   // ═══════════════════════════════════════════════════════════════════════════
   // Para NC/ND, el TC debe consultarse con la fecha del documento afectado, no con fechaFacturacion
   const [fechaDcmtoAfectoNCNDInicial, setFechaDcmtoAfectoNCNDInicial] = useState(null);
-  
+
   useEffect(() => {
     // Solo aplicar para NC/ND (códigos SUNAT 07 y 08)
     const tipoDocSunat = tiposDocumento.find(td => td.id === tipoDocumentoFinalId)?.codigoSunat;
     const esNCND = ["07", "08"].includes(tipoDocSunat);
-    
+
     // Verificar si es moneda extranjera
     const monedaSeleccionada = monedas.find(m => m.id === monedaId);
     const esMonedaExtranjera = monedaSeleccionada?.codigoSunat !== "PEN";
-    
+
     if (!esNCND || !fechaDcmtoAfectoNCND || !esMonedaExtranjera) return;
 
     const cargarTCParaNCND = async () => {
@@ -659,7 +661,7 @@ export default function OrdenCompraForm({
     };
     cargarTCParaNCND();
   }, [fechaDcmtoAfectoNCND, fechaDcmtoAfectoNCNDInicial, tipoDocumentoFinalId, tiposDocumento, monedaId, monedas]);
-  
+
   useEffect(() => {
     const obtenerTotalesDelBackend = async () => {
       if (!defaultValues?.id || !isEdit) {
@@ -1722,6 +1724,67 @@ export default function OrdenCompraForm({
               onBeforeGenerate={handleBeforeGenerateAsiento}
             />
           )}
+        </div>
+        <div style={{ flex: 1 }}>
+          <BotonDescargarPDFSunat
+            empresaId={empresaId}
+            rucEmisorReceptor={proveedores.find(p => Number(p.id) === Number(proveedorId))?.numeroDocumento}
+            tipoDocCodigo={tiposDocumento.find(td => Number(td.id) === Number(tipoDocumentoFinalId))?.codigoSunat}
+            serie={numSerieDocFinal}
+            numero={numCorreDocFinal}
+            fechaEmision={fechaFacturacion || fechaDocumento}
+            entityId={defaultValues?.id}
+            moduloDestino="orden-compra"
+            onPDFDescargado={(pdfUrl) => {
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('✅ FORM - PDF descargado, actualizando estado');
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('   PDF URL recibida:', pdfUrl);
+              console.log('   Estado actual urlDocumentoRef:', urlDocumentoRef);
+              console.log('   Valor RHF actual:', getValuesRHF("urlDocumentoRef"));
+              
+              setUrlDocumentoRef(pdfUrl);
+              console.log('   ✅ setUrlDocumentoRef ejecutado');
+              
+              setValueRHF("urlDocumentoRef", pdfUrl);
+              console.log('   ✅ setValueRHF ejecutado');
+              console.log('   Nuevo valor RHF:', pdfUrl);
+              
+              toast.current?.show({
+                severity: 'success',
+                summary: 'Éxito',
+                detail: 'PDF descargado exitosamente desde SUNAT',
+                life: 3000
+              });
+              console.log('   ✅ Toast mostrado');
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            }}
+            onError={(mensaje) => {
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('❌ FORM - Error descargando PDF');
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('   Mensaje:', mensaje);
+              toast.current?.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: mensaje,
+                life: 5000
+              });
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            }}
+            disabled={!isEdit || !defaultValues?.id || !proveedorId || !numSerieDocFinal || !numCorreDocFinal}
+            tooltip={
+              !isEdit
+                ? "Guarda primero el documento"
+                : !defaultValues?.id
+                  ? "Guarda el documento primero"
+                  : !proveedorId
+                    ? "Selecciona un proveedor"
+                    : !numSerieDocFinal || !numCorreDocFinal
+                      ? "Completa los datos del comprobante del proveedor"
+                      : "Descargar PDF del comprobante desde SUNAT"
+            }
+          />
         </div>
         <div style={{ flex: 1 }}>
           <Button

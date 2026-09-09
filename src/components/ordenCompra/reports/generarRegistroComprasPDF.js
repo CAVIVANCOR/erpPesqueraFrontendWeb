@@ -280,21 +280,57 @@ export async function generarRegistroComprasPDF(data) {
     const nroDocProveedor = oc.proveedor?.numeroDocumento || "";
     const razonSocial = (oc.proveedor?.razonSocial || "").substring(0, 28);
     
-    // Usar campos *PEN calculados por el backend (ya vienen convertidos)
-    let subtotalPEN = Number(oc.subtotalPEN || oc.subtotal || 0);
+    // ============================================================
+    // CALCULAR MONTOS POR CATEGORÍA DE AFECTACIÓN IGV PARA SUNAT
+    // ============================================================
+    let subtotalGravadoPEN = 0;
+    let subtotalExoneradoPEN = 0;
+    let subtotalInafectoPEN = 0;
+    
+    // Recorrer detalles para clasificar por tipo de afectación
+    if (oc.detalles && Array.isArray(oc.detalles)) {
+      const tcAplicable = Number(oc.tipoCambioAplicado || oc.tipoCambio || 1);
+      
+      oc.detalles.forEach(detalle => {
+        const subtotalDetalle = Number(detalle.subtotal || 0) * tcAplicable;
+        const categoria = detalle.tipoAfectacionIGV?.categoria;
+        
+        if (categoria === 'INAFECTO') {
+          subtotalInafectoPEN += subtotalDetalle;
+        } else if (categoria === 'EXONERADO' || oc.esExoneradoAlIGV) {
+          subtotalExoneradoPEN += subtotalDetalle;
+        } else {
+          // GRAVADO o sin categoría específica (default gravado)
+          subtotalGravadoPEN += subtotalDetalle;
+        }
+      });
+    } else {
+      // Fallback: Si no hay detalles, usar el subtotal general
+      const subtotalPEN = Number(oc.subtotalPEN || oc.subtotal || 0);
+      if (oc.esExoneradoAlIGV) {
+        subtotalExoneradoPEN = subtotalPEN;
+      } else {
+        subtotalGravadoPEN = subtotalPEN;
+      }
+    }
+    
     let totalIGVPEN = Number(oc.totalIGVPEN || oc.totalIGV || 0);
-    let totalPEN = Number(oc.totalPEN || oc.total || 0);
+    
+    // Total para SUNAT = Base Gravada + IGV (los inafectos NO se suman al total)
+    let totalPEN = subtotalGravadoPEN + totalIGVPEN;
     
     // Si es Nota de Crédito (07), los montos deben ser negativos
     if (tipoDocCodigo === "07") {
-      subtotalPEN = Math.abs(subtotalPEN) * -1;
+      subtotalGravadoPEN = Math.abs(subtotalGravadoPEN) * -1;
+      subtotalExoneradoPEN = Math.abs(subtotalExoneradoPEN) * -1;
+      subtotalInafectoPEN = Math.abs(subtotalInafectoPEN) * -1;
       totalIGVPEN = Math.abs(totalIGVPEN) * -1;
       totalPEN = Math.abs(totalPEN) * -1;
     }
     
-    const baseGravada = !oc.esExoneradoAlIGV ? formatearNumero(subtotalPEN, 2) : "0.00";
+    const baseGravada = formatearNumero(subtotalGravadoPEN, 2);
     const igv = formatearNumero(totalIGVPEN, 2);
-    const baseNoGravada = oc.esExoneradoAlIGV ? formatearNumero(subtotalPEN, 2) : "0.00";
+    const baseNoGravada = formatearNumero(subtotalExoneradoPEN, 2);
     const otrosTributos = formatearNumero(oc.montoImpuestoRenta || 0, 2);
     const total = formatearNumero(totalPEN, 2);
     const moneda = oc.moneda?.codigoSunat || "PEN";
