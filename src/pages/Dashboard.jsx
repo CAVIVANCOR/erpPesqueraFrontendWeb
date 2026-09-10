@@ -513,6 +513,24 @@ export default function Dashboard() {
           tab: "operaciones", // ← NUEVO
         },
         {
+          label: "Detracciones",
+          key: "detraccion",
+          icon: "pi-percentage",
+          tab: "operaciones",
+        },
+        {
+          label: "Retenciones",
+          key: "retencion",
+          icon: "pi-minus-circle",
+          tab: "operaciones",
+        },
+        {
+          label: "Percepciones",
+          key: "percepcion",
+          icon: "pi-plus-circle",
+          tab: "operaciones",
+        },
+        {
           label: "Categoría Tipo Movimiento caja",
           key: "categoriaTipoMovimientoCaja",
           icon: "pi-money-bill",
@@ -785,24 +803,6 @@ export default function Dashboard() {
           label: "Movimientos Activo Fijo",
           key: "movActivoFijo",
           icon: "pi-chart-line",
-          tab: "operaciones",
-        },
-        {
-          label: "Comprobantes de Detraccion",
-          key: "detraccion",
-          icon: "pi-minus-circle",
-          tab: "operaciones",
-        },
-        {
-          label: "Comprobantes de Retenciones",
-          key: "retencion",
-          icon: "pi-percentage",
-          tab: "operaciones",
-        },
-        {
-          label: "Comprobantes de Percepciones",
-          key: "percepcion",
-          icon: "pi-plus-circle",
           tab: "operaciones",
         },
         {

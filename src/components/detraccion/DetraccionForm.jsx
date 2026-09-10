@@ -1,4 +1,4 @@
-// src/components/percepcion/PercepcionForm.jsx
+// src/components/detraccion/DetraccionForm.jsx
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Button } from "primereact/button";
@@ -14,41 +14,41 @@ import { formatearNumero } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import BooleanToggleButton from "../common/BooleanToggleButton";
 import {
-  getPercepcionById,
-} from "../../api/tesoreria/percepcion";
+  getDetraccionById,
+} from "../../api/tesoreria/detraccion";
 
 // ════════════════════════════════════════════════════════════
-// CONSTANTES DE CONFIGURACIÓN - PERCEPCIONES
+// CONSTANTES DE CONFIGURACIÓN - DETRACCIONES
 // ════════════════════════════════════════════════════════════
 
 /**
- * ID del tipo "PERCEPCION" en la tabla TipoProvieneDe
- * Este valor se utiliza para filtrar los estados específicos de percepciones
+ * ID del tipo "DETRACCION" en la tabla TipoProvieneDe
+ * Este valor se utiliza para filtrar los estados específicos de detracciones
  * en la tabla EstadoMultiFuncion mediante el campo tipoProvieneDeId
  * 
- * Referencia: TipoProvieneDe.id = 30 → "PERCEPCION"
+ * Referencia: TipoProvieneDe.id = 28 → "DETRACCION"
  * 
- * Estados disponibles para percepciones (tipoProvieneDeId = 30):
- * - 132: PENDIENTE (secondary) - Percepción registrada, pendiente de validación
- * - 133: VALIDADO (success) - Percepción validada y confirmada
- * - 134: ASIENTO GENERADO (contrast) - Asiento contable generado automáticamente
+ * Estados disponibles para detracciones (tipoProvieneDeId = 28):
+ * - 126: PENDIENTE (secondary) - Detracción registrada, pendiente de validación
+ * - 127: VALIDADO (success) - Detracción validada y confirmada
+ * - 128: ASIENTO GENERADO (contrast) - Asiento contable generado automáticamente
  */
-const TIPO_PROVIENE_DE_PERCEPCION = 30;
+const TIPO_PROVIENE_DE_DETRACCION = 28;
 
 /**
- * Estado por defecto para nuevas percepciones
+ * Estado por defecto para nuevas detracciones
  * IMPORTANTE: Este ID corresponde al estado "PENDIENTE" en EstadoMultiFuncion
- * donde tipoProvieneDeId = 30 (PERCEPCION)
+ * donde tipoProvieneDeId = 28 (DETRACCION)
  */
-const ESTADO_DEFAULT_PENDIENTE = 132;
+const ESTADO_DEFAULT_PENDIENTE = 126;
 
 /**
- * IDs de estados específicos para percepciones
+ * IDs de estados específicos para detracciones
  */
-const ESTADOS_PERCEPCION = {
-  PENDIENTE: 132,           // Percepción pendiente
-  VALIDADO: 133,            // Percepción validada
-  ASIENTO_GENERADO: 134,    // Asiento contable generado
+const ESTADOS_DETRACCION = {
+  PENDIENTE: 126,           // Detracción pendiente
+  VALIDADO: 127,            // Detracción validada
+  ASIENTO_GENERADO: 128,    // Asiento contable generado
 };
 
 /**
@@ -56,12 +56,12 @@ const ESTADOS_PERCEPCION = {
  */
 const MONTO_DEFAULT = 0;
 
-const PercepcionForm = forwardRef((props, ref) => {
+const DetraccionForm = forwardRef((props, ref) => {
   const {
     isEdit,
     defaultValues,
     empresas,
-    tiposRetencionPercepcion,
+    tiposDetraccion,
     monedas,
     estados,
     periodosContables,
@@ -88,17 +88,19 @@ const PercepcionForm = forwardRef((props, ref) => {
     ordenCompraId: defaultValues?.ordenCompraId ? Number(defaultValues.ordenCompraId) : null,
     origenOperacionComprasVentas: defaultValues?.origenOperacionComprasVentas || false,
     entidadComercialId: defaultValues?.entidadComercialId ? Number(defaultValues.entidadComercialId) : null,
-    tipoRetencionPercepcionId: defaultValues?.tipoRetencionPercepcionId ? Number(defaultValues.tipoRetencionPercepcionId) : null,
-    tasaPercepcion: defaultValues?.tasaPercepcion || 0,
+    tipoDetraccionId: defaultValues?.tipoDetraccionId ? Number(defaultValues.tipoDetraccionId) : null,
+    tasaDetraccion: defaultValues?.tasaDetraccion || 0,
     tipoDocumentoId: defaultValues?.tipoDocumentoId ? Number(defaultValues.tipoDocumentoId) : null,
     numeroDocumento: defaultValues?.numeroDocumento || "",
     fechaEmision: defaultValues?.fechaEmision ? new Date(defaultValues.fechaEmision) : new Date(),
     monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
     importeTotal: defaultValues?.importeTotal || MONTO_DEFAULT,
-    importePercibido: defaultValues?.importePercibido || MONTO_DEFAULT,
+    importeRequerido: defaultValues?.importeRequerido || MONTO_DEFAULT,
     importePagado: defaultValues?.importePagado || MONTO_DEFAULT,
     saldoPendiente: defaultValues?.saldoPendiente || MONTO_DEFAULT,
     estadoPagoId: defaultValues?.estadoPagoId ? Number(defaultValues.estadoPagoId) : ESTADO_DEFAULT_PENDIENTE,
+    cuentaBNSunatPropiaId: defaultValues?.cuentaBNSunatPropiaId ? Number(defaultValues.cuentaBNSunatPropiaId) : null,
+    cuentaBNSunatProveedorId: defaultValues?.cuentaBNSunatProveedorId ? Number(defaultValues.cuentaBNSunatProveedorId) : null,
     aplicado: defaultValues?.aplicado || false,
     fechaAplicacion: defaultValues?.fechaAplicacion ? new Date(defaultValues.fechaAplicacion) : null,
     observaciones: defaultValues?.observaciones || "",
@@ -160,41 +162,41 @@ const PercepcionForm = forwardRef((props, ref) => {
     return moneda?.colorFondo || "#ffffff";
   };
 
-  // Calcular saldoPendiente cuando cambie importePercibido o importePagado
+  // Calcular saldoPendiente cuando cambie importeRequerido o importePagado
   useEffect(() => {
-    const nuevoSaldo = Number(formData.importePercibido) - Number(formData.importePagado || 0);
+    const nuevoSaldo = Number(formData.importeRequerido) - Number(formData.importePagado || 0);
     if (nuevoSaldo !== formData.saldoPendiente) {
       onChange("saldoPendiente", nuevoSaldo);
     }
-  }, [formData.importePercibido, formData.importePagado]);
+  }, [formData.importeRequerido, formData.importePagado]);
 
   // Calcular estado automáticamente según pagos
   useEffect(() => {
     // Por ahora, el estado se maneja manualmente
-    // No hay cálculo automático de estados para percepciones
+    // No hay cálculo automático de estados para detracciones
   }, [
-    formData.importePercibido,
+    formData.importeRequerido,
     formData.importePagado,
     formData.saldoPendiente,
     isEdit,
   ]);
 
-  const recargarPercepcionDesdeBackend = async () => {
+  const recargarDetraccionDesdeBackend = async () => {
     if (!isEdit || !defaultValues?.id) return;
 
     try {
-      const percepcionActualizada = await getPercepcionById(defaultValues.id);
-      onChange("importePercibido", percepcionActualizada.importePercibido || 0);
-      onChange("importePagado", percepcionActualizada.importePagado || 0);
-      onChange("saldoPendiente", percepcionActualizada.saldoPendiente || 0);
-      onChange("estadoPagoId", percepcionActualizada.estadoPagoId || ESTADO_DEFAULT_PENDIENTE);
+      const detraccionActualizada = await getDetraccionById(defaultValues.id);
+      onChange("importeRequerido", detraccionActualizada.importeRequerido || 0);
+      onChange("importePagado", detraccionActualizada.importePagado || 0);
+      onChange("saldoPendiente", detraccionActualizada.saldoPendiente || 0);
+      onChange("estadoPagoId", detraccionActualizada.estadoPagoId || ESTADO_DEFAULT_PENDIENTE);
     } catch (error) {
-      console.error("Error al recargar percepción desde backend:", error);
+      console.error("Error al recargar detracción desde backend:", error);
     }
   };
 
   useImperativeHandle(ref, () => ({
-    recargarPercepcionDesdeBackend,
+    recargarDetraccionDesdeBackend,
   }));
 
   const handleSubmit = () => {
@@ -206,17 +208,19 @@ const PercepcionForm = forwardRef((props, ref) => {
       ordenCompraId: formData.ordenCompraId ? Number(formData.ordenCompraId) : null,
       origenOperacionComprasVentas: formData.origenOperacionComprasVentas || false,
       entidadComercialId: Number(formData.entidadComercialId),
-      tipoRetencionPercepcionId: formData.tipoRetencionPercepcionId ? Number(formData.tipoRetencionPercepcionId) : null,
-      tasaPercepcion: Number(formData.tasaPercepcion) || 0,
+      tipoDetraccionId: formData.tipoDetraccionId ? Number(formData.tipoDetraccionId) : null,
+      tasaDetraccion: Number(formData.tasaDetraccion) || 0,
       tipoDocumentoId: formData.tipoDocumentoId ? Number(formData.tipoDocumentoId) : null,
       numeroDocumento: formData.numeroDocumento || null,
       fechaEmision: formData.fechaEmision || null,
       monedaId: Number(formData.monedaId),
       importeTotal: Number(formData.importeTotal) || MONTO_DEFAULT,
-      importePercibido: Number(formData.importePercibido),
+      importeRequerido: Number(formData.importeRequerido),
       importePagado: Number(formData.importePagado) || MONTO_DEFAULT,
       saldoPendiente: Number(formData.saldoPendiente),
       estadoPagoId: Number(formData.estadoPagoId),
+      cuentaBNSunatPropiaId: formData.cuentaBNSunatPropiaId ? Number(formData.cuentaBNSunatPropiaId) : null,
+      cuentaBNSunatProveedorId: formData.cuentaBNSunatProveedorId ? Number(formData.cuentaBNSunatProveedorId) : null,
       aplicado: formData.aplicado || false,
       fechaAplicacion: formData.fechaAplicacion || null,
       observaciones: formData.observaciones || null,
@@ -304,19 +308,19 @@ const PercepcionForm = forwardRef((props, ref) => {
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              {/* Tipo Percepción */}
+              {/* Tipo Detracción */}
               <div style={{ flex: 1 }}>
-                <label htmlFor="tipoRetencionPercepcionId">
-                  Tipo de Percepción
+                <label htmlFor="tipoDetraccionId">
+                  Tipo de Detracción
                 </label>
                 <Dropdown
-                  id="tipoRetencionPercepcionId"
-                  value={formData.tipoRetencionPercepcionId}
-                  options={tiposRetencionPercepcion?.map((t) => ({
+                  id="tipoDetraccionId"
+                  value={formData.tipoDetraccionId}
+                  options={tiposDetraccion?.map((t) => ({
                     label: `${t.codigo} - ${t.nombre}`,
                     value: Number(t.id),
                   })) || []}
-                  onChange={(e) => onChange("tipoRetencionPercepcionId", e.value)}
+                  onChange={(e) => onChange("tipoDetraccionId", e.value)}
                   placeholder="Seleccione tipo"
                   filter
                   showClear
@@ -324,15 +328,15 @@ const PercepcionForm = forwardRef((props, ref) => {
                 />
               </div>
 
-              {/* Tasa Percepción */}
+              {/* Tasa Detracción */}
               <div style={{ flex: 1 }}>
-                <label htmlFor="tasaPercepcion">
-                  Tasa Percepción (%)
+                <label htmlFor="tasaDetraccion">
+                  Tasa Detracción (%)
                 </label>
                 <InputNumber
-                  id="tasaPercepcion"
-                  value={formData.tasaPercepcion}
-                  onValueChange={(e) => onChange("tasaPercepcion", e.value || 0)}
+                  id="tasaDetraccion"
+                  value={formData.tasaDetraccion}
+                  onValueChange={(e) => onChange("tasaDetraccion", e.value || 0)}
                   mode="decimal"
                   minFractionDigits={2}
                   maxFractionDigits={2}
@@ -410,15 +414,15 @@ const PercepcionForm = forwardRef((props, ref) => {
                 />
               </div>
 
-              {/* Importe Percibido */}
+              {/* Importe Requerido */}
               <div style={{ flex: 1 }}>
-                <label htmlFor="importePercibido">
-                  Importe Percibido <span className="text-red-500">*</span>
+                <label htmlFor="importeRequerido">
+                  Importe Requerido <span className="text-red-500">*</span>
                 </label>
                 <InputNumber
-                  id="importePercibido"
-                  value={formData.importePercibido}
-                  onValueChange={(e) => onChange("importePercibido", e.value || 0)}
+                  id="importeRequerido"
+                  value={formData.importeRequerido}
+                  onValueChange={(e) => onChange("importeRequerido", e.value || 0)}
                   mode="decimal"
                   minFractionDigits={2}
                   maxFractionDigits={2}
@@ -473,7 +477,7 @@ const PercepcionForm = forwardRef((props, ref) => {
                   id="estadoPagoId"
                   value={formData.estadoPagoId}
                   options={estados
-                    ?.filter((e) => Number(e.tipoProvieneDeId) === TIPO_PROVIENE_DE_PERCEPCION)
+                    ?.filter((e) => Number(e.tipoProvieneDeId) === TIPO_PROVIENE_DE_DETRACCION)
                     ?.map((e) => ({
                       label: e.descripcion,
                       value: Number(e.id),
@@ -595,7 +599,7 @@ const PercepcionForm = forwardRef((props, ref) => {
           <TabPanel header="Pagos" leftIcon="pi pi-money-bill">
             <div className="p-fluid">
               <p style={{ marginBottom: "1rem", color: "#666" }}>
-                Los pagos de percepción se registran en el módulo de Movimientos de Caja
+                Los pagos de detracción se registran en el módulo de Movimientos de Caja
               </p>
               
               {/* Aquí irían los pagos vinculados desde MovimientoCaja */}
@@ -615,4 +619,4 @@ const PercepcionForm = forwardRef((props, ref) => {
   );
 });
 
-export default PercepcionForm;
+export default DetraccionForm;

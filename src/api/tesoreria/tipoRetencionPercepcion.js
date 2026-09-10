@@ -38,3 +38,16 @@ export async function eliminarTipoRetencionPercepcion(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Obtiene todos los tipos de retención/percepción activos
+ */
+export async function getTiposRetencionPercepcionActivos() {
+  try {
+    const res = await axios.get(`${API_URL}/activos`, { headers: getAuthHeaders() });
+    return res.data;
+  } catch (error) {
+    console.error('Error al obtener tipos de retención/percepción activos:', error);
+    throw error;
+  }
+}

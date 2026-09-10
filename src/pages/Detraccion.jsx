@@ -1,4 +1,4 @@
-// src/pages/Percepcion.jsx
+// src/pages/Detraccion.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
@@ -11,25 +11,25 @@ import { Toolbar } from "primereact/toolbar";
 import { Tag } from "primereact/tag";
 import { Dropdown } from "primereact/dropdown";
 import EmpresaSelector from "../components/common/EmpresaSelector";
-import PercepcionForm from "../components/percepcion/PercepcionForm";
+import DetraccionForm from "../components/detraccion/DetraccionForm";
 import {
-  getPercepciones,
-  getPercepcionById,
-  createPercepcion,
-  updatePercepcion,
-  deletePercepcion,
-} from "../api/tesoreria/percepcion";
+  getDetracciones,
+  getDetraccionById,
+  createDetraccion,
+  updateDetraccion,
+  deleteDetraccion,
+} from "../api/tesoreria/detraccion";
 import { getEmpresas } from "../api/empresa";
 import { getMonedas } from "../api/moneda";
 import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { getPeriodosContables } from "../api/contabilidad/periodoContable";
-import { getTiposRetencionPercepcionActivos } from "../api/tesoreria/tipoRetencionPercepcion";
+import { getTiposDetraccionActivos } from "../api/tesoreria/tipoDetraccion";
 import { getEntidadesComerciales } from "../api/entidadComercial";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
 
-export default function Percepcion({ ruta }) {
+export default function Detraccion({ ruta }) {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
   const formRef = useRef(null);
@@ -39,9 +39,9 @@ export default function Percepcion({ ruta }) {
   }
 
   const toast = useRef(null);
-  const [percepciones, setPercepciones] = useState([]);
+  const [detracciones, setDetracciones] = useState([]);
   const [empresas, setEmpresas] = useState([]);
-  const [tiposRetencionPercepcion, setTiposRetencionPercepcion] = useState([]);
+  const [tiposDetraccion, setTiposDetraccion] = useState([]);
   const [monedas, setMonedas] = useState([]);
   const [estados, setEstados] = useState([]);
   const [periodosContables, setPeriodosContables] = useState([]);
@@ -49,7 +49,7 @@ export default function Percepcion({ ruta }) {
 
   // Estados de filtros
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
-  const [tipoRetencionPercepcionSeleccionado, setTipoRetencionPercepcionSeleccionado] = useState(null);
+  const [tipoDetraccionSeleccionado, setTipoDetraccionSeleccionado] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
   const [origenSeleccionado, setOrigenSeleccionado] = useState("TODOS"); // "TODOS" | "VENTA" | "COMPRA"
@@ -57,16 +57,16 @@ export default function Percepcion({ ruta }) {
   const [periodosContablesFiltrados, setPeriodosContablesFiltrados] = useState([]);
 
   // Opciones dinámicas para filtros
-  const [percepcionesFiltradas, setPercepcionesFiltradas] = useState([]);
+  const [detraccionesFiltradas, setDetraccionesFiltradas] = useState([]);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
-  const [tiposRetencionPercepcionUnicos, setTiposRetencionPercepcionUnicos] = useState([]);
+  const [tiposDetraccionUnicos, setTiposDetraccionUnicos] = useState([]);
   const [estadosUnicos, setEstadosUnicos] = useState([]);
   const [monedasUnicas, setMonedasUnicas] = useState([]);
   const [periodosUnicos, setPeriodosUnicos] = useState([]);
 
-  const [selectedPercepcion, setSelectedPercepcion] = useState(null);
-  const [percepcionDialog, setPercepcionDialog] = useState(false);
-  const [deletePercepcionDialog, setDeletePercepcionDialog] = useState(false);
+  const [selectedDetraccion, setSelectedDetraccion] = useState(null);
+  const [detraccionDialog, setDetraccionDialog] = useState(false);
+  const [deleteDetraccionDialog, setDeleteDetraccionDialog] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [loading, setLoading] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -80,14 +80,14 @@ export default function Percepcion({ ruta }) {
   useEffect(() => {
     const opciones = obtenerOpcionesDinamicas();
 
-    setTiposRetencionPercepcionUnicos(opciones.tiposRetencionPercepcionUnicos);
+    setTiposDetraccionUnicos(opciones.tiposDetraccionUnicos);
     setEstadosUnicos(opciones.estadosUnicos);
     setMonedasUnicas(opciones.monedasUnicas);
     setPeriodosUnicos(opciones.periodosUnicos);
 
     // Limpiar selecciones que ya no existen
-    if (tipoRetencionPercepcionSeleccionado && !opciones.tiposRetencionPercepcionUnicos.find(t => Number(t.id) === Number(tipoRetencionPercepcionSeleccionado))) {
-      setTipoRetencionPercepcionSeleccionado(null);
+    if (tipoDetraccionSeleccionado && !opciones.tiposDetraccionUnicos.find(t => Number(t.id) === Number(tipoDetraccionSeleccionado))) {
+      setTipoDetraccionSeleccionado(null);
     }
     if (estadoSeleccionado && !opciones.estadosUnicos.find(e => Number(e.id) === Number(estadoSeleccionado))) {
       setEstadoSeleccionado(null);
@@ -98,7 +98,7 @@ export default function Percepcion({ ruta }) {
     if (periodoContableSeleccionado && !opciones.periodosUnicos.find(p => Number(p.id) === Number(periodoContableSeleccionado))) {
       setPeriodoContableSeleccionado(null);
     }
-  }, [itemsFiltrados, percepcionesFiltradas, empresaSeleccionada]);
+  }, [itemsFiltrados, detraccionesFiltradas, empresaSeleccionada]);
 
   // Filtrar períodos contables por empresa seleccionada
   useEffect(() => {
@@ -112,9 +112,9 @@ export default function Percepcion({ ruta }) {
     }
   }, [empresaSeleccionada, periodosContables]);
 
-  // Aplicar filtros a las percepciones
+  // Aplicar filtros a las detracciones
   useEffect(() => {
-    let filtrados = percepciones;
+    let filtrados = detracciones;
 
     // Filtro por empresa (nivel 1)
     if (empresaSeleccionada) {
@@ -122,12 +122,12 @@ export default function Percepcion({ ruta }) {
         (item) => Number(item.empresaId) === Number(empresaSeleccionada)
       );
     }
-    setPercepcionesFiltradas(filtrados);
+    setDetraccionesFiltradas(filtrados);
 
     // Filtros secundarios
-    if (tipoRetencionPercepcionSeleccionado) {
+    if (tipoDetraccionSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => Number(item.tipoRetencionPercepcionId) === Number(tipoRetencionPercepcionSeleccionado)
+        (item) => Number(item.tipoDetraccionId) === Number(tipoDetraccionSeleccionado)
       );
     }
 
@@ -159,38 +159,38 @@ export default function Percepcion({ ruta }) {
     setItemsFiltrados(filtrados);
   }, [
     empresaSeleccionada,
-    tipoRetencionPercepcionSeleccionado,
+    tipoDetraccionSeleccionado,
     estadoSeleccionado,
     monedaSeleccionada,
     origenSeleccionado,
     periodoContableSeleccionado,
-    percepciones,
+    detracciones,
   ]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       const [
-        percepcionesData,
+        detraccionesData,
         empresasData,
-        tiposRetencionPercepcionData,
+        tiposDetraccionData,
         monedasData,
         estadosData,
         periodosContablesData,
         entidadesComercialesData,
       ] = await Promise.all([
-        getPercepciones(),
+        getDetracciones(),
         getEmpresas(),
-        getTiposRetencionPercepcionActivos(),
+        getTiposDetraccionActivos(),
         getMonedas(),
         getEstadosMultiFuncion(),
         getPeriodosContables(),
         getEntidadesComerciales(),
       ]);
 
-      setPercepciones(percepcionesData || []);
+      setDetracciones(detraccionesData || []);
       setEmpresas(empresasData || []);
-      setTiposRetencionPercepcion(tiposRetencionPercepcionData || []);
+      setTiposDetraccion(tiposDetraccionData || []);
       setMonedas(monedasData || []);
       setEstados(estadosData || []);
       setPeriodosContables(periodosContablesData || []);
@@ -210,13 +210,13 @@ export default function Percepcion({ ruta }) {
 
   // Generar opciones dinámicas basadas en datos filtrados
   const obtenerOpcionesDinamicas = () => {
-    const datosParaOpciones = itemsFiltrados.length > 0 ? itemsFiltrados : percepcionesFiltradas;
+    const datosParaOpciones = itemsFiltrados.length > 0 ? itemsFiltrados : detraccionesFiltradas;
 
-    // Tipos de percepción únicos
-    const tiposRetencionPercepcionUnicos = [...new Map(
+    // Tipos de detracción únicos
+    const tiposDetraccionUnicos = [...new Map(
       datosParaOpciones
-        .filter(d => d.tipoRetencionPercepcion)
-        .map(d => [d.tipoRetencionPercepcion.id, d.tipoRetencionPercepcion])
+        .filter(d => d.tipoDetraccion)
+        .map(d => [d.tipoDetraccion.id, d.tipoDetraccion])
     ).values()];
 
     // Estados únicos
@@ -241,7 +241,7 @@ export default function Percepcion({ ruta }) {
     ).values()];
 
     return {
-      tiposRetencionPercepcionUnicos,
+      tiposDetraccionUnicos,
       estadosUnicos,
       monedasUnicas,
       periodosUnicos
@@ -252,42 +252,42 @@ export default function Percepcion({ ruta }) {
     setFormData({
       empresaId: empresaSeleccionada,
     });
-    setSelectedPercepcion(null);
+    setSelectedDetraccion(null);
     setIsEdit(false);
-    setPercepcionDialog(true);
+    setDetraccionDialog(true);
   };
 
   const hideDialog = () => {
-    setPercepcionDialog(false);
+    setDetraccionDialog(false);
     setFormData({});
-    setSelectedPercepcion(null);
+    setSelectedDetraccion(null);
   };
 
-  const editPercepcion = async (percepcion) => {
+  const editDetraccion = async (detraccion) => {
     try {
       setLoading(true);
-      const percepcionCompleta = await getPercepcionById(percepcion.id);
+      const detraccionCompleta = await getDetraccionById(detraccion.id);
 
       const dataParaEdicion = {
-        ...percepcionCompleta,
-        empresaId: Number(percepcionCompleta.empresaId),
-        entidadComercialId: Number(percepcionCompleta.entidadComercialId),
-        tipoRetencionPercepcionId: percepcionCompleta.tipoRetencionPercepcionId ? Number(percepcionCompleta.tipoRetencionPercepcionId) : null,
-        monedaId: Number(percepcionCompleta.monedaId),
-        estadoPagoId: Number(percepcionCompleta.estadoPagoId),
-        periodoContableId: percepcionCompleta.periodoContableId ? Number(percepcionCompleta.periodoContableId) : null,
+        ...detraccionCompleta,
+        empresaId: Number(detraccionCompleta.empresaId),
+        entidadComercialId: Number(detraccionCompleta.entidadComercialId),
+        tipoDetraccionId: detraccionCompleta.tipoDetraccionId ? Number(detraccionCompleta.tipoDetraccionId) : null,
+        monedaId: Number(detraccionCompleta.monedaId),
+        estadoPagoId: Number(detraccionCompleta.estadoPagoId),
+        periodoContableId: detraccionCompleta.periodoContableId ? Number(detraccionCompleta.periodoContableId) : null,
       };
 
       setFormData(dataParaEdicion);
-      setSelectedPercepcion(percepcion);
+      setSelectedDetraccion(detraccion);
       setIsEdit(true);
-      setPercepcionDialog(true);
+      setDetraccionDialog(true);
     } catch (error) {
-      console.error("Error al cargar percepción:", error);
+      console.error("Error al cargar detracción:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar percepción",
+        detail: "Error al cargar detracción",
         life: 3000,
       });
     } finally {
@@ -295,8 +295,8 @@ export default function Percepcion({ ruta }) {
     }
   };
 
-  const savePercepcion = async (data) => {
-    const esEdicion = isEdit && selectedPercepcion;
+  const saveDetraccion = async (data) => {
+    const esEdicion = isEdit && selectedDetraccion;
 
     if (esEdicion && !permisos.puedeEditar) {
       toast.current?.show({
@@ -334,24 +334,24 @@ export default function Percepcion({ ruta }) {
       };
 
       if (esEdicion) {
-        await updatePercepcion(selectedPercepcion.id, dataConAuditoria);
+        await updateDetraccion(selectedDetraccion.id, dataConAuditoria);
 
-        if (formRef.current?.recargarPercepcionDesdeBackend) {
-          await formRef.current.recargarPercepcionDesdeBackend();
+        if (formRef.current?.recargarDetraccionDesdeBackend) {
+          await formRef.current.recargarDetraccionDesdeBackend();
         }
 
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
-          detail: "Percepción actualizada correctamente",
+          detail: "Detracción actualizada correctamente",
           life: 3000,
         });
       } else {
-        await createPercepcion(dataConAuditoria);
+        await createDetraccion(dataConAuditoria);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
-          detail: "Percepción creada correctamente",
+          detail: "Detracción creada correctamente",
           life: 3000,
         });
         hideDialog();
@@ -359,13 +359,13 @@ export default function Percepcion({ ruta }) {
 
       loadData();
     } catch (error) {
-      console.error("Error al guardar percepción:", error);
+      console.error("Error al guardar detracción:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
         detail:
           error.response?.data?.message ||
-          "Error al guardar percepción",
+          "Error al guardar detracción",
         life: 3000,
       });
     } finally {
@@ -373,7 +373,7 @@ export default function Percepcion({ ruta }) {
     }
   };
 
-  const confirmDeletePercepcion = (percepcion) => {
+  const confirmDeleteDetraccion = (detraccion) => {
     if (!permisos.puedeEliminar) {
       toast.current?.show({
         severity: "warn",
@@ -383,33 +383,33 @@ export default function Percepcion({ ruta }) {
       });
       return;
     }
-    setSelectedPercepcion(percepcion);
-    setDeletePercepcionDialog(true);
+    setSelectedDetraccion(detraccion);
+    setDeleteDetraccionDialog(true);
   };
 
-  const deletePercepcionConfirmed = async () => {
+  const deleteDetraccionConfirmed = async () => {
     try {
       setLoading(true);
-      await deletePercepcion(selectedPercepcion.id);
+      await deleteDetraccion(selectedDetraccion.id);
 
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: "Percepción eliminada correctamente",
+        detail: "Detracción eliminada correctamente",
         life: 3000,
       });
 
-      setDeletePercepcionDialog(false);
-      setSelectedPercepcion(null);
+      setDeleteDetraccionDialog(false);
+      setSelectedDetraccion(null);
       loadData();
     } catch (error) {
-      console.error("Error al eliminar percepción:", error);
+      console.error("Error al eliminar detracción:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
         detail:
           error.response?.data?.message ||
-          "Error al eliminar percepción",
+          "Error al eliminar detracción",
         life: 3000,
       });
     } finally {
@@ -417,14 +417,14 @@ export default function Percepcion({ ruta }) {
     }
   };
 
-  const hideDeletePercepcionDialog = () => {
-    setDeletePercepcionDialog(false);
-    setSelectedPercepcion(null);
+  const hideDeleteDetraccionDialog = () => {
+    setDeleteDetraccionDialog(false);
+    setSelectedDetraccion(null);
   };
 
   const limpiarFiltros = () => {
     setEmpresaSeleccionada(null);
-    setTipoRetencionPercepcionSeleccionado(null);
+    setTipoDetraccionSeleccionado(null);
     setEstadoSeleccionado(null);
     setMonedaSeleccionada(null);
     setOrigenSeleccionado("TODOS");
@@ -442,8 +442,8 @@ export default function Percepcion({ ruta }) {
     return rowData.entidadComercial?.razonSocial || "-";
   };
 
-  const tipoRetencionPercepcionBodyTemplate = (rowData) => {
-    return rowData.tipoRetencionPercepcion?.nombre || "-";
+  const tipoDetraccionBodyTemplate = (rowData) => {
+    return rowData.tipoDetraccion?.nombre || "-";
   };
 
   const origenBodyTemplate = (rowData) => {
@@ -541,7 +541,7 @@ export default function Percepcion({ ruta }) {
         <Button
           icon="pi pi-pencil"
           className="p-button-rounded p-button-success p-button-sm"
-          onClick={() => editPercepcion(rowData)}
+          onClick={() => editDetraccion(rowData)}
           disabled={!permisos.puedeVer && !permisos.puedeEditar}
           tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
           tooltipOptions={{ position: "top" }}
@@ -549,7 +549,7 @@ export default function Percepcion({ ruta }) {
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-danger p-button-sm"
-          onClick={() => confirmDeletePercepcion(rowData)}
+          onClick={() => confirmDeleteDetraccion(rowData)}
           disabled={!permisos.puedeEliminar}
           tooltip="Eliminar"
           tooltipOptions={{ position: "top" }}
@@ -558,19 +558,19 @@ export default function Percepcion({ ruta }) {
     );
   };
 
-  const deletePercepcionDialogFooter = (
+  const deleteDetraccionDialogFooter = (
     <>
       <Button
         label="No"
         icon="pi pi-times"
         className="p-button-text"
-        onClick={hideDeletePercepcionDialog}
+        onClick={hideDeleteDetraccionDialog}
       />
       <Button
         label="Sí"
         icon="pi pi-check"
         className="p-button-danger"
-        onClick={deletePercepcionConfirmed}
+        onClick={deleteDetraccionConfirmed}
         loading={loading}
       />
     </>
@@ -583,7 +583,7 @@ export default function Percepcion({ ruta }) {
         value={itemsFiltrados}
         loading={loading}
         globalFilter={globalFilter}
-        emptyMessage="No se encontraron percepciones"
+        emptyMessage="No se encontraron detracciones"
         stripedRows
         showGridlines
         paginator
@@ -601,7 +601,7 @@ export default function Percepcion({ ruta }) {
               }}
             >
               <div style={{ flex: 1 }}>
-                <h2>Gestión de Percepciones</h2>
+                <h2>Gestión de Detracciones</h2>
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ fontWeight: "bold" }}>Empresa*</label>
@@ -625,7 +625,7 @@ export default function Percepcion({ ruta }) {
                       ? "No tiene permisos para crear"
                       : !empresaSeleccionada
                         ? "Seleccione una empresa primero"
-                        : "Nueva Percepción"
+                        : "Nueva Detracción"
                   }
                 />
               </div>
@@ -677,17 +677,17 @@ export default function Percepcion({ ruta }) {
               }}
             >
               <div style={{ flex: 2 }}>
-                <label htmlFor="tipoRetencionPercepcionFiltro" style={{ fontWeight: "bold" }}>
-                  Tipo de Percepción
+                <label htmlFor="tipoDetraccionFiltro" style={{ fontWeight: "bold" }}>
+                  Tipo de Detracción
                 </label>
                 <Dropdown
-                  id="tipoRetencionPercepcionFiltro"
-                  value={tipoRetencionPercepcionSeleccionado}
-                  options={tiposRetencionPercepcionUnicos.map((t) => ({
+                  id="tipoDetraccionFiltro"
+                  value={tipoDetraccionSeleccionado}
+                  options={tiposDetraccionUnicos.map((t) => ({
                     label: t.nombre,
                     value: Number(t.id),
                   }))}
-                  onChange={(e) => setTipoRetencionPercepcionSeleccionado(e.value)}
+                  onChange={(e) => setTipoDetraccionSeleccionado(e.value)}
                   placeholder="Todos"
                   optionLabel="label"
                   optionValue="value"
@@ -817,7 +817,7 @@ export default function Percepcion({ ruta }) {
         />
         <Column
           header="Tipo"
-          body={tipoRetencionPercepcionBodyTemplate}
+          body={tipoDetraccionBodyTemplate}
           sortable
           style={{ minWidth: "150px" }}
         />
@@ -828,8 +828,8 @@ export default function Percepcion({ ruta }) {
           style={{ width: "100px" }}
         />
         <Column
-          header="Importe Percibido"
-          body={(rowData) => montoBodyTemplate(rowData, "importePercibido")}
+          header="Importe Requerido"
+          body={(rowData) => montoBodyTemplate(rowData, "importeRequerido")}
           sortable
           style={{ width: "150px" }}
         />
@@ -866,25 +866,25 @@ export default function Percepcion({ ruta }) {
       </DataTable>
 
       <Dialog
-        visible={percepcionDialog}
+        visible={detraccionDialog}
         style={{ width: "95vw" }}
-        header={isEdit ? "Editar Percepción" : "Nueva Percepción"}
+        header={isEdit ? "Editar Detracción" : "Nueva Detracción"}
         modal
         className="p-fluid"
         onHide={hideDialog}
       >
-        <PercepcionForm
+        <DetraccionForm
           ref={formRef}
           isEdit={isEdit}
           defaultValues={formData}
           empresas={empresas}
-          tiposRetencionPercepcion={tiposRetencionPercepcion}
+          tiposDetraccion={tiposDetraccion}
           monedas={monedas}
           estados={estados}
           periodosContables={periodosContables}
           entidadesComerciales={entidadesComerciales}
           empresaFija={empresaSeleccionada}
-          onSubmit={savePercepcion}
+          onSubmit={saveDetraccion}
           onCancel={hideDialog}
           loading={loading}
           readOnly={!permisos.puedeEditar && isEdit}
@@ -894,21 +894,21 @@ export default function Percepcion({ ruta }) {
       </Dialog>
 
       <Dialog
-        visible={deletePercepcionDialog}
+        visible={deleteDetraccionDialog}
         style={{ width: "450px" }}
         header="Confirmar"
         modal
-        footer={deletePercepcionDialogFooter}
-        onHide={hideDeletePercepcionDialog}
+        footer={deleteDetraccionDialogFooter}
+        onHide={hideDeleteDetraccionDialog}
       >
         <div className="confirmation-content">
           <i
             className="pi pi-exclamation-triangle mr-3"
             style={{ fontSize: "2rem" }}
           />
-          {selectedPercepcion && (
+          {selectedDetraccion && (
             <span>
-              ¿Está seguro de eliminar la percepción <b>{selectedPercepcion.id}</b>?
+              ¿Está seguro de eliminar la detracción <b>{selectedDetraccion.id}</b>?
             </span>
           )}
         </div>

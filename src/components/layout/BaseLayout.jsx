@@ -128,9 +128,6 @@ import Videoconferencia from "../../pages/Videoconferencia";
 import PlanCuentasContable from "../../pages/contabilidad/PlanCuentasContable";
 import PeriodoContable from "../../pages/contabilidad/PeriodoContable";
 import AsientoContable from "../../pages/contabilidad/AsientoContable";
-import Detraccion from "../../pages/contabilidad/Detraccion";
-import Retencion from "../../pages/contabilidad/Retencion";
-import Percepcion from "../../pages/contabilidad/Percepcion";
 import DiarioContable from "../../pages/contabilidad/DiarioContable";
 import MayorContable from "../../pages/contabilidad/MayorContable";
 import BalanceComprobacion from "../../pages/contabilidad/BalanceComprobacion";
@@ -155,7 +152,9 @@ import TipoMovimientoActivoFijo from "../../pages/TipoMovimientoActivoFijo";
 import MovimientoActivoFijo from "../../pages/MovimientoActivoFijo";
 import RendicionGastos from "../../pages/RendicionGastos/RendicionGastosList";
 import TipoLibroContableSunatList from "../../pages/TipoLibroContableSunatList";
-
+import Detraccion from "../../pages/Detraccion";
+import Retencion from "../../pages/Retencion";
+import Percepcion from "../../pages/Percepcion";
 /**
  * BaseLayout - Layout principal con gestión de módulos
  *
@@ -323,6 +322,18 @@ export default function BaseLayout({ children, onLogout }) {
     categoriaTipoDeudaTributaria: {
       label: "Categorias Tipos Deudas Tributarias",
       componente: <CategoriaTipoDeudaTributaria ruta="categoriaTipoDeudaTributaria" />,
+    },
+    detraccion: {
+      label: "Detracciones",
+      componente: <Detraccion ruta="detraccion" />,
+    },
+    retencion: {
+      label: "Retenciones",
+      componente: <Retencion ruta="retencion" />,
+    },
+    percepcion: {
+      label: "Percepciones",
+      componente: <Percepcion ruta="percepcion" />,
     },
     tipoProducto: {
       label: "Tipo Producto",
@@ -679,18 +690,6 @@ export default function BaseLayout({ children, onLogout }) {
     asientoContable: {
       label: "Asientos Contables",
       componente: <AsientoContable ruta="asientoContable" />,
-    },
-    detraccion: {
-      label: "Detracciones",
-      componente: <Detraccion ruta="detraccion" />,
-    },
-    retencion: {
-      label: "Retenciones",
-      componente: <Retencion ruta="retencion" />,
-    },
-    percepcion: {
-      label: "Percepciones",
-      componente: <Percepcion ruta="percepcion" />,
     },
     detalleAsientoContable: {
       label: "Libro Diario",
