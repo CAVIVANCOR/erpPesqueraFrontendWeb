@@ -142,6 +142,31 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       setImporteTotalDetraccion(Number(cuentaPorCobrar.saldoPendiente || 0));
       setImporteTotalRetencion(Number(cuentaPorCobrar.saldoPendiente || 0));
       setImporteTotalPercepcion(Number(cuentaPorCobrar.saldoPendiente || 0));
+
+      // Auto-activar y pre-llenar datos SUNAT si el documento los tiene
+      if (cuentaPorCobrar.tieneDetraccion) {
+        setAplicaDetraccion(true);
+        setTasaDetraccion(Number(cuentaPorCobrar.porcentajeDetraccion || 0));
+        setImporteTotalDetraccion(Number(cuentaPorCobrar.saldoPendiente || 0));
+      } else {
+        setAplicaDetraccion(false);
+      }
+
+      if (cuentaPorCobrar.tieneRetencion) {
+        setAplicaRetencion(true);
+        setTasaRetencion(Number(cuentaPorCobrar.porcentajeRetencion || 0));
+        setImporteTotalRetencion(Number(cuentaPorCobrar.saldoPendiente || 0));
+      } else {
+        setAplicaRetencion(false);
+      }
+
+      if (cuentaPorCobrar.tienePercepcion) {
+        setAplicaPercepcion(true);
+        setTasaPercepcion(Number(cuentaPorCobrar.porcentajePercepcion || 0));
+        setImporteTotalPercepcion(Number(cuentaPorCobrar.saldoPendiente || 0));
+      } else {
+        setAplicaPercepcion(false);
+      }
     }
   }, [visible, cuentaPorCobrar]);
 
@@ -1015,8 +1040,8 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
               <BooleanToggleButton
                 value={aplicaDetraccion}
                 onChange={setAplicaDetraccion}
-                trueLabel="Aplica Detracción"
-                falseLabel="No Aplica Detracción"
+                labelTrue="Aplica Detracción"
+                labelFalse="No Aplica Detracción"
                 size="small"
               />
             </div>
@@ -1147,8 +1172,8 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
               <BooleanToggleButton
                 value={aplicaRetencion}
                 onChange={setAplicaRetencion}
-                trueLabel="Aplica Retención"
-                falseLabel="No Aplica Retención"
+                labelTrue="Aplica Retención"
+                labelFalse="No Aplica Retención"
                 size="small"
               />
             </div>
@@ -1279,8 +1304,8 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
               <BooleanToggleButton
                 value={aplicaPercepcion}
                 onChange={setAplicaPercepcion}
-                trueLabel="Aplica Percepción"
-                falseLabel="No Aplica Percepción"
+                labelTrue="Aplica Percepción"
+                labelFalse="No Aplica Percepción"
                 size="small"
               />
             </div>
@@ -1624,9 +1649,10 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
           {renderInfoDocumento()}
           {renderDatosPago()}
           {renderCargosBancarios()}
-          {renderDetraccion()}
-          {renderRetencion()}
-          {renderPercepcion()}
+          {/* Mostrar secciones SUNAT solo si la CxC tiene estos conceptos */}
+          {cuentaPorCobrar?.tieneDetraccion && renderDetraccion()}
+          {cuentaPorCobrar?.tieneRetencion && renderRetencion()}
+          {cuentaPorCobrar?.tienePercepcion && renderPercepcion()}
           {renderResumen()}
           {renderObservaciones()}
         </div>
