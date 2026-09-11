@@ -192,6 +192,12 @@ export async function guardarAsientoContable(ordenCompraId, asientoData, usuario
 }
 
 
+/**
+ * Asigna un centro de costo a múltiples órdenes de compra de forma masiva
+ * @param {number} centroCostoId - ID del centro de costo a asignar
+ * @param {Array<number>} ordenesIds - Array de IDs de órdenes de compra a actualizar
+ * @returns {Promise<Object>} Resultado de la asignación masiva
+ */
 export async function asignarCentroCostoMasivo(centroCostoId, ordenesIds) {
   const res = await axios.put(
     `${API_URL}/asignar-centro-costo-masivo`,
@@ -199,6 +205,36 @@ export async function asignarCentroCostoMasivo(centroCostoId, ordenesIds) {
     { headers: getAuthHeaders() }
   );
   return res.data;
+}
+
+/**
+ * Asigna un activo a múltiples órdenes de compra de forma masiva
+ * Actualiza el campo activoAfectoId en todas las órdenes seleccionadas
+ * 
+ * PROPÓSITO: Permite identificar a qué activo pertenece el gasto de cada orden de compra,
+ * facilitando la trazabilidad de gastos que afectan activos específicos de la empresa.
+ * 
+ * @param {number} activoId - ID del activo a asignar
+ * @param {Array<number>} ordenesIds - Array de IDs de órdenes de compra a actualizar
+ * @returns {Promise<Object>} Resultado de la asignación masiva con cantidad de registros actualizados
+ * @throws {Error} Si la petición falla o el servidor retorna error
+ * 
+ * @example
+ * const resultado = await asignarActivoMasivo(5, [1, 2, 3, 4]);
+ * // { success: true, count: 4, message: "4 orden(es) de compra actualizada(s) con activo correctamente" }
+ */
+export async function asignarActivoMasivo(activoId, ordenesIds) {
+  try {
+    const response = await axios.put(
+      `${API_URL}/asignar-activo-masivo`,
+      { activoId, ordenesIds },
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error al asignar activo masivo:', error);
+    throw error;
+  }
 }
 
 

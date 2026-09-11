@@ -106,6 +106,7 @@ const getEmpresaNombre = (empresaId, empresas) => {
  * @param {string} props.errorMessage - Mensaje de error
  * @param {string} props.placeholder - Texto placeholder
  * @param {boolean} props.mostrarCesados - Si se deben mostrar activos cesados (por defecto false)
+ * @param {boolean} props.showClear - Mostrar botón para limpiar selección (por defecto true)
  * @returns {JSX.Element}
  */
 const ActivoSelector = ({
@@ -118,6 +119,7 @@ const ActivoSelector = ({
   errorMessage = "",
   placeholder = "Seleccione activo",
   mostrarCesados = false,
+  showClear = true,
 }) => {
   const [dialogVisible, setDialogVisible] = useState(false);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
@@ -282,6 +284,25 @@ const ActivoSelector = ({
   };
 
   /**
+   * Maneja la limpieza de selección
+   * 
+   * IMPORTANTE: Se envía 0 (cero) en lugar de null o undefined porque:
+   * - Algunos formularios eliminan campos null/undefined antes de enviar al backend
+   * - El valor 0 NO se elimina y llega correctamente al backend
+   * - El backend interpreta 0 como "sin activo asignado" y limpia el campo en BD
+   * - Esta solución es genérica y funciona en todos los módulos sin modificarlos
+   * 
+   * PATRÓN: Replica exactamente PlanCuentaContableSelector.jsx
+   */
+  const handleClear = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onChange) {
+      onChange(0);
+    }
+  };
+
+  /**
    * Template para la empresa
    */
   const empresaTemplate = (rowData) => {
@@ -375,24 +396,27 @@ const ActivoSelector = ({
         Activo {required && <span style={{ color: "red" }}>*</span>}
       </label>
 
-      {/* Botón selector */}
-      <Button
-        type="button"
-        icon="pi pi-search"
-        onClick={() => {
-          if (!disabled) {
-            setDialogVisible(true);
-          }
-        }}
-        disabled={disabled || loading}
-        className={classNames("p-button-outlined w-full", {
-          "p-invalid": error,
-        })}
-        style={{
-          justifyContent: "flex-start",
-          textAlign: "left",
-        }}
-      >
+      {/* Contenedor con posición relativa para el botón Clear */}
+      <div style={{ position: "relative" }}>
+        {/* Botón selector */}
+        <Button
+          type="button"
+          icon="pi pi-search"
+          onClick={() => {
+            if (!disabled) {
+              setDialogVisible(true);
+            }
+          }}
+          disabled={disabled || loading}
+          className={classNames("p-button-outlined w-full", {
+            "p-invalid": error,
+          })}
+          style={{
+            justifyContent: "flex-start",
+            textAlign: "left",
+            paddingRight: activoSeleccionado && showClear && !disabled ? "3rem" : undefined,
+          }}
+        >
         {loading ? (
           <span style={{ color: "#999" }}>Cargando...</span>
         ) : activoSeleccionado ? (
@@ -413,6 +437,45 @@ const ActivoSelector = ({
           <span style={{ color: "#999" }}>{placeholder}</span>
         )}
       </Button>
+
+      {/* Botón Clear integrado dentro del botón - PATRÓN: PlanCuentaContableSelector */}
+      {showClear && activoSeleccionado && !disabled && (
+        <button
+          type="button"
+          onClick={handleClear}
+          title="Limpiar selección"
+          style={{
+            position: "absolute",
+            right: "0.5rem",
+            top: "50%",
+            transform: "translateY(-50%)",
+            background: "transparent",
+            border: "none",
+            color: "#ef4444",
+            cursor: "pointer",
+            padding: "0.25rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "50%",
+            width: "1.5rem",
+            height: "1.5rem",
+            transition: "all 0.2s",
+            zIndex: 10,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#fee2e2";
+            e.currentTarget.style.color = "#dc2626";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "#ef4444";
+          }}
+        >
+          <i className="pi pi-times" style={{ fontSize: "0.9rem" }} />
+        </button>
+      )}
+      </div>
 
       {/* Mensaje de error */}
       {error && errorMessage && (

@@ -37,6 +37,7 @@ import GeneradorDocumentosFinancierosDialog from "../common/GeneradorDocumentosF
 import { getEmbarcaciones } from "../../api/embarcacion";
 import { getDocumentosPorModelo } from "../../api/documentoDinamico";
 import CentroCostoSelector from "../common/CentroCostoSelector"; // ✅ AGREGAR
+import ActivoSelector from '../common/ActivoSelector';
 
 const DetMovsRendicionGastosForm = ({
   movimiento = null,
@@ -120,6 +121,7 @@ const DetMovsRendicionGastosForm = ({
       enlaceAOtroDetalleGastoId: null,
       embarcacionId: null,
       enlaceGastosPlanificadosId: null,
+      activoAfectoId: null,
     },
   });
   const urlComprobanteMovimiento = watch("urlComprobanteMovimiento");
@@ -227,6 +229,7 @@ const DetMovsRendicionGastosForm = ({
             : null,
           saldoInicialAsignacion: Number(movimiento.saldoInicialAsignacion || 0),
           saldoFinalAsignacion: Number(movimiento.saldoFinalAsignacion || 0),
+          activoAfectoId: movimiento.activoAfectoId ? Number(movimiento.activoAfectoId) : null,
         });
       } else {
         if (rendicionGastos) {
@@ -791,7 +794,7 @@ const DetMovsRendicionGastosForm = ({
   const onSubmit = async (data, event) => {
     event?.preventDefault();
     event?.stopPropagation();
-    try {
+    try{
       if (!data.monto || data.monto <= 0) {
         toast.current?.show({
           severity: "error",
@@ -865,6 +868,7 @@ const DetMovsRendicionGastosForm = ({
         enlaceGastosPlanificadosId: data.enlaceGastosPlanificadosId
           ? Number(data.enlaceGastosPlanificadosId)
           : null,
+        activoAfectoId: data.activoAfectoId ? Number(data.activoAfectoId) : null,
         actualizadoEn: new Date(),
       };
 
@@ -1494,6 +1498,25 @@ const DetMovsRendicionGastosForm = ({
                     />
                   )}
                 />
+              </div>
+
+              {/* Campo Activo Afecto */}
+              <div style={{ flex: 2 }}>
+                <Controller
+                  name="activoAfectoId"
+                  control={control}
+                  render={({ field }) => (
+                    <ActivoSelector
+                      value={field.value}
+                      onChange={field.onChange}
+                      disabled={formularioDeshabilitado}
+                      placeholder="Seleccione activo (opcional)"
+                    />
+                  )}
+                />
+                <small className="p-d-block" style={{ color: '#666', marginTop: '4px', fontSize: '0.85rem' }}>
+                  Activo relacionado (embarcación, vehículo, maquinaria)
+                </small>
               </div>
 
               <div style={{ flex: 3 }}>

@@ -311,7 +311,6 @@ export default function CuentaPorCobrar({ ruta }) {
         monedaId: Number(cuentaCompleta.monedaId),
         estadoId: Number(cuentaCompleta.estadoId),
       };
-
       setFormData(dataParaEdicion);
       setSelectedCuenta(cuenta);
       setIsEdit(true);

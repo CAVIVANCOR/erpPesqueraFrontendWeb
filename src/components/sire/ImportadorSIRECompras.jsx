@@ -344,8 +344,6 @@ export default function ImportadorSIRECompras({
 
   const handleCrearOC = async (rowData) => {
     try {
-      console.log('🏗️ Crear OC - rowData:', rowData);
-
       // Inicializar progreso y mostrar Dialog
       setProgresoIndividual({
         pasoActual: 'Iniciando...',
@@ -515,9 +513,6 @@ export default function ImportadorSIRECompras({
       });
       setShowProgresoDialog(true);
       setProcesandoMasivo(true);
-
-      console.log('🏗️ Crear OCs Masivo:', documentosSeleccionados.length, 'documentos seleccionados');
-
       // PRESERVADO: Construcción de periodo (sin cambios)
       const periodoSeleccionado = periodosContables.find(p => Number(p.id) === Number(periodoIdPadre));
       const periodoFormato = `${periodoSeleccionado.anio}${String(periodoSeleccionado.mes).padStart(2, '0')}`;

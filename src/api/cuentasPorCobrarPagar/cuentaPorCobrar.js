@@ -17,7 +17,9 @@ export async function getCuentaPorCobrar() {
 }
 
 export async function getCuentaPorCobrarById(id) {
-  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  // Agregar timestamp para evitar caché
+  const timestamp = new Date().getTime();
+  const res = await axios.get(`${API_URL}/${id}?_t=${timestamp}`, { headers: getAuthHeaders() });
   return res.data;
 }
 

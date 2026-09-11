@@ -63,7 +63,9 @@ import { useActualizarRegistroEnLista } from "../hooks/useActualizarRegistroEnLi
 import { useDashboardStore } from "../shared/stores/useDashboardStore";
 import { generarOrdenesCompraExcel } from "../components/ordenCompra/reports/generarOrdenesCompraExcel";
 import AsignarCentroCostoMasivo from "../components/common/AsignarCentroCostoMasivo";
-import { asignarCentroCostoMasivo } from "../api/ordenCompra";
+import AsignarActivoMasivo from "../components/common/AsignarActivoMasivo"; // ⭐ AGREGADO: Componente de asignación masiva de activos
+import ActivoSelector from "../components/common/ActivoSelector"; // ⭐ AGREGADO: Selector de activos para filtro
+import { asignarCentroCostoMasivo, asignarActivoMasivo } from "../api/ordenCompra"; // ⭐ AGREGADO: asignarActivoMasivo
 import { formatearMontoConSigno } from "../utils/tiposDocumento.constants";
 import FiltroTipoLibroButton from "../components/common/FiltroTipoLibroButton";
 import { getTiposAfectacionIGVActivos } from "../api/facturacionElectronica/tipoAfectacionIGV"; // AGREGADO
@@ -141,6 +143,7 @@ export default function OrdenCompra({ ruta }) {
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [centroCostoSeleccionado, setCentroCostoSeleccionado] = useState(null);
+  const [activoSeleccionado, setActivoSeleccionado] = useState(null); // ⭐ AGREGADO: Filtro por activo afecto
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState(null);
   const [productosUnicos, setProductosUnicos] = useState([]);
@@ -166,9 +169,13 @@ export default function OrdenCompra({ ruta }) {
 
   // Estados para opciones de dropdowns
   const [tiposDocumentoFinal, setTiposDocumentoFinal] = useState([]);
-  const [estadosUnicos, setEstadosUnicos] = useState([]); // ✅ AGREGAR
+  const [estadosUnicos, setEstadosUnicos] = useState([]);
   const [ordenesSeleccionadas, setOrdenesSeleccionadas] = useState([]);
+  
+  // Estados para diálogos de asignación masiva
   const [showAsignarCentroCostoDialog, setShowAsignarCentroCostoDialog] = useState(false);
+  const [showAsignarActivoDialog, setShowAsignarActivoDialog] = useState(false); // ⭐ AGREGADO: Dialog asignación masiva activos
+  
   const [filtroTipoLibro, setFiltroTipoLibro] = useState("FISCAL_SSI");
   const [busquedaDocumento, setBusquedaDocumento] = useState("");
   const [showOrigenViewer, setShowOrigenViewer] = useState(false);
@@ -410,6 +417,13 @@ export default function OrdenCompra({ ruta }) {
     if (centroCostoSeleccionado) {
       filtered = filtered.filter(
         (orden) => Number(orden.centroCostoId) === Number(centroCostoSeleccionado),
+      );
+    }
+
+    // ⭐ AGREGADO: Filtro por activo afecto
+    if (activoSeleccionado) {
+      filtered = filtered.filter(
+        (orden) => Number(orden.activoAfectoId) === Number(activoSeleccionado),
       );
     }
 
@@ -930,7 +944,7 @@ export default function OrdenCompra({ ruta }) {
     setProveedorSeleccionado(null);
     setEstadoSeleccionado(null);
     setProductoSeleccionado(null);
-    setTipoAfectacionIGVSeleccionado(null); // AGREGADO
+    setTipoAfectacionIGVSeleccionado(null);
     setSubmoduloOrigenSeleccionado(null);
     setRangoFechaDocumento(null);
     setTipoDocumentoFinalIdSeleccionado(null);
@@ -939,6 +953,7 @@ export default function OrdenCompra({ ruta }) {
     setTiposDocInternoTemp([]);
     setTiposDocFinalTemp([]);
     setCentroCostoSeleccionado(null);
+    setActivoSeleccionado(null); // ⭐ AGREGADO: Limpiar filtro de activo
   };
 
 
@@ -978,14 +993,19 @@ export default function OrdenCompra({ ruta }) {
   };
 
 
+  /**
+   * Asigna un centro de costo a múltiples órdenes de compra seleccionadas
+   * @param {number} centroCostoId - ID del centro de costo a asignar
+   * @param {Array<number>} ordenesIds - Array de IDs de órdenes de compra
+   */
   const handleAsignarCentroCosto = async (centroCostoId, ordenesIds) => {
     try {
       const resultado = await asignarCentroCostoMasivo(centroCostoId, ordenesIds);
 
       toast.current?.show({
         severity: "success",
-        summary: "Éxito",
-        detail: resultado.message || `${resultado.count} órdenes actualizadas`,
+        summary: "Centro de Costo Asignado",
+        detail: resultado.message || `${resultado.count} orden(es) actualizada(s)`,
         life: 3000,
       });
 
@@ -997,6 +1017,41 @@ export default function OrdenCompra({ ruta }) {
         severity: "error",
         summary: "Error",
         detail: error.response?.data?.message || "Error al asignar centro de costo",
+        life: 3000,
+      });
+    }
+  };
+
+  /**
+   * Asigna un activo a múltiples órdenes de compra seleccionadas
+   * Actualiza el campo activoAfectoId en todos los registros
+   * 
+   * PROPÓSITO: Permite identificar a qué activo pertenece el gasto de cada orden de compra,
+   * facilitando la trazabilidad de gastos que afectan activos específicos de la empresa.
+   * 
+   * @param {number} activoId - ID del activo a asignar
+   * @param {Array<number>} ordenesIds - Array de IDs de órdenes de compra
+   */
+  const handleAsignarActivo = async (activoId, ordenesIds) => {
+    try {
+      const resultado = await asignarActivoMasivo(activoId, ordenesIds);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Activo Asignado",
+        detail: resultado.message || `${resultado.count} orden(es) actualizada(s) con activo correctamente`,
+        life: 3000,
+      });
+
+      // Recargar datos y limpiar selección
+      await cargarDatos();
+      setOrdenesSeleccionadas([]);
+    } catch (error) {
+      console.error("Error al asignar activo:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al asignar activo",
         life: 3000,
       });
     }
@@ -1699,6 +1754,44 @@ export default function OrdenCompra({ ruta }) {
     );
   };
 
+  // ⭐ AGREGADO: Template para Activo Afecto con tags profesionales
+  const activoAfectoTemplate = (rowData) => {
+    const activo = rowData.activoAfecto;
+
+    if (!activo) {
+      return <span style={{ color: "#999" }}>-</span>;
+    }
+
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "wrap" }}>
+        {/* Tipo de Activo */}
+        {activo.tipo && (
+          <Tag
+            value={activo.tipo.nombre}
+            severity="info"
+            style={{
+              fontWeight: "bold",
+              fontSize: "0.7rem",
+              backgroundColor: "#673AB7",
+              color: "#FFFFFF"
+            }}
+          />
+        )}
+        {/* Nombre del Activo */}
+        <Tag
+          value={activo.nombre}
+          severity="success"
+          style={{
+            fontSize: "0.7rem",
+            backgroundColor: "#00BCD4",
+            color: "#FFFFFF",
+            fontWeight: "500"
+          }}
+        />
+      </div>
+    );
+  };
+
   // Template para Submódulo Origen con color dinámico
   const submoduloOrigenTemplate = (rowData) => {
     if (!rowData.submoduloOrigen) {
@@ -2248,7 +2341,6 @@ export default function OrdenCompra({ ruta }) {
                     moduloDestino: "orden-compra"
                   }))}
                   onComplete={(resultados) => {
-                    console.log('PDFs generados:', resultados);
                     cargarDatos();
                   }}
                   disabled={!empresaIdSelector || !periodoSeleccionado || ordenesSeleccionadas.length === 0}
@@ -2457,6 +2549,7 @@ export default function OrdenCompra({ ruta }) {
                   style={{ width: "100%" }}
                 />
               </div>
+              {/* Botón: Asignar Centro de Costo Masivo */}
               <div style={{ flex: 1 }}>
                 <Button
                   label="Asignar C.Costo"
@@ -2467,11 +2560,29 @@ export default function OrdenCompra({ ruta }) {
                   tooltip={
                     ordenesSeleccionadas.length === 0
                       ? "Seleccione órdenes primero"
-                      : `Asignar centro de costo a ${ordenesSeleccionadas.length} órdenes`
+                      : `Asignar centro de costo a ${ordenesSeleccionadas.length} orden(es)`
                   }
                   tooltipOptions={{ position: "bottom" }}
                 />
               </div>
+
+              {/* ⭐ AGREGADO: Botón Asignar Activo Masivo */}
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Asignar Activo"
+                  icon="pi pi-briefcase"
+                  className="p-button-info"
+                  onClick={() => setShowAsignarActivoDialog(true)}
+                  disabled={loading || ordenesSeleccionadas.length === 0}
+                  tooltip={
+                    ordenesSeleccionadas.length === 0
+                      ? "Seleccione órdenes para asignar activo"
+                      : `Asignar activo a ${ordenesSeleccionadas.length} orden(es)`
+                  }
+                  tooltipOptions={{ position: "bottom" }}
+                />
+              </div>
+
               <div style={{ flex: 1.5 }}>
                 <Button
                   label="Exportar XLS PDF TXT SUNAT"
@@ -2613,6 +2724,18 @@ export default function OrdenCompra({ ruta }) {
 
                 />
               </div>
+
+              {/* ⭐ AGREGADO: Filtro por Activo Afecto */}
+              <div style={{ flex: 1 }}>
+                <ActivoSelector
+                  value={activoSeleccionado}
+                  onChange={(value) => setActivoSeleccionado(value)}
+                  placeholder="Todos los activos"
+                  showClear={true}
+                  disabled={loading}
+                />
+              </div>
+
               <div style={{ flex: 1 }}>
                 <label htmlFor="tipoAfectacionIGVFiltro" style={{ fontWeight: "bold" }}>
                   Tipo Afectación IGV
@@ -2769,6 +2892,16 @@ export default function OrdenCompra({ ruta }) {
           style={{ width: 150, textAlign: "center" }}
           sortable
         />
+
+        {/* ⭐ AGREGADO: Columna Activo Afecto */}
+        <Column
+          field="activoAfectoId"
+          header="Activo Afecto"
+          body={activoAfectoTemplate}
+          style={{ width: 200 }}
+          sortable
+        />
+
         <Column
           field="esExoneradoAlIGV"
           header="IGV"
@@ -2973,11 +3106,21 @@ export default function OrdenCompra({ ruta }) {
         empresaIdInicial={empresaSeleccionada}
       />
 
+      {/* Diálogo: Asignar Centro de Costo Masivo */}
       <AsignarCentroCostoMasivo
         visible={showAsignarCentroCostoDialog}
         onHide={() => setShowAsignarCentroCostoDialog(false)}
         registrosSeleccionados={ordenesSeleccionadas.map(o => o.id)}
         onAsignar={handleAsignarCentroCosto}
+        nombreModulo="órdenes de compra"
+      />
+
+      {/* ⭐ AGREGADO: Diálogo Asignar Activo Masivo */}
+      <AsignarActivoMasivo
+        visible={showAsignarActivoDialog}
+        onHide={() => setShowAsignarActivoDialog(false)}
+        registrosSeleccionados={ordenesSeleccionadas.map(o => o.id)}
+        onAsignar={handleAsignarActivo}
         nombreModulo="órdenes de compra"
       />
 

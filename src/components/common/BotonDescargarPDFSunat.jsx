@@ -43,21 +43,6 @@ export default function BotonDescargarPDFSunat({
 
   const handleDescargar = async () => {
     try {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('🔽 COMPONENTE - Iniciando descarga PDF SUNAT');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-      // Validaciones
-      console.log('🔍 Validando parámetros...');
-      console.log('   empresaId:', empresaId);
-      console.log('   rucEmisorReceptor:', rucEmisorReceptor);
-      console.log('   tipoDocCodigo:', tipoDocCodigo);
-      console.log('   serie:', serie);
-      console.log('   numero:', numero);
-      console.log('   fechaEmision:', fechaEmision);
-      console.log('   entityId:', entityId);
-      console.log('   moduloDestino:', moduloDestino);
-
       if (!empresaId) {
         console.error('❌ Falta empresaId');
         onError?.('Falta el ID de la empresa');
@@ -100,29 +85,17 @@ export default function BotonDescargarPDFSunat({
         return;
       }
 
-      console.log('✅ Validaciones pasadas');
 
       // Construir CAR
-      console.log('\n📋 Construyendo CAR...');
       const ruc = String(rucEmisorReceptor).padStart(11, '0');
       const tipo = String(tipoDocCodigo).padStart(2, '0');
       const serieFormateada = String(serie).padStart(4, '0');
       const numeroFormateado = String(numero).padStart(10, '0');
       const car = `${ruc}${tipo}${serieFormateada}${numeroFormateado}`;
-      console.log('   RUC:', ruc);
-      console.log('   Tipo:', tipo);
-      console.log('   Serie:', serieFormateada);
-      console.log('   Número:', numeroFormateado);
-      console.log('   CAR completo:', car);
 
       // Calcular periodo (YYYYMM)
       const fecha = new Date(fechaEmision);
       const periodo = `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, '0')}`;
-      console.log('   Periodo:', periodo);
-
-      console.log('\n� Llamando a API...');
-      console.log('   Módulo:', moduloDestino);
-      console.log('   Parámetros:', { empresaId, periodo, car, entityId });
 
       setLoading(true);
 
@@ -136,12 +109,8 @@ export default function BotonDescargarPDFSunat({
         return;
       }
 
-      console.log('\n📥 Respuesta de API:', resultado);
 
       if (resultado.success) {
-        console.log('✅ PDF descargado exitosamente');
-        console.log('   URL:', resultado.pdfUrl);
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
         onPDFDescargado?.(resultado.pdfUrl);
       } else {
         console.error('❌ Error en respuesta:', resultado.mensaje);

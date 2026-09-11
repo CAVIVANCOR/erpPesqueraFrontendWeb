@@ -6,6 +6,7 @@ import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
+import { InputText } from "primereact/inputtext";
 import { Badge } from "primereact/badge";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
@@ -13,6 +14,7 @@ import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import DetMovsRendicionGastosForm from "../../components/rendicionGastos/DetMovsRendicionGastosForm";
 import AsignarCentroCostoMasivo from "../../components/common/AsignarCentroCostoMasivo";
+import AsignarActivoMasivo from "../../components/common/AsignarActivoMasivo";
 import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 import {
   crearDetMovsEntregaRendir,
@@ -20,6 +22,7 @@ import {
   eliminarDetMovsEntregaRendir,
   recalcularSaldosResponsable,
   asignarCentroCostoMasivo,
+  asignarActivoMasivo,
 } from "../../api/detMovsEntregaRendir";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
@@ -33,6 +36,7 @@ import { getMonedas } from "../../api/moneda";
 import { getTiposDocumento } from "../../api/tipoDocumento";
 import { getProductos } from "../../api/producto";
 import { getAllCategoriaTipoMovEntregaRendir } from "../../api/categoriaTipoMovEntregaRendir";
+import { getEmbarcaciones } from "../../api/embarcacion"; // ⭐ AGREGADO: API de embarcaciones
 import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
 import { ProgressBar } from "primereact/progressbar";
 import CentroCostoFilterSelector from "../../components/common/CentroCostoFilterSelector";
@@ -54,6 +58,7 @@ export default function RendicionGastosList({ ruta }) {
   const [monedas, setMonedas] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [productos, setProductos] = useState([]);
+  const [embarcaciones, setEmbarcaciones] = useState([]); // ⭐ AGREGADO: Estado para embarcaciones
   const [selectedMovimientos, setSelectedMovimientos] = useState([]);
 
   // Estados locales para filtros
@@ -69,6 +74,9 @@ export default function RendicionGastosList({ ruta }) {
   const [filtroEntidadComercial, setFiltroEntidadComercial] = useState(null);
   const [filtroEmpresa, setFiltroEmpresa] = useState(null);
   const [filtroResponsable, setFiltroResponsable] = useState(null);
+  const [filtroActivo, setFiltroActivo] = useState(null);
+  const [filtroEmbarcacion, setFiltroEmbarcacion] = useState(null); // ⭐ AGREGADO: Filtro por embarcación
+  const [filtroBusqueda, setFiltroBusqueda] = useState("");
   const [filtroRangoFechas, setFiltroRangoFechas] = useState(null);
 
   // Estados para el dialog
@@ -81,7 +89,10 @@ export default function RendicionGastosList({ ruta }) {
   const [totalRecalculo, setTotalRecalculo] = useState(0);
   const [mostrarDialogoResultados, setMostrarDialogoResultados] = useState(false);
   const [resultadosRecalculo, setResultadosRecalculo] = useState(null);
+  
+  // Estados para diálogos de asignación masiva
   const [showAsignarCentroCostoDialog, setShowAsignarCentroCostoDialog] = useState(false);
+  const [showAsignarActivoDialog, setShowAsignarActivoDialog] = useState(false);
   // Cargar datos iniciales
   useEffect(() => {
     cargarDatos();
@@ -101,6 +112,7 @@ export default function RendicionGastosList({ ruta }) {
         tiposDocumentoData,
         productosData,
         empresasData,
+        embarcacionesData, // ⭐ AGREGADO: Cargar embarcaciones
       ] = await Promise.all([
         getAllDetMovsEntregaRendir(),
         getPersonal(),
@@ -112,6 +124,7 @@ export default function RendicionGastosList({ ruta }) {
         getTiposDocumento(),
         getProductos(),
         getEmpresas(),
+        getEmbarcaciones(), // ⭐ AGREGADO: API call embarcaciones
       ]);
       setMovimientos(movimientosData || []);
       setPersonal(
@@ -128,6 +141,7 @@ export default function RendicionGastosList({ ruta }) {
       setMonedas(monedasData || []);
       setTiposDocumento(tiposDocumentoData || []);
       setProductos(productosData || []);
+      setEmbarcaciones(embarcacionesData || []); // ⭐ AGREGADO: Guardar embarcaciones en estado
     } catch (error) {
       console.error("Error al cargar datos:", error);
       toast.current?.show({
@@ -330,6 +344,11 @@ export default function RendicionGastosList({ ruta }) {
 
 
   // 🏷️ ASIGNAR CENTRO DE COSTO MASIVO
+  /**
+   * Asigna un centro de costo a múltiples movimientos seleccionados
+   * @param {number} centroCostoId - ID del centro de costo a asignar
+   * @param {Array<number>} movimientosIds - Array de IDs de movimientos
+   */
   const handleAsignarCentroCosto = async (centroCostoId, movimientosIds) => {
     try {
       const resultado = await asignarCentroCostoMasivo(centroCostoId, movimientosIds);
@@ -337,7 +356,7 @@ export default function RendicionGastosList({ ruta }) {
       toast.current?.show({
         severity: "success",
         summary: "Centro de Costo Asignado",
-        detail: resultado.message || `Se actualizó el centro de costo de ${resultado.actualizados} movimiento(s)`,
+        detail: resultado.message || `Se actualizó el centro de costo de ${resultado.count} movimiento(s)`,
         life: 3000,
       });
 
@@ -349,6 +368,38 @@ export default function RendicionGastosList({ ruta }) {
         severity: "error",
         summary: "Error",
         detail: error.response?.data?.message || "Error al asignar centro de costo",
+        life: 5000,
+      });
+    }
+  };
+
+  /**
+   * Asigna un activo a múltiples movimientos seleccionados
+   * Actualiza el campo activoAfectoId en todos los registros
+   * 
+   * @param {number} activoId - ID del activo a asignar
+   * @param {Array<number>} movimientosIds - Array de IDs de movimientos
+   */
+  const handleAsignarActivo = async (activoId, movimientosIds) => {
+    try {
+      const resultado = await asignarActivoMasivo(activoId, movimientosIds);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Activo Asignado",
+        detail: resultado.message || `Se actualizó el activo de ${resultado.count} movimiento(s)`,
+        life: 3000,
+      });
+
+      // Recargar datos y limpiar selección
+      await cargarDatos();
+      setSelectedMovimientos([]);
+    } catch (error) {
+      console.error("Error al asignar activo:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al asignar activo",
         life: 5000,
       });
     }
@@ -446,6 +497,27 @@ export default function RendicionGastosList({ ruta }) {
       );
     }
 
+    if (excluirFiltro !== "activo" && filtroActivo) {
+      movimientosFiltrados = movimientosFiltrados.filter(
+        (mov) => Number(mov.activoAfectoId) === Number(filtroActivo),
+      );
+    }
+
+    // ⭐ AGREGADO: Filtro por embarcación
+    if (excluirFiltro !== "embarcacion" && filtroEmbarcacion) {
+      movimientosFiltrados = movimientosFiltrados.filter(
+        (mov) => Number(mov.embarcacionId) === Number(filtroEmbarcacion),
+      );
+    }
+
+    if (excluirFiltro !== "busqueda" && filtroBusqueda) {
+      const busquedaLower = filtroBusqueda.toLowerCase();
+      movimientosFiltrados = movimientosFiltrados.filter((mov) =>
+        mov.descripcion?.toLowerCase().includes(busquedaLower) ||
+        mov.numeroCorrelativoComprobante?.toLowerCase().includes(busquedaLower)
+      );
+    }
+
     if (
       excluirFiltro !== "rangoFechas" &&
       filtroRangoFechas &&
@@ -499,6 +571,49 @@ export default function RendicionGastosList({ ruta }) {
     filtroRangoFechas,
   ]);
 
+  // 🔄 OPCIONES DINÁMICAS PARA ACTIVOS
+  const obtenerOpcionesActivosDisponibles = useMemo(() => {
+    const movimientosBase = obtenerMovimientosBase("activo");
+
+    // Extraer activos únicos de los movimientos
+    const activosUnicos = movimientosBase
+      .filter((m) => m.activoAfecto)
+      .reduce((acc, m) => {
+        const id = Number(m.activoAfecto.id);
+        if (!acc.has(id)) {
+          acc.set(id, m.activoAfecto);
+        }
+        return acc;
+      }, new Map());
+
+    return Array.from(activosUnicos.values())
+      .map((activo) => {
+        // Buscar la empresa del activo
+        const empresa = empresas.find((e) => Number(e.id) === Number(activo.empresaId));
+        const empresaNombre = empresa?.razonSocial || empresa?.nombre || `ID: ${activo.empresaId}`;
+        const tipoNombre = activo.tipo?.nombre || "Sin tipo";
+
+        return {
+          label: `${empresaNombre} - ${tipoNombre} - ${activo.nombre}`,
+          value: Number(activo.id),
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [
+    movimientos,
+    empresas,
+    filtroTipoMovimiento,
+    filtroCentroCosto,
+    filtroEntregaARendir,
+    filtroCategoriaMovimiento,
+    filtroValidacionTesoreria,
+    filtroAsignacionSeleccionada,
+    filtroEntidadComercial,
+    filtroEmpresa,
+    filtroResponsable,
+    filtroRangoFechas,
+  ]);
+
   // 🔄 OPCIONES DINÁMICAS PARA EMPRESAS
   const obtenerOpcionesEmpresasDisponibles = useMemo(() => {
     const movimientosBase = obtenerMovimientosBase("empresa");
@@ -527,6 +642,9 @@ export default function RendicionGastosList({ ruta }) {
     filtroAsignacionSeleccionada,
     filtroEntidadComercial,
     filtroResponsable,
+    filtroActivo,
+    filtroEmbarcacion, // ⭐ AGREGADO: Dependencia filtro embarcación
+    filtroBusqueda,
     filtroRangoFechas,
   ]);
 
@@ -559,6 +677,44 @@ export default function RendicionGastosList({ ruta }) {
     filtroAsignacionSeleccionada,
     filtroEntidadComercial,
     filtroEmpresa,
+    filtroActivo,
+    filtroEmbarcacion, // ⭐ AGREGADO: Dependencia filtro embarcación
+    filtroBusqueda,
+    filtroRangoFechas,
+  ]);
+
+  // 🔄 OPCIONES DINÁMICAS PARA EMBARCACIONES
+  // Muestra solo las embarcaciones que tienen movimientos en los registros filtrados
+  const obtenerOpcionesEmbarcacionesDisponibles = useMemo(() => {
+    const movimientosBase = obtenerMovimientosBase("embarcacion");
+    const embarcacionesConMovimientos = [
+      ...new Set(
+        movimientosBase
+          .filter((m) => m.embarcacionId)
+          .map((m) => Number(m.embarcacionId)),
+      ),
+    ];
+
+    return embarcaciones
+      .filter((emb) => embarcacionesConMovimientos.includes(Number(emb.id)))
+      .map((emb) => ({
+        label: emb.activo?.nombre || emb.nombre || "Sin nombre",
+        value: Number(emb.id),
+      }));
+  }, [
+    movimientos,
+    embarcaciones,
+    filtroTipoMovimiento,
+    filtroCentroCosto,
+    filtroEntregaARendir,
+    filtroCategoriaMovimiento,
+    filtroValidacionTesoreria,
+    filtroAsignacionSeleccionada,
+    filtroEntidadComercial,
+    filtroEmpresa,
+    filtroResponsable,
+    filtroActivo,
+    filtroBusqueda,
     filtroRangoFechas,
   ]);
 
@@ -611,6 +767,9 @@ export default function RendicionGastosList({ ruta }) {
     filtroEntidadComercial,
     filtroEmpresa,
     filtroResponsable,
+    filtroActivo,
+    filtroEmbarcacion, // ⭐ AGREGADO: Dependencia filtro embarcación
+    filtroBusqueda,
     filtroRangoFechas,
   ]);
 
@@ -639,6 +798,9 @@ export default function RendicionGastosList({ ruta }) {
     filtroEntidadComercial,
     filtroEmpresa,
     filtroResponsable,
+    filtroActivo,
+    filtroEmbarcacion, // ⭐ AGREGADO: Dependencia filtro embarcación
+    filtroBusqueda,
     filtroRangoFechas,
   ]);
 
@@ -664,6 +826,9 @@ export default function RendicionGastosList({ ruta }) {
     filtroEntidadComercial,
     filtroEmpresa,
     filtroResponsable,
+    filtroActivo,
+    filtroEmbarcacion, // ⭐ AGREGADO: Dependencia filtro embarcación
+    filtroBusqueda,
     filtroRangoFechas,
   ]);
 
@@ -738,6 +903,9 @@ export default function RendicionGastosList({ ruta }) {
     filtroEntidadComercial,
     filtroEmpresa,
     filtroResponsable,
+    filtroActivo,
+    filtroEmbarcacion, // ⭐ AGREGADO: Dependencia filtro embarcación
+    filtroBusqueda,
     filtroRangoFechas,
   ]);
 
@@ -856,6 +1024,9 @@ export default function RendicionGastosList({ ruta }) {
     setFiltroEntidadComercial(null);
     setFiltroEmpresa(null);
     setFiltroResponsable(null);
+    setFiltroActivo(null);
+    setFiltroEmbarcacion(null); // ⭐ AGREGADO: Limpiar filtro embarcación
+    setFiltroBusqueda("");
     setFiltroRangoFechas(null);
   };
 
@@ -1376,6 +1547,28 @@ export default function RendicionGastosList({ ruta }) {
       </div>
     );
   };
+  /**
+   * Template para mostrar el activo relacionado
+   * Muestra nombre en negrita y descripción secundaria
+   */
+  const activoTemplate = (rowData) => {
+    if (!rowData.activoAfecto) {
+      return <span style={{ color: '#999', fontStyle: 'italic' }}>-</span>;
+    }
+
+    return (
+      <div>
+        <div style={{ fontWeight: 'bold', fontSize: '0.95em' }}>
+          {rowData.activoAfecto.nombre}
+        </div>
+        {rowData.activoAfecto.descripcion && (
+          <div style={{ fontSize: '0.85em', color: '#666' }}>
+            {rowData.activoAfecto.descripcion}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div style={{ padding: "1rem" }}>
@@ -1485,6 +1678,7 @@ export default function RendicionGastosList({ ruta }) {
                     tooltipOptions={{ position: "top" }}
                   />
                 </div>
+                {/* Botón: Asignar Centro de Costo Masivo */}
                 <div style={{ flex: 1 }}>
                   <Button
                     label="Asignar C.Costo"
@@ -1496,6 +1690,26 @@ export default function RendicionGastosList({ ruta }) {
                       !Array.isArray(selectedMovimientos) || selectedMovimientos.length === 0
                         ? "Seleccione movimientos para asignar centro de costo"
                         : `Asignar centro de costo a ${selectedMovimientos.length} movimiento(s)`
+                    }
+                    tooltipOptions={{ position: "top" }}
+                    type="button"
+                    raised
+                    style={{ width: "100%" }}
+                  />
+                </div>
+
+                {/* Botón: Asignar Activo Masivo */}
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Asignar Activo"
+                    icon="pi pi-briefcase"
+                    className="p-button-info"
+                    onClick={() => setShowAsignarActivoDialog(true)}
+                    disabled={loading || !Array.isArray(selectedMovimientos) || selectedMovimientos.length === 0}
+                    tooltip={
+                      !Array.isArray(selectedMovimientos) || selectedMovimientos.length === 0
+                        ? "Seleccione movimientos para asignar activo"
+                        : `Asignar activo a ${selectedMovimientos.length} movimiento(s)`
                     }
                     tooltipOptions={{ position: "top" }}
                     type="button"
@@ -1538,6 +1752,7 @@ export default function RendicionGastosList({ ruta }) {
               <div
                 style={{
                   display: "flex",
+                  alignItems: "end",
                   gap: 8,
                   marginTop: 10,
                   marginBottom: 10,
@@ -1598,6 +1813,7 @@ export default function RendicionGastosList({ ruta }) {
               <div
                 style={{
                   display: "flex",
+                  alignItems: "end",
                   gap: 8,
                   marginTop: 10,
                   marginBottom: 10,
@@ -1625,6 +1841,19 @@ export default function RendicionGastosList({ ruta }) {
                     optionValue="value"
                     placeholder="Filtrar por Empresa"
                     onChange={(e) => setFiltroEmpresa(e.value)}
+                    showClear
+                    filter
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Dropdown
+                    value={filtroActivo}
+                    options={obtenerOpcionesActivosDisponibles}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Filtrar por Activo"
+                    onChange={(e) => setFiltroActivo(e.value)}
                     showClear
                     filter
                     style={{ width: "100%" }}
@@ -1676,6 +1905,22 @@ export default function RendicionGastosList({ ruta }) {
                       );
                     })()}
                 </div>
+
+                {/* ⭐ AGREGADO: Filtro dinámico por Embarcación */}
+                <div style={{ flex: 1 }}>
+                  <Dropdown
+                    value={filtroEmbarcacion}
+                    options={obtenerOpcionesEmbarcacionesDisponibles}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Filtrar por Embarcación"
+                    onChange={(e) => setFiltroEmbarcacion(e.value)}
+                    showClear
+                    filter
+                    style={{ width: "100%" }}
+                  />
+                </div>
+
                 <div style={{ flex: 1 }}>
                   <Calendar
                     id="rangoFechas"
@@ -1690,6 +1935,17 @@ export default function RendicionGastosList({ ruta }) {
                     locale="es"
                     style={{ width: "100%" }}
                   />
+                </div>
+                 <div style={{ flex: 1 }}>
+                  <span className="p-input-icon-left" style={{ width: "100%" }}>
+                    <i className="pi pi-search" />
+                    <InputText
+                      value={filtroBusqueda}
+                      onChange={(e) => setFiltroBusqueda(e.target.value)}
+                      placeholder="Por descripción ó N° Comprobante..."
+                      style={{ width: "100%" }}
+                    />
+                  </span>
                 </div>
               </div>
             </div>
@@ -1750,20 +2006,19 @@ export default function RendicionGastosList({ ruta }) {
             sortable
           />
           <Column
-            field="entidadComercial.empresaId"
-            header="Empresa Entidad"
-            body={empresaEntidadTemplate}
-            sortable
-            style={{ minWidth: "200px" }}
-          />
-          <Column
             field="entidadComercialId"
             header="Entidad Comercial"
             body={entidadComercialTemplate}
             sortable
             style={{ minWidth: "200px" }}
           />
-
+          <Column
+            field="activoAfecto.nombre"
+            header="Activo"
+            body={activoTemplate}
+            sortable
+            style={{ minWidth: "150px" }}
+          />
           <Column
             field="saldoInicialAsignacion"
             header="Saldo Inicial"
@@ -1960,11 +2215,21 @@ export default function RendicionGastosList({ ruta }) {
       </Dialog>
 
 
+      {/* Diálogo: Asignar Centro de Costo Masivo */}
       <AsignarCentroCostoMasivo
         visible={showAsignarCentroCostoDialog}
         onHide={() => setShowAsignarCentroCostoDialog(false)}
         registrosSeleccionados={Array.isArray(selectedMovimientos) ? selectedMovimientos.map(m => m.id) : []}
         onAsignar={handleAsignarCentroCosto}
+        nombreModulo="movimientos"
+      />
+
+      {/* Diálogo: Asignar Activo Masivo */}
+      <AsignarActivoMasivo
+        visible={showAsignarActivoDialog}
+        onHide={() => setShowAsignarActivoDialog(false)}
+        registrosSeleccionados={Array.isArray(selectedMovimientos) ? selectedMovimientos.map(m => m.id) : []}
+        onAsignar={handleAsignarActivo}
         nombreModulo="movimientos"
       />
     </div>

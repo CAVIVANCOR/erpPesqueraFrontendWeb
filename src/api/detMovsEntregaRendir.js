@@ -240,6 +240,12 @@ export const recalcularSaldosResponsable = async (responsableId) => {
 
 
 
+/**
+ * Asigna un centro de costo a múltiples movimientos de forma masiva
+ * @param {number} centroCostoId - ID del centro de costo a asignar
+ * @param {Array<number>} movimientosIds - Array de IDs de movimientos a actualizar
+ * @returns {Promise<Object>} Resultado de la asignación masiva
+ */
 export const asignarCentroCostoMasivo = async (centroCostoId, movimientosIds) => {
   try {
     const response = await axios.post(
@@ -250,6 +256,33 @@ export const asignarCentroCostoMasivo = async (centroCostoId, movimientosIds) =>
     return response.data;
   } catch (error) {
     console.error('Error al asignar centro de costo masivo:', error);
+    throw error;
+  }
+};
+
+/**
+ * Asigna un activo a múltiples movimientos de forma masiva
+ * Actualiza el campo activoAfectoId en todos los movimientos seleccionados
+ * 
+ * @param {number} activoId - ID del activo a asignar
+ * @param {Array<number>} movimientosIds - Array de IDs de movimientos a actualizar
+ * @returns {Promise<Object>} Resultado de la asignación masiva con cantidad de registros actualizados
+ * @throws {Error} Si la petición falla o el servidor retorna error
+ * 
+ * @example
+ * const resultado = await asignarActivoMasivo(5, [1, 2, 3, 4]);
+ * // { success: true, count: 4, message: "Activo asignado correctamente" }
+ */
+export const asignarActivoMasivo = async (activoId, movimientosIds) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/asignar-activo-masivo`,
+      { activoId, movimientosIds },
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error al asignar activo masivo:', error);
     throw error;
   }
 };

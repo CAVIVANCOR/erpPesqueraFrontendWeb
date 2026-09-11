@@ -13,6 +13,7 @@ import IrACxPEditar from "../common/IrACxPEditar";
 import BooleanToggleButton from "../common/BooleanToggleButton";
 import CambiarTipoSerieDialog from "../common/CambiarTipoSerieDialog"; // ✅ AGREGAR
 import CentroCostoSelector from "../common/CentroCostoSelector";
+import ActivoSelector from "../common/ActivoSelector"; // ⭐ AGREGADO: Selector de activos
 import SelectorDocumentoAfectoOC from "../common/SelectorDocumentoAfectoOC";
 
 export default function DatosGeneralesTab({
@@ -678,6 +679,20 @@ export default function DatosGeneralesTab({
             showClearButton={true}
             empresaId={formData.empresaId}
           />
+        </div>
+
+        {/* ⭐ AGREGADO: ACTIVO AFECTO - Para trazabilidad de gastos que afectan activos */}
+        <div style={{ flex: 2 }}>
+          <ActivoSelector
+            value={formData.activoAfectoId ? Number(formData.activoAfectoId) : null}
+            onChange={(value) => onChange("activoAfectoId", value)}
+            placeholder="Seleccionar activo afecto (opcional)"
+            disabled={!puedeEditar || readOnly}
+            showClear={true}
+          />
+          <small className="p-d-block" style={{ color: "#666", marginTop: "0.25rem" }}>
+            Identifica a qué activo pertenece este gasto
+          </small>
         </div>
 
       </div>

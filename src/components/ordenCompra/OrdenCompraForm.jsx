@@ -152,6 +152,10 @@ export default function OrdenCompraForm({
   const [centroCostoId, setCentroCostoId] = useState(
     defaultValues?.centroCostoId || null,
   );
+  // ⭐ AGREGADO: Estado para activo afecto (trazabilidad de gastos que afectan activos)
+  const [activoAfectoId, setActivoAfectoId] = useState(
+    defaultValues?.activoAfectoId || null,
+  );
   const [unidadNegocioId, setUnidadNegocioId] = useState(
     defaultValues?.unidadNegocioId ? Number(defaultValues.unidadNegocioId) : null,
   );
@@ -1129,6 +1133,7 @@ export default function OrdenCompraForm({
       aprobadoPorId: setAprobadoPorId,
       estadoId: setEstadoId,
       centroCostoId: setCentroCostoId,
+      activoAfectoId: setActivoAfectoId, // ⭐ AGREGADO: Setter para activo afecto
       unidadNegocioId: setUnidadNegocioId,
       movIngresoAlmacenId: setMovIngresoAlmacenId,
       observaciones: setObservaciones,
@@ -1182,6 +1187,7 @@ export default function OrdenCompraForm({
         aprobadoPorId: aprobadoPorId ? Number(aprobadoPorId) : null,
         estadoId: estadoId ? Number(estadoId) : null,
         centroCostoId: centroCostoId ? Number(centroCostoId) : null,
+        activoAfectoId: activoAfectoId ? Number(activoAfectoId) : null, // ⭐ AGREGADO: Normalizar activo afecto
         unidadNegocioId: unidadNegocioId ? Number(unidadNegocioId) : null,
         movIngresoAlmacenId: movIngresoAlmacenId ? Number(movIngresoAlmacenId) : null,
         observaciones,
@@ -1341,6 +1347,7 @@ export default function OrdenCompraForm({
     aprobadoPorId,
     estadoId,
     centroCostoId,
+    activoAfectoId, // ⭐ AGREGADO: Activo afecto para trazabilidad de gastos
     unidadNegocioId,
     movIngresoAlmacenId,
     observaciones,
@@ -1736,41 +1743,22 @@ export default function OrdenCompraForm({
             entityId={defaultValues?.id}
             moduloDestino="orden-compra"
             onPDFDescargado={(pdfUrl) => {
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log('✅ FORM - PDF descargado, actualizando estado');
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log('   PDF URL recibida:', pdfUrl);
-              console.log('   Estado actual urlDocumentoRef:', urlDocumentoRef);
-              console.log('   Valor RHF actual:', getValuesRHF("urlDocumentoRef"));
-              
               setUrlDocumentoRef(pdfUrl);
-              console.log('   ✅ setUrlDocumentoRef ejecutado');
-              
-              setValueRHF("urlDocumentoRef", pdfUrl);
-              console.log('   ✅ setValueRHF ejecutado');
-              console.log('   Nuevo valor RHF:', pdfUrl);
-              
+              setValueRHF("urlDocumentoRef", pdfUrl);              
               toast.current?.show({
                 severity: 'success',
                 summary: 'Éxito',
                 detail: 'PDF descargado exitosamente desde SUNAT',
                 life: 3000
               });
-              console.log('   ✅ Toast mostrado');
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
             }}
             onError={(mensaje) => {
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log('❌ FORM - Error descargando PDF');
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log('   Mensaje:', mensaje);
               toast.current?.show({
                 severity: 'error',
                 summary: 'Error',
                 detail: mensaje,
                 life: 5000
               });
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
             }}
             disabled={!isEdit || !defaultValues?.id || !proveedorId || !numSerieDocFinal || !numCorreDocFinal}
             tooltip={

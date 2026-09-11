@@ -11,6 +11,7 @@ import { Column } from "primereact/column";
 import { Panel } from "primereact/panel";
 import { Dialog } from "primereact/dialog";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { Accordion, AccordionTab } from "primereact/accordion";
 import {
   getResponsiveFontSize,
   formatearNumero,
@@ -46,7 +47,6 @@ const CuentaPorCobrarForm = forwardRef(({
   permisos = {},
   toast,
 }, ref) => {
-
 
   const usuario = useAuthStore((state) => state.usuario);
 
@@ -102,7 +102,10 @@ const CuentaPorCobrarForm = forwardRef(({
     defaultValues?.tieneDetraccion || false,
   );
   const [montoDetraccionTotal, setMontoDetraccionTotal] = useState(
-    defaultValues?.montoDetraccionTotal || 0,
+    defaultValues?.montoDetraccionTotal ? Number(defaultValues.montoDetraccionTotal) : 0,
+  );
+  const [porcentajeDetraccion, setPorcentajeDetraccion] = useState(
+    defaultValues?.porcentajeDetraccion ? Number(defaultValues.porcentajeDetraccion) : null,
   );
   const [tieneRetencion, setTieneRetencion] = useState(
     defaultValues?.tieneRetencion || false,
@@ -118,6 +121,28 @@ const CuentaPorCobrarForm = forwardRef(({
   );
   const [montoPercepcionTotal, setMontoPercepcionTotal] = useState(
     defaultValues?.montoPercepcionTotal || 0,
+  );
+
+  // Estados para registros de impuestos tributarios generados
+  const [detraccionGenerada, setDetraccionGenerada] = useState(
+    defaultValues?.preFactura?.detraccion || null
+  );
+  const [retencionGenerada, setRetencionGenerada] = useState(
+    defaultValues?.preFactura?.retencion || null
+  );
+  const [percepcionGenerada, setPercepcionGenerada] = useState(
+    defaultValues?.preFactura?.percepcion || null
+  );
+
+  // Estados para flags booleanos de la PreFactura
+  const [aplicaDetraccion, setAplicaDetraccion] = useState(
+    defaultValues?.preFactura?.aplicaDetraccion || false
+  );
+  const [aplicaRetencion, setAplicaRetencion] = useState(
+    defaultValues?.preFactura?.aplicaRetencion || false
+  );
+  const [aplicaPercepcion, setAplicaPercepcion] = useState(
+    defaultValues?.preFactura?.aplicaPercepcion || false
   );
 
   // Estados contabilidad y auditoría
@@ -170,34 +195,15 @@ const CuentaPorCobrarForm = forwardRef(({
     const moneda = monedas?.find((m) => Number(m.id) === Number(monedaPagoId));
     return moneda?.colorFondo || "#ffffff";
   };
-  // Recalcular montoPagado, saldoPendiente y totales de impuestos cuando cambien los pagos
+  // Recalcular montoPagado y saldoPendiente cuando cambien los pagos
+  // ⚠️ NO recalcular montos de impuestos aquí, vienen de la CxC
   useEffect(() => {
     const totalPagado = pagos.reduce(
       (sum, pago) => sum + Number(pago.montoAplicadoDeuda || 0),
       0,
     );
-    const totalDetraccion = pagos.reduce(
-      (sum, pago) => sum + Number(pago.montoDetraccion || 0),
-      0,
-    );
-    const totalRetencion = pagos.reduce(
-      (sum, pago) => sum + Number(pago.montoRetencion || 0),
-      0,
-    );
-    const totalPercepcion = pagos.reduce(
-      (sum, pago) => sum + Number(pago.montoPercepcion || 0),
-      0,
-    );
     setMontoPagado(totalPagado);
     setSaldoPendiente(Number(montoTotal) - totalPagado);
-    setMontoDetraccionTotal(totalDetraccion);
-    setMontoRetencionTotal(totalRetencion);
-    setMontoPercepcionTotal(totalPercepcion);
-
-    // Actualizar flags según si hay montos
-    setTieneDetraccion(totalDetraccion > 0);
-    setTieneRetencion(totalRetencion > 0);
-    setTienePercepcion(totalPercepcion > 0);
   }, [pagos, montoTotal]);
 
   const cargarPagos = async () => {
@@ -232,13 +238,25 @@ const CuentaPorCobrarForm = forwardRef(({
       setMontoTotal(cuentaActualizada.montoTotal || 0);
       setMontoPagado(cuentaActualizada.montoPagado || 0);
       setSaldoPendiente(cuentaActualizada.saldoPendiente || 0);
-      setMontoDetraccionTotal(cuentaActualizada.montoDetraccionTotal || 0);
-      setMontoRetencionTotal(cuentaActualizada.montoRetencionTotal || 0);
-      setMontoPercepcionTotal(cuentaActualizada.montoPercepcionTotal || 0);
+      setMontoDetraccionTotal(Number(cuentaActualizada.montoDetraccionTotal) || 0);
+      setPorcentajeDetraccion(Number(cuentaActualizada.porcentajeDetraccion) || null);
+      setMontoRetencionTotal(Number(cuentaActualizada.montoRetencionTotal) || 0);
+      setPorcentajeRetencion(Number(cuentaActualizada.porcentajeRetencion) || null);
+      setMontoPercepcionTotal(Number(cuentaActualizada.montoPercepcionTotal) || 0);
       setTieneDetraccion(cuentaActualizada.tieneDetraccion || false);
       setTieneRetencion(cuentaActualizada.tieneRetencion || false);
       setTienePercepcion(cuentaActualizada.tienePercepcion || false);
       setEstadoId(cuentaActualizada.estadoId || ESTADO_CUENTA_POR_COBRAR.PENDIENTE);
+
+      // Cargar registros de impuestos tributarios generados
+      setDetraccionGenerada(cuentaActualizada.preFactura?.detraccion || null);
+      setRetencionGenerada(cuentaActualizada.preFactura?.retencion || null);
+      setPercepcionGenerada(cuentaActualizada.preFactura?.percepcion || null);
+
+      // Cargar flags booleanos
+      setAplicaDetraccion(cuentaActualizada.preFactura?.aplicaDetraccion || false);
+      setAplicaRetencion(cuentaActualizada.preFactura?.aplicaRetencion || false);
+      setAplicaPercepcion(cuentaActualizada.preFactura?.aplicaPercepcion || false);
     } catch (error) {
       console.error("❌ Error al recargar cuenta desde backend:", error);
     }
@@ -818,10 +836,10 @@ const CuentaPorCobrarForm = forwardRef(({
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label>% Retención</label>
+              <label>% Detracción</label>
               <InputNumber
-                value={porcentajeRetencion}
-                onValueChange={(e) => setPorcentajeRetencion(e.value)}
+                value={porcentajeDetraccion}
+                onValueChange={(e) => setPorcentajeDetraccion(e.value)}
                 mode="decimal"
                 minFractionDigits={2}
                 maxFractionDigits={2}
@@ -993,7 +1011,13 @@ const CuentaPorCobrarForm = forwardRef(({
             <div style={{ flex: 1 }}>
               <label>Creado Por</label>
               <InputText
-                value={creadoPor ? `Usuario ID: ${creadoPor}` : "N/A"}
+                value={
+                  defaultValues?.personalCreador 
+                    ? `${defaultValues.personalCreador.nombres} ${defaultValues.personalCreador.apellidos}`
+                    : creadoPor 
+                      ? `Usuario ID: ${creadoPor}` 
+                      : "N/A"
+                }
                 disabled
                 style={{ fontSize: getResponsiveFontSize(), width: "100%" }}
               />
@@ -1012,7 +1036,11 @@ const CuentaPorCobrarForm = forwardRef(({
               <label>Actualizado Por</label>
               <InputText
                 value={
-                  actualizadoPor ? `Usuario ID: ${actualizadoPor}` : "N/A"
+                  defaultValues?.personalActualizador 
+                    ? `${defaultValues.personalActualizador.nombres} ${defaultValues.personalActualizador.apellidos}`
+                    : actualizadoPor 
+                      ? `Usuario ID: ${actualizadoPor}` 
+                      : "N/A"
                 }
                 disabled
                 style={{ fontSize: getResponsiveFontSize(), width: "100%" }}
@@ -1045,7 +1073,330 @@ const CuentaPorCobrarForm = forwardRef(({
             />
           </div>
         </div>
+
       </Panel>
+
+      {/* REGISTROS DE IMPUESTOS TRIBUTARIOS GENERADOS - SECCIÓN INDEPENDIENTE */}
+      {(aplicaDetraccion || aplicaRetencion || aplicaPercepcion) && (
+        <Panel header="📋 Registros de Impuestos Tributarios Generados" className="mb-3">
+          <Accordion>
+            {/* DETRACCIÓN */}
+            {aplicaDetraccion && detraccionGenerada && (
+              <AccordionTab header={`📋 Detracción ID: ${detraccionGenerada.id} - ${detraccionGenerada.estadoPago?.nombre || 'PENDIENTE'} - S/ ${formatearNumero(detraccionGenerada.importeRequerido)}`}>
+                <div className="p-fluid">
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "start",
+                      gap: 10,
+                      flexDirection: window.innerWidth < 768 ? "column" : "row",
+                    }}
+                  >
+                    {/* Fila 1 - Identificación */}
+
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>ID Detracción</label>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#1976D2' }}>{detraccionGenerada.id}</div>
+                    </div>
+                    <div style={{ flex: 2 }}>
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>Tipo Detracción</label>
+                      <div>{detraccionGenerada.tipoDetraccion?.codigo || 'N/A'} - {detraccionGenerada.tipoDetraccion?.nombre || 'N/A'}</div>
+                    </div>
+                    <div style={{ flex: 0.5 }}>
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>Tasa</label>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{detraccionGenerada.tasaDetraccion ? `${Number(detraccionGenerada.tasaDetraccion)}%` : 'N/A'}</div>
+                    </div>
+                    <div style={{ flex: 0.5 }}>
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>Moneda</label>
+                      <div>{detraccionGenerada.moneda?.simbolo || ''} {detraccionGenerada.moneda?.codigoSunat || 'N/A'}</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>Estado de Pago</label>
+                      <div style={{
+                        padding: '0.5rem',
+                        borderRadius: '4px',
+                        backgroundColor: '#E3F2FD',
+                        fontWeight: 'bold',
+                        textAlign: 'center'
+                      }}>
+                        {detraccionGenerada.estadoPago?.nombre || 'PENDIENTE'}
+                      </div>
+                    </div>
+                  </div>
+
+
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "start",
+                      gap: 10,
+                      flexDirection: window.innerWidth < 768 ? "column" : "row",
+                    }}
+                  >
+                    {/* Fila 2 - Montos */}
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>Importe Dcmto</label>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                        {formatearNumero(detraccionGenerada.importeTotal)}
+                      </div>
+                    </div>
+                    {/* Fila 4 - Cuenta Banco Nación */}
+                    {detraccionGenerada.cuentaBNSunatPropia && (
+                      <div style={{ flex: 2 }}>
+                        <label style={{ fontWeight: 'bold', color: '#666' }}>Cuenta Banco de la Nación (SUNAT)</label>
+                        <div style={{
+                          padding: '0.5rem',
+                          backgroundColor: '#FFF3E0',
+                          borderRadius: '4px',
+                          border: '1px solid #FFB74D'
+                        }}>
+                          <strong>{detraccionGenerada.cuentaBNSunatPropia.banco?.nombre || 'N/A'}</strong> -
+                          {detraccionGenerada.cuentaBNSunatPropia.numeroCuenta || 'N/A'} -
+                          {detraccionGenerada.cuentaBNSunatPropia.descripcion || 'N/A'}
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ flex: 0.5 }}>
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>Detracción</label>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#1976D2' }}>
+                        {formatearNumero(detraccionGenerada.importeRequerido)}
+                      </div>
+                    </div>
+                    <div style={{ flex: 0.5 }}>
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>Pagado</label>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#4CAF50' }}>
+                        {formatearNumero(detraccionGenerada.importePagado)}
+                      </div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>Pendiente</label>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#F44336' }}>
+                        {formatearNumero(detraccionGenerada.saldoPendiente)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "start",
+                      gap: 10,
+                      flexDirection: window.innerWidth < 768 ? "column" : "row",
+                    }}
+                  >
+                    {/* Fila 3 - Documento y Fechas */}
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>Tipo Documento</label>
+                      <div>{detraccionGenerada.tipoDocumento?.descripcion || 'N/A'}</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>N° Documento</label>
+                      <div style={{ fontWeight: 'bold' }}>{detraccionGenerada.numeroDocumento || 'N/A'}</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>Fecha Emisión</label>
+                      <div>{detraccionGenerada.fechaEmision ? formatearFecha(detraccionGenerada.fechaEmision) : 'N/A'}</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>Período Contable</label>
+                      <div>{detraccionGenerada.periodoContable?.nombrePeriodo || 'N/A'}</div>
+                    </div>
+                  </div>
+
+
+
+
+
+
+
+                  {/* Fila 5 - Auditoría */}
+                  <div className="col-12 md:col-4">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Fecha Creación</label>
+                    <div>{detraccionGenerada.fechaCreacion ? new Date(detraccionGenerada.fechaCreacion).toLocaleString('es-PE') : 'N/A'}</div>
+                  </div>
+                  <div className="col-12 md:col-4">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Creado Por</label>
+                    <div>
+                      {detraccionGenerada.personalCreador 
+                        ? `${detraccionGenerada.personalCreador.nombres} ${detraccionGenerada.personalCreador.apellidos}`
+                        : `Usuario ID: ${detraccionGenerada.creadoPor || 'N/A'}`
+                      }
+                    </div>
+                  </div>
+
+                  {/* Fila 6 - Observaciones */}
+                  {detraccionGenerada.observaciones && (
+                    <div className="col-12">
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>Observaciones Detalladas</label>
+                      <div style={{
+                        padding: '0.75rem',
+                        backgroundColor: '#F5F5F5',
+                        borderRadius: '6px',
+                        whiteSpace: 'pre-wrap',
+                        fontSize: '0.85rem',
+                        fontFamily: 'monospace',
+                        maxHeight: '300px',
+                        overflowY: 'auto',
+                        border: '1px solid #ddd'
+                      }}>
+                        {detraccionGenerada.observaciones}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </AccordionTab>
+            )}
+
+            {/* RETENCIÓN */}
+            {aplicaRetencion && retencionGenerada && (
+              <AccordionTab header={`📋 Retención Generada - ${retencionGenerada.numeroDocumento || 'Sin número'} - ${retencionGenerada.estadoPago?.nombre || 'Sin estado'}`}>
+                <div className="grid">
+                  {/* Similar estructura a Detracción */}
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Tipo Retención</label>
+                    <div>{retencionGenerada.tipoRetencion?.descripcion || 'N/A'}</div>
+                  </div>
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Tasa</label>
+                    <div>{retencionGenerada.tasaRetencion ? `${Number(retencionGenerada.tasaRetencion)}%` : 'N/A'}</div>
+                  </div>
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Moneda</label>
+                    <div>{retencionGenerada.moneda?.codigoSunat || 'N/A'}</div>
+                  </div>
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Estado</label>
+                    <div style={{
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '4px',
+                      backgroundColor: '#E8F5E9',
+                      display: 'inline-block'
+                    }}>
+                      {retencionGenerada.estadoPago?.nombre || 'N/A'}
+                    </div>
+                  </div>
+
+                  {/* Montos */}
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Importe Total</label>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                      {formatearNumero(retencionGenerada.importeTotal)}
+                    </div>
+                  </div>
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Importe Requerido</label>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#1976D2' }}>
+                      {formatearNumero(retencionGenerada.importeRequerido)}
+                    </div>
+                  </div>
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Importe Pagado</label>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#4CAF50' }}>
+                      {formatearNumero(retencionGenerada.importePagado)}
+                    </div>
+                  </div>
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Saldo Pendiente</label>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#F44336' }}>
+                      {formatearNumero(retencionGenerada.saldoPendiente)}
+                    </div>
+                  </div>
+
+                  {/* Observaciones */}
+                  {retencionGenerada.observaciones && (
+                    <div className="col-12">
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>Observaciones</label>
+                      <div style={{
+                        padding: '0.5rem',
+                        backgroundColor: '#F5F5F5',
+                        borderRadius: '4px',
+                        whiteSpace: 'pre-wrap',
+                        fontSize: '0.9rem'
+                      }}>
+                        {retencionGenerada.observaciones}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </AccordionTab>
+            )}
+
+            {/* PERCEPCIÓN */}
+            {aplicaPercepcion && percepcionGenerada && (
+              <AccordionTab header={`📋 Percepción Generada - ${percepcionGenerada.numeroDocumento || 'Sin número'} - ${percepcionGenerada.estadoPago?.nombre || 'Sin estado'}`}>
+                <div className="grid">
+                  {/* Similar estructura a Retención */}
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Tipo Percepción</label>
+                    <div>{percepcionGenerada.tipoPercepcion?.descripcion || 'N/A'}</div>
+                  </div>
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Tasa</label>
+                    <div>{percepcionGenerada.tasaPercepcion ? `${Number(percepcionGenerada.tasaPercepcion)}%` : 'N/A'}</div>
+                  </div>
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Moneda</label>
+                    <div>{percepcionGenerada.moneda?.codigoSunat || 'N/A'}</div>
+                  </div>
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Estado</label>
+                    <div style={{
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '4px',
+                      backgroundColor: '#FFF9C4',
+                      display: 'inline-block'
+                    }}>
+                      {percepcionGenerada.estadoPago?.nombre || 'N/A'}
+                    </div>
+                  </div>
+
+                  {/* Montos */}
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Importe Total</label>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                      {formatearNumero(percepcionGenerada.importeTotal)}
+                    </div>
+                  </div>
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Importe Requerido</label>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#1976D2' }}>
+                      {formatearNumero(percepcionGenerada.importeRequerido)}
+                    </div>
+                  </div>
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Importe Pagado</label>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#4CAF50' }}>
+                      {formatearNumero(percepcionGenerada.importePagado)}
+                    </div>
+                  </div>
+                  <div className="col-12 md:col-3">
+                    <label style={{ fontWeight: 'bold', color: '#666' }}>Saldo Pendiente</label>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#F44336' }}>
+                      {formatearNumero(percepcionGenerada.saldoPendiente)}
+                    </div>
+                  </div>
+
+                  {/* Observaciones */}
+                  {percepcionGenerada.observaciones && (
+                    <div className="col-12">
+                      <label style={{ fontWeight: 'bold', color: '#666' }}>Observaciones</label>
+                      <div style={{
+                        padding: '0.5rem',
+                        backgroundColor: '#F5F5F5',
+                        borderRadius: '4px',
+                        whiteSpace: 'pre-wrap',
+                        fontSize: '0.9rem'
+                      }}>
+                        {percepcionGenerada.observaciones}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </AccordionTab>
+            )}
+          </Accordion>
+        </Panel>
+      )}
 
       {/* Botones de acción */}
       <div
