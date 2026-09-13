@@ -14,11 +14,13 @@ import BooleanToggleButton from '../common/BooleanToggleButton';
 import CuentaCorrienteSelector from '../common/CuentaCorrienteSelector';
 import { consultarTipoCambioSunat } from '../../api/consultaExterna';
 import { procesarPagoEspecializado, actualizarUrlVoucherConsolidado, actualizarUrlVoucherIndividual } from '../../api/tesoreria/pagoEspecializadoCuentaPorCobrar';
+import { getEstadosMultiFuncionPorTipoProviene } from '../../api/estadoMultiFuncion';
 import { useAuthStore } from '../../shared/stores/useAuthStore';
 import { getResponsiveFontSize, formatearFecha, formatearNumero } from '../../utils/utils';
 import ConfirmacionPagoDialog from './ConfirmacionPagoDialog';
 import TipoMovimientoSelector from '../common/TipoMovimientoSelector';
 import IrACxCEditar from '../common/IrACxCEditar';
+import VerRegistroImpuestoSunat from '../common/VerRegistroImpuestoSunat';
 import { generarYSubirVoucherConsolidado } from './VoucherConsolidadoPagoCxCPDF';
 import { generarYSubirVoucherMovimiento } from './VoucherMovimientoCajaPDF';
 
@@ -54,6 +56,19 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   onSuccess
 }) {
   const usuario = useAuthStore((state) => state.usuario);
+  
+  // Estados para catálogos de impuestos SUNAT
+  const [estadosDetraccion, setEstadosDetraccion] = useState([]);
+  const [estadosRetencion, setEstadosRetencion] = useState([]);
+  const [estadosPercepcion, setEstadosPercepcion] = useState([]);
+
+  // ════════════════════════════════════════════════════════════
+  // ESTADOS: PAGO SEPARADO NETO Y DETRACCIÓN
+  // ════════════════════════════════════════════════════════════
+  const [montoNetoIngresado, setMontoNetoIngresado] = useState(0);
+  const [montoDetraccionIngresado, setMontoDetraccionIngresado] = useState(0);
+  const [numeroOperacionBN, setNumeroOperacionBN] = useState('');
+  const [esAutodetraccion, setEsAutodetraccion] = useState(false);
 
   // ════════════════════════════════════════════════════════════
   // ESTADOS PRINCIPALES
@@ -127,6 +142,30 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   const [resultadoPago, setResultadoPago] = useState(null);
 
   // ════════════════════════════════════════════════════════════
+  // EFECTOS: CARGAR ESTADOS DE IMPUESTOS SUNAT
+  // ════════════════════════════════════════════════════════════
+  useEffect(() => {
+    const cargarEstadosImpuestos = async () => {
+      try {
+        const [detraccionData, retencionData, percepcionData] = await Promise.all([
+          getEstadosMultiFuncionPorTipoProviene(28), // Detracción
+          getEstadosMultiFuncionPorTipoProviene(29), // Retención
+          getEstadosMultiFuncionPorTipoProviene(30), // Percepción
+        ]);
+        setEstadosDetraccion(detraccionData || []);
+        setEstadosRetencion(retencionData || []);
+        setEstadosPercepcion(percepcionData || []);
+      } catch (error) {
+        console.error('Error al cargar estados de impuestos:', error);
+      }
+    };
+
+    if (visible) {
+      cargarEstadosImpuestos();
+    }
+  }, [visible]);
+
+  // ════════════════════════════════════════════════════════════
   // EFECTOS: INICIALIZACIÓN
   // ════════════════════════════════════════════════════════════
   useEffect(() => {
@@ -134,9 +173,11 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       // Inicializar moneda de pago con la moneda de la deuda
       setMonedaPagoId(cuentaPorCobrar.monedaId);
 
-      // Inicializar monto pagado en CERO (usuario debe ingresar)
+      // Inicializar montos en CERO
       setMontoPagado(0);
       setMontoAplicadoDeuda(0);
+      setMontoNetoIngresado(0);
+      setMontoDetraccionIngresado(0);
 
       // Inicializar importes de conceptos SUNAT
       setImporteTotalDetraccion(Number(cuentaPorCobrar.saldoPendiente || 0));
@@ -167,8 +208,96 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       } else {
         setAplicaPercepcion(false);
       }
+
+      // Preseleccionar período contable según fecha de pago
+      const periodoEncontrado = periodosContables.find(p => {
+        if (Number(p.empresaId) !== Number(cuentaPorCobrar.empresaId)) return false;
+        const fechaInicio = new Date(p.fechaInicio);
+        const fechaFin = new Date(p.fechaFin);
+        const fechaPagoActual = fechaPago || new Date();
+        return fechaPagoActual >= fechaInicio && fechaPagoActual <= fechaFin;
+      });
+
+      if (periodoEncontrado) {
+        setPeriodoContableId(Number(periodoEncontrado.id));
+      }
     }
-  }, [visible, cuentaPorCobrar]);
+  }, [visible, cuentaPorCobrar, fechaPago, periodosContables]);
+
+  // ════════════════════════════════════════════════════════════
+  // EFECTOS: CÁLCULO AUTOMÁTICO DE ITF
+  // ════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (montoNetoIngresado > 0) {
+      const itfCalculado = Number(montoNetoIngresado) * 0.0005; // 0.05%
+      setMontoITF(itfCalculado);
+    } else {
+      setMontoITF(0);
+    }
+  }, [montoNetoIngresado]);
+
+  // ════════════════════════════════════════════════════════════
+  // EFECTOS: DETECCIÓN DE AUTODETRACCIÓN
+  // ════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!cuentaPorCobrar) return;
+
+    const totalFactura = Number(cuentaPorCobrar.saldoPendiente || 0);
+    const montoNeto = Number(montoNetoIngresado || 0);
+
+    if (montoNeto >= totalFactura && totalFactura > 0) {
+      // Autodetracción detectada
+      setEsAutodetraccion(true);
+      
+      // Calcular monto de detracción automáticamente
+      const preFactura = cuentaPorCobrar.preFactura;
+      if (preFactura?.aplicaDetraccion && preFactura.detraccion) {
+        const montoDetAuto = Number(preFactura.detraccion.saldoPendiente || 0);
+        setMontoDetraccionIngresado(montoDetAuto);
+        
+        // Auto-generar número de constancia y operación
+        const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const autoNumero = `AUTO-${fecha}-${numeroOperacion || 'TEMP'}`;
+        setNumeroConstanciaDetraccion(autoNumero);
+        setNumeroOperacionBN(autoNumero);
+      }
+
+      // Mostrar toast informativo
+      toast?.current?.show({
+        severity: 'info',
+        summary: 'Autodetracción Detectada',
+        detail: 'El cliente pagó el total sin separar. Se realizará autodetracción automática.',
+        life: 5000
+      });
+    } else {
+      setEsAutodetraccion(false);
+    }
+
+    // Toast de sobrepago
+    if (montoNeto > totalFactura && totalFactura > 0) {
+      toast?.current?.show({
+        severity: 'warn',
+        summary: 'Sobrepago Detectado',
+        detail: `El monto ingresado (${montoNeto.toFixed(2)}) supera el total de la factura (${totalFactura.toFixed(2)}). Verifique con el cliente.`,
+        life: 5000
+      });
+    }
+  }, [montoNetoIngresado, cuentaPorCobrar, numeroOperacion, toast]);
+
+  // ════════════════════════════════════════════════════════════
+  // EFECTOS: CALCULAR MONTO APLICADO A LA DEUDA
+  // ════════════════════════════════════════════════════════════
+  useEffect(() => {
+    // Calcular monto aplicado a la deuda
+    if (esAutodetraccion) {
+      // En autodetracción: el cliente pagó el total, pero solo el neto cancela la CxC
+      const saldoCxC = Number(cuentaPorCobrar?.saldoPendiente || 0);
+      setMontoAplicadoDeuda(saldoCxC);
+    } else {
+      // Pago normal: solo el monto neto cancela la deuda de la CxC
+      setMontoAplicadoDeuda(Number(montoNetoIngresado || 0));
+    }
+  }, [montoNetoIngresado, esAutodetraccion, cuentaPorCobrar]);
 
   // ════════════════════════════════════════════════════════════
   // EFECTOS: CONSULTA TIPO DE CAMBIO
@@ -365,12 +494,11 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   // MEMOS: CÁLCULOS DE RESUMEN
   // ════════════════════════════════════════════════════════════
   const resumenOperacion = useMemo(() => {
-    const montoBruto = Number(montoPagado || 0);
+    // Monto Bruto = solo el pago neto (no incluye detracción)
+    const montoBruto = Number(montoNetoIngresado || 0);
     const itf = Number(montoITF || 0);
     const comision = Number(montoComision || 0);
-    const detraccion = aplicaDetraccion ? Number(importeDetraido || 0) : 0;
-    const retencion = aplicaRetencion ? Number(importeRetenido || 0) : 0;
-    const percepcion = aplicaPercepcion ? Number(importePercibido || 0) : 0;
+    const detraccion = Number(montoDetraccionIngresado || 0);
 
     const montoNetoCaja = montoBruto - itf - comision;
     const deudaCancelada = Number(montoAplicadoDeuda || 0);
@@ -381,22 +509,15 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       itf,
       comision,
       detraccion,
-      retencion,
-      percepcion,
       montoNetoCaja,
       deudaCancelada,
       saldoPendiente: saldoPendiente > 0 ? saldoPendiente : 0
     };
   }, [
-    montoPagado,
+    montoNetoIngresado,
+    montoDetraccionIngresado,
     montoITF,
     montoComision,
-    aplicaDetraccion,
-    importeDetraido,
-    aplicaRetencion,
-    importeRetenido,
-    aplicaPercepcion,
-    importePercibido,
     montoAplicadoDeuda,
     cuentaPorCobrar?.saldoPendiente
   ]);
@@ -405,6 +526,17 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   // FUNCIONES: VALIDACIÓN
   // ════════════════════════════════════════════════════════════
   const validarFormulario = () => {
+    // Validar que al menos un monto esté ingresado
+    if (Number(montoNetoIngresado) === 0 && Number(montoDetraccionIngresado) === 0) {
+      toast?.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Debe ingresar al menos un monto (neto o detracción).',
+        life: 3000
+      });
+      return false;
+    }
+
     if (!fechaPago) {
       toast?.current?.show({
         severity: 'error',
@@ -415,14 +547,38 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       return false;
     }
 
-    if (!montoPagado || Number(montoPagado) <= 0) {
+    // Validar N° Operación si hay pago neto
+    if (Number(montoNetoIngresado) > 0 && !numeroOperacion) {
       toast?.current?.show({
         severity: 'error',
         summary: 'Error',
-        detail: 'El monto pagado debe ser mayor a cero.',
+        detail: 'Debe ingresar el N° de Operación del pago neto.',
         life: 3000
       });
       return false;
+    }
+
+    // Validar campos de detracción si hay pago de detracción (y NO es autodetracción)
+    if (Number(montoDetraccionIngresado) > 0 && !esAutodetraccion) {
+      if (!numeroConstanciaDetraccion) {
+        toast?.current?.show({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Debe ingresar el N° de Constancia de la detracción.',
+          life: 3000
+        });
+        return false;
+      }
+
+      if (!numeroOperacionBN) {
+        toast?.current?.show({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Debe ingresar el N° de Operación del Banco de la Nación.',
+          life: 3000
+        });
+        return false;
+      }
     }
 
     if (!monedaPagoId) {
@@ -571,7 +727,8 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
         cuentaPorCobrarId: cuentaPorCobrar.id,
         empresaId: cuentaPorCobrar.empresaId,
         fechaPago: fechaPago.toISOString(),
-        montoPagado: Number(montoPagado),
+        // montoPagado debe ser solo el monto neto (el que genera el movimiento de ingreso)
+        montoPagado: Number(montoNetoIngresado) || 0,
         monedaPagoId: Number(monedaPagoId),
         tipoCambio: Number(tipoCambio),
         montoAplicadoDeuda: Number(montoAplicadoDeuda),
@@ -585,7 +742,13 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
         montoComision: montoComision ? Number(montoComision) : 0,
         observaciones: observaciones || null,
         periodoContableId: periodoContableId ? Number(periodoContableId) : null,
-        usuarioId: usuario.id  // ⭐ NUEVO: Usuario que procesa el pago
+        usuarioId: usuario.id,
+        // Nuevos campos para detracción separada
+        montoNetoIngresado: Number(montoNetoIngresado) || 0,
+        montoDetraccionIngresado: Number(montoDetraccionIngresado) || 0,
+        numeroOperacionBN: numeroOperacionBN || null,
+        numeroConstanciaDetraccion: numeroConstanciaDetraccion || null,
+        esAutodetraccion: esAutodetraccion || false
       };
 
       // Agregar detracción si aplica
@@ -793,6 +956,58 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       </Panel>
     );
   };
+
+  // ════════════════════════════════════════════════════════════
+  // RENDER: REGISTRO IMPUESTO SUNAT GENERADO
+  // ════════════════════════════════════════════════════════════
+  const renderRegistroImpuestoSunat = () => {
+    if (!cuentaPorCobrar?.preFactura) return null;
+
+    const preFactura = cuentaPorCobrar.preFactura;
+    let tipoImpuesto = null;
+    let registroGenerado = null;
+    let estadosImpuesto = [];
+
+    if (preFactura.aplicaDetraccion && preFactura.detraccion) {
+      tipoImpuesto = 'DETRACCION';
+      registroGenerado = preFactura.detraccion;
+      estadosImpuesto = estadosDetraccion;
+    } else if (preFactura.aplicaRetencion && preFactura.retencion) {
+      tipoImpuesto = 'RETENCION';
+      registroGenerado = preFactura.retencion;
+      estadosImpuesto = estadosRetencion;
+    } else if (preFactura.aplicaPercepcion && preFactura.percepcion) {
+      tipoImpuesto = 'PERCEPCION';
+      registroGenerado = preFactura.percepcion;
+      estadosImpuesto = estadosPercepcion;
+    }
+
+    if (!tipoImpuesto || !registroGenerado) return null;
+
+    return (
+      <Panel header="📋 Registro de Impuesto SUNAT Generado" className="mb-3">
+        <VerRegistroImpuestoSunat
+          registro={registroGenerado}
+          tipo={tipoImpuesto}
+          monedas={monedas}
+          tiposDetraccion={tiposDetraccion}
+          tiposRetencionPercepcion={tiposRetencionPercepcion}
+          periodosContables={periodosContables}
+          cuentasCorrientes={cuentasCorrientes}
+          empresas={empresas}
+          entidadesComerciales={clientes}
+          estadosPago={estadosImpuesto}
+          compact={false}
+          toast={toast}
+          permisos={{}}
+          onUpdate={(updatedData) => {
+            // Recargar la CxC si es necesario
+            console.log('Impuesto actualizado:', updatedData);
+          }}
+        />
+      </Panel>
+    );
+  };
   // ════════════════════════════════════════════════════════════
   // RENDER: DATOS DE PAGO
   // ════════════════════════════════════════════════════════════
@@ -800,8 +1015,15 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
     const monedaPago = monedas.find(m => Number(m.id) === Number(monedaPagoId));
     const monedaDeuda = monedas.find(m => Number(m.id) === Number(cuentaPorCobrar?.monedaId));
 
+    const preFactura = cuentaPorCobrar?.preFactura;
+    let netoEsperado = Number(cuentaPorCobrar?.saldoPendiente || 0);
+    
+    if (preFactura?.aplicaDetraccion && preFactura.detraccion) {
+      netoEsperado = netoEsperado - Number(preFactura.detraccion.saldoPendiente || 0);
+    }
+
     return (
-      <Panel header="💰 Datos de Pago" className="mb-3">
+      <Panel header="💵 1. PAGO DEL NETO" className="mb-3">
         <div className="p-fluid">
           <div
             style={{
@@ -825,9 +1047,6 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                   if (moneda?.id) {
                     setMonedaPagoId(Number(moneda.id));
                   }
-
-                  // Resetear monto pagado a cero
-                  setMontoPagado(0);
                 }}
                 label=""
                 placeholder="Seleccione cuenta corriente"
@@ -856,7 +1075,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="monedaPagoId" className="font-bold">
-                Moneda de Pago <span className="text-red-500">*</span>
+                Moneda <span className="text-red-500">*</span>
               </label>
               <Dropdown
                 id="monedaPagoId"
@@ -868,31 +1087,18 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="montoPagado" className="font-bold">
-                Monto Pagado <span className="text-red-500">*</span>
+              <label htmlFor="montoNetoIngresado" className="font-bold">
+                Monto Pagado Neto <span className="text-red-500">*</span>
               </label>
               <InputNumber
-                id="montoPagado"
-                value={montoPagado}
-                onValueChange={(e) => {
-                  const nuevoMonto = e.value || 0;
-                  setMontoPagado(nuevoMonto);
-
-                  // Alerta si monto > deuda (sin bloquear)
-                  if (nuevoMonto > Number(cuentaPorCobrar?.saldoPendiente || 0)) {
-                    const moneda = monedas.find(m => Number(m.id) === Number(cuentaPorCobrar?.monedaId));
-                    toast?.current?.show({
-                      severity: 'warn',
-                      summary: 'Advertencia',
-                      detail: `El monto pagado (${moneda?.simbolo} ${nuevoMonto.toFixed(2)}) es mayor que la deuda (${moneda?.simbolo} ${Number(cuentaPorCobrar?.saldoPendiente || 0).toFixed(2)})`,
-                      life: 4000
-                    });
-                  }
-                }}
+                id="montoNetoIngresado"
+                value={montoNetoIngresado}
+                onValueChange={(e) => setMontoNetoIngresado(e.value || 0)}
                 mode="decimal"
                 minFractionDigits={2}
                 maxFractionDigits={2}
                 style={{ width: "100%" }}
+                placeholder={`Neto esperado: ${monedaPago?.simbolo || ''} ${netoEsperado.toFixed(2)}`}
               />
             </div>
           </div>
@@ -905,33 +1111,6 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
             }}
           >
             <div style={{ flex: 1 }}>
-              <label htmlFor="tipoCambio" className="font-bold">
-                Tipo de Cambio
-              </label>
-              <InputNumber
-                id="tipoCambio"
-                value={tipoCambio}
-                onValueChange={(e) => setTipoCambio(e.value)}
-                mode="decimal"
-                minFractionDigits={4}
-                maxFractionDigits={4}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="montoAplicadoDeuda" className="font-bold">
-                Monto Aplicado a la Deuda
-              </label>
-              <InputNumber
-                id="montoAplicadoDeuda"
-                value={montoAplicadoDeuda}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                prefix={monedaDeuda?.simbolo ? `${monedaDeuda.simbolo} ` : ''}
-                disabled
-              />
-            </div>
-            <div style={{ flex: 1 }}>
               <label htmlFor="medioPagoId" className="font-bold">
                 Medio de Pago <span className="text-red-500">*</span>
               </label>
@@ -941,24 +1120,14 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 options={mediosPagoOptions}
                 onChange={(e) => setMedioPagoId(e.value)}
                 placeholder="Seleccione medio de pago"
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="bancoId" className="font-bold">
-                Banco
-              </label>
-              <Dropdown
-                id="bancoId"
-                value={bancoId}
-                options={bancosOptions}
-                onChange={(e) => setBancoId(e.value)}
-                placeholder="Seleccione banco"
+                className="w-full"
+                filter
                 showClear
               />
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="numeroOperacion" className="font-bold">
-                Número de Operación
+                N° Operación
               </label>
               <InputText
                 id="numeroOperacion"
@@ -968,191 +1137,187 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 placeholder="Ingrese número de operación"
               />
             </div>
-          </div>
-          <TipoMovimientoSelector
-            tiposMovimiento={tiposMovimiento}
-            value={tipoMovimientoIngresoId}
-            onChange={(value) => setTipoMovimientoIngresoId(value)}
-            required={true}
-            placeholder="Buscar tipo de movimiento de ingreso..."
-          />
-        </div>
-      </Panel>
-    );
-  };
-
-  // ════════════════════════════════════════════════════════════
-  // RENDER: CARGOS BANCARIOS
-  // ════════════════════════════════════════════════════════════
-  const renderCargosBancarios = () => {
-    const monedaPago = monedas.find(m => Number(m.id) === Number(monedaPagoId));
-    return (
-      <Panel header="🏦 Cargos Bancarios" className="mb-3" toggleable collapsed>
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="montoITF" className="font-bold">
-              ITF (Impuesto a las Transacciones Financieras)
-            </label>
-            <InputNumber
-              id="montoITF"
-              value={montoITF}
-              onValueChange={(e) => setMontoITF(e.value)}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="montoComision" className="font-bold">
-              Comisión Bancaria
-            </label>
-            <InputNumber
-              id="montoComision"
-              value={montoComision}
-              onValueChange={(e) => setMontoComision(e.value)}
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-            />
-          </div>
-        </div>
-      </Panel>
-    );
-  };
-
-  // ════════════════════════════════════════════════════════════
-  // RENDER: CONCEPTOS SUNAT - DETRACCIÓN
-  // ════════════════════════════════════════════════════════════
-  const renderDetraccion = () => {
-    const monedaPago = monedas.find(m => Number(m.id) === Number(monedaPagoId));
-
-    return (
-      <Panel header="📋 Detracción SUNAT" className="mb-3" toggleable collapsed>
-        <div className="grid">
-          <div className="col-12">
-            <div className="field">
-              <BooleanToggleButton
-                value={aplicaDetraccion}
-                onChange={setAplicaDetraccion}
-                labelTrue="Aplica Detracción"
-                labelFalse="No Aplica Detracción"
-                size="small"
+            <div style={{ flex: 1 }}>
+              <TipoMovimientoSelector
+                tiposMovimiento={tiposMovimiento}
+                value={tipoMovimientoIngresoId}
+                onChange={(value) => setTipoMovimientoIngresoId(value)}
+                required={true}
+                placeholder="Buscar tipo de movimiento..."
               />
             </div>
           </div>
 
-          {aplicaDetraccion && (
-            <>
-              <div className="col-12 md:col-6">
-                <div className="field">
-                  <label htmlFor="numeroConstanciaDetraccion" className="font-bold">
-                    Número de Constancia <span className="text-red-500">*</span>
-                  </label>
-                  <InputText
-                    id="numeroConstanciaDetraccion"
-                    value={numeroConstanciaDetraccion}
-                    onChange={(e) => setNumeroConstanciaDetraccion(e.target.value)}
-                    className="w-full"
-                    placeholder="Ingrese número de constancia"
-                  />
-                </div>
-              </div>
+          <Divider />
 
-              <div className="col-12 md:col-6">
-                <div className="field">
-                  <label htmlFor="fechaDepositoDetraccion" className="font-bold">
-                    Fecha de Depósito <span className="text-red-500">*</span>
-                  </label>
-                  <Calendar
-                    id="fechaDepositoDetraccion"
-                    value={fechaDepositoDetraccion}
-                    onChange={(e) => setFechaDepositoDetraccion(e.value)}
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    className="w-full"
-                  />
-                </div>
-              </div>
+          <div style={{ backgroundColor: '#f8f9fa', padding: '0.75rem', borderRadius: '4px' }}>
+            <strong>🏦 Cargos Bancarios (Solo para pago neto)</strong>
+          </div>
 
-              <div className="col-12 md:col-6">
-                <div className="field">
-                  <label htmlFor="tipoDetraccionId" className="font-bold">
-                    Tipo de Detracción
-                  </label>
-                  <Dropdown
-                    id="tipoDetraccionId"
-                    value={tipoDetraccionId}
-                    options={tiposDetraccionOptions}
-                    onChange={(e) => setTipoDetraccionId(e.value)}
-                    placeholder="Seleccione tipo de detracción"
-                    className="w-full"
-                    showClear
-                    filter
-                  />
-                </div>
-              </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="montoITF" className="font-bold">
+                ITF (0.05%) - Calculado automáticamente
+              </label>
+              <InputNumber
+                id="montoITF"
+                value={montoITF}
+                onValueChange={(e) => setMontoITF(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                prefix={monedaPago?.simbolo ? `${monedaPago.simbolo} ` : ''}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="montoComision" className="font-bold">
+                Comisión Bancaria
+              </label>
+              <InputNumber
+                id="montoComision"
+                value={montoComision}
+                onValueChange={(e) => setMontoComision(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                prefix={monedaPago?.simbolo ? `${monedaPago.simbolo} ` : ''}
+              />
+            </div>
+          </div>
+        </div>
+      </Panel>
+    );
+  };
 
-              <div className="col-12 md:col-6">
-                <div className="field">
-                  <label htmlFor="tasaDetraccion" className="font-bold">
-                    Tasa de Detracción (%) <span className="text-red-500">*</span>
-                  </label>
-                  <InputNumber
-                    id="tasaDetraccion"
-                    value={tasaDetraccion}
-                    onValueChange={(e) => setTasaDetraccion(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    suffix=" %"
-                    className="w-full"
-                  />
-                </div>
-              </div>
 
-              <div className="col-12 md:col-6">
-                <div className="field">
-                  <label htmlFor="importeTotalDetraccion" className="font-bold">
-                    Importe Total
-                  </label>
-                  <InputNumber
-                    id="importeTotalDetraccion"
-                    value={importeTotalDetraccion}
-                    onValueChange={(e) => setImporteTotalDetraccion(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    prefix={monedaPago?.simbolo ? `${monedaPago.simbolo} ` : ''}
-                    className="w-full"
-                  />
-                </div>
-              </div>
 
-              <div className="col-12 md:col-6">
-                <div className="field">
-                  <label htmlFor="importeDetraido" className="font-bold">
-                    Importe Detraído
-                  </label>
-                  <InputNumber
-                    id="importeDetraido"
-                    value={importeDetraido}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    prefix={monedaPago?.simbolo ? `${monedaPago.simbolo} ` : ''}
-                    className="w-full"
-                    disabled
-                  />
-                </div>
-              </div>
-            </>
+  // ════════════════════════════════════════════════════════════
+  // RENDER: PAGO DE LA DETRACCIÓN
+  // ════════════════════════════════════════════════════════════
+  const renderPagoDetraccion = () => {
+    if (!cuentaPorCobrar?.preFactura?.aplicaDetraccion) return null;
+
+    const preFactura = cuentaPorCobrar.preFactura;
+    const detraccion = preFactura.detraccion;
+    if (!detraccion) return null;
+
+    const monedaPago = monedas.find(m => Number(m.id) === Number(monedaPagoId));
+    const montoDetEsperado = Number(detraccion.saldoPendiente || 0);
+
+    // Obtener cuenta BN automáticamente
+    const cuentaBN = detraccion.cuentaBNSunatPropia;
+    const cuentaBNTexto = cuentaBN 
+      ? `${cuentaBN.banco?.nombre || 'Banco Nación'} - ${cuentaBN.numeroCuenta}`
+      : 'No configurada';
+
+    return (
+      <Panel header="🏦 2. PAGO DE LA DETRACCIÓN" className="mb-3">
+        <div className="p-fluid">
+          {esAutodetraccion && (
+            <div style={{ backgroundColor: '#fff3cd', padding: '0.75rem', borderRadius: '4px', marginBottom: '1rem' }}>
+              <strong>⚙️ AUTODETRACCIÓN AUTOMÁTICA</strong>
+              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>
+                Los campos se han completado automáticamente. El sistema generará los movimientos de caja necesarios.
+              </p>
+            </div>
           )}
+
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="cuentaBNTexto" className="font-bold">
+                Cuenta BN (Automático)
+              </label>
+              <InputText
+                id="cuentaBNTexto"
+                value={cuentaBNTexto}
+                disabled
+                className="w-full"
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="fechaDepositoDetraccion" className="font-bold">
+                Fecha Depósito
+              </label>
+              <Calendar
+                id="fechaDepositoDetraccion"
+                value={fechaDepositoDetraccion}
+                onChange={(e) => setFechaDepositoDetraccion(e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                className="w-full"
+                disabled={esAutodetraccion}
+              />
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="montoDetraccionIngresado" className="font-bold">
+                Monto Pagado Detracción
+              </label>
+              <InputNumber
+                id="montoDetraccionIngresado"
+                value={montoDetraccionIngresado}
+                onValueChange={(e) => setMontoDetraccionIngresado(e.value || 0)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                prefix={monedaPago?.simbolo ? `${monedaPago.simbolo} ` : ''}
+                placeholder={`Detracción esperada: ${monedaPago?.simbolo || ''} ${montoDetEsperado.toFixed(2)}`}
+                disabled={esAutodetraccion}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="numeroConstanciaDetraccion" className="font-bold">
+                N° Constancia
+              </label>
+              <InputText
+                id="numeroConstanciaDetraccion"
+                value={numeroConstanciaDetraccion}
+                onChange={(e) => setNumeroConstanciaDetraccion(e.target.value)}
+                className="w-full"
+                placeholder="Ingrese número de constancia"
+                disabled={esAutodetraccion}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="numeroOperacionBN" className="font-bold">
+                N° Operación BN
+              </label>
+              <InputText
+                id="numeroOperacionBN"
+                value={numeroOperacionBN}
+                onChange={(e) => setNumeroOperacionBN(e.target.value)}
+                className="w-full"
+                placeholder="Ingrese número de operación"
+                disabled={esAutodetraccion}
+              />
+            </div>
+          </div>
+
+          <Divider />
+
+          <div style={{ backgroundColor: '#e7f3ff', padding: '0.5rem', borderRadius: '4px', fontSize: '0.9rem' }}>
+            ℹ️ La detracción NO genera ITF ni comisión bancaria
+          </div>
         </div>
       </Panel>
     );
@@ -1427,137 +1592,52 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   // ════════════════════════════════════════════════════════════
   const renderResumen = () => {
     const monedaPago = monedas.find(m => Number(m.id) === Number(monedaPagoId));
-    const monedaDeuda = monedas.find(m => Number(m.id) === Number(cuentaPorCobrar?.monedaId));
+    const simbolo = monedaPago?.simbolo || 'S/.';
 
     return (
       <Panel header="📊 Resumen de Operación" className="mb-3">
-        <div className="grid">
-          <div className="col-12 md:col-6 lg:col-4">
-            <div className="field">
-              <label className="font-bold">Monto Bruto:</label>
-              <div>
-                <Tag
-                  value={`${monedaPago?.simbolo || ''} ${resumenOperacion.montoBruto.toFixed(2)}`}
-                  severity="info"
-                  style={{ fontSize: getResponsiveFontSize() }}
-                />
-              </div>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+          gap: '1rem',
+          padding: '0.5rem'
+        }}>
+          <div style={{ textAlign: 'center', borderRight: '1px solid #dee2e6', paddingRight: '1rem' }}>
+            <div style={{ fontSize: '0.85rem', color: '#6c757d', marginBottom: '0.25rem' }}>Monto Bruto</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#0d6efd' }}>
+              {simbolo} {resumenOperacion.montoBruto.toFixed(2)}
             </div>
           </div>
 
-          <div className="col-12 md:col-6 lg:col-4">
-            <div className="field">
-              <label className="font-bold">ITF:</label>
-              <div>
-                <Tag
-                  value={`${monedaPago?.simbolo || ''} ${resumenOperacion.itf.toFixed(2)}`}
-                  severity="warning"
-                  style={{ fontSize: getResponsiveFontSize() }}
-                />
-              </div>
+          <div style={{ textAlign: 'center', borderRight: '1px solid #dee2e6', paddingRight: '1rem' }}>
+            <div style={{ fontSize: '0.85rem', color: '#6c757d', marginBottom: '0.25rem' }}>ITF</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fd7e14' }}>
+              {simbolo} {resumenOperacion.itf.toFixed(2)}
             </div>
           </div>
 
-          <div className="col-12 md:col-6 lg:col-4">
-            <div className="field">
-              <label className="font-bold">Comisión:</label>
-              <div>
-                <Tag
-                  value={`${monedaPago?.simbolo || ''} ${resumenOperacion.comision.toFixed(2)}`}
-                  severity="warning"
-                  style={{ fontSize: getResponsiveFontSize() }}
-                />
-              </div>
+          <div style={{ textAlign: 'center', borderRight: '1px solid #dee2e6', paddingRight: '1rem' }}>
+            <div style={{ fontSize: '0.85rem', color: '#6c757d', marginBottom: '0.25rem' }}>Comisión</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fd7e14' }}>
+              {simbolo} {resumenOperacion.comision.toFixed(2)}
             </div>
           </div>
 
-          <div className="col-12 md:col-6 lg:col-4">
-            <div className="field">
-              <label className="font-bold">Monto Neto en Caja:</label>
-              <div>
-                <Tag
-                  value={`${monedaPago?.simbolo || ''} ${resumenOperacion.montoNetoCaja.toFixed(2)}`}
-                  severity="success"
-                  style={{ fontSize: getResponsiveFontSize() }}
-                />
-              </div>
+          <div style={{ textAlign: 'center', borderRight: '1px solid #dee2e6', paddingRight: '1rem' }}>
+            <div style={{ fontSize: '0.85rem', color: '#6c757d', marginBottom: '0.25rem' }}>Neto en Caja</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#198754' }}>
+              {simbolo} {resumenOperacion.montoNetoCaja.toFixed(2)}
             </div>
           </div>
 
-          {aplicaDetraccion && (
-            <div className="col-12 md:col-6 lg:col-4">
-              <div className="field">
-                <label className="font-bold">Detracción:</label>
-                <div>
-                  <Tag
-                    value={`${monedaPago?.simbolo || ''} ${resumenOperacion.detraccion.toFixed(2)}`}
-                    severity="contrast"
-                    style={{ fontSize: getResponsiveFontSize() }}
-                  />
-                </div>
+          {resumenOperacion.detraccion > 0 && (
+            <div style={{ textAlign: 'center', paddingRight: '1rem' }}>
+              <div style={{ fontSize: '0.85rem', color: '#6c757d', marginBottom: '0.25rem' }}>Detracción</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#6c757d' }}>
+                {simbolo} {resumenOperacion.detraccion.toFixed(2)}
               </div>
             </div>
           )}
-
-          {aplicaRetencion && (
-            <div className="col-12 md:col-6 lg:col-4">
-              <div className="field">
-                <label className="font-bold">Retención:</label>
-                <div>
-                  <Tag
-                    value={`${monedaPago?.simbolo || ''} ${resumenOperacion.retencion.toFixed(2)}`}
-                    severity="contrast"
-                    style={{ fontSize: getResponsiveFontSize() }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {aplicaPercepcion && (
-            <div className="col-12 md:col-6 lg:col-4">
-              <div className="field">
-                <label className="font-bold">Percepción:</label>
-                <div>
-                  <Tag
-                    value={`${monedaPago?.simbolo || ''} ${resumenOperacion.percepcion.toFixed(2)}`}
-                    severity="contrast"
-                    style={{ fontSize: getResponsiveFontSize() }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="col-12">
-            <Divider />
-          </div>
-
-          <div className="col-12 md:col-6">
-            <div className="field">
-              <label className="font-bold text-lg">Deuda Cancelada:</label>
-              <div>
-                <Tag
-                  value={`${monedaDeuda?.simbolo || ''} ${resumenOperacion.deudaCancelada.toFixed(2)}`}
-                  severity="success"
-                  style={{ fontSize: '1.2rem', padding: '0.5rem 1rem' }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="col-12 md:col-6">
-            <div className="field">
-              <label className="font-bold text-lg">Saldo Pendiente:</label>
-              <div>
-                <Tag
-                  value={`${monedaDeuda?.simbolo || ''} ${resumenOperacion.saldoPendiente.toFixed(2)}`}
-                  severity={resumenOperacion.saldoPendiente > 0 ? 'warning' : 'success'}
-                  style={{ fontSize: '1.2rem', padding: '0.5rem 1rem' }}
-                />
-              </div>
-            </div>
-          </div>
         </div>
       </Panel>
     );
@@ -1647,12 +1727,9 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       >
         <div className="p-fluid">
           {renderInfoDocumento()}
+          {renderRegistroImpuestoSunat()}
           {renderDatosPago()}
-          {renderCargosBancarios()}
-          {/* Mostrar secciones SUNAT solo si la CxC tiene estos conceptos */}
-          {cuentaPorCobrar?.tieneDetraccion && renderDetraccion()}
-          {cuentaPorCobrar?.tieneRetencion && renderRetencion()}
-          {cuentaPorCobrar?.tienePercepcion && renderPercepcion()}
+          {renderPagoDetraccion()}
           {renderResumen()}
           {renderObservaciones()}
         </div>

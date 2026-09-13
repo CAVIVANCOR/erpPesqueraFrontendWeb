@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "empresaId": 1,
+    "tipoDetraccionId": 2,
+    "tasaDetraccion": 10,
+    "monedaId": 1,
+    "importeTotal": 3894,
+    "aplicado": "False",
+    "fechaAplicacion": "NULL",
+    "observaciones": "DETRACCIÓN GENERADA AUTOMÁTICAMENTE\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nDocumento: FACTURA 002-002-0000002680\nFecha Emisión: 1/9/2026\nFecha Vencimiento: 1/9/2026\n\nCliente:\nRUC: 20517650871\nRazón Social: EXACTA OPERADOR LOGISTICO SOCIEDAD ANONIMA CERRADA\n\nImportes:\nValor Venta: S/. 3300.00\nIGV (18%): S/. 594.00\nTotal: S/. 3894.00\n\nDetracción (10.00%): S/. 389.00\n\nDetalle de Items:\n  • Sin descripción x 11.00 UND @ S/. 300.00\n\nGenerado desde PreFactura PF-2026-000510\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    "fechaContable": "2026-09-01 22:50:50.101",
+    "periodoContableId": 15,
+    "fechaCreacion": "2026-09-11 20:35:00.296",
+    "fechaActualizacion": "2026-09-13 16:56:03.04",
+    "creadoPor": 1,
+    "actualizadoPor": 1,
+    "cuentaBNSunatPropiaId": 51,
+    "cuentaBNSunatProveedorId": "NULL",
+    "entidadComercialId": 273,
+    "estadoPagoId": 127,
+    "fechaEmision": "2026-09-13 16:55:19.106",
+    "importePagado": 389,
+    "importeRequerido": 389,
+    "numeroDocumento": "AUTO-20260913-4444444444444444",
+    "ordenCompraId": "NULL",
+    "origenOperacionComprasVentas": "False",
+    "preFacturaId": 511,
+    "saldoPendiente": 0,
+    "tipoDocumentoId": 2
+  }
+]

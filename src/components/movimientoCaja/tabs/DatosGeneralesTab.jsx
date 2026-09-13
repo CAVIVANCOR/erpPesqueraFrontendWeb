@@ -7,10 +7,12 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Tag } from "primereact/tag";
 import { Badge } from "primereact/badge";
+import { InputText } from "primereact/inputtext";
+import { Calendar } from "primereact/calendar";
 import { formatearFecha, formatearNumero, getResponsiveFontSize } from "../../../utils/utils";
 import { getMovimientosPorCorrelativo } from "../../../api/movimientoCaja";
 
-export default function DatosGeneralesTab({ movimiento, empresas, toast }) {
+export default function DatosGeneralesTab({ movimiento, empresas, toast, onFieldChange, readOnly }) {
   const [showOperacionCompleta, setShowOperacionCompleta] = useState(false);
   const [movimientosOperacion, setMovimientosOperacion] = useState([]);
   const [loadingOperacion, setLoadingOperacion] = useState(false);
@@ -461,6 +463,179 @@ export default function DatosGeneralesTab({ movimiento, empresas, toast }) {
               }}
             >
               {movimiento.entidadComercial?.razonSocial || "-"}
+            </div>
+          </div>
+        </div>
+      </Panel>
+
+      {/* ============================================ */}
+      {/* SECCIÓN 4: DATOS DE OPERACIONES BANCARIAS */}
+      {/* ============================================ */}
+      <Panel header="💳 Datos de Operaciones Bancarias" toggleable style={{ marginTop: "1rem" }}>
+        {/* PAGO PRINCIPAL */}
+        <div style={{ marginBottom: "1.5rem" }}>
+          <h4 style={{ 
+            color: "#495057", 
+            borderBottom: "2px solid #dee2e6", 
+            paddingBottom: "0.5rem",
+            marginBottom: "1rem"
+          }}>
+            📤 Pago Principal (Neto al Cliente/Proveedor)
+          </h4>
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row"
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+                htmlFor="numeroOperacionPagoBanco"
+              >
+                Número de Operación Bancaria
+              </label>
+              {readOnly ? (
+                <div
+                  id="numeroOperacionPagoBanco"
+                  style={{
+                    padding: "0.75rem",
+                    border: "1px solid #ced4da",
+                    borderRadius: "6px",
+                    backgroundColor: "#f8f9fa",
+                    fontWeight: "bold"
+                  }}
+                >
+                  {movimiento.numeroOperacionPagoBanco || "-"}
+                </div>
+              ) : (
+                <InputText
+                  id="numeroOperacionPagoBanco"
+                  value={movimiento.numeroOperacionPagoBanco || ""}
+                  onChange={(e) => onFieldChange?.("numeroOperacionPagoBanco", e.target.value)}
+                  placeholder="Ej: 4444444444444444"
+                  maxLength={50}
+                  style={{ width: "100%" }}
+                />
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+                htmlFor="fechaOperacionPagoBanco"
+              >
+                Fecha de Operación Bancaria
+              </label>
+              {readOnly ? (
+                <div
+                  id="fechaOperacionPagoBanco"
+                  style={{
+                    padding: "0.75rem",
+                    border: "1px solid #ced4da",
+                    borderRadius: "6px",
+                    backgroundColor: "#f8f9fa",
+                    fontWeight: "bold"
+                  }}
+                >
+                  {formatearFecha(movimiento.fechaOperacionPagoBanco, "")}
+                </div>
+              ) : (
+                <Calendar
+                  id="fechaOperacionPagoBanco"
+                  value={movimiento.fechaOperacionPagoBanco ? new Date(movimiento.fechaOperacionPagoBanco) : null}
+                  onChange={(e) => onFieldChange?.("fechaOperacionPagoBanco", e.value)}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  placeholder="Seleccione fecha"
+                  style={{ width: "100%" }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* PAGO DE IMPUESTO */}
+        <div>
+          <h4 style={{ 
+            color: "#495057", 
+            borderBottom: "2px solid #dee2e6", 
+            paddingBottom: "0.5rem",
+            marginBottom: "1rem"
+          }}>
+            🏛️ Pago de Impuesto (Detracción/Retención/Percepción)
+          </h4>
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row"
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+                htmlFor="numeroOperacionPagoBancoImpuesto"
+              >
+                Número de Constancia SUNAT
+              </label>
+              {readOnly ? (
+                <div
+                  id="numeroOperacionPagoBancoImpuesto"
+                  style={{
+                    padding: "0.75rem",
+                    border: "1px solid #ced4da",
+                    borderRadius: "6px",
+                    backgroundColor: "#f8f9fa",
+                    fontWeight: "bold"
+                  }}
+                >
+                  {movimiento.numeroOperacionPagoBancoImpuesto || "-"}
+                </div>
+              ) : (
+                <InputText
+                  id="numeroOperacionPagoBancoImpuesto"
+                  value={movimiento.numeroOperacionPagoBancoImpuesto || ""}
+                  onChange={(e) => onFieldChange?.("numeroOperacionPagoBancoImpuesto", e.target.value)}
+                  placeholder="Ej: AUTO-20260911-4444444444444444"
+                  maxLength={50}
+                  style={{ width: "100%" }}
+                />
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+                htmlFor="fechaOperacionPagoBancoImpuesto"
+              >
+                Fecha del Depósito/Pago
+              </label>
+              {readOnly ? (
+                <div
+                  id="fechaOperacionPagoBancoImpuesto"
+                  style={{
+                    padding: "0.75rem",
+                    border: "1px solid #ced4da",
+                    borderRadius: "6px",
+                    backgroundColor: "#f8f9fa",
+                    fontWeight: "bold"
+                  }}
+                >
+                  {formatearFecha(movimiento.fechaOperacionPagoBancoImpuesto, "")}
+                </div>
+              ) : (
+                <Calendar
+                  id="fechaOperacionPagoBancoImpuesto"
+                  value={movimiento.fechaOperacionPagoBancoImpuesto ? new Date(movimiento.fechaOperacionPagoBancoImpuesto) : null}
+                  onChange={(e) => onFieldChange?.("fechaOperacionPagoBancoImpuesto", e.value)}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  placeholder="Seleccione fecha"
+                  style={{ width: "100%" }}
+                />
+              )}
             </div>
           </div>
         </div>

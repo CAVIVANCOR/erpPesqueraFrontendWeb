@@ -8,6 +8,7 @@ import { Tag } from 'primereact/tag';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import VerImpresionVoucherPagoCxC from './VerImpresionVoucherPagoCxC';
+import PDFViewerV2 from '../pdf/PDFViewerV2';
 
 /**
  * ════════════════════════════════════════════════════════════
@@ -481,16 +482,21 @@ export default function ConfirmacionPagoDialog({
         <>
           <Divider />
           <Panel header="📄 Voucher Consolidado" className="mb-3">
-            <iframe
-              src={resultadoPago.urlVoucherConsolidado}
-              style={{ width: '100%', height: '600px', border: 'none' }}
-              title="Voucher Consolidado"
+            <PDFViewerV2
+              pdfUrl={resultadoPago.urlVoucherConsolidado}
+              moduleName="pago-cuenta-por-cobrar"
+              height="600px"
             />
             <div className="mt-3 text-center">
               <Button
                 label="Descargar Voucher"
                 icon="pi pi-download"
-                onClick={() => window.open(resultadoPago.urlVoucherConsolidado, '_blank')}
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = resultadoPago.urlVoucherConsolidado;
+                  link.download = `voucher-consolidado-${resultadoPago.correlativo || 'pago'}.pdf`;
+                  link.click();
+                }}
                 className="p-button-primary"
               />
             </div>

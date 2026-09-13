@@ -14,7 +14,9 @@ export default function MovimientoCajaDialog({
   movimiento,
   empresas,
   onHide,
-  toast
+  toast,
+  onFieldChange,
+  readOnly = true
 }) {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
 
@@ -50,6 +52,8 @@ export default function MovimientoCajaDialog({
             movimiento={movimiento}
             empresas={empresas}
             toast={toast}
+            onFieldChange={onFieldChange}
+            readOnly={readOnly}
           />
         </TabPanel>
 

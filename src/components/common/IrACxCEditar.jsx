@@ -212,41 +212,39 @@ export default function IrACxCEditar({
         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
       >
-        <div style={{ flex: 1, backgroundColor: '#0d6efd', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Cliente</div>
-          <div>{cxcData.cliente?.razonSocial || '-'}</div>
+        <div style={{ flex: 1, backgroundColor: '#cfe2ff', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #b6d4fe' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>Cliente</div>
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cxcData.cliente?.razonSocial || '-'}</div>
         </div>
-        <div style={{ flex: 0.6, backgroundColor: '#0dcaf0', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>F.Emisión</div>
+        <div style={{ flex: 0.6, backgroundColor: '#d1ecf1', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #bee5eb' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>F.Emisión</div>
           <div>{formatearFecha(cxcData.fechaEmision)}</div>
         </div>
-        <div style={{ flex: 0.6, backgroundColor: '#fd7e14', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>F.Venc</div>
+        <div style={{ flex: 0.6, backgroundColor: '#fff3cd', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #ffeaa7' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>F.Venc</div>
           <div>{formatearFecha(cxcData.fechaVencimiento)}</div>
         </div>
-        <div style={{ flex: 1, backgroundColor: '#dc3545', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Producto</div>
+        <div style={{ flex: 1, backgroundColor: '#f8d7da', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #f5c6cb' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>Producto</div>
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cxcData.preFactura?.tipoProducto?.nombre || 'N/A'}</div>
         </div>
-        <div style={{ flex: 0.7, backgroundColor: '#6f42c1', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Total</div>
+        <div style={{ flex: 0.8, backgroundColor: '#e0cffc', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #d4b9e8' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>
+            {cxcData.tieneDetraccion ? 'Detracción' : cxcData.tieneRetencion ? 'Retención' : cxcData.tienePercepcion ? 'Percepción' : 'Sin Impuesto'}
+          </div>
+          <div>{simboloMoneda} {formatearNumero(cxcData.montoDetraccionTotal || cxcData.montoRetencionTotal || cxcData.montoPercepcionTotal || 0)}</div>
+        </div>
+        <div style={{ flex: 0.7, backgroundColor: '#e7d6f5', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #d4b9e8' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>Total</div>
           <div>{simboloMoneda} {formatearNumero(cxcData.montoTotal)}</div>
         </div>
-        <div style={{ flex: 0.7, backgroundColor: '#198754', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Pagado</div>
+        <div style={{ flex: 0.7, backgroundColor: '#d1e7dd', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #badbcc' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>Pagado</div>
           <div>{simboloMoneda} {formatearNumero(cxcData.montoPagado)}</div>
         </div>
-        <div style={{ flex: 0.7, backgroundColor: '#fd7e14', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Saldo</div>
+        <div style={{ flex: 0.7, backgroundColor: '#f8d7da', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #f5c6cb' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>Saldo</div>
           <div>{simboloMoneda} {formatearNumero(cxcData.saldoPendiente)}</div>
-        </div>
-        <div style={{ flex: 0.6, backgroundColor: '#0d6efd', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Imp.SUNAT</div>
-          <div>{cxcData.tieneDetraccion ? 'DET' : cxcData.tieneRetencion ? 'RET' : cxcData.tienePercepcion ? 'PER' : 'N/A'}</div>
-        </div>
-        <div style={{ flex: 0.7, backgroundColor: '#dc3545', color: 'white', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Monto Imp</div>
-          <div>{simboloMoneda} {formatearNumero(cxcData.montoDetraccionTotal || cxcData.montoRetencionTotal || cxcData.montoPercepcionTotal || 0)}</div>
         </div>
       </div>
     );

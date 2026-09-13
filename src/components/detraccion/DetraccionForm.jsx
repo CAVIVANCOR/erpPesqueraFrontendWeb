@@ -77,6 +77,9 @@ const DetraccionForm = forwardRef((props, ref) => {
 
   const { usuario } = useAuthStore();
   
+  // Estado para movimientos de caja relacionados
+  const [movimientosCaja, setMovimientosCaja] = useState([]);
+  
   // Estado único para todos los campos del formulario
   const [formData, setFormData] = useState({
     empresaId: defaultValues?.empresaId
@@ -109,6 +112,21 @@ const DetraccionForm = forwardRef((props, ref) => {
     creadoPor: defaultValues?.creadoPor || null,
     actualizadoPor: defaultValues?.actualizadoPor || null,
   });
+
+  // Cargar movimientos de caja cuando cambian los defaultValues
+  useEffect(() => {
+    console.log('🔍 DEBUG DetraccionForm - defaultValues:', defaultValues);
+    console.log('🔍 DEBUG DetraccionForm - defaultValues.movimientosCaja:', defaultValues?.movimientosCaja);
+    console.log('🔍 DEBUG DetraccionForm - Cantidad:', defaultValues?.movimientosCaja?.length || 0);
+    
+    if (defaultValues?.movimientosCaja) {
+      console.log('✅ Cargando movimientos de caja:', defaultValues.movimientosCaja);
+      setMovimientosCaja(defaultValues.movimientosCaja);
+    } else {
+      console.warn('⚠️ No hay movimientosCaja en defaultValues');
+      setMovimientosCaja([]);
+    }
+  }, [defaultValues]);
 
   // Función para actualizar campos individuales
   const onChange = (field, value) => {
@@ -560,7 +578,7 @@ const DetraccionForm = forwardRef((props, ref) => {
                 id="observaciones"
                 value={formData.observaciones}
                 onChange={(e) => onChange("observaciones", e.target.value)}
-                rows={3}
+                rows={9}
                 disabled={readOnly || loading}
               />
             </div>
@@ -602,14 +620,76 @@ const DetraccionForm = forwardRef((props, ref) => {
                 Los pagos de detracción se registran en el módulo de Movimientos de Caja
               </p>
               
-              {/* Aquí irían los pagos vinculados desde MovimientoCaja */}
+              {/* Pagos vinculados desde MovimientoCaja */}
               <DataTable
-                value={[]}
+                value={movimientosCaja}
                 emptyMessage="No hay pagos registrados"
+                size="small"
+                stripedRows
               >
-                <Column field="fechaPago" header="Fecha" />
-                <Column field="monto" header="Monto" />
-                <Column field="medioPago" header="Medio de Pago" />
+                <Column 
+                  field="fechaOperacionMovCaja" 
+                  header="Fecha"
+                  body={(rowData) => {
+                    if (!rowData.fechaOperacionMovCaja) return '-';
+                    return new Date(rowData.fechaOperacionMovCaja).toLocaleDateString('es-PE');
+                  }}
+                  style={{ width: '100px' }}
+                />
+                <Column 
+                  field="tipoMovimiento.nombre" 
+                  header="Concepto"
+                  body={(rowData) => rowData.tipoMovimiento?.nombre || '-'}
+                  style={{ minWidth: '150px' }}
+                />
+                <Column 
+                  header="Tipo"
+                  body={(rowData) => {
+                    const esIngreso = rowData.tipoMovimiento?.esIngreso === true;
+                    return (
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        backgroundColor: esIngreso ? '#d4edda' : '#f8d7da',
+                        color: esIngreso ? '#155724' : '#721c24'
+                      }}>
+                        {esIngreso ? '↓ INGRESO' : '↑ SALIDA'}
+                      </span>
+                    );
+                  }}
+                  style={{ width: '100px', textAlign: 'center' }}
+                />
+                <Column 
+                  header="Cuenta"
+                  body={(rowData) => {
+                    // Para INGRESO mostrar cuenta destino, para SALIDA mostrar cuenta origen
+                    const esIngreso = rowData.tipoMovimiento?.esIngreso === true;
+                    const cuenta = esIngreso ? rowData.cuentaCorrienteDestino : rowData.cuentaCorrienteOrigen;
+                    
+                    if (!cuenta) return '-';
+                    return (
+                      <div style={{ fontSize: '12px' }}>
+                        <div style={{ fontWeight: 'bold' }}>{cuenta.banco?.nombreCorto || cuenta.banco?.nombre || '-'}</div>
+                        <div style={{ color: '#666' }}>{cuenta.numeroCuenta}</div>
+                      </div>
+                    );
+                  }}
+                  style={{ minWidth: '150px' }}
+                />
+                <Column 
+                  field="monto" 
+                  header="Monto"
+                  body={(rowData) => formatearNumero(rowData.monto)}
+                  style={{ width: '100px', textAlign: 'right' }}
+                />
+                <Column 
+                  field="numeroOperacionPagoBancoImpuesto" 
+                  header="N° Operación / Constancia"
+                  body={(rowData) => rowData.numeroOperacionPagoBancoImpuesto || rowData.numeroOperacionPagoBanco || '-'}
+                  style={{ minWidth: '180px' }}
+                />
               </DataTable>
             </div>
           </TabPanel>

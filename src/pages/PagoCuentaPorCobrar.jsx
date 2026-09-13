@@ -63,7 +63,7 @@ export default function PagoCuentaPorCobrar() {
         estadosData,
         periodosContablesData,
       ] = await Promise.all([
-        getPagosCuentaPorCobrar(),
+        getPago(),
         getCuentaPorCobrar(),
         getMonedas(),
         getMediosPago(),
@@ -113,7 +113,7 @@ export default function PagoCuentaPorCobrar() {
   const editPago = async (pago) => {
     try {
       setLoading(true);
-      const pagoCompleto = await getPagoCuentaPorCobrarById(pago.id);
+      const pagoCompleto = await getPagoById(pago.id, 'COBRAR');
 
       const dataParaEdicion = {
         ...pagoCompleto,

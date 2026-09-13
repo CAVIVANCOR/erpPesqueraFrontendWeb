@@ -782,6 +782,19 @@ export const PDF_MODULES_CONFIG = {
     },
   },
 
+  "pago-cuenta-por-cobrar": {
+    uploadPath: "uploads/pdf-system/pago-cuenta-por-cobrar",
+    oldPaths: [],
+    apiEndpoint: "/api/pdf/pago-cuenta-por-cobrar",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf"],
+    maxFiles: 20,
+    database: {
+      table: "PagoCuentaPorCobrar",
+      field: "urlVoucherConsolidado",
+    },
+  },
+
 };
 
 export function getModuleConfig(moduleName) {
