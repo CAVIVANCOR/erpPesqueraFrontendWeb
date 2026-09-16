@@ -115,12 +115,9 @@ const DetraccionForm = forwardRef((props, ref) => {
 
   // Cargar movimientos de caja cuando cambian los defaultValues
   useEffect(() => {
-    console.log('🔍 DEBUG DetraccionForm - defaultValues:', defaultValues);
-    console.log('🔍 DEBUG DetraccionForm - defaultValues.movimientosCaja:', defaultValues?.movimientosCaja);
-    console.log('🔍 DEBUG DetraccionForm - Cantidad:', defaultValues?.movimientosCaja?.length || 0);
+    
     
     if (defaultValues?.movimientosCaja) {
-      console.log('✅ Cargando movimientos de caja:', defaultValues.movimientosCaja);
       setMovimientosCaja(defaultValues.movimientosCaja);
     } else {
       console.warn('⚠️ No hay movimientosCaja en defaultValues');

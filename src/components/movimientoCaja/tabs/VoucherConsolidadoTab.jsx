@@ -1,11 +1,11 @@
 /**
- * VoucherConsolidadoTab.jsx - Tab para visualizar voucher consolidado
+ * VoucherConsolidadoTab.jsx - Tab para visualizar voucher contable
  *
- * Componente para mostrar el voucher consolidado de una operación de caja.
+ * Componente para mostrar el voucher contable (comprobante de diario) de un movimiento de caja.
  * Usa PDFDocumentManager en modo solo lectura.
  *
  * @author ERP Megui
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import React from "react";
@@ -16,18 +16,18 @@ import { useForm } from "react-hook-form";
 export default function VoucherConsolidadoTab({ movimiento, toast }) {
   const { control, setValue, watch, getValues } = useForm({
     defaultValues: {
-      urlComprobanteOperacionMovCaja: movimiento?.urlComprobanteOperacionMovCaja || ""
+      urlDocumentoMovCaja: movimiento?.urlDocumentoMovCaja || ""
     }
   });
 
-  const urlPdf = movimiento?.urlComprobanteOperacionMovCaja;
+  const urlPdf = movimiento?.urlDocumentoMovCaja;
 
   if (!urlPdf) {
     return (
       <div className="flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
         <Message
           severity="info"
-          text="No hay voucher consolidado disponible para este movimiento"
+          text="No hay voucher contable disponible para este movimiento"
           style={{ width: "100%" }}
         />
       </div>
@@ -39,21 +39,21 @@ export default function VoucherConsolidadoTab({ movimiento, toast }) {
       <div className="col-12">
         <PDFDocumentManager
           moduleName="movimiento-caja-operacion"
-          fieldName="urlComprobanteOperacionMovCaja"
+          fieldName="urlDocumentoMovCaja"
           entityId={movimiento?.id}
-          title="Voucher Consolidado de la Operación"
-          dialogTitle="Voucher Consolidado"
+          title="Voucher Contable (Comprobante de Diario)"
+          dialogTitle="Voucher Contable"
           uploadButtonLabel="Subir Voucher"
           viewButtonLabel="Ver"
           downloadButtonLabel="Descargar"
-          emptyMessage="No hay voucher consolidado cargado"
-          emptyDescription="No hay voucher consolidado disponible para esta operación"
+          emptyMessage="No hay voucher contable cargado"
+          emptyDescription="No hay voucher contable disponible para este movimiento"
           control={control}
           errors={{}}
           setValue={setValue}
           watch={watch}
           getValues={getValues}
-          defaultValues={{ urlComprobanteOperacionMovCaja: urlPdf }}
+          defaultValues={{ urlDocumentoMovCaja: urlPdf }}
           readOnly={true}
         />
       </div>

@@ -739,7 +739,7 @@ export const PDF_MODULES_CONFIG = {
     maxFiles: 20,
     database: {
       table: "MovimientoCaja",
-      field: "urlDocumentoMovCaja",  // ✅ CORREGIDO
+      field: "urlComprobanteOperacionMovCaja",  // ✅ COMPROBANTE DEL DOCUMENTO (Factura, etc.)
     },
   },
 
@@ -752,7 +752,20 @@ export const PDF_MODULES_CONFIG = {
     maxFiles: 20,
     database: {
       table: "MovimientoCaja",
-      field: "urlComprobanteOperacionMovCaja",  // ✅ CORREGIDO
+      field: "urlDocumentoMovCaja",  // ✅ VOUCHER CONTABLE (Asiento Contable)
+    },
+  },
+
+  "movimiento-caja-voucher-individual": {
+    uploadPath: "uploads/pdf-system/movimiento-caja-voucher-individual",
+    oldPaths: [],
+    apiEndpoint: "/pdf/movimiento-caja-voucher-individual",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf"],
+    maxFiles: 20,
+    database: {
+      table: "MovimientoCaja",
+      field: "urlOperacionIndividualOperacionCaja",  // ✅ VOUCHER INDIVIDUAL
     },
   },
 
@@ -792,6 +805,45 @@ export const PDF_MODULES_CONFIG = {
     database: {
       table: "PagoCuentaPorCobrar",
       field: "urlVoucherConsolidado",
+    },
+  },
+
+  "pago-cxc-voucher-consolidado": {
+    uploadPath: "uploads/pdf-system/pago-cxc-voucher-consolidado",
+    oldPaths: [],
+    apiEndpoint: "/pdf/pago-cxc-voucher-consolidado",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf"],
+    maxFiles: 20,
+    database: {
+      table: "PagoCuentaPorCobrar",
+      field: "urlVoucherOperacionConsolidado",
+    },
+  },
+
+  "pago-cxc-comprobante-impuesto": {
+    uploadPath: "uploads/pdf-system/pago-cxc-comprobante-impuesto",
+    oldPaths: [],
+    apiEndpoint: "/pdf/pago-cxc-comprobante-impuesto",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf", "image/jpeg", "image/png"],
+    maxFiles: 20,
+    database: {
+      table: "PagoCuentaPorCobrar",
+      field: "urlPagoImpuesto",
+    },
+  },
+
+  "movimiento-caja": {
+    uploadPath: "uploads/pdf-system/movimiento-caja",
+    oldPaths: [],
+    apiEndpoint: "/pdf/movimiento-caja",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf"],
+    maxFiles: 20,
+    database: {
+      table: "MovimientoCaja",
+      field: "urlOperacionIndividualOperacionCaja",
     },
   },
 

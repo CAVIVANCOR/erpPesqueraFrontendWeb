@@ -278,9 +278,7 @@ export async function generarLibroMayorPDF(data) {
           size: 6,
           font: fontNormal,
         });
-      } else {
-        console.log('❌ Fecha NO dibujada - fechaStr vacío');
-      }
+      } 
       const numAsiento = mov.numeroAsiento || mov.asientoContable?.numeroAsiento || mov.asientoContable?.correlativo || "";
       if (numAsiento) {
         currentPage.drawText(String(numAsiento), {
@@ -289,8 +287,6 @@ export async function generarLibroMayorPDF(data) {
           size: 6,
           font: fontNormal,
         });
-      } else {
-        console.log('❌ Número asiento NO dibujado - numAsiento vacío');
       }
 
       const esMovSaldoInicial = mov.esSaldoInicial === true ||

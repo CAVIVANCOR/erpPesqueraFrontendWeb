@@ -1,6 +1,7 @@
 // src/components/pagoCuentaPorCobrar/PagoCuentaPorCobrarForm.jsx
 // ✅ VERSIÓN COMPLETA CON TODOS LOS CAMPOS DEL SCHEMA
 import React, { useState, useEffect, useMemo } from "react";
+import { useForm } from "react-hook-form";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
@@ -8,11 +9,14 @@ import { InputNumber } from "primereact/inputnumber";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
+import { TabView, TabPanel } from "primereact/tabview";
 import { getResponsiveFontSize } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import CuentaCorrienteSelector from "../common/CuentaCorrienteSelector";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 import CuentaCxCCxPSelector from "../common/CuentaCxCCxPSelector";
+import PdfVoucherConsolidadoCard from "./PdfVoucherConsolidadoCard";
+import PdfComprobanteImpuestoCard from "./PdfComprobanteImpuestoCard";
 
 export default function PagoCuentaPorCobrarForm({
   isEdit,
@@ -34,6 +38,31 @@ export default function PagoCuentaPorCobrarForm({
   clienteIdCuenta = null,
 }) {
   const usuario = useAuthStore((state) => state.usuario);
+
+  // ========================================
+  // REACT HOOK FORM - ESTÁNDAR PROFESIONAL
+  // ========================================
+  const {
+    control,
+    watch,
+    setValue,
+    getValues,
+    reset,
+    formState: { errors: formErrors }
+  } = useForm({
+    defaultValues: {
+      urlVoucherOperacionConsolidado: defaultValues?.urlVoucherOperacionConsolidado || null,
+      urlPagoImpuesto: defaultValues?.urlPagoImpuesto || null
+    }
+  });
+
+  // ✅ Actualizar valores cuando cambien los defaultValues
+  useEffect(() => {
+    if (defaultValues) {
+      setValue('urlVoucherOperacionConsolidado', defaultValues.urlVoucherOperacionConsolidado || null);
+      setValue('urlPagoImpuesto', defaultValues.urlPagoImpuesto || null);
+    }
+  }, [defaultValues?.urlVoucherOperacionConsolidado, defaultValues?.urlPagoImpuesto, setValue]);
 
   // ========================================
   // ESTADOS PRINCIPALES
@@ -709,6 +738,9 @@ export default function PagoCuentaPorCobrarForm({
   // ========================================
   return (
     <div className="p-fluid">
+      <TabView>
+        {/* TAB 1: DATOS DEL PAGO */}
+        <TabPanel header="Datos del Pago" leftIcon="pi pi-money-bill">
       {/* PANEL: Información del Cobro */}
       <Panel header="Información del Cobro">
         <div className="p-fluid">
@@ -1270,6 +1302,51 @@ export default function PagoCuentaPorCobrarForm({
           </div>
         </Panel>
       )}
+        </TabPanel>
+
+        {/* TAB 2: DOCUMENTOS PDF */}
+        <TabPanel header="Documentos" leftIcon="pi pi-file-pdf">
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <PdfVoucherConsolidadoCard
+              pagoCuentaPorCobrarId={defaultValues?.id}
+              control={control}
+              errors={formErrors}
+              setValue={setValue}
+              watch={watch}
+              getValues={getValues}
+              defaultValues={defaultValues}
+              readOnly={readOnly}
+            />
+
+            <PdfComprobanteImpuestoCard
+              pagoCuentaPorCobrarId={defaultValues?.id}
+              control={control}
+              errors={formErrors}
+              setValue={setValue}
+              watch={watch}
+              getValues={() => defaultValues}
+              defaultValues={defaultValues}
+              readOnly={readOnly}
+            />
+          </div>
+
+          {!defaultValues?.id && (
+            <div
+              style={{
+                padding: "1rem",
+                textAlign: "center",
+                color: "#666",
+                marginTop: "1rem",
+              }}
+            >
+              <i className="pi pi-info-circle" style={{ fontSize: "1.5rem" }}></i>
+              <p style={{ marginTop: "0.5rem" }}>
+                Guarde primero el pago para poder gestionar documentos.
+              </p>
+            </div>
+          )}
+        </TabPanel>
+      </TabView>
 
       {/* BOTONES */}
       {!readOnly && (

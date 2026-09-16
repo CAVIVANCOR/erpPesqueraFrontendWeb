@@ -86,3 +86,25 @@ export async function actualizarUrlVoucherIndividual(movimientoId, urlPdf) {
   );
   return res.data;
 }
+
+/**
+ * Actualizar URL del voucher consolidado en PagoCuentaPorCobrar
+ */
+export async function actualizarUrlVoucherConsolidadoPago(pagoId, urlPdf) {
+  const res = await axios.patch(`${API_URL}/pago/${pagoId}/voucher-consolidado`, 
+    { urlPdf }, 
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
+
+/**
+ * Actualizar URL del comprobante de impuesto/detracción en PagoCuentaPorCobrar
+ */
+export async function actualizarUrlComprobanteImpuesto(pagoId, urlPdf) {
+  const res = await axios.patch(`${API_URL}/pago/${pagoId}/comprobante-impuesto`, 
+    { urlPdf }, 
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

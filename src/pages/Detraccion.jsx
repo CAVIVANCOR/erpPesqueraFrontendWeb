@@ -268,10 +268,6 @@ export default function Detraccion({ ruta }) {
       setLoading(true);
       const detraccionCompleta = await getDetraccionById(detraccion.id);
 
-      console.log('🔍 DEBUG - Detracción completa del backend:', detraccionCompleta);
-      console.log('🔍 DEBUG - movimientosCaja recibidos:', detraccionCompleta.movimientosCaja);
-      console.log('🔍 DEBUG - Cantidad de movimientos:', detraccionCompleta.movimientosCaja?.length || 0);
-
       const dataParaEdicion = {
         ...detraccionCompleta,
         empresaId: Number(detraccionCompleta.empresaId),
@@ -283,7 +279,6 @@ export default function Detraccion({ ruta }) {
         movimientosCaja: detraccionCompleta.movimientosCaja || [],  // ← Incluir movimientos de caja
       };
 
-      console.log('🔍 DEBUG - dataParaEdicion.movimientosCaja:', dataParaEdicion.movimientosCaja);
 
       setFormData(dataParaEdicion);
       setSelectedDetraccion(detraccion);

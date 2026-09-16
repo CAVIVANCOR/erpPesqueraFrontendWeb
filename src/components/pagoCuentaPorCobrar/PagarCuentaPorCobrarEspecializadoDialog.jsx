@@ -13,7 +13,12 @@ import { Tag } from 'primereact/tag';
 import BooleanToggleButton from '../common/BooleanToggleButton';
 import CuentaCorrienteSelector from '../common/CuentaCorrienteSelector';
 import { consultarTipoCambioSunat } from '../../api/consultaExterna';
-import { procesarPagoEspecializado, actualizarUrlVoucherConsolidado, actualizarUrlVoucherIndividual } from '../../api/tesoreria/pagoEspecializadoCuentaPorCobrar';
+import { 
+  procesarPagoEspecializado, 
+  actualizarUrlVoucherConsolidado, 
+  actualizarUrlVoucherIndividual,
+  actualizarUrlVoucherConsolidadoPago
+} from '../../api/tesoreria/pagoEspecializadoCuentaPorCobrar';
 import { getEstadosMultiFuncionPorTipoProviene } from '../../api/estadoMultiFuncion';
 import { useAuthStore } from '../../shared/stores/useAuthStore';
 import { getResponsiveFontSize, formatearFecha, formatearNumero } from '../../utils/utils';
@@ -22,7 +27,8 @@ import TipoMovimientoSelector from '../common/TipoMovimientoSelector';
 import IrACxCEditar from '../common/IrACxCEditar';
 import VerRegistroImpuestoSunat from '../common/VerRegistroImpuestoSunat';
 import { generarYSubirVoucherConsolidado } from './VoucherConsolidadoPagoCxCPDF';
-import { generarYSubirVoucherMovimiento } from './VoucherMovimientoCajaPDF';
+import { generarYSubirVoucherIndividual } from './VoucherIndividualMovimientoPDF';
+import { generarYSubirVoucherContable } from './VoucherContableMovimientoPDF';
 
 /**
  * ════════════════════════════════════════════════════════════
@@ -69,6 +75,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   const [montoDetraccionIngresado, setMontoDetraccionIngresado] = useState(0);
   const [numeroOperacionBN, setNumeroOperacionBN] = useState('');
   const [esAutodetraccion, setEsAutodetraccion] = useState(false);
+  const [cuentaBancariaOrigenAutodetraccion, setCuentaBancariaOrigenAutodetraccion] = useState(null);
 
   // ════════════════════════════════════════════════════════════
   // ESTADOS PRINCIPALES
@@ -171,7 +178,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   useEffect(() => {
     if (visible && cuentaPorCobrar) {
       // Inicializar moneda de pago con la moneda de la deuda
-      setMonedaPagoId(cuentaPorCobrar.monedaId);
+      setMonedaPagoId(Number(cuentaPorCobrar.monedaId));
 
       // Inicializar montos en CERO
       setMontoPagado(0);
@@ -225,16 +232,10 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   }, [visible, cuentaPorCobrar, fechaPago, periodosContables]);
 
   // ════════════════════════════════════════════════════════════
-  // EFECTOS: CÁLCULO AUTOMÁTICO DE ITF
+  // NOTA: ITF NO SE CALCULA AUTOMÁTICAMENTE
   // ════════════════════════════════════════════════════════════
-  useEffect(() => {
-    if (montoNetoIngresado > 0) {
-      const itfCalculado = Number(montoNetoIngresado) * 0.0005; // 0.05%
-      setMontoITF(itfCalculado);
-    } else {
-      setMontoITF(0);
-    }
-  }, [montoNetoIngresado]);
+  // El usuario debe ingresar manualmente el ITF si aplica
+  // Por defecto siempre es 0
 
   // ════════════════════════════════════════════════════════════
   // EFECTOS: DETECCIÓN DE AUTODETRACCIÓN
@@ -748,7 +749,8 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
         montoDetraccionIngresado: Number(montoDetraccionIngresado) || 0,
         numeroOperacionBN: numeroOperacionBN || null,
         numeroConstanciaDetraccion: numeroConstanciaDetraccion || null,
-        esAutodetraccion: esAutodetraccion || false
+        esAutodetraccion: esAutodetraccion || false,
+        cuentaBancariaOrigenAutodetraccion: cuentaBancariaOrigenAutodetraccion || null
       };
 
       // Agregar detracción si aplica
@@ -798,6 +800,8 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
 
       if (response.success) {
         const { pagoCuentaPorCobrar, movimientos, conceptosSunat, resumen } = response.data;
+        
+       
         const empresaData = empresas.find(e => Number(e.id) === Number(cuentaPorCobrar.empresaId));
 
         // Generar voucher consolidado automáticamente
@@ -807,34 +811,202 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
           conceptosSunat || {},
           resumen || {},
           empresaData,
-          cuentaPorCobrar
+          cuentaPorCobrar,
+          usuario  // ✅ Pasar usuario logueado
         );
 
         if (voucherConsolidado.success && voucherConsolidado.urlPdf) {
-          // Actualizar URL en MovimientoCaja (Ingreso)
+          // ✅ Actualizar URL en PagoCuentaPorCobrar (tabla correcta)
+          await actualizarUrlVoucherConsolidadoPago(pagoCuentaPorCobrar.id, voucherConsolidado.urlPdf);
+          // También actualizar en MovimientoCaja para compatibilidad
           await actualizarUrlVoucherConsolidado(movimientos.ingreso.id, voucherConsolidado.urlPdf);
-          response.data.urlVoucherConsolidado = voucherConsolidado.urlPdf;
+          // ✅ Actualizar en el objeto de respuesta para que se muestre en ConfirmacionPagoDialog
+          response.data.pagoCuentaPorCobrar.urlVoucherOperacionConsolidado = voucherConsolidado.urlPdf;
         }
 
-        // Generar vouchers individuales automáticamente
+        // ═══════════════════════════════════════════════════════════
+        // GENERAR VOUCHERS INDIVIDUALES AUTOMÁTICAMENTE
+        // ═══════════════════════════════════════════════════════════
+        
+        // Voucher individual del movimiento de ingreso
         if (movimientos.ingreso) {
-          const voucherIngreso = await generarYSubirVoucherMovimiento(movimientos.ingreso, empresaData, cuentaPorCobrar);
-          if (voucherIngreso.success && voucherIngreso.urlPdf) {
-            await actualizarUrlVoucherIndividual(movimientos.ingreso.id, voucherIngreso.urlPdf);
+          try {
+            const voucherIngreso = await generarYSubirVoucherIndividual(
+              movimientos.ingreso,
+              pagoCuentaPorCobrar,
+              empresaData,
+              cuentaPorCobrar,
+              usuario
+            );
+            if (voucherIngreso.success && voucherIngreso.urlPdf) {
+              await actualizarUrlVoucherIndividual(movimientos.ingreso.id, voucherIngreso.urlPdf);
+              // ✅ Actualizar en el objeto de respuesta para que se muestre en ConfirmacionPagoDialog
+              response.data.movimientos.ingreso.urlOperacionIndividualOperacionCaja = voucherIngreso.urlPdf;
+            }
+          } catch (error) {
+            console.error('❌ Error al generar voucher de ingreso:', error);
           }
         }
 
+        // Voucher individual del movimiento de ITF
         if (movimientos.itf) {
-          const voucherITF = await generarYSubirVoucherMovimiento(movimientos.itf, empresaData, cuentaPorCobrar);
-          if (voucherITF.success && voucherITF.urlPdf) {
-            await actualizarUrlVoucherIndividual(movimientos.itf.id, voucherITF.urlPdf);
+          try {
+            const voucherITF = await generarYSubirVoucherIndividual(
+              movimientos.itf,
+              pagoCuentaPorCobrar,
+              empresaData,
+              cuentaPorCobrar,
+              usuario
+            );
+            if (voucherITF.success && voucherITF.urlPdf) {
+              await actualizarUrlVoucherIndividual(movimientos.itf.id, voucherITF.urlPdf);
+              // ✅ Actualizar en el objeto de respuesta
+              response.data.movimientos.itf.urlOperacionIndividualOperacionCaja = voucherITF.urlPdf;
+            }
+          } catch (error) {
+            console.error('❌ Error al generar voucher de ITF:', error);
           }
         }
 
+        // Voucher individual del movimiento de comisión
         if (movimientos.comision) {
-          const voucherComision = await generarYSubirVoucherMovimiento(movimientos.comision, empresaData, cuentaPorCobrar);
-          if (voucherComision.success && voucherComision.urlPdf) {
-            await actualizarUrlVoucherIndividual(movimientos.comision.id, voucherComision.urlPdf);
+          try {
+            const voucherComision = await generarYSubirVoucherIndividual(
+              movimientos.comision,
+              pagoCuentaPorCobrar,
+              empresaData,
+              cuentaPorCobrar,
+              usuario
+            );
+            if (voucherComision.success && voucherComision.urlPdf) {
+              await actualizarUrlVoucherIndividual(movimientos.comision.id, voucherComision.urlPdf);
+              // ✅ Actualizar en el objeto de respuesta
+              response.data.movimientos.comision.urlOperacionIndividualOperacionCaja = voucherComision.urlPdf;
+            }
+          } catch (error) {
+            console.error('❌ Error al generar voucher de comisión:', error);
+          }
+        }
+
+        // Voucher individual de autodetracción (NUEVO: 1 solo movimiento)
+        if (movimientos.autodetraccion) {
+          try {
+            const voucherAutodet = await generarYSubirVoucherIndividual(
+              movimientos.autodetraccion,
+              pagoCuentaPorCobrar,
+              empresaData,
+              cuentaPorCobrar,
+              usuario
+            );
+            if (voucherAutodet.success && voucherAutodet.urlPdf) {
+              await actualizarUrlVoucherIndividual(movimientos.autodetraccion.id, voucherAutodet.urlPdf);
+              // ✅ Actualizar en el objeto de respuesta
+              response.data.movimientos.autodetraccion.urlOperacionIndividualOperacionCaja = voucherAutodet.urlPdf;
+            }
+          } catch (error) {
+            console.error('❌ Error al generar voucher de autodetracción:', error);
+          }
+        }
+
+        // Voucher individual de detracción ingreso (si cliente pagó)
+        if (movimientos.detraccionIngreso) {
+          try {
+            const voucherDetIngreso = await generarYSubirVoucherIndividual(
+              movimientos.detraccionIngreso,
+              pagoCuentaPorCobrar,
+              empresaData,
+              cuentaPorCobrar,
+              usuario
+            );
+            if (voucherDetIngreso.success && voucherDetIngreso.urlPdf) {
+              await actualizarUrlVoucherIndividual(movimientos.detraccionIngreso.id, voucherDetIngreso.urlPdf);
+              // ✅ Actualizar en el objeto de respuesta
+              response.data.movimientos.detraccionIngreso.urlOperacionIndividualOperacionCaja = voucherDetIngreso.urlPdf;
+            }
+          } catch (error) {
+            console.error('❌ Error al generar voucher de detracción ingreso:', error);
+          }
+        }
+
+
+        // ═══════════════════════════════════════════════════════════
+        // GENERAR VOUCHERS CONTABLES (ASIENTOS) AUTOMÁTICAMENTE
+        // ═══════════════════════════════════════════════════════════
+
+        // Función auxiliar para obtener asiento contable de un movimiento
+        const obtenerAsientoContable = async (movimientoId) => {
+          try {
+            const token = useAuthStore.getState().token;
+            const response = await fetch(
+              `${import.meta.env.VITE_API_URL}/asiento-contable/por-movimiento/${movimientoId}`,
+              {
+                headers: { Authorization: `Bearer ${token}` }
+              }
+            );
+            if (response.ok) {
+              return await response.json();
+            }
+            return null;
+          } catch (error) {
+            console.error('Error al obtener asiento:', error);
+            return null;
+          }
+        };
+
+        // Función auxiliar para actualizar URL del voucher contable
+        const actualizarUrlVoucherContable = async (movimientoId, urlPdf) => {
+          try {
+            const token = useAuthStore.getState().token;
+            await fetch(
+              `${import.meta.env.VITE_API_URL}/pago-especializado-cuenta-por-cobrar/movimiento/${movimientoId}/voucher-contable`,
+              {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ urlPdf })
+              }
+            );
+          } catch (error) {
+            console.error('Error al actualizar URL voucher contable:', error);
+          }
+        };
+
+        // Generar voucher contable para cada movimiento con asiento
+        const movimientosConAsiento = [
+          movimientos.ingreso,
+          movimientos.detraccionIngreso,
+          movimientos.autodetraccion
+        ].filter(Boolean);
+
+   
+        for (const movimiento of movimientosConAsiento) {
+          try {
+            
+            // Obtener asiento contable del movimiento
+            const asiento = await obtenerAsientoContable(movimiento.id);
+            
+            if (asiento) {
+               
+              const voucherContable = await generarYSubirVoucherContable(
+                movimiento,
+                asiento,
+                empresaData,
+                cuentaPorCobrar,
+                usuario
+              );
+
+              if (voucherContable.success && voucherContable.urlPdf) {
+                await actualizarUrlVoucherContable(movimiento.id, voucherContable.urlPdf);
+              } else {
+                console.error(`❌ Error generando PDF: ${voucherContable.error}`);
+              }
+            } else {
+              console.warn(`⚠️ No se encontró asiento contable para movimiento ${movimiento.id}`);
+            }
+          } catch (error) {
+            console.error(`❌ Error al generar voucher contable para movimiento ${movimiento.id}:`, error);
           }
         }
 
@@ -844,7 +1016,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
         toast?.current?.show({
           severity: 'success',
           summary: 'Éxito',
-          detail: 'Pago procesado y vouchers generados exitosamente.',
+          detail: 'Pago procesado y todos los vouchers generados exitosamente.',
           life: 5000
         });
       }
@@ -1001,8 +1173,6 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
           toast={toast}
           permisos={{}}
           onUpdate={(updatedData) => {
-            // Recargar la CxC si es necesario
-            console.log('Impuesto actualizado:', updatedData);
           }}
         />
       </Panel>
@@ -1163,16 +1333,17 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
           >
             <div style={{ flex: 1 }}>
               <label htmlFor="montoITF" className="font-bold">
-                ITF (0.05%) - Calculado automáticamente
+                ITF
               </label>
               <InputNumber
                 id="montoITF"
                 value={montoITF}
-                onValueChange={(e) => setMontoITF(e.value)}
+                onValueChange={(e) => setMontoITF(e.value || 0)}
                 mode="decimal"
                 minFractionDigits={2}
                 maxFractionDigits={2}
-                prefix={monedaPago?.simbolo ? `${monedaPago.simbolo} ` : ''}
+                style={{ width: "100%" }}
+                placeholder="0.00"
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -1182,11 +1353,12 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
               <InputNumber
                 id="montoComision"
                 value={montoComision}
-                onValueChange={(e) => setMontoComision(e.value)}
+                onValueChange={(e) => setMontoComision(e.value || 0)}
                 mode="decimal"
                 minFractionDigits={2}
                 maxFractionDigits={2}
-                prefix={monedaPago?.simbolo ? `${monedaPago.simbolo} ` : ''}
+                style={{ width: "100%" }}
+                placeholder="0.00"
               />
             </div>
           </div>
@@ -1312,6 +1484,26 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
               />
             </div>
           </div>
+
+          {esAutodetraccion && (
+            <div style={{ marginTop: '1rem' }}>
+              <label htmlFor="cuentaOrigenAutodetraccion" className="font-bold">
+                💳 Cuenta Origen (desde donde se pagará la detracción)
+              </label>
+              <CuentaCorrienteSelector
+                empresaIdPreseleccionada={cuentaPorCobrar?.empresaId}
+                value={cuentaBancariaOrigenAutodetraccion}
+                onChange={({ cuentaCorrienteId }) => {
+                  setCuentaBancariaOrigenAutodetraccion(cuentaCorrienteId);
+                }}
+                label=""
+                placeholder="Seleccione cuenta origen para autodetracción"
+              />
+              <small className="p-text-secondary">
+                Puede ser la misma cuenta donde el cliente depositó o cualquier otra cuenta de la empresa
+              </small>
+            </div>
+          )}
 
           <Divider />
 

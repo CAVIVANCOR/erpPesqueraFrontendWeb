@@ -64,7 +64,7 @@ export default function MovimientoCajaDialog({
           />
         </TabPanel>
 
-        <TabPanel header="📄 Voucher Consolidado">
+        <TabPanel header="📄 Voucher Contable">
           <VoucherConsolidadoTab
             movimiento={movimiento}
             toast={toast}

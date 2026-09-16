@@ -17,11 +17,11 @@ import { useForm } from "react-hook-form";
 export default function ComprobanteGastoTab({ movimiento, toast }) {
   const { control, setValue, watch, getValues } = useForm({
     defaultValues: {
-      urlDocumentoMovCaja: movimiento?.urlDocumentoMovCaja || ""
+      urlComprobanteOperacionMovCaja: movimiento?.urlComprobanteOperacionMovCaja || ""
     }
   });
 
-  const urlPdf = movimiento?.urlDocumentoMovCaja;
+  const urlPdf = movimiento?.urlComprobanteOperacionMovCaja;
 
   if (!urlPdf) {
     return (
@@ -73,7 +73,7 @@ export default function ComprobanteGastoTab({ movimiento, toast }) {
       <div className="col-12">
         <PDFDocumentManager
           moduleName="movimiento-caja-comprobante"
-          fieldName="urlDocumentoMovCaja"
+          fieldName="urlComprobanteOperacionMovCaja"
           entityId={movimiento?.id}
           title="Comprobante de Gasto (Factura, Boleta, etc.)"
           dialogTitle="Comprobante de Gasto"
@@ -87,7 +87,7 @@ export default function ComprobanteGastoTab({ movimiento, toast }) {
           setValue={setValue}
           watch={watch}
           getValues={getValues}
-          defaultValues={{ urlDocumentoMovCaja: urlPdf }}
+          defaultValues={{ urlComprobanteOperacionMovCaja: urlPdf }}
           readOnly={true}
         />
       </div>

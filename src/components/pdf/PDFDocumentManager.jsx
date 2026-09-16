@@ -67,7 +67,7 @@ export default function PDFDocumentManager({
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
   const [pdfRefreshKey, setPdfRefreshKey] = useState(0);
   const toastPDF = useRef(null);
-  const pdfUrl = watch(fieldName);
+  const pdfUrl = watch(fieldName) || defaultValues?.[fieldName]; // ✅ Usar defaultValues como fallback
 
   const config = getModuleConfig(moduleName);
 
@@ -119,6 +119,7 @@ export default function PDFDocumentManager({
                   <InputText
                     id={fieldName}
                     {...field}
+                    value={field.value || ""}
                     className={classNames({
                       "p-invalid": fieldState.error,
                     })}

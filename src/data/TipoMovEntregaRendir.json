@@ -1,0 +1,1613 @@
+[
+  {
+    "id": 1,
+    "nombre": "VENTA PESCA INDUSTRIAL",
+    "descripcion": "VENTA PESCA INDUSTRIAL",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 1
+  },
+  {
+    "id": 2,
+    "nombre": "VENTA CUOTA PESCA INDUSTRIAL",
+    "descripcion": "VENTA CUOTA PESCA INDUSTRIAL",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 1
+  },
+  {
+    "id": 3,
+    "nombre": "ADELANTO PESCA INDUSTRIAL",
+    "descripcion": "ADELANTO PESCA INDUSTRIAL",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 1
+  },
+  {
+    "id": 4,
+    "nombre": "HABILITACION PESCA INDUSTRIAL",
+    "descripcion": "HABILITACION PESCA INDUSTRIAL",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 1
+  },
+  {
+    "id": 5,
+    "nombre": "CLIENTES EX-PLANTAS",
+    "descripcion": "CLIENTES EX-PLANTAS",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 2
+  },
+  {
+    "id": 6,
+    "nombre": "CLIENTES EXPORTACIONES",
+    "descripcion": "CLIENTES EXPORTACIONES",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 2
+  },
+  {
+    "id": 7,
+    "nombre": "A/C DE EXPORTACIONES",
+    "descripcion": "A/C DE EXPORTACIONES",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 2
+  },
+  {
+    "id": 8,
+    "nombre": "CLIENTE MERCADO LOCAL",
+    "descripcion": "CLIENTE MERCADO LOCAL",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 3
+  },
+  {
+    "id": 9,
+    "nombre": "CLIENTES QALY WARMA",
+    "descripcion": "CLIENTES QALY WARMA",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 3
+  },
+  {
+    "id": 10,
+    "nombre": "MUNICIPALIDADES",
+    "descripcion": "MUNICIPALIDADES",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 3
+  },
+  {
+    "id": 11,
+    "nombre": "CLIENTES EXPORTACIONES",
+    "descripcion": "CLIENTES EXPORTACIONES",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 3
+  },
+  {
+    "id": 12,
+    "nombre": "A/C DE CONSERVAS",
+    "descripcion": "A/C DE CONSERVAS",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 3
+  },
+  {
+    "id": 13,
+    "nombre": "ALQUILERES",
+    "descripcion": "ALQUILERES",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 4
+  },
+  {
+    "id": 14,
+    "nombre": "SERVICIOS DE CONSERVAS",
+    "descripcion": "SERVICIOS DE CONSERVAS",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 4
+  },
+  {
+    "id": 15,
+    "nombre": "PRESTAMOS BANCARIOS",
+    "descripcion": "PRESTAMOS BANCARIOS",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 5
+  },
+  {
+    "id": 16,
+    "nombre": "PRESTAMOS DE TERCEROS",
+    "descripcion": "PRESTAMOS DE TERCEROS",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 5
+  },
+  {
+    "id": 17,
+    "nombre": "INVERSIONISTAS",
+    "descripcion": "INVERSIONISTAS",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 5
+  },
+  {
+    "id": 18,
+    "nombre": "ACCIONISTAS",
+    "descripcion": "ACCIONISTAS",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 5
+  },
+  {
+    "id": 19,
+    "nombre": "VENTA PESCA CONSUMO PLANTA",
+    "descripcion": "VENTA PESCA CONSUMO PLANTA",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 6
+  },
+  {
+    "id": 20,
+    "nombre": "VENTA PESCA CONSUMO MERCADO",
+    "descripcion": "VENTA PESCA CONSUMO MERCADO",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 6
+  },
+  {
+    "id": 21,
+    "nombre": "VENTA PESCA CONSUMO TERCEROS",
+    "descripcion": "VENTA PESCA CONSUMO TERCEROS",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 6
+  },
+  {
+    "id": 22,
+    "nombre": "A/C DE PESCA CONSUMO",
+    "descripcion": "A/C DE PESCA CONSUMO",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 6
+  },
+  {
+    "id": 23,
+    "nombre": "TRANSFERENCIA DE MN A MN",
+    "descripcion": "TRANSFERENCIA DE MN A MN",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 7
+  },
+  {
+    "id": 24,
+    "nombre": "TRANSFERENCIA DE MN A ME",
+    "descripcion": "TRANSFERENCIA DE MN A ME",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 7
+  },
+  {
+    "id": 25,
+    "nombre": "TRANSFERENCIA DE ME A ME",
+    "descripcion": "TRANSFERENCIA DE ME A ME",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 7
+  },
+  {
+    "id": 26,
+    "nombre": "TRANSFERENCIA DE ME A MN",
+    "descripcion": "TRANSFERENCIA DE ME A MN",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 7
+  },
+  {
+    "id": 27,
+    "nombre": "A/C DE DEUDA",
+    "descripcion": "A/C DE DEUDA",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 7
+  },
+  {
+    "id": 28,
+    "nombre": "DEVOLUCION A RENDIR",
+    "descripcion": "DEVOLUCION A RENDIR",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 8
+  },
+  {
+    "id": 29,
+    "nombre": "DEVOLUCION PRESTAMO",
+    "descripcion": "DEVOLUCION PRESTAMO",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 8
+  },
+  {
+    "id": 30,
+    "nombre": "INGRESOS DIVERSOS",
+    "descripcion": "INGRESOS DIVERSOS",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 8
+  },
+  {
+    "id": 31,
+    "nombre": "VENTA DE EMBARCACIONES",
+    "descripcion": "VENTA DE EMBARCACIONES",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 9
+  },
+  {
+    "id": 32,
+    "nombre": "VENTA DE EDIFICIOS",
+    "descripcion": "VENTA DE EDIFICIOS",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 9
+  },
+  {
+    "id": 33,
+    "nombre": "VENTA DE TERRENOS",
+    "descripcion": "VENTA DE TERRENOS",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 9
+  },
+  {
+    "id": 34,
+    "nombre": "VENTA DE TRANSPORTES",
+    "descripcion": "VENTA DE TRANSPORTES",
+    "esIngreso": "True",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 9
+  },
+  {
+    "id": 35,
+    "nombre": "FACTURA PESCA",
+    "descripcion": "FACTURA PESCA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 36,
+    "nombre": "FACTURA INSUMOS Y SUMINISTROS",
+    "descripcion": "FACTURA INSUMOS Y SUMINISTROS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 37,
+    "nombre": "FACTURA MANTENIMIENTO Y REPARACIONES",
+    "descripcion": "FACTURA MANTENIMIENTO Y REPARACIONES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 38,
+    "nombre": "LIQUIDACION TRIPULANTES",
+    "descripcion": "LIQUIDACION TRIPULANTES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 39,
+    "nombre": "COMISIONES PATRONES",
+    "descripcion": "COMISIONES PATRONES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 40,
+    "nombre": "COMISIONES MOTORISTAS",
+    "descripcion": "COMISIONES MOTORISTAS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 41,
+    "nombre": "PRESTAMOS A PATRONES",
+    "descripcion": "PRESTAMOS A PATRONES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 42,
+    "nombre": "PRESTAMO A TRIPULANTES",
+    "descripcion": "PRESTAMO A TRIPULANTES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 43,
+    "nombre": "LIQUIDACION ARMADOR",
+    "descripcion": "LIQUIDACION ARMADOR",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 44,
+    "nombre": "COMISION PERSONAL",
+    "descripcion": "COMISION PERSONAL",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 45,
+    "nombre": "ALQUILERES VEHICULOS",
+    "descripcion": "ALQUILERES VEHICULOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 46,
+    "nombre": "FACTURA PESCA",
+    "descripcion": "FACTURA PESCA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 47,
+    "nombre": "FACTURA SERVICIO CONGELADO",
+    "descripcion": "FACTURA SERVICIO CONGELADO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 48,
+    "nombre": "FACTURA M.O.D. CONGELADO",
+    "descripcion": "FACTURA M.O.D. CONGELADO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 49,
+    "nombre": "FACTURA FLETE MARITIMO",
+    "descripcion": "FACTURA FLETE MARITIMO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 50,
+    "nombre": "FACTURA FLETE LOCAL",
+    "descripcion": "FACTURA FLETE LOCAL",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 51,
+    "nombre": "FACTURA LOGISTICO",
+    "descripcion": "FACTURA LOGISTICO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 52,
+    "nombre": "FACTURA HIELO",
+    "descripcion": "FACTURA HIELO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 53,
+    "nombre": "FACTURA TRANSPORTE HIELO",
+    "descripcion": "FACTURA TRANSPORTE HIELO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 54,
+    "nombre": "COMISIONES CONGELADO",
+    "descripcion": "COMISIONES CONGELADO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 55,
+    "nombre": "SEGURIDAD CONTENEDORES",
+    "descripcion": "SEGURIDAD CONTENEDORES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 56,
+    "nombre": "FACTURA MANTENIMIENTO Y REPARACIONES",
+    "descripcion": "FACTURA MANTENIMIENTO Y REPARACIONES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 57,
+    "nombre": "COMISION EXPORTACIONES",
+    "descripcion": "COMISION EXPORTACIONES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 58,
+    "nombre": "HOSPEDAJE NORTE",
+    "descripcion": "HOSPEDAJE NORTE",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 59,
+    "nombre": "COMBUSTIBLE",
+    "descripcion": "COMBUSTIBLE",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 60,
+    "nombre": "PEAJES PARQUEO Y COCHERA",
+    "descripcion": "PEAJES PARQUEO Y COCHERA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 61,
+    "nombre": "VIATICOS",
+    "descripcion": "VIATICOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 62,
+    "nombre": "HOSPEDAJE",
+    "descripcion": "HOSPEDAJE",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 63,
+    "nombre": "REFRIGERIOS",
+    "descripcion": "REFRIGERIOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 64,
+    "nombre": "ASESORIAS PLANTA PRODUCE SANIPES",
+    "descripcion": "ASESORIAS PLANTA PRODUCE SANIPES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 65,
+    "nombre": "OTROS",
+    "descripcion": "OTROS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 11
+  },
+  {
+    "id": 66,
+    "nombre": "FACTURA PESCA",
+    "descripcion": "FACTURA PESCA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 67,
+    "nombre": "FACTURA SERVICIO CONSERVAS",
+    "descripcion": "FACTURA SERVICIO CONSERVAS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 68,
+    "nombre": "FACTURA M.O.D. CONSERVAS",
+    "descripcion": "FACTURA M.O.D. CONSERVAS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 69,
+    "nombre": "FACTURA INSUMOS Y SUMINISTROS",
+    "descripcion": "FACTURA INSUMOS Y SUMINISTROS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 70,
+    "nombre": "FACTURA FLETE LOCAL",
+    "descripcion": "FACTURA FLETE LOCAL",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 71,
+    "nombre": "ETIQUETADO",
+    "descripcion": "ETIQUETADO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 72,
+    "nombre": "FACTURA HIELO",
+    "descripcion": "FACTURA HIELO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 73,
+    "nombre": "FACTURA TRANSPORTE HIELO",
+    "descripcion": "FACTURA TRANSPORTE HIELO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 74,
+    "nombre": "COMISIONES CONSERVA",
+    "descripcion": "COMISIONES CONSERVA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 75,
+    "nombre": "COMBUSTIBLE ",
+    "descripcion": "COMBUSTIBLE ",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 76,
+    "nombre": "PEAJES PARQUEO Y COCHERA",
+    "descripcion": "PEAJES PARQUEO Y COCHERA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 77,
+    "nombre": "VIATICOS",
+    "descripcion": "VIATICOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 78,
+    "nombre": "HOSPEDAJE",
+    "descripcion": "HOSPEDAJE",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 79,
+    "nombre": "REFRIGERIO",
+    "descripcion": "REFRIGERIO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 80,
+    "nombre": "OTROS",
+    "descripcion": "OTROS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 12
+  },
+  {
+    "id": 81,
+    "nombre": "HIELO SALIDA",
+    "descripcion": "HIELO SALIDA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 82,
+    "nombre": "HIELO REHIELAR",
+    "descripcion": "HIELO REHIELAR",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 83,
+    "nombre": "SERVICIO TRANSPORTE DE HIELO",
+    "descripcion": "SERVICIO TRANSPORTE DE HIELO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 84,
+    "nombre": "COMPRA SACOS",
+    "descripcion": "COMPRA SACOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 85,
+    "nombre": "ENSACADA",
+    "descripcion": "ENSACADA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 86,
+    "nombre": "GUARDIANIA",
+    "descripcion": "GUARDIANIA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 87,
+    "nombre": "SUMINISTROS",
+    "descripcion": "SUMINISTROS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 88,
+    "nombre": "HIELO FLETES",
+    "descripcion": "HIELO FLETES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 89,
+    "nombre": "ADELANTO TRIPULACION",
+    "descripcion": "ADELANTO TRIPULACION",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 90,
+    "nombre": "PASAJES",
+    "descripcion": "PASAJES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 91,
+    "nombre": "VIVERES",
+    "descripcion": "VIVERES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 92,
+    "nombre": "CHALANA",
+    "descripcion": "CHALANA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 93,
+    "nombre": "PLATAFORMA",
+    "descripcion": "PLATAFORMA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 94,
+    "nombre": "SERVICIO DE MUELLE",
+    "descripcion": "SERVICIO DE MUELLE",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 95,
+    "nombre": "COMBUSTIBLE ",
+    "descripcion": "COMBUSTIBLE ",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 96,
+    "nombre": "ADELANTO",
+    "descripcion": "ADELANTO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 97,
+    "nombre": "VIATICOS",
+    "descripcion": "VIATICOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 98,
+    "nombre": "COMBUSTIBLE ",
+    "descripcion": "COMBUSTIBLE ",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 99,
+    "nombre": "PEAJES PARQUEO Y COCHERA",
+    "descripcion": "PEAJES PARQUEO Y COCHERA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 100,
+    "nombre": "HOSPEDAJE",
+    "descripcion": "HOSPEDAJE",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 101,
+    "nombre": "REFRIGERIOS",
+    "descripcion": "REFRIGERIOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 102,
+    "nombre": "OTROS",
+    "descripcion": "OTROS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 103,
+    "nombre": "PROVEEDOR MATERIALES",
+    "descripcion": "PROVEEDOR MATERIALES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 14
+  },
+  {
+    "id": 104,
+    "nombre": "PROVEEDOR INSUMOS",
+    "descripcion": "PROVEEDOR INSUMOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 14
+  },
+  {
+    "id": 105,
+    "nombre": "PROVEEDOR PISOS",
+    "descripcion": "PROVEEDOR PISOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 14
+  },
+  {
+    "id": 106,
+    "nombre": "PROVEEDOR DE PINTADOS",
+    "descripcion": "PROVEEDOR DE PINTADOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 14
+  },
+  {
+    "id": 107,
+    "nombre": "PROVEEDOR DE ESTRUCTURAS Y PORTONES",
+    "descripcion": "PROVEEDOR DE ESTRUCTURAS Y PORTONES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 14
+  },
+  {
+    "id": 108,
+    "nombre": "PROVEEDOR DE CAMARAS DE SEGURIDAD",
+    "descripcion": "PROVEEDOR DE CAMARAS DE SEGURIDAD",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 14
+  },
+  {
+    "id": 109,
+    "nombre": "CONTRATISTA",
+    "descripcion": "CONTRATISTA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 14
+  },
+  {
+    "id": 110,
+    "nombre": "COMPRA DE EMBARCACIONES",
+    "descripcion": "COMPRA DE EMBARCACIONES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 15
+  },
+  {
+    "id": 111,
+    "nombre": "COMPRA DE EDIFICIOS",
+    "descripcion": "COMPRA DE EDIFICIOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 15
+  },
+  {
+    "id": 112,
+    "nombre": "COMPRA DE TERRENOS",
+    "descripcion": "COMPRA DE TERRENOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 15
+  },
+  {
+    "id": 113,
+    "nombre": "COMPRA TRANSPORTES",
+    "descripcion": "COMPRA TRANSPORTES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 15
+  },
+  {
+    "id": 114,
+    "nombre": "CONSTRUCCION ALMACENES",
+    "descripcion": "CONSTRUCCION ALMACENES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 15
+  },
+  {
+    "id": 115,
+    "nombre": "DONACIONES",
+    "descripcion": "DONACIONES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 16
+  },
+  {
+    "id": 116,
+    "nombre": "MOVILIDADES/PASAJES",
+    "descripcion": "MOVILIDADES/PASAJES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 16
+  },
+  {
+    "id": 117,
+    "nombre": "REFRIGERIOS",
+    "descripcion": "REFRIGERIOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 16
+  },
+  {
+    "id": 118,
+    "nombre": "HOSPEDAJE",
+    "descripcion": "HOSPEDAJE",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 16
+  },
+  {
+    "id": 119,
+    "nombre": "COMBUSTIBLE",
+    "descripcion": "COMBUSTIBLE",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 16
+  },
+  {
+    "id": 120,
+    "nombre": "PEAJES PARQUEO Y COCHERA",
+    "descripcion": "PEAJES PARQUEO Y COCHERA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 16
+  },
+  {
+    "id": 121,
+    "nombre": "RRPP Y NOTARIA",
+    "descripcion": "RRPP Y NOTARIA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 16
+  },
+  {
+    "id": 122,
+    "nombre": "CORRESPONDENCIA",
+    "descripcion": "CORRESPONDENCIA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 16
+  },
+  {
+    "id": 123,
+    "nombre": "UTILES DE ASEO Y MASCOTA",
+    "descripcion": "UTILES DE ASEO Y MASCOTA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 16
+  },
+  {
+    "id": 124,
+    "nombre": "JARDINERIA",
+    "descripcion": "JARDINERIA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 16
+  },
+  {
+    "id": 125,
+    "nombre": "MANTENIMIENTO",
+    "descripcion": "MANTENIMIENTO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 16
+  },
+  {
+    "id": 126,
+    "nombre": "MARKETING Y PUBLICIDAD",
+    "descripcion": "MARKETING Y PUBLICIDAD",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 16
+  },
+  {
+    "id": 127,
+    "nombre": "A RENDIR PESCA INDUSTRIAL",
+    "descripcion": "A RENDIR PESCA INDUSTRIAL",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 17
+  },
+  {
+    "id": 128,
+    "nombre": "A RENDIR CONGELADO",
+    "descripcion": "A RENDIR CONGELADO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 17
+  },
+  {
+    "id": 129,
+    "nombre": "A RENDIR CONSERVAS",
+    "descripcion": "A RENDIR CONSERVAS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 17
+  },
+  {
+    "id": 130,
+    "nombre": "A RENDIR PESCA CONSUMO",
+    "descripcion": "A RENDIR PESCA CONSUMO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 17
+  },
+  {
+    "id": 131,
+    "nombre": "A RENDIR ADMINISTRACION/GERENCIA",
+    "descripcion": "A RENDIR ADMINISTRACION/GERENCIA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 17
+  },
+  {
+    "id": 132,
+    "nombre": "A RENDIR VARIOS",
+    "descripcion": "A RENDIR VARIOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 17
+  },
+  {
+    "id": 133,
+    "nombre": "TRANSFERENCIA DE MN A MN",
+    "descripcion": "TRANSFERENCIA DE MN A MN",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 18
+  },
+  {
+    "id": 134,
+    "nombre": "TRANSFERENCIA DE MN A ME",
+    "descripcion": "TRANSFERENCIA DE MN A ME",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 18
+  },
+  {
+    "id": 135,
+    "nombre": "TRANSFERENCIA DE ME A ME",
+    "descripcion": "TRANSFERENCIA DE ME A ME",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 18
+  },
+  {
+    "id": 136,
+    "nombre": "TRANSFERENCIA DE ME A MN",
+    "descripcion": "TRANSFERENCIA DE ME A MN",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 18
+  },
+  {
+    "id": 137,
+    "nombre": "A/C DE DEUDA",
+    "descripcion": "A/C DE DEUDA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 18
+  },
+  {
+    "id": 138,
+    "nombre": "ALQUILERES",
+    "descripcion": "ALQUILERES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 19
+  },
+  {
+    "id": 139,
+    "nombre": "SERVICIO DE LUZ",
+    "descripcion": "SERVICIO DE LUZ",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 19
+  },
+  {
+    "id": 140,
+    "nombre": "SERVICIO DE AGUA",
+    "descripcion": "SERVICIO DE AGUA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 19
+  },
+  {
+    "id": 141,
+    "nombre": "SERVICIO DE TELEFONO",
+    "descripcion": "SERVICIO DE TELEFONO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 19
+  },
+  {
+    "id": 142,
+    "nombre": "MANTENIMIENTO Y REPARACION AUTOS",
+    "descripcion": "MANTENIMIENTO Y REPARACION AUTOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 19
+  },
+  {
+    "id": 143,
+    "nombre": "SEGUROS",
+    "descripcion": "SEGUROS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 19
+  },
+  {
+    "id": 144,
+    "nombre": "UTILES DE OFICINA",
+    "descripcion": "UTILES DE OFICINA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 19
+  },
+  {
+    "id": 145,
+    "nombre": "SISTEMAS",
+    "descripcion": "SISTEMAS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 20
+  },
+  {
+    "id": 146,
+    "nombre": "LEGAL",
+    "descripcion": "LEGAL",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 20
+  },
+  {
+    "id": 147,
+    "nombre": "CAPITANIA",
+    "descripcion": "CAPITANIA",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 20
+  },
+  {
+    "id": 148,
+    "nombre": "PRODUCE",
+    "descripcion": "PRODUCE",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 20
+  },
+  {
+    "id": 149,
+    "nombre": "SUELDOS",
+    "descripcion": "SUELDOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 21
+  },
+  {
+    "id": 150,
+    "nombre": "SALARIOS",
+    "descripcion": "SALARIOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 21
+  },
+  {
+    "id": 151,
+    "nombre": "COMISIONES",
+    "descripcion": "COMISIONES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 21
+  },
+  {
+    "id": 152,
+    "nombre": "PRESTAMOS",
+    "descripcion": "PRESTAMOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 21
+  },
+  {
+    "id": 153,
+    "nombre": "ADELANTOS",
+    "descripcion": "ADELANTOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 21
+  },
+  {
+    "id": 154,
+    "nombre": "INDEMNIZACIONES CTS",
+    "descripcion": "INDEMNIZACIONES CTS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 21
+  },
+  {
+    "id": 155,
+    "nombre": "VACACIONES",
+    "descripcion": "VACACIONES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 21
+  },
+  {
+    "id": 156,
+    "nombre": "GRATIFICACIONES",
+    "descripcion": "GRATIFICACIONES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 21
+  },
+  {
+    "id": 157,
+    "nombre": "LIQUIDACIONES",
+    "descripcion": "LIQUIDACIONES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 21
+  },
+  {
+    "id": 158,
+    "nombre": "BANCOS CAPITAL",
+    "descripcion": "BANCOS CAPITAL",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 22
+  },
+  {
+    "id": 159,
+    "nombre": "FONDOS CAPITAL",
+    "descripcion": "FONDOS CAPITAL",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 22
+  },
+  {
+    "id": 160,
+    "nombre": "INVERSIONISTAS CAPITAL",
+    "descripcion": "INVERSIONISTAS CAPITAL",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 22
+  },
+  {
+    "id": 161,
+    "nombre": "LETRAS",
+    "descripcion": "LETRAS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 22
+  },
+  {
+    "id": 162,
+    "nombre": "FACTORING",
+    "descripcion": "FACTORING",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 22
+  },
+  {
+    "id": 163,
+    "nombre": "ITF PORTES EMBARGOS MANTENIMIENTO DE CUENTAS COMISIONES",
+    "descripcion": "ITF PORTES EMBARGOS MANTENIMIENTO DE CUENTAS COMISIONES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 23
+  },
+  {
+    "id": 164,
+    "nombre": "INTERESES FINANCIEROS",
+    "descripcion": "INTERESES FINANCIEROS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 23
+  },
+  {
+    "id": 165,
+    "nombre": "SUNAT",
+    "descripcion": "SUNAT",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 24
+  },
+  {
+    "id": 166,
+    "nombre": "MUNICIPIOS",
+    "descripcion": "MUNICIPIOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 24
+  },
+  {
+    "id": 167,
+    "nombre": "RENTA ALQUILERES",
+    "descripcion": "RENTA ALQUILERES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 24
+  },
+  {
+    "id": 168,
+    "nombre": "CAPITANIA",
+    "descripcion": "GASTOS DE CAPITANIACE PUERTOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 169,
+    "nombre": "CAPITANIA",
+    "descripcion": "GASTOS CAPITANIA DE PUERTOS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 170,
+    "nombre": "SERVICIO DE MUELLE",
+    "descripcion": "SERVICIO DE MUELLE",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 172,
+    "nombre": "TRANSPORTE",
+    "descripcion": "TRANSPORTE",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 173,
+    "nombre": "ESTIBA",
+    "descripcion": "ESTIBA PESCA INDUSTRIAL",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 174,
+    "nombre": "TRANSPORTE",
+    "descripcion": "TRANSPORTE",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 175,
+    "nombre": "ESTIBA",
+    "descripcion": "ESTIBA PESCA CONSUMO",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 176,
+    "nombre": "OTROS",
+    "descripcion": "OTROS PESCA INDUSTRIAL",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 177,
+    "nombre": "REFRIGERIOS",
+    "descripcion": "REFRIGERIOS PESCA INDUSTRIAL",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  },
+  {
+    "id": 178,
+    "nombre": "OTROS",
+    "descripcion": "OTROS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 16
+  },
+  {
+    "id": 179,
+    "nombre": "FACTURA MANTENIMIENTO Y REPARACIONES",
+    "descripcion": "FACTURA MANTENIMIENTO Y REPARACIONES",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 13
+  },
+  {
+    "id": 180,
+    "nombre": "VIVERES",
+    "descripcion": "VIVERES Y GAS",
+    "esIngreso": "False",
+    "activo": "True",
+    "esTransferencia": "False",
+    "categoriaId": 10
+  }
+]

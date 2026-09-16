@@ -3,6 +3,37 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { formatearNumero } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 
+// ════════════════════════════════════════════════════════════
+// CONFIGURACIÓN DE ANCHOS DE COLUMNAS (en puntos)
+// ════════════════════════════════════════════════════════════
+/**
+ * Anchos de columnas para las tablas del voucher consolidado
+ * Los valores están en puntos (1 punto ≈ 0.35mm)
+ * 
+ * CÓMO MODIFICAR:
+ * 1. Busca la tabla que quieres ajustar
+ * 2. Modifica los valores del array
+ * 3. Asegúrate que la suma coincida con el ancho total
+ */
+const COLUMN_WIDTHS = {
+  // Tabla de Movimientos de Caja (SIN columna N°)
+  // Ancho disponible: 595.28 - (20 × 2) = 555 puntos
+  // [Id Mov. Caja, Tipo Movimiento, Cuenta, N° Oper., Monto]
+  movimientos: [50, 130, 200, 100, 75], // Total: 555 puntos
+  
+  // Tabla de Conceptos SUNAT - Detracción (SIN columna Estado)
+  // [Id Detracción, Base Imponible, Tasa, Monto Detracc., N° Constancia]
+  detraccion: [55, 150, 75, 150, 125], // Total: 555 puntos
+  
+  // Tabla de Conceptos SUNAT - Retención (SIN columna Estado)
+  // [Id Retención, Base Imponible, Tasa, Monto Retención, N° Constancia]
+  retencion: [55, 150, 75, 150, 125], // Total: 555 puntos
+  
+  // Tabla de Conceptos SUNAT - Percepción (SIN columna Estado)
+  // [Id Percepción, Base Imponible, Tasa, Monto Percepción, N° Constancia]
+  percepcion: [55, 150, 75, 150, 125], // Total: 555 puntos
+};
+
 /**
  * Genera un PDF del voucher consolidado de pago CxC y lo sube al servidor
  * VERSIÓN 2: Siguiendo el patrón del reporte de pesca
@@ -13,9 +44,11 @@ export async function generarYSubirVoucherConsolidado(
   conceptosSunat,
   resumen,
   empresa,
-  cuentaPorCobrar
+  cuentaPorCobrar,
+  usuario = null  // ✅ NUEVO: Usuario que elabora el voucher
 ) {
   try {
+    
     // 1. Generar el PDF
     const pdfBytes = await generarPDFVoucherConsolidado(
       pagoCuentaPorCobrar,
@@ -23,7 +56,8 @@ export async function generarYSubirVoucherConsolidado(
       conceptosSunat,
       resumen,
       empresa,
-      cuentaPorCobrar
+      cuentaPorCobrar,
+      usuario  // ✅ Pasar usuario
     );
 
     // 2. Crear un blob del PDF
@@ -32,7 +66,7 @@ export async function generarYSubirVoucherConsolidado(
     // 3. Crear FormData
     const formData = new FormData();
     formData.append("files", blob, "temp.pdf");
-    formData.append("moduleName", "pago-cuenta-por-cobrar");
+    formData.append("moduleName", "pago-cxc-voucher-consolidado");
     formData.append("entityId", pagoCuentaPorCobrar.id);
 
     // 4. Subir al servidor
@@ -70,7 +104,8 @@ async function generarPDFVoucherConsolidado(
   conceptosSunat,
   resumen,
   empresa,
-  cuentaPorCobrar
+  cuentaPorCobrar,
+  usuario = null  // ✅ Usuario que elabora el voucher
 ) {
   // ═══════════════════════════════════════════════════════════
   // 1. INICIALIZACIÓN
@@ -79,9 +114,9 @@ async function generarPDFVoucherConsolidado(
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontNormal = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-  const margin = 40;
+  const margin = 20; // ✅ CORRECCIÓN 1: Reducido de 40 a 20 para usar todo el ancho
   const lineHeight = 15;
-  const simboloMoneda = pagoCuentaPorCobrar.monedaPago?.simbolo || "S/.";
+  const simboloMoneda = pagoCuentaPorCobrar.monedaPago?.simbolo || "";
 
   // Cargar logo
   let logoImage = null;
@@ -179,8 +214,9 @@ async function generarPDFVoucherConsolidado(
   // ═══════════════════════════════════════════════════════════
   // 7. DIBUJAR TABLA DE MOVIMIENTOS
   // ═══════════════════════════════════════════════════════════
-  const colWidths = [25, 150, 40, 120, 100, 80];
-  const headers = ["N°", "Tipo Movimiento", "ID", "Cuenta", "N° Oper.", "Monto"];
+  // ✅ Usar anchos configurables (modificar en COLUMN_WIDTHS al inicio del archivo)
+  const colWidths = COLUMN_WIDTHS.movimientos;
+  const headers = ["Id Mov. Caja", "Tipo Movimiento", "Cuenta", "N° Oper.", "Monto"];
   const tableWidth = colWidths.reduce((a, b) => a + b, 0);
   const tableStartX = (width - tableWidth) / 2;
 
@@ -248,11 +284,10 @@ async function generarPDFVoucherConsolidado(
       );
     }
 
-    // Preparar datos de fila
+    // Preparar datos de fila (SIN columna N°)
     const rowData = [
-      (index + 1).toString(),
-      mov.tipo,
       mov.id ? mov.id.toString() : "-",
+      mov.tipo,
       mov.cuenta || "-",
       mov.numeroOperacion || "-",
       formatearNumero(mov.monto || 0),
@@ -276,8 +311,9 @@ async function generarPDFVoucherConsolidado(
     });
 
     // Determinar estilo según tipo de movimiento
-    const esAutodetraccion = mov.tipo.includes("Autodet");
-    const esImpuesto = mov.tipo === "ITF" || mov.tipo.includes("Comisión");
+    const tipoLower = mov.tipo.toLowerCase();
+    const esAutodetraccion = tipoLower.includes("autodet");
+    const esImpuesto = tipoLower.includes("itf") || tipoLower.includes("comisión") || tipoLower.includes("comision");
 
     const fontToUse = esAutodetraccion ? fontBold : fontNormal;
     const colorToUse = esAutodetraccion
@@ -305,8 +341,8 @@ async function generarPDFVoucherConsolidado(
 
       // Alineación
       let textX;
-      if (i === 0 || i === 2 || i === 5) {
-        // N°, ID, Monto: alineados a la derecha
+      if (i === 0 || i === 4) {
+        // Id Mov. Caja, Monto: alineados a la derecha
         const textWidth = fontToUse.widthOfTextAtSize(displayValue, 6.5);
         textX = xPos + colWidths[i] - textWidth - 2;
       } else {
@@ -361,24 +397,24 @@ async function generarPDFVoucherConsolidado(
     color: rgb(0.72, 0.87, 0.97),
   });
 
-  // Texto "TOTALES" centrado en columna "Cuenta" (índice 3)
-  const xInicioColCuenta = colWidths.slice(0, 3).reduce((a, b) => a + b, 0);
+  // Texto "TOTALES" centrado en columna "Cuenta" (índice 2)
+  const xInicioColCuenta = colWidths.slice(0, 2).reduce((a, b) => a + b, 0);
   const totalesLabel = "TOTALES";
   const totalesLabelWidth = fontBold.widthOfTextAtSize(totalesLabel, 8);
   page.drawText(totalesLabel, {
-    x: tableStartX + xInicioColCuenta + (colWidths[3] - totalesLabelWidth) / 2,
+    x: tableStartX + xInicioColCuenta + (colWidths[2] - totalesLabelWidth) / 2,
     y: yPosition,
     size: 8,
     font: fontBold,
     color: rgb(0, 0, 0),
   });
 
-  // Total monto alineado a la derecha en columna "Monto" (índice 5)
+  // Total monto alineado a la derecha en columna "Monto" (índice 4)
   const totalMontoText = formatearNumero(totalIngresos);
   const totalMontoWidth = fontBold.widthOfTextAtSize(totalMontoText, 8);
-  const xInicioMonto = colWidths.slice(0, 5).reduce((a, b) => a + b, 0);
+  const xInicioMonto = colWidths.slice(0, 4).reduce((a, b) => a + b, 0);
   page.drawText(totalMontoText, {
-    x: tableStartX + xInicioMonto + colWidths[5] - totalMontoWidth - 2,
+    x: tableStartX + xInicioMonto + colWidths[4] - totalMontoWidth - 2,
     y: yPosition,
     size: 8,
     font: fontBold,
@@ -400,10 +436,10 @@ async function generarPDFVoucherConsolidado(
   yPosition -= 25;
 
   // ═══════════════════════════════════════════════════════════
-  // 9. CONCEPTOS SUNAT (si existen)
+  // 9. CONCEPTOS SUNAT (si existen) - ✅ CORRECCIÓN 4: Formato horizontal con tabla
   // ═══════════════════════════════════════════════════════════
   if (conceptosSunat?.detraccion || conceptosSunat?.retencion || conceptosSunat?.percepcion) {
-    if (yPosition < 150) {
+    if (yPosition < 100) {
       page = pdfDoc.addPage([595.28, 841.89]);
       yPosition = await dibujarEncabezadoCompleto(
         page,
@@ -429,73 +465,157 @@ async function generarPDFVoucherConsolidado(
       color: rgb(0, 0, 0),
     });
 
-    yPosition -= 8;
-    page.drawLine({
-      start: { x: margin, y: yPosition },
-      end: { x: width - margin, y: yPosition },
-      thickness: 1,
-      color: rgb(0.7, 0.7, 0.7),
-    });
-
     yPosition -= 15;
+
+    // ✅ TABLA HORIZONTAL CON GRIDLINES - DINÁMICA
+    const tableStartX = margin;
+    const tableWidth = width - 2 * margin;
+    const rowHeight = 18;
+
+    // Determinar tipo de concepto y headers dinámicos
+    let tipoConcepto = "";
+    let headersSunat = [];
+    let dataRow = [];
+    let colWidthsSunat = [];
 
     if (conceptosSunat.detraccion) {
       const det = conceptosSunat.detraccion;
-
-      page.drawText("• DETRACCIÓN", {
-        x: margin + 10,
-        y: yPosition,
-        size: 9,
-        font: fontBold,
-        color: rgb(0, 0, 0),
-      });
-      yPosition -= lineHeight;
-
-      const detallesDetraccion = [
-        `  - ID Detracción: ${det.id}`,
-        `  - Base Imponible: ${simboloMoneda} ${formatearNumero(det.importeTotal || 0)}`,
-        `  - Tasa: ${det.tasaDetraccion || 0}%`,
-        `  - Monto Detracción: ${simboloMoneda} ${formatearNumero(det.importeRequerido || 0)}`,
-        `  - N° Constancia: ${det.numeroDocumento || "-"}`,
-        `  - Estado: ${det.estadoPago?.nombre || "PENDIENTE"}`,
+      tipoConcepto = "DETRACCIÓN";
+      headersSunat = ["Id Detracción", "Base Imponible", "Tasa", "Monto Detracc.", "N° Constancia"];
+      // ✅ Usar anchos configurables (modificar en COLUMN_WIDTHS al inicio del archivo)
+      colWidthsSunat = COLUMN_WIDTHS.detraccion;
+      dataRow = [
+        det.id.toString(),
+        `${simboloMoneda} ${formatearNumero(det.importeTotal || 0)}`,
+        `${det.tasaDetraccion || 0}%`,
+        `${simboloMoneda} ${formatearNumero(det.importeRequerido || 0)}`,
+        det.numeroDocumento || "-",
       ];
+    } else if (conceptosSunat.retencion) {
+      const ret = conceptosSunat.retencion;
+      tipoConcepto = "RETENCIÓN";
+      headersSunat = ["Id Retención", "Base Imponible", "Tasa", "Monto Retención", "N° Constancia"];
+      // ✅ Usar anchos configurables (modificar en COLUMN_WIDTHS al inicio del archivo)
+      colWidthsSunat = COLUMN_WIDTHS.retencion;
+      dataRow = [
+        ret.id.toString(),
+        `${simboloMoneda} ${formatearNumero(ret.importeTotal || 0)}`,
+        `${ret.tasaRetencion || 0}%`,
+        `${simboloMoneda} ${formatearNumero(ret.importeRetenido || 0)}`,
+        ret.numeroDocumento || "-",
+      ];
+    } else if (conceptosSunat.percepcion) {
+      const per = conceptosSunat.percepcion;
+      tipoConcepto = "PERCEPCIÓN";
+      headersSunat = ["Id Percepción", "Base Imponible", "Tasa", "Monto Percepción", "N° Constancia"];
+      // ✅ Usar anchos configurables (modificar en COLUMN_WIDTHS al inicio del archivo)
+      colWidthsSunat = COLUMN_WIDTHS.percepcion;
+      dataRow = [
+        per.id.toString(),
+        `${simboloMoneda} ${formatearNumero(per.importeTotal || 0)}`,
+        `${per.tasaPercepcion || 0}%`,
+        `${simboloMoneda} ${formatearNumero(per.importePercibido || 0)}`,
+        per.numeroDocumento || "-",
+      ];
+    }
 
-      detallesDetraccion.forEach((detalle) => {
-        page.drawText(detalle, {
-          x: margin + 10,
-          y: yPosition,
-          size: 8,
+    // Dibujar tabla
+    if (headersSunat.length > 0) {
+      // Header background
+      page.drawRectangle({
+        x: tableStartX,
+        y: yPosition - rowHeight,
+        width: tableWidth,
+        height: rowHeight,
+        color: rgb(0.72, 0.87, 0.97),
+      });
+
+      // Línea horizontal superior
+      page.drawLine({
+        start: { x: tableStartX, y: yPosition },
+        end: { x: tableStartX + tableWidth, y: yPosition },
+        thickness: 0.5,
+        color: rgb(0.7, 0.7, 0.7),
+      });
+
+      // Headers
+      let xPos = tableStartX;
+      headersSunat.forEach((header, i) => {
+        // Centrar texto en la columna
+        const headerWidth = fontBold.widthOfTextAtSize(header, 7.5);
+        const textX = xPos + (colWidthsSunat[i] - headerWidth) / 2;
+        page.drawText(header, {
+          x: textX,
+          y: yPosition - 13,
+          size: 7.5,
+          font: fontBold,
+          color: rgb(0, 0, 0),
+        });
+        // Línea vertical
+        page.drawLine({
+          start: { x: xPos, y: yPosition },
+          end: { x: xPos, y: yPosition - rowHeight },
+          thickness: 0.5,
+          color: rgb(0.7, 0.7, 0.7),
+        });
+        xPos += colWidthsSunat[i];
+      });
+      
+      // Última línea vertical
+      page.drawLine({
+        start: { x: xPos, y: yPosition },
+        end: { x: xPos, y: yPosition - rowHeight },
+        thickness: 0.5,
+        color: rgb(0.7, 0.7, 0.7),
+      });
+
+      yPosition -= rowHeight;
+
+      // Línea horizontal entre header y data
+      page.drawLine({
+        start: { x: tableStartX, y: yPosition },
+        end: { x: tableStartX + tableWidth, y: yPosition },
+        thickness: 0.5,
+        color: rgb(0.7, 0.7, 0.7),
+      });
+
+      // Data row
+      xPos = tableStartX;
+      dataRow.forEach((data, i) => {
+        page.drawText(data, {
+          x: xPos + 3,
+          y: yPosition - 13,
+          size: 7,
           font: fontNormal,
           color: rgb(0, 0, 0),
         });
-        yPosition -= lineHeight;
+        // Línea vertical
+        page.drawLine({
+          start: { x: xPos, y: yPosition },
+          end: { x: xPos, y: yPosition - rowHeight },
+          thickness: 0.5,
+          color: rgb(0.7, 0.7, 0.7),
+        });
+        xPos += colWidthsSunat[i];
       });
 
-      yPosition -= 5;
-    }
-
-    if (conceptosSunat.retencion) {
-      const ret = conceptosSunat.retencion;
-      page.drawText(`• RETENCIÓN: ${simboloMoneda} ${formatearNumero(ret.importeRetenido || 0)}`, {
-        x: margin + 10,
-        y: yPosition,
-        size: 8,
-        font: fontNormal,
-        color: rgb(0, 0, 0),
+      // Última línea vertical
+      page.drawLine({
+        start: { x: xPos, y: yPosition },
+        end: { x: xPos, y: yPosition - rowHeight },
+        thickness: 0.5,
+        color: rgb(0.7, 0.7, 0.7),
       });
-      yPosition -= lineHeight;
-    }
 
-    if (conceptosSunat.percepcion) {
-      const per = conceptosSunat.percepcion;
-      page.drawText(`• PERCEPCIÓN: ${simboloMoneda} ${formatearNumero(per.importePercibido || 0)}`, {
-        x: margin + 10,
-        y: yPosition,
-        size: 8,
-        font: fontNormal,
-        color: rgb(0, 0, 0),
+      yPosition -= rowHeight;
+
+      // Línea horizontal inferior
+      page.drawLine({
+        start: { x: tableStartX, y: yPosition },
+        end: { x: tableStartX + tableWidth, y: yPosition },
+        thickness: 0.5,
+        color: rgb(0.7, 0.7, 0.7),
       });
-      yPosition -= lineHeight;
     }
 
     yPosition -= 10;
@@ -541,19 +661,21 @@ async function generarPDFVoucherConsolidado(
   yPosition -= 20;
 
   // Cuadro de resumen
+  const montoNetoAPagar = resumen.montoBruto - (resumen.detraccion || 0);
+  const netoEnCuentaEmpresa = montoNetoAPagar - (resumen.itf || 0) - (resumen.comision || 0);
+  
   const resumenItems = [
     { label: "Monto Total Factura:", valor: resumen.montoBruto, negrita: false },
     { label: "(-) Detracción:", valor: resumen.detraccion || 0, negrita: false },
-    { label: "Monto Neto a Pagar:", valor: resumen.montoBruto - (resumen.detraccion || 0), negrita: true, separador: true },
+    { label: "Monto Neto a Pagar:", valor: montoNetoAPagar, negrita: true, separador: true },
     { label: "", valor: 0, separador: true, vacio: true },
     { label: "MOVIMIENTOS BANCARIOS:", valor: 0, titulo: true },
-    { label: "(+) Ingreso a Cuenta Empresa:", valor: resumen.montoBruto, negrita: false },
+    { label: "(+) Ingreso a Cuenta Empresa:", valor: montoNetoAPagar, negrita: false },
     { label: "(-) ITF:", valor: resumen.itf || 0, negrita: false },
     { label: "(-) Comisión Bancaria:", valor: resumen.comision || 0, negrita: false },
-    { label: "(-) Autodetracción a BN:", valor: resumen.detraccion || 0, negrita: false },
-    { label: "NETO EN CUENTA EMPRESA:", valor: resumen.montoNetoCaja, negrita: true, separador: true },
+    { label: "NETO EN CUENTA EMPRESA:", valor: netoEnCuentaEmpresa, negrita: true, separador: true },
     { label: "", valor: 0, separador: true, vacio: true },
-    { label: "(+) Ingreso a Cuenta BN Detracción:", valor: resumen.detraccion || 0, negrita: false },
+    { label: "(+) Detracción a Cuenta BN:", valor: resumen.detraccion || 0, negrita: false },
     { label: "TOTAL DEPOSITADO EN BN:", valor: resumen.detraccion || 0, negrita: true, separador: true },
   ];
 
@@ -622,12 +744,17 @@ async function generarPDFVoucherConsolidado(
   const firmaWidth = 150;
   const firmaSpacing = (width - 2 * margin - 2 * firmaWidth) / 1;
 
+  // ✅ Obtener nombre completo del usuario
+  const nombreUsuario = usuario 
+    ? `${usuario.nombres || ''} ${usuario.apellidos || ''}`.trim() || 'Usuario'
+    : 'Usuario';
+
   const firmas = [
-    { x: margin, label: "ELABORADO POR" },
-    { x: margin + firmaWidth + firmaSpacing, label: "APROBADO POR" },
+    { x: margin, label: "ELABORADO POR", nombre: nombreUsuario },
+    { x: margin + firmaWidth + firmaSpacing, label: "APROBADO POR", nombre: "" },
   ];
 
-  firmas.forEach(({ x, label }) => {
+  firmas.forEach(({ x, label, nombre }) => {
     // Línea de firma
     page.drawLine({
       start: { x: x, y: yPosition },
@@ -635,6 +762,18 @@ async function generarPDFVoucherConsolidado(
       thickness: 1,
       color: rgb(0, 0, 0),
     });
+
+    // Nombre del usuario (si existe)
+    if (nombre) {
+      const nombreWidth = fontBold.widthOfTextAtSize(nombre, 8);
+      page.drawText(nombre, {
+        x: x + (firmaWidth - nombreWidth) / 2,
+        y: yPosition + 5,
+        size: 8,
+        font: fontBold,
+        color: rgb(0, 0, 0),
+      });
+    }
 
     // Etiqueta
     const labelWidth = fontNormal.widthOfTextAtSize(label, 8);
@@ -790,7 +929,7 @@ async function dibujarEncabezadoCompleto(
   };
 
   const col1X = margin;
-  const col2X = width / 2 + 20;
+  const col2X = width / 2 + 76; // ✅ CORRECCIÓN 2: Aumentado de +20 a +76 (2cm más a la derecha)
   let yPosCol1 = yPos;
   let yPosCol2 = yPos;
 
@@ -936,78 +1075,117 @@ function dibujarHeadersTablaMovimientos(
 function prepararDatosMovimientos(movimientos, pagoCuentaPorCobrar, cuentaPorCobrar) {
   const movimientosArray = [];
 
-  // 1. Pago principal (ingreso)
+  // Helper para formatear cuenta completa (siguiendo patrón de CuentaCorrienteSelector)
+  const formatearCuentaCompleta = (cuentaCorriente, tipoMov = '') => {
+
+    
+    if (!cuentaCorriente) {
+      console.warn(`⚠️  [${tipoMov}] cuentaCorriente es null/undefined`);
+      return "-";
+    }
+    
+    const partes = [];
+    
+    // Banco
+    if (cuentaCorriente.banco?.nombreCorto || cuentaCorriente.banco?.nombre) {
+      const banco = cuentaCorriente.banco.nombreCorto || cuentaCorriente.banco.nombre;
+      partes.push(banco);
+    } else {
+      console.warn(`⚠️  [${tipoMov}] Sin banco`);
+    }
+    
+    // Moneda
+    if (cuentaCorriente.moneda?.codigoSunat) {
+      partes.push(cuentaCorriente.moneda.codigoSunat);
+    } else {
+      console.warn(`⚠️  [${tipoMov}] Sin moneda`);
+    }
+    
+    // Descripción
+    if (cuentaCorriente.descripcion) {
+      partes.push(cuentaCorriente.descripcion);
+    }
+    
+    // Número de cuenta
+    if (cuentaCorriente.numeroCuenta) {
+      partes.push(cuentaCorriente.numeroCuenta);
+    } else {
+      console.warn(`⚠️  [${tipoMov}] Sin número de cuenta`);
+    }
+    
+    const resultado = partes.length > 0 ? partes.join(" - ") : "-";
+    return resultado;
+  };
+
+  // 1. Pago principal (ingreso) - USA DESTINO
   if (movimientos.ingreso) {
+    const cuentaIngreso = movimientos.ingreso.cuentaCorrienteDestino;
     movimientosArray.push({
-      tipo: "Pago CxC",
+      tipo: movimientos.ingreso.tipoMovimiento?.nombre || "",
       id: movimientos.ingreso.id,
       monto: movimientos.ingreso.monto,
-      cuenta: movimientos.ingreso.cuentaCorriente?.nombre || "-",
+      cuenta: formatearCuentaCompleta(cuentaIngreso, 'INGRESO'),
       numeroOperacion: pagoCuentaPorCobrar.numeroOperacion || "-",
       esIngreso: true,
       orden: 1,
     });
   }
 
-  // 2. ITF (salida)
+  // 2. ITF (salida) - USA ORIGEN
   if (movimientos.itf) {
+    const cuentaITF = movimientos.itf.cuentaCorrienteOrigen || movimientos.ingreso?.cuentaCorrienteDestino;
     movimientosArray.push({
-      tipo: "ITF",
+      tipo: movimientos.itf.tipoMovimiento?.nombre || "",
       id: movimientos.itf.id,
       monto: movimientos.itf.monto,
-      cuenta: movimientos.itf.cuentaCorriente?.nombre || "-",
-      numeroOperacion: "-",
+      cuenta: formatearCuentaCompleta(cuentaITF, 'ITF'),
+      numeroOperacion: pagoCuentaPorCobrar.numeroOperacion || "-",
       esIngreso: false,
       orden: 2,
     });
   }
 
-  // 3. Comisión bancaria (salida)
+  // 3. Comisión bancaria (salida) - USA ORIGEN
   if (movimientos.comision) {
+    const cuentaComision = movimientos.comision.cuentaCorrienteOrigen || movimientos.ingreso?.cuentaCorrienteDestino;
     movimientosArray.push({
-      tipo: "Comisión Bancaria",
+      tipo: movimientos.comision.tipoMovimiento?.nombre || "",
       id: movimientos.comision.id,
       monto: movimientos.comision.monto,
-      cuenta: movimientos.comision.cuentaCorriente?.nombre || "-",
-      numeroOperacion: "-",
+      cuenta: formatearCuentaCompleta(cuentaComision, 'COMISION'),
+      numeroOperacion: pagoCuentaPorCobrar.numeroOperacion || "-",
       esIngreso: false,
       orden: 3,
     });
   }
 
-  // 4. Autodetracción salida
-  if (movimientos.autodetraccionSalida) {
+  // 4. Autodetracción (NUEVO: 1 solo movimiento transferencia) - USA ORIGEN Y DESTINO
+  if (movimientos.autodetraccion) {
+    const cuentaOrigen = movimientos.autodetraccion.cuentaCorrienteOrigen;
+    const cuentaDestino = movimientos.autodetraccion.cuentaCorrienteDestino;
+    
+    // Mostrar como transferencia: Origen -> Destino
+    const cuentaTexto = `${formatearCuentaCompleta(cuentaOrigen, 'AUTODET-ORIGEN')} -> ${formatearCuentaCompleta(cuentaDestino, 'AUTODET-DESTINO')}`;
+    
     movimientosArray.push({
-      tipo: "Autodet. Salida",
-      id: movimientos.autodetraccionSalida.id,
-      monto: movimientos.autodetraccionSalida.monto,
-      cuenta: movimientos.autodetraccionSalida.cuentaCorriente?.nombre || "-",
-      numeroOperacion: movimientos.autodetraccionSalida.numeroOperacionPagoBancoImpuesto || "-",
-      esIngreso: false,
+      tipo: movimientos.autodetraccion.tipoMovimiento?.nombre || "Autodetracción",
+      id: movimientos.autodetraccion.id,
+      monto: movimientos.autodetraccion.monto,
+      cuenta: cuentaTexto,
+      numeroOperacion: movimientos.autodetraccion.numeroOperacionPagoBancoImpuesto || "-",
+      esIngreso: false, // Es una transferencia
       orden: 4,
     });
   }
 
-  // 5. Autodetracción ingreso
-  if (movimientos.autodetraccionIngreso) {
-    movimientosArray.push({
-      tipo: "Autodet. Ingreso BN",
-      id: movimientos.autodetraccionIngreso.id,
-      monto: movimientos.autodetraccionIngreso.monto,
-      cuenta: movimientos.autodetraccionIngreso.cuentaCorriente?.nombre || "BN DETRACCIÓN",
-      numeroOperacion: movimientos.autodetraccionIngreso.numeroOperacionPagoBancoImpuesto || "-",
-      esIngreso: true,
-      orden: 5,
-    });
-  }
-
-  // 6. Detracción ingreso (si el cliente pagó la detracción)
+  // 6. Detracción ingreso (si el cliente pagó la detracción) - USA DESTINO
   if (movimientos.detraccionIngreso) {
+    const cuentaDetraccionBN = movimientos.detraccionIngreso.cuentaCorrienteDestino;
     movimientosArray.push({
-      tipo: "Detracción Ingreso BN",
+      tipo: movimientos.detraccionIngreso.tipoMovimiento?.nombre || "",
       id: movimientos.detraccionIngreso.id,
       monto: movimientos.detraccionIngreso.monto,
-      cuenta: movimientos.detraccionIngreso.cuentaCorriente?.nombre || "BN DETRACCIÓN",
+      cuenta: formatearCuentaCompleta(cuentaDetraccionBN, 'DETRACCION-INGRESO'),
       numeroOperacion: movimientos.detraccionIngreso.numeroOperacionPagoBancoImpuesto || "-",
       esIngreso: true,
       orden: 6,
@@ -1016,6 +1194,14 @@ function prepararDatosMovimientos(movimientos, pagoCuentaPorCobrar, cuentaPorCob
 
   // Ordenar por prioridad
   movimientosArray.sort((a, b) => a.orden - b.orden);
+
+  console.table(movimientosArray.map(m => ({
+    Tipo: m.tipo,
+    ID: m.id,
+    Cuenta: m.cuenta,
+    'N° Op': m.numeroOperacion,
+    Monto: m.monto
+  })));
 
   return movimientosArray;
 }
