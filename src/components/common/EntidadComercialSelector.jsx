@@ -130,7 +130,9 @@ const EntidadComercialSelector = ({
 }) => {
   const [dialogVisible, setDialogVisible] = useState(false);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
-  const [empresaFiltro, setEmpresaFiltro] = useState(empresaIdPreseleccionada);
+  // ✅ SIEMPRE usar empresaId = 1 (EntidadComercial.empresaId está DEPRECIADO)
+  // Todas las entidades comerciales tienen empresaId = 1 después de la normalización
+  const [empresaFiltro, setEmpresaFiltro] = useState(1);
   const [tipoFiltro, setTipoFiltro] = useState(null);
   const [entidades, setEntidades] = useState([]);
   const [empresas, setEmpresas] = useState([]);
@@ -189,12 +191,9 @@ const EntidadComercialSelector = ({
     }
   }, [refreshTrigger]);
 
-  // Actualizar empresaFiltro si cambia la preselección
-  useEffect(() => {
-    if (empresaIdPreseleccionada) {
-      setEmpresaFiltro(empresaIdPreseleccionada);
-    }
-  }, [empresaIdPreseleccionada]);
+  // ✅ ELIMINADO: useEffect que actualizaba empresaFiltro
+  // Ya no es necesario porque empresaFiltro siempre es 1 (hardcoded)
+  // EntidadComercial.empresaId está DEPRECIADO y todas las entidades tienen empresaId = 1
 
   // Obtener la entidad seleccionada (buscar en array original completo)
   const entidadSeleccionada = useMemo(() => {
@@ -334,8 +333,8 @@ const EntidadComercialSelector = ({
   const handleCloseDialog = () => {
     setDialogVisible(false);
     setGlobalFilterValue("");
-    // Restaurar empresa preseleccionada al cerrar
-    setEmpresaFiltro(empresaIdPreseleccionada);
+    // ✅ Restaurar empresaFiltro a 1 (siempre)
+    setEmpresaFiltro(1);
     setTipoFiltro(null);
   };
 

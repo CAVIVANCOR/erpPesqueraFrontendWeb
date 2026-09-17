@@ -97,27 +97,10 @@ export default function DatosGeneralesProductoForm({
     value: Number(e.id),
   }));
 
-  // Filtrar clientes por la empresa seleccionada
-  // EntidadComercial.empresaId debe coincidir con Producto.empresaId
-  const clienteIdActual = watch("clienteId");
-
+  // ✅ CLIENTES GLOBALES: EntidadComercial.empresaId está DEPRECIADO
+  // Los clientes/proveedores son válidos para TODAS las empresas
   const clientesOptions = clientes
-    .filter((c) => {
-      // Debe ser cliente
-      if (!c.esCliente) return false;
-
-      // SIEMPRE incluir el cliente actual del producto (para modo edición)
-      if (clienteIdActual && Number(c.id) === Number(clienteIdActual)) {
-        return true;
-      }
-
-      // Si hay empresa seleccionada, filtrar por EntidadComercial.empresaId
-      if (empresaIdWatch) {
-        return Number(c.empresaId) === Number(empresaIdWatch);
-      }
-
-      return true; // Si no hay empresa seleccionada, mostrar todos los clientes
-    })
+    .filter((c) => c.esCliente) // Solo filtrar por esCliente
     .map((c) => ({
       label: c.razonSocial,
       value: Number(c.id),
@@ -172,25 +155,8 @@ export default function DatosGeneralesProductoForm({
     }
   }, [familiaIdWatch, subfamilias, setValue, watch]);
 
-  // Limpiar cliente cuando cambie la empresa
-  useEffect(() => {
-    if (empresaIdWatch) {
-      const clienteActual = watch("clienteId");
-
-      // Validar que el cliente actual pertenezca a la empresa seleccionada
-      if (clienteActual) {
-        const clienteValido = clientes.find(
-          (c) =>
-            Number(c.id) === Number(clienteActual) &&
-            Number(c.empresaId) === Number(empresaIdWatch) &&
-            c.esCliente === true
-        );
-        if (!clienteValido) {
-          setValue("clienteId", null);
-        }
-      }
-    }
-  }, [empresaIdWatch, clientes, setValue, watch]);
+  // ✅ ELIMINADO: Ya no se limpia el cliente cuando cambia la empresa
+  // Los clientes son globales y válidos para todas las empresas
 
   // Establecer estado inicial LIBERADO para productos nuevos
   useEffect(() => {

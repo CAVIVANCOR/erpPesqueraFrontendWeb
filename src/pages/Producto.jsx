@@ -306,11 +306,10 @@ const Producto = ({ ruta }) => {
         .map(p => [p.empresa.id, p.empresa])
     ).values()];
 
-    // Clientes únicos (filtrados por empresa si hay una seleccionada)
+    // ✅ Clientes únicos (SIN filtrar por empresa - clientes globales)
     let clientesUnicos = [...new Map(
       productosParaOpciones
         .filter(p => p.cliente)
-        .filter(p => !selectedEmpresa || Number(p.empresaId) === Number(selectedEmpresa.id))
         .map(p => [p.cliente.id, p.cliente])
     ).values()];
 
@@ -414,18 +413,9 @@ const Producto = ({ ruta }) => {
 
     // ❌ NO tocar los catálogos completos (familiasCatalogo, subfamiliasCatalogo, etc.)
 
-    // ⭐ Filtrar clientes por empresa seleccionada
-    if (selectedEmpresa) {
-      // Filtrar TODAS las entidades comerciales que pertenecen a la empresa seleccionada
-      // (sin importar si tienen productos o no)
-      const clientesFiltrados = clientesCatalogo.filter(
-        c => Number(c.empresaId) === Number(selectedEmpresa.id)
-      );
-      setClientes(clientesFiltrados);
-    } else {
-      // Si no hay empresa seleccionada, mostrar todos los clientes
-      setClientes(clientesCatalogo);
-    }
+    // ✅ CLIENTES GLOBALES: Mostrar TODOS los clientes sin filtrar por empresa
+    // EntidadComercial.empresaId está DEPRECIADO
+    setClientes(clientesCatalogo);
 
     // Limpiar selecciones que ya no existen en las opciones
     if (selectedCliente && !clientes.find(c => Number(c.id) === Number(selectedCliente.id))) {
