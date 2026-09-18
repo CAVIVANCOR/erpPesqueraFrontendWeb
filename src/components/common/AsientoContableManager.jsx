@@ -19,6 +19,7 @@ import * as prestamoBancariosAPI from "../../api/tesoreria/prestamoBancarios";
 import * as deudaConPersonalAPI from "../../api/tesoreria/deudaConPersonal";
 import * as deudaTributariaAPI from "../../api/tesoreria/deudaTributaria";
 import * as movimientoAlmacenAPI from "../../api/movimientoAlmacen";
+import * as movimientoCajaAPI from "../../api/movimientoCaja";
 
 /**
  * Componente genérico para gestionar asientos contables
@@ -57,11 +58,14 @@ const AsientoContableManager = ({
     DeudaConPersonal: deudaConPersonalAPI,
     DeudaTributaria: deudaTributariaAPI,
     MovimientoAlmacen: movimientoAlmacenAPI,
+    MovimientoCaja: movimientoCajaAPI,
   };
   const api = API_MODULES[documentoTipo];
   // Validaciones
   const periodoEstaCerrado = Number(periodoContable?.estadoId) !== ESTADO_PERIODO_CONTABLE.ABIERTO;
-  const puedeGenerar = documentoId && !periodoEstaCerrado;
+  // MovimientoCaja no puede generar asientos manualmente (se generan automáticamente)
+  const esMovimientoCaja = documentoTipo === 'MovimientoCaja';
+  const puedeGenerar = documentoId && !periodoEstaCerrado && !esMovimientoCaja;
   // Efectos
   useEffect(() => {
     if (periodoContableId) {
@@ -116,6 +120,8 @@ const AsientoContableManager = ({
         documento = await api.getDeudaTributariaById(documentoId);
       } else if (documentoTipo === 'MovimientoAlmacen') {
         documento = await api.getMovimientoAlmacenPorId(documentoId);
+      } else if (documentoTipo === 'MovimientoCaja') {
+        documento = await api.getMovimientoCajaById(documentoId);
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
@@ -129,6 +135,8 @@ const AsientoContableManager = ({
         fecha = new Date(documento.fechaContable || documento.fechaGeneracion);
       } else if (documentoTipo === 'MovimientoAlmacen') {
         fecha = new Date(documento.fechaDocumento);
+      } else if (documentoTipo === 'MovimientoCaja') {
+        fecha = new Date(documento.fechaContable || documento.fechaOperacionMovCaja || documento.fecha);
       } else {
         fecha = new Date(documento.fecha || documento.fechaDocumento || documento.fechaContable);
       }
@@ -166,6 +174,8 @@ const AsientoContableManager = ({
         documento = await api.getDeudaTributariaById(documentoId);
       } else if (documentoTipo === 'MovimientoAlmacen') {
         documento = await api.getMovimientoAlmacenPorId(documentoId);
+      } else if (documentoTipo === 'MovimientoCaja') {
+        documento = await api.getMovimientoCajaById(documentoId);
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }
@@ -334,6 +344,9 @@ const AsientoContableManager = ({
         borrador = await api.generarBorradorAsiento(documentoId);
       } else if (documentoTipo === 'MovimientoAlmacen') {
         borrador = await api.generarBorradorAsientoSaldoInicial(documentoId);
+      } else if (documentoTipo === 'MovimientoCaja') {
+        // MovimientoCaja genera asientos automáticamente, no se puede generar manualmente
+        throw new Error('Los asientos de MovimientoCaja se generan automáticamente durante el proceso de pago');
       } else {
         throw new Error(`Tipo de documento no soportado: ${documentoTipo}`);
       }

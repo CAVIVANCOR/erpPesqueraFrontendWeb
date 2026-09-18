@@ -11,6 +11,9 @@ import { Column } from 'primereact/column';
 import VerImpresionVoucherPagoCxC from './VerImpresionVoucherPagoCxC';
 import PDFViewerV2 from '../pdf/PDFViewerV2';
 import PdfComprobanteImpuestoCard from './PdfComprobanteImpuestoCard';
+import AsientoContableManager from '../common/AsientoContableManager';
+import AsientoContableViewer from '../common/AsientoContableViewer';
+import { formatearNumero } from '../../utils/utils';
 
 /**
  * ════════════════════════════════════════════════════════════
@@ -35,6 +38,14 @@ export default function ConfirmacionPagoDialog({
   toast
 }) {
   const [mostrarVouchers, setMostrarVouchers] = useState(false);
+  const [voucherAsientoVisible, setVoucherAsientoVisible] = useState(false);
+  const [asientoSeleccionado, setAsientoSeleccionado] = useState(null);
+  
+  // Estados para visualización de asientos y vouchers
+  const [showAsientoDialog, setShowAsientoDialog] = useState(false);
+  const [showVoucherDialog, setShowVoucherDialog] = useState(false);
+  const [movimientoIdSeleccionado, setMovimientoIdSeleccionado] = useState(null);
+  const [voucherPdfUrl, setVoucherPdfUrl] = useState(null);
 
   // ✅ REACT HOOK FORM - Estándar profesional
   const {
@@ -61,6 +72,31 @@ export default function ConfirmacionPagoDialog({
   const empresa = empresas.find(e =>
     Number(e.id) === Number(resultadoPago?.pagoCuentaPorCobrar?.empresaId)
   );
+
+  // ════════════════════════════════════════════════════════════
+  // HANDLERS: VER ASIENTO Y VOUCHER
+  // ════════════════════════════════════════════════════════════
+  
+  /**
+   * Abre el diálogo para ver el detalle del asiento contable
+   * Usa AsientoContableManager para mostrar el asiento completo
+   */
+  const handleVerAsiento = (asiento) => {
+    setMovimientoIdSeleccionado(asiento.procesoOrigenId);
+    setShowAsientoDialog(true);
+  };
+
+  /**
+   * Abre el diálogo para ver el voucher contable en PDF
+   * Usa el endpoint de generación de voucher del movimiento
+   */
+  const handleVerVoucher = (asiento) => {
+    const movimientoId = asiento.procesoOrigenId;
+    const pdfUrl = `/api/movimientos-caja/${movimientoId}/generar-voucher-contable`;
+    setVoucherPdfUrl(pdfUrl);
+    setShowVoucherDialog(true);
+  };
+
   // ════════════════════════════════════════════════════════════
   // RENDER: HEADER CONFIRMACIÓN
   // ════════════════════════════════════════════════════════════
@@ -98,9 +134,6 @@ export default function ConfirmacionPagoDialog({
 
     const items = [
       { label: 'Monto Bruto', value: resumen.montoBruto, severity: 'info' },
-      resumen.montoITF > 0 && { label: 'ITF', value: resumen.montoITF, severity: 'warning' },
-      resumen.montoComision > 0 && { label: 'Comisión', value: resumen.montoComision, severity: 'warning' },
-      resumen.montoDetraccion > 0 && { label: 'Detracción', value: resumen.montoDetraccion, severity: 'warning' },
       { label: 'Neto en Caja', value: resumen.montoNetoCaja, severity: 'success' },
       { label: 'Deuda Cancelada', value: resumen.montoAplicadoDeuda, severity: 'success' },
       { label: 'Saldo Pendiente', value: resumen.saldoPendiente, severity: resumen.saldoPendiente === 0 ? 'success' : 'warning' },
@@ -136,53 +169,72 @@ export default function ConfirmacionPagoDialog({
   };
 
   // ════════════════════════════════════════════════════════════
-  // RENDER: MOVIMIENTOS DE CAJA - OPTIMIZADO
+  // RENDER: MOVIMIENTOS DE CAJA CON SALDOS - UNIFICADO
   // ════════════════════════════════════════════════════════════
   const renderMovimientos = () => {
-    if (!resultadoPago?.movimientos) return null;
+    if (!resultadoPago?.movimientos || !resultadoPago?.saldosCuentaCorriente) return null;
 
     const movimientos = [];
+    const saldosMap = {};
 
-    // Helper para obtener severidad del estado
-    const getEstadoSeverity = (estadoNombre) => {
-      if (!estadoNombre) return 'secondary';
-      const nombre = estadoNombre.toUpperCase();
-      if (nombre.includes('VALIDADO')) return 'success';
-      if (nombre.includes('ASIENTO')) return 'info';
-      if (nombre.includes('PENDIENTE')) return 'warning';
-      return 'secondary';
-    };
+    // Crear mapa de saldos por tipo
+    resultadoPago.saldosCuentaCorriente.forEach(saldo => {
+      saldosMap[saldo.tipo] = saldo;
+    });
 
     if (resultadoPago.movimientos.ingreso) {
+      const saldo = saldosMap['Ingreso'] || {};
       movimientos.push({
         tipo: 'Ingreso',
         id: resultadoPago.movimientos.ingreso.id,
         monto: resultadoPago.movimientos.ingreso.monto,
-        estado: resultadoPago.movimientos.ingreso.estadoMovimientoCaja?.nombre || 
-                resultadoPago.movimientos.ingreso.estadoId || '-',
-        observaciones: resultadoPago.movimientos.ingreso.observaciones || '-'
+        movimiento: resultadoPago.movimientos.ingreso, // ✅ Objeto completo para acceder a relaciones
+        saldoAnterior: saldo.saldoAnterior || 0,
+        ingresos: saldo.ingresos || 0,
+        egresos: saldo.egresos || 0,
+        saldoActual: saldo.saldoActual || 0
       });
     }
 
     if (resultadoPago.movimientos.itf) {
+      const saldo = saldosMap['ITF'] || {};
       movimientos.push({
         tipo: 'ITF',
         id: resultadoPago.movimientos.itf.id,
         monto: resultadoPago.movimientos.itf.monto,
-        estado: resultadoPago.movimientos.itf.estadoMovimientoCaja?.nombre || 
-                resultadoPago.movimientos.itf.estadoId || '-',
-        observaciones: resultadoPago.movimientos.itf.observaciones || '-'
+        movimiento: resultadoPago.movimientos.itf, // ✅ Objeto completo para acceder a relaciones
+        saldoAnterior: saldo.saldoAnterior || 0,
+        ingresos: saldo.ingresos || 0,
+        egresos: saldo.egresos || 0,
+        saldoActual: saldo.saldoActual || 0
       });
     }
 
     if (resultadoPago.movimientos.comision) {
+      const saldo = saldosMap['Comisión'] || {};
       movimientos.push({
         tipo: 'Comisión',
         id: resultadoPago.movimientos.comision.id,
         monto: resultadoPago.movimientos.comision.monto,
-        estado: resultadoPago.movimientos.comision.estadoMovimientoCaja?.nombre || 
-                resultadoPago.movimientos.comision.estadoId || '-',
-        observaciones: resultadoPago.movimientos.comision.observaciones || '-'
+        movimiento: resultadoPago.movimientos.comision, // ✅ Objeto completo para acceder a relaciones
+        saldoAnterior: saldo.saldoAnterior || 0,
+        ingresos: saldo.ingresos || 0,
+        egresos: saldo.egresos || 0,
+        saldoActual: saldo.saldoActual || 0
+      });
+    }
+
+    if (resultadoPago.movimientos.autodetraccion) {
+      const saldo = saldosMap['Autodetracción'] || {};
+      movimientos.push({
+        tipo: 'Autodetracción',
+        id: resultadoPago.movimientos.autodetraccion.id,
+        monto: resultadoPago.movimientos.autodetraccion.monto,
+        movimiento: resultadoPago.movimientos.autodetraccion, // ✅ Objeto completo para acceder a relaciones
+        saldoAnterior: saldo.saldoAnterior || 0,
+        ingresos: saldo.ingresos || 0,
+        egresos: saldo.egresos || 0,
+        saldoActual: saldo.saldoActual || 0
       });
     }
 
@@ -193,15 +245,15 @@ export default function ConfirmacionPagoDialog({
     );
 
     return (
-      <Panel header="📋 Movimientos de Caja Creados" className="mb-3">
+      <Panel header="📋 Movimientos de Caja y Saldos de Cuenta Corriente" className="mb-3">
         <DataTable 
           value={movimientos} 
           showGridlines 
           size="small"
           className="p-datatable-sm"
         >
-          <Column field="tipo" header="Tipo" style={{ width: '15%' }} />
-          <Column field="id" header="ID Mov. Caja" style={{ width: '10%' }} />
+          <Column field="tipo" header="Tipo" style={{ width: '10%', fontWeight: 'bold' }} />
+          <Column field="id" header="ID Mov. Caja" style={{ width: '5%' }} />
           <Column
             field="monto"
             header="Monto"
@@ -211,20 +263,97 @@ export default function ConfirmacionPagoDialog({
                 severity={rowData.tipo === 'Ingreso' ? 'success' : 'warning'}
               />
             )}
-            style={{ width: '20%' }}
+            style={{ width: '10%' }}
           />
           <Column 
-            field="estado" 
-            header="Estado"
+            field="cuentaCorriente" 
+            header="Cuenta Corriente" 
+            body={(rowData) => {
+              if (!rowData.movimiento) return '-';
+              
+              const cuentaOrigen = rowData.movimiento.cuentaCorrienteOrigen;
+              const cuentaDestino = rowData.movimiento.cuentaCorrienteDestino;
+              const cuenta = cuentaDestino || cuentaOrigen;
+              
+              if (!cuenta) return '-';
+              
+              const tipoCuenta = cuenta.tipoCuentaCorriente?.nombre || 'S/T';
+              const banco = cuenta.banco?.nombre || 'S/B';
+              const moneda = cuenta.moneda?.codigoSunat || 'N/A';
+              const descripcion = cuenta.descripcion || 'Sin descripción';
+              const numero = cuenta.numeroCuenta || 'Sin número';
+              
+              return (
+                <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", flexWrap: "wrap" }}>
+                  {/* 🔵 TIPO CUENTA */}
+                  <span style={{ color: '#50b1b8', fontWeight: "600", fontSize: "0.85rem" }}>
+                    {tipoCuenta}
+                  </span>
+                  
+                  {/* 🔵 BANCO */}
+                  <span style={{ color: '#1976D2', fontWeight: "600", fontSize: "0.85rem" }}>
+                    {banco}
+                  </span>
+                  <span style={{ color: '#666' }}> - </span>
+
+                  {/* 🟢 MONEDA */}
+                  <span style={{ color: '#2E7D32', fontWeight: "600", fontSize: "0.85rem" }}>
+                    {moneda}
+                  </span>
+                  <span style={{ color: '#666' }}> - </span>
+
+                  {/* 🟡 DESCRIPCIÓN */}
+                  <span style={{ color: '#F57C00', fontWeight: "500", fontSize: "0.85rem" }}>
+                    {descripcion}
+                  </span>
+                  <span style={{ color: '#666' }}> - </span>
+
+                  {/* 🔴 NÚMERO DE CUENTA */}
+                  <span style={{ color: '#D32F2F', fontWeight: "bold", fontSize: "0.85rem" }}>
+                    {numero}
+                  </span>
+                </span>
+              );
+            }}
+            style={{ width: '25%' }} 
+          />
+          <Column
+            field="saldoAnterior"
+            header="Saldo Anterior"
+            body={(rowData) => formatearNumero(rowData.saldoAnterior || 0, 2)}
+            style={{ width: '10%', textAlign: 'right' }}
+          />
+          <Column
+            field="ingresos"
+            header="Ingresos"
+            body={(rowData) => (
+              <span className="text-green-600 font-bold">
+                +{formatearNumero(rowData.ingresos || 0, 2)}
+              </span>
+            )}
+            style={{ width: '10%', textAlign: 'right' }}
+          />
+          <Column
+            field="egresos"
+            header="Egresos"
+            body={(rowData) => (
+              <span className="text-red-600 font-bold">
+                -{formatearNumero(rowData.egresos || 0, 2)}
+              </span>
+            )}
+            style={{ width: '10%', textAlign: 'right' }}
+          />
+          <Column
+            field="saldoActual"
+            header="Saldo Actual"
             body={(rowData) => (
               <Tag
-                value={rowData.estado}
-                severity={getEstadoSeverity(rowData.estado)}
+                value={formatearNumero(rowData.saldoActual || 0, 2)}
+                severity="info"
               />
             )}
-            style={{ width: '20%' }}
+            style={{ width: '10%' }}
           />
-          <Column field="observaciones" header="Observaciones" style={{ width: '35%' }} />
         </DataTable>
       </Panel>
     );
@@ -246,12 +375,14 @@ export default function ConfirmacionPagoDialog({
     );
 
     if (detraccion) {
+      // ✅ CORRECCIÓN: Usar importePagado (monto de autodetracción) en lugar de importeDetraido (monto total requerido)
+      const montoDetraccion = detraccion.importePagado || detraccion.importeDetraido || 0;
+      
       conceptos.push({
         tipo: 'Detracción',
         id: detraccion.id,
-        numeroConstancia: detraccion.numeroConstancia || '-',
-        importe: detraccion.importeDetraido,
-        estado: detraccion.estado?.nombre || detraccion.estadoDetraccionId || '-'
+        numeroConstancia: detraccion.numeroDocumento || detraccion.numeroConstancia || '-',
+        importe: montoDetraccion
       });
     }
 
@@ -260,8 +391,7 @@ export default function ConfirmacionPagoDialog({
         tipo: 'Retención',
         id: retencion.id,
         numeroConstancia: retencion.numeroDocumento || '-',
-        importe: retencion.importeRetenido,
-        estado: retencion.estado?.nombre || retencion.estadoRetencionId || '-'
+        importe: retencion.importeRetenido
       });
     }
 
@@ -270,8 +400,7 @@ export default function ConfirmacionPagoDialog({
         tipo: 'Percepción',
         id: percepcion.id,
         numeroConstancia: percepcion.numeroDocumento || '-',
-        importe: percepcion.importePercibido,
-        estado: percepcion.estado?.nombre || percepcion.estadoPercepcionId || '-'
+        importe: percepcion.importePercibido
       });
     }
 
@@ -284,8 +413,8 @@ export default function ConfirmacionPagoDialog({
           className="p-datatable-sm"
         >
           <Column field="tipo" header="Tipo" style={{ width: '20%', fontWeight: 'bold' }} />
-          <Column field="id" header="ID" style={{ width: '10%' }} />
-          <Column field="numeroConstancia" header="N° Constancia" style={{ width: '30%' }} />
+          <Column field="id" header="ID" style={{ width: '15%' }} />
+          <Column field="numeroConstancia" header="N° Constancia" style={{ width: '40%' }} />
           <Column
             field="importe"
             header="Importe"
@@ -295,18 +424,7 @@ export default function ConfirmacionPagoDialog({
                 severity="contrast"
               />
             )}
-            style={{ width: '20%' }}
-          />
-          <Column 
-            field="estado" 
-            header="Estado"
-            body={(rowData) => (
-              <Tag
-                value={rowData.estado}
-                severity={rowData.estado === 'PAGADO' ? 'success' : 'warning'}
-              />
-            )}
-            style={{ width: '20%' }}
+            style={{ width: '25%' }}
           />
         </DataTable>
       </Panel>
@@ -317,130 +435,139 @@ export default function ConfirmacionPagoDialog({
   // RENDER: ASIENTOS CONTABLES GENERADOS
   // ════════════════════════════════════════════════════════════
   const renderAsientosContables = () => {
-    if (!resultadoPago?.asientosContables) return null;
+    if (!resultadoPago?.asientosContables || !Array.isArray(resultadoPago.asientosContables)) return null;
 
-    const { pagoCxC, itf, comision } = resultadoPago.asientosContables;
+    const asientos = resultadoPago.asientosContables;
 
-    if (!pagoCxC && !itf && !comision) return null;
+    if (asientos.length === 0) return null;
 
-    const asientos = [];
+    // 🔍 DEBUG: Ver qué asientos y movimientos llegaron
+    console.log('📊 DEBUG Asientos Contables:');
+    console.log('  Total asientos recibidos:', asientos.length);
+    console.log('  IDs asientos:', asientos.map(a => a.id));
+    console.log('  procesoOrigenId de asientos:', asientos.map(a => a.procesoOrigenId));
+    console.log('  Movimientos disponibles:', {
+      ingreso: resultadoPago.movimientos.ingreso?.id,
+      itf: resultadoPago.movimientos.itf?.id,
+      comision: resultadoPago.movimientos.comision?.id,
+      autodetraccion: resultadoPago.movimientos.autodetraccion?.id
+    });
 
-    if (pagoCxC) {
-      asientos.push({
-        tipo: 'Pago CxC',
-        numeroAsiento: pagoCxC.numeroAsiento,
-        correlativo: pagoCxC.correlativo,
-        totalDebe: pagoCxC.totalDebe,
-        totalHaber: pagoCxC.totalHaber,
-        estaCuadrado: pagoCxC.estaCuadrado
-      });
-    }
+    const monedaPago = monedas.find(m =>
+      Number(m.id) === Number(resultadoPago.pagoCuentaPorCobrar?.monedaPagoId)
+    );
 
-    if (itf) {
-      asientos.push({
-        tipo: 'ITF',
-        numeroAsiento: itf.numeroAsiento,
-        correlativo: itf.correlativo,
-        totalDebe: itf.totalDebe,
-        totalHaber: itf.totalHaber,
-        estaCuadrado: itf.estaCuadrado
-      });
-    }
+    // Mapear asientos con tipo según el movimiento relacionado
+    const asientosConTipo = asientos.map((asiento) => {
+      let tipo = 'Desconocido';
+      
+      // Buscar el movimiento relacionado por procesoOrigenId
+      if (resultadoPago.movimientos.ingreso && Number(asiento.procesoOrigenId) === Number(resultadoPago.movimientos.ingreso.id)) {
+        tipo = 'Ingreso';
+      } else if (resultadoPago.movimientos.itf && Number(asiento.procesoOrigenId) === Number(resultadoPago.movimientos.itf.id)) {
+        tipo = 'ITF';
+      } else if (resultadoPago.movimientos.comision && Number(asiento.procesoOrigenId) === Number(resultadoPago.movimientos.comision.id)) {
+        tipo = 'Comisión';
+      } else if (resultadoPago.movimientos.autodetraccion && Number(asiento.procesoOrigenId) === Number(resultadoPago.movimientos.autodetraccion.id)) {
+        tipo = 'Autodetracción';
+      }
 
-    if (comision) {
-      asientos.push({
-        tipo: 'Comisión Bancaria',
-        numeroAsiento: comision.numeroAsiento,
-        correlativo: comision.correlativo,
-        totalDebe: comision.totalDebe,
-        totalHaber: comision.totalHaber,
-        estaCuadrado: comision.estaCuadrado
-      });
-    }
+      return {
+        ...asiento,
+        tipo
+      };
+    });
+
+    // 🔍 DEBUG: Ver tipos asignados
+    console.log('  Tipos asignados:', asientosConTipo.map(a => ({ id: a.id, tipo: a.tipo, procesoOrigenId: a.procesoOrigenId })));
 
     return (
       <Panel header="📊 Asientos Contables Generados" className="mb-3">
-        <DataTable value={asientos} size="small">
-          <Column field="tipo" header="Tipo" />
-          <Column field="numeroAsiento" header="Nº Asiento" />
-          <Column field="correlativo" header="Correlativo" />
+        <div className="mb-2 p-2" style={{ backgroundColor: '#e3f2fd', borderRadius: '4px', fontSize: '0.9rem' }}>
+          💡 <strong>Nota:</strong> Use los botones <strong>"Ver"</strong> y <strong>"Voucher"</strong> para visualizar el detalle de cada asiento.
+        </div>
+        <DataTable 
+          value={asientosConTipo} 
+          showGridlines 
+          size="small"
+          className="p-datatable-sm"
+        >
+          <Column field="tipo" header="Tipo" style={{ width: '15%', fontWeight: 'bold' }} />
+          <Column field="id" header="ID Asiento" style={{ width: '10%' }} />
+          <Column 
+            field="numeroAsiento" 
+            header="Nº Asiento" 
+            style={{ width: '20%', fontWeight: 'bold', color: '#1976D2' }}
+          />
           <Column
             field="totalDebe"
-            header="Total Debe"
-            body={(rowData) => Number(rowData.totalDebe || 0).toFixed(2)}
+            header="Debe"
+            body={(rowData) => (
+              <span style={{ fontWeight: 'bold' }}>
+                {monedaPago?.simbolo || ''} {formatearNumero(rowData.totalDebe || 0, 2)}
+              </span>
+            )}
+            style={{ width: '15%', textAlign: 'right' }}
           />
           <Column
             field="totalHaber"
-            header="Total Haber"
-            body={(rowData) => Number(rowData.totalHaber || 0).toFixed(2)}
+            header="Haber"
+            body={(rowData) => (
+              <span style={{ fontWeight: 'bold' }}>
+                {monedaPago?.simbolo || ''} {formatearNumero(rowData.totalHaber || 0, 2)}
+              </span>
+            )}
+            style={{ width: '15%', textAlign: 'right' }}
           />
           <Column
-            field="estaCuadrado"
-            header="Estado"
+            header="Acciones"
             body={(rowData) => (
-              <Tag
-                value={rowData.estaCuadrado ? 'Cuadrado' : 'Descuadrado'}
-                severity={rowData.estaCuadrado ? 'success' : 'danger'}
+              <div className="flex gap-2 justify-content-center">
+                <Button 
+                  icon="pi pi-eye" 
+                  label="Ver"
+                  className="p-button-info p-button-sm"
+                  tooltip="Ver detalle del asiento contable"
+                  tooltipOptions={{ position: 'top' }}
+                  onClick={() => handleVerAsiento(rowData)}
+                />
+                <Button 
+                  icon="pi pi-file-pdf" 
+                  label="Voucher"
+                  className="p-button-help p-button-sm"
+                  tooltip="Ver voucher contable en PDF"
+                  tooltipOptions={{ position: 'top' }}
+                  onClick={() => handleVerVoucher(rowData)}
+                />
+              </div>
+            )}
+            style={{ width: '15%' }}
+          />
+          <Column
+            header="Voucher"
+            body={(rowData) => (
+              <Button
+                icon="pi pi-file-pdf"
+                label="Ver Voucher"
+                size="small"
+                severity="success"
+                outlined
+                tooltip="Ver voucher del asiento contable"
+                tooltipOptions={{ position: 'top' }}
+                onClick={() => {
+                  setAsientoSeleccionado(rowData);
+                  setVoucherAsientoVisible(true);
+                }}
               />
             )}
+            style={{ width: '12%' }}
           />
         </DataTable>
       </Panel>
     );
   };
 
-  // ════════════════════════════════════════════════════════════
-  // RENDER: SALDOS DE CUENTA CORRIENTE
-  // ════════════════════════════════════════════════════════════
-  const renderSaldosCuentaCorriente = () => {
-    if (!resultadoPago?.saldosCuentaCorriente) return null;
 
-    const saldos = resultadoPago.saldosCuentaCorriente;
-
-    if (!saldos || saldos.length === 0) return null;
-
-    return (
-      <Panel header="💳 Saldos de Cuenta Corriente Actualizados" className="mb-3">
-        <DataTable value={saldos} size="small">
-          <Column field="tipo" header="Movimiento" />
-          <Column
-            field="saldoAnterior"
-            header="Saldo Anterior"
-            body={(rowData) => Number(rowData.saldoAnterior || 0).toFixed(2)}
-          />
-          <Column
-            field="ingresos"
-            header="Ingresos"
-            body={(rowData) => (
-              <span className="text-green-600 font-bold">
-                +{Number(rowData.ingresos || 0).toFixed(2)}
-              </span>
-            )}
-          />
-          <Column
-            field="egresos"
-            header="Egresos"
-            body={(rowData) => (
-              <span className="text-red-600 font-bold">
-                -{Number(rowData.egresos || 0).toFixed(2)}
-              </span>
-            )}
-          />
-          <Column
-            field="saldoActual"
-            header="Saldo Actual"
-            body={(rowData) => (
-              <Tag
-                value={Number(rowData.saldoActual || 0).toFixed(2)}
-                severity="info"
-                style={{ fontSize: '1rem' }}
-              />
-            )}
-          />
-        </DataTable>
-      </Panel>
-    );
-  };
 
   // ════════════════════════════════════════════════════════════
   // RENDER: FOOTER
@@ -481,7 +608,21 @@ export default function ConfirmacionPagoDialog({
       {renderMovimientos()}
       {renderConceptosSunat()}
       {renderAsientosContables()}
-      {renderSaldosCuentaCorriente()}
+
+      {/* Componente genérico de asientos contables */}
+      {resultadoPago?.movimientos?.ingreso?.id && resultadoPago?.movimientos?.ingreso?.empresaId && (
+        <div className="mb-3">
+          <AsientoContableManager
+            documentoId={resultadoPago.movimientos.ingreso.id}
+            documentoTipo="MovimientoCaja"
+            empresaId={resultadoPago.movimientos.ingreso.empresaId}
+            periodoContableId={resultadoPago.movimientos.ingreso.periodoContableId}
+            showAsButton={true}
+          />
+        </div>
+      )}
+
+      <Divider />
 
       {/* Voucher Consolidado Automático */}
       {resultadoPago?.pagoCuentaPorCobrar?.urlVoucherOperacionConsolidado && (
@@ -732,6 +873,75 @@ export default function ConfirmacionPagoDialog({
           </Panel>
         </>
       )}
+
+      {/* Modal para ver voucher del asiento contable */}
+      <Dialog
+        visible={voucherAsientoVisible}
+        onHide={() => {
+          setVoucherAsientoVisible(false);
+          setAsientoSeleccionado(null);
+        }}
+        header={`📊 Voucher Asiento Contable - ${asientoSeleccionado?.numeroAsiento || ''}`}
+        style={{ width: '90vw', maxWidth: '1200px' }}
+        modal
+        maximizable
+      >
+        {asientoSeleccionado && (
+          <AsientoContableViewer
+            asientoContableId={asientoSeleccionado.id}
+            showHeader={true}
+          />
+        )}
+      </Dialog>
+
+      {/* ════════════════════════════════════════════════════════════ */}
+      {/* DIÁLOGO: VER DETALLE DEL ASIENTO CONTABLE                    */}
+      {/* ════════════════════════════════════════════════════════════ */}
+      <Dialog
+        visible={showAsientoDialog}
+        onHide={() => {
+          setShowAsientoDialog(false);
+          setMovimientoIdSeleccionado(null);
+        }}
+        header="📊 Detalle del Asiento Contable"
+        style={{ width: '95vw', maxWidth: '1400px' }}
+        modal
+        maximizable
+        blockScroll
+      >
+        {movimientoIdSeleccionado && resultadoPago?.movimientos?.ingreso?.empresaId && (
+          <AsientoContableManager
+            documentoId={movimientoIdSeleccionado}
+            documentoTipo="MovimientoCaja"
+            empresaId={resultadoPago.movimientos.ingreso.empresaId}
+            periodoContableId={resultadoPago.movimientos.ingreso.periodoContableId}
+            showAsButton={false}
+          />
+        )}
+      </Dialog>
+
+      {/* ════════════════════════════════════════════════════════════ */}
+      {/* DIÁLOGO: VER VOUCHER CONTABLE EN PDF                         */}
+      {/* ════════════════════════════════════════════════════════════ */}
+      <Dialog
+        visible={showVoucherDialog}
+        onHide={() => {
+          setShowVoucherDialog(false);
+          setVoucherPdfUrl(null);
+        }}
+        header="📄 Voucher Contable"
+        style={{ width: '95vw', maxWidth: '1200px' }}
+        modal
+        maximizable
+        blockScroll
+      >
+        {voucherPdfUrl && (
+          <PDFViewerV2
+            pdfUrl={voucherPdfUrl}
+            height="80vh"
+          />
+        )}
+      </Dialog>
     </Dialog>
   );
 }

@@ -109,3 +109,23 @@ export async function eliminarProducto(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Clona productos a múltiples empresas
+ * @param {Array<number|string>} productosIds - IDs de los productos a clonar
+ * @param {Array<number|string>} empresasDestinoIds - IDs de las empresas destino
+ * @param {number|string|null} clienteId - ID del cliente a asignar (opcional)
+ * @returns {Promise<Object>} - Resultado de la clonación con resumen
+ */
+export async function clonarProductosAEmpresas(productosIds, empresasDestinoIds, clienteId = null) {
+  const res = await axios.post(
+    `${API_URL}/clonar-a-empresas`,
+    {
+      productosIds,
+      empresasDestinoIds,
+      clienteId
+    },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

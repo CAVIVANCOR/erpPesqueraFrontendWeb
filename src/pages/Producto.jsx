@@ -56,6 +56,8 @@ import EmpresaSelector from "../components/common/EmpresaSelector";
 import { getTiposDetraccionActivos } from "../api/tipoDetraccion";
 import { getTiposAfectacionIGVActivos } from "../api/facturacionElectronica/tipoAfectacionIGV";
 import { generarProductosExcel } from "../components/producto/reports/generarProductosExcel";
+import ClonadorEntidadesDialog from "../components/common/ClonadorEntidadesDialog";
+import { clonarProductosAEmpresas } from "../api/producto";
 
 const Producto = ({ ruta }) => {
   const toast = useRef(null);
@@ -75,6 +77,10 @@ const Producto = ({ ruta }) => {
   const [productoAEliminar, setProductoAEliminar] = useState(null);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
   const [clientesCatalogo, setClientesCatalogo] = useState([]); // Catálogo completo
+  
+  // Estados para clonación de productos
+  const [productosSeleccionados, setProductosSeleccionados] = useState([]);
+  const [clonarDialogVisible, setClonarDialogVisible] = useState(false);
   const [filters, setFilters] = useState({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
     "empresa.id": { value: null, matchMode: FilterMatchMode.EQUALS },
@@ -1020,6 +1026,23 @@ const Producto = ({ ruta }) => {
               tooltip="Exportar todos los Productos a Excel"
             />
           </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              label="Clonar a Otras Empresas"
+              icon="pi pi-clone"
+              className="p-button-help"
+              onClick={() => setClonarDialogVisible(true)}
+              disabled={!permisos.puedeCrear || productosSeleccionados.length === 0}
+              tooltip={
+                !permisos.puedeCrear
+                  ? "No tiene permisos para clonar productos"
+                  : productosSeleccionados.length === 0
+                    ? "Seleccione productos para clonar"
+                    : `Clonar ${productosSeleccionados.length} producto(s) a otras empresas`
+              }
+              tooltipOptions={{ position: "top" }}
+            />
+          </div>
         </div>
       </div>
     );
@@ -1051,22 +1074,18 @@ const Producto = ({ ruta }) => {
         className="p-datatable-sm p-datatable-hover"
         sortField="id"
         sortOrder={-1}
-        onRowClick={
-          permisos.puedeVer || permisos.puedeEditar
-            ? (e) => abrirDialogoEdicion(e.data)
-            : undefined
-        }
-        selectionMode="single"
+        selection={productosSeleccionados}
+        onSelectionChange={(e) => setProductosSeleccionados(e.value)}
+        dataKey="id"
         scrollable
         scrollHeight="flex"
         style={{
-          cursor:
-            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
           fontSize: getResponsiveFontSize(),
         }}
         stripedRows
         size="small"
       >
+        <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} />
         <Column field="id" header="ID" sortable style={{ width: "80px" }} />
         <Column
           field="empresa.razonSocial"
@@ -1181,6 +1200,47 @@ const Producto = ({ ruta }) => {
           readOnly={!!productoSeleccionado && !!productoSeleccionado.id && !permisos.puedeEditar}
         />
       </Dialog>
+
+      <ClonadorEntidadesDialog
+        visible={clonarDialogVisible}
+        onHide={() => {
+          setClonarDialogVisible(false);
+          setProductosSeleccionados([]);
+        }}
+        entidadesSeleccionadas={productosSeleccionados}
+        destinosDisponibles={empresas}
+        origenId={selectedEmpresa?.id}
+        onClonar={async (productosIds, empresasIds, clienteId) => {
+          const resultado = await clonarProductosAEmpresas(productosIds, empresasIds, clienteId);
+          await cargarProductos();
+          return resultado;
+        }}
+        configuracion={{
+          titulo: "Clonar Productos a Otras Empresas",
+          nombreEntidad: "Producto",
+          nombreDestino: "Empresa",
+          campoIdDestino: "id",
+          campoNombreDestino: "razonSocial",
+          campoSecundarioDestino: "ruc",
+          campoBusquedaDestino: ["razonSocial", "ruc"],
+          iconoEntidad: "pi-box",
+          iconoDestino: "pi-building",
+          renderEntidad: (producto) => (
+            <div>
+              <span className="font-semibold mr-2">{producto.codigo}</span>
+              <span>{producto.descripcionBase}</span>
+            </div>
+          ),
+          columnasResultado: [
+            { field: "productoOrigenCodigo", header: "Código Original" },
+            { field: "productoNuevoCodigo", header: "Código Nuevo" },
+            { field: "productoOrigenNombre", header: "Producto" },
+            { field: "empresaNombre", header: "Empresa Destino" }
+          ],
+          mensajeAdvertencia: "Se generarán códigos únicos automáticamente para evitar duplicados (formato: CODIGO-E{ID_EMPRESA})."
+        }}
+        toast={toast}
+      />
     </div>
   );
 };

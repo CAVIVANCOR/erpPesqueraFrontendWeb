@@ -11,7 +11,7 @@ import { Button } from "primereact/button";
 import { Tag } from "primereact/tag";
 import { Badge } from "primereact/badge";
 import MovimientoCajaDialog from "../components/movimientoCaja/MovimientoCajaDialog";
-import { getAllMovimientoCaja } from "../api/movimientoCaja";
+import { getAllMovimientoCaja, actualizarMovimientoCaja } from "../api/movimientoCaja";
 import { getEmpresas } from "../api/empresa";
 import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
@@ -259,6 +259,84 @@ export default function MovimientoCaja({ ruta }) {
   const handleCloseDialog = () => {
     setShowDialog(false);
     setSelectedMovimiento(null);
+  };
+
+  // ⭐ NUEVO: Manejar cambios en los campos del movimiento
+  const handleFieldChange = (field, value) => {
+    setSelectedMovimiento(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // ⭐ NUEVO: Guardar/actualizar movimiento
+  const handleSaveMovimiento = async (movimientoActualizado) => {
+    try {
+      // 🔍 DEBUG: Ver qué datos recibimos del componente
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('📊 DATOS RECIBIDOS DEL COMPONENTE (movimientoActualizado):');
+      console.log('═══════════════════════════════════════════════════════');
+      console.log(JSON.stringify(movimientoActualizado, null, 2));
+      console.log('═══════════════════════════════════════════════════════\n');
+
+      // ✅ IMPORTANTE: Filtrar solo los campos que se pueden actualizar
+      // No enviar relaciones ni campos calculados
+      const datosActualizacion = {
+        empresaId: movimientoActualizado.empresaId,
+        tipoMovimientoId: movimientoActualizado.tipoMovimientoId,
+        entidadComercialId: movimientoActualizado.entidadComercialId,
+        monto: movimientoActualizado.monto,
+        monedaId: movimientoActualizado.monedaId,
+        descripcion: movimientoActualizado.descripcion,
+        medioPagoId: movimientoActualizado.medioPagoId,
+        estadoId: movimientoActualizado.estadoId,
+        cuentaCorrienteDestinoId: movimientoActualizado.cuentaCorrienteDestinoId,
+        cuentaCorrienteOrigenId: movimientoActualizado.cuentaCorrienteOrigenId,
+        centroCostoId: movimientoActualizado.centroCostoId,
+        fechaOperacionMovCaja: movimientoActualizado.fechaOperacionMovCaja,
+        numeroOperacion: movimientoActualizado.numeroOperacion,
+        // Solo incluir campos opcionales si existen
+        ...(movimientoActualizado.referenciaExtId && { referenciaExtId: movimientoActualizado.referenciaExtId }),
+        ...(movimientoActualizado.productoId && { productoId: movimientoActualizado.productoId }),
+        ...(movimientoActualizado.tipoCambio && { tipoCambio: movimientoActualizado.tipoCambio }),
+      };
+
+      // 🔍 DEBUG: Ver qué datos vamos a enviar al backend
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('📤 DATOS QUE SE ENVIARÁN AL BACKEND (datosActualizacion):');
+      console.log('═══════════════════════════════════════════════════════');
+      console.log(JSON.stringify(datosActualizacion, null, 2));
+      console.log('═══════════════════════════════════════════════════════\n');
+
+      // 🔍 DEBUG: Verificar campos problemáticos
+      console.log('🔍 VERIFICACIÓN DE CAMPOS PROBLEMÁTICOS:');
+      console.log('  - moduloOrigenMotivoOperacionId:', movimientoActualizado.moduloOrigenMotivoOperacionId);
+      console.log('  - origenMotivoOperacionId:', movimientoActualizado.origenMotivoOperacionId);
+      console.log('  - usuarioMotivoOperacionId:', movimientoActualizado.usuarioMotivoOperacionId);
+      console.log('  - ¿Se están enviando al backend?', {
+        moduloOrigen: datosActualizacion.moduloOrigenMotivoOperacionId !== undefined,
+        origenMotivo: datosActualizacion.origenMotivoOperacionId !== undefined,
+        usuarioMotivo: datosActualizacion.usuarioMotivoOperacionId !== undefined
+      });
+      console.log('═══════════════════════════════════════════════════════\n');
+
+      await actualizarMovimientoCaja(movimientoActualizado.id, datosActualizacion);
+      
+      // Recargar la lista de movimientos
+      await cargarMovimientos();
+      
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Movimiento de caja actualizado correctamente",
+        life: 3000,
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Error al actualizar movimiento:", error);
+      throw new Error(error.response?.data?.message || "No se pudo actualizar el movimiento de caja");
+    }
   };
 
   const fechaTemplate = (rowData) => formatearFecha(rowData.fechaOperacionMovCaja, "");
@@ -510,6 +588,9 @@ export default function MovimientoCaja({ ruta }) {
         empresas={empresas}
         onHide={handleCloseDialog}
         toast={toast}
+        onFieldChange={handleFieldChange}
+        onSave={handleSaveMovimiento}
+        readOnly={!permisos.puedeEditar}
       />
     </div>
   );
