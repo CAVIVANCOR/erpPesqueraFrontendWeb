@@ -11,12 +11,14 @@ import PendientesTable from "./components/PendientesTable";
 import SaldosCuentasPanel from "./components/SaldosCuentasPanel";
 import PagoCuentaPorCobrarForm from "../../components/pagoCuentaPorCobrar/PagoCuentaPorCobrarForm";
 import PagarCuentaPorCobrarEspecializadoDialog from "../../components/pagoCuentaPorCobrar/PagarCuentaPorCobrarEspecializadoDialog";
+import PagarCuentaPorPagarEspecializadoDialog from "../../components/pagoCuentaPorPagar/PagarCuentaPorPagarEspecializadoDialog";
 import EntregarFondosForm from "../../components/entregaFondos/EntregarFondosForm";
 import PagarDeudaPersonalDialog from "../../components/tesoreria/PagarDeudaPersonalDialog";
 import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ AGREGAR
 import PagarDeudaTributariaDialog from "../../components/tesoreria/PagarDeudaTributariaDialog";
 import { getEntidadComercialPorId } from "../../api/entidadComercial";
 import { getCuentaPorCobrarById } from "../../api/cuentasPorCobrarPagar/cuentaPorCobrar";
+import { getCuentaPorPagarById } from "../../api/cuentasPorCobrarPagar/cuentaPorPagar";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
 // Hooks
 import usePendientesData from "./hooks/usePendientesData";
@@ -62,6 +64,8 @@ const TesoreriaPendientes = () => {
   const [deudaTributariaSeleccionada, setDeudaTributariaSeleccionada] = useState(null);
   const [showPagoEspecializadoDialog, setShowPagoEspecializadoDialog] = useState(false);
   const [cuentaPorCobrarEspecializada, setCuentaPorCobrarEspecializada] = useState(null);
+  const [showPagoEspecializadoCxPDialog, setShowPagoEspecializadoCxPDialog] = useState(false);
+  const [cuentaPorPagarEspecializada, setCuentaPorPagarEspecializada] = useState(null);
   // 🆕 Estados para diálogos de operaciones
   const [showTransferenciaInternaDialog, setShowTransferenciaInternaDialog] = useState(false);
   const [showPagoProveedorDialog, setShowPagoProveedorDialog] = useState(false);
@@ -82,7 +86,9 @@ const TesoreriaPendientes = () => {
   const [bancos, setBancos] = useState([]);
   const [estados, setEstados] = useState([]);
   const [clientes, setClientes] = useState([]);
+  const [proveedores, setProveedores] = useState([]);
   const [estadosCxC, setEstadosCxC] = useState([]);
+  const [estadosCxP, setEstadosCxP] = useState([]);
   const [periodosContables, setPeriodosContables] = useState([]);
   const [empresas, setEmpresas] = useState([]);  // ✅ AGREGAR
   const [loadingCatalogos, setLoadingCatalogos] = useState(true);
@@ -170,6 +176,7 @@ const TesoreriaPendientes = () => {
           tiposDetraccionData,
           tiposRetencionPercepcionData,
           estadosCxCData,
+          estadosCxPData,
         ] = await Promise.all([
           getAllMonedas(),
           getMediosPago(),
@@ -181,6 +188,7 @@ const TesoreriaPendientes = () => {
           getAllTiposDetraccion(),
           getTiposRetencionPercepcion(),
           getEstadosMultiFuncionPorTipoProviene(24), // Estados de Cuenta por Cobrar
+          getEstadosMultiFuncionPorTipoProviene(25), // Estados de Cuenta por Pagar
         ]);
         setMonedas(monedasData);
         setMediosPago(mediosPagoData);
@@ -192,6 +200,7 @@ const TesoreriaPendientes = () => {
         setTiposDetraccion(tiposDetraccionData || []);
         setTiposRetencionPercepcion(tiposRetencionPercepcionData || []);
         setEstadosCxC(estadosCxCData || []);
+        setEstadosCxP(estadosCxPData || []);
       } catch (error) {
         console.error("Error al cargar catálogos:", error);
         toast.current?.show({
@@ -353,6 +362,52 @@ const TesoreriaPendientes = () => {
     recargarSaldos();
   };
 
+  // ════════════════════════════════════════════════════════════
+  // HANDLERS: PAGO ESPECIALIZADO CUENTA POR PAGAR
+  // ════════════════════════════════════════════════════════════
+
+  const handlePagoEspecializadoCxP = async (documento) => {
+    try {
+      // Cargar el proveedor específico de esta CxP
+      const proveedorData = await getEntidadComercialPorId(documento.entidadComercial?.id);
+      setProveedores([proveedorData]);
+
+      // Cargar la CuentaPorPagar completa desde el backend
+      const cuentaPorPagarCompleta = await getCuentaPorPagarById(documento.origenId);
+
+      // Convertir documento de pendientes a formato de cuenta por pagar
+      const cuentaPorPagar = {
+        ...cuentaPorPagarCompleta,
+        proveedor: documento.entidadComercial,
+        moneda: documento.moneda,
+        estado: documento.estado,
+      };
+
+      setCuentaPorPagarEspecializada(cuentaPorPagar);
+      setShowPagoEspecializadoCxPDialog(true);
+    } catch (error) {
+      console.error("Error al cargar proveedor:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar la información del proveedor",
+        life: 3000,
+      });
+    }
+  };
+
+  const handleCancelarPagoEspecializadoCxP = () => {
+    setShowPagoEspecializadoCxPDialog(false);
+    setCuentaPorPagarEspecializada(null);
+  };
+
+  const handleSuccessPagoEspecializadoCxP = () => {
+    setShowPagoEspecializadoCxPDialog(false);
+    setCuentaPorPagarEspecializada(null);
+    recargarPendientes();
+    recargarSaldos();
+  };
+
   const handleCancelarEntrega = () => {
     setShowEntregaFondosDialog(false);
     setAsignacionSeleccionada(null);
@@ -451,6 +506,7 @@ const TesoreriaPendientes = () => {
           onPagarDeudaPersonal={handlePagarDeudaPersonal}
           onPagarDeudaTributaria={handlePagarDeudaTributaria}
           onPagoEspecializado={handlePagoEspecializado}
+          onPagoEspecializadoCxP={handlePagoEspecializadoCxP}
           permisos={permisos}
         />
       </Card>
@@ -672,6 +728,29 @@ const TesoreriaPendientes = () => {
         <p>Funcionalidad en desarrollo...</p>
       </Dialog>
 
+      {/* Diálogo para pago especializado de cuenta por pagar */}
+      {cuentaPorPagarEspecializada && (() => {
+        return (
+          <PagarCuentaPorPagarEspecializadoDialog
+            visible={showPagoEspecializadoCxPDialog}
+            onHide={handleCancelarPagoEspecializadoCxP}
+            cuentaPorPagar={cuentaPorPagarEspecializada}
+            monedas={monedas}
+            mediosPago={mediosPago}
+            bancos={bancos}
+            cuentasCorrientes={saldosCuentas}
+            tiposMovimiento={tiposMovimiento}
+            tiposDetraccion={tiposDetraccion}
+            tiposRetencionPercepcion={tiposRetencionPercepcion}
+            periodosContables={periodosContables}
+            empresas={empresas}
+            proveedores={proveedores}
+            estadosCxP={estadosCxP}
+            toast={toast}
+            onSuccess={handleSuccessPagoEspecializadoCxP}
+          />
+        );
+      })()}
 
     </div>
   );

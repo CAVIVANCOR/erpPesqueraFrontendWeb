@@ -12,9 +12,10 @@ const PendientesTable = ({
   loading,
   onRegistrarPago,
   onEntregarFondos,
-  onPagarDeudaPersonal,  // AGREGAR ESTA LÍNEA
+  onPagarDeudaPersonal,
   onPagarDeudaTributaria,
-  onPagoEspecializado,  // ✅ AGREGAR ESTA LÍNEA
+  onPagoEspecializado,
+  onPagoEspecializadoCxP,
   permisos,
   tipo,
 }) => {
@@ -152,16 +153,31 @@ const PendientesTable = ({
     if (rowData.origen === ORIGEN_DOCUMENTO_TESORERIA.CUENTAS_POR_COBRAR) {
       return (
         <Button
-          label="Pagar Cuenta"
+          label="Cobrar Cuenta"
           icon="pi pi-briefcase"
-          className="p-button-sm p-button-primary"
+          className="p-button-sm p-button-success"
           onClick={() => onPagoEspecializado(rowData)}
-          tooltip="Pago especializado con SUNAT (Detracción/Retención/Percepción)"
+          tooltip="Cobro especializado con SUNAT (Detracción/Retención/Percepción)"
           tooltipOptions={{ position: "left" }}
         />
       );
     }
-    // Para el resto (CxC, CxP, Gastos Directos), mostrar botón normal
+
+    // Para CxP con opciones especiales
+    if (rowData.origen === ORIGEN_DOCUMENTO_TESORERIA.CUENTAS_POR_PAGAR) {
+      return (
+        <Button
+          label="Pagar Proveedor"
+          icon="pi pi-briefcase"
+          className="p-button-sm p-button-danger"
+          onClick={() => onPagoEspecializadoCxP(rowData)}
+          tooltip="Pago especializado a proveedor con SUNAT (Detracción/Retención/Percepción)"
+          tooltipOptions={{ position: "left" }}
+        />
+      );
+    }
+
+    // Para el resto (Gastos Directos, etc.), mostrar botón normal
     return (
       <Button
         label="Registrar Pago"

@@ -1,7 +1,7 @@
-// src/components/pagoCuentaPorCobrar/VoucherContableMovimientoPDF.js
+// src/components/movimientoCaja/utils/VoucherContableMovimientoPDF.js
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
-import { formatearNumero } from "../../utils/utils";
-import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { formatearNumero } from "../../../utils/utils";
+import { useAuthStore } from "../../../shared/stores/useAuthStore";
 
 // ════════════════════════════════════════════════════════════
 // CONFIGURACIÓN DE ANCHOS DE COLUMNAS (en puntos)
@@ -49,7 +49,7 @@ export async function generarYSubirVoucherContable(
     // 3. Crear FormData
     const formData = new FormData();
     formData.append("files", blob, "temp.pdf");
-    formData.append("moduleName", "movimiento-caja-operacion");  // ✅ Módulo correcto para urlDocumentoMovCaja
+    formData.append("moduleName", "movimiento-caja-voucher-contable");  // ✅ Módulo estándar para urlDocumentoMovCaja
     formData.append("entityId", movimiento.id);
 
     // 4. Subir al servidor

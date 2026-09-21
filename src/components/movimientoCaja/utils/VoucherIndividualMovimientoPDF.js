@@ -1,7 +1,7 @@
-// src/components/pagoCuentaPorCobrar/VoucherIndividualMovimientoPDF.js
+// src/components/movimientoCaja/utils/VoucherIndividualMovimientoPDF.js
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
-import { formatearNumero } from "../../utils/utils";
-import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { formatearNumero } from "../../../utils/utils";
+import { useAuthStore } from "../../../shared/stores/useAuthStore";
 
 // ════════════════════════════════════════════════════════════
 // CONFIGURACIÓN DE ANCHOS DE COLUMNAS (en puntos)

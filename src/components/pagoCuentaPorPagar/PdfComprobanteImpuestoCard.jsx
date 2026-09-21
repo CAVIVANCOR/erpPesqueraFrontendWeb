@@ -4,7 +4,7 @@
  * Componente wrapper para comprobante de pago de detracción/impuesto.
  * Guarda el comprobante en DOS lugares:
  * 1. MovimientoCaja.urlComprobanteOperacionMovCaja (movimiento de autodetracción)
- * 2. PagoCuentaPorCobrar.urlPagoImpuesto (pago completo)
+ * 2. PagoCuentaPorPagar.urlPagoImpuesto (pago completo)
  *
  * @author ERP Megui
  * @version 3.0.0 - Doble guardado
@@ -20,7 +20,7 @@ import { Panel } from "primereact/panel";
  *
  * @param {Object} props - Props del componente
  * @param {Number} props.movimientoId - ID del movimiento de autodetracción
- * @param {Number} props.pagoCuentaPorCobrarId - ID del pago
+ * @param {Number} props.pagoCuentaPorPagarId - ID del pago
  * @param {Object} props.control - Control de React Hook Form
  * @param {Object} props.errors - Errores de validación
  * @param {Function} props.setValue - Función para setear valores
@@ -31,7 +31,7 @@ import { Panel } from "primereact/panel";
  */
 const PdfComprobanteImpuestoCard = ({
   movimientoId,
-  pagoCuentaPorCobrarId,
+  pagoCuentaPorPagarId,
   control,
   errors,
   setValue,
@@ -49,7 +49,7 @@ const PdfComprobanteImpuestoCard = ({
       </p>
       
       {/* ✅ UN SOLO CAMPO - Guarda en MovimientoCaja.urlComprobanteOperacionMovCaja */}
-      {/* El backend debe copiar automáticamente a PagoCuentaPorCobrar.urlPagoImpuesto */}
+      {/* El backend debe copiar automáticamente a PagoCuentaPorPagar.urlPagoImpuesto */}
       {movimientoId && (
         <PDFDocumentManager
           moduleName="movimiento-caja-comprobante"

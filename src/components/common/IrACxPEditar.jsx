@@ -59,6 +59,7 @@ export default function IrACxPEditar({
   tooltip = null,
   disabled = false,
   estadoIdMinimo = 39,
+  compact = false,
   ...rest
 }) {
   const { abrirModulo } = useContext(ModuloContext);
@@ -175,22 +176,109 @@ export default function IrACxPEditar({
     return "Ir a CxP";
   };
 
+  const renderCompactMode = () => (
+    <Button
+      type="button"
+      label={getButtonLabel()}
+      icon={icon}
+      severity={severity}
+      outlined={outlined}
+      onClick={handleClick}
+      className={className}
+      tooltip={tooltip || (cxpData ? `Editar Cuenta por Pagar ID ${cxpData.id}` : "Cargando...")}
+      tooltipOptions={{ position: "top" }}
+      loading={loading}
+      disabled={loading}
+      {...rest}
+    />
+  );
+
+  const renderExpandedMode = () => {
+    if (loading) {
+      return <div style={{ padding: '1rem', textAlign: 'center' }}>Cargando CxP...</div>;
+    }
+
+    if (!cxpData) {
+      return null;
+    }
+
+    const formatearNumero = (num) => {
+      return new Intl.NumberFormat('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num || 0);
+    };
+
+    const formatearFecha = (fecha) => {
+      if (!fecha) return '-';
+      return new Date(fecha).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
+    const moneda = monedas?.find(m => m.id === cxpData.monedaId);
+    const simboloMoneda = moneda?.simbolo || 'S/.';
+
+    return (
+      <div
+        onClick={handleClick}
+        style={{
+          display: 'flex',
+          gap: '0.5rem',
+          padding: '0.5rem',
+          border: '1px solid #dee2e6',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+          backgroundColor: '#fff'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
+      >
+        <div style={{ flex: 1, backgroundColor: '#cfe2ff', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #b6d4fe' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>Proveedor</div>
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cxpData.proveedor?.razonSocial || '-'}</div>
+        </div>
+        <div style={{ flex: 0.6, backgroundColor: '#d1ecf1', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #bee5eb' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>F.Emisión</div>
+          <div>{formatearFecha(cxpData.fechaEmision)}</div>
+        </div>
+        <div style={{ flex: 0.6, backgroundColor: '#fff3cd', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #ffeaa7' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>F.Venc</div>
+          <div>{formatearFecha(cxpData.fechaVencimiento)}</div>
+        </div>
+        <div style={{ flex: 1, backgroundColor: '#f8d7da', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #f5c6cb' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>Producto</div>
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {cxpData.ordenCompra?.detalles?.[0]?.producto?.descripcionArmada || 
+             cxpData.ordenCompra?.detalles?.[0]?.producto?.descripcionBase || 
+             cxpData.ordenCompra?.detalles?.[0]?.producto?.nombre || 
+             'N/A'}
+          </div>
+        </div>
+        <div style={{ flex: 0.8, backgroundColor: '#e0cffc', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #d4b9e8' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>
+            {cxpData.tieneDetraccion ? 'Detracción' : cxpData.tieneRetencion ? 'Retención' : cxpData.tienePercepcion ? 'Percepción' : 'Sin Impuesto'}
+          </div>
+          <div>
+            {/* ✅ Detracción SIEMPRE en SOLES */}
+            {cxpData.tieneDetraccion ? 'S/.' : simboloMoneda} {formatearNumero(cxpData.montoDetraccionTotal || cxpData.montoRetencionTotal || cxpData.montoPercepcionTotal || 0)}
+          </div>
+        </div>
+        <div style={{ flex: 0.7, backgroundColor: '#e7d6f5', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #d4b9e8' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>Total</div>
+          <div>{simboloMoneda} {formatearNumero(cxpData.montoTotal)}</div>
+        </div>
+        <div style={{ flex: 0.7, backgroundColor: '#d1e7dd', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #badbcc' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>Pagado</div>
+          <div>{simboloMoneda} {formatearNumero(cxpData.montoPagado)}</div>
+        </div>
+        <div style={{ flex: 0.7, backgroundColor: '#f8d7da', color: '#000', padding: '0.5rem', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', border: '1px solid #f5c6cb' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#555' }}>Saldo</div>
+          <div>{simboloMoneda} {formatearNumero(cxpData.saldoPendiente)}</div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
-      <Button
-        type="button"
-        label={getButtonLabel()}
-        icon={icon}
-        severity={severity}
-        outlined={outlined}
-        onClick={handleClick}
-        className={className}
-        tooltip={tooltip || (cxpData ? `Editar Cuenta por Pagar ID ${cxpData.id}` : "Cargando...")}
-        tooltipOptions={{ position: "top" }}
-        loading={loading}
-        disabled={loading}
-        {...rest}
-      />
+      {compact ? renderCompactMode() : renderExpandedMode()}
 
       <Dialog
         header="¿Qué deseas consultar?"

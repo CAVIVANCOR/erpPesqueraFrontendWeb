@@ -1,4 +1,4 @@
-// src/components/pagoCuentaPorCobrar/ConfirmacionPagoDialog.jsx
+// src/components/pagoCuentaPorPagar/ConfirmacionPagoDialog.jsx
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog } from 'primereact/dialog';
@@ -31,7 +31,7 @@ export default function ConfirmacionPagoDialog({
   visible,
   onHide,
   resultadoPago,
-  cuentaPorCobrar,
+  cuentaPorPagar,
   monedas = [],
   empresas = [],
   toast
@@ -55,21 +55,21 @@ export default function ConfirmacionPagoDialog({
     formState: { errors }
   } = useForm({
     defaultValues: {
-      urlPagoImpuesto: resultadoPago?.pagoCuentaPorCobrar?.urlPagoImpuesto || null
+      urlPagoImpuesto: resultadoPago?.pagoCuentaPorPagar?.urlPagoImpuesto || null
     }
   });
 
   // ✅ Actualizar valores cuando cambien
   useEffect(() => {
-    if (resultadoPago?.pagoCuentaPorCobrar) {
-      setValue('urlPagoImpuesto', resultadoPago.pagoCuentaPorCobrar.urlPagoImpuesto || null);
+    if (resultadoPago?.pagoCuentaPorPagar) {
+      setValue('urlPagoImpuesto', resultadoPago.pagoCuentaPorPagar.urlPagoImpuesto || null);
     }
-  }, [resultadoPago?.pagoCuentaPorCobrar?.urlPagoImpuesto, setValue]);
+  }, [resultadoPago?.pagoCuentaPorPagar?.urlPagoImpuesto, setValue]);
 
 
   // Obtener empresa del pago
   const empresa = empresas.find(e =>
-    Number(e.id) === Number(resultadoPago?.pagoCuentaPorCobrar?.empresaId)
+    Number(e.id) === Number(resultadoPago?.pagoCuentaPorPagar?.empresaId)
   );
 
   // ════════════════════════════════════════════════════════════
@@ -125,10 +125,10 @@ export default function ConfirmacionPagoDialog({
 
     const { resumen } = resultadoPago;
     const monedaPago = monedas.find(m =>
-      Number(m.id) === Number(resultadoPago.pagoCuentaPorCobrar?.monedaPagoId)
+      Number(m.id) === Number(resultadoPago.pagoCuentaPorPagar?.monedaPagoId)
     );
     const monedaDeuda = monedas.find(m =>
-      Number(m.id) === Number(resultadoPago.pagoCuentaPorCobrar?.monedaDeudaId)
+      Number(m.id) === Number(resultadoPago.pagoCuentaPorPagar?.monedaDeudaId)
     );
 
     const items = [
@@ -181,13 +181,13 @@ export default function ConfirmacionPagoDialog({
       saldosMap[saldo.tipo] = saldo;
     });
 
-    if (resultadoPago.movimientos.ingreso) {
-      const saldo = saldosMap['Ingreso'] || {};
+    if (resultadoPago.movimientos.egreso) {
+      const saldo = saldosMap['Egreso'] || {};
       movimientos.push({
-        tipo: 'Ingreso',
-        id: resultadoPago.movimientos.ingreso.id,
-        monto: resultadoPago.movimientos.ingreso.monto,
-        movimiento: resultadoPago.movimientos.ingreso, // ✅ Objeto completo para acceder a relaciones
+        tipo: 'Egreso',
+        id: resultadoPago.movimientos.egreso.id,
+        monto: resultadoPago.movimientos.egreso.monto,
+        movimiento: resultadoPago.movimientos.egreso, // ✅ Objeto completo para acceder a relaciones
         saldoAnterior: saldo.saldoAnterior || 0,
         ingresos: saldo.ingresos || 0,
         egresos: saldo.egresos || 0,
@@ -256,7 +256,7 @@ export default function ConfirmacionPagoDialog({
     if (movimientos.length === 0) return null;
 
     const monedaPago = monedas.find(m =>
-      Number(m.id) === Number(resultadoPago.pagoCuentaPorCobrar?.monedaPagoId)
+      Number(m.id) === Number(resultadoPago.pagoCuentaPorPagar?.monedaPagoId)
     );
 
     return (
@@ -275,7 +275,7 @@ export default function ConfirmacionPagoDialog({
             body={(rowData) => (
               <Tag
                 value={`${monedaPago?.simbolo || ''} ${Number(rowData.monto || 0).toFixed(2)}`}
-                severity={rowData.tipo === 'Ingreso' ? 'success' : 'warning'}
+                severity={rowData.tipo === 'Egreso' ? 'success' : 'warning'}
               />
             )}
             style={{ width: '10%' }}
@@ -339,11 +339,11 @@ export default function ConfirmacionPagoDialog({
             style={{ width: '10%', textAlign: 'right' }}
           />
           <Column
-            field="ingresos"
-            header="Ingresos"
+            field="egresos"
+            header="Egresos"
             body={(rowData) => (
               <span className="text-green-600 font-bold">
-                +{formatearNumero(rowData.ingresos || 0, 2)}
+                +{formatearNumero(rowData.egresos || 0, 2)}
               </span>
             )}
             style={{ width: '10%', textAlign: 'right' }}
@@ -386,7 +386,7 @@ export default function ConfirmacionPagoDialog({
 
     const conceptos = [];
     const monedaPago = monedas.find(m =>
-      Number(m.id) === Number(resultadoPago.pagoCuentaPorCobrar?.monedaPagoId)
+      Number(m.id) === Number(resultadoPago.pagoCuentaPorPagar?.monedaPagoId)
     );
 
     if (detraccion) {
@@ -462,7 +462,7 @@ export default function ConfirmacionPagoDialog({
     console.log('  IDs asientos:', asientos.map(a => a.id));
     console.log('  procesoOrigenId de asientos:', asientos.map(a => a.procesoOrigenId));
     console.log('  Movimientos disponibles:', {
-      ingreso: resultadoPago.movimientos.ingreso?.id,
+      egreso: resultadoPago.movimientos.egreso?.id,
       itf: resultadoPago.movimientos.itf?.id,
       comision: resultadoPago.movimientos.comision?.id,
       autodetraccionEgreso: resultadoPago.movimientos.autodetraccionEgreso?.id,
@@ -470,7 +470,7 @@ export default function ConfirmacionPagoDialog({
     });
 
     const monedaPago = monedas.find(m =>
-      Number(m.id) === Number(resultadoPago.pagoCuentaPorCobrar?.monedaPagoId)
+      Number(m.id) === Number(resultadoPago.pagoCuentaPorPagar?.monedaPagoId)
     );
 
     // Mapear asientos con tipo según el movimiento relacionado
@@ -478,8 +478,8 @@ export default function ConfirmacionPagoDialog({
       let tipo = 'Desconocido';
       
       // Buscar el movimiento relacionado por procesoOrigenId
-      if (resultadoPago.movimientos.ingreso && Number(asiento.procesoOrigenId) === Number(resultadoPago.movimientos.ingreso.id)) {
-        tipo = 'Ingreso';
+      if (resultadoPago.movimientos.egreso && Number(asiento.procesoOrigenId) === Number(resultadoPago.movimientos.egreso.id)) {
+        tipo = 'Egreso';
       } else if (resultadoPago.movimientos.itf && Number(asiento.procesoOrigenId) === Number(resultadoPago.movimientos.itf.id)) {
         tipo = 'ITF';
       } else if (resultadoPago.movimientos.comision && Number(asiento.procesoOrigenId) === Number(resultadoPago.movimientos.comision.id)) {
@@ -628,13 +628,13 @@ export default function ConfirmacionPagoDialog({
       {renderAsientosContables()}
 
       {/* Componente genérico de asientos contables */}
-      {resultadoPago?.movimientos?.ingreso?.id && resultadoPago?.movimientos?.ingreso?.empresaId && (
+      {resultadoPago?.movimientos?.egreso?.id && resultadoPago?.movimientos?.egreso?.empresaId && (
         <div className="mb-3">
           <AsientoContableManager
-            documentoId={resultadoPago.movimientos.ingreso.id}
+            documentoId={resultadoPago.movimientos.egreso.id}
             documentoTipo="MovimientoCaja"
-            empresaId={resultadoPago.movimientos.ingreso.empresaId}
-            periodoContableId={resultadoPago.movimientos.ingreso.periodoContableId}
+            empresaId={resultadoPago.movimientos.egreso.empresaId}
+            periodoContableId={resultadoPago.movimientos.egreso.periodoContableId}
             showAsButton={true}
           />
         </div>
@@ -643,13 +643,13 @@ export default function ConfirmacionPagoDialog({
       <Divider />
 
       {/* Voucher Consolidado Automático */}
-      {resultadoPago?.pagoCuentaPorCobrar?.urlVoucherOperacionConsolidado && (
+      {resultadoPago?.pagoCuentaPorPagar?.urlVoucherOperacionConsolidado && (
         <>
           <Divider />
           <Panel header="📄 Voucher Consolidado del Pago" className="mb-3">
             <PDFViewerV2
-              pdfUrl={resultadoPago.pagoCuentaPorCobrar.urlVoucherOperacionConsolidado}
-              moduleName="pago-cxc-voucher-consolidado"
+              pdfUrl={resultadoPago.pagoCuentaPorPagar.urlVoucherOperacionConsolidado}
+              moduleName="pago-cxp-voucher-consolidado"
               height="600px"
             />
             <div className="mt-3 text-center">
@@ -670,12 +670,12 @@ export default function ConfirmacionPagoDialog({
       )}
 
       {/* Comprobante de Pago de Detracción (Opcional) */}
-      {(resultadoPago?.movimientos?.autodetraccionEgreso?.id || resultadoPago?.movimientos?.autodetraccionIngreso?.id || resultadoPago?.pagoCuentaPorCobrar?.id) && (
+      {(resultadoPago?.movimientos?.detraccionEgreso?.id || resultadoPago?.movimientos?.autodetraccionEgreso?.id || resultadoPago?.pagoCuentaPorPagar?.id) && (
         <>
           <Divider />
           <PdfComprobanteImpuestoCard
-            movimientoId={resultadoPago.movimientos.autodetraccionEgreso?.id || resultadoPago.movimientos.autodetraccionIngreso?.id}
-            pagoCuentaPorCobrarId={resultadoPago.pagoCuentaPorCobrar?.id}
+            movimientoId={resultadoPago.movimientos.detraccionEgreso?.id || resultadoPago.movimientos.autodetraccionEgreso?.id}
+            pagoCuentaPorPagarId={resultadoPago.pagoCuentaPorPagar?.id}
             control={control}
             errors={errors}
             setValue={setValue}
@@ -683,8 +683,8 @@ export default function ConfirmacionPagoDialog({
             getValues={getValues}
             defaultValues={{
               ...resultadoPago.movimientos.autodetraccionEgreso,
-              ...resultadoPago.movimientos.autodetraccionIngreso,
-              ...resultadoPago.pagoCuentaPorCobrar
+              ...resultadoPago.movimientos.autodetraccionEgreso,
+              ...resultadoPago.pagoCuentaPorPagar
             }}
             readOnly={false}
           />
@@ -699,12 +699,12 @@ export default function ConfirmacionPagoDialog({
           <Divider />
           <Panel header="📋 Vouchers Individuales de Movimientos" className="mb-3" toggleable collapsed>
             <div className="grid">
-              {/* Voucher del Movimiento de Ingreso */}
-              {resultadoPago.movimientos.ingreso?.urlOperacionIndividualOperacionCaja && (
+              {/* Voucher del Movimiento de Egreso */}
+              {resultadoPago.movimientos.egreso?.urlOperacionIndividualOperacionCaja && (
                 <div className="col-12 md:col-6">
-                  <Panel header={`💰 Ingreso - Mov. #${resultadoPago.movimientos.ingreso.id}`} className="mb-3">
+                  <Panel header={`💰 Egreso - Mov. #${resultadoPago.movimientos.egreso.id}`} className="mb-3">
                     <PDFViewerV2
-                      pdfUrl={resultadoPago.movimientos.ingreso.urlOperacionIndividualOperacionCaja}
+                      pdfUrl={resultadoPago.movimientos.egreso.urlOperacionIndividualOperacionCaja}
                       moduleName="movimiento-caja-voucher-individual"
                       height="400px"
                     />
@@ -715,8 +715,8 @@ export default function ConfirmacionPagoDialog({
                         size="small"
                         onClick={() => {
                           const link = document.createElement('a');
-                          link.href = resultadoPago.movimientos.ingreso.urlOperacionIndividualOperacionCaja;
-                          link.download = `voucher-ingreso-${resultadoPago.movimientos.ingreso.id}.pdf`;
+                          link.href = resultadoPago.movimientos.egreso.urlOperacionIndividualOperacionCaja;
+                          link.download = `voucher-egreso-${resultadoPago.movimientos.egreso.id}.pdf`;
                           link.click();
                         }}
                         className="p-button-sm"
@@ -807,12 +807,12 @@ export default function ConfirmacionPagoDialog({
                 </div>
               )}
 
-              {/* Voucher del Movimiento de Autodetracción Ingreso */}
-              {resultadoPago.movimientos.autodetraccionIngreso?.urlOperacionIndividualOperacionCaja && (
+              {/* Voucher del Movimiento de Autodetracción Egreso */}
+              {resultadoPago.movimientos.autodetraccionEgreso?.urlOperacionIndividualOperacionCaja && (
                 <div className="col-12 md:col-6">
-                  <Panel header={`📥 Autodetracción Ingreso BN - Mov. #${resultadoPago.movimientos.autodetraccionIngreso.id}`} className="mb-3">
+                  <Panel header={`📥 Autodetracción Egreso BN - Mov. #${resultadoPago.movimientos.autodetraccionEgreso.id}`} className="mb-3">
                     <PDFViewerV2
-                      pdfUrl={resultadoPago.movimientos.autodetraccionIngreso.urlOperacionIndividualOperacionCaja}
+                      pdfUrl={resultadoPago.movimientos.autodetraccionEgreso.urlOperacionIndividualOperacionCaja}
                       moduleName="movimiento-caja-voucher-individual"
                       height="400px"
                     />
@@ -823,8 +823,8 @@ export default function ConfirmacionPagoDialog({
                         size="small"
                         onClick={() => {
                           const link = document.createElement('a');
-                          link.href = resultadoPago.movimientos.autodetraccionIngreso.urlOperacionIndividualOperacionCaja;
-                          link.download = `voucher-autodet-ingreso-${resultadoPago.movimientos.autodetraccionIngreso.id}.pdf`;
+                          link.href = resultadoPago.movimientos.autodetraccionEgreso.urlOperacionIndividualOperacionCaja;
+                          link.download = `voucher-autodet-egreso-${resultadoPago.movimientos.autodetraccionEgreso.id}.pdf`;
                           link.click();
                         }}
                         className="p-button-sm"
@@ -836,12 +836,12 @@ export default function ConfirmacionPagoDialog({
 
 
 
-              {/* Voucher del Movimiento de Detracción Ingreso (si cliente pagó) */}
-              {resultadoPago.movimientos.detraccionIngreso?.urlOperacionIndividualOperacionCaja && (
+              {/* Voucher del Movimiento de Detracción Egreso (si proveedor pagó) */}
+              {resultadoPago.movimientos.detraccionEgreso?.urlOperacionIndividualOperacionCaja && (
                 <div className="col-12 md:col-6">
-                  <Panel header={`📥 Detracción Ingreso BN - Mov. #${resultadoPago.movimientos.detraccionIngreso.id}`} className="mb-3">
+                  <Panel header={`📥 Detracción Egreso BN - Mov. #${resultadoPago.movimientos.detraccionEgreso.id}`} className="mb-3">
                     <PDFViewerV2
-                      pdfUrl={resultadoPago.movimientos.detraccionIngreso.urlOperacionIndividualOperacionCaja}
+                      pdfUrl={resultadoPago.movimientos.detraccionEgreso.urlOperacionIndividualOperacionCaja}
                       moduleName="movimiento-caja-voucher-individual"
                       height="400px"
                     />
@@ -852,8 +852,8 @@ export default function ConfirmacionPagoDialog({
                         size="small"
                         onClick={() => {
                           const link = document.createElement('a');
-                          link.href = resultadoPago.movimientos.detraccionIngreso.urlOperacionIndividualOperacionCaja;
-                          link.download = `voucher-det-ingreso-${resultadoPago.movimientos.detraccionIngreso.id}.pdf`;
+                          link.href = resultadoPago.movimientos.detraccionEgreso.urlOperacionIndividualOperacionCaja;
+                          link.download = `voucher-det-egreso-${resultadoPago.movimientos.detraccionEgreso.id}.pdf`;
                           link.click();
                         }}
                         className="p-button-sm"
@@ -902,12 +902,12 @@ export default function ConfirmacionPagoDialog({
         maximizable
         blockScroll
       >
-        {movimientoIdSeleccionado && resultadoPago?.movimientos?.ingreso?.empresaId && (
+        {movimientoIdSeleccionado && resultadoPago?.movimientos?.egreso?.empresaId && (
           <AsientoContableManager
             documentoId={movimientoIdSeleccionado}
             documentoTipo="MovimientoCaja"
-            empresaId={resultadoPago.movimientos.ingreso.empresaId}
-            periodoContableId={resultadoPago.movimientos.ingreso.periodoContableId}
+            empresaId={resultadoPago.movimientos.egreso.empresaId}
+            periodoContableId={resultadoPago.movimientos.egreso.periodoContableId}
             showAsButton={false}
           />
         )}

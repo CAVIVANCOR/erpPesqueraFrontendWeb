@@ -10,6 +10,7 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Panel } from "primereact/panel";
+import { Accordion, AccordionTab } from "primereact/accordion";
 import { Dialog } from "primereact/dialog";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import {
@@ -146,6 +147,11 @@ const CuentaPorPagarForm = forwardRef(({
       : null,
   );
 
+  // Estados para registros de impuestos tributarios generados
+  const [detraccionGenerada, setDetraccionGenerada] = useState(null);
+  const [retencionGenerada, setRetencionGenerada] = useState(null);
+  const [percepcionGenerada, setPercepcionGenerada] = useState(null);
+
   // Estados para CRUD de pagos
   const [pagos, setPagos] = useState([]);
   const [loadingPagos, setLoadingPagos] = useState(false);
@@ -157,6 +163,13 @@ const CuentaPorPagarForm = forwardRef(({
   useEffect(() => {
     if (isEdit && defaultValues?.id) {
       cargarPagos();
+    }
+  }, [isEdit, defaultValues?.id]);
+
+  // Cargar registros de impuestos tributarios generados
+  useEffect(() => {
+    if (isEdit && defaultValues?.id) {
+      cargarRegistrosImpuestos();
     }
   }, [isEdit, defaultValues?.id]);
 
@@ -218,6 +231,19 @@ const CuentaPorPagarForm = forwardRef(({
       });
     } finally {
       setLoadingPagos(false);
+    }
+  };
+
+  const cargarRegistrosImpuestos = async () => {
+    try {
+      const cuenta = await getCuentaPorPagarById(defaultValues.id);
+      if (cuenta?.ordenCompra) {
+        setDetraccionGenerada(cuenta.ordenCompra.detraccion || null);
+        setRetencionGenerada(cuenta.ordenCompra.retencion || null);
+        setPercepcionGenerada(cuenta.ordenCompra.percepcion || null);
+      }
+    } catch (error) {
+      console.error("Error al cargar registros de impuestos:", error);
     }
   };
 
@@ -925,6 +951,205 @@ const CuentaPorPagarForm = forwardRef(({
               </DataTable>
             </div>
           )}
+
+          {/* REGISTROS DE IMPUESTOS TRIBUTARIOS GENERADOS */}
+          {(detraccionGenerada || retencionGenerada || percepcionGenerada) && (
+            <Panel header="📋 Registros de Impuestos Tributarios Generados" className="mb-3">
+              <Accordion>
+                {/* DETRACCIÓN */}
+                {detraccionGenerada && (
+                  <AccordionTab header={`📋 Detracción ID: ${detraccionGenerada.id} - ${detraccionGenerada.estadoPago?.nombre || 'PENDIENTE'} - S/ ${formatearNumero(detraccionGenerada.importeRequerido)}`}>
+                    <div className="p-fluid">
+                      <div style={{ display: "flex", alignItems: "start", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>ID Detracción</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#1976D2' }}>{detraccionGenerada.id}</div>
+                        </div>
+                        <div style={{ flex: 2 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Tipo Detracción</label>
+                          <div>{detraccionGenerada.tipoDetraccion?.codigo || 'N/A'} - {detraccionGenerada.tipoDetraccion?.nombre || 'N/A'}</div>
+                        </div>
+                        <div style={{ flex: 0.5 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Tasa</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{detraccionGenerada.tasaDetraccion ? `${Number(detraccionGenerada.tasaDetraccion)}%` : 'N/A'}</div>
+                        </div>
+                        <div style={{ flex: 0.5 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Moneda</label>
+                          <div>{detraccionGenerada.moneda?.simbolo || ''} {detraccionGenerada.moneda?.codigoSunat || 'N/A'}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Estado de Pago</label>
+                          <div style={{ padding: '0.5rem', borderRadius: '4px', backgroundColor: '#E3F2FD', fontWeight: 'bold', textAlign: 'center' }}>
+                            {detraccionGenerada.estadoPago?.nombre || 'PENDIENTE'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "start", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row", marginTop: 10 }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Importe Dcmto</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{formatearNumero(detraccionGenerada.importeTotal)}</div>
+                        </div>
+                        {detraccionGenerada.cuentaBNSunatProveedor && (
+                          <div style={{ flex: 2 }}>
+                            <label style={{ fontWeight: 'bold', color: '#666' }}>Cuenta Banco de la Nación (Proveedor)</label>
+                            <div style={{ padding: '0.5rem', backgroundColor: '#FFF3E0', borderRadius: '4px', border: '1px solid #FFB74D' }}>
+                              <strong>{detraccionGenerada.cuentaBNSunatProveedor.banco?.nombre || 'N/A'}</strong> - {detraccionGenerada.cuentaBNSunatProveedor.numeroCuenta || 'N/A'} - {detraccionGenerada.cuentaBNSunatProveedor.descripcion || 'N/A'}
+                            </div>
+                          </div>
+                        )}
+                        <div style={{ flex: 0.5 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Detracción</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#1976D2' }}>{formatearNumero(detraccionGenerada.importeRequerido)}</div>
+                        </div>
+                        <div style={{ flex: 0.5 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Pagado</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#4CAF50' }}>{formatearNumero(detraccionGenerada.importePagado)}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Pendiente</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#F44336' }}>{formatearNumero(detraccionGenerada.saldoPendiente)}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "start", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row", marginTop: 10 }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Tipo Documento</label>
+                          <div>{detraccionGenerada.tipoDocumento?.descripcion || 'N/A'}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>N° Documento</label>
+                          <div style={{ fontWeight: 'bold' }}>{detraccionGenerada.numeroDocumento || 'N/A'}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Fecha Emisión</label>
+                          <div>{detraccionGenerada.fechaEmision ? formatearFecha(detraccionGenerada.fechaEmision) : 'N/A'}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Período Contable</label>
+                          <div>{detraccionGenerada.periodoContable?.nombrePeriodo || 'N/A'}</div>
+                        </div>
+                      </div>
+
+                      {detraccionGenerada.observaciones && (
+                        <div style={{ marginTop: 10 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Observaciones Detalladas</label>
+                          <div style={{ padding: '0.75rem', backgroundColor: '#F5F5F5', borderRadius: '6px', whiteSpace: 'pre-wrap', fontSize: '0.85rem', fontFamily: 'monospace', maxHeight: '300px', overflowY: 'auto', border: '1px solid #ddd' }}>
+                            {detraccionGenerada.observaciones}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionTab>
+                )}
+
+                {/* RETENCIÓN */}
+                {retencionGenerada && (
+                  <AccordionTab header={`📋 Retención ID: ${retencionGenerada.id} - ${retencionGenerada.estadoPago?.nombre || 'PENDIENTE'} - S/ ${formatearNumero(retencionGenerada.importeRequerido)}`}>
+                    <div className="p-fluid">
+                      <div style={{ display: "flex", alignItems: "start", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>ID Retención</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#1976D2' }}>{retencionGenerada.id}</div>
+                        </div>
+                        <div style={{ flex: 2 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Tipo Retención</label>
+                          <div>{retencionGenerada.tipoRetencion?.descripcion || 'N/A'}</div>
+                        </div>
+                        <div style={{ flex: 0.5 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Tasa</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{retencionGenerada.tasaRetencion ? `${Number(retencionGenerada.tasaRetencion)}%` : 'N/A'}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Estado de Pago</label>
+                          <div style={{ padding: '0.5rem', borderRadius: '4px', backgroundColor: '#E8F5E9', fontWeight: 'bold', textAlign: 'center' }}>
+                            {retencionGenerada.estadoPago?.nombre || 'PENDIENTE'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "start", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row", marginTop: 10 }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Importe Requerido</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#1976D2' }}>{formatearNumero(retencionGenerada.importeRequerido)}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Pagado</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#4CAF50' }}>{formatearNumero(retencionGenerada.importePagado)}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Pendiente</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#F44336' }}>{formatearNumero(retencionGenerada.saldoPendiente)}</div>
+                        </div>
+                      </div>
+
+                      {retencionGenerada.observaciones && (
+                        <div style={{ marginTop: 10 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Observaciones Detalladas</label>
+                          <div style={{ padding: '0.75rem', backgroundColor: '#F5F5F5', borderRadius: '6px', whiteSpace: 'pre-wrap', fontSize: '0.85rem', fontFamily: 'monospace', maxHeight: '300px', overflowY: 'auto', border: '1px solid #ddd' }}>
+                            {retencionGenerada.observaciones}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionTab>
+                )}
+
+                {/* PERCEPCIÓN */}
+                {percepcionGenerada && (
+                  <AccordionTab header={`📋 Percepción ID: ${percepcionGenerada.id} - ${percepcionGenerada.estadoPago?.nombre || 'PENDIENTE'} - S/ ${formatearNumero(percepcionGenerada.importeRequerido)}`}>
+                    <div className="p-fluid">
+                      <div style={{ display: "flex", alignItems: "start", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>ID Percepción</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#1976D2' }}>{percepcionGenerada.id}</div>
+                        </div>
+                        <div style={{ flex: 2 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Tipo Percepción</label>
+                          <div>{percepcionGenerada.tipoPercepcion?.descripcion || 'N/A'}</div>
+                        </div>
+                        <div style={{ flex: 0.5 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Tasa</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{percepcionGenerada.tasaPercepcion ? `${Number(percepcionGenerada.tasaPercepcion)}%` : 'N/A'}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Estado de Pago</label>
+                          <div style={{ padding: '0.5rem', borderRadius: '4px', backgroundColor: '#FFF3E0', fontWeight: 'bold', textAlign: 'center' }}>
+                            {percepcionGenerada.estadoPago?.nombre || 'PENDIENTE'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "start", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row", marginTop: 10 }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Importe Requerido</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#1976D2' }}>{formatearNumero(percepcionGenerada.importeRequerido)}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Pagado</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#4CAF50' }}>{formatearNumero(percepcionGenerada.importePagado)}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Pendiente</label>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#F44336' }}>{formatearNumero(percepcionGenerada.saldoPendiente)}</div>
+                        </div>
+                      </div>
+
+                      {percepcionGenerada.observaciones && (
+                        <div style={{ marginTop: 10 }}>
+                          <label style={{ fontWeight: 'bold', color: '#666' }}>Observaciones Detalladas</label>
+                          <div style={{ padding: '0.75rem', backgroundColor: '#F5F5F5', borderRadius: '6px', whiteSpace: 'pre-wrap', fontSize: '0.85rem', fontFamily: 'monospace', maxHeight: '300px', overflowY: 'auto', border: '1px solid #ddd' }}>
+                            {percepcionGenerada.observaciones}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionTab>
+                )}
+              </Accordion>
+            </Panel>
+          )}
+
           <Panel header="Información Adicional" toggleable collapsed>
             {isEdit && (
               <div
