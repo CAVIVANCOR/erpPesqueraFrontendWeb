@@ -35,17 +35,14 @@ export async function generarYSubirPDFCotizacionVentas(
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
 
     // 3. Crear FormData - El backend generará el nombre automáticamente
-    const timestamp = Date.now();
     const formData = new FormData();
-    formData.append("files", blob, `cotizacion-${cotizacion.id}-${timestamp}.pdf`);
-
-    // 4. Crear FormData (igual que Caso 1)
+    formData.append("file", blob, `COTIZACION-VENTAS-${cotizacion.id}.pdf`);
     formData.append("moduleName", "cotizacion-ventas");
     formData.append("entityId", cotizacion.id);
 
-    // 5. Subir al servidor usando endpoint estandarizado
+    // 4. Subir al servidor (usando /upload para PDFs generados)
     const token = useAuthStore.getState().token;
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/merge`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/upload`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

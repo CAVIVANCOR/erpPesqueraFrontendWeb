@@ -510,7 +510,7 @@ export default function ConfirmacionPagoDialog({
             header="Debe"
             body={(rowData) => (
               <span style={{ fontWeight: 'bold' }}>
-                {monedaPago?.simbolo || ''} {formatearNumero(rowData.totalDebe || 0, 2)}
+                S/. {formatearNumero(rowData.totalDebe || 0, 2)}
               </span>
             )}
             style={{ width: '15%', textAlign: 'right' }}
@@ -520,7 +520,7 @@ export default function ConfirmacionPagoDialog({
             header="Haber"
             body={(rowData) => (
               <span style={{ fontWeight: 'bold' }}>
-                {monedaPago?.simbolo || ''} {formatearNumero(rowData.totalHaber || 0, 2)}
+                S/. {formatearNumero(rowData.totalHaber || 0, 2)}
               </span>
             )}
             style={{ width: '15%', textAlign: 'right' }}
@@ -531,7 +531,7 @@ export default function ConfirmacionPagoDialog({
               <div className="flex gap-2 justify-content-center">
                 <Button 
                   icon="pi pi-file-pdf" 
-                  label="Voucher"
+                  label="Voucher Contable"
                   className="p-button-help p-button-sm"
                   tooltip="Ver voucher contable en PDF"
                   tooltipOptions={{ position: 'top' }}
@@ -546,11 +546,11 @@ export default function ConfirmacionPagoDialog({
             body={(rowData) => (
               <Button
                 icon="pi pi-file-pdf"
-                label="Ver Voucher"
+                label="Ver Asiento"
                 size="small"
                 severity="success"
                 outlined
-                tooltip="Ver voucher del asiento contable"
+                tooltip="Ver asiento contable"
                 tooltipOptions={{ position: 'top' }}
                 onClick={() => {
                   setAsientoSeleccionado(rowData);
@@ -637,11 +637,11 @@ export default function ConfirmacionPagoDialog({
       )}
 
       {/* Comprobante de Pago de Detracción (Opcional) */}
-      {(resultadoPago?.movimientos?.autodetraccionEgreso?.id || resultadoPago?.movimientos?.autodetraccionIngreso?.id || resultadoPago?.pagoCuentaPorCobrar?.id) && (
+      {resultadoPago?.pagoCuentaPorCobrar?.id && (
         <>
           <Divider />
           <PdfComprobanteImpuestoCard
-            movimientoId={resultadoPago.movimientos.autodetraccionEgreso?.id || resultadoPago.movimientos.autodetraccionIngreso?.id}
+            movimientoId={resultadoPago.movimientos?.detraccionIngreso?.id || resultadoPago.movimientos?.autodetraccionEgreso?.id || resultadoPago.movimientos?.autodetraccionIngreso?.id}
             pagoCuentaPorCobrarId={resultadoPago.pagoCuentaPorCobrar?.id}
             control={control}
             errors={errors}
@@ -649,8 +649,9 @@ export default function ConfirmacionPagoDialog({
             watch={watch}
             getValues={getValues}
             defaultValues={{
-              ...resultadoPago.movimientos.autodetraccionEgreso,
-              ...resultadoPago.movimientos.autodetraccionIngreso,
+              ...resultadoPago.movimientos?.detraccionIngreso,
+              ...resultadoPago.movimientos?.autodetraccionEgreso,
+              ...resultadoPago.movimientos?.autodetraccionIngreso,
               ...resultadoPago.pagoCuentaPorCobrar
             }}
             readOnly={false}

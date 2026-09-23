@@ -29,15 +29,15 @@ export async function generarYSubirPDFRequerimientoCompra(
     // 2. Crear un blob del PDF
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
 
-    // 3. Crear FormData - El backend generará el nombre automáticamente
+    // 3. Crear FormData
     const formData = new FormData();
-    formData.append("files", blob, "temp.pdf");
+    formData.append("file", blob, `REQUERIMIENTO-COMPRA-${requerimiento.id}.pdf`);
     formData.append("moduleName", "requerimiento-compra");
     formData.append("entityId", requerimiento.id);
     
-    // 4. Subir al servidor usando endpoint estandarizado
+    // 4. Subir al servidor (usando /upload para PDFs generados)
     const token = useAuthStore.getState().token;
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/merge`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/upload`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

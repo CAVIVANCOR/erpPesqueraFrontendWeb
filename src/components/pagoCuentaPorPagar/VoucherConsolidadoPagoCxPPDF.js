@@ -66,13 +66,13 @@ export async function generarYSubirVoucherConsolidado(
 
     // 3. Crear FormData
     const formData = new FormData();
-    formData.append("files", blob, "temp.pdf");
+    formData.append("file", blob, `PAGO-CXP-VOUCHER-CONSOLIDADO-${pagoCuentaPorPagar.id}.pdf`);
     formData.append("moduleName", "pago-cxp-voucher-consolidado");
     formData.append("entityId", pagoCuentaPorPagar.id);
 
-    // 4. Subir al servidor
+    // 4. Subir al servidor (usando /upload para PDFs generados)
     const token = useAuthStore.getState().token;
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/merge`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/upload`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -372,17 +372,18 @@ async function generarPDFVoucherConsolidado(
     const lineHeightCell = 8;
     const rowHeight = maxLines * lineHeightCell + 4;
 
-    // Fondo alternado
+    // ✅ PASO 1: Dibujar fondo de la fila (PRIMERO, para que quede detrás del texto)
     const bgColor = index % 2 === 0 ? rgb(0.95, 0.97, 0.98) : rgb(1, 1, 1);
+    const rowBottomY = yPosition - rowHeight + 2;
     page.drawRectangle({
       x: tableStartX,
-      y: yPosition - rowHeight + 2,
+      y: rowBottomY,
       width: tableWidth,
       height: rowHeight,
       color: bgColor,
     });
 
-    // ✅ Dibujar celdas con alineación vertical superior
+    // ✅ PASO 2: Dibujar texto de las celdas (SEGUNDO, para que quede encima del fondo)
     let xPos = tableStartX;
     for (let i = 0; i < cellLines.length; i++) {
       const lines = cellLines[i];
@@ -416,12 +417,13 @@ async function generarPDFVoucherConsolidado(
       xPos += colWidths[i];
     }
 
+    // ✅ PASO 3: Dibujar bordes de la fila (TERCERO, para que queden encima de todo)
     // Líneas verticales
     let lineX = tableStartX;
     for (let i = 0; i <= colWidths.length; i++) {
       page.drawLine({
         start: { x: lineX, y: yPosition },
-        end: { x: lineX, y: yPosition - rowHeight + 2 },
+        end: { x: lineX, y: rowBottomY },
         thickness: 0.3,
         color: rgb(0.8, 0.8, 0.8),
       });
@@ -430,36 +432,42 @@ async function generarPDFVoucherConsolidado(
 
     // Línea horizontal inferior
     page.drawLine({
-      start: { x: tableStartX, y: yPosition - rowHeight + 2 },
-      end: { x: tableStartX + tableWidth, y: yPosition - rowHeight + 2 },
+      start: { x: tableStartX, y: rowBottomY },
+      end: { x: tableStartX + tableWidth, y: rowBottomY },
       thickness: 0.3,
       color: rgb(0.8, 0.8, 0.8),
     });
 
-    yPosition -= rowHeight;
+    // ✅ PASO 4: Actualizar yPosition para la siguiente fila
+    yPosition = rowBottomY; // Mover yPosition al fondo de esta fila
   }
 
   // ═══════════════════════════════════════════════════════════
   // 8. FILA DE TOTALES
   // ═══════════════════════════════════════════════════════════
-  yPosition -= 5;
+  // ✅ yPosition ya está en el fondo de la última fila, no restar nada
+  const totalRowHeight = 20;
+  const totalRowBottomY = yPosition - totalRowHeight;
 
-  // Fondo celeste
+  // ✅ PASO 1: Dibujar fondo celeste del total
   page.drawRectangle({
     x: tableStartX,
-    y: yPosition - 3,
+    y: totalRowBottomY,
     width: tableWidth,
-    height: 20,
+    height: totalRowHeight,
     color: rgb(0.72, 0.87, 0.97),
   });
 
+  // ✅ PASO 2: Dibujar texto del total (centrado verticalmente en el rectángulo)
+  const totalTextY = totalRowBottomY + (totalRowHeight / 2) - 3;
+  
   // Texto "TOTALES" centrado en columna "Cuenta" (índice 2)
   const xInicioColCuenta = colWidths.slice(0, 2).reduce((a, b) => a + b, 0);
   const totalesLabel = "TOTALES";
   const totalesLabelWidth = fontBold.widthOfTextAtSize(totalesLabel, 8);
   page.drawText(totalesLabel, {
     x: tableStartX + xInicioColCuenta + (colWidths[2] - totalesLabelWidth) / 2,
-    y: yPosition,
+    y: totalTextY,
     size: 8,
     font: fontBold,
     color: rgb(0, 0, 0),
@@ -471,25 +479,26 @@ async function generarPDFVoucherConsolidado(
   const xInicioMonto = colWidths.slice(0, 4).reduce((a, b) => a + b, 0);
   page.drawText(totalMontoText, {
     x: tableStartX + xInicioMonto + colWidths[4] - totalMontoWidth - 2,
-    y: yPosition,
+    y: totalTextY,
     size: 8,
     font: fontBold,
     color: rgb(0, 0, 0),
   });
 
-  // Líneas verticales del total
+  // ✅ PASO 3: Dibujar bordes del total
   let lineXTot = tableStartX;
   for (let i = 0; i <= colWidths.length; i++) {
     page.drawLine({
-      start: { x: lineXTot, y: yPosition - 3 },
-      end: { x: lineXTot, y: yPosition + 17 },
+      start: { x: lineXTot, y: yPosition },
+      end: { x: lineXTot, y: totalRowBottomY },
       thickness: 0.5,
       color: rgb(0.5, 0.7, 0.8),
     });
     if (i < colWidths.length) lineXTot += colWidths[i];
   }
 
-  yPosition -= 25;
+  // ✅ PASO 4: Actualizar yPosition para el siguiente elemento
+  yPosition = totalRowBottomY - 10; // Dejar 10 puntos de espacio después del total
 
   // ═══════════════════════════════════════════════════════════
   // 9. CONCEPTOS SUNAT (si existen) - ✅ CORRECCIÓN 4: Formato horizontal con tabla
@@ -1077,7 +1086,7 @@ function dibujarHeadersTablaMovimientos(
     if (i < colWidths.length) lineX += colWidths[i];
   }
 
-  return yPos - 20;
+  return yPos - 23; // ✅ Aumentado de 20 a 23 para dar espacio a las filas
 }
 
 /**
@@ -1086,56 +1095,34 @@ function dibujarHeadersTablaMovimientos(
 function prepararDatosMovimientos(movimientos, pagoCuentaPorPagar, cuentaPorPagar) {
   const movimientosArray = [];
 
-  // Helper para formatear cuenta completa (siguiendo patrón de CuentaCorrienteSelector)
-  const formatearCuentaCompleta = (cuentaCorriente, tipoMov = '') => {
-
-    
-    if (!cuentaCorriente) {
-      console.warn(`⚠️  [${tipoMov}] cuentaCorriente es null/undefined`);
-      return "-";
-    }
+  // Helper para formatear cuenta completa
+  const formatearCuentaCompleta = (cuentaCorriente) => {
+    if (!cuentaCorriente) return "-";
     
     const partes = [];
-    
-    // Banco
     if (cuentaCorriente.banco?.nombreCorto || cuentaCorriente.banco?.nombre) {
-      const banco = cuentaCorriente.banco.nombreCorto || cuentaCorriente.banco.nombre;
-      partes.push(banco);
-    } else {
-      console.warn(`⚠️  [${tipoMov}] Sin banco`);
+      partes.push(cuentaCorriente.banco.nombreCorto || cuentaCorriente.banco.nombre);
     }
-    
-    // Moneda
     if (cuentaCorriente.moneda?.codigoSunat) {
       partes.push(cuentaCorriente.moneda.codigoSunat);
-    } else {
-      console.warn(`⚠️  [${tipoMov}] Sin moneda`);
     }
-    
-    // Descripción
     if (cuentaCorriente.descripcion) {
       partes.push(cuentaCorriente.descripcion);
     }
-    
-    // Número de cuenta
     if (cuentaCorriente.numeroCuenta) {
       partes.push(cuentaCorriente.numeroCuenta);
-    } else {
-      console.warn(`⚠️  [${tipoMov}] Sin número de cuenta`);
     }
     
-    const resultado = partes.length > 0 ? partes.join(" - ") : "-";
-    return resultado;
+    return partes.length > 0 ? partes.join(" - ") : "-";
   };
 
-  // 1. Pago principal (egreso) - USA DESTINO
+  // 1. Pago principal (egreso)
   if (movimientos.egreso) {
-    const cuentaEgreso = movimientos.egreso.cuentaCorrienteDestino;
     movimientosArray.push({
       tipo: movimientos.egreso.tipoMovimiento?.nombre || "",
       id: movimientos.egreso.id,
       monto: movimientos.egreso.monto,
-      cuenta: formatearCuentaCompleta(cuentaEgreso, 'INGRESO'),
+      cuenta: formatearCuentaCompleta(movimientos.egreso.cuentaCorrienteDestino),
       numeroOperacion: pagoCuentaPorPagar.numeroOperacion || "-",
       esEgreso: true,
       orden: 1,
@@ -1233,14 +1220,6 @@ function prepararDatosMovimientos(movimientos, pagoCuentaPorPagar, cuentaPorPaga
 
   // Ordenar por prioridad
   movimientosArray.sort((a, b) => a.orden - b.orden);
-
-  console.table(movimientosArray.map(m => ({
-    Tipo: m.tipo,
-    ID: m.id,
-    Cuenta: m.cuenta,
-    'N° Op': m.numeroOperacion,
-    Monto: m.monto
-  })));
 
   return movimientosArray;
 }

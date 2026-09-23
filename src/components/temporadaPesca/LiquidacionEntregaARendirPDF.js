@@ -20,7 +20,7 @@ export async function generarYSubirPDFLiquidacionEntregaARendir(
     const pdfBytes = await generarPDFLiquidacion(liquidacion, empresa);
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
     const formData = new FormData();
-    formData.append("files", blob, "temp.pdf");
+    formData.append("file", blob, `LIQUIDACION-ENTREGA-RENDIR-${liquidacion.id}.pdf`);
     formData.append(
       "moduleName",
       "liquidacion-entrega-rendir-pesca-industrial",
@@ -28,7 +28,7 @@ export async function generarYSubirPDFLiquidacionEntregaARendir(
     formData.append("entityId", liquidacion.id);
 
     const token = useAuthStore.getState().token;
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/merge`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/upload`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

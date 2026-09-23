@@ -37,38 +37,6 @@ export default function ComprobanteGastoTab({ movimiento, toast }) {
 
   return (
     <div className="grid">
-      {/* Datos del Comprobante */}
-      <div className="col-12">
-        <Panel header="Datos del Comprobante" className="mb-3">
-          <div className="grid">
-            <div className="col-12 md:col-4">
-              <div className="field">
-                <label className="font-bold">Tipo de Documento:</label>
-                <p>{movimiento.tipoDocumento?.nombre || "-"}</p>
-              </div>
-            </div>
-            <div className="col-12 md:col-4">
-              <div className="field">
-                <label className="font-bold">Serie:</label>
-                <p>{movimiento.numeroSerieComprobante || "-"}</p>
-              </div>
-            </div>
-            <div className="col-12 md:col-4">
-              <div className="field">
-                <label className="font-bold">Correlativo:</label>
-                <p>{movimiento.numeroCorrelativoComprobante || "-"}</p>
-              </div>
-            </div>
-            <div className="col-12">
-              <div className="field">
-                <label className="font-bold">Proveedor:</label>
-                <p>{movimiento.entidadComercial?.razonSocial || "-"}</p>
-              </div>
-            </div>
-          </div>
-        </Panel>
-      </div>
-
       {/* Visor PDF */}
       <div className="col-12">
         <PDFDocumentManager

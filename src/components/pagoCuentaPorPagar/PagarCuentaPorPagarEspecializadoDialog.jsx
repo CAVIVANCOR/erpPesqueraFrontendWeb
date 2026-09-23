@@ -25,7 +25,7 @@ import { getResponsiveFontSize, formatearFecha, formatearNumero } from '../../ut
 import ConfirmacionPagoDialog from './ConfirmacionPagoCxPDialog';
 import TipoMovimientoSelector from '../common/TipoMovimientoSelector';
 import IrACxPEditar from '../common/IrACxPEditar'; 
-import VerRegistroImpuestoSunat from '../common/VerRegistroImpuestoSunat';
+import { RegistroImpuestoSunatPanel } from '../common/RegistroImpuestoSunat';
 import { generarYSubirVoucherConsolidado } from './VoucherConsolidadoPagoCxPPDF';
 import { generarYSubirVoucherIndividual } from '../movimientoCaja/utils/VoucherIndividualMovimientoPDF';
 import { generarYSubirVoucherContable } from '../movimientoCaja/utils/VoucherContableMovimientoPDF';
@@ -780,18 +780,16 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
       return false;
     }
 
-    // ✅ VALIDAR CAMPOS DE DETRACCIÓN SI HAY PAGO DE DETRACCIÓN
-    if (Number(montoDetraccionIngresado) > 0) {
-      if (!cuentaBancariaDetraccionId) {
-        toast?.current?.show({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Debe seleccionar la cuenta corriente origen para el pago de detracción.',
-          life: 3000
-        });
-        return false;
-      }
-
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // ✅ VALIDACIÓN CONDICIONAL DE DETRACCIÓN
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // Solo validar campos de pago si se seleccionó una cuenta bancaria de origen.
+    // Si NO se selecciona cuenta, significa que NO se va a pagar la detracción.
+    // ITF y Comisión son SIEMPRE OPCIONALES.
+    // ═══════════════════════════════════════════════════════════════════════════════
+    if (cuentaBancariaDetraccionId) {
+      // Si eligió cuenta bancaria para detracción, validar campos obligatorios de pago
+      
       if (!fechaDepositoDetraccion) {
         toast?.current?.show({
           severity: 'error',
@@ -841,6 +839,19 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
         });
         return false;
       }
+
+      // ✅ Validar que haya un monto de detracción si se eligió cuenta
+      if (!Number(montoDetraccionIngresado) || Number(montoDetraccionIngresado) <= 0) {
+        toast?.current?.show({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Debe ingresar el monto de detracción a pagar.',
+          life: 3000
+        });
+        return false;
+      }
+
+      // ✅ ITF y Comisión de detracción son OPCIONALES (no se validan)
     }
 
     if (!monedaPagoId) {
@@ -873,8 +884,25 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
       return false;
     }
 
-    // Validar detracción
-    if (aplicaDetraccion) {
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // ✅ VALIDACIÓN DE DETRACCIÓN
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // SOLO valida si se seleccionó cuenta bancaria para pagar la detracción.
+    // Si NO se selecciona cuenta, significa que NO se va a pagar la detracción.
+    // ═══════════════════════════════════════════════════════════════════════════════
+    if (cuentaBancariaDetraccionId) {
+      // Si eligió cuenta bancaria para detracción, validar campos obligatorios
+      
+      if (!tasaDetraccion || Number(tasaDetraccion) <= 0) {
+        toast?.current?.show({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'La tasa de detracción debe ser mayor a cero.',
+          life: 3000
+        });
+        return false;
+      }
+
       if (!numeroConstanciaDetraccion) {
         toast?.current?.show({
           severity: 'error',
@@ -894,19 +922,14 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
         });
         return false;
       }
-
-      if (!tasaDetraccion || Number(tasaDetraccion) <= 0) {
-        toast?.current?.show({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'La tasa de detracción debe ser mayor a cero.',
-          life: 3000
-        });
-        return false;
-      }
     }
 
-    // Validar retención
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // ✅ VALIDACIÓN DE RETENCIÓN (TOGGLE aplicaRetencion)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // Actualmente la retención no tiene campos de pago (cuenta bancaria, medio de pago)
+    // Solo valida datos del documento de retención
+    // ═══════════════════════════════════════════════════════════════════════════════
     if (aplicaRetencion) {
       if (!numeroDocumentoRetencion) {
         toast?.current?.show({
@@ -939,7 +962,12 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
       }
     }
 
-    // Validar percepción
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // ✅ VALIDACIÓN DE PERCEPCIÓN (TOGGLE aplicaPercepcion)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // Actualmente la percepción no tiene campos de pago (cuenta bancaria, medio de pago)
+    // Solo valida datos del documento de percepción
+    // ═══════════════════════════════════════════════════════════════════════════════
     if (aplicaPercepcion) {
       if (!numeroDocumentoPercepcion) {
         toast?.current?.show({
@@ -1024,8 +1052,8 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
         cuentaBancariaOrigenAutodetraccion: cuentaBancariaOrigenAutodetraccion || null
       };
 
-      // Agregar detracción si aplica
-      if (aplicaDetraccion) {
+      // Agregar detracción SOLO si se va a pagar (tiene cuenta bancaria)
+      if (cuentaBancariaDetraccionId) {
         dataPago.aplicaDetraccion = true;
         dataPago.detraccion = {
           numeroConstancia: numeroConstanciaDetraccion,
@@ -1036,8 +1064,8 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
           importeDetraido: Number(importeDetraido),
           cuentaSunatId: cuentaSunatId ? Number(cuentaSunatId) : null,
           observaciones: observaciones || null,
-          // ✅ NUEVOS CAMPOS PARA PAGO DE DETRACCIÓN
-          cuentaBancariaDetraccionId: cuentaBancariaDetraccionId ? Number(cuentaBancariaDetraccionId) : null,
+          // ✅ CAMPOS PARA PAGO DE DETRACCIÓN
+          cuentaBancariaDetraccionId: Number(cuentaBancariaDetraccionId),
           medioPagoDetraccionId: medioPagoDetraccionId ? Number(medioPagoDetraccionId) : null,
           monedaDetraccionId: monedaDetraccionId ? Number(monedaDetraccionId) : null,
           tipoCambioDetraccion: Number(tipoCambioDetraccion) || 1,
@@ -1494,49 +1522,26 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
   // RENDER: REGISTRO IMPUESTO SUNAT GENERADO
   // ════════════════════════════════════════════════════════════
   const renderRegistroImpuestoSunat = () => {
-    if (!cuentaPorPagar?.preFactura) return null;
-
-    const preFactura = cuentaPorPagar.preFactura;
-    let tipoImpuesto = null;
-    let registroGenerado = null;
-    let estadosImpuesto = [];
-
-    if (preFactura.aplicaDetraccion && preFactura.detraccion) {
-      tipoImpuesto = 'DETRACCION';
-      registroGenerado = preFactura.detraccion;
-      estadosImpuesto = estadosDetraccion;
-    } else if (preFactura.aplicaRetencion && preFactura.retencion) {
-      tipoImpuesto = 'RETENCION';
-      registroGenerado = preFactura.retencion;
-      estadosImpuesto = estadosRetencion;
-    } else if (preFactura.aplicaPercepcion && preFactura.percepcion) {
-      tipoImpuesto = 'PERCEPCION';
-      registroGenerado = preFactura.percepcion;
-      estadosImpuesto = estadosPercepcion;
-    }
-
-    if (!tipoImpuesto || !registroGenerado) return null;
-
     return (
-      <Panel header="📋 Registro de Impuesto SUNAT Generado" className="mb-3">
-        <VerRegistroImpuestoSunat
-          registro={registroGenerado}
-          tipo={tipoImpuesto}
-          monedas={monedas}
-          tiposDetraccion={tiposDetraccion}
-          tiposRetencionPercepcion={tiposRetencionPercepcion}
-          periodosContables={periodosContables}
-          cuentasCorrientes={cuentasCorrientes}
-          empresas={empresas}
-          entidadesComerciales={proveedores}
-          estadosPago={estadosImpuesto}
-          compact={false}
-          toast={toast}
-          permisos={{}}
-          onUpdate={(updatedData) => {
-          }}
-        />
-      </Panel>
+      <RegistroImpuestoSunatPanel
+        documento={cuentaPorPagar}
+        monedas={monedas}
+        tiposDetraccion={tiposDetraccion}
+        tiposRetencionPercepcion={tiposRetencionPercepcion}
+        periodosContables={periodosContables}
+        empresas={empresas}
+        entidadesComerciales={proveedores}
+        estadosDetraccion={estadosDetraccion}
+        estadosRetencion={estadosRetencion}
+        estadosPercepcion={estadosPercepcion}
+        toast={toast}
+        permisos={{}}
+        compact={false}
+        showPanel={true}
+        onUpdate={(updatedData) => {
+          // Callback opcional para actualizar datos
+        }}
+      />
     );
   };
   // ════════════════════════════════════════════════════════════

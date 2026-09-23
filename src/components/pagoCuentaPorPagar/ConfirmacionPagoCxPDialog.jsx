@@ -384,11 +384,11 @@ export default function ConfirmacionPagoDialog({
             style={{ width: '10%', textAlign: 'right' }}
           />
           <Column
-            field="egresos"
-            header="Egresos"
+            field="ingresos"
+            header="Ingresos"
             body={(rowData) => (
               <span className="text-green-600 font-bold">
-                +{formatearNumero(rowData.egresos || 0, 2)}
+                +{formatearNumero(rowData.ingresos || 0, 2)}
               </span>
             )}
             style={{ width: '10%', textAlign: 'right' }}
@@ -576,7 +576,7 @@ export default function ConfirmacionPagoDialog({
             header="Debe"
             body={(rowData) => (
               <span style={{ fontWeight: 'bold' }}>
-                {monedaPago?.simbolo || ''} {formatearNumero(rowData.totalDebe || 0, 2)}
+                S/. {formatearNumero(rowData.totalDebe || 0, 2)}
               </span>
             )}
             style={{ width: '15%', textAlign: 'right' }}
@@ -586,21 +586,37 @@ export default function ConfirmacionPagoDialog({
             header="Haber"
             body={(rowData) => (
               <span style={{ fontWeight: 'bold' }}>
-                {monedaPago?.simbolo || ''} {formatearNumero(rowData.totalHaber || 0, 2)}
+                S/. {formatearNumero(rowData.totalHaber || 0, 2)}
               </span>
             )}
             style={{ width: '15%', textAlign: 'right' }}
+          />
+          <Column
+            header="Acciones"
+            body={(rowData) => (
+              <div className="flex gap-2 justify-content-center">
+                <Button 
+                  icon="pi pi-file-pdf" 
+                  label="Voucher Contable"
+                  className="p-button-help p-button-sm"
+                  tooltip="Ver voucher contable en PDF"
+                  tooltipOptions={{ position: 'top' }}
+                  onClick={() => handleVerVoucher(rowData)}
+                />
+              </div>
+            )}
+            style={{ width: '15%' }}
           />
           <Column
             header="Voucher"
             body={(rowData) => (
               <Button
                 icon="pi pi-file-pdf"
-                label="Ver Voucher"
+                label="Ver Asiento"
                 size="small"
                 severity="success"
                 outlined
-                tooltip="Ver voucher del asiento contable"
+                tooltip="Ver asiento contable"
                 tooltipOptions={{ position: 'top' }}
                 onClick={() => {
                   setAsientoSeleccionado(rowData);
@@ -608,7 +624,7 @@ export default function ConfirmacionPagoDialog({
                 }}
               />
             )}
-            style={{ width: '15%' }}
+            style={{ width: '12%' }}
           />
         </DataTable>
       </Panel>
@@ -687,11 +703,11 @@ export default function ConfirmacionPagoDialog({
       )}
 
       {/* Comprobante de Pago de Detracción (Opcional) */}
-      {(resultadoPago?.movimientos?.detraccionEgreso?.id || resultadoPago?.movimientos?.autodetraccionEgreso?.id || resultadoPago?.pagoCuentaPorPagar?.id) && (
+      {resultadoPago?.pagoCuentaPorPagar?.id && (
         <>
           <Divider />
           <PdfComprobanteImpuestoCard
-            movimientoId={resultadoPago.movimientos.detraccionEgreso?.id || resultadoPago.movimientos.autodetraccionEgreso?.id}
+            movimientoId={resultadoPago.movimientos?.detraccionEgreso?.id || resultadoPago.movimientos?.autodetraccionEgreso?.id}
             pagoCuentaPorPagarId={resultadoPago.pagoCuentaPorPagar?.id}
             control={control}
             errors={errors}
@@ -699,8 +715,8 @@ export default function ConfirmacionPagoDialog({
             watch={watch}
             getValues={getValues}
             defaultValues={{
-              ...resultadoPago.movimientos.autodetraccionEgreso,
-              ...resultadoPago.movimientos.autodetraccionEgreso,
+              ...resultadoPago.movimientos?.detraccionEgreso,
+              ...resultadoPago.movimientos?.autodetraccionEgreso,
               ...resultadoPago.pagoCuentaPorPagar
             }}
             readOnly={false}

@@ -47,13 +47,13 @@ export async function generarYSubirVoucherIndividual(
 
     // 3. Crear FormData
     const formData = new FormData();
-    formData.append("files", blob, "temp.pdf");
+    formData.append("file", blob, `MOVIMIENTO-CAJA-VOUCHER-INDIVIDUAL-${movimiento.id}.pdf`);
     formData.append("moduleName", "movimiento-caja-voucher-individual");  // ✅ Módulo correcto para voucher individual
     formData.append("entityId", movimiento.id);
 
-    // 4. Subir al servidor
+    // 4. Subir al servidor (usando /upload para PDFs generados)
     const token = useAuthStore.getState().token;
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/merge`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/upload`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

@@ -65,13 +65,13 @@ export async function generarYSubirVoucherConsolidado(
 
     // 3. Crear FormData
     const formData = new FormData();
-    formData.append("files", blob, "temp.pdf");
+    formData.append("file", blob, `PAGO-CXC-VOUCHER-CONSOLIDADO-${pagoCuentaPorCobrar.id}.pdf`);
     formData.append("moduleName", "pago-cxc-voucher-consolidado");
     formData.append("entityId", pagoCuentaPorCobrar.id);
 
-    // 4. Subir al servidor
+    // 4. Subir al servidor (usando /upload para PDFs generados)
     const token = useAuthStore.getState().token;
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/merge`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/upload`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -300,13 +300,17 @@ async function generarPDFVoucherConsolidado(
       totalSalidas += Number(mov.monto || 0);
     }
 
+    // ✅ PASO 1: Calcular altura y posición de la fila
+    const rowHeight = 18;
+    const rowBottomY = yPosition - rowHeight;
+
     // Fondo alternado
     const bgColor = index % 2 === 0 ? rgb(0.95, 0.97, 0.98) : rgb(1, 1, 1);
     page.drawRectangle({
       x: tableStartX,
-      y: yPosition - 2,
+      y: rowBottomY,
       width: tableWidth,
-      height: 18,
+      height: rowHeight,
       color: bgColor,
     });
 
@@ -322,7 +326,9 @@ async function generarPDFVoucherConsolidado(
         ? rgb(0.6, 0, 0) // Rojo para impuestos
         : rgb(0, 0, 0); // Negro normal
 
-    // Dibujar celdas
+    // ✅ PASO 2: Dibujar texto (centrado verticalmente)
+    const textY = rowBottomY + (rowHeight / 2) - 2;
+    
     let xPos = tableStartX;
     for (let i = 0; i < rowData.length; i++) {
       let displayValue = rowData[i];
@@ -352,7 +358,7 @@ async function generarPDFVoucherConsolidado(
 
       page.drawText(displayValue, {
         x: textX,
-        y: yPosition + 3,
+        y: textY,
         size: 6.5,
         font: fontToUse,
         color: colorToUse,
@@ -360,12 +366,12 @@ async function generarPDFVoucherConsolidado(
       xPos += colWidths[i];
     }
 
-    // Líneas verticales
+    // ✅ PASO 3: Dibujar bordes
     let lineX = tableStartX;
     for (let i = 0; i <= colWidths.length; i++) {
       page.drawLine({
-        start: { x: lineX, y: yPosition + 16 },
-        end: { x: lineX, y: yPosition - 2 },
+        start: { x: lineX, y: yPosition },
+        end: { x: lineX, y: rowBottomY },
         thickness: 0.3,
         color: rgb(0.8, 0.8, 0.8),
       });
@@ -374,36 +380,43 @@ async function generarPDFVoucherConsolidado(
 
     // Línea horizontal inferior
     page.drawLine({
-      start: { x: tableStartX, y: yPosition - 2 },
-      end: { x: tableStartX + tableWidth, y: yPosition - 2 },
+      start: { x: tableStartX, y: rowBottomY },
+      end: { x: tableStartX + tableWidth, y: rowBottomY },
       thickness: 0.3,
       color: rgb(0.8, 0.8, 0.8),
     });
 
-    yPosition -= 18;
+    // ✅ PASO 4: Actualizar yPosition para la siguiente fila
+    yPosition = rowBottomY;
   }
 
   // ═══════════════════════════════════════════════════════════
   // 8. FILA DE TOTALES
   // ═══════════════════════════════════════════════════════════
-  yPosition -= 5;
+  
+  // ✅ PASO 1: Calcular posición del total (sin superposición)
+  const totalRowHeight = 20;
+  const totalRowBottomY = yPosition - totalRowHeight;
 
   // Fondo celeste
   page.drawRectangle({
     x: tableStartX,
-    y: yPosition - 3,
+    y: totalRowBottomY,
     width: tableWidth,
-    height: 20,
+    height: totalRowHeight,
     color: rgb(0.72, 0.87, 0.97),
   });
 
+  // ✅ PASO 2: Dibujar texto del total (centrado verticalmente en el rectángulo)
+  const totalTextY = totalRowBottomY + (totalRowHeight / 2) - 3;
+  
   // Texto "TOTALES" centrado en columna "Cuenta" (índice 2)
   const xInicioColCuenta = colWidths.slice(0, 2).reduce((a, b) => a + b, 0);
   const totalesLabel = "TOTALES";
   const totalesLabelWidth = fontBold.widthOfTextAtSize(totalesLabel, 8);
   page.drawText(totalesLabel, {
     x: tableStartX + xInicioColCuenta + (colWidths[2] - totalesLabelWidth) / 2,
-    y: yPosition,
+    y: totalTextY,
     size: 8,
     font: fontBold,
     color: rgb(0, 0, 0),
@@ -415,25 +428,26 @@ async function generarPDFVoucherConsolidado(
   const xInicioMonto = colWidths.slice(0, 4).reduce((a, b) => a + b, 0);
   page.drawText(totalMontoText, {
     x: tableStartX + xInicioMonto + colWidths[4] - totalMontoWidth - 2,
-    y: yPosition,
+    y: totalTextY,
     size: 8,
     font: fontBold,
     color: rgb(0, 0, 0),
   });
 
-  // Líneas verticales del total
+  // ✅ PASO 3: Dibujar bordes del total
   let lineXTot = tableStartX;
   for (let i = 0; i <= colWidths.length; i++) {
     page.drawLine({
-      start: { x: lineXTot, y: yPosition - 3 },
-      end: { x: lineXTot, y: yPosition + 17 },
+      start: { x: lineXTot, y: yPosition },
+      end: { x: lineXTot, y: totalRowBottomY },
       thickness: 0.5,
       color: rgb(0.5, 0.7, 0.8),
     });
     if (i < colWidths.length) lineXTot += colWidths[i];
   }
 
-  yPosition -= 25;
+  // ✅ PASO 4: Actualizar yPosition para el siguiente elemento
+  yPosition = totalRowBottomY - 10; // Dejar 10 puntos de espacio después del total
 
   // ═══════════════════════════════════════════════════════════
   // 9. CONCEPTOS SUNAT (si existen) - ✅ CORRECCIÓN 4: Formato horizontal con tabla
@@ -660,24 +674,20 @@ async function generarPDFVoucherConsolidado(
 
   yPosition -= 20;
 
-  // Cuadro de resumen
+  // Cuadro de resumen simplificado
   const montoNetoAPagar = resumen.montoBruto - (resumen.detraccion || 0);
-  const netoEnCuentaEmpresa = montoNetoAPagar - (resumen.itf || 0) - (resumen.comision || 0);
   
   const resumenItems = [
     { label: "Monto Total Factura:", valor: resumen.montoBruto, negrita: false },
     { label: "(-) Detracción:", valor: resumen.detraccion || 0, negrita: false },
-    { label: "Monto Neto a Pagar:", valor: montoNetoAPagar, negrita: true, separador: true },
-    { label: "", valor: 0, separador: true, vacio: true },
-    { label: "MOVIMIENTOS BANCARIOS:", valor: 0, titulo: true },
-    { label: "(+) Ingreso a Cuenta Empresa:", valor: montoNetoAPagar, negrita: false },
-    { label: "(-) ITF:", valor: resumen.itf || 0, negrita: false },
-    { label: "(-) Comisión Bancaria:", valor: resumen.comision || 0, negrita: false },
-    { label: "NETO EN CUENTA EMPRESA:", valor: netoEnCuentaEmpresa, negrita: true, separador: true },
-    { label: "", valor: 0, separador: true, vacio: true },
-    { label: "(+) Detracción a Cuenta BN:", valor: resumen.detraccion || 0, negrita: false },
-    { label: "TOTAL DEPOSITADO EN BN:", valor: resumen.detraccion || 0, negrita: true, separador: true },
+    { label: "Monto Neto Pagado:", valor: montoNetoAPagar, negrita: true, separador: true },
   ];
+  
+  // Solo mostrar detracción si existe
+  if (resumen.detraccion && resumen.detraccion > 0) {
+    resumenItems.push({ label: "", valor: 0, separador: true, vacio: true });
+    resumenItems.push({ label: "Detracción Depositada en BN:", valor: resumen.detraccion, negrita: true, separador: true });
+  }
 
   resumenItems.forEach((item) => {
     if (item.vacio) {
@@ -1097,7 +1107,7 @@ function dibujarHeadersTablaMovimientos(
     if (i < colWidths.length) lineX += colWidths[i];
   }
 
-  return yPos - 20;
+  return yPos - 23; // Espacio adicional para evitar superposición con la primera fila
 }
 
 /**

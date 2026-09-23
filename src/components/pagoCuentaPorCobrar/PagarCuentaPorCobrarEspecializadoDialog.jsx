@@ -25,7 +25,7 @@ import { getResponsiveFontSize, formatearFecha, formatearNumero } from '../../ut
 import ConfirmacionPagoDialog from './ConfirmacionPagoDialog';
 import TipoMovimientoSelector from '../common/TipoMovimientoSelector';
 import IrACxCEditar from '../common/IrACxCEditar';
-import VerRegistroImpuestoSunat from '../common/VerRegistroImpuestoSunat';
+import { RegistroImpuestoSunatPanel } from '../common/RegistroImpuestoSunat';
 import { generarYSubirVoucherConsolidado } from './VoucherConsolidadoPagoCxCPDF';
 import { generarYSubirVoucherIndividual } from '../movimientoCaja/utils/VoucherIndividualMovimientoPDF';
 import { generarYSubirVoucherContable } from '../movimientoCaja/utils/VoucherContableMovimientoPDF';
@@ -246,28 +246,47 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
     const totalFactura = Number(cuentaPorCobrar.saldoPendiente || 0);
     const montoNeto = Number(montoNetoIngresado || 0);
 
-    if (montoNeto >= totalFactura && totalFactura > 0) {
+    // Calcular el neto esperado (total - detracción pendiente)
+    const preFactura = cuentaPorCobrar.preFactura;
+    let netoEsperado = totalFactura;
+    let detraccionPendiente = 0;
+
+    if (preFactura?.aplicaDetraccion && preFactura.detraccion) {
+      detraccionPendiente = Number(preFactura.detraccion.saldoPendiente || 0);
+      netoEsperado = totalFactura - detraccionPendiente;
+    }
+
+    // 🔍 DEBUG
+    console.log('🔍 DEBUG Autodetracción:');
+    console.log('  totalFactura:', totalFactura);
+    console.log('  montoNeto:', montoNeto);
+    console.log('  detraccionPendiente:', detraccionPendiente);
+    console.log('  netoEsperado:', netoEsperado);
+    console.log('  montoNeto > netoEsperado:', montoNeto > netoEsperado);
+    console.log('  detraccionPendiente > 0:', detraccionPendiente > 0);
+    console.log('  ¿Se activará autodetracción?:', montoNeto > netoEsperado && detraccionPendiente > 0);
+
+    // ✅ AUTODETRACCIÓN: Solo si el cliente paga MÁS que el neto esperado
+    // (es decir, pagó el total bruto incluyendo la detracción)
+    if (montoNeto > netoEsperado && detraccionPendiente > 0) {
       // Autodetracción detectada
       setEsAutodetraccion(true);
 
       // Calcular monto de detracción automáticamente
-      const preFactura = cuentaPorCobrar.preFactura;
-      if (preFactura?.aplicaDetraccion && preFactura.detraccion) {
-        const montoDetAuto = Number(preFactura.detraccion.saldoPendiente || 0);
-        setMontoDetraccionIngresado(montoDetAuto);
+      const montoDetAuto = detraccionPendiente;
+      setMontoDetraccionIngresado(montoDetAuto);
 
-        // Auto-generar número de constancia y operación
-        const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        const autoNumero = `AUTO-${fecha}-${numeroOperacion || 'TEMP'}`;
-        setNumeroConstanciaDetraccion(autoNumero);
-        setNumeroOperacionBN(autoNumero);
-      }
+      // Auto-generar número de constancia y operación
+      const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const autoNumero = `AUTO-${fecha}-${numeroOperacion || 'TEMP'}`;
+      setNumeroConstanciaDetraccion(autoNumero);
+      setNumeroOperacionBN(autoNumero);
 
       // Mostrar toast informativo
       toast?.current?.show({
         severity: 'info',
         summary: 'Autodetracción Detectada',
-        detail: 'El cliente pagó el total sin separar. Se realizará autodetracción automática.',
+        detail: `El cliente pagó el total (${montoNeto.toFixed(2)}) sin separar la detracción. Se realizará autodetracción automática.`,
         life: 5000
       });
     } else {
@@ -612,8 +631,8 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       return false;
     }
 
-    // Validar detracción
-    if (aplicaDetraccion) {
+    // Validar detracción SOLO si se está pagando detracción (monto > 0)
+    if (Number(montoDetraccionIngresado) > 0) {
       if (!numeroConstanciaDetraccion) {
         toast?.current?.show({
           severity: 'error',
@@ -753,8 +772,8 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
         cuentaBancariaOrigenAutodetraccion: cuentaBancariaOrigenAutodetraccion || null
       };
 
-      // Agregar detracción si aplica
-      if (aplicaDetraccion) {
+      // Agregar detracción SOLO si se está pagando detracción (monto > 0)
+      if (Number(montoDetraccionIngresado) > 0) {
         dataPago.aplicaDetraccion = true;
         dataPago.detraccion = {
           numeroConstancia: numeroConstanciaDetraccion,
@@ -1133,49 +1152,26 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   // RENDER: REGISTRO IMPUESTO SUNAT GENERADO
   // ════════════════════════════════════════════════════════════
   const renderRegistroImpuestoSunat = () => {
-    if (!cuentaPorCobrar?.preFactura) return null;
-
-    const preFactura = cuentaPorCobrar.preFactura;
-    let tipoImpuesto = null;
-    let registroGenerado = null;
-    let estadosImpuesto = [];
-
-    if (preFactura.aplicaDetraccion && preFactura.detraccion) {
-      tipoImpuesto = 'DETRACCION';
-      registroGenerado = preFactura.detraccion;
-      estadosImpuesto = estadosDetraccion;
-    } else if (preFactura.aplicaRetencion && preFactura.retencion) {
-      tipoImpuesto = 'RETENCION';
-      registroGenerado = preFactura.retencion;
-      estadosImpuesto = estadosRetencion;
-    } else if (preFactura.aplicaPercepcion && preFactura.percepcion) {
-      tipoImpuesto = 'PERCEPCION';
-      registroGenerado = preFactura.percepcion;
-      estadosImpuesto = estadosPercepcion;
-    }
-
-    if (!tipoImpuesto || !registroGenerado) return null;
-
     return (
-      <Panel header="📋 Registro de Impuesto SUNAT Generado" className="mb-3">
-        <VerRegistroImpuestoSunat
-          registro={registroGenerado}
-          tipo={tipoImpuesto}
-          monedas={monedas}
-          tiposDetraccion={tiposDetraccion}
-          tiposRetencionPercepcion={tiposRetencionPercepcion}
-          periodosContables={periodosContables}
-          cuentasCorrientes={cuentasCorrientes}
-          empresas={empresas}
-          entidadesComerciales={clientes}
-          estadosPago={estadosImpuesto}
-          compact={false}
-          toast={toast}
-          permisos={{}}
-          onUpdate={(updatedData) => {
-          }}
-        />
-      </Panel>
+      <RegistroImpuestoSunatPanel
+        documento={cuentaPorCobrar}
+        monedas={monedas}
+        tiposDetraccion={tiposDetraccion}
+        tiposRetencionPercepcion={tiposRetencionPercepcion}
+        periodosContables={periodosContables}
+        empresas={empresas}
+        entidadesComerciales={clientes}
+        estadosDetraccion={estadosDetraccion}
+        estadosRetencion={estadosRetencion}
+        estadosPercepcion={estadosPercepcion}
+        toast={toast}
+        permisos={{}}
+        compact={false}
+        showPanel={true}
+        onUpdate={(updatedData) => {
+          // Callback opcional para actualizar datos
+        }}
+      />
     );
   };
   // ════════════════════════════════════════════════════════════
@@ -1396,6 +1392,10 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
     const detraccion = preFactura.detraccion;
     if (!detraccion) return null;
 
+    console.log('🔍 DEBUG Render Detracción:');
+    console.log('  esAutodetraccion:', esAutodetraccion);
+    console.log('  montoDetraccionIngresado:', montoDetraccionIngresado);
+
     const monedaPago = monedas.find(m => Number(m.id) === Number(monedaPagoId));
     const montoDetEsperado = Number(detraccion.saldoPendiente || 0);
 
@@ -1469,8 +1469,8 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 mode="decimal"
                 minFractionDigits={2}
                 maxFractionDigits={2}
-                prefix={monedaPago?.simbolo ? `${monedaPago.simbolo} ` : ''}
-                placeholder={`Detracción esperada: ${monedaPago?.simbolo || ''} ${montoDetEsperado.toFixed(2)}`}
+                style={{ width: "100%" }}
+                placeholder={`Detracción esperada: S/. ${montoDetEsperado.toFixed(2)}`}
                 disabled={esAutodetraccion}
               />
             </div>
