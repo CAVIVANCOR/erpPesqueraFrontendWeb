@@ -3,12 +3,12 @@ import React, { useState, useEffect } from "react";
 import { Dialog } from "primereact/dialog";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Button } from "primereact/button";
+import { ConfirmDialog } from "primereact/confirmdialog";
 import DatosGeneralesTab from "./tabs/DatosGeneralesTab";
 import VoucherIndividualTab from "./tabs/VoucherIndividualTab";
-import VoucherConsolidadoTab from "./tabs/VoucherConsolidadoTab";
+import VoucherAsientoContableTab from "./tabs/VoucherAsientoContableTab";
 import ComprobanteGastoTab from "./tabs/ComprobanteGastoTab";
 import AsientoContableManager from "../common/AsientoContableManager";
-import { obtenerPeriodoActivo } from "../../api/contabilidad/periodoContable";
 
 export default function MovimientoCajaDialog({
   visible,
@@ -21,50 +21,9 @@ export default function MovimientoCajaDialog({
   readOnly = true
 }) {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
-  const [periodoContableId, setPeriodoContableId] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // ✅ PATRÓN: Obtener período contable desde la fecha del movimiento
-  useEffect(() => {
-    const cargarPeriodoContable = async () => {
-      if (!movimiento?.empresaId) return;
-
-      try {
-        // Si el movimiento ya tiene periodoContableId, usarlo
-        if (movimiento.periodoContableId) {
-          setPeriodoContableId(Number(movimiento.periodoContableId));
-          return;
-        }
-
-        // Si no, obtener el período activo de la empresa
-        const periodoActivo = await obtenerPeriodoActivo(movimiento.empresaId);
-        if (periodoActivo?.id) {
-          setPeriodoContableId(Number(periodoActivo.id));
-        }
-      } catch (error) {
-        console.error("Error al cargar período contable:", error);
-        toast?.current?.show({
-          severity: "error",
-          summary: "Error",
-          detail: "No se pudo cargar el período contable",
-          life: 3000,
-        });
-      }
-    };
-
-    if (visible && movimiento) {
-      cargarPeriodoContable();
-    }
-  }, [visible, movimiento, toast]);
-
   if (!movimiento) return null;
-
-  // ⭐ CALLBACK para AsientoContableManager (siguiendo patrón de PreFacturaForm)
-  const handleBeforeGenerateAsiento = async () => {
-    // El movimiento de caja ya debe tener monto válido
-    // No hay validaciones adicionales necesarias
-    return true;
-  };
 
   // ⭐ HANDLER para guardar/actualizar
   const handleSave = async () => {
@@ -81,14 +40,14 @@ export default function MovimientoCajaDialog({
     try {
       setSaving(true);
       await onSave(movimiento);
-      
+
       toast?.current?.show({
         severity: "success",
         summary: "Éxito",
         detail: "Movimiento de caja actualizado correctamente",
         life: 3000,
       });
-      
+
       onHide();
     } catch (error) {
       console.error("Error al guardar movimiento:", error);
@@ -104,16 +63,28 @@ export default function MovimientoCajaDialog({
   };
 
   const dialogFooter = (
-    <div className="flex justify-content-between align-items-center">
-      <div>
-        {!readOnly && (
-          <span className="text-sm text-500">
-            <i className="pi pi-info-circle mr-2"></i>
-            Recuerde guardar los cambios antes de cerrar
-          </span>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "end",
+        gap: 8,
+        marginTop: 18,
+      }}
+    >
+      {/* Componente genérico de asientos contables en modo solo lectura */}
+      <div style={{ flex: 1 }}>
+        {movimiento?.id && movimiento?.empresaId && (
+          <AsientoContableManager
+            documentoId={movimiento.id}
+            documentoTipo="MovimientoCaja"
+            empresaId={movimiento.empresaId}
+            periodoContableId={null}
+            showAsButton={true}
+            soloVer={true}
+          />
         )}
       </div>
-      <div className="flex gap-2">
+      <div style={{ flex: 1 }}>
         <Button
           label="Cerrar"
           icon="pi pi-times"
@@ -135,64 +106,55 @@ export default function MovimientoCajaDialog({
   );
 
   return (
-    <Dialog
-      visible={visible}
-      onHide={onHide}
-      header="Detalle de Movimiento de Caja"
-      style={{ width: "90vw", maxHeight: "90vh" }}
-      modal
-      footer={dialogFooter}
-      maximizable
-    >
-      <TabView
-        activeIndex={activeTabIndex}
-        onTabChange={(e) => setActiveTabIndex(e.index)}
+    <>
+      <ConfirmDialog />
+      <Dialog
+        visible={visible}
+        onHide={onHide}
+        header="Detalle de Movimiento de Caja"
+        style={{ width: "90vw", maxHeight: "90vh" }}
+        modal
+        footer={dialogFooter}
+        maximizable
       >
-        <TabPanel header="📋 Datos Generales">
-          <DatosGeneralesTab
-            movimiento={movimiento}
-            empresas={empresas}
-            toast={toast}
-            onFieldChange={onFieldChange}
-            readOnly={readOnly}
-          />
-        </TabPanel>
+        <TabView
+          activeIndex={activeTabIndex}
+          onTabChange={(e) => setActiveTabIndex(e.index)}
+        >
+          <TabPanel header="📋 Datos Generales">
+            <DatosGeneralesTab
+              movimiento={movimiento}
+              empresas={empresas}
+              toast={toast}
+              onFieldChange={onFieldChange}
+              readOnly={readOnly}
+            />
+          </TabPanel>
 
-        <TabPanel header="📄 Voucher Individual">
-          <VoucherIndividualTab
-            movimiento={movimiento}
-            toast={toast}
-          />
-        </TabPanel>
+          <TabPanel header="📄 Voucher Individual">
+            <VoucherIndividualTab
+              movimiento={movimiento}
+              toast={toast}
+            />
+          </TabPanel>
 
-        <TabPanel header="📄 Voucher Contable">
-          <VoucherConsolidadoTab
-            movimiento={movimiento}
-            toast={toast}
-          />
-        </TabPanel>
+          <TabPanel header="📄 Voucher Contable">
+            <VoucherAsientoContableTab
+              movimiento={movimiento}
+              toast={toast}
+            />
+          </TabPanel>
 
-        <TabPanel header=" Comprobante Gasto">
-          <ComprobanteGastoTab
-            movimiento={movimiento}
-            toast={toast}
-          />
-        </TabPanel>
-      </TabView>
+          <TabPanel header=" Comprobante Gasto">
+            <ComprobanteGastoTab
+              movimiento={movimiento}
+              toast={toast}
+            />
+          </TabPanel>
+        </TabView>
 
-      {/* Componente genérico de asientos contables */}
-      {movimiento?.id && movimiento?.empresaId && periodoContableId && (
-        <div className="mt-3">
-          <AsientoContableManager
-            documentoId={movimiento.id}
-            documentoTipo="MovimientoCaja"
-            empresaId={movimiento.empresaId}
-            periodoContableId={periodoContableId}
-            showAsButton={true}
-            onBeforeGenerate={handleBeforeGenerateAsiento}
-          />
-        </div>
-      )}
-    </Dialog>
+
+      </Dialog>
+    </>
   );
 }

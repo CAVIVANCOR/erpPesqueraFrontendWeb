@@ -223,6 +223,51 @@ export default function ConfirmacionPagoDialog({
       });
     }
 
+    // ✅ DETRACCIÓN EGRESO
+    if (resultadoPago.movimientos.detraccionEgreso) {
+      const saldo = saldosMap['Detracción'] || {};
+      movimientos.push({
+        tipo: 'Detracción',
+        id: resultadoPago.movimientos.detraccionEgreso.id,
+        monto: resultadoPago.movimientos.detraccionEgreso.monto,
+        movimiento: resultadoPago.movimientos.detraccionEgreso,
+        saldoAnterior: saldo.saldoAnterior || 0,
+        ingresos: saldo.ingresos || 0,
+        egresos: saldo.egresos || 0,
+        saldoActual: saldo.saldoActual || 0
+      });
+    }
+
+    // ✅ ITF DETRACCIÓN
+    if (resultadoPago.movimientos.itfDetraccion) {
+      const saldo = saldosMap['ITF Detracción'] || {};
+      movimientos.push({
+        tipo: 'ITF Detracción',
+        id: resultadoPago.movimientos.itfDetraccion.id,
+        monto: resultadoPago.movimientos.itfDetraccion.monto,
+        movimiento: resultadoPago.movimientos.itfDetraccion,
+        saldoAnterior: saldo.saldoAnterior || 0,
+        ingresos: saldo.ingresos || 0,
+        egresos: saldo.egresos || 0,
+        saldoActual: saldo.saldoActual || 0
+      });
+    }
+
+    // ✅ COMISIÓN DETRACCIÓN
+    if (resultadoPago.movimientos.comisionDetraccion) {
+      const saldo = saldosMap['Comisión Detracción'] || {};
+      movimientos.push({
+        tipo: 'Comisión Detracción',
+        id: resultadoPago.movimientos.comisionDetraccion.id,
+        monto: resultadoPago.movimientos.comisionDetraccion.monto,
+        movimiento: resultadoPago.movimientos.comisionDetraccion,
+        saldoAnterior: saldo.saldoAnterior || 0,
+        ingresos: saldo.ingresos || 0,
+        egresos: saldo.egresos || 0,
+        saldoActual: saldo.saldoActual || 0
+      });
+    }
+
     // ✅ AUTODETRACCIÓN EGRESO (Cuenta Empresa)
     if (resultadoPago.movimientos.autodetraccionEgreso) {
       const saldo = saldosMap['Autodetracción (Egreso)'] || {};
@@ -465,6 +510,9 @@ export default function ConfirmacionPagoDialog({
       egreso: resultadoPago.movimientos.egreso?.id,
       itf: resultadoPago.movimientos.itf?.id,
       comision: resultadoPago.movimientos.comision?.id,
+      detraccionEgreso: resultadoPago.movimientos.detraccionEgreso?.id,
+      itfDetraccion: resultadoPago.movimientos.itfDetraccion?.id,
+      comisionDetraccion: resultadoPago.movimientos.comisionDetraccion?.id,
       autodetraccionEgreso: resultadoPago.movimientos.autodetraccionEgreso?.id,
       autodetraccionIngreso: resultadoPago.movimientos.autodetraccionIngreso?.id
     });
@@ -484,6 +532,12 @@ export default function ConfirmacionPagoDialog({
         tipo = 'ITF';
       } else if (resultadoPago.movimientos.comision && Number(asiento.procesoOrigenId) === Number(resultadoPago.movimientos.comision.id)) {
         tipo = 'Comisión';
+      } else if (resultadoPago.movimientos.detraccionEgreso && Number(asiento.procesoOrigenId) === Number(resultadoPago.movimientos.detraccionEgreso.id)) {
+        tipo = 'Detracción';
+      } else if (resultadoPago.movimientos.itfDetraccion && Number(asiento.procesoOrigenId) === Number(resultadoPago.movimientos.itfDetraccion.id)) {
+        tipo = 'ITF Detracción';
+      } else if (resultadoPago.movimientos.comisionDetraccion && Number(asiento.procesoOrigenId) === Number(resultadoPago.movimientos.comisionDetraccion.id)) {
+        tipo = 'Comisión Detracción';
       } else if (resultadoPago.movimientos.autodetraccionEgreso && Number(asiento.procesoOrigenId) === Number(resultadoPago.movimientos.autodetraccionEgreso.id)) {
         tipo = 'Autodetracción (Egreso)';
       } else if (resultadoPago.movimientos.autodetraccionIngreso && Number(asiento.procesoOrigenId) === Number(resultadoPago.movimientos.autodetraccionIngreso.id)) {
@@ -502,7 +556,7 @@ export default function ConfirmacionPagoDialog({
     return (
       <Panel header="📊 Asientos Contables Generados" className="mb-3">
         <div className="mb-2 p-2" style={{ backgroundColor: '#e3f2fd', borderRadius: '4px', fontSize: '0.9rem' }}>
-          💡 <strong>Nota:</strong> Use los botones <strong>"Ver"</strong> y <strong>"Voucher"</strong> para visualizar el detalle de cada asiento.
+          💡 <strong>Nota:</strong> Use el botón <strong>"Ver Voucher"</strong> para visualizar el detalle de cada asiento.
         </div>
         <DataTable 
           value={asientosConTipo} 
@@ -538,30 +592,6 @@ export default function ConfirmacionPagoDialog({
             style={{ width: '15%', textAlign: 'right' }}
           />
           <Column
-            header="Acciones"
-            body={(rowData) => (
-              <div className="flex gap-2 justify-content-center">
-                <Button 
-                  icon="pi pi-eye" 
-                  label="Ver"
-                  className="p-button-info p-button-sm"
-                  tooltip="Ver detalle del asiento contable"
-                  tooltipOptions={{ position: 'top' }}
-                  onClick={() => handleVerAsiento(rowData)}
-                />
-                <Button 
-                  icon="pi pi-file-pdf" 
-                  label="Voucher"
-                  className="p-button-help p-button-sm"
-                  tooltip="Ver voucher contable en PDF"
-                  tooltipOptions={{ position: 'top' }}
-                  onClick={() => handleVerVoucher(rowData)}
-                />
-              </div>
-            )}
-            style={{ width: '15%' }}
-          />
-          <Column
             header="Voucher"
             body={(rowData) => (
               <Button
@@ -578,7 +608,7 @@ export default function ConfirmacionPagoDialog({
                 }}
               />
             )}
-            style={{ width: '12%' }}
+            style={{ width: '15%' }}
           />
         </DataTable>
       </Panel>
@@ -626,19 +656,6 @@ export default function ConfirmacionPagoDialog({
       {renderMovimientos()}
       {renderConceptosSunat()}
       {renderAsientosContables()}
-
-      {/* Componente genérico de asientos contables */}
-      {resultadoPago?.movimientos?.egreso?.id && resultadoPago?.movimientos?.egreso?.empresaId && (
-        <div className="mb-3">
-          <AsientoContableManager
-            documentoId={resultadoPago.movimientos.egreso.id}
-            documentoTipo="MovimientoCaja"
-            empresaId={resultadoPago.movimientos.egreso.empresaId}
-            periodoContableId={resultadoPago.movimientos.egreso.periodoContableId}
-            showAsButton={true}
-          />
-        </div>
-      )}
 
       <Divider />
 
@@ -854,6 +871,60 @@ export default function ConfirmacionPagoDialog({
                           const link = document.createElement('a');
                           link.href = resultadoPago.movimientos.detraccionEgreso.urlOperacionIndividualOperacionCaja;
                           link.download = `voucher-det-egreso-${resultadoPago.movimientos.detraccionEgreso.id}.pdf`;
+                          link.click();
+                        }}
+                        className="p-button-sm"
+                      />
+                    </div>
+                  </Panel>
+                </div>
+              )}
+
+              {/* ✅ Voucher del Movimiento de ITF DETRACCIÓN */}
+              {resultadoPago.movimientos.itfDetraccion?.urlOperacionIndividualOperacionCaja && (
+                <div className="col-12 md:col-6">
+                  <Panel header={`💳 ITF Detracción - Mov. #${resultadoPago.movimientos.itfDetraccion.id}`} className="mb-3">
+                    <PDFViewerV2
+                      pdfUrl={resultadoPago.movimientos.itfDetraccion.urlOperacionIndividualOperacionCaja}
+                      moduleName="movimiento-caja-voucher-individual"
+                      height="400px"
+                    />
+                    <div className="mt-2 text-center">
+                      <Button
+                        label="Descargar"
+                        icon="pi pi-download"
+                        size="small"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = resultadoPago.movimientos.itfDetraccion.urlOperacionIndividualOperacionCaja;
+                          link.download = `voucher-itf-detraccion-${resultadoPago.movimientos.itfDetraccion.id}.pdf`;
+                          link.click();
+                        }}
+                        className="p-button-sm"
+                      />
+                    </div>
+                  </Panel>
+                </div>
+              )}
+
+              {/* ✅ Voucher del Movimiento de COMISIÓN DETRACCIÓN */}
+              {resultadoPago.movimientos.comisionDetraccion?.urlOperacionIndividualOperacionCaja && (
+                <div className="col-12 md:col-6">
+                  <Panel header={`🏦 Comisión Detracción - Mov. #${resultadoPago.movimientos.comisionDetraccion.id}`} className="mb-3">
+                    <PDFViewerV2
+                      pdfUrl={resultadoPago.movimientos.comisionDetraccion.urlOperacionIndividualOperacionCaja}
+                      moduleName="movimiento-caja-voucher-individual"
+                      height="400px"
+                    />
+                    <div className="mt-2 text-center">
+                      <Button
+                        label="Descargar"
+                        icon="pi pi-download"
+                        size="small"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = resultadoPago.movimientos.comisionDetraccion.urlOperacionIndividualOperacionCaja;
+                          link.download = `voucher-comision-detraccion-${resultadoPago.movimientos.comisionDetraccion.id}.pdf`;
                           link.click();
                         }}
                         className="p-button-sm"

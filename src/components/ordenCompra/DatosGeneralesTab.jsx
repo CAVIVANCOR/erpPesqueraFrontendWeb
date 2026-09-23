@@ -817,6 +817,7 @@ export default function DatosGeneralesTab({
               severity="warning"
               outlined={true}
               icon="pi pi-arrow-right"
+              compact={true}
               style={{ width: "100%", fontWeight: "bold" }}
             />
           </div>

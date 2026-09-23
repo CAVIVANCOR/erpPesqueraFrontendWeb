@@ -19,19 +19,20 @@ const COLUMN_WIDTHS = {
   // Tabla de Movimientos de Caja (SIN columna N°)
   // Ancho disponible: 595.28 - (20 × 2) = 555 puntos
   // [Id Mov. Caja, Tipo Movimiento, Cuenta, N° Oper., Monto]
-  movimientos: [50, 130, 200, 100, 75], // Total: 555 puntos
+  // ✅ AJUSTE: Cuenta +28.35pts (+1cm), N°Op -28.35pts (-1cm)
+  movimientos: [50, 130, 228.35, 71.65, 75], // Total: 555 puntos
   
-  // Tabla de Conceptos SUNAT - Detracción (SIN columna Estado)
-  // [Id Detracción, Base Imponible, Tasa, Monto Detracc., N° Constancia]
-  detraccion: [55, 150, 75, 150, 125], // Total: 555 puntos
+  // Tabla de Conceptos SUNAT - Detracción (CON columna N° Operación)
+  // [Id Detracción, Base Imponible, Tasa, Monto Detracc., N° Constancia, N° Operación]
+  detraccion: [40, 120, 60, 120, 100, 115], // Total: 555 puntos
   
-  // Tabla de Conceptos SUNAT - Retención (SIN columna Estado)
-  // [Id Retención, Base Imponible, Tasa, Monto Retención, N° Constancia]
-  retencion: [55, 150, 75, 150, 125], // Total: 555 puntos
+  // Tabla de Conceptos SUNAT - Retención (CON columna N° Operación)
+  // [Id Retención, Base Imponible, Tasa, Monto Retención, N° Constancia, N° Operación]
+  retencion: [40, 120, 60, 120, 100, 115], // Total: 555 puntos
   
-  // Tabla de Conceptos SUNAT - Percepción (SIN columna Estado)
-  // [Id Percepción, Base Imponible, Tasa, Monto Percepción, N° Constancia]
-  percepcion: [55, 150, 75, 150, 125], // Total: 555 puntos
+  // Tabla de Conceptos SUNAT - Percepción (CON columna N° Operación)
+  // [Id Percepción, Base Imponible, Tasa, Monto Percepción, N° Constancia, N° Operación]
+  percepcion: [40, 120, 60, 120, 100, 115], // Total: 555 puntos
 };
 
 /**
@@ -93,6 +94,38 @@ export async function generarYSubirVoucherConsolidado(
     console.error("Error al generar y subir PDF:", error);
     return { success: false, error: error.message };
   }
+}
+
+/**
+ * Divide un texto en múltiples líneas según el ancho máximo
+ * @param {string} text - Texto a dividir
+ * @param {number} maxWidth - Ancho máximo en puntos
+ * @param {object} font - Fuente PDF-lib
+ * @param {number} fontSize - Tamaño de fuente
+ * @returns {string[]} - Array de líneas
+ */
+function wrapText(text, maxWidth, font, fontSize) {
+  const words = text.split(' ');
+  const lines = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+
+    if (testWidth > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines.length > 0 ? lines : [''];
 }
 
 /**
@@ -300,16 +333,6 @@ async function generarPDFVoucherConsolidado(
       totalSalidas += Number(mov.monto || 0);
     }
 
-    // Fondo alternado
-    const bgColor = index % 2 === 0 ? rgb(0.95, 0.97, 0.98) : rgb(1, 1, 1);
-    page.drawRectangle({
-      x: tableStartX,
-      y: yPosition - 2,
-      width: tableWidth,
-      height: 18,
-      color: bgColor,
-    });
-
     // Determinar estilo según tipo de movimiento
     const tipoLower = mov.tipo.toLowerCase();
     const esAutodetraccion = tipoLower.includes("autodet");
@@ -322,41 +345,74 @@ async function generarPDFVoucherConsolidado(
         ? rgb(0.6, 0, 0) // Rojo para impuestos
         : rgb(0, 0, 0); // Negro normal
 
-    // Dibujar celdas
-    let xPos = tableStartX;
-    for (let i = 0; i < rowData.length; i++) {
-      let displayValue = rowData[i];
-      const maxWidth = colWidths[i] - 4;
-
-      // Recortar texto si es necesario
-      while (
-        fontToUse.widthOfTextAtSize(displayValue, 6.5) > maxWidth &&
-        displayValue.length > 3
-      ) {
-        displayValue = displayValue.substring(0, displayValue.length - 1);
-      }
-      if (displayValue !== rowData[i] && displayValue.length > 3) {
-        displayValue = displayValue.substring(0, displayValue.length - 3) + "...";
-      }
-
-      // Alineación
-      let textX;
-      if (i === 0 || i === 4) {
-        // Id Mov. Caja, Monto: alineados a la derecha
-        const textWidth = fontToUse.widthOfTextAtSize(displayValue, 6.5);
-        textX = xPos + colWidths[i] - textWidth - 2;
+    // ✅ NUEVO: Dividir texto en múltiples líneas para columnas 1 (Tipo) y 2 (Cuenta)
+    const cellLines = rowData.map((value, i) => {
+      if (i === 1 || i === 2) {
+        // Columnas "Tipo Movimiento" y "Cuenta" con word wrap
+        return wrapText(value, colWidths[i] - 4, fontToUse, 6.5);
       } else {
-        // Resto: alineados a la izquierda
-        textX = xPos + 2;
+        // Otras columnas: una sola línea (truncar si es necesario)
+        let displayValue = value;
+        const maxWidth = colWidths[i] - 4;
+        while (
+          fontToUse.widthOfTextAtSize(displayValue, 6.5) > maxWidth &&
+          displayValue.length > 3
+        ) {
+          displayValue = displayValue.substring(0, displayValue.length - 1);
+        }
+        if (displayValue !== value && displayValue.length > 3) {
+          displayValue = displayValue.substring(0, displayValue.length - 3) + "...";
+        }
+        return [displayValue];
       }
+    });
 
-      page.drawText(displayValue, {
-        x: textX,
-        y: yPosition + 3,
-        size: 6.5,
-        font: fontToUse,
-        color: colorToUse,
+    // ✅ Calcular altura de fila según la celda con más líneas
+    const maxLines = Math.max(...cellLines.map(lines => lines.length));
+    const lineHeightCell = 8;
+    const rowHeight = maxLines * lineHeightCell + 4;
+
+    // Fondo alternado
+    const bgColor = index % 2 === 0 ? rgb(0.95, 0.97, 0.98) : rgb(1, 1, 1);
+    page.drawRectangle({
+      x: tableStartX,
+      y: yPosition - rowHeight + 2,
+      width: tableWidth,
+      height: rowHeight,
+      color: bgColor,
+    });
+
+    // ✅ Dibujar celdas con alineación vertical superior
+    let xPos = tableStartX;
+    for (let i = 0; i < cellLines.length; i++) {
+      const lines = cellLines[i];
+      
+      // Dibujar cada línea de la celda
+      lines.forEach((line, lineIndex) => {
+        let textX;
+        
+        // ✅ Alineación horizontal según tipo de columna
+        if (i === 3 || i === 4) {
+          // N° Operación y Monto: alineados a la derecha
+          const textWidth = fontToUse.widthOfTextAtSize(line, 6.5);
+          textX = xPos + colWidths[i] - textWidth - 2;
+        } else {
+          // Id, Tipo, Cuenta: alineados a la izquierda
+          textX = xPos + 2;
+        }
+
+        // ✅ Alineación vertical superior (top)
+        const textY = yPosition - 2 - (lineIndex * lineHeightCell) - 6;
+
+        page.drawText(line, {
+          x: textX,
+          y: textY,
+          size: 6.5,
+          font: fontToUse,
+          color: colorToUse,
+        });
       });
+
       xPos += colWidths[i];
     }
 
@@ -364,8 +420,8 @@ async function generarPDFVoucherConsolidado(
     let lineX = tableStartX;
     for (let i = 0; i <= colWidths.length; i++) {
       page.drawLine({
-        start: { x: lineX, y: yPosition + 16 },
-        end: { x: lineX, y: yPosition - 2 },
+        start: { x: lineX, y: yPosition },
+        end: { x: lineX, y: yPosition - rowHeight + 2 },
         thickness: 0.3,
         color: rgb(0.8, 0.8, 0.8),
       });
@@ -374,13 +430,13 @@ async function generarPDFVoucherConsolidado(
 
     // Línea horizontal inferior
     page.drawLine({
-      start: { x: tableStartX, y: yPosition - 2 },
-      end: { x: tableStartX + tableWidth, y: yPosition - 2 },
+      start: { x: tableStartX, y: yPosition - rowHeight + 2 },
+      end: { x: tableStartX + tableWidth, y: yPosition - rowHeight + 2 },
       thickness: 0.3,
       color: rgb(0.8, 0.8, 0.8),
     });
 
-    yPosition -= 18;
+    yPosition -= rowHeight;
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -481,7 +537,7 @@ async function generarPDFVoucherConsolidado(
     if (conceptosSunat.detraccion) {
       const det = conceptosSunat.detraccion;
       tipoConcepto = "DETRACCIÓN";
-      headersSunat = ["Id Detracción", "Base Imponible", "Tasa", "Monto Detracc.", "N° Constancia"];
+      headersSunat = ["Id Detracción", "Base Imponible", "Tasa", "Monto Detracc.", "N° Constancia", "N° Operación"];
       // ✅ Usar anchos configurables (modificar en COLUMN_WIDTHS al inicio del archivo)
       colWidthsSunat = COLUMN_WIDTHS.detraccion;
       dataRow = [
@@ -489,12 +545,13 @@ async function generarPDFVoucherConsolidado(
         `${simboloMoneda} ${formatearNumero(det.importeTotal || 0)}`,
         `${det.tasaDetraccion || 0}%`,
         `${simboloMoneda} ${formatearNumero(det.importeRequerido || 0)}`,
-        det.numeroDocumento || "-",
+        pagoCuentaPorPagar.numeroConstanciaDetraccion || "-",
+        pagoCuentaPorPagar.numeroOperacion || "-",
       ];
     } else if (conceptosSunat.retencion) {
       const ret = conceptosSunat.retencion;
       tipoConcepto = "RETENCIÓN";
-      headersSunat = ["Id Retención", "Base Imponible", "Tasa", "Monto Retención", "N° Constancia"];
+      headersSunat = ["Id Retención", "Base Imponible", "Tasa", "Monto Retención", "N° Constancia", "N° Operación"];
       // ✅ Usar anchos configurables (modificar en COLUMN_WIDTHS al inicio del archivo)
       colWidthsSunat = COLUMN_WIDTHS.retencion;
       dataRow = [
@@ -502,12 +559,13 @@ async function generarPDFVoucherConsolidado(
         `${simboloMoneda} ${formatearNumero(ret.importeTotal || 0)}`,
         `${ret.tasaRetencion || 0}%`,
         `${simboloMoneda} ${formatearNumero(ret.importeRetenido || 0)}`,
-        ret.numeroDocumento || "-",
+        pagoCuentaPorPagar.numeroComprobanteRetencion || "-",
+        pagoCuentaPorPagar.numeroOperacion || "-",
       ];
     } else if (conceptosSunat.percepcion) {
       const per = conceptosSunat.percepcion;
       tipoConcepto = "PERCEPCIÓN";
-      headersSunat = ["Id Percepción", "Base Imponible", "Tasa", "Monto Percepción", "N° Constancia"];
+      headersSunat = ["Id Percepción", "Base Imponible", "Tasa", "Monto Percepción", "N° Constancia", "N° Operación"];
       // ✅ Usar anchos configurables (modificar en COLUMN_WIDTHS al inicio del archivo)
       colWidthsSunat = COLUMN_WIDTHS.percepcion;
       dataRow = [
@@ -515,7 +573,8 @@ async function generarPDFVoucherConsolidado(
         `${simboloMoneda} ${formatearNumero(per.importeTotal || 0)}`,
         `${per.tasaPercepcion || 0}%`,
         `${simboloMoneda} ${formatearNumero(per.importePercibido || 0)}`,
-        per.numeroDocumento || "-",
+        pagoCuentaPorPagar.numeroComprobantePercepcion || "-",
+        pagoCuentaPorPagar.numeroOperacion || "-",
       ];
     }
 
@@ -582,8 +641,19 @@ async function generarPDFVoucherConsolidado(
       // Data row
       xPos = tableStartX;
       dataRow.forEach((data, i) => {
+        // ✅ Alineación según tipo de columna
+        let textX;
+        if (i === 1 || i === 2 || i === 3) {
+          // Base Imponible, Tasa, Monto: alineados a la derecha
+          const textWidth = fontNormal.widthOfTextAtSize(data, 7);
+          textX = xPos + colWidthsSunat[i] - textWidth - 3;
+        } else {
+          // Id, N° Constancia, N° Operación: alineados a la izquierda
+          textX = xPos + 3;
+        }
+
         page.drawText(data, {
-          x: xPos + 3,
+          x: textX,
           y: yPosition - 13,
           size: 7,
           font: fontNormal,
@@ -640,153 +710,94 @@ async function generarPDFVoucherConsolidado(
     );
   }
 
-  const tituloResumen = "RESUMEN DE LA OPERACIÓN";
-  const tituloResumenWidth = fontBold.widthOfTextAtSize(tituloResumen, 10);
-  page.drawText(tituloResumen, {
-    x: (width - tituloResumenWidth) / 2,
-    y: yPosition,
-    size: 10,
-    font: fontBold,
-    color: rgb(0, 0, 0),
-  });
+  // ✅ SECCIÓN ELIMINADA: "RESUMEN DE LA OPERACIÓN" (redundante con tabla de movimientos)
+  // El detalle completo ya está en la tabla "DETALLE DE MOVIMIENTOS DE CAJA"
 
-  yPosition -= 8;
-  page.drawLine({
-    start: { x: margin, y: yPosition },
-    end: { x: width - margin, y: yPosition },
-    thickness: 1,
-    color: rgb(0.7, 0.7, 0.7),
-  });
-
-  yPosition -= 20;
-
-  // Cuadro de resumen
-  const montoNetoAPagar = resumen.montoBruto - (resumen.detraccion || 0);
-  const netoEnCuentaEmpresa = montoNetoAPagar - (resumen.itf || 0) - (resumen.comision || 0);
-  
-  const resumenItems = [
-    { label: "Monto Total Factura:", valor: resumen.montoBruto, negrita: false },
-    { label: "(-) Detracción:", valor: resumen.detraccion || 0, negrita: false },
-    { label: "Monto Neto a Pagar:", valor: montoNetoAPagar, negrita: true, separador: true },
-    { label: "", valor: 0, separador: true, vacio: true },
-    { label: "MOVIMIENTOS BANCARIOS:", valor: 0, titulo: true },
-    { label: "(+) Egreso a Cuenta Empresa:", valor: montoNetoAPagar, negrita: false },
-    { label: "(-) ITF:", valor: resumen.itf || 0, negrita: false },
-    { label: "(-) Comisión Bancaria:", valor: resumen.comision || 0, negrita: false },
-    { label: "NETO EN CUENTA EMPRESA:", valor: netoEnCuentaEmpresa, negrita: true, separador: true },
-    { label: "", valor: 0, separador: true, vacio: true },
-    { label: "(+) Detracción a Cuenta BN:", valor: resumen.detraccion || 0, negrita: false },
-    { label: "TOTAL DEPOSITADO EN BN:", valor: resumen.detraccion || 0, negrita: true, separador: true },
+  // ═══════════════════════════════════════════════════════════
+  // 11. FIRMAS EN FOOTER (FORMATO TABLA)
+  // ═══════════════════════════════════════════════════════════
+  // ✅ Posicionar firmas en el footer (parte inferior de la página)
+  const footerY = 120; // Posición fija en el footer
+  const firmaTableWidth = width - 2 * margin; // Ancho total disponible
+  const colWidthsFirma = [
+    firmaTableWidth * 0.25, // Elaborado por (25%)
+    firmaTableWidth * 0.25, // V°B° Admin (25%)
+    firmaTableWidth * 0.25, // V°B° Contador (25%)
+    firmaTableWidth * 0.25, // Recibí conforme (25%)
   ];
+  const firmaTableStartX = margin;
 
-  resumenItems.forEach((item) => {
-    if (item.vacio) {
-      yPosition -= 5;
-      return;
-    }
-
-    if (item.separador && !item.titulo) {
-      page.drawLine({
-        start: { x: margin + 20, y: yPosition + 5 },
-        end: { x: width - margin - 20, y: yPosition + 5 },
-        thickness: 0.5,
-        color: rgb(0.5, 0.5, 0.5),
-      });
-      yPosition -= 3;
-    }
-
-    if (item.titulo) {
-      page.drawText(item.label, {
-        x: margin + 20,
-        y: yPosition,
-        size: 9,
-        font: fontBold,
-        color: rgb(0, 0, 0),
-      });
-      yPosition -= lineHeight;
-      return;
-    }
-
-    const font = item.negrita ? fontBold : fontNormal;
-    const size = item.negrita ? 9 : 8;
-
-    page.drawText(item.label, {
-      x: margin + 20,
-      y: yPosition,
-      size: size,
-      font: font,
-      color: rgb(0, 0, 0),
-    });
-
-    const valorTexto = `${simboloMoneda} ${formatearNumero(item.valor)}`;
-    const valorWidth = font.widthOfTextAtSize(valorTexto, size);
-    page.drawText(valorTexto, {
-      x: width - margin - 20 - valorWidth,
-      y: yPosition,
-      size: size,
-      font: font,
-      color: rgb(0, 0, 0),
-    });
-
-    yPosition -= lineHeight;
-  });
-
-  yPosition -= 20;
-
-  // ═══════════════════════════════════════════════════════════
-  // 11. FIRMAS
-  // ═══════════════════════════════════════════════════════════
-  if (yPosition < 120) {
-    page = pdfDoc.addPage([595.28, 841.89]);
-    yPosition = height - 100;
-  }
-
-  const firmaWidth = 150;
-  const firmaSpacing = (width - 2 * margin - 2 * firmaWidth) / 1;
-
-  // ✅ Obtener nombre completo del usuario
+  // Obtener nombre completo del usuario
   const nombreUsuario = usuario 
     ? `${usuario.nombres || ''} ${usuario.apellidos || ''}`.trim() || 'Usuario'
     : 'Usuario';
 
-  const firmas = [
-    { x: margin, label: "ELABORADO POR", nombre: nombreUsuario },
-    { x: margin + firmaWidth + firmaSpacing, label: "APROBADO POR", nombre: "" },
+  // Dibujar borde superior de la tabla
+  page.drawLine({
+    start: { x: firmaTableStartX, y: footerY + 40 },
+    end: { x: firmaTableStartX + firmaTableWidth, y: footerY + 40 },
+    thickness: 1,
+    color: rgb(0, 0, 0),
+  });
+
+  // Dibujar borde inferior de la tabla
+  page.drawLine({
+    start: { x: firmaTableStartX, y: footerY },
+    end: { x: firmaTableStartX + firmaTableWidth, y: footerY },
+    thickness: 1,
+    color: rgb(0, 0, 0),
+  });
+
+  // Dibujar bordes verticales y contenido
+  let xPos = firmaTableStartX;
+  const firmaLabels = [
+    { label: "Elaborado por", linea: nombreUsuario },
+    { label: "V°B° Admin", linea: "___________" },
+    { label: "V°B° Contador", linea: "___________" },
+    { label: "Recibí conforme", linea: "DNI: _________" },
   ];
 
-  firmas.forEach(({ x, label, nombre }) => {
-    // Línea de firma
+  firmaLabels.forEach((firma, index) => {
+    // Borde izquierdo de la celda
     page.drawLine({
-      start: { x: x, y: yPosition },
-      end: { x: x + firmaWidth, y: yPosition },
+      start: { x: xPos, y: footerY },
+      end: { x: xPos, y: footerY + 40 },
       thickness: 1,
       color: rgb(0, 0, 0),
     });
 
-    // Nombre del usuario (si existe)
-    if (nombre) {
-      const nombreWidth = fontBold.widthOfTextAtSize(nombre, 8);
-      page.drawText(nombre, {
-        x: x + (firmaWidth - nombreWidth) / 2,
-        y: yPosition + 5,
-        size: 8,
-        font: fontBold,
-        color: rgb(0, 0, 0),
-      });
-    }
-
-    // Etiqueta
-    const labelWidth = fontNormal.widthOfTextAtSize(label, 8);
-    page.drawText(label, {
-      x: x + (firmaWidth - labelWidth) / 2,
-      y: yPosition - 15,
+    // Etiqueta (centrada, parte superior)
+    const labelWidth = fontBold.widthOfTextAtSize(firma.label, 8);
+    page.drawText(firma.label, {
+      x: xPos + (colWidthsFirma[index] - labelWidth) / 2,
+      y: footerY + 25,
       size: 8,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    // Línea de firma o nombre (centrada, parte inferior)
+    const lineaWidth = fontNormal.widthOfTextAtSize(firma.linea, 7);
+    page.drawText(firma.linea, {
+      x: xPos + (colWidthsFirma[index] - lineaWidth) / 2,
+      y: footerY + 8,
+      size: 7,
       font: fontNormal,
       color: rgb(0, 0, 0),
     });
+
+    xPos += colWidthsFirma[index];
   });
 
-  // Pie de página
+  // Borde derecho final
+  page.drawLine({
+    start: { x: xPos, y: footerY },
+    end: { x: xPos, y: footerY + 40 },
+    thickness: 1,
+    color: rgb(0, 0, 0),
+  });
+
+  // Pie de página (debajo de la tabla de firmas)
   const fechaGeneracion = new Date().toLocaleString("es-PE", {
     year: "numeric",
     month: "2-digit",
@@ -800,7 +811,7 @@ async function generarPDFVoucherConsolidado(
 
   page.drawText(piePagina, {
     x: (width - pieWidth) / 2,
-    y: 30,
+    y: footerY - 15,
     size: 7,
     font: fontNormal,
     color: rgb(0.5, 0.5, 0.5),
@@ -884,7 +895,7 @@ async function dibujarEncabezadoCompleto(
   yPos -= 10;
 
   // Título del documento
-  const titulo = "VOUCHER CONSOLIDADO DE PAGO - CUENTA POR COBRAR";
+  const titulo = "VOUCHER CONSOLIDADO DE PAGO - CUENTA POR PAGAR";
   const tituloWidth = fontBold.widthOfTextAtSize(titulo, 11);
   page.drawText(titulo, {
     x: (width - tituloWidth) / 2,
@@ -946,7 +957,7 @@ async function dibujarEncabezadoCompleto(
   const datosCol1 = [
     ["Proveedor:", cuentaPorPagar?.proveedor?.razonSocial || "-"],
     ["RUC:", cuentaPorPagar?.proveedor?.numeroDocumento || "-"],
-    ["Documento:", cuentaPorPagar?.numeroPreFactura || "-"],
+    ["Documento:", cuentaPorPagar?.ordenCompra?.numeroDocumentoFinal || "-"],
     ["Fecha Emisión:", formatearFecha(cuentaPorPagar?.fechaEmision)],
   ];
 
@@ -1178,17 +1189,45 @@ function prepararDatosMovimientos(movimientos, pagoCuentaPorPagar, cuentaPorPaga
     });
   }
 
-  // 6. Detracción egreso (si el proveedor pagó la detracción) - USA DESTINO
+  // 6. Detracción egreso (si el proveedor pagó la detracción) - USA ORIGEN
   if (movimientos.detraccionEgreso) {
-    const cuentaDetraccionBN = movimientos.detraccionEgreso.cuentaCorrienteDestino;
+    const cuentaDetraccionBN = movimientos.detraccionEgreso.cuentaCorrienteOrigen;
     movimientosArray.push({
       tipo: movimientos.detraccionEgreso.tipoMovimiento?.nombre || "",
       id: movimientos.detraccionEgreso.id,
       monto: movimientos.detraccionEgreso.monto,
-      cuenta: formatearCuentaCompleta(cuentaDetraccionBN, 'DETRACCION-INGRESO'),
+      cuenta: formatearCuentaCompleta(cuentaDetraccionBN, 'DETRACCION-EGRESO'),
       numeroOperacion: movimientos.detraccionEgreso.numeroOperacionPagoBancoImpuesto || "-",
       esEgreso: true,
       orden: 6,
+    });
+  }
+
+  // 7. ITF Detracción (salida) - USA ORIGEN
+  if (movimientos.itfDetraccion) {
+    const cuentaITFDetraccion = movimientos.itfDetraccion.cuentaCorrienteOrigen || movimientos.detraccionEgreso?.cuentaCorrienteOrigen;
+    movimientosArray.push({
+      tipo: movimientos.itfDetraccion.tipoMovimiento?.nombre || "",
+      id: movimientos.itfDetraccion.id,
+      monto: movimientos.itfDetraccion.monto,
+      cuenta: formatearCuentaCompleta(cuentaITFDetraccion, 'ITF-DETRACCION'),
+      numeroOperacion: movimientos.detraccionEgreso?.numeroOperacionPagoBancoImpuesto || "-",
+      esEgreso: false,
+      orden: 7,
+    });
+  }
+
+  // 8. Comisión Detracción (salida) - USA ORIGEN
+  if (movimientos.comisionDetraccion) {
+    const cuentaComisionDetraccion = movimientos.comisionDetraccion.cuentaCorrienteOrigen || movimientos.detraccionEgreso?.cuentaCorrienteOrigen;
+    movimientosArray.push({
+      tipo: movimientos.comisionDetraccion.tipoMovimiento?.nombre || "",
+      id: movimientos.comisionDetraccion.id,
+      monto: movimientos.comisionDetraccion.monto,
+      cuenta: formatearCuentaCompleta(cuentaComisionDetraccion, 'COMISION-DETRACCION'),
+      numeroOperacion: movimientos.detraccionEgreso?.numeroOperacionPagoBancoImpuesto || "-",
+      esEgreso: false,
+      orden: 8,
     });
   }
 

@@ -250,3 +250,20 @@ export const getMovimientosCajaConFiltros = async (filtros = {}) => {
     throw error;
   }
 };
+
+/**
+ * Regenera y guarda el voucher contable de un movimiento de caja
+ * @param {number} id - ID del movimiento de caja
+ * @returns {Promise<Object>} Datos del voucher regenerado (URL, fecha, etc.)
+ */
+export const regenerarVoucherContable = async (id) => {
+  try {
+    const response = await axios.post(`${API_URL}/${id}/regenerar-voucher-contable`, {}, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al regenerar voucher contable:', error);
+    throw error;
+  }
+};

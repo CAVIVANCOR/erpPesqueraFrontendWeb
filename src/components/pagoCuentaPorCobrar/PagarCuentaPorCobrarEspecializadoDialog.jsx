@@ -13,9 +13,9 @@ import { Tag } from 'primereact/tag';
 import BooleanToggleButton from '../common/BooleanToggleButton';
 import CuentaCorrienteSelector from '../common/CuentaCorrienteSelector';
 import { consultarTipoCambioSunat } from '../../api/consultaExterna';
-import { 
-  procesarPagoEspecializado, 
-  actualizarUrlVoucherConsolidado, 
+import {
+  procesarPagoEspecializado,
+  actualizarUrlVoucherConsolidado,
   actualizarUrlVoucherIndividual,
   actualizarUrlVoucherConsolidadoPago
 } from '../../api/tesoreria/pagoEspecializadoCuentaPorCobrar';
@@ -62,7 +62,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   onSuccess
 }) {
   const usuario = useAuthStore((state) => state.usuario);
-  
+
   // Estados para catálogos de impuestos SUNAT
   const [estadosDetraccion, setEstadosDetraccion] = useState([]);
   const [estadosRetencion, setEstadosRetencion] = useState([]);
@@ -249,13 +249,13 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
     if (montoNeto >= totalFactura && totalFactura > 0) {
       // Autodetracción detectada
       setEsAutodetraccion(true);
-      
+
       // Calcular monto de detracción automáticamente
       const preFactura = cuentaPorCobrar.preFactura;
       if (preFactura?.aplicaDetraccion && preFactura.detraccion) {
         const montoDetAuto = Number(preFactura.detraccion.saldoPendiente || 0);
         setMontoDetraccionIngresado(montoDetAuto);
-        
+
         // Auto-generar número de constancia y operación
         const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '');
         const autoNumero = `AUTO-${fecha}-${numeroOperacion || 'TEMP'}`;
@@ -800,8 +800,8 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
 
       if (response.success) {
         const { pagoCuentaPorCobrar, movimientos, conceptosSunat, resumen } = response.data;
-        
-       
+
+
         const empresaData = empresas.find(e => Number(e.id) === Number(cuentaPorCobrar.empresaId));
 
         // Generar voucher consolidado automáticamente
@@ -827,7 +827,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
         // ═══════════════════════════════════════════════════════════
         // GENERAR VOUCHERS INDIVIDUALES AUTOMÁTICAMENTE
         // ═══════════════════════════════════════════════════════════
-        
+
         // Voucher individual del movimiento de ingreso
         if (movimientos.ingreso) {
           try {
@@ -980,15 +980,15 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
           movimientos.autodetraccion
         ].filter(Boolean);
 
-   
+
         for (const movimiento of movimientosConAsiento) {
           try {
-            
+
             // Obtener asiento contable del movimiento
             const asiento = await obtenerAsientoContable(movimiento.id);
-            
+
             if (asiento) {
-               
+
               const voucherContable = await generarYSubirVoucherContable(
                 movimiento,
                 asiento,
@@ -1187,7 +1187,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
 
     const preFactura = cuentaPorCobrar?.preFactura;
     let netoEsperado = Number(cuentaPorCobrar?.saldoPendiente || 0);
-    
+
     if (preFactura?.aplicaDetraccion && preFactura.detraccion) {
       netoEsperado = netoEsperado - Number(preFactura.detraccion.saldoPendiente || 0);
     }
@@ -1244,6 +1244,22 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
               />
             </div>
             <div style={{ flex: 1 }}>
+              <label htmlFor="tipoCambio" className="font-bold">
+                Tipo de Cambio <span className="text-red-500">*</span>
+              </label>
+              <InputNumber
+                id="tipoCambio"
+                value={tipoCambio}
+                onValueChange={(e) => setTipoCambio(e.value || 1)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={4}
+                style={{ width: "100%" }}
+                placeholder="1.0000"
+                tooltip="Tipo de cambio SUNAT (se actualiza automáticamente)"
+              />
+            </div>
+            <div style={{ flex: 1 }}>
               <label htmlFor="monedaPagoId" className="font-bold">
                 Moneda <span className="text-red-500">*</span>
               </label>
@@ -1256,6 +1272,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 className="w-full"
               />
             </div>
+
             <div style={{ flex: 1 }}>
               <label htmlFor="montoNetoIngresado" className="font-bold">
                 Monto Pagado Neto <span className="text-red-500">*</span>
@@ -1384,7 +1401,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
 
     // Obtener cuenta BN automáticamente
     const cuentaBN = detraccion.cuentaBNSunatPropia;
-    const cuentaBNTexto = cuentaBN 
+    const cuentaBNTexto = cuentaBN
       ? `${cuentaBN.banco?.nombre || 'Banco Nación'} - ${cuentaBN.numeroCuenta}`
       : 'No configurada';
 
@@ -1788,9 +1805,9 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
 
     return (
       <Panel header="📊 Resumen de Operación" className="mb-3">
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
           gap: '1rem',
           padding: '0.5rem'
         }}>

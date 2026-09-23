@@ -734,59 +734,90 @@ async function generarPDFVoucherConsolidado(
   yPosition -= 20;
 
   // ═══════════════════════════════════════════════════════════
-  // 11. FIRMAS
+  // 11. FIRMAS EN FOOTER (FORMATO TABLA)
   // ═══════════════════════════════════════════════════════════
-  if (yPosition < 120) {
-    page = pdfDoc.addPage([595.28, 841.89]);
-    yPosition = height - 100;
-  }
+  // ✅ Posicionar firmas en el footer (parte inferior de la página)
+  const footerY = 120; // Posición fija en el footer
+  const firmaTableWidth = width - 2 * margin; // Ancho total disponible
+  const colWidthsFirma = [
+    firmaTableWidth * 0.25, // Elaborado por (25%)
+    firmaTableWidth * 0.25, // V°B° Admin (25%)
+    firmaTableWidth * 0.25, // V°B° Contador (25%)
+    firmaTableWidth * 0.25, // Recibí conforme (25%)
+  ];
+  const firmaTableStartX = margin;
 
-  const firmaWidth = 150;
-  const firmaSpacing = (width - 2 * margin - 2 * firmaWidth) / 1;
-
-  // ✅ Obtener nombre completo del usuario
+  // Obtener nombre completo del usuario
   const nombreUsuario = usuario 
     ? `${usuario.nombres || ''} ${usuario.apellidos || ''}`.trim() || 'Usuario'
     : 'Usuario';
 
-  const firmas = [
-    { x: margin, label: "ELABORADO POR", nombre: nombreUsuario },
-    { x: margin + firmaWidth + firmaSpacing, label: "APROBADO POR", nombre: "" },
+  // Dibujar borde superior de la tabla
+  page.drawLine({
+    start: { x: firmaTableStartX, y: footerY + 40 },
+    end: { x: firmaTableStartX + firmaTableWidth, y: footerY + 40 },
+    thickness: 1,
+    color: rgb(0, 0, 0),
+  });
+
+  // Dibujar borde inferior de la tabla
+  page.drawLine({
+    start: { x: firmaTableStartX, y: footerY },
+    end: { x: firmaTableStartX + firmaTableWidth, y: footerY },
+    thickness: 1,
+    color: rgb(0, 0, 0),
+  });
+
+  // Dibujar bordes verticales y contenido
+  let xPos = firmaTableStartX;
+  const firmaLabels = [
+    { label: "Elaborado por", linea: nombreUsuario },
+    { label: "V°B° Admin", linea: "___________" },
+    { label: "V°B° Contador", linea: "___________" },
+    { label: "Recibí conforme", linea: "DNI: _________" },
   ];
 
-  firmas.forEach(({ x, label, nombre }) => {
-    // Línea de firma
+  firmaLabels.forEach((firma, index) => {
+    // Borde izquierdo de la celda
     page.drawLine({
-      start: { x: x, y: yPosition },
-      end: { x: x + firmaWidth, y: yPosition },
+      start: { x: xPos, y: footerY },
+      end: { x: xPos, y: footerY + 40 },
       thickness: 1,
       color: rgb(0, 0, 0),
     });
 
-    // Nombre del usuario (si existe)
-    if (nombre) {
-      const nombreWidth = fontBold.widthOfTextAtSize(nombre, 8);
-      page.drawText(nombre, {
-        x: x + (firmaWidth - nombreWidth) / 2,
-        y: yPosition + 5,
-        size: 8,
-        font: fontBold,
-        color: rgb(0, 0, 0),
-      });
-    }
-
-    // Etiqueta
-    const labelWidth = fontNormal.widthOfTextAtSize(label, 8);
-    page.drawText(label, {
-      x: x + (firmaWidth - labelWidth) / 2,
-      y: yPosition - 15,
+    // Etiqueta (centrada, parte superior)
+    const labelWidth = fontBold.widthOfTextAtSize(firma.label, 8);
+    page.drawText(firma.label, {
+      x: xPos + (colWidthsFirma[index] - labelWidth) / 2,
+      y: footerY + 25,
       size: 8,
+      font: fontBold,
+      color: rgb(0, 0, 0),
+    });
+
+    // Línea de firma o nombre (centrada, parte inferior)
+    const lineaWidth = fontNormal.widthOfTextAtSize(firma.linea, 7);
+    page.drawText(firma.linea, {
+      x: xPos + (colWidthsFirma[index] - lineaWidth) / 2,
+      y: footerY + 8,
+      size: 7,
       font: fontNormal,
       color: rgb(0, 0, 0),
     });
+
+    xPos += colWidthsFirma[index];
   });
 
-  // Pie de página
+  // Borde derecho final
+  page.drawLine({
+    start: { x: xPos, y: footerY },
+    end: { x: xPos, y: footerY + 40 },
+    thickness: 1,
+    color: rgb(0, 0, 0),
+  });
+
+  // Pie de página (debajo de la tabla de firmas)
   const fechaGeneracion = new Date().toLocaleString("es-PE", {
     year: "numeric",
     month: "2-digit",
@@ -800,7 +831,7 @@ async function generarPDFVoucherConsolidado(
 
   page.drawText(piePagina, {
     x: (width - pieWidth) / 2,
-    y: 30,
+    y: footerY - 15,
     size: 7,
     font: fontNormal,
     color: rgb(0.5, 0.5, 0.5),

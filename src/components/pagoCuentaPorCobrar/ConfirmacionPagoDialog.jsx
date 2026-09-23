@@ -10,7 +10,6 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import PDFViewerV2 from '../pdf/PDFViewerV2';
 import PdfComprobanteImpuestoCard from './PdfComprobanteImpuestoCard';
-import AsientoContableManager from '../common/AsientoContableManager';
 import AsientoContableViewer from '../common/AsientoContableViewer';
 import { formatearNumero } from '../../utils/utils';
 
@@ -40,10 +39,8 @@ export default function ConfirmacionPagoDialog({
   const [voucherAsientoVisible, setVoucherAsientoVisible] = useState(false);
   const [asientoSeleccionado, setAsientoSeleccionado] = useState(null);
   
-  // Estados para visualización de asientos y vouchers
-  const [showAsientoDialog, setShowAsientoDialog] = useState(false);
+  // Estados para visualización de vouchers
   const [showVoucherDialog, setShowVoucherDialog] = useState(false);
-  const [movimientoIdSeleccionado, setMovimientoIdSeleccionado] = useState(null);
   const [voucherPdfUrl, setVoucherPdfUrl] = useState(null);
 
   // ✅ REACT HOOK FORM - Estándar profesional
@@ -76,15 +73,6 @@ export default function ConfirmacionPagoDialog({
   // HANDLERS: VER ASIENTO Y VOUCHER
   // ════════════════════════════════════════════════════════════
   
-  /**
-   * Abre el diálogo para ver el detalle del asiento contable
-   * Usa AsientoContableManager para mostrar el asiento completo
-   */
-  const handleVerAsiento = (asiento) => {
-    setMovimientoIdSeleccionado(asiento.procesoOrigenId);
-    setShowAsientoDialog(true);
-  };
-
   /**
    * Abre el diálogo para ver el voucher contable en PDF
    * Usa el endpoint de generación de voucher del movimiento
@@ -542,14 +530,6 @@ export default function ConfirmacionPagoDialog({
             body={(rowData) => (
               <div className="flex gap-2 justify-content-center">
                 <Button 
-                  icon="pi pi-eye" 
-                  label="Ver"
-                  className="p-button-info p-button-sm"
-                  tooltip="Ver detalle del asiento contable"
-                  tooltipOptions={{ position: 'top' }}
-                  onClick={() => handleVerAsiento(rowData)}
-                />
-                <Button 
                   icon="pi pi-file-pdf" 
                   label="Voucher"
                   className="p-button-help p-button-sm"
@@ -626,19 +606,6 @@ export default function ConfirmacionPagoDialog({
       {renderMovimientos()}
       {renderConceptosSunat()}
       {renderAsientosContables()}
-
-      {/* Componente genérico de asientos contables */}
-      {resultadoPago?.movimientos?.ingreso?.id && resultadoPago?.movimientos?.ingreso?.empresaId && (
-        <div className="mb-3">
-          <AsientoContableManager
-            documentoId={resultadoPago.movimientos.ingreso.id}
-            documentoTipo="MovimientoCaja"
-            empresaId={resultadoPago.movimientos.ingreso.empresaId}
-            periodoContableId={resultadoPago.movimientos.ingreso.periodoContableId}
-            showAsButton={true}
-          />
-        </div>
-      )}
 
       <Divider />
 
@@ -883,32 +850,6 @@ export default function ConfirmacionPagoDialog({
           <AsientoContableViewer
             asientoContableId={asientoSeleccionado.id}
             showHeader={true}
-          />
-        )}
-      </Dialog>
-
-      {/* ════════════════════════════════════════════════════════════ */}
-      {/* DIÁLOGO: VER DETALLE DEL ASIENTO CONTABLE                    */}
-      {/* ════════════════════════════════════════════════════════════ */}
-      <Dialog
-        visible={showAsientoDialog}
-        onHide={() => {
-          setShowAsientoDialog(false);
-          setMovimientoIdSeleccionado(null);
-        }}
-        header="📊 Detalle del Asiento Contable"
-        style={{ width: '95vw', maxWidth: '1400px' }}
-        modal
-        maximizable
-        blockScroll
-      >
-        {movimientoIdSeleccionado && resultadoPago?.movimientos?.ingreso?.empresaId && (
-          <AsientoContableManager
-            documentoId={movimientoIdSeleccionado}
-            documentoTipo="MovimientoCaja"
-            empresaId={resultadoPago.movimientos.ingreso.empresaId}
-            periodoContableId={resultadoPago.movimientos.ingreso.periodoContableId}
-            showAsButton={false}
           />
         )}
       </Dialog>

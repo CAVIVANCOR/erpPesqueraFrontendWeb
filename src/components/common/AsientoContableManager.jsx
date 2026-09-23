@@ -33,6 +33,7 @@ const AsientoContableManager = ({
   showAsButton = false,
   onAsientoChange,
   onBeforeGenerate,
+  soloVer = false,
 }) => {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
@@ -61,11 +62,16 @@ const AsientoContableManager = ({
     MovimientoCaja: movimientoCajaAPI,
   };
   const api = API_MODULES[documentoTipo];
-  // Validaciones
+  // ✅ VALIDACIONES Y BIFURCACIÓN
   const periodoEstaCerrado = Number(periodoContable?.estadoId) !== ESTADO_PERIODO_CONTABLE.ABIERTO;
   // MovimientoCaja no puede generar asientos manualmente (se generan automáticamente)
   const esMovimientoCaja = documentoTipo === 'MovimientoCaja';
-  const puedeGenerar = documentoId && !periodoEstaCerrado && !esMovimientoCaja;
+  // puedeGenerar = false cuando:
+  // - No hay documentoId
+  // - Período está cerrado
+  // - Es MovimientoCaja (asientos automáticos)
+  // - soloVer = true (modo solo lectura)
+  const puedeGenerar = documentoId && !periodoEstaCerrado && !esMovimientoCaja && !soloVer;
   // Efectos
   useEffect(() => {
     if (periodoContableId) {
@@ -193,6 +199,17 @@ const AsientoContableManager = ({
 
   // Función principal de generación/regeneración
   const handleGenerarAsiento = async () => {
+    // ✅ BIFURCACIÓN: Si es solo ver, no intentar generar
+    if (soloVer) {
+      toast.current?.show({
+        severity: "info",
+        summary: "Modo solo lectura",
+        detail: "Los asientos se generan automáticamente y no se pueden modificar desde aquí",
+        life: 3000,
+      });
+      return;
+    }
+
     if (!puedeGenerar) {
       toast.current?.show({
         severity: "warn",
@@ -395,7 +412,16 @@ const AsientoContableManager = ({
   };
 
   const handleBotonPrincipal = () => {
-    handleGenerarAsiento();
+    // ✅ BIFURCACIÓN: Modo solo lectura vs modo normal
+    if (soloVer) {
+      // Modo solo lectura: Abrir directamente el diálogo con la lista
+      // No intenta generar ni validar, solo muestra los asientos existentes
+      setShowListDialog(true);
+    } else {
+      // Modo normal: Intentar generar/regenerar asientos
+      // Valida permisos, período contable, etc.
+      handleGenerarAsiento();
+    }
   };
 
   const handleVerAsiento = (asiento) => {
@@ -606,8 +632,14 @@ const AsientoContableManager = ({
 
     const tieneAsientos = total > 0;
     const tieneAprobados = aprobados > 0;
-    const labelBoton = tieneAsientos ? "Regenerar Asientos" : "Generar Asientos";
-    const iconoBoton = tieneAsientos ? "pi pi-refresh" : "pi pi-book";
+    
+    // ✅ BIFURCACIÓN: Label e icono según modo
+    const labelBoton = soloVer
+      ? "Ver Asientos Contables"  // Modo solo lectura
+      : tieneAsientos ? "Regenerar Asientos" : "Generar Asientos";  // Modo normal
+    const iconoBoton = soloVer
+      ? "pi pi-eye"  // Icono de ver
+      : tieneAsientos ? "pi pi-refresh" : "pi pi-book";  // Iconos de generar/regenerar
     const colorBoton = tieneAprobados ? "p-button-success" : tieneAsientos ? "p-button-warning" : "p-button-info";
 
     return (
@@ -648,6 +680,14 @@ const AsientoContableManager = ({
             <Message
               severity="warn"
               text="El período contable está CERRADO. No se permiten modificaciones."
+              style={{ marginBottom: "1rem" }}
+            />
+          )}
+          {/* ✅ BIFURCACIÓN: Mensaje informativo en modo solo lectura */}
+          {soloVer && (
+            <Message
+              severity="info"
+              text="Modo solo lectura: Los asientos se generan automáticamente y no se pueden modificar desde aquí."
               style={{ marginBottom: "1rem" }}
             />
           )}

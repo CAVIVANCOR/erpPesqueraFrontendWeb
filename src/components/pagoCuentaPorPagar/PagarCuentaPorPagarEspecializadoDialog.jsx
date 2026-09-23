@@ -24,7 +24,7 @@ import { useAuthStore } from '../../shared/stores/useAuthStore';
 import { getResponsiveFontSize, formatearFecha, formatearNumero } from '../../utils/utils';
 import ConfirmacionPagoDialog from './ConfirmacionPagoCxPDialog';
 import TipoMovimientoSelector from '../common/TipoMovimientoSelector';
-import IrACxPEditar from '../common/IrACxPEditar';
+import IrACxPEditar from '../common/IrACxPEditar'; 
 import VerRegistroImpuestoSunat from '../common/VerRegistroImpuestoSunat';
 import { generarYSubirVoucherConsolidado } from './VoucherConsolidadoPagoCxPPDF';
 import { generarYSubirVoucherIndividual } from '../movimientoCaja/utils/VoucherIndividualMovimientoPDF';
@@ -254,6 +254,105 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
       }
     }
   }, [visible, cuentaPorPagar, fechaPago, periodosContables]);
+
+  // ════════════════════════════════════════════════════════════
+  // VALIDACIÓN EN TIEMPO REAL: SALDO INSUFICIENTE
+  // ════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!visible || !cuentaBancariaId) return;
+
+    // Calcular total a egresar en la moneda de pago (pago neto + ITF + comisión)
+    const totalEgresoPagoMonedaPago = Number(montoNetoIngresado || 0) + Number(montoITF || 0) + Number(montoComision || 0);
+
+    if (totalEgresoPagoMonedaPago > 0) {
+      // Buscar la cuenta corriente seleccionada
+      const cuentaSeleccionada = cuentasCorrientes?.find(c => Number(c.id) === Number(cuentaBancariaId));
+      
+      if (cuentaSeleccionada) {
+        const saldoActual = Number(cuentaSeleccionada.saldoActual || 0);
+        const monedaPago = monedas?.find(m => Number(m.id) === Number(monedaPagoId));
+        const monedaCuenta = monedas?.find(m => Number(m.id) === Number(cuentaSeleccionada.monedaId));
+        
+        // Convertir el total a pagar a la moneda de la cuenta corriente
+        let totalEgresoPagoMonedaCuenta = totalEgresoPagoMonedaPago;
+        
+        if (Number(monedaPagoId) !== Number(cuentaSeleccionada.monedaId)) {
+          // Hay conversión de moneda
+          const tc = Number(tipoCambio || 1);
+          
+          // Si pago en soles y cuenta en dólares: dividir entre TC
+          // Si pago en dólares y cuenta en soles: multiplicar por TC
+          if (Number(monedaPagoId) === 1 && Number(cuentaSeleccionada.monedaId) === 2) {
+            // Soles a Dólares
+            totalEgresoPagoMonedaCuenta = totalEgresoPagoMonedaPago / tc;
+          } else if (Number(monedaPagoId) === 2 && Number(cuentaSeleccionada.monedaId) === 1) {
+            // Dólares a Soles
+            totalEgresoPagoMonedaCuenta = totalEgresoPagoMonedaPago * tc;
+          }
+        }
+        
+        if (saldoActual < totalEgresoPagoMonedaCuenta) {
+          const diferencia = totalEgresoPagoMonedaCuenta - saldoActual;
+          
+          toast?.current?.show({
+            severity: 'warn',
+            summary: '⚠️ Saldo Insuficiente - Pago Neto',
+            detail: `Saldo insuficiente en ${cuentaSeleccionada.banco?.nombre || ''} ${cuentaSeleccionada.numeroCuenta || ''}.\nSaldo actual: ${monedaCuenta?.simbolo || ''} ${saldoActual.toFixed(2)}\nTotal a egresar (convertido): ${monedaCuenta?.simbolo || ''} ${totalEgresoPagoMonedaCuenta.toFixed(2)}\nPago: ${monedaPago?.simbolo || ''} ${totalEgresoPagoMonedaPago.toFixed(2)} (TC: ${tipoCambio})\nFalta: ${monedaCuenta?.simbolo || ''} ${diferencia.toFixed(2)}`,
+            life: 10000
+          });
+        }
+      }
+    }
+  }, [montoNetoIngresado, montoITF, montoComision, cuentaBancariaId, tipoCambio, visible, cuentasCorrientes, monedas, monedaPagoId, toast]);
+
+  // ════════════════════════════════════════════════════════════
+  // VALIDACIÓN EN TIEMPO REAL: SALDO INSUFICIENTE DETRACCIÓN
+  // ════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!visible || !aplicaDetraccion || !cuentaBancariaDetraccionId) return;
+
+    // Calcular total a egresar en la moneda de detracción (detracción + ITF + comisión)
+    const totalEgresoDetraccionMonedaDetraccion = Number(montoDetraccionIngresado || 0) + Number(itfDetraccion || 0) + Number(comisionDetraccion || 0);
+
+    if (totalEgresoDetraccionMonedaDetraccion > 0) {
+      // Buscar la cuenta corriente de detracción seleccionada
+      const cuentaDetraccionSeleccionada = cuentasCorrientes?.find(c => Number(c.id) === Number(cuentaBancariaDetraccionId));
+      
+      if (cuentaDetraccionSeleccionada) {
+        const saldoActual = Number(cuentaDetraccionSeleccionada.saldoActual || 0);
+        const monedaDetraccion = monedas?.find(m => Number(m.id) === Number(monedaDetraccionId));
+        const monedaCuenta = monedas?.find(m => Number(m.id) === Number(cuentaDetraccionSeleccionada.monedaId));
+        
+        // Convertir el total a pagar a la moneda de la cuenta corriente
+        let totalEgresoDetraccionMonedaCuenta = totalEgresoDetraccionMonedaDetraccion;
+        
+        if (Number(monedaDetraccionId) !== Number(cuentaDetraccionSeleccionada.monedaId)) {
+          // Hay conversión de moneda
+          const tc = Number(tipoCambioDetraccion || 1);
+          
+          // Si detracción en soles y cuenta en dólares: dividir entre TC
+          // Si detracción en dólares y cuenta en soles: multiplicar por TC
+          if (Number(monedaDetraccionId) === 1 && Number(cuentaDetraccionSeleccionada.monedaId) === 2) {
+            // Soles a Dólares
+            totalEgresoDetraccionMonedaCuenta = totalEgresoDetraccionMonedaDetraccion / tc;
+          } else if (Number(monedaDetraccionId) === 2 && Number(cuentaDetraccionSeleccionada.monedaId) === 1) {
+            // Dólares a Soles
+            totalEgresoDetraccionMonedaCuenta = totalEgresoDetraccionMonedaDetraccion * tc;
+          }
+        }
+        
+        if (saldoActual < totalEgresoDetraccionMonedaCuenta) {
+          const diferencia = totalEgresoDetraccionMonedaCuenta - saldoActual;
+          toast?.current?.show({
+            severity: 'warn',
+            summary: '⚠️ Saldo Insuficiente - Detracción',
+            detail: `Saldo insuficiente en ${cuentaDetraccionSeleccionada.banco?.nombre || ''} ${cuentaDetraccionSeleccionada.numeroCuenta || ''} para detracción.\nSaldo actual: ${monedaCuenta?.simbolo || ''} ${saldoActual.toFixed(2)}\nTotal a egresar (convertido): ${monedaCuenta?.simbolo || ''} ${totalEgresoDetraccionMonedaCuenta.toFixed(2)}\nDetracción: ${monedaDetraccion?.simbolo || ''} ${totalEgresoDetraccionMonedaDetraccion.toFixed(2)} (TC: ${tipoCambioDetraccion})\nFalta: ${monedaCuenta?.simbolo || ''} ${diferencia.toFixed(2)}`,
+            life: 10000
+          });
+        }
+      }
+    }
+  }, [montoDetraccionIngresado, itfDetraccion, comisionDetraccion, cuentaBancariaDetraccionId, tipoCambioDetraccion, aplicaDetraccion, visible, cuentasCorrientes, monedas, monedaDetraccionId, toast]);
 
   // ════════════════════════════════════════════════════════════
   // NOTA: ITF NO SE CALCULA AUTOMÁTICAMENTE
@@ -1010,64 +1109,140 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
         // GENERAR VOUCHERS INDIVIDUALES AUTOMÁTICAMENTE
         // ═══════════════════════════════════════════════════════════
         
-        // Voucher individual del movimiento de egreso
-        if (movimientos.egreso) {
-          try {
-            const voucherEgreso = await generarYSubirVoucherIndividual(
-              movimientos.egreso,
-              pagoCuentaPorPagar,
-              empresaData,
-              cuentaPorPagar,
-              usuario
-            );
-            if (voucherEgreso.success && voucherEgreso.urlPdf) {
-              await actualizarUrlVoucherIndividual(movimientos.egreso.id, voucherEgreso.urlPdf);
-              // ✅ Actualizar en el objeto de respuesta para que se muestre en ConfirmacionPagoDialog
-              response.data.movimientos.egreso.urlOperacionIndividualOperacionCaja = voucherEgreso.urlPdf;
+        try {
+          // Voucher individual del movimiento de egreso
+          if (movimientos.egreso) {
+            try {
+              const voucherEgreso = await generarYSubirVoucherIndividual(
+                movimientos.egreso,
+                pagoCuentaPorPagar,
+                empresaData,
+                cuentaPorPagar,
+                usuario
+              );
+              if (voucherEgreso.success && voucherEgreso.urlPdf) {
+                await actualizarUrlVoucherIndividual(movimientos.egreso.id, voucherEgreso.urlPdf);
+                response.data.movimientos.egreso.urlOperacionIndividualOperacionCaja = voucherEgreso.urlPdf;
+              }
+            } catch (error) {
+              console.error('❌ [1/6] Error voucher EGRESO:', error);
             }
-          } catch (error) {
-            console.error('❌ Error al generar voucher de egreso:', error);
           }
-        }
 
-        // Voucher individual del movimiento de ITF
-        if (movimientos.itf) {
-          try {
-            const voucherITF = await generarYSubirVoucherIndividual(
-              movimientos.itf,
-              pagoCuentaPorPagar,
-              empresaData,
-              cuentaPorPagar,
-              usuario
-            );
-            if (voucherITF.success && voucherITF.urlPdf) {
-              await actualizarUrlVoucherIndividual(movimientos.itf.id, voucherITF.urlPdf);
-              // ✅ Actualizar en el objeto de respuesta
-              response.data.movimientos.itf.urlOperacionIndividualOperacionCaja = voucherITF.urlPdf;
+          // Voucher individual del movimiento de ITF
+          if (movimientos.itf) {
+            console.log('📄 [2/6] Generando voucher ITF ID:', movimientos.itf.id);
+            try {
+              const voucherITF = await generarYSubirVoucherIndividual(
+                movimientos.itf,
+                pagoCuentaPorPagar,
+                empresaData,
+                cuentaPorPagar,
+                usuario
+              );
+              console.log('✅ [2/6] Voucher ITF generado:', voucherITF.success);
+              if (voucherITF.success && voucherITF.urlPdf) {
+                await actualizarUrlVoucherIndividual(movimientos.itf.id, voucherITF.urlPdf);
+                response.data.movimientos.itf.urlOperacionIndividualOperacionCaja = voucherITF.urlPdf;
+              }
+            } catch (error) {
+              console.error('❌ [2/6] Error voucher ITF:', error);
             }
-          } catch (error) {
-            console.error('❌ Error al generar voucher de ITF:', error);
           }
-        }
 
-        // Voucher individual del movimiento de comisión
-        if (movimientos.comision) {
-          try {
-            const voucherComision = await generarYSubirVoucherIndividual(
-              movimientos.comision,
-              pagoCuentaPorPagar,
-              empresaData,
-              cuentaPorPagar,
-              usuario
-            );
-            if (voucherComision.success && voucherComision.urlPdf) {
-              await actualizarUrlVoucherIndividual(movimientos.comision.id, voucherComision.urlPdf);
-              // ✅ Actualizar en el objeto de respuesta
-              response.data.movimientos.comision.urlOperacionIndividualOperacionCaja = voucherComision.urlPdf;
+          // Voucher individual del movimiento de comisión
+          if (movimientos.comision) {
+            console.log('📄 [3/6] Generando voucher COMISIÓN ID:', movimientos.comision.id);
+            try {
+              const voucherComision = await generarYSubirVoucherIndividual(
+                movimientos.comision,
+                pagoCuentaPorPagar,
+                empresaData,
+                cuentaPorPagar,
+                usuario
+              );
+              console.log('✅ [3/6] Voucher COMISIÓN generado:', voucherComision.success);
+              if (voucherComision.success && voucherComision.urlPdf) {
+                await actualizarUrlVoucherIndividual(movimientos.comision.id, voucherComision.urlPdf);
+                response.data.movimientos.comision.urlOperacionIndividualOperacionCaja = voucherComision.urlPdf;
+              }
+            } catch (error) {
+              console.error('❌ [3/6] Error voucher COMISIÓN:', error);
             }
-          } catch (error) {
-            console.error('❌ Error al generar voucher de comisión:', error);
           }
+
+          // ✅ Voucher individual de DETRACCIÓN EGRESO
+          if (movimientos.detraccionEgreso) {
+            console.log('📄 [4/6] Generando voucher DETRACCIÓN ID:', movimientos.detraccionEgreso.id);
+            try {
+              const voucherDetraccion = await generarYSubirVoucherIndividual(
+                movimientos.detraccionEgreso,
+                pagoCuentaPorPagar,
+                empresaData,
+                cuentaPorPagar,
+                usuario
+              );
+              console.log('✅ [4/6] Voucher DETRACCIÓN generado:', voucherDetraccion.success);
+              if (voucherDetraccion.success && voucherDetraccion.urlPdf) {
+                await actualizarUrlVoucherIndividual(movimientos.detraccionEgreso.id, voucherDetraccion.urlPdf);
+                response.data.movimientos.detraccionEgreso.urlOperacionIndividualOperacionCaja = voucherDetraccion.urlPdf;
+              }
+            } catch (error) {
+              console.error('❌ [4/6] Error voucher DETRACCIÓN:', error);
+            }
+          }
+
+          // ✅ Voucher individual de ITF DETRACCIÓN
+          if (movimientos.itfDetraccion) {
+            console.log('📄 [5/6] Generando voucher ITF DETRACCIÓN ID:', movimientos.itfDetraccion.id);
+            try {
+              const voucherITFDetraccion = await generarYSubirVoucherIndividual(
+                movimientos.itfDetraccion,
+                pagoCuentaPorPagar,
+                empresaData,
+                cuentaPorPagar,
+                usuario
+              );
+              console.log('✅ [5/6] Voucher ITF DETRACCIÓN generado:', voucherITFDetraccion.success);
+              if (voucherITFDetraccion.success && voucherITFDetraccion.urlPdf) {
+                await actualizarUrlVoucherIndividual(movimientos.itfDetraccion.id, voucherITFDetraccion.urlPdf);
+                response.data.movimientos.itfDetraccion.urlOperacionIndividualOperacionCaja = voucherITFDetraccion.urlPdf;
+              }
+            } catch (error) {
+              console.error('❌ [5/6] Error voucher ITF DETRACCIÓN:', error);
+            }
+          } else {
+            console.log('⚠️ [5/6] NO HAY movimiento itfDetraccion');
+          }
+
+          // ✅ Voucher individual de COMISIÓN DETRACCIÓN
+          if (movimientos.comisionDetraccion) {
+            console.log('📄 [6/6] Generando voucher COMISIÓN DETRACCIÓN ID:', movimientos.comisionDetraccion.id);
+            try {
+              const voucherComisionDetraccion = await generarYSubirVoucherIndividual(
+                movimientos.comisionDetraccion,
+                pagoCuentaPorPagar,
+                empresaData,
+                cuentaPorPagar,
+                usuario
+              );
+              console.log('✅ [6/6] Voucher COMISIÓN DETRACCIÓN generado:', voucherComisionDetraccion.success);
+              if (voucherComisionDetraccion.success && voucherComisionDetraccion.urlPdf) {
+                await actualizarUrlVoucherIndividual(movimientos.comisionDetraccion.id, voucherComisionDetraccion.urlPdf);
+                response.data.movimientos.comisionDetraccion.urlOperacionIndividualOperacionCaja = voucherComisionDetraccion.urlPdf;
+              }
+            } catch (error) {
+              console.error('❌ [6/6] Error voucher COMISIÓN DETRACCIÓN:', error);
+            }
+          } else {
+            console.log('⚠️ [6/6] NO HAY movimiento comisionDetraccion');
+          }
+
+          console.log('═══════════════════════════════════════════════════════════');
+          console.log('✅ DEBUG: FIN GENERACIÓN VOUCHERS INDIVIDUALES');
+          console.log('═══════════════════════════════════════════════════════════');
+        } catch (error) {
+          console.error('💥 ERROR CRÍTICO EN GENERACIÓN DE VOUCHERS:', error);
         }
 
         // ✅ Voucher individual de autodetracción EGRESO (retiro de cuenta empresa)
@@ -1090,23 +1265,23 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
           }
         }
 
-        // ✅ Voucher individual de autodetracción EGRESO (abono a Banco de la Nación)
-        if (movimientos.autodetraccionEgreso) {
+        // ✅ Voucher individual de autodetracción INGRESO (abono a Banco de la Nación)
+        if (movimientos.autodetraccionIngreso) {
           try {
-            const voucherAutodetEgreso = await generarYSubirVoucherIndividual(
-              movimientos.autodetraccionEgreso,
+            const voucherAutodetIngreso = await generarYSubirVoucherIndividual(
+              movimientos.autodetraccionIngreso,
               pagoCuentaPorPagar,
               empresaData,
               cuentaPorPagar,
               usuario
             );
-            if (voucherAutodetEgreso.success && voucherAutodetEgreso.urlPdf) {
-              await actualizarUrlVoucherIndividual(movimientos.autodetraccionEgreso.id, voucherAutodetEgreso.urlPdf);
+            if (voucherAutodetIngreso.success && voucherAutodetIngreso.urlPdf) {
+              await actualizarUrlVoucherIndividual(movimientos.autodetraccionIngreso.id, voucherAutodetIngreso.urlPdf);
               // ✅ Actualizar en el objeto de respuesta
-              response.data.movimientos.autodetraccionEgreso.urlOperacionIndividualOperacionCaja = voucherAutodetEgreso.urlPdf;
+              response.data.movimientos.autodetraccionIngreso.urlOperacionIndividualOperacionCaja = voucherAutodetIngreso.urlPdf;
             }
           } catch (error) {
-            console.error('❌ Error al generar voucher de autodetracción egreso:', error);
+            console.error('❌ Error al generar voucher de autodetracción ingreso:', error);
           }
         }
 

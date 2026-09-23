@@ -323,7 +323,7 @@ export default function MovimientoCaja({ ruta }) {
       await actualizarMovimientoCaja(movimientoActualizado.id, datosActualizacion);
       
       // Recargar la lista de movimientos
-      await cargarMovimientos();
+      await loadData();
       
       toast.current?.show({
         severity: "success",

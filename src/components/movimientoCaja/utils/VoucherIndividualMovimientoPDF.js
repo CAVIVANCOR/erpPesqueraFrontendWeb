@@ -360,11 +360,39 @@ async function generarPDFVoucherIndividual(
   });
   yPosition -= 20;
 
+  // ✅ Detectar si es CxC o CxP
+  const esCuentaPorCobrar = !!cuentaPorCobrar;
+  const esCuentaPorPagar = !!cuentaPorCobrar; // Se pasa como tercer parámetro en CxP
+  
+  let entidadComercial, numeroDocumento, tipoEntidad, documentoOrigen;
+  
+  if (esCuentaPorCobrar && cuentaPorCobrar?.cliente) {
+    // Es Cuenta por Cobrar
+    tipoEntidad = "Cliente:";
+    entidadComercial = cuentaPorCobrar.cliente.razonSocial || "-";
+    numeroDocumento = cuentaPorCobrar.cliente.numeroDocumento || "-";
+    documentoOrigen = cuentaPorCobrar.numeroPreFactura || 
+                      cuentaPorCobrar.ordenCompra?.numeroDocumentoFinal || "-";
+  } else if (cuentaPorCobrar?.proveedor) {
+    // Es Cuenta por Pagar (se pasa como cuentaPorCobrar pero tiene proveedor)
+    tipoEntidad = "Proveedor:";
+    entidadComercial = cuentaPorCobrar.proveedor.razonSocial || "-";
+    numeroDocumento = cuentaPorCobrar.proveedor.numeroDocumento || "-";
+    documentoOrigen = cuentaPorCobrar.ordenCompra?.numeroDocumentoFinal || 
+                      cuentaPorCobrar.numeroPreFactura || "-";
+  } else {
+    // Fallback genérico
+    tipoEntidad = "Entidad:";
+    entidadComercial = "-";
+    numeroDocumento = "-";
+    documentoOrigen = "-";
+  }
+
   const infoPago = [
-    { label: "Cliente:", value: cuentaPorCobrar?.cliente?.razonSocial || "-" },
-    { label: "RUC:", value: cuentaPorCobrar?.cliente?.numeroDocumento || "-" },
-    { label: "Documento:", value: cuentaPorCobrar?.numeroPreFactura || "-" },
-    { label: "ID Pago Origen:", value: pagoCuentaPorCobrar.id || "-" },
+    { label: tipoEntidad, value: entidadComercial },
+    { label: "RUC:", value: numeroDocumento },
+    { label: "Documento:", value: documentoOrigen },
+    { label: "ID Pago Origen:", value: pagoCuentaPorCobrar?.id || "-" },
   ];
 
   infoPago.forEach(({ label, value }) => {
@@ -419,62 +447,104 @@ async function generarPDFVoucherIndividual(
   }
 
   // ═══════════════════════════════════════════════════════════
-  // 9. FIRMAS
+  // 9. FIRMAS EN FOOTER (FORMATO TABLA)
   // ═══════════════════════════════════════════════════════════
-  yPosition = 150; // Posición fija para firmas
+  // ✅ Posicionar firmas en el footer (parte inferior de la página)
+  const footerY = 120; // Posición fija en el footer
+  const firmaTableWidth = width - 2 * margin; // Ancho total disponible
+  const colWidthsFirma = [
+    firmaTableWidth * 0.25, // Elaborado por (25%)
+    firmaTableWidth * 0.25, // V°B° Admin (25%)
+    firmaTableWidth * 0.25, // V°B° Contador (25%)
+    firmaTableWidth * 0.25, // Recibí conforme (25%)
+  ];
+  const firmaTableStartX = margin;
 
+  // Obtener nombre completo del usuario
   const nombreUsuario = usuario 
     ? `${usuario.nombres || ''} ${usuario.apellidos || ''}`.trim() || 'Usuario'
     : 'Usuario';
 
-  const firmaWidth = 200;
-  const firmaSpacing = 50;
+  // Dibujar borde superior de la tabla
+  page.drawLine({
+    start: { x: firmaTableStartX, y: footerY + 40 },
+    end: { x: firmaTableStartX + firmaTableWidth, y: footerY + 40 },
+    thickness: 1,
+    color: rgb(0, 0, 0),
+  });
 
-  const firmas = [
-    { x: margin, label: "ELABORADO POR", nombre: nombreUsuario },
-    { x: margin + firmaWidth + firmaSpacing, label: "APROBADO POR", nombre: "" },
+  // Dibujar borde inferior de la tabla
+  page.drawLine({
+    start: { x: firmaTableStartX, y: footerY },
+    end: { x: firmaTableStartX + firmaTableWidth, y: footerY },
+    thickness: 1,
+    color: rgb(0, 0, 0),
+  });
+
+  // Dibujar bordes verticales y contenido
+  let xPos = firmaTableStartX;
+  const firmaLabels = [
+    { label: "Elaborado por", linea: nombreUsuario },
+    { label: "V°B° Admin", linea: "___________" },
+    { label: "V°B° Contador", linea: "___________" },
+    { label: "Recibí conforme", linea: "DNI: _________" },
   ];
 
-  firmas.forEach(({ x, label, nombre }) => {
-    // Línea de firma
+  firmaLabels.forEach((firma, index) => {
+    // Borde izquierdo de la celda
     page.drawLine({
-      start: { x, y: yPosition },
-      end: { x: x + firmaWidth, y: yPosition },
+      start: { x: xPos, y: footerY },
+      end: { x: xPos, y: footerY + 40 },
       thickness: 1,
       color: rgb(0, 0, 0),
     });
 
-    // Nombre del usuario (si existe)
-    if (nombre) {
-      const nombreWidth = fontBold.widthOfTextAtSize(nombre, 8);
-      page.drawText(nombre, {
-        x: x + (firmaWidth - nombreWidth) / 2,
-        y: yPosition + 5,
-        size: 8,
-        font: fontBold,
-        color: rgb(0, 0, 0),
-      });
-    }
-
-    // Etiqueta
-    const labelWidth = fontNormal.widthOfTextAtSize(label, 8);
-    page.drawText(label, {
-      x: x + (firmaWidth - labelWidth) / 2,
-      y: yPosition - 15,
+    // Etiqueta (centrada, parte superior)
+    const labelWidth = fontBold.widthOfTextAtSize(firma.label, 8);
+    page.drawText(firma.label, {
+      x: xPos + (colWidthsFirma[index] - labelWidth) / 2,
+      y: footerY + 25,
       size: 8,
-      font: fontNormal,
-      color: rgb(0.3, 0.3, 0.3),
+      font: fontBold,
+      color: rgb(0, 0, 0),
     });
+
+    // Línea de firma o nombre (centrada, parte inferior)
+    const lineaWidth = fontNormal.widthOfTextAtSize(firma.linea, 7);
+    page.drawText(firma.linea, {
+      x: xPos + (colWidthsFirma[index] - lineaWidth) / 2,
+      y: footerY + 8,
+      size: 7,
+      font: fontNormal,
+      color: rgb(0, 0, 0),
+    });
+
+    xPos += colWidthsFirma[index];
+  });
+
+  // Borde derecho final
+  page.drawLine({
+    start: { x: xPos, y: footerY },
+    end: { x: xPos, y: footerY + 40 },
+    thickness: 1,
+    color: rgb(0, 0, 0),
   });
 
   // ═══════════════════════════════════════════════════════════
-  // 10. FOOTER
+  // 10. FOOTER (debajo de la tabla de firmas)
   // ═══════════════════════════════════════════════════════════
-  const footer = `Generado el ${new Date().toLocaleString('es-PE')} | Sistema ERP Pesquera`;
+  const fechaGeneracion = new Date().toLocaleString("es-PE", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const footer = `Documento generado automáticamente - ${fechaGeneracion}`;
   const footerWidth = fontNormal.widthOfTextAtSize(footer, 7);
   page.drawText(footer, {
     x: (width - footerWidth) / 2,
-    y: 30,
+    y: footerY - 15,
     size: 7,
     font: fontNormal,
     color: rgb(0.5, 0.5, 0.5),

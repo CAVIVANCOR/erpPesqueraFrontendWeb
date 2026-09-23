@@ -104,24 +104,34 @@ const CuentaPorPagarForm = forwardRef(({
   const [tieneDetraccion, setTieneDetraccion] = useState(
     defaultValues?.tieneDetraccion || false,
   );
-  const [montoDetraccionTotal, setMontoDetraccionTotal] = useState(
-    defaultValues?.montoDetraccionTotal || 0,
-  );
+  const [montoDetraccionTotal, setMontoDetraccionTotal] = useState(() => {
+    return defaultValues?.montoDetraccionTotal != null ? Number(defaultValues.montoDetraccionTotal) : 0;
+  });
+  const [porcentajeDetraccion, setPorcentajeDetraccion] = useState(() => {
+    return defaultValues?.porcentajeDetraccion != null ? Number(defaultValues.porcentajeDetraccion) : 0;
+  });
   const [tieneRetencion, setTieneRetencion] = useState(
     defaultValues?.tieneRetencion || false,
   );
-  const [montoRetencionTotal, setMontoRetencionTotal] = useState(
-    defaultValues?.montoRetencionTotal || 0,
-  );
-  const [porcentajeRetencion, setPorcentajeRetencion] = useState(
-    defaultValues?.porcentajeRetencion || null,
-  );
+  const [montoRetencionTotal, setMontoRetencionTotal] = useState(() => {
+    const valor = defaultValues?.montoRetencionTotal != null ? Number(defaultValues.montoRetencionTotal) : 0;
+    return valor;
+  });
+  const [porcentajeRetencion, setPorcentajeRetencion] = useState(() => {
+    const valor = defaultValues?.porcentajeRetencion != null ? Number(defaultValues.porcentajeRetencion) : 0;
+    return valor;
+  });
   const [tienePercepcion, setTienePercepcion] = useState(
     defaultValues?.tienePercepcion || false,
   );
-  const [montoPercepcionTotal, setMontoPercepcionTotal] = useState(
-    defaultValues?.montoPercepcionTotal || 0,
-  );
+  const [montoPercepcionTotal, setMontoPercepcionTotal] = useState(() => {
+    const valor = defaultValues?.montoPercepcionTotal != null ? Number(defaultValues.montoPercepcionTotal) : 0;
+    return valor;
+  });
+  const [porcentajePercepcion, setPorcentajePercepcion] = useState(() => {
+    const valor = defaultValues?.porcentajePercepcion != null ? Number(defaultValues.porcentajePercepcion) : 0;
+    return valor;
+  });
 
   // Estados contabilidad y auditoría
   const [fechaContable, setFechaContable] = useState(
@@ -186,34 +196,16 @@ const CuentaPorPagarForm = forwardRef(({
     return moneda?.colorFondo || "#ffffff";
   };
 
-  // Recalcular montoPagado, saldoPendiente y totales de impuestos cuando cambien los pagos
+  // Recalcular montoPagado y saldoPendiente cuando cambien los pagos
+  // ⚠️ NO recalcular los totales de impuestos aquí - esos vienen de la CuentaPorPagar, no de los pagos
   useEffect(() => {
     const totalPagado = pagos.reduce(
       (sum, pago) => sum + Number(pago.montoAplicadoDeuda || 0),
       0,
     );
-    const totalDetraccion = pagos.reduce(
-      (sum, pago) => sum + Number(pago.montoDetraccion || 0),
-      0,
-    );
-    const totalRetencion = pagos.reduce(
-      (sum, pago) => sum + Number(pago.montoRetencion || 0),
-      0,
-    );
-    const totalPercepcion = pagos.reduce(
-      (sum, pago) => sum + Number(pago.montoPercepcion || 0),
-      0,
-    );
 
     setMontoPagado(totalPagado);
     setSaldoPendiente(Number(montoTotal) - totalPagado);
-    setMontoDetraccionTotal(totalDetraccion);
-    setMontoRetencionTotal(totalRetencion);
-    setMontoPercepcionTotal(totalPercepcion);
-
-    setTieneDetraccion(totalDetraccion > 0);
-    setTieneRetencion(totalRetencion > 0);
-    setTienePercepcion(totalPercepcion > 0);
   }, [pagos, montoTotal]);
 
   const cargarPagos = async () => {
@@ -259,12 +251,15 @@ const CuentaPorPagarForm = forwardRef(({
       const cuentaActualizada = await getCuentaPorPagarById(defaultValues.id);
 
       // Actualizar todos los campos con los valores del backend
-      setMontoTotal(cuentaActualizada.montoTotal || 0);
-      setMontoPagado(cuentaActualizada.montoPagado || 0);
-      setSaldoPendiente(cuentaActualizada.saldoPendiente || 0);
-      setMontoDetraccionTotal(cuentaActualizada.montoDetraccionTotal || 0);
-      setMontoRetencionTotal(cuentaActualizada.montoRetencionTotal || 0);
-      setMontoPercepcionTotal(cuentaActualizada.montoPercepcionTotal || 0);
+      setMontoTotal(cuentaActualizada.montoTotal ? Number(cuentaActualizada.montoTotal) : 0);
+      setMontoPagado(cuentaActualizada.montoPagado ? Number(cuentaActualizada.montoPagado) : 0);
+      setSaldoPendiente(cuentaActualizada.saldoPendiente ? Number(cuentaActualizada.saldoPendiente) : 0);
+      setMontoDetraccionTotal(cuentaActualizada.montoDetraccionTotal ? Number(cuentaActualizada.montoDetraccionTotal) : 0);
+      setPorcentajeDetraccion(cuentaActualizada.porcentajeDetraccion ? Number(cuentaActualizada.porcentajeDetraccion) : 0);
+      setMontoRetencionTotal(cuentaActualizada.montoRetencionTotal ? Number(cuentaActualizada.montoRetencionTotal) : 0);
+      setPorcentajeRetencion(cuentaActualizada.porcentajeRetencion ? Number(cuentaActualizada.porcentajeRetencion) : 0);
+      setMontoPercepcionTotal(cuentaActualizada.montoPercepcionTotal ? Number(cuentaActualizada.montoPercepcionTotal) : 0);
+      setPorcentajePercepcion(cuentaActualizada.porcentajePercepcion ? Number(cuentaActualizada.porcentajePercepcion) : 0);
       setTieneDetraccion(cuentaActualizada.tieneDetraccion || false);
       setTieneRetencion(cuentaActualizada.tieneRetencion || false);
       setTienePercepcion(cuentaActualizada.tienePercepcion || false);

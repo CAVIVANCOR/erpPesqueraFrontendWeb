@@ -297,6 +297,12 @@ const EntidadComercial = ({ ruta }) => {
         // 🔍 CAJA Y TESORERÍA
         if (detalleUso.movimientosCaja) mensajeDetalle += `• ${detalleUso.movimientosCaja} Movimiento(s) de Caja\n`;
         if (detalleUso.detalleMovsEntregaRendir) mensajeDetalle += `• ${detalleUso.detalleMovsEntregaRendir} Detalle(s) Movimiento Entregar/Rendir\n`;
+        if (detalleUso.detMovsEntregaRendirPescaConsumo) mensajeDetalle += `• ${detalleUso.detMovsEntregaRendirPescaConsumo} Movimiento(s) Pesca Consumo\n`;
+        if (detalleUso.detMovsEntregaRendirPCompras) mensajeDetalle += `• ${detalleUso.detMovsEntregaRendirPCompras} Movimiento(s) Compras\n`;
+        if (detalleUso.detMovsEntregaRendirPVentas) mensajeDetalle += `• ${detalleUso.detMovsEntregaRendirPVentas} Movimiento(s) Ventas\n`;
+        if (detalleUso.detMovsEntregaRendirMovAlmacen) mensajeDetalle += `• ${detalleUso.detMovsEntregaRendirMovAlmacen} Movimiento(s) Almacén\n`;
+        if (detalleUso.detMovsEntregaRendirContratoServicios) mensajeDetalle += `• ${detalleUso.detMovsEntregaRendirContratoServicios} Movimiento(s) Contratos\n`;
+        if (detalleUso.detMovsEntregaOTMantenimiento) mensajeDetalle += `• ${detalleUso.detMovsEntregaOTMantenimiento} Movimiento(s) OT Mantenimiento\n`;
 
         // 🔍 PESCA
         if (detalleUso.descargasFaenaPesca) mensajeDetalle += `• ${detalleUso.descargasFaenaPesca} Descarga(s) de Faena Pesca\n`;
@@ -313,6 +319,10 @@ const EntidadComercial = ({ ruta }) => {
         if (detalleUso.endososLetra) mensajeDetalle += `• ${detalleUso.endososLetra} Endoso(s) de Letra\n`;
         if (detalleUso.retenciones) mensajeDetalle += `• ${detalleUso.retenciones} Retención(es)\n`;
         if (detalleUso.percepciones) mensajeDetalle += `• ${detalleUso.percepciones} Percepción(es)\n`;
+        if (detalleUso.detracciones) mensajeDetalle += `• ${detalleUso.detracciones} Detracción(es)\n`;
+        if (detalleUso.movimientosCajaDetraccion) mensajeDetalle += `• ${detalleUso.movimientosCajaDetraccion} Pago(s) de Detracción\n`;
+        if (detalleUso.movimientosCajaRetencion) mensajeDetalle += `• ${detalleUso.movimientosCajaRetencion} Pago(s) de Retención\n`;
+        if (detalleUso.movimientosCajaPercepcion) mensajeDetalle += `• ${detalleUso.movimientosCajaPercepcion} Pago(s) de Percepción\n`;
         if (detalleUso.detallesAsientos) mensajeDetalle += `• ${detalleUso.detallesAsientos} Detalle(s) de Asiento Contable\n`;
         if (detalleUso.tiposDeudaTributaria) mensajeDetalle += `• ${detalleUso.tiposDeudaTributaria} Tipo(s) de Deuda Tributaria\n`;
 
@@ -322,6 +332,8 @@ const EntidadComercial = ({ ruta }) => {
         if (detalleUso.personalEnlazado) mensajeDetalle += `• ${detalleUso.personalEnlazado} Personal Enlazado\n`;
         if (detalleUso.tarifasRutaProveedor) mensajeDetalle += `• ${detalleUso.tarifasRutaProveedor} Tarifa(s) de Ruta Proveedor\n`;
         if (detalleUso.detContratistasOT) mensajeDetalle += `• ${detalleUso.detContratistasOT} Detalle(s) Contratista OT\n`;
+        if (detalleUso.detPlataformaRecepcionPesca) mensajeDetalle += `• ${detalleUso.detPlataformaRecepcionPesca} Plataforma(s) Recepción Pesca\n`;
+        if (detalleUso.detComisionFidelizacionEntidad) mensajeDetalle += `• ${detalleUso.detComisionFidelizacionEntidad} Detalle(s) Comisión Fidelización\n`;
 
         mensajeDetalle += `\n💡 Debe eliminar estos registros primero para poder eliminar la Entidad Comercial.`;
 
