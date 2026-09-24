@@ -444,7 +444,7 @@ const DatosGeneralesEntidad = ({
                   options={empresasOptions}
                   style={{ fontWeight: "bold" }}
                   className={getFieldClass("empresaId")}
-                  disabled={readOnly || loading}
+                  disabled
                   filter
                 />
               )}

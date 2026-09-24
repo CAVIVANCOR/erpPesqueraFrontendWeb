@@ -23,6 +23,7 @@ import { Dialog } from "primereact/dialog";
 import { InputNumber } from "primereact/inputnumber";
 import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 import AsientoContableManager from "../common/AsientoContableManager";
+import BotonDescargarPDFSunatVentas from "../common/BotonDescargarPDFSunatVentas";
 import { crearDetallePreFactura } from "../../api/detallePreFactura";
 import { ESTADO_PREFACTURA } from "../../utils/estados.constants";
 import { getPreFacturaPorId } from "../../api/preFactura";
@@ -502,6 +503,7 @@ export default function PreFacturaForm({
   const [activeTab, setActiveTab] = useState(0);
   const [detallesCount, setDetallesCount] = useState(0);
   const [refreshClientes, setRefreshClientes] = useState(null);
+  const [pdfSunatUrl, setPdfSunatUrl] = useState(defaultValues?.urlPreFacturaPdf || null);
   const [totales, setTotales] = useState({
     subtotal: 0,
     igv: 0,
@@ -1880,7 +1882,7 @@ export default function PreFacturaForm({
         <TabPanel header="Impresión PDF" leftIcon="pi pi-file-pdf">
           <VerImpresionPreFacturaPDF
             preFacturaId={defaultValues?.id}
-            datosPreFactura={defaultValues}
+            datosPreFactura={{...defaultValues, urlPreFacturaPdf: pdfSunatUrl}}
             toast={toast}
           />
         </TabPanel>
@@ -2101,6 +2103,34 @@ export default function PreFacturaForm({
               onBeforeGenerate={handleBeforeGenerateAsiento}
             />
           )}
+          {/* Botón para descargar PDF desde SUNAT */}
+          {isEdit && formData.id && formData.numSerieDocFinal && formData.numCorreDocFinal && (() => {
+            const tipoDocEncontrado = tiposDocumento.find(t => Number(t.id) === Number(formData.tipoDocumentoFinalId));
+            return (
+              <BotonDescargarPDFSunatVentas
+                empresaId={formData.empresaId}
+                entityId={formData.id}
+                tipoDoc={tipoDocEncontrado?.codigoSunat}
+                serie={formData.numSerieDocFinal}
+                correlativo={formData.numCorreDocFinal}
+                toastRef={toast}
+                onSuccess={async (pdfUrl) => {
+                  setFormData(prev => ({ ...prev, urlPreFacturaPdf: pdfUrl }));
+                  setPdfSunatUrl(pdfUrl);
+                  // Recargar la pre-factura para actualizar defaultValues
+                  if (defaultValues?.id) {
+                    const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
+                    if (preFacturaActualizada) {
+                      Object.assign(defaultValues, preFacturaActualizada);
+                    }
+                  }
+                }}
+                onError={(error) => {
+                  console.error('Error en descarga de PDF:', error);
+                }}
+              />
+            );
+          })()}
           <Button
             label="Cancelar"
             icon="pi pi-times"

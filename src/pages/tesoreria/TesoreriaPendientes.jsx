@@ -9,6 +9,8 @@ import { Dialog } from "primereact/dialog";
 import PendientesHeader from "./components/PendientesHeader";
 import PendientesTable from "./components/PendientesTable";
 import SaldosCuentasPanel from "./components/SaldosCuentasPanel";
+import BotonFiltrosAvanzados from "./components/BotonFiltrosAvanzados";
+import FiltrosDialog from "./components/filtros/FiltrosDialog";
 import PagoCuentaPorCobrarForm from "../../components/pagoCuentaPorCobrar/PagoCuentaPorCobrarForm";
 import PagarCuentaPorCobrarEspecializadoDialog from "../../components/pagoCuentaPorCobrar/PagarCuentaPorCobrarEspecializadoDialog";
 import PagarCuentaPorPagarEspecializadoDialog from "../../components/pagoCuentaPorPagar/PagarCuentaPorPagarEspecializadoDialog";
@@ -27,6 +29,7 @@ import useRegistrarPago from "./hooks/useRegistrarPago";
 import useEntregarFondos from "../../components/entregaFondos/useEntregarFondos";
 import usePagarDeudaPersonal from "./hooks/usePagarDeudaPersonal";
 import usePagarDeudaTributaria from "./hooks/usePagarDeudaTributaria";
+import { useFiltrosOpciones } from "./hooks/useFiltrosOpciones";
 // APIs
 import { getAllMonedas } from "../../api/moneda";
 import { getMediosPago } from "../../api/medioPago";
@@ -79,7 +82,23 @@ const TesoreriaPendientes = () => {
     vencimiento: TIPO_VENCIMIENTO_TESORERIA.TODOS,
     monedaId: null,
     tipoDeuda: TIPO_DEUDA_TESORERIA.NINGUNO,
+    // Filtros dinámicos avanzados
+    fechaDesde: null,
+    fechaHasta: null,
+    clienteIds: [],
+    proveedorIds: [],
+    entidadComercialIds: [],
+    tipoDocumentoIds: [],
+    numeroDocumento: '',
+    monedaIds: [],
+    estadoIds: [],
+    personalIds: [],
+    montoDesde: null,
+    montoHasta: null,
   });
+  
+  // Estado para el diálogo de filtros avanzados
+  const [showFiltrosDialog, setShowFiltrosDialog] = useState(false);
   // Estados para catálogos
   const [monedas, setMonedas] = useState([]);
   const [mediosPago, setMediosPago] = useState([]);
@@ -154,6 +173,19 @@ const TesoreriaPendientes = () => {
       recargarSaldos();
     },
   });
+
+  // Hook para opciones dinámicas de filtros
+  const opcionesFiltros = useFiltrosOpciones(pendientes, filtros.tipo);
+
+  // Handlers para filtros avanzados
+  const handleOpenFiltrosDialog = () => {
+    setShowFiltrosDialog(true);
+  };
+
+  const handleAplicarFiltros = (nuevosFiltros) => {
+    setFiltros(nuevosFiltros);
+    recargarPendientes();
+  };
 
   // Verificar acceso
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
@@ -496,6 +528,25 @@ const TesoreriaPendientes = () => {
         permisos={permisos}
         onOperacion={handleOperacion} // ✅ NUEVO
       />
+      
+      {/* Botón de Filtros Avanzados */}
+      <BotonFiltrosAvanzados
+        filtros={filtros}
+        opciones={opcionesFiltros}
+        onOpenDialog={handleOpenFiltrosDialog}
+      />
+
+      {/* Diálogo de Filtros Avanzados */}
+      <FiltrosDialog
+        visible={showFiltrosDialog}
+        tipo={filtros.tipo}
+        filtros={filtros}
+        opciones={opcionesFiltros}
+        onHide={() => setShowFiltrosDialog(false)}
+        onAplicarFiltros={handleAplicarFiltros}
+        documentos={pendientes}
+      />
+      
       {/* Tabla de Pendientes */}
       <Card title="📋 Documentos Pendientes">
         <PendientesTable
