@@ -284,6 +284,7 @@ const TipoMovimientoSelector = ({
           textAlign: "left",
           fontWeight: tipoSeleccionado ? "bold" : "normal",
           color: tipoSeleccionado ? "#000" : "#999",
+          width:"100%"
         }}
       />
 

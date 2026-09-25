@@ -18,6 +18,7 @@ import EntregarFondosForm from "../../components/entregaFondos/EntregarFondosFor
 import PagarDeudaPersonalDialog from "../../components/tesoreria/PagarDeudaPersonalDialog";
 import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ AGREGAR
 import PagarDeudaTributariaDialog from "../../components/tesoreria/PagarDeudaTributariaDialog";
+import TransferenciaInternaDialog from "../../components/movimientoCaja/transferenciaEspecializada/TransferenciaInternaDialog";
 import { getEntidadComercialPorId } from "../../api/entidadComercial";
 import { getCuentaPorCobrarById } from "../../api/cuentasPorCobrarPagar/cuentaPorCobrar";
 import { getCuentaPorPagarById } from "../../api/cuentasPorCobrarPagar/cuentaPorPagar";
@@ -184,7 +185,7 @@ const TesoreriaPendientes = () => {
 
   const handleAplicarFiltros = (nuevosFiltros) => {
     setFiltros(nuevosFiltros);
-    recargarPendientes();
+    // El hook usePendientesData detectará el cambio y recargará automáticamente
   };
 
   // Verificar acceso
@@ -274,10 +275,25 @@ const TesoreriaPendientes = () => {
 
   // Handlers
   const handleFiltroChange = (campo, valor) => {
-    setFiltros((prev) => ({
-      ...prev,
-      [campo]: valor,
-    }));
+    setFiltros((prev) => {
+      const nuevosFiltros = {
+        ...prev,
+        [campo]: valor,
+      };
+
+      // Limpiar filtros mutuamente excluyentes
+      // tipo y tipoDeuda son mutuamente excluyentes
+      if (campo === 'tipo') {
+        // Si se cambia 'tipo', limpiar 'tipoDeuda'
+        nuevosFiltros.tipoDeuda = TIPO_DEUDA_TESORERIA.NINGUNO;
+      }
+      else if (campo === 'tipoDeuda') {
+        // Si se cambia 'tipoDeuda', NO cambiar 'tipo'
+        // El backend manejará la exclusión automáticamente cuando tipoDeuda tenga valor
+      }
+
+      return nuevosFiltros;
+    });
   };
 
   const handleLimpiarFiltros = () => {
@@ -728,16 +744,21 @@ const TesoreriaPendientes = () => {
         );
       })()}
 
-      {/* 🆕 Diálogos de Operaciones (Placeholders) */}
-      <Dialog
-        header="🔄 Transferencia Interna"
+      {/* 🆕 Diálogos de Operaciones */}
+      <TransferenciaInternaDialog
         visible={showTransferenciaInternaDialog}
-        style={{ width: "90vw", maxWidth: "800px" }}
         onHide={() => setShowTransferenciaInternaDialog(false)}
-        modal
-      >
-        <p>Funcionalidad en desarrollo...</p>
-      </Dialog>
+        monedas={monedas}
+        mediosPago={mediosPago}
+        bancos={bancos}
+        cuentasCorrientes={saldosCuentas}
+        tiposMovimiento={tiposMovimiento}
+        empresas={empresas}
+        toast={toast}
+        onSuccess={() => {
+          recargarSaldos();
+        }}
+      />
 
       <Dialog
         header="💸 Pago a Proveedor"

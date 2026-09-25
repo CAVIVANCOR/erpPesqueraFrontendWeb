@@ -183,7 +183,7 @@ async function generarPDFVoucherIndividual(
     { label: "ID Movimiento:", value: movimiento.id || "-" },
     { label: "Tipo:", value: movimiento.tipoMovimiento?.nombre || "-" },
     { label: "Fecha:", value: movimiento.fechaOperacionMovCaja ? new Date(movimiento.fechaOperacionMovCaja).toLocaleDateString() : "-" },
-    { label: "N° Operación:", value: movimiento.numeroOperacionPagoBanco || pagoCuentaPorCobrar.numeroOperacion || "-" },
+    { label: "N° Operación:", value: movimiento.numeroOperacionPagoBanco || pagoCuentaPorCobrar?.numeroOperacion || "-" },
     { label: "Monto:", value: `${simboloMoneda} ${formatearNumero(movimiento.monto || 0)}` },
   ];
 
@@ -369,31 +369,31 @@ async function generarPDFVoucherIndividual(
   if (esCuentaPorCobrar && cuentaPorCobrar?.cliente) {
     // Es Cuenta por Cobrar
     tipoEntidad = "Cliente:";
-    entidadComercial = cuentaPorCobrar.cliente.razonSocial || "-";
-    numeroDocumento = cuentaPorCobrar.cliente.numeroDocumento || "-";
-    documentoOrigen = cuentaPorCobrar.numeroPreFactura || 
-                      cuentaPorCobrar.ordenCompra?.numeroDocumentoFinal || "-";
+    entidadComercial = cuentaPorCobrar?.cliente?.razonSocial || "-";
+    numeroDocumento = cuentaPorCobrar?.cliente?.numeroDocumento || "-";
+    documentoOrigen = cuentaPorCobrar?.numeroPreFactura || 
+                      cuentaPorCobrar?.ordenCompra?.numeroDocumentoFinal || "-";
   } else if (cuentaPorCobrar?.proveedor) {
     // Es Cuenta por Pagar (se pasa como cuentaPorCobrar pero tiene proveedor)
     tipoEntidad = "Proveedor:";
-    entidadComercial = cuentaPorCobrar.proveedor.razonSocial || "-";
-    numeroDocumento = cuentaPorCobrar.proveedor.numeroDocumento || "-";
-    documentoOrigen = cuentaPorCobrar.ordenCompra?.numeroDocumentoFinal || 
-                      cuentaPorCobrar.numeroPreFactura || "-";
+    entidadComercial = cuentaPorCobrar?.proveedor?.razonSocial || "-";
+    numeroDocumento = cuentaPorCobrar?.proveedor?.numeroDocumento || "-";
+    documentoOrigen = cuentaPorCobrar?.ordenCompra?.numeroDocumentoFinal || 
+                      cuentaPorCobrar?.numeroPreFactura || "-";
   } else {
-    // Fallback genérico
-    tipoEntidad = "Entidad:";
-    entidadComercial = "-";
-    numeroDocumento = "-";
-    documentoOrigen = "-";
+    // Transferencias internas u otros movimientos sin CxC/CxP - NO hay entidad comercial
+    tipoEntidad = null;
+    entidadComercial = null;
+    numeroDocumento = null;
+    documentoOrigen = null;
   }
 
   const infoPago = [
-    { label: tipoEntidad, value: entidadComercial },
-    { label: "RUC:", value: numeroDocumento },
-    { label: "Documento:", value: documentoOrigen },
-    { label: "ID Pago Origen:", value: pagoCuentaPorCobrar?.id || "-" },
-  ];
+    tipoEntidad && entidadComercial ? { label: tipoEntidad, value: entidadComercial } : null,
+    numeroDocumento ? { label: "RUC:", value: numeroDocumento } : null,
+    documentoOrigen ? { label: "Documento:", value: documentoOrigen } : null,
+    pagoCuentaPorCobrar?.id ? { label: "ID Pago Origen:", value: pagoCuentaPorCobrar.id } : null,
+  ].filter(Boolean); // Eliminar elementos null
 
   infoPago.forEach(({ label, value }) => {
     page.drawText(label, {

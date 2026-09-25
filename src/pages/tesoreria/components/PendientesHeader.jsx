@@ -8,13 +8,11 @@ import { getResponsiveFontSize } from "../../../utils/utils";
 import {
   TIPO_FILTRO_TESORERIA,
   TIPO_DEUDA_TESORERIA,
-  TIPO_VENCIMIENTO_TESORERIA,
   TIPO_ENTREGA_TESORERIA,
   TIPO_OPERACION_TESORERIA,
   LABELS_TIPO_FILTRO,
   LABELS_TIPO_DEUDA,
   LABELS_TIPO_ENTREGA,
-  LABELS_TIPO_VENCIMIENTO,
   LABELS_TIPO_OPERACION,
   LABELS_TEXTO_ENTREGAS,
 } from "../../../utils/tesoreria.constants";
@@ -333,169 +331,7 @@ const PendientesHeader = ({
     }
   };
 
-  // Función para obtener el label con datos del resumen para VENCIMIENTO
-  const getVencimientoLabel = (venc) => {
-    if (!resumen || loading) {
-      return (
-        <div className="text-center">
-          <div className="font-bold">{venc.label}</div>
-        </div>
-      );
-    }
-
-    if (venc.value === TIPO_VENCIMIENTO_TESORERIA.TODOS) {
-      // Todos
-      const totalCobrar =
-        resumen.porCobrar?.reduce((sum, item) => sum + item.cantidad, 0) || 0;
-      const totalPagar =
-        resumen.porPagar?.reduce((sum, item) => sum + item.cantidad, 0) || 0;
-
-      // Combinar todas las monedas
-      const monedasCombinadas = {};
-
-      resumen.porCobrar?.forEach((item) => {
-        const codigo = item.moneda?.codigoSunat;
-        if (!monedasCombinadas[codigo]) {
-          monedasCombinadas[codigo] = {
-            moneda: item.moneda,
-            total: 0,
-          };
-        }
-        monedasCombinadas[codigo].total += Number(item.total);
-      });
-
-      resumen.porPagar?.forEach((item) => {
-        const codigo = item.moneda?.codigoSunat;
-        if (!monedasCombinadas[codigo]) {
-          monedasCombinadas[codigo] = {
-            moneda: item.moneda,
-            total: 0,
-          };
-        }
-        monedasCombinadas[codigo].total += Number(item.total);
-      });
-
-      return (
-        <div className="text-center" style={{ padding: "0.25rem 0" }}>
-          <div className="font-bold mb-2" style={{ fontSize: "0.85rem" }}>
-            {venc.label}
-          </div>
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}
-          >
-            {Object.values(monedasCombinadas).map((item, idx) => {
-              const style = getMonedaTagStyle(item.moneda?.codigoSunat);
-              return (
-                <Tag
-                  key={idx}
-                  value={`${item.moneda?.simbolo} ${formatearNumero(item.total)}`}
-                  style={{
-                    ...style,
-                    fontSize: "0.75rem",
-                    fontWeight: "600",
-                    padding: "0.3rem 0.6rem",
-                    borderRadius: "6px",
-                  }}
-                />
-              );
-            })}
-          </div>
-          <div
-            className="text-xs mt-2"
-            style={{ color: "#6c757d", fontWeight: "500", fontSize: "0.7rem" }}
-          >
-            ({totalCobrar + totalPagar} docs)
-          </div>
-        </div>
-      );
-    } else if (venc.value === TIPO_VENCIMIENTO_TESORERIA.VENCIDOS) {
-      // Vencidos - mostrar por cobrar y por pagar
-      const totalCobrar =
-        resumen.vencidos?.cobrar?.reduce(
-          (sum, item) => sum + item.cantidad,
-          0,
-        ) || 0;
-      const totalPagar =
-        resumen.vencidos?.pagar?.reduce(
-          (sum, item) => sum + item.cantidad,
-          0,
-        ) || 0;
-
-      // Combinar monedas de vencidos
-      const monedasCombinadas = {};
-
-      resumen.vencidos?.cobrar?.forEach((item) => {
-        const codigo = item.moneda?.codigoSunat;
-        if (!monedasCombinadas[codigo]) {
-          monedasCombinadas[codigo] = {
-            moneda: item.moneda,
-            total: 0,
-          };
-        }
-        monedasCombinadas[codigo].total += Number(item.total);
-      });
-
-      resumen.vencidos?.pagar?.forEach((item) => {
-        const codigo = item.moneda?.codigoSunat;
-        if (!monedasCombinadas[codigo]) {
-          monedasCombinadas[codigo] = {
-            moneda: item.moneda,
-            total: 0,
-          };
-        }
-        monedasCombinadas[codigo].total += Number(item.total);
-      });
-
-      return (
-        <div className="text-center" style={{ padding: "0.25rem 0" }}>
-          <div className="font-bold mb-2" style={{ fontSize: "0.85rem" }}>
-            {venc.label}
-          </div>
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}
-          >
-            {Object.values(monedasCombinadas).map((item, idx) => {
-              const style = getMonedaTagStyle(item.moneda?.codigoSunat);
-              return (
-                <Tag
-                  key={idx}
-                  value={`${item.moneda?.simbolo} ${formatearNumero(item.total)}`}
-                  style={{
-                    ...style,
-                    fontSize: "0.75rem",
-                    fontWeight: "600",
-                    padding: "0.3rem 0.6rem",
-                    borderRadius: "6px",
-                  }}
-                />
-              );
-            })}
-          </div>
-          <div
-            className="text-xs mt-2"
-            style={{ color: "#6c757d", fontWeight: "500", fontSize: "0.7rem" }}
-          >
-            ({totalCobrar + totalPagar} docs)
-          </div>
-        </div>
-      );
-    } else if (venc.value === TIPO_VENCIMIENTO_TESORERIA.HOY || venc.value === TIPO_VENCIMIENTO_TESORERIA.SEMANA) {
-      // Estos no tienen datos específicos en el resumen actual
-      return (
-        <div className="text-center" style={{ padding: "0.25rem 0" }}>
-          <div className="font-bold" style={{ fontSize: "0.85rem" }}>
-            {venc.label}
-          </div>
-          <div
-            className="text-xs mt-2"
-            style={{ color: "#6c757d", fontStyle: "italic", fontSize: "0.7rem" }}
-          >
-            (Filtrar para ver)
-          </div>
-        </div>
-      );
-    }
-  };
+  // ELIMINADO: getVencimientoLabel - Ya no se usa, filtros de vencimiento movidos a Filtros Avanzados
 
 
   // 🆕 Función para obtener el label con datos del resumen para DEUDAS
@@ -630,28 +466,7 @@ const PendientesHeader = ({
     }
   };
 
-  // ========================================
-
-
-  // Opciones de vencimiento con configuración de color
-  const vencimientoOptions = [
-    {
-      ...LABELS_TIPO_VENCIMIENTO[TIPO_VENCIMIENTO_TESORERIA.TODOS],
-      value: TIPO_VENCIMIENTO_TESORERIA.TODOS,
-    },
-    {
-      ...LABELS_TIPO_VENCIMIENTO[TIPO_VENCIMIENTO_TESORERIA.VENCIDOS],
-      value: TIPO_VENCIMIENTO_TESORERIA.VENCIDOS,
-    },
-    {
-      ...LABELS_TIPO_VENCIMIENTO[TIPO_VENCIMIENTO_TESORERIA.HOY],
-      value: TIPO_VENCIMIENTO_TESORERIA.HOY,
-    },
-    {
-      ...LABELS_TIPO_VENCIMIENTO[TIPO_VENCIMIENTO_TESORERIA.SEMANA],
-      value: TIPO_VENCIMIENTO_TESORERIA.SEMANA,
-    },
-  ];
+  // ELIMINADO: vencimientoOptions - Ya no se usa, filtros de vencimiento movidos a Filtros Avanzados
 
   return (
     <Card>
@@ -840,65 +655,6 @@ const PendientesHeader = ({
               </div>
             </Button>
           ))}
-        </div>
-      </div>
-
-      {/* ========================================
-          FILTROS ADICIONALES (Vencimiento, Limpiar)
-          ======================================== */}
-      <div style={{ display: "flex", gap: 12, marginTop: "1rem" }}>
-        <div style={{ flex: 1 }}>
-          <label className="block mb-2 font-bold text-sm">Estado de Vencimiento</label>
-          <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
-            {vencimientoOptions.map((option) => (
-              <Button
-                key={option.value || "todos"}
-                icon={option.icon}
-                severity={option.severity}
-                outlined={filtros.vencimiento !== option.value}
-                raised={filtros.vencimiento === option.value}
-                onClick={() => onFiltroChange("vencimiento", option.value)}
-                disabled={loading}
-                style={{
-                  flex: 1,
-                  minWidth: "80px",
-                  minHeight: "85px",
-                  padding: "0.4rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.75rem",
-                }}
-              >
-                {getVencimientoLabel(option)}
-              </Button>
-            ))}
-          </div>
-        </div>
-        <div style={{ flex: 0.2 }}>
-          <label className="block mb-2 font-bold text-sm">Limpiar</label>
-          <div style={{ display: "flex", gap: 6 }}>
-            <Button
-              severity="secondary"
-              icon="pi pi-filter-slash"
-              label="Limpiar"
-              outlined
-              onClick={onLimpiarFiltros}
-              disabled={loading}
-              style={{
-                flex: 1,
-                minWidth: "75px",
-                minHeight: "85px",
-                padding: "0.4rem",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "0.75rem",
-              }}
-            ></Button>
-          </div>
         </div>
       </div>
     </Card>

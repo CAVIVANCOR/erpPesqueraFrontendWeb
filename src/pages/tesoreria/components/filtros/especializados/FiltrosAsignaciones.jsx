@@ -7,39 +7,56 @@ import RangoMontosField from '../comunes/RangoMontosField';
  * Filtros especializados para Asignaciones de Fondos
  */
 const FiltrosAsignaciones = ({ filtros, opciones, onFiltroChange }) => {
-  
+
   return (
     <div className="p-fluid">
-      
-      {/* Rango de Fechas */}
-      <RangoFechasField
-        fechaDesde={filtros.fechaDesde}
-        fechaHasta={filtros.fechaHasta}
-        onChange={({ fechaDesde, fechaHasta }) => {
-          onFiltroChange('fechaDesde', fechaDesde);
-          onFiltroChange('fechaHasta', fechaHasta);
+      <div
+        style={{
+          alignItems: "start",
+          display: "flex",
+          gap: 10,
+          marginBottom: 15,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
-        totalDocumentos={opciones.totalDocumentos}
-        label="Rango de Fechas de Asignación"
-      />
+      >
+        <div style={{ flex: 1 }}>
+          {/* Rango de Fechas */}
+          <RangoFechasField
+            onChange={({ fechaDesde, fechaHasta }) => {
+              onFiltroChange('fechaDesde', fechaDesde);
+              onFiltroChange('fechaHasta', fechaHasta);
+            }}
+            totalDocumentos={opciones.totalDocumentos}
+            label="Rango de Fechas de Asignación"
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          {/* Personal */}
+          <MultiSelectDinamico
+            label="Personal"
+            value={filtros.personalIds || []}
+            opciones={opciones.personal || []}
+            onChange={(value) => onFiltroChange('personalIds', value)}
+            placeholder="Seleccionar personal..."
+            filterBy="nombreCompleto,nombre"
+            showContadores={true}
+            tipo="personal"
+            icono="👤"
+          />
+        </div>
 
-      {/* Personal */}
-      <MultiSelectDinamico
-        label="Personal"
-        value={filtros.personalIds || []}
-        opciones={opciones.personal || []}
-        onChange={(value) => onFiltroChange('personalIds', value)}
-        placeholder="Seleccionar personal..."
-        filterBy="nombreCompleto,nombre"
-        showContadores={true}
-        tipo="personal"
-        icono="👤"
-      />
-
-      <div className="formgrid grid">
-        
+      </div>
+      <div
+        style={{
+          alignItems: "start",
+          display: "flex",
+          gap: 10,
+          marginBottom: 15,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         {/* Monedas */}
-        <div className="field col-12 md:col-6">
+        <div style={{ flex: 1 }}>
           <MultiSelectDinamico
             label="Monedas"
             value={filtros.monedaIds || []}
@@ -52,9 +69,8 @@ const FiltrosAsignaciones = ({ filtros, opciones, onFiltroChange }) => {
             icono="💰"
           />
         </div>
-
         {/* Estados */}
-        <div className="field col-12 md:col-6">
+        <div style={{ flex: 1 }}>
           <MultiSelectDinamico
             label="Estados"
             value={filtros.estadoIds || []}
@@ -68,20 +84,30 @@ const FiltrosAsignaciones = ({ filtros, opciones, onFiltroChange }) => {
           />
         </div>
       </div>
-
-      {/* Rango de Montos */}
-      <RangoMontosField
-        montoDesde={filtros.montoDesde}
-        montoHasta={filtros.montoHasta}
-        onChange={({ montoDesde, montoHasta }) => {
-          onFiltroChange('montoDesde', montoDesde);
-          onFiltroChange('montoHasta', montoHasta);
+      <div
+        style={{
+          alignItems: "center",
+          display: "flex",
+          gap: 10,
+          marginBottom: 15,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
-        rangoDatos={opciones.rangoMontos}
-        moneda="S/."
-      />
-
-    </div>
+      >
+        <div style={{ flex: 1 }}>
+          {/* Rango de Montos */}
+          <RangoMontosField
+            montoDesde={filtros.montoDesde}
+            montoHasta={filtros.montoHasta}
+            onChange={({ montoDesde, montoHasta }) => {
+              onFiltroChange('montoDesde', montoDesde);
+              onFiltroChange('montoHasta', montoHasta);
+            }}
+            rangoDatos={opciones.rangoMontos}
+            moneda="S/."
+          />
+        </div>
+      </div>
+    </div >
   );
 };
 

@@ -32,8 +32,6 @@ const FiltrosCxP = ({ filtros, opciones, onFiltroChange }) => {
         {/* Rango de Fechas */}
         <div style={{ flex: 1 }}>
           <RangoFechasField
-            fechaDesde={filtros.fechaDesde}
-            fechaHasta={filtros.fechaHasta}
             onChange={({ fechaDesde, fechaHasta }) => {
               onFiltroChange('fechaDesde', fechaDesde);
               onFiltroChange('fechaHasta', fechaHasta);

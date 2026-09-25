@@ -10,7 +10,7 @@ import { TIPO_VENCIMIENTO_TESORERIA } from '../../../../../utils/tesoreria.const
  * Filtros especializados para Cuentas por Cobrar
  */
 const FiltrosCxC = ({ filtros, opciones, onFiltroChange }) => {
-  
+
   const opcionesVencimiento = [
     { label: 'Todos', value: TIPO_VENCIMIENTO_TESORERIA.TODOS },
     { label: 'Vence Hoy', value: TIPO_VENCIMIENTO_TESORERIA.HOY },
@@ -20,36 +20,52 @@ const FiltrosCxC = ({ filtros, opciones, onFiltroChange }) => {
 
   return (
     <div className="p-fluid">
-      
-      {/* Rango de Fechas */}
-      <RangoFechasField
-        fechaDesde={filtros.fechaDesde}
-        fechaHasta={filtros.fechaHasta}
-        onChange={({ fechaDesde, fechaHasta }) => {
-          onFiltroChange('fechaDesde', fechaDesde);
-          onFiltroChange('fechaHasta', fechaHasta);
+      <div
+        style={{
+          alignItems: "start",
+          display: "flex",
+          gap: 10,
+          marginBottom: 15,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
-        totalDocumentos={opciones.totalDocumentos}
-        label="Rango de Fechas de Emisión"
-      />
-
-      {/* Clientes */}
-      <MultiSelectDinamico
-        label="Clientes"
-        value={filtros.clienteIds || []}
-        opciones={opciones.clientes || []}
-        onChange={(value) => onFiltroChange('clienteIds', value)}
-        placeholder="Seleccionar clientes..."
-        filterBy="razonSocial,numeroDocumento,nombre"
-        showContadores={true}
-        tipo="cliente"
-        icono="👤"
-      />
-
-      <div className="formgrid grid">
-        
+      >
+        <div style={{ flex: 1 }}>
+          {/* Rango de Fechas */}
+          <RangoFechasField
+            onChange={({ fechaDesde, fechaHasta }) => {
+              onFiltroChange('fechaDesde', fechaDesde);
+              onFiltroChange('fechaHasta', fechaHasta);
+            }}
+            totalDocumentos={opciones.totalDocumentos}
+            label="Rango de Fechas de Emisión"
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          {/* Clientes */}
+          <MultiSelectDinamico
+            label="Clientes"
+            value={filtros.clienteIds || []}
+            opciones={opciones.clientes || []}
+            onChange={(value) => onFiltroChange('clienteIds', value)}
+            placeholder="Seleccionar clientes..."
+            filterBy="razonSocial,numeroDocumento,nombre"
+            showContadores={true}
+            tipo="cliente"
+            icono="👤"
+          />
+        </div>
+      </div>
+      <div
+        style={{
+          alignItems: "start",
+          display: "flex",
+          gap: 10,
+          marginBottom: 15,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         {/* Tipos de Documento */}
-        <div className="field col-12 md:col-6">
+        <div style={{ flex: 1 }}>
           <MultiSelectDinamico
             label="Tipos de Documento"
             value={filtros.tipoDocumentoIds || []}
@@ -62,9 +78,8 @@ const FiltrosCxC = ({ filtros, opciones, onFiltroChange }) => {
             icono="📄"
           />
         </div>
-
         {/* Número de Documento */}
-        <div className="field col-12 md:col-6">
+        <div style={{ flex: 1 }}>
           <NumeroDocumentoField
             value={filtros.numeroDocumento || ''}
             onChange={(value) => onFiltroChange('numeroDocumento', value)}
@@ -73,11 +88,17 @@ const FiltrosCxC = ({ filtros, opciones, onFiltroChange }) => {
           />
         </div>
       </div>
-
-      <div className="formgrid grid">
-        
+      <div
+        style={{
+          alignItems: "start",
+          display: "flex",
+          gap: 10,
+          marginBottom: 15,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         {/* Monedas */}
-        <div className="field col-12 md:col-4">
+        <div style={{ flex: 1 }}>
           <MultiSelectDinamico
             label="Monedas"
             value={filtros.monedaIds || []}
@@ -90,9 +111,8 @@ const FiltrosCxC = ({ filtros, opciones, onFiltroChange }) => {
             icono="💰"
           />
         </div>
-
         {/* Estados */}
-        <div className="field col-12 md:col-4">
+        <div style={{ flex: 1 }}>
           <MultiSelectDinamico
             label="Estados"
             value={filtros.estadoIds || []}
@@ -105,7 +125,16 @@ const FiltrosCxC = ({ filtros, opciones, onFiltroChange }) => {
             icono="📊"
           />
         </div>
-
+      </div>
+      <div
+        style={{
+          alignItems: "center",
+          display: "flex",
+          gap: 10,
+          marginBottom: 15,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         {/* Vencimiento */}
         <div className="field col-12 md:col-4">
           <label htmlFor="vencimiento">⏰ Vencimiento</label>
@@ -118,20 +147,20 @@ const FiltrosCxC = ({ filtros, opciones, onFiltroChange }) => {
             className="w-full"
           />
         </div>
+        <div style={{ flex: 1 }}>
+          {/* Rango de Montos */}
+          <RangoMontosField
+            montoDesde={filtros.montoDesde}
+            montoHasta={filtros.montoHasta}
+            onChange={({ montoDesde, montoHasta }) => {
+              onFiltroChange('montoDesde', montoDesde);
+              onFiltroChange('montoHasta', montoHasta);
+            }}
+            rangoDatos={opciones.rangoMontos}
+            moneda="S/."
+          />
+        </div>
       </div>
-
-      {/* Rango de Montos */}
-      <RangoMontosField
-        montoDesde={filtros.montoDesde}
-        montoHasta={filtros.montoHasta}
-        onChange={({ montoDesde, montoHasta }) => {
-          onFiltroChange('montoDesde', montoDesde);
-          onFiltroChange('montoHasta', montoHasta);
-        }}
-        rangoDatos={opciones.rangoMontos}
-        moneda="S/."
-      />
-
     </div>
   );
 };

@@ -2470,7 +2470,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
       <Dialog
         visible={visible}
         onHide={handleCerrar}
-        header="💳 Pagar Cuenta Por Cobrar - Operación Especializada"
+        header="💳 Pagar Cuenta Por Pagar - Operación Especializada"
         style={{ width: '95vw', maxWidth: '1400px' }}
         maximizable
         modal

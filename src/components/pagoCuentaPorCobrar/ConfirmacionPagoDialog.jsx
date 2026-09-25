@@ -510,7 +510,7 @@ export default function ConfirmacionPagoDialog({
             header="Debe"
             body={(rowData) => (
               <span style={{ fontWeight: 'bold' }}>
-                S/. {formatearNumero(rowData.totalDebe || 0, 2)}
+                {rowData.moneda?.simbolo} {formatearNumero(rowData.totalDebe || 0, 2)}
               </span>
             )}
             style={{ width: '15%', textAlign: 'right' }}
@@ -520,7 +520,7 @@ export default function ConfirmacionPagoDialog({
             header="Haber"
             body={(rowData) => (
               <span style={{ fontWeight: 'bold' }}>
-                S/. {formatearNumero(rowData.totalHaber || 0, 2)}
+                {rowData.moneda?.simbolo} {formatearNumero(rowData.totalHaber || 0, 2)}
               </span>
             )}
             style={{ width: '15%', textAlign: 'right' }}

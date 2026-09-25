@@ -8,39 +8,56 @@ import RangoMontosField from '../comunes/RangoMontosField';
  * Filtros genéricos para todos los tipos de documentos
  */
 const FiltrosTodos = ({ filtros, opciones, onFiltroChange }) => {
-  
+
   return (
     <div className="p-fluid">
-      
-      {/* Rango de Fechas */}
-      <RangoFechasField
-        fechaDesde={filtros.fechaDesde}
-        fechaHasta={filtros.fechaHasta}
-        onChange={({ fechaDesde, fechaHasta }) => {
-          onFiltroChange('fechaDesde', fechaDesde);
-          onFiltroChange('fechaHasta', fechaHasta);
+      <div
+        style={{
+          alignItems: "start",
+          display: "flex",
+          gap: 10,
+          marginBottom: 15,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
-        totalDocumentos={opciones.totalDocumentos}
-        label="Rango de Fechas"
-      />
+      >
+        <div style={{ flex: 1 }}>
+          {/* Rango de Fechas */}
+          <RangoFechasField
+            onChange={({ fechaDesde, fechaHasta }) => {
+              onFiltroChange('fechaDesde', fechaDesde);
+              onFiltroChange('fechaHasta', fechaHasta);
+            }}
+            totalDocumentos={opciones.totalDocumentos}
+            label="Rango de Fechas"
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          {/* Entidades Comerciales (Clientes + Proveedores) */}
+          <MultiSelectDinamico
+            label="Entidades Comerciales"
+            value={filtros.entidadComercialIds || []}
+            opciones={opciones.entidadesComerciales || []}
+            onChange={(value) => onFiltroChange('entidadComercialIds', value)}
+            placeholder="Seleccionar entidades..."
+            filterBy="razonSocial,numeroDocumento,nombre"
+            showContadores={true}
+            tipo="entidad"
+            icono="🏢"
+          />
+        </div>
+      </div>
 
-      {/* Entidades Comerciales (Clientes + Proveedores) */}
-      <MultiSelectDinamico
-        label="Entidades Comerciales"
-        value={filtros.entidadComercialIds || []}
-        opciones={opciones.entidadesComerciales || []}
-        onChange={(value) => onFiltroChange('entidadComercialIds', value)}
-        placeholder="Seleccionar entidades..."
-        filterBy="razonSocial,numeroDocumento,nombre"
-        showContadores={true}
-        tipo="entidad"
-        icono="🏢"
-      />
-
-      <div className="formgrid grid">
-        
+      <div
+        style={{
+          alignItems: "start",
+          display: "flex",
+          gap: 10,
+          marginBottom: 15,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         {/* Tipos de Documento */}
-        <div className="field col-12 md:col-6">
+        <div style={{ flex: 1 }}>
           <MultiSelectDinamico
             label="Tipos de Documento"
             value={filtros.tipoDocumentoIds || []}
@@ -53,9 +70,8 @@ const FiltrosTodos = ({ filtros, opciones, onFiltroChange }) => {
             icono="📄"
           />
         </div>
-
         {/* Número de Documento */}
-        <div className="field col-12 md:col-6">
+        <div style={{ flex: 1 }}>
           <NumeroDocumentoField
             value={filtros.numeroDocumento || ''}
             onChange={(value) => onFiltroChange('numeroDocumento', value)}
@@ -64,11 +80,17 @@ const FiltrosTodos = ({ filtros, opciones, onFiltroChange }) => {
           />
         </div>
       </div>
-
-      <div className="formgrid grid">
-        
+      <div
+        style={{
+          alignItems: "start",
+          display: "flex",
+          gap: 10,
+          marginBottom: 15,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         {/* Monedas */}
-        <div className="field col-12 md:col-6">
+        <div style={{ flex: 1 }}>
           <MultiSelectDinamico
             label="Monedas"
             value={filtros.monedaIds || []}
@@ -81,9 +103,8 @@ const FiltrosTodos = ({ filtros, opciones, onFiltroChange }) => {
             icono="💰"
           />
         </div>
-
         {/* Estados */}
-        <div className="field col-12 md:col-6">
+        <div style={{ flex: 1 }}>
           <MultiSelectDinamico
             label="Estados"
             value={filtros.estadoIds || []}
@@ -97,19 +118,29 @@ const FiltrosTodos = ({ filtros, opciones, onFiltroChange }) => {
           />
         </div>
       </div>
-
-      {/* Rango de Montos */}
-      <RangoMontosField
-        montoDesde={filtros.montoDesde}
-        montoHasta={filtros.montoHasta}
-        onChange={({ montoDesde, montoHasta }) => {
-          onFiltroChange('montoDesde', montoDesde);
-          onFiltroChange('montoHasta', montoHasta);
+      <div
+        style={{
+          alignItems: "center",
+          display: "flex",
+          gap: 10,
+          marginBottom: 15,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
-        rangoDatos={opciones.rangoMontos}
-        moneda="S/."
-      />
-
+      >
+        <div style={{ flex: 1 }}>
+          {/* Rango de Montos */}
+          <RangoMontosField
+            montoDesde={filtros.montoDesde}
+            montoHasta={filtros.montoHasta}
+            onChange={({ montoDesde, montoHasta }) => {
+              onFiltroChange('montoDesde', montoDesde);
+              onFiltroChange('montoHasta', montoHasta);
+            }}
+            rangoDatos={opciones.rangoMontos}
+            moneda="S/."
+          />
+        </div>
+      </div>
     </div>
   );
 };
