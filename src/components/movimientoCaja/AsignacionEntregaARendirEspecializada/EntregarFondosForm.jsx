@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
@@ -14,11 +14,14 @@ import { formatearNumero } from "../../../utils/utils";
 import { getGastosPlanificados } from "../../../api/detGastosPlanificados";
 import CuentaCorrienteSelector from "../../common/CuentaCorrienteSelector";
 import ModuloDocumentoSelector from "../../common/ModuloDocumentoSelector";
+import TipoMovimientoSelector from "../../common/TipoMovimientoSelector";
+import ActivoSelector from "../../common/ActivoSelector";
 
 const EntregarFondosForm = ({
   asignacion,
   cuentasCorrientes = [],
   mediosPago = [],
+  tiposMovimiento = [],
   onSubmit,
   onCancel,
   loading = false,
@@ -41,14 +44,12 @@ const EntregarFondosForm = ({
   const [loadingGastos, setLoadingGastos] = useState(false);
   const [showResumenDialog, setShowResumenDialog] = useState(false);
   const [resumenOperacion, setResumenOperacion] = useState(null);
-  const [moduloDocumentoDialogVisible, setModuloDocumentoDialogVisible] =
-    useState(false);
-  const [moduloDocumentoSeleccionado, setModuloDocumentoSeleccionado] =
-    useState(null);
 
   // Inicializar datos de la asignación y cargar gastos planificados
   useEffect(() => {
     if (asignacion) {
+      console.log("[EntregarFondosForm] asignacion recibida:", asignacion);
+
       const montoInicial = Number(asignacion.montoTotal || asignacion.monto || 0);
       const moduloOrigenId = asignacion.moduloOrigen?.id
         ? Number(asignacion.moduloOrigen.id)
@@ -60,6 +61,11 @@ const EntregarFondosForm = ({
         ? Number(asignacion.documentoOrigenId)
         : null;
 
+      console.log("[EntregarFondosForm] IDs normalizados:", {
+        moduloOrigenId,
+        documentoOrigenId,
+      });
+
       setFormData((prev) => ({
         ...prev,
         detMovsEntregaRendirId: Number(asignacion.origenId),
@@ -67,19 +73,6 @@ const EntregarFondosForm = ({
         documentoOrigenId,
         monto: montoInicial,
       }));
-
-      setModuloDocumentoSeleccionado(
-        moduloOrigenId && documentoOrigenId
-          ? {
-            moduloId: moduloOrigenId,
-            documentoId: documentoOrigenId,
-            moduloNombre: asignacion.moduloOrigen?.nombre || "N/A",
-            documentoNumero: String(documentoOrigenId),
-            documentoFecha: null,
-            entidad: null,
-          }
-          : null,
-      );
 
       cargarGastosPlanificados(asignacion.origenId);
     }
@@ -182,82 +175,6 @@ const EntregarFondosForm = ({
     }
   };
 
-  const formatearLabelModuloDocumento = () => {
-    if (!moduloDocumentoSeleccionado?.moduloId) {
-      return "Seleccionar Módulo y Documento";
-    }
-
-    const {
-      moduloNombre,
-      documentoId,
-      documentoNumero,
-      documentoFecha,
-      entidad,
-    } = moduloDocumentoSeleccionado;
-
-    let label = `${moduloNombre} | ${documentoId}`;
-
-    if (documentoNumero && documentoNumero !== "N/A") {
-      label += ` - ${documentoNumero}`;
-    }
-
-    if (documentoFecha) {
-      label += ` (${new Date(documentoFecha).toLocaleDateString("es-PE", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })})`;
-    }
-
-    if (entidad) {
-      label += ` - ${entidad}`;
-    }
-
-    return label;
-  };
-
-  const handleModuloDocumentoSelect = (
-    moduloId,
-    documentoId,
-    moduloData,
-    documentoData,
-  ) => {
-    const moduloOrigenId = Number(moduloId);
-    const documentoOrigenId = Number(documentoId);
-
-    setFormData((prev) => ({
-      ...prev,
-      moduloOrigenId,
-      documentoOrigenId,
-    }));
-
-    setModuloDocumentoSeleccionado({
-      moduloId: moduloOrigenId,
-      documentoId: documentoOrigenId,
-      moduloNombre: moduloData?.nombre || "N/A",
-      documentoNumero:
-        documentoData?.numero ||
-        documentoData?.nombre ||
-        documentoData?.numeroDocumento ||
-        documentoData?.numeroCompleto ||
-        "N/A",
-      documentoFecha:
-        documentoData?.fecha ||
-        documentoData?.fechaInicio ||
-        documentoData?.fechaDocumento ||
-        null,
-      entidad: documentoData?.entidad || null,
-    });
-
-    setErrors((prev) => ({
-      ...prev,
-      moduloOrigenId: null,
-      documentoOrigenId: null,
-    }));
-
-    setModuloDocumentoDialogVisible(false);
-  };
-
   // Manejar envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -318,11 +235,6 @@ const EntregarFondosForm = ({
   // Construir nombre completo del responsable
   const nombreResponsable =
     asignacion?.entidadComercial?.razonSocial || "N/A";
-
-  // Construir tipo de movimiento completo
-  const tipoMovimientoCompleto = asignacion?.tipoMovimiento
-    ? `${asignacion.tipoMovimiento.categoria?.nombre || ""} - ${asignacion.tipoMovimiento.nombre || ""}`.trim()
-    : "N/A";
 
   // Template para monto en tabla de gastos
   const montoTemplate = (rowData) => {
@@ -404,22 +316,22 @@ const EntregarFondosForm = ({
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
-            <div style={{ flex: 1 }}>
-              <label className="block mb-2 font-bold">
-                Módulo y Documento Origen *
-              </label>
-              <Button
-                type="button"
-                label={formatearLabelModuloDocumento()}
-                icon="pi pi-search"
-                onClick={() => setModuloDocumentoDialogVisible(true)}
+            <div style={{ flex: 3 }}>
+              <ModuloDocumentoSelector
+                key={`md-${Number(formData.moduloOrigenId || 0)}-${Number(formData.documentoOrigenId || 0)}`}
+                value={useMemo(
+                  () => ({
+                    moduloOrigenId: Number(formData.moduloOrigenId || 0),
+                    documentoOrigenId: Number(formData.documentoOrigenId || 0),
+                  }),
+                  [formData.moduloOrigenId, formData.documentoOrigenId],
+                )}
+                onChange={() => {}}
                 disabled={loading}
-                style={{
-                  justifyContent: "flex-start",
-                  fontWeight: "bold",
-                }}
-                tooltip="Seleccionar módulo y documento de origen"
-                tooltipOptions={{ position: "top" }}
+                soloLectura={true}
+                moduloLabel="Módulo Origen"
+                documentoLabel="Documento Origen"
+                allowSinModulo={false}
               />
               {(errors.moduloOrigenId || errors.documentoOrigenId) && (
                 <small className="p-error">
@@ -448,32 +360,30 @@ const EntregarFondosForm = ({
             }}
           >
             <div style={{ flex: 1 }}>
-              <label className="block mb-2 font-bold">Tipo de Movimiento</label>
-              <InputText
-                value={tipoMovimientoCompleto}
-                disabled
-                style={{
-                  fontWeight: "bold",
-                  backgroundColor: "#f8f9fa",
-                }}
+              <TipoMovimientoSelector
+                value={Number(asignacion?.tipoMovimiento?.id || 0)}
+                tiposMovimiento={tiposMovimiento}
+                onChange={() => {}}
+                disabled={loading}
+                soloLectura={true}
               />
             </div>
           </div>
           <div
             style={{
-              alignItems: "end",
+              alignItems: "start",
               display: "flex",
               gap: 10,
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
             {/* Descripción */}
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 3 }}>
               <label className="block mb-2 font-bold">Descripción</label>
               <InputTextarea
                 value={asignacion?.descripcion || "N/A"}
                 disabled
-                rows={2}
+                rows={1}
                 style={{
                   fontWeight: "bold",
                   backgroundColor: "#f8f9fa",
@@ -494,28 +404,25 @@ const EntregarFondosForm = ({
               />
             </div>
           </div>
-          <div
-            style={{
-              alignItems: "end",
-              display: "flex",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            {asignacion?.embarcacion && (
-              <div className="col-12">
-                <label className="block mb-2 font-bold">Embarcación</label>
-                <InputText
-                  value={asignacion.embarcacion.activo?.nombre || "N/A"}
-                  disabled
-                  style={{
-                    fontWeight: "bold",
-                    backgroundColor: "#f8f9fa",
-                  }}
+          {asignacion?.embarcacion && (
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div className="col-12" style={{ flex: 1 }}>
+                <ActivoSelector
+                  value={Number(asignacion.embarcacion.activo?.id || asignacion.embarcacion.id || 0)}
+                  onChange={() => {}}
+                  disabled={loading}
+                  soloLectura={true}
                 />
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </Panel>
 
         {/* SECCIÓN 2: Detalle de Gastos Planificados */}
@@ -725,24 +632,11 @@ const EntregarFondosForm = ({
         </div>
       </form>
 
-      <ModuloDocumentoSelector
-        key={`${asignacion?.moduloOrigen?.id || asignacion?.moduloOrigenId || 0}-${asignacion?.documentoOrigenId || 0}`}
-        visible={moduloDocumentoDialogVisible}
-        initialModuloId={Number(
-          asignacion?.moduloOrigen?.id || asignacion?.moduloOrigenId || 0,
-        )}
-        initialDocumentoId={Number(asignacion?.documentoOrigenId || 0)}
-        onSelect={handleModuloDocumentoSelect}
-        onCancel={() => setModuloDocumentoDialogVisible(false)}
-        moduloLabel="Submódulo Origen"
-        documentoLabel="Documento Origen"
-      />
-
       {/* Dialog de Resumen de Operación */}
       <Dialog
         header="✅ Entrega de Fondos Exitosa"
         visible={showResumenDialog}
-        style={{ width: "500px" }}
+        style={{ width: "1000px" }}
         onHide={() => {
           setShowResumenDialog(false);
           onCancel(); // Cerrar el formulario principal

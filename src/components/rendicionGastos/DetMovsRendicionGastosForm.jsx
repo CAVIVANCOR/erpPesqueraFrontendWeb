@@ -856,6 +856,7 @@ const DetMovsRendicionGastosForm = ({
                     });
                   }}
                   disabled={formularioDeshabilitado}
+                  soloLectura={false}
                   moduloLabel="Módulo Origen"
                   documentoLabel="Documento Origen"
                   allowSinModulo={false}

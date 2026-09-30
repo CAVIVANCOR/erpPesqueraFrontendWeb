@@ -100,6 +100,7 @@ const getColorCategoria = (index) => {
  * @param {Function} props.onChange - Callback cuando se selecciona un tipo (recibe el ID)
  * @param {boolean} props.esIngreso - Filtro inicial: false=EGRESOS (default), true=INGRESOS
  * @param {boolean} props.disabled - Si el selector está deshabilitado
+ * @param {boolean} props.soloLectura - Si es true, muestra el label sin permitir abrir el diálogo
  * @param {boolean} props.required - Si el campo es obligatorio
  * @param {boolean} props.error - Si hay error de validación
  * @param {string} props.errorMessage - Mensaje de error
@@ -114,6 +115,7 @@ const TipoMovimientoSelector = ({
   onChange,
   esIngreso = false, // 🆕 Por defecto EGRESOS (false)
   disabled = false,
+  soloLectura = false,
   required = false,
   error = false,
   errorMessage = "",
@@ -302,7 +304,7 @@ const TipoMovimientoSelector = ({
       <Button
         type="button"
         icon="pi pi-search"
-        onClick={() => !disabled && setDialogVisible(true)}
+        onClick={() => !disabled && !soloLectura && setDialogVisible(true)}
         disabled={disabled}
         className={classNames("p-button-outlined w-full", {
           "p-invalid": error,
@@ -394,7 +396,7 @@ const TipoMovimientoSelector = ({
         {/* Layout de 2 columnas */}
         <div style={{ 
           display: "grid", 
-          gridTemplateColumns: "200px 1fr", 
+          gridTemplateColumns: "calc(200px + 2cm) 1fr", 
           gap: "1rem",
           height: "600px"
         }}>
@@ -422,10 +424,11 @@ const TipoMovimientoSelector = ({
                 size="small"
                 onClick={() => setCategoriaFiltro(null)}
                 style={{
-                  backgroundColor: !categoriaFiltro ? COLOR_TODAS.bg : "#FFFFFF",
-                  color: !categoriaFiltro ? COLOR_TODAS.text : COLOR_TODAS.bg,
+                  backgroundColor: COLOR_TODAS.bg,
+                  color: "#000000",
                   borderColor: COLOR_TODAS.border,
-                  fontWeight: "500",
+                  borderWidth: !categoriaFiltro ? "2px" : "1px",
+                  fontWeight: "700",
                   fontSize: "0.75rem",
                   padding: "0.35rem 0.5rem",
                   justifyContent: "flex-start",
@@ -447,10 +450,11 @@ const TipoMovimientoSelector = ({
                     size="small"
                     onClick={() => setCategoriaFiltro(Number(categoria.id))}
                     style={{
-                      backgroundColor: isActive ? color.bg : "#FFFFFF",
-                      color: isActive ? color.text : color.bg,
+                      backgroundColor: color.bg,
+                      color: "#000000",
                       borderColor: color.border,
-                      fontWeight: "500",
+                      borderWidth: isActive ? "2px" : "1px",
+                      fontWeight: "700",
                       fontSize: "0.75rem",
                       padding: "0.35rem 0.5rem",
                       justifyContent: "flex-start",

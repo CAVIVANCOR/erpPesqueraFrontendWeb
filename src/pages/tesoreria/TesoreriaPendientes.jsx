@@ -637,7 +637,7 @@ const TesoreriaPendientes = () => {
         <Dialog
           header={`💵 Entregar Fondos - ${asignacionSeleccionada.entidadComercial?.razonSocial || 'N/A'}`}
           visible={showEntregaFondosDialog}
-          style={{ width: "90vw", maxWidth: "900px" }}
+          style={{ width: "1300px"}}
           onHide={handleCancelarEntrega}
           modal
           maximizable
@@ -646,6 +646,7 @@ const TesoreriaPendientes = () => {
             asignacion={asignacionSeleccionada}
             cuentasCorrientes={saldosCuentas}
             mediosPago={mediosPago}
+            tiposMovimiento={tiposMovimiento}
             onSubmit={handleGuardarEntrega}
             onCancel={handleCancelarEntrega}
             loading={loadingEntrega}

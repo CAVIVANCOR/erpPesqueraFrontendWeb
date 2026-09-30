@@ -101,6 +101,7 @@ const getEmpresaNombre = (empresaId, empresas) => {
  * @param {Function} props.onChange - Callback cuando se selecciona un activo (recibe el ID)
  * @param {number|string} props.empresaIdPreseleccionada - ID de empresa a preseleccionar
  * @param {boolean} props.disabled - Si el selector está deshabilitado
+ * @param {boolean} props.soloLectura - Si es true, muestra el label sin permitir abrir el diálogo
  * @param {boolean} props.required - Si el campo es obligatorio
  * @param {boolean} props.error - Si hay error de validación
  * @param {string} props.errorMessage - Mensaje de error
@@ -114,6 +115,7 @@ const ActivoSelector = ({
   onChange,
   empresaIdPreseleccionada = null,
   disabled = false,
+  soloLectura = false,
   required = false,
   error = false,
   errorMessage = "",
@@ -403,7 +405,7 @@ const ActivoSelector = ({
           type="button"
           icon="pi pi-search"
           onClick={() => {
-            if (!disabled) {
+            if (!disabled && !soloLectura) {
               setDialogVisible(true);
             }
           }}

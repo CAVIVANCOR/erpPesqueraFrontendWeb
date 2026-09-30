@@ -10,6 +10,7 @@
  * - value: { moduloOrigenId, documentoOrigenId }
  * - onChange({ moduloOrigenId, documentoOrigenId })
  * - disabled
+ * - soloLectura: si es true, muestra el label resuelto sin permitir abrir el diálogo
  * - moduloLabel
  * - documentoLabel
  * - allowSinModulo
@@ -46,6 +47,7 @@ const ModuloDocumentoSelector = ({
   value = { moduloOrigenId: 0, documentoOrigenId: 0 },
   onChange,
   disabled = false,
+  soloLectura = false,
   moduloLabel = "Módulo",
   documentoLabel = "Documento",
   allowSinModulo = true,
@@ -157,12 +159,23 @@ const ModuloDocumentoSelector = ({
   };
 
   const labelBoton = useMemo(() => {
-    if (
-      !moduloSeleccionado ||
-      moduloOrigenId <= 0 ||
-      documentoOrigenId <= 0
-    ) {
+    if (!moduloSeleccionado || moduloOrigenId <= 0) {
       return "Seleccionar Módulo y Documento";
+    }
+
+    // Si hay módulo pero no hay documento, mostrar solo el módulo (útil en solo lectura)
+    if (documentoOrigenId <= 0) {
+      return (
+        <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", flexWrap: "wrap" }}>
+          <span style={COLORES_LABEL.modulo}>
+            {(moduloInfo?.nombre || moduloSeleccionado?.nombre || "N/A").toUpperCase()}
+          </span>
+          <span style={{ color: COLORES_LABEL.separador }}> - </span>
+          <span style={{ color: "#666", fontStyle: "italic" }}>
+            Sin documento asociado
+          </span>
+        </span>
+      );
     }
 
     const documentoData = construirDocumentoData(
@@ -659,7 +672,7 @@ const ModuloDocumentoSelector = ({
         type="button"
         icon="pi pi-search"
         onClick={() => {
-          if (!disabled) {
+          if (!disabled && !soloLectura) {
             setDialogVisible(true);
           }
         }}
