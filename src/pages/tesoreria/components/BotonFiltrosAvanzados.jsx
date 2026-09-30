@@ -20,60 +20,83 @@ const BotonFiltrosAvanzados = ({ filtros, opciones, onOpenDialog }) => {
   if (totalFiltros === 0) {
     // Sin filtros activos
     return (
-      <div className="mb-3">
-        <Button
-          label="🔍 Filtros Avanzados"
-          icon="pi pi-filter"
-          onClick={onOpenDialog}
-          className="p-button-outlined w-full"
-          style={{ justifyContent: 'flex-start' }}
-        >
-          <span className="ml-2 text-muted">(Sin filtros aplicados - Haz clic para filtrar)</span>
-        </Button>
-      </div>
+      <Button
+        icon="pi pi-filter"
+        onClick={onOpenDialog}
+        className="p-button-outlined w-full"
+        style={{ 
+          minHeight: '85px',
+          justifyContent: 'flex-start',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          padding: '0.75rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+          <strong style={{ fontSize: '0.85rem' }}>🔍 Filtros Avanzados</strong>
+          <Badge value="0" severity="secondary" />
+        </div>
+        <small className="text-muted" style={{ fontSize: '0.7rem' }}>
+          Sin filtros aplicados - Haz clic para filtrar
+        </small>
+      </Button>
     );
   }
 
   // Con filtros activos
   return (
-    <div className="p-fluid">
-      <div 
-        className="p-3 surface-100 border-round cursor-pointer hover:surface-200 transition-colors transition-duration-150"
-        onClick={onOpenDialog}
-        style={{ border: '2px solid var(--primary-color)' }}
-      >
-        <div className="flex align-items-center justify-content-between mb-2">
-          <div className="flex align-items-center gap-2">
-            <i className="pi pi-filter text-primary"></i>
-            <strong className="text-primary">Filtros Avanzados</strong>
-            <Badge value={totalFiltros} severity="info" />
-          </div>
-          <i className="pi pi-angle-down text-primary"></i>
+    <div 
+      className="p-2 surface-100 border-round cursor-pointer hover:surface-200 transition-colors transition-duration-150"
+      onClick={onOpenDialog}
+      style={{ 
+        border: '2px solid var(--primary-color)',
+        minHeight: '85px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+      }}
+    >
+      <div className="flex align-items-center justify-content-between mb-1">
+        <div className="flex align-items-center gap-2">
+          <i className="pi pi-filter text-primary" style={{ fontSize: '0.9rem' }}></i>
+          <strong className="text-primary" style={{ fontSize: '0.85rem' }}>Filtros Avanzados</strong>
+          <Badge value={totalFiltros} severity="info" />
         </div>
-
-        {/* Chips de filtros visibles */}
-        <div className="flex flex-wrap gap-2 mb-2">
-          {filtrosVisibles.map((filtro, index) => (
-            <Chip
-              key={index}
-              label={formatearResumenChip(filtro)}
-              className="p-chip-sm"
-              style={{ backgroundColor: 'var(--primary-100)', color: 'var(--primary-700)' }}
-            />
-          ))}
-          {filtrosOcultos > 0 && (
-            <Chip
-              label={`+${filtrosOcultos} más...`}
-              className="p-chip-sm"
-              style={{ backgroundColor: 'var(--surface-300)' }}
-            />
-          )}
-        </div>
-
-        <small className="text-muted">
-          Haz clic para modificar filtros
-        </small>
+        <i className="pi pi-angle-down text-primary" style={{ fontSize: '0.8rem' }}></i>
       </div>
+
+      {/* Chips de filtros visibles */}
+      <div className="flex flex-wrap gap-1 mb-1">
+        {filtrosVisibles.map((filtro, index) => (
+          <Chip
+            key={index}
+            label={formatearResumenChip(filtro)}
+            style={{ 
+              backgroundColor: 'var(--primary-100)', 
+              color: 'var(--primary-700)',
+              fontSize: '0.65rem',
+              padding: '0.15rem 0.4rem',
+              height: 'auto',
+            }}
+          />
+        ))}
+        {filtrosOcultos > 0 && (
+          <Chip
+            label={`+${filtrosOcultos} más...`}
+            style={{ 
+              backgroundColor: 'var(--surface-300)',
+              fontSize: '0.65rem',
+              padding: '0.15rem 0.4rem',
+              height: 'auto',
+            }}
+          />
+        )}
+      </div>
+
+      <small className="text-muted" style={{ fontSize: '0.65rem' }}>
+        Haz clic para modificar filtros
+      </small>
     </div>
   );
 };

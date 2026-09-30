@@ -651,10 +651,10 @@ export const LABELS_TIPO_VENCIMIENTO = {
  */
 export const LABELS_TIPO_OPERACION = {
   [TIPO_OPERACION_TESORERIA.TRANSFERENCIA_INTERNA]: {
-    label: 'Transfer. Interna',
+    label: 'Transfer. Interna, Ingresos y Retiros',
     severity: 'info',
     icon: 'pi pi-arrow-right-arrow-left',
-    descripcion: 'Transferencia entre nuestras cuentas',
+    descripcion: 'Transferencia entre nuestras cuentas, Ingresos y Retiros',
   },
   [TIPO_OPERACION_TESORERIA.PAGO_PROVEEDOR]: {
     label: 'Pago Proveedor',

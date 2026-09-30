@@ -90,6 +90,8 @@ const AsientoContableViewer = ({
   const cuentaTemplate = (rowData, tipo) => {
     const monto =
       tipo === "debe" ? Number(rowData.debe) : Number(rowData.haber);
+    // Usar la moneda del detalle, no del header
+    const simboloDetalle = rowData.moneda?.simbolo || rowData.moneda?.codigo || "S/.";
     return (
       <div>
         <div style={{ fontWeight: "bold", fontSize: "0.95rem" }}>
@@ -109,7 +111,7 @@ const AsientoContableViewer = ({
             color: tipo === "debe" ? "#2196F3" : "#4CAF50",
           }}
         >
-          {simboloMoneda} {formatearNumero(monto, 2)}
+          {simboloDetalle} {formatearNumero(monto, 2)}
         </div>
       </div>
     );

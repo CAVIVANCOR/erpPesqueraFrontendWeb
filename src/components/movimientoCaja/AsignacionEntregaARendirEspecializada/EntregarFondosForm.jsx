@@ -10,9 +10,10 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Divider } from "primereact/divider";
 import { Dialog } from "primereact/dialog";
-import { formatearNumero } from "../../utils/utils";
-import { getGastosPlanificados } from "../../api/detGastosPlanificados";
-import CuentaCorrienteSelector from "../common/CuentaCorrienteSelector";
+import { formatearNumero } from "../../../utils/utils";
+import { getGastosPlanificados } from "../../../api/detGastosPlanificados";
+import CuentaCorrienteSelector from "../../common/CuentaCorrienteSelector";
+import ModuloDocumentoSelector from "../../common/ModuloDocumentoSelector";
 
 const EntregarFondosForm = ({
   asignacion,
@@ -25,6 +26,8 @@ const EntregarFondosForm = ({
 }) => {
   const [formData, setFormData] = useState({
     detMovsEntregaRendirId: null,
+    moduloOrigenId: null,
+    documentoOrigenId: null,
     cuentaCorrienteOrigenId: null,
     medioPagoId: null,
     monto: 0,
@@ -38,19 +41,46 @@ const EntregarFondosForm = ({
   const [loadingGastos, setLoadingGastos] = useState(false);
   const [showResumenDialog, setShowResumenDialog] = useState(false);
   const [resumenOperacion, setResumenOperacion] = useState(null);
+  const [moduloDocumentoDialogVisible, setModuloDocumentoDialogVisible] =
+    useState(false);
+  const [moduloDocumentoSeleccionado, setModuloDocumentoSeleccionado] =
+    useState(null);
 
   // Inicializar datos de la asignación y cargar gastos planificados
   useEffect(() => {
     if (asignacion) {
       const montoInicial = Number(asignacion.montoTotal || asignacion.monto || 0);
-      
+      const moduloOrigenId = asignacion.moduloOrigen?.id
+        ? Number(asignacion.moduloOrigen.id)
+        : asignacion.moduloOrigenId
+          ? Number(asignacion.moduloOrigenId)
+          : null;
+
+      const documentoOrigenId = asignacion.documentoOrigenId
+        ? Number(asignacion.documentoOrigenId)
+        : null;
+
       setFormData((prev) => ({
         ...prev,
-        detMovsEntregaRendirId: asignacion.origenId,
+        detMovsEntregaRendirId: Number(asignacion.origenId),
+        moduloOrigenId,
+        documentoOrigenId,
         monto: montoInicial,
       }));
 
-      // Cargar gastos planificados
+      setModuloDocumentoSeleccionado(
+        moduloOrigenId && documentoOrigenId
+          ? {
+            moduloId: moduloOrigenId,
+            documentoId: documentoOrigenId,
+            moduloNombre: asignacion.moduloOrigen?.nombre || "N/A",
+            documentoNumero: String(documentoOrigenId),
+            documentoFecha: null,
+            entidad: null,
+          }
+          : null,
+      );
+
       cargarGastosPlanificados(asignacion.origenId);
     }
   }, [asignacion]);
@@ -78,7 +108,13 @@ const EntregarFondosForm = ({
   // Validar formulario
   const validarFormulario = () => {
     const newErrors = {};
+    if (!formData.moduloOrigenId) {
+      newErrors.moduloOrigenId = "Debe seleccionar un módulo de origen";
+    }
 
+    if (!formData.documentoOrigenId) {
+      newErrors.documentoOrigenId = "Debe seleccionar un documento de origen";
+    }
     if (!formData.cuentaCorrienteOrigenId) {
       newErrors.cuentaCorrienteOrigenId = "Debe seleccionar una cuenta";
     }
@@ -144,6 +180,82 @@ const EntregarFondosForm = ({
         [field]: null,
       }));
     }
+  };
+
+  const formatearLabelModuloDocumento = () => {
+    if (!moduloDocumentoSeleccionado?.moduloId) {
+      return "Seleccionar Módulo y Documento";
+    }
+
+    const {
+      moduloNombre,
+      documentoId,
+      documentoNumero,
+      documentoFecha,
+      entidad,
+    } = moduloDocumentoSeleccionado;
+
+    let label = `${moduloNombre} | ${documentoId}`;
+
+    if (documentoNumero && documentoNumero !== "N/A") {
+      label += ` - ${documentoNumero}`;
+    }
+
+    if (documentoFecha) {
+      label += ` (${new Date(documentoFecha).toLocaleDateString("es-PE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })})`;
+    }
+
+    if (entidad) {
+      label += ` - ${entidad}`;
+    }
+
+    return label;
+  };
+
+  const handleModuloDocumentoSelect = (
+    moduloId,
+    documentoId,
+    moduloData,
+    documentoData,
+  ) => {
+    const moduloOrigenId = Number(moduloId);
+    const documentoOrigenId = Number(documentoId);
+
+    setFormData((prev) => ({
+      ...prev,
+      moduloOrigenId,
+      documentoOrigenId,
+    }));
+
+    setModuloDocumentoSeleccionado({
+      moduloId: moduloOrigenId,
+      documentoId: documentoOrigenId,
+      moduloNombre: moduloData?.nombre || "N/A",
+      documentoNumero:
+        documentoData?.numero ||
+        documentoData?.nombre ||
+        documentoData?.numeroDocumento ||
+        documentoData?.numeroCompleto ||
+        "N/A",
+      documentoFecha:
+        documentoData?.fecha ||
+        documentoData?.fechaInicio ||
+        documentoData?.fechaDocumento ||
+        null,
+      entidad: documentoData?.entidad || null,
+    });
+
+    setErrors((prev) => ({
+      ...prev,
+      moduloOrigenId: null,
+      documentoOrigenId: null,
+    }));
+
+    setModuloDocumentoDialogVisible(false);
   };
 
   // Manejar envío del formulario
@@ -235,9 +347,15 @@ const EntregarFondosForm = ({
       <form onSubmit={handleSubmit} className="p-fluid">
         {/* SECCIÓN 1: Información de la Asignación */}
         <Panel header="📋 Información de la Asignación" className="mb-3">
-          <div className="grid">
-            {/* Fila 1 */}
-            <div className="col-12 md:col-3">
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
               <label className="block mb-2 font-bold">Empresa</label>
               <InputText
                 value={asignacion?.empresa?.razonSocial || "N/A"}
@@ -249,7 +367,7 @@ const EntregarFondosForm = ({
               />
             </div>
 
-            <div className="col-12 md:col-3">
+            <div style={{ flex: 1 }}>
               <label className="block mb-2 font-bold">N° Asignación</label>
               <InputText
                 value={`ER-${asignacion?.origenId || "N/A"}`}
@@ -261,7 +379,7 @@ const EntregarFondosForm = ({
               />
             </div>
 
-            <div className="col-12 md:col-3">
+            <div style={{ flex: 1 }}>
               <label className="block mb-2 font-bold">Fecha Asignación</label>
               <InputText
                 value={
@@ -276,8 +394,40 @@ const EntregarFondosForm = ({
                 }}
               />
             </div>
+          </div>
 
-            <div className="col-12 md:col-3">
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label className="block mb-2 font-bold">
+                Módulo y Documento Origen *
+              </label>
+              <Button
+                type="button"
+                label={formatearLabelModuloDocumento()}
+                icon="pi pi-search"
+                onClick={() => setModuloDocumentoDialogVisible(true)}
+                disabled={loading}
+                style={{
+                  justifyContent: "flex-start",
+                  fontWeight: "bold",
+                }}
+                tooltip="Seleccionar módulo y documento de origen"
+                tooltipOptions={{ position: "top" }}
+              />
+              {(errors.moduloOrigenId || errors.documentoOrigenId) && (
+                <small className="p-error">
+                  {errors.moduloOrigenId || errors.documentoOrigenId}
+                </small>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
               <label className="block mb-2 font-bold">Responsable</label>
               <InputText
                 value={nombreResponsable}
@@ -288,9 +438,16 @@ const EntregarFondosForm = ({
                 }}
               />
             </div>
-
-            {/* Fila 2 */}
-            <div className="col-12 md:col-6">
+          </div>
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
               <label className="block mb-2 font-bold">Tipo de Movimiento</label>
               <InputText
                 value={tipoMovimientoCompleto}
@@ -301,8 +458,29 @@ const EntregarFondosForm = ({
                 }}
               />
             </div>
-
-            <div className="col-12 md:col-3">
+          </div>
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            {/* Descripción */}
+            <div style={{ flex: 1 }}>
+              <label className="block mb-2 font-bold">Descripción</label>
+              <InputTextarea
+                value={asignacion?.descripcion || "N/A"}
+                disabled
+                rows={2}
+                style={{
+                  fontWeight: "bold",
+                  backgroundColor: "#f8f9fa",
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
               <label className="block mb-2 font-bold">Monto Asignado</label>
               <InputText
                 value={`${asignacion?.moneda?.simbolo || ""} ${formatearNumero(montoSolicitado)}`}
@@ -315,20 +493,15 @@ const EntregarFondosForm = ({
                 }}
               />
             </div>
-
-            <div className="col-12 md:col-3">
-              <label className="block mb-2 font-bold">Módulo Origen</label>
-              <InputText
-                value={asignacion?.moduloOrigen?.nombre || "N/A"}
-                disabled
-                style={{
-                  fontWeight: "bold",
-                  backgroundColor: "#f8f9fa",
-                }}
-              />
-            </div>
-
-            {/* Fila 3 */}
+          </div>
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
             {asignacion?.embarcacion && (
               <div className="col-12">
                 <label className="block mb-2 font-bold">Embarcación</label>
@@ -342,20 +515,6 @@ const EntregarFondosForm = ({
                 />
               </div>
             )}
-
-            {/* Descripción */}
-            <div className="col-12">
-              <label className="block mb-2 font-bold">Descripción</label>
-              <InputTextarea
-                value={asignacion?.descripcion || "N/A"}
-                disabled
-                rows={2}
-                style={{
-                  fontWeight: "bold",
-                  backgroundColor: "#f8f9fa",
-                }}
-              />
-            </div>
           </div>
         </Panel>
 
@@ -565,6 +724,19 @@ const EntregarFondosForm = ({
           />
         </div>
       </form>
+
+      <ModuloDocumentoSelector
+        key={`${asignacion?.moduloOrigen?.id || asignacion?.moduloOrigenId || 0}-${asignacion?.documentoOrigenId || 0}`}
+        visible={moduloDocumentoDialogVisible}
+        initialModuloId={Number(
+          asignacion?.moduloOrigen?.id || asignacion?.moduloOrigenId || 0,
+        )}
+        initialDocumentoId={Number(asignacion?.documentoOrigenId || 0)}
+        onSelect={handleModuloDocumentoSelect}
+        onCancel={() => setModuloDocumentoDialogVisible(false)}
+        moduloLabel="Submódulo Origen"
+        documentoLabel="Documento Origen"
+      />
 
       {/* Dialog de Resumen de Operación */}
       <Dialog

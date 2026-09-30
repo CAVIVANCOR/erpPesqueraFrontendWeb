@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { atenderAsignacion } from "../../api/tesoreria/entregaFondos";
+import { atenderAsignacion } from "../../../api/tesoreria/entregaFondos";
 
 const useEntregarFondos = ({ toast, onSuccess }) => {
   const [loading, setLoading] = useState(false);

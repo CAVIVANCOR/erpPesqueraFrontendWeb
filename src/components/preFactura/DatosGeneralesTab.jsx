@@ -198,11 +198,11 @@ export default function DatosGeneralesTab({
               optionLabel="label"
               optionValue="value"
               placeholder="Seleccionar empresa"
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
+              style={{ fontWeight: "bold", textTransform: "uppercase",width:"100%" }}
               disabled={isEdit || !puedeEditar || readOnly}
             />
           </div>
-          <div style={{ flex: 0.7 }}>
+          <div style={{ flex: 1 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="fechaDocumento"
@@ -217,9 +217,10 @@ export default function DatosGeneralesTab({
               showIcon
               disabled={!puedeEditarConPermiso}
               inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+              style={{width:"100%"}}
             />
           </div>
-          <div style={{ flex: 0.7 }}>
+          <div style={{ flex: 1 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="fechaVencimiento"
@@ -234,9 +235,10 @@ export default function DatosGeneralesTab({
               showIcon
               disabled={!puedeEditarConPermiso}
               inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+                            style={{width:"100%"}}
             />
           </div>
-          <div style={{ flex: 0.7 }}>
+          <div style={{ flex: 1 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="fechaContable"
@@ -251,6 +253,7 @@ export default function DatosGeneralesTab({
               showIcon
               disabled={!puedeEditarConPermiso}
               inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+                            style={{width:"100%"}}
             />
           </div>
           <div style={{ flex: 1 }}>
@@ -274,10 +277,10 @@ export default function DatosGeneralesTab({
               showClear
               filter
               disabled={!puedeEditarConPermiso}
-              style={{ fontSize: getResponsiveFontSize() }}
+              style={{ fontSize: getResponsiveFontSize(), width:"100%"}}
             />
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 0.5 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="estadoId"
@@ -293,10 +296,10 @@ export default function DatosGeneralesTab({
               optionValue="value"
               placeholder="Seleccionar estado"
               disabled={!puedeEditarConPermiso}
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
+              style={{ fontWeight: "bold", textTransform: "uppercase",width:"100%" }}
             />
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 0.5 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="unidadNegocioId"
@@ -317,7 +320,7 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar unidad de negocio"
               filter
               showClear
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
+              style={{ fontWeight: "bold", textTransform: "uppercase",width:"100%" }}
               disabled={!puedeEditarConPermiso}
             />
           </div>

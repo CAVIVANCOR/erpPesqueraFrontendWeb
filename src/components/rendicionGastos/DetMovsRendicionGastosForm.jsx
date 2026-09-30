@@ -18,7 +18,6 @@ import { Message } from "primereact/message";
 import { Toast } from "primereact/toast";
 import { classNames } from "primereact/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
-import { getModulos } from "../../api/moduloSistema";
 import { Card } from "primereact/card";
 import TipoMovimientoSelector from "../common/TipoMovimientoSelector";
 import ModuloDocumentoSelector from "../common/ModuloDocumentoSelector";
@@ -35,7 +34,6 @@ import {
 } from "../../api/detMovsEntregaRendir";
 import GeneradorDocumentosFinancierosDialog from "../common/GeneradorDocumentosFinancierosDialog";
 import { getEmbarcaciones } from "../../api/embarcacion";
-import { getDocumentosPorModelo } from "../../api/documentoDinamico";
 import CentroCostoSelector from "../common/CentroCostoSelector"; // ✅ AGREGAR
 import ActivoSelector from '../common/ActivoSelector';
 
@@ -61,7 +59,6 @@ const DetMovsRendicionGastosForm = ({
   const toast = useRef(null);
   const isEditing = !!movimiento;
   const { usuario } = useAuthStore();
-  const [modulos, setModulos] = useState([]);
   const [cardActiva, setCardActiva] = useState("datos");
   const [gastosPlanificadosAsignacion, setGastosPlanificadosAsignacion] =
     useState([]);
@@ -69,10 +66,6 @@ const DetMovsRendicionGastosForm = ({
     useState(null);
   const [asignacionesNoLiquidadas, setAsignacionesNoLiquidadas] = useState([]);
   const [embarcaciones, setEmbarcaciones] = useState([]);
-  const [moduloDocumentoDialogVisible, setModuloDocumentoDialogVisible] =
-    useState(false);
-  const [moduloDocumentoSeleccionado, setModuloDocumentoSeleccionado] =
-    useState(null);
   const [refreshEntidadesComerciales, setRefreshEntidadesComerciales] =
     useState(null);
   const [generadorDocumentosVisible, setGeneradorDocumentosVisible] = useState(false);
@@ -238,49 +231,8 @@ const DetMovsRendicionGastosForm = ({
           setValue("documentoOrigenId", 37);
         }
 
-        if (modulos.length > 0) {
-          const moduloId = 2;
-          const documentoId = 37;
-
-          try {
-            const modulo = modulos.find(
-              (m) => Number(m.id) === Number(moduloId),
-            );
-
-            if (modulo && modulo.modeloDocumentoOrigen) {
-              const response = await getDocumentosPorModelo(
-                modulo.modeloDocumentoOrigen,
-              );
-              const { modulo: moduloInfo, config, documentos } = response;
-
-              const documento = documentos.find(
-                (d) => Number(d.id) === Number(documentoId),
-              );
-
-              if (documento) {
-                const getNestedValue = (obj, path) => {
-                  if (!path) return null;
-                  return path
-                    .split(".")
-                    .reduce((acc, part) => acc?.[part], obj);
-                };
-
-                setModuloDocumentoSeleccionado({
-                  moduloId: Number(moduloId),
-                  documentoId: Number(documentoId),
-                  moduloNombre: moduloInfo.nombre,
-                  documentoNumero: documento[config.campoNumero] || "N/A",
-                  documentoFecha: documento[config.campoFecha] || null,
-                  entidad: config.campoEntidad
-                    ? getNestedValue(documento, config.campoEntidad)
-                    : null,
-                });
-              }
-            }
-          } catch (error) {
-            console.error("Error al cargar datos iniciales:", error);
-          }
-        }
+        setValue("moduloOrigenId", Number(2));
+        setValue("documentoOrigenId", Number(37));
 
         setValue("fechaMovimiento", new Date());
         setValue("operacionSinFactura", true);  // ← AGREGAR: Preseleccionar S/COMPROBANTE
@@ -316,67 +268,6 @@ const DetMovsRendicionGastosForm = ({
     cargarDatosIniciales();
   }, [movimiento, isEditing]);
 
-  useEffect(() => {
-    const cargarModulos = async () => {
-      try {
-        const modulosData = await getModulos();
-        setModulos(modulosData || []);
-      } catch (error) {
-        console.error("❌ [useEffect 2] ERROR al cargar módulos:", error);
-        throw error;
-      }
-    };
-    cargarModulos();
-  }, []);
-
-  // ✅ AGREGAR ESTE NUEVO useEffect AQUÍ (después de línea 371)
-  useEffect(() => {
-    const cargarModuloDocumentoEdicion = async () => {
-      if (!isEditing || !movimiento || modulos.length === 0) return;
-
-      if (movimiento.moduloOrigenId && movimiento.documentoOrigenId) {
-        try {
-          const modulo = modulos.find(
-            (m) => Number(m.id) === Number(movimiento.moduloOrigenId),
-          );
-
-          if (modulo && modulo.modeloDocumentoOrigen) {
-            const response = await getDocumentosPorModelo(
-              modulo.modeloDocumentoOrigen,
-            );
-            const { modulo: moduloInfo, config, documentos } = response;
-
-            const documento = documentos.find(
-              (d) => Number(d.id) === Number(movimiento.documentoOrigenId),
-            );
-
-            if (documento) {
-              const getNestedValue = (obj, path) => {
-                if (!path) return null;
-                return path
-                  .split(".")
-                  .reduce((acc, part) => acc?.[part], obj);
-              };
-
-              setModuloDocumentoSeleccionado({
-                moduloId: Number(movimiento.moduloOrigenId),
-                documentoId: Number(movimiento.documentoOrigenId),
-                moduloNombre: moduloInfo.nombre,
-                documentoNumero: documento[config.campoNumero] || "N/A",
-                documentoFecha: documento[config.campoFecha] || null,
-                entidad: config.campoEntidad
-                  ? getNestedValue(documento, config.campoEntidad)
-                  : null,
-              });
-            }
-          }
-        } catch (error) {
-          console.error("Error al cargar datos del módulo/documento:", error);
-        }
-      }
-    };
-    cargarModuloDocumentoEdicion();
-  }, [modulos, isEditing, movimiento]);
 
   useEffect(() => {
     try {
@@ -726,75 +617,12 @@ const DetMovsRendicionGastosForm = ({
       console.error("❌ No se encontró el gasto con ID:", gastoId);
     }
   };
-  const formatearLabelModuloDocumento = () => {
-    if (!moduloDocumentoSeleccionado || !moduloDocumentoSeleccionado.moduloId) {
-      return "Seleccionar Módulo y Documento";
-    }
 
-    const {
-      moduloNombre,
-      documentoId,
-      documentoNumero,
-      documentoFecha,
-      entidad,
-    } = moduloDocumentoSeleccionado;
-
-    let label = `${moduloNombre} | ${documentoId}`;
-
-    if (documentoNumero && documentoNumero !== "N/A") {
-      label += ` - ${documentoNumero}`;
-    }
-
-    if (documentoFecha) {
-      const fecha = new Date(documentoFecha);
-      const fechaFormateada = fecha.toLocaleDateString("es-PE", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-      label += ` (${fechaFormateada})`;
-    }
-
-    if (entidad) {
-      label += ` - ${entidad}`;
-    }
-
-    return label;
-  };
-  const handleModuloDocumentoSelect = (
-    moduloId,
-    documentoId,
-    moduloData,
-    documentoData,
-  ) => {
-    setValue("moduloOrigenId", moduloId);
-    setValue("documentoOrigenId", documentoId);
-
-    setModuloDocumentoSeleccionado({
-      moduloId,
-      documentoId,
-      moduloNombre: moduloData?.nombre || "N/A",
-      documentoNumero:
-        documentoData?.numero ||
-        documentoData?.nombre ||
-        documentoData?.numeroDocumento ||
-        documentoData?.numeroCompleto ||
-        "N/A",
-      documentoFecha:
-        documentoData?.fecha ||
-        documentoData?.fechaInicio ||
-        documentoData?.fechaDocumento ||
-        null,
-      entidad: documentoData?.entidad || null,
-    });
-
-    setModuloDocumentoDialogVisible(false);
-  };
 
   const onSubmit = async (data, event) => {
     event?.preventDefault();
     event?.stopPropagation();
-    try{
+    try {
       if (!data.monto || data.monto <= 0) {
         toast.current?.show({
           severity: "error",
@@ -804,7 +632,6 @@ const DetMovsRendicionGastosForm = ({
         });
         return;
       }
-
       const datosNormalizados = {
         empresaId: Number(data.empresaId) || 1,
         moduloOrigenId: data.moduloOrigenId
@@ -1010,31 +837,30 @@ const DetMovsRendicionGastosForm = ({
                   <Message severity="error" text={errors.empresaId.message} />
                 )}
               </div>
-              <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">
-                  Módulo y Documento Origen *
-                </label>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "0.5rem",
-                    alignItems: "center",
+              <div style={{ flex: 2 }}>
+                <ModuloDocumentoSelector
+                  value={{
+                    moduloOrigenId: Number(watch("moduloOrigenId") || 0),
+                    documentoOrigenId: Number(watch("documentoOrigenId") || 0),
                   }}
-                >
-                  <Button
-                    type="button"
-                    label={formatearLabelModuloDocumento()}
-                    icon="pi pi-search"
-                    onClick={() => setModuloDocumentoDialogVisible(true)}
-                    disabled={formularioDeshabilitado}
-                    style={{
-                      justifyContent: "flex-start",
-                      fontWeight: "bold",
-                    }}
-                    tooltip="Haz clic para ver detalles completos del módulo y documento"
-                    tooltipOptions={{ position: "top" }}
-                  />
-                </div>
+                  onChange={({ moduloOrigenId, documentoOrigenId }) => {
+                    setValue("moduloOrigenId", Number(moduloOrigenId || 0), {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                    setValue("documentoOrigenId", Number(documentoOrigenId || 0), {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  disabled={formularioDeshabilitado}
+                  moduloLabel="Módulo Origen"
+                  documentoLabel="Documento Origen"
+                  allowSinModulo={false}
+                />
+
                 {errors.moduloOrigenId && (
                   <Message
                     severity="error"
@@ -1122,10 +948,7 @@ const DetMovsRendicionGastosForm = ({
               }}
             >
               <div style={{ flex: 1 }}>
-                <label
-                  htmlFor="responsableId"
-                  className="block text-900 font-medium mb-2"
-                >
+                <label>
                   Responsable *
                 </label>
                 <Controller
@@ -1146,7 +969,7 @@ const DetMovsRendicionGastosForm = ({
                       })}
                       filter
                       showClear
-                      style={{ fontWeight: "bold" }}
+                      style={{ fontWeight: "bold", width: "100%" }}
                       disabled={formularioDeshabilitado}
                     />
                   )}
@@ -1180,7 +1003,7 @@ const DetMovsRendicionGastosForm = ({
                   disabled={formularioDeshabilitado}
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 2 }}>
                 <Controller
                   name="tipoMovimientoId"
                   control={control}
@@ -1195,6 +1018,24 @@ const DetMovsRendicionGastosForm = ({
                       error={!!errors.tipoMovimientoId}
                       errorMessage={errors.tipoMovimientoId?.message}
                       placeholder="Buscar tipo de movimiento..."
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Controller
+                  name="centroCostoId"
+                  control={control}
+                  rules={{ required: "El centro de costo es obligatorio" }}
+                  render={({ field }) => (
+                    <CentroCostoSelector
+                      value={field.value}
+                      onChange={field.onChange}
+                      disabled={formularioDeshabilitado}
+                      required={true}
+                      error={!!errors.centroCostoId}
+                      errorMessage={errors.centroCostoId?.message}
+                      placeholder="Elegir Centro de Costo..."
                     />
                   )}
                 />
@@ -1409,11 +1250,11 @@ const DetMovsRendicionGastosForm = ({
                     display: "flex",
                     gap: 10,
                     marginBottom: "0.5rem",
-                    alignItems: "end",
+                    alignItems: "start",
                     flexDirection: window.innerWidth < 768 ? "column" : "row",
                   }}
                 >
-                  <div style={{ flex: 2 }}>
+                  <div style={{ flex: 1.5 }}>
                     <Controller
                       name="entidadComercialId"
                       control={control}
@@ -1435,12 +1276,12 @@ const DetMovsRendicionGastosForm = ({
                       )}
                     />
                   </div>
-                  <div style={{ flex: 0.5 }}>
+                  <div style={{ flex: 0.25 }}>
                     <CrearEntidadComercialButton
                       empresaId={getValues("empresaId")}
                       tipoEntidad="proveedor"
                       onEntidadCreada={handleEntidadCreada}
-                      label="Crear Proveedor"
+                      label="Proveedor"
                       icon="pi pi-building"
                       severity="info"
                       outlined={true}
@@ -1481,43 +1322,7 @@ const DetMovsRendicionGastosForm = ({
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <div style={{ flex: 2 }}>
-                <Controller
-                  name="centroCostoId"
-                  control={control}
-                  rules={{ required: "El centro de costo es obligatorio" }}
-                  render={({ field }) => (
-                    <CentroCostoSelector
-                      value={field.value}
-                      onChange={field.onChange}
-                      disabled={formularioDeshabilitado}
-                      required={true}
-                      error={!!errors.centroCostoId}
-                      errorMessage={errors.centroCostoId?.message}
-                      placeholder="Elegir Centro de Costo..."
-                    />
-                  )}
-                />
-              </div>
 
-              {/* Campo Activo Afecto */}
-              <div style={{ flex: 2 }}>
-                <Controller
-                  name="activoAfectoId"
-                  control={control}
-                  render={({ field }) => (
-                    <ActivoSelector
-                      value={field.value}
-                      onChange={field.onChange}
-                      disabled={formularioDeshabilitado}
-                      placeholder="Seleccione activo (opcional)"
-                    />
-                  )}
-                />
-                <small className="p-d-block" style={{ color: '#666', marginTop: '4px', fontSize: '0.85rem' }}>
-                  Activo relacionado (embarcación, vehículo, maquinaria)
-                </small>
-              </div>
 
               <div style={{ flex: 3 }}>
                 <label
@@ -1659,7 +1464,7 @@ const DetMovsRendicionGastosForm = ({
                 display: "flex",
                 gap: 10,
                 marginBottom: "0.5rem",
-                alignItems: "end",
+                alignItems: "start",
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
@@ -1759,35 +1564,23 @@ const DetMovsRendicionGastosForm = ({
                   disabled={formularioDeshabilitado}
                 />
               </div>
-              <div style={{ flex: 1 }}>
-                <label
-                  htmlFor="embarcacionId"
-                  className="block text-900 font-medium mb-2"
-                >
-                  Embarcación
-                </label>
+              {/* Campo Activo Afecto */}
+              <div style={{ flex: 4 }}>
                 <Controller
-                  name="embarcacionId"
+                  name="activoAfectoId"
                   control={control}
                   render={({ field }) => (
-                    <Dropdown
-                      id="embarcacionId"
-                      {...field}
+                    <ActivoSelector
                       value={field.value}
-                      options={embarcaciones.map((emb) => ({
-                        label: emb.activo?.nombre || emb.matricula,
-                        value: Number(emb.id),
-                      }))}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccione embarcación (opcional)"
-                      filter
-                      showClear
+                      onChange={field.onChange}
                       disabled={formularioDeshabilitado}
-                      emptyMessage="No hay embarcaciones disponibles"
+                      placeholder="Seleccione activo (opcional)"
                     />
                   )}
                 />
+                <small className="p-d-block" style={{ color: '#666', marginTop: '4px', fontSize: '0.85rem' }}>
+                  Activo relacionado (embarcación, vehículo, maquinaria)
+                </small>
               </div>
             </div>
             {!operacionSinFactura && (
@@ -2164,17 +1957,6 @@ const DetMovsRendicionGastosForm = ({
           />
         </div>
       </div>
-      {/* Modal de Selección de Módulo y Documento */}
-      <ModuloDocumentoSelector
-        visible={moduloDocumentoDialogVisible}
-        initialModuloId={watch("moduloOrigenId") || 0}
-        initialDocumentoId={watch("documentoOrigenId") || 0}
-        onSelect={handleModuloDocumentoSelect}
-        onCancel={() => setModuloDocumentoDialogVisible(false)}
-        moduloLabel="Módulo Origen"
-        documentoLabel="Documento Origen"
-      />
-
       {/* Modal de Generación de Documentos Financieros */}
       <GeneradorDocumentosFinancierosDialog
         visible={generadorDocumentosVisible}

@@ -5,14 +5,18 @@
  * Muestra una tabla con Empresa, Banco, Moneda y Número de Cuenta para facilitar la búsqueda
  * Incluye filtros por empresa con colores dinámicos
  * 
-  * ⚠️ IMPORTANTE: Al seleccionar una cuenta corriente, automáticamente asigna bancoId y empresaId
- * El banco y la empresa se asignan de forma TRANSPARENTE sin que el usuario los vea
+  * ⚠️ IMPORTANTE: Al seleccionar una cuenta corriente, automáticamente asigna bancoId, empresaId y empresa
+ * El banco y la empresa se asignan de forma TRANSPARENTE y se muestran en el botón selector
+ * 
+ * 🔒 SEGURIDAD: El saldo NO se muestra por defecto (información sensible)
+ * - Usar prop mostrarSaldo={true} solo en módulos de tesorería/transferencias
  * 
  * PATRÓN: Replica exactamente EntidadComercialSelector.jsx
  * - CARGA INTERNAMENTE todas las empresas, bancos y cuentas corrientes
  * - Filtra dinámicamente por empresa
  * - Excluye cuentas inactivas automáticamente
- * - Retorna { cuentaCorrienteId, bancoId, empresaId, moneda } en el callback onChange
+ * - Retorna { cuentaCorrienteId, bancoId, empresaId, empresa, moneda } en el callback onChange
+ * - Muestra la empresa en el botón: 🏢 EMPRESA - TIPO - BANCO - MONEDA - DESCRIPCIÓN - NÚMERO [- 💰 SALDO (opcional)]
  * 
  * @author ERP Megui
  * @version 1.0.0
@@ -55,12 +59,20 @@ const COLORES_CATEGORIAS = [
 // Color para el botón "TODAS"
 const COLOR_TODAS = { bg: '#2196F3', text: '#FFFFFF', border: '#2196F3' }; // Azul
 
-// Colores específicos para Banco, Moneda y Número de Cuenta
+// Colores específicos para Empresa, Banco, Moneda y Número de Cuenta
 const COLORES_TEXTO = {
-  tipoCuenta: '#50b1b8',   // 🔵 Azul
-  banco: '#1976D2',        // 🔵 Azul
+  empresa: {
+    color: '#FFFFFF',           // 🏢 Texto blanco
+    backgroundColor: '#1565C0', // Fondo azul intenso
+    padding: '0.15rem 0.5rem',
+    borderRadius: '4px',
+    fontWeight: '700',
+    border: '2px solid #0D47A1' // Borde azul más oscuro
+  },
+  tipoCuenta: '#50b1b8',   // 🔵 Azul claro
+  banco: '#1976D2',        // 🔵 Azul medio
   moneda: '#2E7D32',       // 🟢 Verde
-  descripcion: '#F57C00',  // 🟡 Naranja (NUEVO)
+  descripcion: '#F57C00',  // 🟡 Naranja
   numeroCuenta: '#D32F2F', // 🔴 Rojo
   separador: '#666'        // Gris para los guiones
 };
@@ -98,8 +110,13 @@ const getEmpresaNombre = (empresaId, empresas) => {
 /**
  * Componente CuentaCorrienteSelector
  * @param {number|string} props.value - ID de la cuenta corriente seleccionada
- * @param {Function} props.onChange - Callback cuando se selecciona una cuenta (recibe { cuentaCorrienteId, bancoId, empresaId, moneda })
- *  * @param {number|string} props.empresaIdPreseleccionada - ID de empresa a preseleccionar
+ * @param {Function} props.onChange - Callback cuando se selecciona una cuenta (recibe { cuentaCorrienteId, bancoId, empresaId, empresa, moneda })
+ *   - cuentaCorrienteId: ID de la cuenta seleccionada
+ *   - bancoId: ID del banco
+ *   - empresaId: ID de la empresa
+ *   - empresa: Objeto completo de la empresa { id, razonSocial, ruc, ... }
+ *   - moneda: Objeto completo de la moneda { id, simbolo, codigoSunat, colorFondo, ... }
+ * @param {number|string} props.empresaIdPreseleccionada - ID de empresa a preseleccionar
  * @param {string} props.label - Etiqueta personalizada (por defecto "Cuenta Corriente")
  * @param {boolean} props.disabled - Si el selector está deshabilitado
  * @param {boolean} props.required - Si el campo es obligatorio
@@ -107,6 +124,7 @@ const getEmpresaNombre = (empresaId, empresas) => {
  * @param {string} props.errorMessage - Mensaje de error
  * @param {string} props.placeholder - Texto placeholder
  * @param {boolean} props.mostrarInactivas - Si se deben mostrar cuentas inactivas (por defecto false)
+ * @param {boolean} props.mostrarSaldo - Si se debe mostrar el saldo en el botón selector (por defecto false por seguridad)
  * @param {number} props.refreshTrigger - Timestamp para forzar recarga de datos
  * @returns {JSX.Element}
  */
@@ -121,6 +139,7 @@ const CuentaCorrienteSelector = ({
   errorMessage = "",
   placeholder = "Seleccione Cuenta Corriente",
   mostrarInactivas = false,
+  mostrarSaldo = false, // ⚠️ Por defecto NO muestra saldo (información sensible)
   refreshTrigger = null,
 }) => {
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -266,14 +285,15 @@ const CuentaCorrienteSelector = ({
 
   /**
    * Maneja la selección de una cuenta corriente
-   * ⚠️ IMPORTANTE: Retorna { cuentaCorrienteId, bancoId }
+   * ⚠️ IMPORTANTE: Retorna { cuentaCorrienteId, bancoId, empresaId, empresa, moneda }
    */
   const handleSeleccion = (cuenta) => {
     if (onChange) {
       onChange({
         cuentaCorrienteId: Number(cuenta.id),
         bancoId: Number(cuenta.bancoId), // ← BANCO AUTOMÁTICO
-        empresaId: Number(cuenta.empresaId), // ← EMPRESA AUTOMÁTICA
+        empresaId: Number(cuenta.empresaId), // ← EMPRESA AUTOMÁTICA (ID)
+        empresa: cuenta.empresa, // ← EMPRESA AUTOMÁTICA (objeto completo con razonSocial, ruc, etc.)
         moneda: cuenta.moneda // ← MONEDA AUTOMÁTICA (incluye colorFondo)
       });
     }
@@ -455,6 +475,17 @@ const CuentaCorrienteSelector = ({
           <span style={{ color: "#999" }}>Cargando...</span>
         ) : cuentaSeleccionada ? (
           <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", flexWrap: "wrap" }}>
+            {/* 🏢 EMPRESA (NUEVO - CON BADGE DESTACADO) */}
+            <span style={{
+              ...COLORES_TEXTO.empresa,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.25rem'
+            }}>
+              🏢 {cuentaSeleccionada.empresa?.razonSocial || "S/E"}
+            </span>
+            <span style={{ color: COLORES_TEXTO.separador }}> - </span>
+
             {/* 🔵 TIPO CUENTA */}
             <span style={{ color: COLORES_TEXTO.tipoCuenta, fontWeight: "600" }}>
               {cuentaSeleccionada.tipoCuentaCorriente?.nombre || "S/T"}
@@ -481,6 +512,26 @@ const CuentaCorrienteSelector = ({
             <span style={{ color: COLORES_TEXTO.numeroCuenta, fontWeight: "bold" }}>
               {cuentaSeleccionada.numeroCuenta || "Sin número"}
             </span>
+
+            {/* 💰 SALDO (OPCIONAL - Solo si mostrarSaldo=true) */}
+            {mostrarSaldo && (
+              <>
+                <span style={{ color: COLORES_TEXTO.separador }}> - </span>
+                <span style={{
+                  color: '#FFFFFF',
+                  backgroundColor: cuentaSeleccionada.saldoActual >= 0 ? '#2E7D32' : '#D32F2F',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '4px',
+                  fontWeight: '700',
+                  border: cuentaSeleccionada.saldoActual >= 0 ? '2px solid #1B5E20' : '2px solid #B71C1C',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem'
+                }}>
+                  💰 {cuentaSeleccionada.moneda?.simbolo || ""} {formatearNumero(cuentaSeleccionada.saldoActual || 0)}
+                </span>
+              </>
+            )}
           </span>
         ) : (
           <span style={{ color: "#999" }}>{placeholder}</span>

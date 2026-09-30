@@ -9,12 +9,11 @@ import { Dialog } from "primereact/dialog";
 import PendientesHeader from "./components/PendientesHeader";
 import PendientesTable from "./components/PendientesTable";
 import SaldosCuentasPanel from "./components/SaldosCuentasPanel";
-import BotonFiltrosAvanzados from "./components/BotonFiltrosAvanzados";
 import FiltrosDialog from "./components/filtros/FiltrosDialog";
 import PagoCuentaPorCobrarForm from "../../components/pagoCuentaPorCobrar/PagoCuentaPorCobrarForm";
 import PagarCuentaPorCobrarEspecializadoDialog from "../../components/pagoCuentaPorCobrar/PagarCuentaPorCobrarEspecializadoDialog";
 import PagarCuentaPorPagarEspecializadoDialog from "../../components/pagoCuentaPorPagar/PagarCuentaPorPagarEspecializadoDialog";
-import EntregarFondosForm from "../../components/entregaFondos/EntregarFondosForm";
+import EntregarFondosForm from "../../components/movimientoCaja/AsignacionEntregaARendirEspecializada/EntregarFondosForm";
 import PagarDeudaPersonalDialog from "../../components/tesoreria/PagarDeudaPersonalDialog";
 import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ AGREGAR
 import PagarDeudaTributariaDialog from "../../components/tesoreria/PagarDeudaTributariaDialog";
@@ -27,7 +26,7 @@ import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFunc
 import usePendientesData from "./hooks/usePendientesData";
 import useSaldosCuentas from "./hooks/useSaldosCuentas";
 import useRegistrarPago from "./hooks/useRegistrarPago";
-import useEntregarFondos from "../../components/entregaFondos/useEntregarFondos";
+import useEntregarFondos from "../../components/movimientoCaja/AsignacionEntregaARendirEspecializada/useEntregarFondos";
 import usePagarDeudaPersonal from "./hooks/usePagarDeudaPersonal";
 import usePagarDeudaTributaria from "./hooks/usePagarDeudaTributaria";
 import { useFiltrosOpciones } from "./hooks/useFiltrosOpciones";
@@ -542,14 +541,9 @@ const TesoreriaPendientes = () => {
         resumen={resumen}
         loading={loadingPendientes}
         permisos={permisos}
-        onOperacion={handleOperacion} // ✅ NUEVO
-      />
-      
-      {/* Botón de Filtros Avanzados */}
-      <BotonFiltrosAvanzados
-        filtros={filtros}
-        opciones={opcionesFiltros}
-        onOpenDialog={handleOpenFiltrosDialog}
+        onOperacion={handleOperacion}
+        opcionesFiltros={opcionesFiltros} // ✅ NUEVO: Para filtros avanzados
+        onOpenFiltrosDialog={handleOpenFiltrosDialog} // ✅ NUEVO: Para abrir diálogo
       />
 
       {/* Diálogo de Filtros Avanzados */}

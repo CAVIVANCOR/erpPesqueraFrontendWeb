@@ -30,14 +30,7 @@ const BotonDescargarPDFSunatVentas = ({
 
   const handleDescargar = async () => {
     try {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📥 COMPONENTE - Iniciando descarga de PDF SUNAT (Ventas)');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('Empresa ID:', empresaId);
-      console.log('PreFactura ID:', entityId);
-      console.log('Tipo Doc:', tipoDoc);
-      console.log('Serie:', serie);
-      console.log('Correlativo:', correlativo);
+
 
       // Validar datos requeridos
       if (!empresaId || !entityId || !tipoDoc || !serie || !correlativo) {
@@ -71,8 +64,7 @@ const BotonDescargarPDFSunatVentas = ({
       );
 
       if (resultado.success && resultado.pdfUrl) {
-        console.log('✅ PDF descargado exitosamente:', resultado.pdfUrl);
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
 
         if (toastRef?.current) {
           toastRef.current.show({

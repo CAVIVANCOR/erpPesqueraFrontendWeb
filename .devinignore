@@ -1,0 +1,42 @@
+=========================================================
+
+ARCHIVO DE EXCLUSIÓN PARA DEVIN / WINDSURF - FRONTEND WEB
+
+=========================================================
+
+1. Dependencias y compilaciones (Archivos masivos)
+
+node_modules/
+dist/
+package-lock.json
+
+2. Datos estáticos, mapas y catálogos gigantes (¡CRÍTICO PARA AHORRAR!)
+
+Estos archivos JSON contienen miles de líneas y consumen tu cuota en segundos.
+
+src/data/5millasnauticasprotegidas.json
+src/data/asientos-contables-referencia.json
+src/data/planContable.json
+
+3. Multimedia, Imágenes y Fuentes
+
+La IA no necesita leer el código fuente de las imágenes, logos ni tipografías.
+
+src/assets/Fonts/
+src/assets//*.png
+src/assets//.jpg
+src/assets//.jpeg
+src/assets//*.svg
+src/assets//.ico
+src/assets//.webp
+public/
+
+4. Documentación masiva (Si los vuelves a incluir)
+
+MANUAL_.md
+ANALISIS_.md
+
+5. Seguridad y Variables de Entorno
+
+.env
+.env.*

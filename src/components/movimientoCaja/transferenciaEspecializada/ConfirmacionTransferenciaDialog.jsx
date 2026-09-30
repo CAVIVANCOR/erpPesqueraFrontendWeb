@@ -83,97 +83,109 @@ export default function ConfirmacionTransferenciaDialog({
     // Agregar movimientos si existen (siguiendo el patrón de CxC/CxP)
     if (resultadoTransferencia.movimientos.egreso) {
       const saldo = saldosMap['Egreso'] || {};
+      const mov = resultadoTransferencia.movimientos.egreso;
       movimientos.push({
         tipo: 'Egreso',
-        id: resultadoTransferencia.movimientos.egreso.id,
-        monto: resultadoTransferencia.movimientos.egreso.monto,
-        moneda: resultadoTransferencia.movimientos.egreso.moneda,
-        movimiento: resultadoTransferencia.movimientos.egreso,
+        id: mov.id,
+        monto: mov.monto,
+        moneda: mov.moneda,
+        movimiento: mov,
         saldoAnterior: saldo.saldoAnterior || 0,
         ingresos: saldo.ingresos || 0,
         egresos: saldo.egresos || 0,
         saldoActual: saldo.saldoActual || 0,
-        cuenta: resultadoTransferencia.movimientos.egreso.cuentaCorrienteDestino?.banco?.nombre || 'N/A'
+        cuentaObj: mov.cuentaCorrienteDestino,
+        empresa: mov.empresa || mov.cuentaCorrienteDestino?.empresa // Empresa del movimiento o de la cuenta
       });
     }
 
     if (resultadoTransferencia.movimientos.itfOrigen) {
       const saldo = saldosMap['ITF Origen'] || {};
+      const mov = resultadoTransferencia.movimientos.itfOrigen;
       movimientos.push({
         tipo: 'ITF Origen',
-        id: resultadoTransferencia.movimientos.itfOrigen.id,
-        monto: resultadoTransferencia.movimientos.itfOrigen.monto,
-        moneda: resultadoTransferencia.movimientos.itfOrigen.moneda,
-        movimiento: resultadoTransferencia.movimientos.itfOrigen,
+        id: mov.id,
+        monto: mov.monto,
+        moneda: mov.moneda,
+        movimiento: mov,
         saldoAnterior: saldo.saldoAnterior || 0,
         ingresos: saldo.ingresos || 0,
         egresos: saldo.egresos || 0,
         saldoActual: saldo.saldoActual || 0,
-        cuenta: resultadoTransferencia.movimientos.itfOrigen.cuentaCorrienteDestino?.banco?.nombre || 'N/A'
+        cuentaObj: mov.cuentaCorrienteOrigen,
+        empresa: mov.empresa || mov.cuentaCorrienteOrigen?.empresa // Empresa del movimiento o de la cuenta
       });
     }
 
     if (resultadoTransferencia.movimientos.comisionOrigen) {
       const saldo = saldosMap['Comisión Origen'] || {};
+      const mov = resultadoTransferencia.movimientos.comisionOrigen;
       movimientos.push({
         tipo: 'Comisión Origen',
-        id: resultadoTransferencia.movimientos.comisionOrigen.id,
-        monto: resultadoTransferencia.movimientos.comisionOrigen.monto,
-        moneda: resultadoTransferencia.movimientos.comisionOrigen.moneda,
-        movimiento: resultadoTransferencia.movimientos.comisionOrigen,
+        id: mov.id,
+        monto: mov.monto,
+        moneda: mov.moneda,
+        movimiento: mov,
         saldoAnterior: saldo.saldoAnterior || 0,
         ingresos: saldo.ingresos || 0,
         egresos: saldo.egresos || 0,
         saldoActual: saldo.saldoActual || 0,
-        cuenta: resultadoTransferencia.movimientos.comisionOrigen.cuentaCorrienteDestino?.banco?.nombre || 'N/A'
+        cuentaObj: mov.cuentaCorrienteOrigen,
+        empresa: mov.empresa || mov.cuentaCorrienteOrigen?.empresa // Empresa del movimiento o de la cuenta
       });
     }
 
     if (resultadoTransferencia.movimientos.ingreso) {
       const saldo = saldosMap['Ingreso'] || {};
+      const mov = resultadoTransferencia.movimientos.ingreso;
       movimientos.push({
         tipo: 'Ingreso',
-        id: resultadoTransferencia.movimientos.ingreso.id,
-        monto: resultadoTransferencia.movimientos.ingreso.monto,
-        moneda: resultadoTransferencia.movimientos.ingreso.moneda,
-        movimiento: resultadoTransferencia.movimientos.ingreso,
+        id: mov.id,
+        monto: mov.monto,
+        moneda: mov.moneda,
+        movimiento: mov,
         saldoAnterior: saldo.saldoAnterior || 0,
         ingresos: saldo.ingresos || 0,
         egresos: saldo.egresos || 0,
         saldoActual: saldo.saldoActual || 0,
-        cuenta: resultadoTransferencia.movimientos.ingreso.cuentaCorrienteOrigen?.banco?.nombre || 'N/A'
+        cuentaObj: mov.cuentaCorrienteOrigen,
+        empresa: mov.empresa || mov.cuentaCorrienteOrigen?.empresa // Empresa del movimiento o de la cuenta
       });
     }
 
     if (resultadoTransferencia.movimientos.itfDestino) {
       const saldo = saldosMap['ITF Destino'] || {};
+      const mov = resultadoTransferencia.movimientos.itfDestino;
       movimientos.push({
         tipo: 'ITF Destino',
-        id: resultadoTransferencia.movimientos.itfDestino.id,
-        monto: resultadoTransferencia.movimientos.itfDestino.monto,
-        moneda: resultadoTransferencia.movimientos.itfDestino.moneda,
-        movimiento: resultadoTransferencia.movimientos.itfDestino,
+        id: mov.id,
+        monto: mov.monto,
+        moneda: mov.moneda,
+        movimiento: mov,
         saldoAnterior: saldo.saldoAnterior || 0,
         ingresos: saldo.ingresos || 0,
         egresos: saldo.egresos || 0,
         saldoActual: saldo.saldoActual || 0,
-        cuenta: resultadoTransferencia.movimientos.itfDestino.cuentaCorrienteOrigen?.banco?.nombre || 'N/A'
+        cuentaObj: mov.cuentaCorrienteOrigen,
+        empresa: mov.empresa || mov.cuentaCorrienteOrigen?.empresa // Empresa del movimiento o de la cuenta
       });
     }
 
     if (resultadoTransferencia.movimientos.comisionDestino) {
       const saldo = saldosMap['Comisión Destino'] || {};
+      const mov = resultadoTransferencia.movimientos.comisionDestino;
       movimientos.push({
         tipo: 'Comisión Destino',
-        id: resultadoTransferencia.movimientos.comisionDestino.id,
-        moneda: resultadoTransferencia.movimientos.comisionDestino.moneda,
-        monto: resultadoTransferencia.movimientos.comisionDestino.monto,
-        movimiento: resultadoTransferencia.movimientos.comisionDestino,
+        id: mov.id,
+        moneda: mov.moneda,
+        monto: mov.monto,
+        movimiento: mov,
         saldoAnterior: saldo.saldoAnterior || 0,
         ingresos: saldo.ingresos || 0,
         egresos: saldo.egresos || 0,
         saldoActual: saldo.saldoActual || 0,
-        cuenta: resultadoTransferencia.movimientos.comisionDestino.cuentaCorrienteOrigen?.banco?.nombre || 'N/A'
+        cuentaObj: mov.cuentaCorrienteOrigen,
+        empresa: mov.empresa || mov.cuentaCorrienteOrigen?.empresa // Empresa del movimiento o de la cuenta
       });
     }
 
@@ -190,12 +202,54 @@ export default function ConfirmacionTransferenciaDialog({
           <Column 
             field="tipo" 
             header="Tipo" 
-            style={{ width: '15%', fontWeight: 'bold' }}
+            style={{ width: '12%', fontWeight: 'bold' }}
           />
           <Column 
-            field="cuenta" 
+            header="Empresa" 
+            body={(rowData) => (
+              <div>
+                {rowData.empresa ? (
+                  <Tag 
+                    value={rowData.empresa.razonSocial} 
+                    severity="info"
+                    style={{ fontSize: '0.85rem' }}
+                  />
+                ) : (
+                  <span style={{ color: '#999' }}>N/A</span>
+                )}
+              </div>
+            )}
+            style={{ width: '12%' }}
+          />
+          <Column 
             header="Cuenta" 
-            style={{ width: '15%' }}
+            body={(rowData) => {
+              const cuenta = rowData.cuentaObj;
+              if (!cuenta) {
+                return <span style={{ color: '#999' }}>N/A</span>;
+              }
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ fontWeight: 'bold' }}>
+                    {cuenta.banco?.nombre || 'N/A'}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#666' }}>
+                    {cuenta.numeroCuenta}
+                  </div>
+                  {cuenta.moneda && (
+                    <Tag 
+                      value={cuenta.moneda.codigo} 
+                      style={{ 
+                        backgroundColor: cuenta.moneda.colorFondo || '#e0e0e0',
+                        fontSize: '0.75rem',
+                        padding: '2px 6px'
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            }}
+            style={{ width: '18%' }}
           />
           <Column 
             field="monto" 
@@ -205,13 +259,13 @@ export default function ConfirmacionTransferenciaDialog({
                 {rowData.moneda?.simbolo} {formatearNumero(rowData.monto || 0, 2)}
               </span>
             )}
-            style={{ width: '12%', textAlign: 'right' }}
+            style={{ width: '10%', textAlign: 'right' }}
           />
           <Column 
             field="saldoAnterior" 
             header="Saldo Anterior" 
             body={(rowData) => `${rowData.moneda?.simbolo} ${formatearNumero(rowData.saldoAnterior, 2)}`}
-            style={{ width: '14%', textAlign: 'right' }}
+            style={{ width: '12%', textAlign: 'right' }}
           />
           <Column 
             field="ingresos" 
@@ -221,7 +275,7 @@ export default function ConfirmacionTransferenciaDialog({
                 +{rowData.moneda?.simbolo} {formatearNumero(rowData.ingresos, 2)}
               </span>
             )}
-            style={{ width: '12%', textAlign: 'right' }}
+            style={{ width: '10%', textAlign: 'right' }}
           />
           <Column 
             field="egresos" 
@@ -231,7 +285,7 @@ export default function ConfirmacionTransferenciaDialog({
                 -{rowData.moneda?.simbolo} {formatearNumero(rowData.egresos, 2)}
               </span>
             )}
-            style={{ width: '12%', textAlign: 'right' }}
+            style={{ width: '10%', textAlign: 'right' }}
           />
           <Column 
             field="saldoActual" 
@@ -241,7 +295,7 @@ export default function ConfirmacionTransferenciaDialog({
                 {rowData.moneda?.simbolo} {formatearNumero(rowData.saldoActual, 2)}
               </span>
             )}
-            style={{ width: '14%', textAlign: 'right' }}
+            style={{ width: '12%', textAlign: 'right' }}
           />
         </DataTable>
       </Panel>
@@ -293,12 +347,29 @@ export default function ConfirmacionTransferenciaDialog({
           size="small"
           className="p-datatable-sm"
         >
-          <Column field="tipo" header="Tipo" style={{ width: '15%', fontWeight: 'bold' }} />
-          <Column field="id" header="ID Asiento" style={{ width: '10%' }} />
+          <Column field="tipo" header="Tipo" style={{ width: '12%', fontWeight: 'bold' }} />
+          <Column 
+            header="Empresa" 
+            body={(rowData) => (
+              <div>
+                {rowData.empresa ? (
+                  <Tag 
+                    value={rowData.empresa.razonSocial} 
+                    severity="info"
+                    style={{ fontSize: '0.85rem' }}
+                  />
+                ) : (
+                  <span style={{ color: '#999' }}>N/A</span>
+                )}
+              </div>
+            )}
+            style={{ width: '12%' }}
+          />
+          <Column field="id" header="ID Asiento" style={{ width: '8%' }} />
           <Column
             field="numeroAsiento"
             header="Nº Asiento"
-            style={{ width: '20%', fontWeight: 'bold', color: '#1976D2' }}
+            style={{ width: '15%', fontWeight: 'bold', color: '#1976D2' }}
           />
           <Column
             field="totalDebe"
@@ -308,7 +379,7 @@ export default function ConfirmacionTransferenciaDialog({
                 {rowData.moneda?.simbolo} {formatearNumero(rowData.totalDebe || 0, 2)}
               </span>
             )}
-            style={{ width: '15%', textAlign: 'right' }}
+            style={{ width: '12%', textAlign: 'right' }}
           />
           <Column
             field="totalHaber"
@@ -318,7 +389,7 @@ export default function ConfirmacionTransferenciaDialog({
                 {rowData.moneda?.simbolo} {formatearNumero(rowData.totalHaber || 0, 2)}
               </span>
             )}
-            style={{ width: '15%', textAlign: 'right' }}
+            style={{ width: '12%', textAlign: 'right' }}
           />
           <Column
             header="Acciones"

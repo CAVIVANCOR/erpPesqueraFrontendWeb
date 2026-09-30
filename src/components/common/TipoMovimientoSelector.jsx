@@ -15,8 +15,13 @@
  * - El valor solo cambia cuando el usuario selecciona explícitamente un tipo
  * - Al abrir el diálogo, el filtro se inicializa según el tipo seleccionado
  * 
+ * NUEVO v3.3.0: Prop esIngreso para controlar filtro inicial
+ * - esIngreso={false} → Muestra EGRESOS por defecto (default)
+ * - esIngreso={true} → Muestra INGRESOS por defecto
+ * - Útil para transferencias: origen=EGRESOS, destino=INGRESOS
+ * 
  * @author ERP Megui
- * @version 3.2.0
+ * @version 3.3.0
  */
 
 import React, { useState, useRef, useMemo } from "react";
@@ -32,26 +37,51 @@ import { classNames } from "primereact/utils";
  * Se repite cíclicamente si hay más categorías que colores
  */
 const COLORES_CATEGORIAS = [
-  { bg: '#4CAF50', text: '#FFFFFF', border: '#4CAF50' }, // Verde
-  { bg: '#00BCD4', text: '#FFFFFF', border: '#00BCD4' }, // Cyan
-  { bg: '#FF9800', text: '#FFFFFF', border: '#FF9800' }, // Naranja
-  { bg: '#009688', text: '#FFFFFF', border: '#009688' }, // Teal
-  { bg: '#9C27B0', text: '#FFFFFF', border: '#9C27B0' }, // Morado
-  { bg: '#3F51B5', text: '#FFFFFF', border: '#3F51B5' }, // Índigo
-  { bg: '#E91E63', text: '#FFFFFF', border: '#E91E63' }, // Rosa
-  { bg: '#FFC107', text: '#000000', border: '#FFC107' }, // Ámbar
-  { bg: '#8BC34A', text: '#000000', border: '#8BC34A' }, // Lima
-  { bg: '#607D8B', text: '#FFFFFF', border: '#607D8B' }, // Azul Gris
-  { bg: '#795548', text: '#FFFFFF', border: '#795548' }, // Café
-  { bg: '#F44336', text: '#FFFFFF', border: '#F44336' }, // Rojo
-  { bg: '#673AB7', text: '#FFFFFF', border: '#673AB7' }, // Púrpura
-  { bg: '#03A9F4', text: '#FFFFFF', border: '#03A9F4' }, // Azul claro
-  { bg: '#CDDC39', text: '#000000', border: '#CDDC39' }, // Lima amarillo
-  { bg: '#FF5722', text: '#FFFFFF', border: '#FF5722' }, // Rojo naranja
+  { bg: '#DCFCE7', text: '#000000', border: '#86EFAC' }, // Verde pastel
+  { bg: '#E0F2FE', text: '#000000', border: '#7DD3FC' }, // Cyan pastel
+  { bg: '#FFEDD5', text: '#000000', border: '#FDBA74' }, // Naranja pastel
+  { bg: '#CCFBF1', text: '#000000', border: '#5EEAD4' }, // Teal pastel
+  { bg: '#F3E8FF', text: '#000000', border: '#D8B4FE' }, // Morado pastel
+  { bg: '#E0E7FF', text: '#000000', border: '#A5B4FC' }, // Índigo pastel
+  { bg: '#FCE7F3', text: '#000000', border: '#F9A8D4' }, // Rosa pastel
+  { bg: '#FEF3C7', text: '#000000', border: '#FCD34D' }, // Ámbar pastel
+  { bg: '#ECFCCB', text: '#000000', border: '#BEF264' }, // Lima pastel
+  { bg: '#E2E8F0', text: '#000000', border: '#94A3B8' }, // Azul Gris pastel
+  { bg: '#F5F5F4', text: '#000000', border: '#D6D3D1' }, // Café pastel
+  { bg: '#FEE2E2', text: '#000000', border: '#FCA5A5' }, // Rojo pastel
+  { bg: '#EDE9FE', text: '#000000', border: '#C4B5FD' }, // Púrpura pastel
+  { bg: '#DBEAFE', text: '#000000', border: '#93C5FD' }, // Azul claro pastel
+  { bg: '#FEF9C3', text: '#000000', border: '#FDE047' }, // Lima amarillo pastel
+  { bg: '#FFDDD6', text: '#000000', border: '#FDA18B' }, // Rojo naranja pastel
 ];
 
 // Color para el botón "TODAS"
-const COLOR_TODAS = { bg: '#2196F3', text: '#FFFFFF', border: '#2196F3' }; // Azul
+const COLOR_TODAS = { bg: '#DBEAFE', text: '#000000', border: '#93C5FD' }; // Azul pastel
+
+// Colores para badges de EGRESO/INGRESO en el botón selector
+const COLORES_TIPO_BADGE = {
+  egreso: {
+    color: '#000000', // Negro
+    backgroundColor: '#FEE2E2', // Rojo pastel
+    padding: '0.15rem 0.5rem',
+    borderRadius: '4px',
+    fontWeight: '700',
+    border: '2px solid #FCA5A5',
+    display: 'inline-flex',
+    alignItems: 'center',
+  },
+  ingreso: {
+    color: '#000000', // Negro
+    backgroundColor: '#DCFCE7', // Verde pastel
+    padding: '0.15rem 0.5rem',
+    borderRadius: '4px',
+    fontWeight: '700',
+    border: '2px solid #86EFAC',
+    display: 'inline-flex',
+    alignItems: 'center',
+  },
+  separador: '#666'
+};
 
 /**
  * Obtiene el color para una categoría basado en su índice
@@ -68,6 +98,7 @@ const getColorCategoria = (index) => {
  * @param {Array} props.tiposMovimiento - Array de tipos de movimiento con relación categoria
  * @param {number|string} props.value - ID del tipo de movimiento seleccionado
  * @param {Function} props.onChange - Callback cuando se selecciona un tipo (recibe el ID)
+ * @param {boolean} props.esIngreso - Filtro inicial: false=EGRESOS (default), true=INGRESOS
  * @param {boolean} props.disabled - Si el selector está deshabilitado
  * @param {boolean} props.required - Si el campo es obligatorio
  * @param {boolean} props.error - Si hay error de validación
@@ -81,6 +112,7 @@ const TipoMovimientoSelector = ({
   tiposMovimiento = [],
   value = null,
   onChange,
+  esIngreso = false, // 🆕 Por defecto EGRESOS (false)
   disabled = false,
   required = false,
   error = false,
@@ -91,7 +123,8 @@ const TipoMovimientoSelector = ({
   const [dialogVisible, setDialogVisible] = useState(false);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState(null);
-  const [tipo, setTipo] = useState(true); // NUEVO: Estado interno para tipo (true=EGRESOS, false=INGRESOS)
+  // 🆕 Inicializar según prop esIngreso: false=EGRESOS (tipo=true), true=INGRESOS (tipo=false)
+  const [tipo, setTipo] = useState(!esIngreso);
   const dt = useRef(null);
 
   // Obtener el tipo de movimiento seleccionado
@@ -268,11 +301,6 @@ const TipoMovimientoSelector = ({
       {/* Botón selector */}
       <Button
         type="button"
-        label={
-          tipoSeleccionado
-            ? `${tipoSeleccionado.categoria?.nombre || ""} - ${tipoSeleccionado.nombre}`
-            : placeholder
-        }
         icon="pi pi-search"
         onClick={() => !disabled && setDialogVisible(true)}
         disabled={disabled}
@@ -282,11 +310,50 @@ const TipoMovimientoSelector = ({
         style={{
           justifyContent: "flex-start",
           textAlign: "left",
-          fontWeight: tipoSeleccionado ? "bold" : "normal",
-          color: tipoSeleccionado ? "#000" : "#999",
+          fontWeight: "bold",
           width:"100%"
         }}
-      />
+      >
+        {tipoSeleccionado ? (
+          <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", flexWrap: "wrap" }}>
+            {/* 🔴/🟢 TIPO (EGRESO/INGRESO) - Badge destacado */}
+            <span style={tipoSeleccionado.esIngreso ? COLORES_TIPO_BADGE.ingreso : COLORES_TIPO_BADGE.egreso}>
+              {tipoSeleccionado.esIngreso ? "INGRESO" : "EGRESO"}
+            </span>
+            <span style={{ color: COLORES_TIPO_BADGE.separador }}> - </span>
+
+            {/* 🏷️ CATEGORÍA - Badge con color dinámico */}
+            {tipoSeleccionado.categoria && (
+              <>
+                <span style={{
+                  color: '#000000', // Negro
+                  backgroundColor: getColorCategoria(
+                    categoriasUnicas.findIndex(c => Number(c.id) === Number(tipoSeleccionado.categoria.id))
+                  ).bg,
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '4px',
+                  fontWeight: '700', // Negrita
+                  border: `2px solid ${getColorCategoria(
+                    categoriasUnicas.findIndex(c => Number(c.id) === Number(tipoSeleccionado.categoria.id))
+                  ).border}`,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                }}>
+                  {tipoSeleccionado.categoria.nombre}
+                </span>
+                <span style={{ color: COLORES_TIPO_BADGE.separador }}> - </span>
+              </>
+            )}
+
+            {/* 📝 DESCRIPCIÓN - Texto negro negrita */}
+            <span style={{ color: '#000000', fontWeight: '700' }}>
+              {tipoSeleccionado.nombre}
+            </span>
+          </span>
+        ) : (
+          <span style={{ color: "#999" }}>{placeholder}</span>
+        )}
+      </Button>
 
       {/* Mensaje de error */}
       {error && errorMessage && (

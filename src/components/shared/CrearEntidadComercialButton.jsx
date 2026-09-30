@@ -173,6 +173,7 @@ export default function CrearEntidadComercialButton({
 
   return (
     <>
+      <label>Crear</label>
       <Button
         type="button"
         label={label || getDefaultLabel()}

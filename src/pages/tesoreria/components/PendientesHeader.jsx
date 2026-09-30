@@ -16,6 +16,7 @@ import {
   LABELS_TIPO_OPERACION,
   LABELS_TEXTO_ENTREGAS,
 } from "../../../utils/tesoreria.constants";
+import BotonFiltrosAvanzados from "./BotonFiltrosAvanzados";
 
 const PendientesHeader = ({
   filtros,
@@ -24,7 +25,9 @@ const PendientesHeader = ({
   resumen,
   loading,
   permisos,
-  onOperacion, // ✅ NUEVO: Callback para operaciones
+  onOperacion, // ✅ Callback para operaciones
+  opcionesFiltros, // ✅ NUEVO: Opciones para filtros avanzados
+  onOpenFiltrosDialog, // ✅ NUEVO: Callback para abrir diálogo de filtros
 }) => {
   // Función para obtener el estilo de tag según la moneda
   const getMonedaTagStyle = (codigoMoneda) => {
@@ -436,23 +439,11 @@ const PendientesHeader = ({
     },
   ];
 
-  // 🆕 Opciones de Operaciones
+  // 🆕 Opciones de Operaciones (solo Transferencia Interna y Gasto Urgente)
   const operacionesOptions = [
     {
       ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.TRANSFERENCIA_INTERNA],
       value: TIPO_OPERACION_TESORERIA.TRANSFERENCIA_INTERNA,
-    },
-    {
-      ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.PAGO_PROVEEDOR],
-      value: TIPO_OPERACION_TESORERIA.PAGO_PROVEEDOR,
-    },
-    {
-      ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.RETIRO_DINERO],
-      value: TIPO_OPERACION_TESORERIA.RETIRO_DINERO,
-    },
-    {
-      ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.INGRESO_DINERO],
-      value: TIPO_OPERACION_TESORERIA.INGRESO_DINERO,
     },
     {
       ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.GASTO_URGENTE],
@@ -604,58 +595,75 @@ const PendientesHeader = ({
       {/* ========================================
           FILA 2: OPERACIONES
           ======================================== */}
-      <div className="mb-3">
-        <div
+      <div
+        style={{
+          backgroundColor: "#fff3e0",
+          padding: "0.5rem 1rem",
+          borderRadius: "6px",
+          marginBottom: "0.75rem",
+        }}
+      >
+        <h3
           style={{
-            backgroundColor: "#fff3e0",
-            padding: "0.5rem 1rem",
-            borderRadius: "6px",
-            marginBottom: "0.75rem",
+            margin: 0,
+            fontSize: "0.95rem",
+            fontWeight: "bold",
+            color: "#f57c00",
           }}
         >
-          <h3
-            style={{
-              margin: 0,
-              fontSize: "0.95rem",
-              fontWeight: "bold",
-              color: "#f57c00",
-            }}
-          >
-            🔄 OPERACIONES
-          </h3>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          🔄 OPERACIONES
+        </h3>
+      </div>
+      <div
+        style={{
+          alignItems: "end",
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+          {/* Botones de Operaciones */}
           {operacionesOptions.map((option) => (
-            <Button
-              key={option.value}
-              icon={option.icon}
-              severity={option.severity}
-              outlined
-              onClick={() => handleOperacionClick(option.value)}
-              disabled={loading}
-              tooltip={option.descripcion}
-              tooltipOptions={{ position: "top" }}
-              style={{
-                flex: "1 1 calc(20% - 8px)",
-                minWidth: "110px",
-                minHeight: "85px",
-                padding: "0.4rem",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "0.75rem",
-              }}
-            >
-              <div className="text-center">
-                <div className="font-bold mb-1" style={{ fontSize: "0.75rem" }}>
-                  {option.label}
+            <div style={{ flex: 1 }}>
+              <Button
+                key={option.value}
+                icon={option.icon}
+                severity={option.severity}
+                outlined
+                onClick={() => handleOperacionClick(option.value)}
+                disabled={loading}
+                tooltip={option.descripcion}
+                tooltipOptions={{ position: "top" }}
+                style={{
+                  flex: "0 0 auto",
+                  minWidth: "140px",
+                  minHeight: "85px",
+                  padding: "0.4rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.75rem",
+                }}
+              >
+                <div className="text-center">
+                  <div className="font-bold mb-1" style={{ fontSize: "0.75rem" }}>
+                    {option.label}
+                  </div>
                 </div>
-              </div>
-            </Button>
+              </Button>
+            </div>
           ))}
-        </div>
+
+          {/* Filtros Avanzados - ocupa el espacio restante */}
+            <div style={{ flex: 3 }}>
+            <BotonFiltrosAvanzados
+              filtros={filtros}
+              opciones={opcionesFiltros}
+              onOpenDialog={onOpenFiltrosDialog}
+            />
+          </div>
+
       </div>
     </Card>
   );
