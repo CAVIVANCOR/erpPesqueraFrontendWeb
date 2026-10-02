@@ -434,7 +434,7 @@ export async function exportarRegistroVentasSUNAT(params) {
  * Boleteo automático: crea PreFactura + DetallePreFactura desde boletas ya emitidas.
  * Se envía en lotes pequeños para poder mostrar el avance.
  * @param {Array} boletas - Boletas normalizadas
- * @param {Object} parametros - { estadoId?, tipoOperacionSunatId?, tipoAfectacionIGVId? }
+ * @param {Object} parametros - { estadoId?, tipoOperacionSunatId? }
  * @returns {Promise<{resultados: Array}>} Un resultado por boleta: CREADA | OMITIDA | ERROR
  */
 export async function importarBoletasAutomatico(boletas, parametros = {}) {

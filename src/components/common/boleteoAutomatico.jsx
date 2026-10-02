@@ -27,8 +27,10 @@
  * - disabled: deshabilita el botón
  * - toast: ref de Toast (opcional)
  * - onFinalizado: callback al terminar (para refrescar la lista)
- * - parametros: { estadoId, tipoOperacionSunatId, tipoAfectacionIGVId }
+ * - parametros: { estadoId, tipoOperacionSunatId }
  *               (estadoId vacío = PENDIENTE, lo resuelve el backend)
+ *               El tratamiento del IGV (afecto, exonerado, inafecto) se toma de
+ *               Producto.tipoAfectacionIGVId; el PRECIO TOTAL del archivo es el total de la boleta.
  * - tamanoLote: boletas por llamada al backend (por defecto 5)
  */
 import React, { useEffect, useRef, useState } from "react";
@@ -59,10 +61,10 @@ const COLUMNAS_REQUERIDAS = [
   "PRECIO TOTAL",
 ];
 
+// El tipo de afectación del IGV no es parámetro: el backend lo toma de cada producto
 const PARAMETROS_POR_DEFECTO = {
   estadoId: null,
   tipoOperacionSunatId: 1,
-  tipoAfectacionIGVId: 1,
 };
 
 // ════════════════════════════════════════════════════════════
