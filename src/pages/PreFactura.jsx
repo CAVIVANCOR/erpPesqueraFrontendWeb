@@ -34,6 +34,7 @@ import {
 } from "../api/preFactura";
 import { getMotivoNotaCreditoDebitoActivos } from "../api/ventas/motivoNotaCreditoDebito";
 import PreFacturaForm from "../components/preFactura/PreFacturaForm";
+import BoleteoAutomatico from "../components/common/boleteoAutomatico";
 import CotizacionVentasForm from "../components/cotizacionVentas/CotizacionVentasForm"; // ⬅️ AGREGAR
 import MovimientoAlmacenForm from "../components/movimientoAlmacen/MovimientoAlmacenForm"; // ⬅️ AGREGAR
 import ContratoServicioForm from "../components/contratoServicio/ContratoServicioForm"; // ⬅️ AGREGAR
@@ -654,15 +655,15 @@ const PreFactura = ({ ruta }) => {
       // Fiscal sin saldos iniciales: Ventas BLANCAS (esGerencial=false) sin SI-*
       filtrados = filtrados.filter((item) => {
         if (item.esGerencial !== false) return false;
-        
+
         const codigoTipo = item.tipoDocumento?.codigo || "";
         const descripcionTipo = item.tipoDocumento?.descripcion || "";
-        
+
         // Excluir si el código o descripción contiene "SI" o "SALDO INICIAL"
-        const esSaldoInicial = codigoTipo.startsWith("SI") || 
-                               codigoTipo.includes("SI-") ||
-                               descripcionTipo.toUpperCase().includes("SALDO INICIAL");
-        
+        const esSaldoInicial = codigoTipo.startsWith("SI") ||
+          codigoTipo.includes("SI-") ||
+          descripcionTipo.toUpperCase().includes("SALDO INICIAL");
+
         return !esSaldoInicial;
       });
     } else if (filtroTipoLibro === "FISCAL_CSI") {
@@ -1258,7 +1259,7 @@ const PreFactura = ({ ruta }) => {
       throw error;
     }
   };
- 
+
   const cerrarDialogo = () => {
     // Si hay una PreFactura en el stack de navegación, volver a ella
     if (navigationStack.length > 0) {
@@ -2080,7 +2081,7 @@ const PreFactura = ({ ruta }) => {
                   flexDirection: window.innerWidth < 768 ? "column" : "row",
                 }}
               >
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 0.25 }}>
                   <h2>VENTAS</h2>
                 </div>
                 <div style={{ flex: 1 }}>
@@ -2109,7 +2110,7 @@ const PreFactura = ({ ruta }) => {
                     showClear
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 0.25 }}>
                   <Button
                     label="Nuevo"
                     icon="pi pi-plus"
@@ -2128,10 +2129,10 @@ const PreFactura = ({ ruta }) => {
                     }
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 0.25 }}>
                   <Button
                     icon="pi pi-search"
-                    label="Consultar Stock"
+                    label="Stock"
                     onClick={() => setShowConsultaStock(true)}
                     className="p-button-info"
                     style={{ width: "100%" }}
@@ -2144,8 +2145,44 @@ const PreFactura = ({ ruta }) => {
                     outlined
                     onClick={limpiarFiltros}
                     disabled={loading}
+                    style={{ width: "100%" }}
                   />
                 </div>
+                <div style={{ flex: 1 }}>
+                  {/* Filtro de Unidad de Negocio - Compacto */}
+                  <UnidadNegocioFilter />
+                </div>
+                {/* Filtro Tipo Libro */}
+                <div style={{ flex: 1, minWidth: "150px" }}>
+                  <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                    Tipo Libro
+                  </label>
+                  <FiltroTipoLibroButton
+                    value={filtroTipoLibro}
+                    onChange={setFiltroTipoLibro}
+                    style={{ width: "100%" }}
+                  />
+                </div>
+              </div>
+
+              <div
+                style={{
+                  alignItems: "end",
+                  marginTop: 10,
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <BoleteoAutomatico
+                    style={{ width: "100%" }}
+                    disabled={!permisos.puedeCrear || loading}
+                    toast={toast}
+                    onFinalizado={cargarDatos}
+                  />
+                </div>
+
                 <div style={{ flex: 1 }}>
                   <Button
                     label="Exportar"
@@ -2159,7 +2196,7 @@ const PreFactura = ({ ruta }) => {
                   />
                 </div>
                 {permisos.puedeReactivarDocs && (
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 2 }}>
                     <Button
                       label="Regenerar CxC y Asientos Masivo"
                       icon="pi pi-refresh"
@@ -2184,7 +2221,7 @@ const PreFactura = ({ ruta }) => {
                     />
                   </div>
                 )}
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 2 }}>
                   <Button
                     label="Asignar Tipo Operación SUNAT"
                     icon="pi pi-tag"
@@ -2196,7 +2233,7 @@ const PreFactura = ({ ruta }) => {
                     style={{ width: "100%" }}
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 2 }}>
                   <Button
                     label="Asignar Tipo Afectación IGV"
                     icon="pi pi-percentage"
@@ -2208,23 +2245,10 @@ const PreFactura = ({ ruta }) => {
                     style={{ width: "100%" }}
                   />
                 </div>
-                
-                <div style={{ flex: 1 }}>
-                  {/* Filtro de Unidad de Negocio - Compacto */}
-                  <UnidadNegocioFilter />
-                </div>
-                {/* Filtro Tipo Libro */}
-                <div style={{ flex: 1, minWidth: "150px" }}>
-                  <label style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
-                    Tipo Libro
-                  </label>
-                  <FiltroTipoLibroButton
-                    value={filtroTipoLibro}
-                    onChange={setFiltroTipoLibro}
-                    style={{ width: "100%" }}
-                  />
-                </div>
               </div>
+
+
+
               <div
                 style={{
                   alignItems: "end",

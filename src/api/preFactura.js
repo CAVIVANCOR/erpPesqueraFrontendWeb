@@ -429,3 +429,19 @@ export async function exportarRegistroVentasSUNAT(params) {
   });
   return res.data;
 }
+
+/**
+ * Boleteo automático: crea PreFactura + DetallePreFactura desde boletas ya emitidas.
+ * Se envía en lotes pequeños para poder mostrar el avance.
+ * @param {Array} boletas - Boletas normalizadas
+ * @param {Object} parametros - { estadoId?, tipoOperacionSunatId?, tipoAfectacionIGVId? }
+ * @returns {Promise<{resultados: Array}>} Un resultado por boleta: CREADA | OMITIDA | ERROR
+ */
+export async function importarBoletasAutomatico(boletas, parametros = {}) {
+  const res = await axios.post(
+    `${API_URL}/boleteo-automatico`,
+    { boletas, parametros },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

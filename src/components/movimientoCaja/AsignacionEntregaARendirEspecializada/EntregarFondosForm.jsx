@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
@@ -9,73 +9,99 @@ import { Panel } from "primereact/panel";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Divider } from "primereact/divider";
-import { Dialog } from "primereact/dialog";
+import { Tag } from "primereact/tag";
 import { formatearNumero } from "../../../utils/utils";
 import { getGastosPlanificados } from "../../../api/detGastosPlanificados";
+import { consultarTipoCambioSunat } from "../../../api/consultaExterna";
+import { actualizarUrlVoucherIndividual } from "../../../api/tesoreria/transferencias";
+import { actualizarUrlComprobanteAsignacion } from "../../../api/tesoreria/entregaFondos";
+import { useAuthStore } from "../../../shared/stores/useAuthStore";
 import CuentaCorrienteSelector from "../../common/CuentaCorrienteSelector";
 import ModuloDocumentoSelector from "../../common/ModuloDocumentoSelector";
 import TipoMovimientoSelector from "../../common/TipoMovimientoSelector";
 import ActivoSelector from "../../common/ActivoSelector";
+import BooleanToggleButton from "../../common/BooleanToggleButton";
+import { generarYSubirVoucherIndividual } from "../utils/VoucherIndividualMovimientoPDF";
+import ConfirmacionTransferenciaDialog from "../transferenciaEspecializada/ConfirmacionTransferenciaDialog";
 
 const EntregarFondosForm = ({
   asignacion,
   cuentasCorrientes = [],
   mediosPago = [],
   tiposMovimiento = [],
+  monedas = [],
+  empresas = [],
   onSubmit,
   onCancel,
   loading = false,
   toast,
 }) => {
+  const usuario = useAuthStore((state) => state.usuario);
+  const ultimaConsultaTC = useRef(null);
+
+  // Solo identifica módulo/documento de origen para el selector de solo lectura
   const [formData, setFormData] = useState({
-    detMovsEntregaRendirId: null,
     moduloOrigenId: null,
     documentoOrigenId: null,
-    cuentaCorrienteOrigenId: null,
-    medioPagoId: null,
-    monto: 0,
-    numeroOperacion: "",
-    fechaEntrega: new Date(),
-    observaciones: "",
   });
-
-  const [errors, setErrors] = useState({});
+  const [errors] = useState({});
   const [gastosPlanificados, setGastosPlanificados] = useState([]);
   const [loadingGastos, setLoadingGastos] = useState(false);
-  const [showResumenDialog, setShowResumenDialog] = useState(false);
-  const [resumenOperacion, setResumenOperacion] = useState(null);
+
+  // Datos de la entrega (mismos nombres y semántica que TransferenciaInternaDialog, lado EGRESO)
+  const [fechaEntrega, setFechaEntrega] = useState(new Date());
+  const [numeroOperacion, setNumeroOperacion] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [esGerencial, setEsGerencial] = useState(false);
+  const [cuentaOrigenId, setCuentaOrigenId] = useState(null);
+  const [monedaOrigenSelector, setMonedaOrigenSelector] = useState(null);
+  const [medioPagoId, setMedioPagoId] = useState(null);
+  const [numeroCheque, setNumeroCheque] = useState("");
+  const [itfOrigen, setItfOrigen] = useState(0);
+  const [comisionOrigen, setComisionOrigen] = useState(0);
+  const [tipoCambio, setTipoCambio] = useState(1);
+
+  const [procesando, setProcesando] = useState(false);
+  const [showConfirmacion, setShowConfirmacion] = useState(false);
+  const [resultadoEntrega, setResultadoEntrega] = useState(null);
+
+  // La entrega es siempre por el monto total asignado (el backend lo exige)
+  const montoAsignado = Number(asignacion?.montoTotal || asignacion?.monto || 0);
+  const esMonedaNacional = asignacion?.moneda?.codigoSunat === "PEN";
+  const simbolo = asignacion?.moneda?.simbolo || "";
+  const cargando = loading || procesando;
+
+  const cuentaOrigen =
+    cuentasCorrientes.find((c) => Number(c.id) === Number(cuentaOrigenId)) || null;
+
+  const esCheque = useMemo(() => {
+    if (!medioPagoId || !mediosPago.length) return false;
+    const medioPago = mediosPago.find((m) => Number(m.id) === Number(medioPagoId));
+    return medioPago?.nombre?.toUpperCase().includes("CHEQUE") || false;
+  }, [medioPagoId, mediosPago]);
+
+  const totalDebitado =
+    Number(montoAsignado) + Number(itfOrigen || 0) + Number(comisionOrigen || 0);
 
   // Inicializar datos de la asignación y cargar gastos planificados
   useEffect(() => {
-    if (asignacion) {
-      console.log("[EntregarFondosForm] asignacion recibida:", asignacion);
+    if (!asignacion) return;
 
-      const montoInicial = Number(asignacion.montoTotal || asignacion.monto || 0);
-      const moduloOrigenId = asignacion.moduloOrigen?.id
-        ? Number(asignacion.moduloOrigen.id)
-        : asignacion.moduloOrigenId
-          ? Number(asignacion.moduloOrigenId)
-          : null;
-
-      const documentoOrigenId = asignacion.documentoOrigenId
-        ? Number(asignacion.documentoOrigenId)
+    const moduloOrigenId = asignacion.moduloOrigen?.id
+      ? Number(asignacion.moduloOrigen.id)
+      : asignacion.moduloOrigenId
+        ? Number(asignacion.moduloOrigenId)
         : null;
 
-      console.log("[EntregarFondosForm] IDs normalizados:", {
-        moduloOrigenId,
-        documentoOrigenId,
-      });
+    const documentoOrigenId = asignacion.documentoOrigenId
+      ? Number(asignacion.documentoOrigenId)
+      : null;
 
-      setFormData((prev) => ({
-        ...prev,
-        detMovsEntregaRendirId: Number(asignacion.origenId),
-        moduloOrigenId,
-        documentoOrigenId,
-        monto: montoInicial,
-      }));
-
-      cargarGastosPlanificados(asignacion.origenId);
-    }
+    setFormData({ moduloOrigenId, documentoOrigenId });
+    setDescripcion(
+      `ENTREGA A RENDIR ER-${asignacion.origenId} - ${asignacion.entidadComercial?.razonSocial || ""}`.trim(),
+    );
+    cargarGastosPlanificados(asignacion.origenId);
   }, [asignacion]);
 
   // Cargar gastos planificados
@@ -98,80 +124,135 @@ const EntregarFondosForm = ({
     }
   };
 
-  // Validar formulario
-  const validarFormulario = () => {
-    const newErrors = {};
-    if (!formData.moduloOrigenId) {
-      newErrors.moduloOrigenId = "Debe seleccionar un módulo de origen";
-    }
+  // Tipo de cambio SUNAT: solo aplica si la asignación no es en soles.
+  // Se usa TC de venta (sell_price), igual que la transferencia, porque alimenta el asiento.
+  useEffect(() => {
+    const consultarTipoCambio = async () => {
+      if (!fechaEntrega || esMonedaNacional) return;
 
-    if (!formData.documentoOrigenId) {
-      newErrors.documentoOrigenId = "Debe seleccionar un documento de origen";
-    }
-    if (!formData.cuentaCorrienteOrigenId) {
-      newErrors.cuentaCorrienteOrigenId = "Debe seleccionar una cuenta";
-    }
+      const year = fechaEntrega.getFullYear();
+      const month = String(fechaEntrega.getMonth() + 1).padStart(2, "0");
+      const day = String(fechaEntrega.getDate()).padStart(2, "0");
+      const fechaISO = `${year}-${month}-${day}`;
 
-    if (!formData.medioPagoId) {
-      newErrors.medioPagoId = "Debe seleccionar un medio de pago";
-    }
+      if (ultimaConsultaTC.current === fechaISO) return;
 
-    // Validar monto
-    if (!formData.monto || Number(formData.monto) <= 0) {
-      newErrors.monto = "El monto debe ser mayor a cero";
-    }
-
-    const montoSolicitado = Number(asignacion?.montoTotal || asignacion?.monto || 0);
-    if (Number(formData.monto) > montoSolicitado) {
-      newErrors.monto = `El monto no puede ser mayor al monto solicitado (${asignacion?.moneda?.simbolo} ${formatearNumero(montoSolicitado)})`;
-    }
-
-    // Validar número de operación si es transferencia
-    const medioPagoSeleccionado = mediosPago.find(
-      (m) => m.id === formData.medioPagoId
-    );
-    if (
-      medioPagoSeleccionado?.nombre?.toLowerCase().includes("transferencia") &&
-      !formData.numeroOperacion?.trim()
-    ) {
-      newErrors.numeroOperacion =
-        "Número de operación requerido para transferencias";
-    }
-
-    if (!formData.fechaEntrega) {
-      newErrors.fechaEntrega = "Debe seleccionar una fecha";
-    }
-
-    // Validar saldo de cuenta
-    const cuentaSeleccionada = cuentasCorrientes.find(
-      (c) => c.id === formData.cuentaCorrienteOrigenId
-    );
-    if (cuentaSeleccionada && asignacion) {
-      const saldoCuenta = Number(cuentaSeleccionada.saldoActual || 0);
-      const montoAsignacion = Number(formData.monto || 0);
-
-      if (saldoCuenta < montoAsignacion) {
-        newErrors.cuentaCorrienteOrigenId = `Saldo insuficiente. Disponible: ${asignacion.moneda?.simbolo} ${formatearNumero(saldoCuenta)}`;
+      try {
+        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
+        if (tipoCambioData && tipoCambioData.sell_price) {
+          const tc = parseFloat(tipoCambioData.sell_price);
+          setTipoCambio(tc);
+          ultimaConsultaTC.current = fechaISO;
+          toast?.current?.show({
+            severity: "success",
+            summary: "✅ Tipo de Cambio Actualizado",
+            detail: `TC SUNAT ${fechaISO}: ${tc.toFixed(4)} (Venta)`,
+            life: 3000,
+          });
+        }
+      } catch (error) {
+        console.error("Error al consultar tipo de cambio:", error);
+        toast?.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudo obtener el tipo de cambio de SUNAT",
+          life: 4000,
+        });
       }
+    };
+
+    consultarTipoCambio();
+  }, [fechaEntrega, esMonedaNacional]);
+
+  // Validaciones (mismos criterios y mensajes que TransferenciaInternaDialog, lado EGRESO)
+  const validarFormulario = () => {
+    const mostrarError = (detail) => {
+      toast?.current?.show({ severity: "error", summary: "Error", detail, life: 3000 });
+      return false;
+    };
+
+    if (!fechaEntrega) return mostrarError("Debe ingresar la fecha de la operación");
+    if (!descripcion || descripcion.trim() === "") {
+      return mostrarError("Debe ingresar la glosa de la operación");
+    }
+    if (!numeroOperacion || numeroOperacion.trim() === "") {
+      return mostrarError("Debe ingresar el número de operación");
+    }
+    if (!cuentaOrigenId) return mostrarError("Debe seleccionar la cuenta de origen");
+    if (!montoAsignado || montoAsignado <= 0) {
+      return mostrarError("El monto a entregar debe ser mayor a cero");
+    }
+    if (!medioPagoId) return mostrarError("Debe seleccionar el medio de pago");
+    if (esCheque && (!numeroCheque || numeroCheque.trim() === "")) {
+      return mostrarError("Debe ingresar el número de cheque");
+    }
+    if (
+      monedaOrigenSelector &&
+      Number(monedaOrigenSelector.id) !== Number(asignacion?.moneda?.id)
+    ) {
+      return mostrarError("La moneda de la cuenta no coincide con la de la asignación");
+    }
+    if (!esMonedaNacional && !(Number(tipoCambio) > 0)) {
+      return mostrarError("Debe ingresar un tipo de cambio válido");
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const saldo = Number(cuentaOrigen?.saldoActual ?? cuentaOrigen?.saldo);
+    if (cuentaOrigen && !Number.isNaN(saldo) && saldo < totalDebitado) {
+      toast?.current?.show({
+        severity: "error",
+        summary: "Saldo Insuficiente",
+        detail: `Saldo disponible: ${simbolo} ${formatearNumero(saldo)}. Requerido: ${simbolo} ${formatearNumero(totalDebitado)}`,
+        life: 5000,
+      });
+      return false;
+    }
+
+    return true;
   };
 
-  // Manejar cambios en el formulario
-  const handleChange = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+  // Vouchers individuales (egreso, ITF y comisión), mismo mecanismo que la transferencia.
+  // Un fallo aquí no interrumpe el flujo: la operación ya está registrada.
+  const generarVouchers = async (resultado) => {
+    try {
+      const movimientos = resultado.movimientos;
 
-    // Limpiar error del campo
-    if (errors[field]) {
-      setErrors((prev) => ({
-        ...prev,
-        [field]: null,
-      }));
+      for (const clave of ["egreso", "itfOrigen", "comisionOrigen"]) {
+        const movimiento = movimientos[clave];
+        if (!movimiento) continue;
+
+        try {
+          const empresaMovimiento = empresas.find(
+            (e) => Number(e.id) === Number(movimiento.empresaId),
+          );
+          const voucher = await generarYSubirVoucherIndividual(
+            movimiento,
+            null,
+            empresaMovimiento,
+            null,
+            usuario,
+          );
+
+          if (voucher.success && voucher.urlPdf && voucher.urlPdf.trim() !== "") {
+            await actualizarUrlVoucherIndividual(movimiento.id, voucher.urlPdf);
+            movimientos[clave].urlOperacionIndividualOperacionCaja = voucher.urlPdf;
+
+            // El comprobante de la asignación es el voucher del egreso principal
+            if (clave === "egreso") {
+              await actualizarUrlComprobanteAsignacion(asignacion.origenId, voucher.urlPdf);
+            }
+          }
+        } catch (error) {
+          console.error(`❌ Error voucher ${clave}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error al generar vouchers:", error);
+      toast?.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "La entrega se procesó pero hubo un error al generar algunos vouchers",
+        life: 5000,
+      });
     }
   };
 
@@ -179,58 +260,36 @@ const EntregarFondosForm = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validarFormulario()) {
-      toast?.current?.show({
-        severity: "warn",
-        summary: "Validación",
-        detail: "Por favor complete todos los campos requeridos",
-        life: 3000,
-      });
-      return;
-    }
+    if (!validarFormulario()) return;
 
-    // Toast inicial
-    toast?.current?.show({
-      severity: "info",
-      summary: "Procesando",
-      detail: "Procesando entrega de fondos...",
-      life: 2000,
-    });
-
+    setProcesando(true);
     try {
-      // Llamar al onSubmit que ejecuta el servicio
-      const resultado = await onSubmit(formData);
+      // El hook useEntregarFondos ejecuta el servicio y ya muestra los errores
+      const resultado = await onSubmit({
+        detMovsEntregaRendirId: Number(asignacion.origenId),
+        cuentaCorrienteOrigenId: Number(cuentaOrigenId),
+        medioPagoId: Number(medioPagoId),
+        numeroCheque: numeroCheque || null,
+        numeroOperacion,
+        fechaEntrega: fechaEntrega.toISOString(),
+        descripcion,
+        itfOrigen: Number(itfOrigen || 0),
+        comisionOrigen: Number(comisionOrigen || 0),
+        esGerencial: Boolean(esGerencial),
+        tipoCambio: esMonedaNacional ? 1 : Number(tipoCambio),
+      });
 
-      // Si el resultado contiene datos, mostrar resumen
       if (resultado?.data) {
-        const cuentaSeleccionada = cuentasCorrientes.find(
-          (c) => c.id === formData.cuentaCorrienteOrigenId
-        );
-
-        setResumenOperacion({
-          responsable: asignacion?.entidadComercial?.razonSocial || "N/A",
-          montoEntregado: formData.monto,
-          moneda: asignacion?.moneda,
-          movimientoCajaId: resultado.data.id,
-          asignacionId: asignacion?.origenId,
-          saldoAnterior: Number(cuentaSeleccionada?.saldoActual || 0),
-          saldoNuevo: Number(cuentaSeleccionada?.saldoActual || 0) - Number(formData.monto),
-          fecha: new Date(),
-        });
-
-        setShowResumenDialog(true);
+        await generarVouchers(resultado.data);
+        setResultadoEntrega(resultado.data);
+        setShowConfirmacion(true);
       }
     } catch (error) {
-      // El error ya se maneja en el hook useEntregarFondos
       console.error("Error en handleSubmit:", error);
+    } finally {
+      setProcesando(false);
     }
   };
-
-  // Preparar opciones de medios de pago
-  const mediosPagoOptions = mediosPago.map((m) => ({
-    label: m.nombre,
-    value: m.id,
-  }));
 
   // Construir nombre completo del responsable
   const nombreResponsable =
@@ -483,131 +542,230 @@ const EntregarFondosForm = ({
 
         <Divider />
 
-        {/* SECCIÓN 3: Datos de la Entrega */}
+        {/* SECCIÓN 3: Datos de la Entrega (egreso, mismo layout que la transferencia) */}
         <Panel header="💳 Datos de la Entrega">
-          <div className="p-fluid">
-            {/* Cuenta Corriente Origen */}
-            <div className="mb-3">
-              <CuentaCorrienteSelector
-                empresaIdPreseleccionada={asignacion?.empresa?.id}
-                value={formData.cuentaCorrienteOrigenId}
-                onChange={({ cuentaCorrienteId }) => {
-                  handleChange("cuentaCorrienteOrigenId", cuentaCorrienteId);
-                }}
-                label="* Cuenta Bancaria Origen"
-                disabled={loading}
-                placeholder="Seleccione cuenta corriente de origen"
-              />
-              {errors.cuentaCorrienteOrigenId && (
-                <small className="p-error">{errors.cuentaCorrienteOrigenId}</small>
-              )}
-            </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
 
-            {/* Fila: Fecha, Moneda, Monto Solicitado, Monto a Entregar */}
-            <div className="grid">
-              <div className="col-12 md:col-3">
-                <label htmlFor="fechaEntrega">* Fecha de Entrega</label>
+            {/* DATOS GENERALES */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fecha" className="font-bold">Fecha de Entrega *</label>
                 <Calendar
-                  id="fechaEntrega"
-                  value={formData.fechaEntrega}
-                  onChange={(e) => handleChange("fechaEntrega", e.value)}
+                  id="fecha"
+                  value={fechaEntrega}
+                  onChange={(e) => setFechaEntrega(e.value)}
                   dateFormat="dd/mm/yy"
                   showIcon
-                  disabled={loading}
+                  disabled={cargando}
+                  style={{ width: "100%" }}
                 />
-                {errors.fechaEntrega && (
-                  <small className="p-error">{errors.fechaEntrega}</small>
-                )}
               </div>
-
-              <div className="col-12 md:col-2">
-                <label htmlFor="moneda">Moneda</label>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="numeroOperacion" className="font-bold">Nº Operación *</label>
                 <InputText
-                  id="moneda"
-                  value={asignacion?.moneda?.codigoSunat || ""}
-                  disabled
-                  style={{ backgroundColor: "#f0f0f0" }}
+                  id="numeroOperacion"
+                  value={numeroOperacion}
+                  onChange={(e) => setNumeroOperacion(e.target.value)}
+                  placeholder="Ingrese número de operación"
+                  disabled={cargando}
+                  style={{ width: "100%" }}
                 />
               </div>
-
-              <div className="col-12 md:col-2">
-                <label htmlFor="montoSolicitado">Monto Solicitado</label>
-                <InputNumber
-                  id="montoSolicitado"
-                  value={montoSolicitado}
-                  disabled
-                  mode="decimal"
-                  minFractionDigits={2}
-                  maxFractionDigits={2}
-                  style={{
-                    backgroundColor: "#fff3cd",
-                    fontWeight: "bold",
-                  }}
+              <div style={{ flex: 2 }}>
+                <label htmlFor="descripcion" className="font-bold">Glosa *</label>
+                <InputText
+                  id="descripcion"
+                  value={descripcion}
+                  onChange={(e) => setDescripcion(e.target.value)}
+                  placeholder="Ingrese glosa de la operación"
+                  disabled={cargando}
+                  style={{ width: "100%" }}
                 />
               </div>
-
-              <div className="col-12 md:col-2">
-                <label htmlFor="monto">* Monto a Entregar</label>
-                <InputNumber
-                  id="monto"
-                  value={formData.monto}
-                  onValueChange={(e) => handleChange("monto", e.value)}
-                  mode="decimal"
-                  minFractionDigits={2}
-                  maxFractionDigits={2}
-                  disabled={loading}
-                  min={0}
-                  max={montoSolicitado}
-                  className={errors.monto ? "p-invalid" : ""}
+              <div style={{ flex: 1 }}>
+                <label className="font-bold block mb-2">Operación</label>
+                <BooleanToggleButton
+                  value={esGerencial}
+                  onChange={setEsGerencial}
+                  labelTrue="GERENCIAL"
+                  labelFalse="FISCAL"
+                  severityTrue="help"
+                  severityFalse="success"
+                  icon={esGerencial ? "pi-eye-slash" : "pi-eye"}
+                  disabled={cargando}
                 />
-                {errors.monto && (
-                  <small className="p-error">{errors.monto}</small>
-                )}
-              </div>
-
-              <div className="col-12 md:col-3">
-                <label htmlFor="medioPagoId">* Medio de Pago</label>
-                <Dropdown
-                  id="medioPagoId"
-                  value={formData.medioPagoId}
-                  options={mediosPagoOptions}
-                  onChange={(e) => handleChange("medioPagoId", e.value)}
-                  placeholder="Seleccione medio de pago"
-                  disabled={loading}
-                />
-                {errors.medioPagoId && (
-                  <small className="p-error">{errors.medioPagoId}</small>
-                )}
               </div>
             </div>
 
-            {/* Número de Operación */}
-            <div className="mt-3">
-              <label htmlFor="numeroOperacion">Número de Operación</label>
-              <InputText
-                id="numeroOperacion"
-                value={formData.numeroOperacion}
-                onChange={(e) => handleChange("numeroOperacion", e.target.value)}
-                placeholder="Opcional (requerido si es transferencia)"
-                disabled={loading}
-              />
-              {errors.numeroOperacion && (
-                <small className="p-error">{errors.numeroOperacion}</small>
+            {/* CUENTA ORIGEN */}
+            <Panel
+              header={
+                <div className="flex align-items-center gap-2">
+                  <span>📤 Cuenta de Origen (EGRESO)</span>
+                </div>
+              }
+              toggleable
+            >
+              <div
+                style={{
+                  alignItems: "end",
+                  display: "flex",
+                  gap: 5,
+                  marginBottom: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="cuentaOrigen" className="font-bold">Cuenta Corriente *</label>
+                  <CuentaCorrienteSelector
+                    empresaIdPreseleccionada={asignacion?.empresa?.id}
+                    value={cuentaOrigenId}
+                    onChange={({ cuentaCorrienteId, moneda }) => {
+                      setCuentaOrigenId(cuentaCorrienteId);
+                      setMonedaOrigenSelector(moneda);
+                    }}
+                    label=""
+                    placeholder="Seleccione cuenta de origen"
+                    mostrarSaldo={true}
+                    disabled={cargando}
+                  />
+                </div>
+              </div>
+              <div
+                style={{
+                  alignItems: "end",
+                  display: "flex",
+                  gap: 10,
+                  marginBottom: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="medioPagoOrigen" className="font-bold">Medio de Pago *</label>
+                  <Dropdown
+                    id="medioPagoOrigen"
+                    value={medioPagoId}
+                    options={mediosPago}
+                    onChange={(e) => setMedioPagoId(e.value)}
+                    optionLabel="nombre"
+                    optionValue="id"
+                    placeholder="Seleccione medio de pago"
+                    disabled={cargando}
+                    filter
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                {esCheque && (
+                  <div style={{ flex: 2 }}>
+                    <label htmlFor="numeroChequeOrigen" className="font-bold">Nº Cheque *</label>
+                    <InputText
+                      id="numeroChequeOrigen"
+                      value={numeroCheque}
+                      onChange={(e) => setNumeroCheque(e.target.value)}
+                      placeholder="Ingrese número de cheque"
+                      disabled={cargando}
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                )}
+                <div style={{ flex: 2 }}>
+                  <TipoMovimientoSelector
+                    tiposMovimiento={tiposMovimiento}
+                    value={Number(asignacion?.tipoMovimiento?.id || 0)}
+                    onChange={() => {}}
+                    esIngreso={false}
+                    required={true}
+                    soloLectura={true}
+                    disabled={cargando}
+                  />
+                </div>
+              </div>
+              <div
+                style={{
+                  alignItems: "end",
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="montoOrigen" className="font-bold">
+                    Monto ({simbolo}) *
+                  </label>
+                  <InputNumber
+                    id="montoOrigen"
+                    value={montoAsignado}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="itfOrigen" className="font-bold">ITF</label>
+                  <InputNumber
+                    id="itfOrigen"
+                    value={itfOrigen}
+                    onValueChange={(e) => setItfOrigen(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled={cargando}
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="comisionOrigen" className="font-bold">Comisión</label>
+                  <InputNumber
+                    id="comisionOrigen"
+                    value={comisionOrigen}
+                    onValueChange={(e) => setComisionOrigen(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled={cargando}
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span className="font-bold">Total a Debitar:</span>
+                    <Tag severity="danger" style={{ fontSize: "1.2rem", padding: "0.5rem 1rem" }}>
+                      {simbolo} {formatearNumero(totalDebitado)}
+                    </Tag>
+                  </div>
+                </div>
+              </div>
+
+              {/* TIPO DE CAMBIO: solo si la asignación no es en soles */}
+              {!esMonedaNacional && (
+                <div style={{ marginTop: 10 }}>
+                  <label htmlFor="tipoCambio" className="font-bold">Tipo de Cambio *</label>
+                  <InputNumber
+                    id="tipoCambio"
+                    value={tipoCambio}
+                    onValueChange={(e) => setTipoCambio(e.value)}
+                    mode="decimal"
+                    minFractionDigits={4}
+                    maxFractionDigits={4}
+                    disabled={cargando}
+                    style={{ width: "100%" }}
+                    placeholder="Tipo de cambio SUNAT"
+                  />
+                  <small className="p-text-secondary">
+                    Se aplicará para registrar el asiento en soles
+                  </small>
+                </div>
               )}
-            </div>
-
-            {/* Observaciones */}
-            <div className="mt-3">
-              <label htmlFor="observaciones">Observaciones</label>
-              <InputTextarea
-                id="observaciones"
-                value={formData.observaciones}
-                onChange={(e) => handleChange("observaciones", e.target.value)}
-                rows={3}
-                placeholder="Observaciones adicionales (opcional)"
-                disabled={loading}
-              />
-            </div>
+            </Panel>
           </div>
         </Panel>
 
@@ -620,78 +778,30 @@ const EntregarFondosForm = ({
             outlined
             onClick={onCancel}
             type="button"
-            disabled={loading}
+            disabled={cargando}
           />
           <Button
             label="Entregar Fondos"
             icon="pi pi-check"
             severity="success"
             type="submit"
-            loading={loading}
+            loading={cargando}
           />
         </div>
       </form>
 
-      {/* Dialog de Resumen de Operación */}
-      <Dialog
-        header="✅ Entrega de Fondos Exitosa"
-        visible={showResumenDialog}
-        style={{ width: "1000px" }}
+      {/* Confirmación de la operación (reutiliza el diálogo de la transferencia) */}
+      <ConfirmacionTransferenciaDialog
+        visible={showConfirmacion}
         onHide={() => {
-          setShowResumenDialog(false);
-          onCancel(); // Cerrar el formulario principal
+          setShowConfirmacion(false);
+          setResultadoEntrega(null);
+          onCancel(); // Cierra el formulario principal
         }}
-        modal
-      >
-        {resumenOperacion && (
-          <div className="p-3">
-            <div className="mb-3">
-              <strong>Responsable:</strong> {resumenOperacion.responsable}
-            </div>
-            <div className="mb-3">
-              <strong>Monto Entregado:</strong>{" "}
-              <span style={{ fontSize: "1.2rem", color: "#4CAF50", fontWeight: "bold" }}>
-                {resumenOperacion.moneda?.simbolo} {formatearNumero(resumenOperacion.montoEntregado)}
-              </span>
-            </div>
-
-            <Divider />
-
-            <h4>📋 Operaciones Realizadas:</h4>
-            <ul style={{ listStyle: "none", padding: 0 }}>
-              <li className="mb-2">
-                ✅ <strong>Movimiento de Caja:</strong> MC-{resumenOperacion.movimientoCajaId}
-              </li>
-              <li className="mb-2">
-                ✅ <strong>Asignación Actualizada:</strong> ER-{resumenOperacion.asignacionId}
-              </li>
-              <li className="mb-2">
-                ✅ <strong>Saldo de Cuenta:</strong>{" "}
-                {resumenOperacion.moneda?.simbolo} {formatearNumero(resumenOperacion.saldoAnterior)} →{" "}
-                {resumenOperacion.moneda?.simbolo} {formatearNumero(resumenOperacion.saldoNuevo)}
-              </li>
-            </ul>
-
-            <Divider />
-
-            <div className="text-center" style={{ color: "#666", fontSize: "0.9rem" }}>
-              Fecha: {resumenOperacion.fecha.toLocaleString("es-PE")}
-            </div>
-
-            <div className="flex justify-content-center mt-4">
-              <Button
-                label="Aceptar"
-                icon="pi pi-check"
-                onClick={() => {
-                  setShowResumenDialog(false);
-                  onCancel(); // Cerrar el formulario principal
-                }}
-                autoFocus
-              />
-            </div>
-          </div>
-        )}
-      </Dialog>
+        resultadoTransferencia={resultadoEntrega}
+        monedas={monedas}
+        toast={toast}
+      />
     </>
   );
 };

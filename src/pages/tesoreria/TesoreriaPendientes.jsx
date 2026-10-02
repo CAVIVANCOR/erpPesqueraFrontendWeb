@@ -143,11 +143,10 @@ const TesoreriaPendientes = () => {
   });
 
 
+  // El diálogo no se cierra aquí: EntregarFondosForm lo cierra al cerrar la confirmación
   const { entregarFondos, loading: loadingEntrega } = useEntregarFondos({
     toast,
     onSuccess: () => {
-      setShowEntregaFondosDialog(false);
-      setAsignacionSeleccionada(null);
       recargarPendientes();
       recargarSaldos();
     },
@@ -647,6 +646,8 @@ const TesoreriaPendientes = () => {
             cuentasCorrientes={saldosCuentas}
             mediosPago={mediosPago}
             tiposMovimiento={tiposMovimiento}
+            monedas={monedas}
+            empresas={empresas}
             onSubmit={handleGuardarEntrega}
             onCancel={handleCancelarEntrega}
             loading={loadingEntrega}
