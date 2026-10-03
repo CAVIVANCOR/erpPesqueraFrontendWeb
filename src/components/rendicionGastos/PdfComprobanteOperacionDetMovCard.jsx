@@ -37,7 +37,7 @@ const PdfComprobanteOperacionDetMovCard = ({
 }) => {
   return (
     <PDFDocumentManager
-      moduleName="det-movs-entrega-rendir-pesca-industrial-operacion"
+      moduleName="det-movs-entrega-rendir-operacion"
       fieldName="urlComprobanteOperacionMovCaja"
       entityId={detMovId}
       title="Comprobante de Operación (MovimientoCaja)"

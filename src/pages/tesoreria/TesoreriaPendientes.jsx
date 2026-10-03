@@ -362,8 +362,10 @@ const TesoreriaPendientes = () => {
     setShowEntregaFondosDialog(true);
   };
 
+  // Devuelve el resultado: EntregarFondosForm lo necesita para generar los vouchers
+  // y mostrar la confirmación con los movimientos y asientos creados
   const handleGuardarEntrega = async (formData) => {
-    await entregarFondos(formData);
+    return await entregarFondos(formData);
   };
 
   const handlePagoEspecializado = async (documento) => {
@@ -646,11 +648,11 @@ const TesoreriaPendientes = () => {
             cuentasCorrientes={saldosCuentas}
             mediosPago={mediosPago}
             tiposMovimiento={tiposMovimiento}
-            monedas={monedas}
             empresas={empresas}
             onSubmit={handleGuardarEntrega}
             onCancel={handleCancelarEntrega}
             loading={loadingEntrega}
+            toast={toast}
           />
         </Dialog>
       )}

@@ -624,9 +624,8 @@ const PendientesHeader = ({
       >
           {/* Botones de Operaciones */}
           {operacionesOptions.map((option) => (
-            <div style={{ flex: 1 }}>
+            <div key={option.value} style={{ flex: 1 }}>
               <Button
-                key={option.value}
                 icon={option.icon}
                 severity={option.severity}
                 outlined

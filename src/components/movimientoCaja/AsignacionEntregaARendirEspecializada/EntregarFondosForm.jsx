@@ -14,7 +14,6 @@ import { formatearNumero } from "../../../utils/utils";
 import { getGastosPlanificados } from "../../../api/detGastosPlanificados";
 import { consultarTipoCambioSunat } from "../../../api/consultaExterna";
 import { actualizarUrlVoucherIndividual } from "../../../api/tesoreria/transferencias";
-import { actualizarUrlComprobanteAsignacion } from "../../../api/tesoreria/entregaFondos";
 import { useAuthStore } from "../../../shared/stores/useAuthStore";
 import CuentaCorrienteSelector from "../../common/CuentaCorrienteSelector";
 import ModuloDocumentoSelector from "../../common/ModuloDocumentoSelector";
@@ -22,14 +21,14 @@ import TipoMovimientoSelector from "../../common/TipoMovimientoSelector";
 import ActivoSelector from "../../common/ActivoSelector";
 import BooleanToggleButton from "../../common/BooleanToggleButton";
 import { generarYSubirVoucherIndividual } from "../utils/VoucherIndividualMovimientoPDF";
-import ConfirmacionTransferenciaDialog from "../transferenciaEspecializada/ConfirmacionTransferenciaDialog";
+import { generarYSubirVoucherConsolidado } from "./VoucherConsolidadoEntregaFondosPDF";
+import ConfirmacionEntregaFondosDialog from "./ConfirmacionEntregaFondosDialog";
 
 const EntregarFondosForm = ({
   asignacion,
   cuentasCorrientes = [],
   mediosPago = [],
   tiposMovimiento = [],
-  monedas = [],
   empresas = [],
   onSubmit,
   onCancel,
@@ -60,12 +59,14 @@ const EntregarFondosForm = ({
   const [itfOrigen, setItfOrigen] = useState(0);
   const [comisionOrigen, setComisionOrigen] = useState(0);
   const [tipoCambio, setTipoCambio] = useState(1);
+  // Monto realmente entregado: puede ser menor o mayor al solicitado por el responsable
+  const [montoEntrega, setMontoEntrega] = useState(0);
 
   const [procesando, setProcesando] = useState(false);
   const [showConfirmacion, setShowConfirmacion] = useState(false);
   const [resultadoEntrega, setResultadoEntrega] = useState(null);
 
-  // La entrega es siempre por el monto total asignado (el backend lo exige)
+  // Monto solicitado por el responsable (referencia): el monto entregado es editable
   const montoAsignado = Number(asignacion?.montoTotal || asignacion?.monto || 0);
   const esMonedaNacional = asignacion?.moneda?.codigoSunat === "PEN";
   const simbolo = asignacion?.moneda?.simbolo || "";
@@ -81,7 +82,7 @@ const EntregarFondosForm = ({
   }, [medioPagoId, mediosPago]);
 
   const totalDebitado =
-    Number(montoAsignado) + Number(itfOrigen || 0) + Number(comisionOrigen || 0);
+    Number(montoEntrega || 0) + Number(itfOrigen || 0) + Number(comisionOrigen || 0);
 
   // Inicializar datos de la asignación y cargar gastos planificados
   useEffect(() => {
@@ -98,6 +99,7 @@ const EntregarFondosForm = ({
       : null;
 
     setFormData({ moduloOrigenId, documentoOrigenId });
+    setMontoEntrega(montoAsignado); // por defecto se entrega lo solicitado; el usuario puede cambiarlo
     setDescripcion(
       `ENTREGA A RENDIR ER-${asignacion.origenId} - ${asignacion.entidadComercial?.razonSocial || ""}`.trim(),
     );
@@ -179,7 +181,7 @@ const EntregarFondosForm = ({
       return mostrarError("Debe ingresar el número de operación");
     }
     if (!cuentaOrigenId) return mostrarError("Debe seleccionar la cuenta de origen");
-    if (!montoAsignado || montoAsignado <= 0) {
+    if (!montoEntrega || montoEntrega <= 0) {
       return mostrarError("El monto a entregar debe ser mayor a cero");
     }
     if (!medioPagoId) return mostrarError("Debe seleccionar el medio de pago");
@@ -196,15 +198,15 @@ const EntregarFondosForm = ({
       return mostrarError("Debe ingresar un tipo de cambio válido");
     }
 
+    // Solo advierte: la entrega puede dejar la cuenta en negativo y no debe bloquearse
     const saldo = Number(cuentaOrigen?.saldoActual ?? cuentaOrigen?.saldo);
     if (cuentaOrigen && !Number.isNaN(saldo) && saldo < totalDebitado) {
       toast?.current?.show({
-        severity: "error",
+        severity: "warn",
         summary: "Saldo Insuficiente",
-        detail: `Saldo disponible: ${simbolo} ${formatearNumero(saldo)}. Requerido: ${simbolo} ${formatearNumero(totalDebitado)}`,
-        life: 5000,
+        detail: `Saldo disponible: ${simbolo} ${formatearNumero(saldo)}. Requerido: ${simbolo} ${formatearNumero(totalDebitado)}. La cuenta quedará en negativo.`,
+        life: 6000,
       });
-      return false;
     }
 
     return true;
@@ -235,15 +237,40 @@ const EntregarFondosForm = ({
           if (voucher.success && voucher.urlPdf && voucher.urlPdf.trim() !== "") {
             await actualizarUrlVoucherIndividual(movimiento.id, voucher.urlPdf);
             movimientos[clave].urlOperacionIndividualOperacionCaja = voucher.urlPdf;
-
-            // El comprobante de la asignación es el voucher del egreso principal
-            if (clave === "egreso") {
-              await actualizarUrlComprobanteAsignacion(asignacion.origenId, voucher.urlPdf);
-            }
           }
         } catch (error) {
           console.error(`❌ Error voucher ${clave}:`, error);
         }
+      }
+
+      // Voucher consolidado de la entrega: al subirlo, el backend guarda su URL
+      // en la asignación (DetMovsEntregaRendir.urlComprobanteOperacionMovCaja)
+      try {
+        const empresaEntrega = empresas.find(
+          (e) => Number(e.id) === Number(movimientos.egreso?.empresaId),
+        );
+        const consolidado = await generarYSubirVoucherConsolidado(
+          {
+            correlativo: resultado.correlativo,
+            fechaEntrega,
+            numeroOperacion,
+            descripcion,
+            tipoCambio: esMonedaNacional ? 1 : tipoCambio,
+            esGerencial,
+            numeroCheque,
+          },
+          asignacion,
+          resultado,
+          empresaEntrega,
+          usuario,
+        );
+        if (consolidado.success) {
+          resultado.urlVoucherConsolidado = consolidado.urlPdf;
+        } else {
+          console.error("❌ Error voucher consolidado:", consolidado.error);
+        }
+      } catch (error) {
+        console.error("❌ Error voucher consolidado:", error);
       }
     } catch (error) {
       console.error("❌ Error al generar vouchers:", error);
@@ -267,6 +294,7 @@ const EntregarFondosForm = ({
       // El hook useEntregarFondos ejecuta el servicio y ya muestra los errores
       const resultado = await onSubmit({
         detMovsEntregaRendirId: Number(asignacion.origenId),
+        monto: Number(montoEntrega),
         cuentaCorrienteOrigenId: Number(cuentaOrigenId),
         medioPagoId: Number(medioPagoId),
         numeroCheque: numeroCheque || null,
@@ -701,13 +729,20 @@ const EntregarFondosForm = ({
                   </label>
                   <InputNumber
                     id="montoOrigen"
-                    value={montoAsignado}
+                    value={montoEntrega}
+                    onValueChange={(e) => setMontoEntrega(e.value)}
                     mode="decimal"
                     minFractionDigits={2}
                     maxFractionDigits={2}
-                    disabled
+                    min={0}
+                    disabled={cargando}
                     style={{ width: "100%" }}
                   />
+                  {Number(montoEntrega) !== montoAsignado && (
+                    <small className="p-text-secondary">
+                      Solicitado: {simbolo} {formatearNumero(montoAsignado)}. El monto entregado reemplazará al de la asignación.
+                    </small>
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
                   <label htmlFor="itfOrigen" className="font-bold">ITF</label>
@@ -790,17 +825,16 @@ const EntregarFondosForm = ({
         </div>
       </form>
 
-      {/* Confirmación de la operación (reutiliza el diálogo de la transferencia) */}
-      <ConfirmacionTransferenciaDialog
+      {/* Confirmación de la entrega: movimientos, asientos y voucher consolidado */}
+      <ConfirmacionEntregaFondosDialog
         visible={showConfirmacion}
         onHide={() => {
           setShowConfirmacion(false);
           setResultadoEntrega(null);
           onCancel(); // Cierra el formulario principal
         }}
-        resultadoTransferencia={resultadoEntrega}
-        monedas={monedas}
-        toast={toast}
+        resultadoEntrega={resultadoEntrega}
+        asignacion={asignacion}
       />
     </>
   );

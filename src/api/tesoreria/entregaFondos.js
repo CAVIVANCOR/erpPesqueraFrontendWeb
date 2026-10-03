@@ -1,4 +1,14 @@
-import api from "../axios";
+import axios from "axios";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
+
+const API_URL = `${import.meta.env.VITE_API_URL}/tesoreria/atender-asignacion`;
+
+// La instancia compartida de ../axios no agrega el token a las peticiones y su interceptor
+// cierra la sesión ante cualquier 401: se usa el mismo patrón del resto de APIs de Tesorería.
+function getAuthHeaders() {
+  const token = useAuthStore.getState().token;
+  return { Authorization: `Bearer ${token}` };
+}
 
 /**
  * Atender una asignación (Entrega de Fondos)
@@ -6,19 +16,6 @@ import api from "../axios";
  * @returns {Promise} Respuesta del servidor
  */
 export const atenderAsignacion = async (datos) => {
-  const response = await api.post("/tesoreria/atender-asignacion", datos);
-  return response.data;
-};
-
-/**
- * Guardar la URL del voucher de la operación en la asignación atendida
- * @param {number|string} detMovsEntregaRendirId
- * @param {string} urlPdf
- */
-export const actualizarUrlComprobanteAsignacion = async (detMovsEntregaRendirId, urlPdf) => {
-  const response = await api.patch(
-    `/tesoreria/atender-asignacion/${detMovsEntregaRendirId}/url-comprobante`,
-    { urlPdf }
-  );
+  const response = await axios.post(API_URL, datos, { headers: getAuthHeaders() });
   return response.data;
 };

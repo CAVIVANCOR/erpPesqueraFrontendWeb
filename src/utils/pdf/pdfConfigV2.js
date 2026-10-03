@@ -783,6 +783,22 @@ export const PDF_MODULES_CONFIG = {
     },
   },
 
+  // ✅ Comprobante de operación de la asignación (DetMovsEntregaRendir).
+  // Ruta ÚNICA compartida por el voucher que genera la Entrega de Fondos (Tesorería) y por
+  // PdfComprobanteOperacionDetMovCard (Rendición de Gastos), para que ambos vean el mismo archivo.
+  "det-movs-entrega-rendir-operacion": {
+    uploadPath: "uploads/pdf-system/det-movs-entrega-rendir-operacion",
+    oldPaths: [],
+    apiEndpoint: "/pdf/det-movs-entrega-rendir-operacion",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf", "image/jpeg", "image/png"],
+    maxFiles: 20,
+    database: {
+      table: "DetMovsEntregaRendir",
+      field: "urlComprobanteOperacionMovCaja",  // ✅ COMPROBANTE DE LA OPERACIÓN EN LA ASIGNACIÓN
+    },
+  },
+
   "descarga-faena-pesca-comprobante-wincha": {
     uploadPath: "uploads/pdf-system/descarga-faena-pesca-comprobante-wincha",
     oldPaths: [],

@@ -152,11 +152,14 @@ const normalizarArchivo = (filas) => {
       invalidas.push({ fila: indice + 1, error });
       return;
     }
-    if (vistos.has(boleta.numeroDocumentoFinal)) {
+    // Repetida = misma serie interna (que define la empresa) + mismo tipo + mismo número.
+    // Dos empresas pueden emitir el mismo número (ej: EB01-2673): no son repetidas.
+    const clave = `${boleta.serieDocId}|${boleta.tipoDocumentoFinalId}|${boleta.numeroDocumentoFinal}`;
+    if (vistos.has(clave)) {
       duplicadasEnArchivo += 1;
       return;
     }
-    vistos.add(boleta.numeroDocumentoFinal);
+    vistos.add(clave);
     boletas.push(boleta);
   });
 
