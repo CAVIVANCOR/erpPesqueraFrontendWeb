@@ -25,6 +25,7 @@ export const useFiltrosDinamicos = (tipo, empresaId) => {
     monedaIds: [],
     estadoIds: [],
     personalIds: [],
+    tipoDeudaIds: [],
     montoDesde: null,
     montoHasta: null,
   });
@@ -52,6 +53,7 @@ export const useFiltrosDinamicos = (tipo, empresaId) => {
       monedaIds: [],
       estadoIds: [],
       personalIds: [],
+      tipoDeudaIds: [],
       montoDesde: null,
       montoHasta: null,
     });
@@ -69,6 +71,7 @@ export const useFiltrosDinamicos = (tipo, empresaId) => {
     if (filtros.monedaIds?.length > 0) count += filtros.monedaIds.length;
     if (filtros.estadoIds?.length > 0) count += filtros.estadoIds.length;
     if (filtros.personalIds?.length > 0) count += filtros.personalIds.length;
+    if (filtros.tipoDeudaIds?.length > 0) count += filtros.tipoDeudaIds.length;
     if (filtros.montoDesde !== null || filtros.montoHasta !== null) count++;
     
     return count;

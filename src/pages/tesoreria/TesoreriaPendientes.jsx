@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Navigate } from "react-router-dom";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Card } from "primereact/card";
 import { Dialog } from "primereact/dialog";
+import { Button } from "primereact/button";
 
 // Components
 import PendientesHeader from "./components/PendientesHeader";
@@ -14,6 +15,8 @@ import PagoCuentaPorCobrarForm from "../../components/pagoCuentaPorCobrar/PagoCu
 import PagarCuentaPorCobrarEspecializadoDialog from "../../components/pagoCuentaPorCobrar/PagarCuentaPorCobrarEspecializadoDialog";
 import PagarCuentaPorPagarEspecializadoDialog from "../../components/pagoCuentaPorPagar/PagarCuentaPorPagarEspecializadoDialog";
 import EntregarFondosForm from "../../components/movimientoCaja/AsignacionEntregaARendirEspecializada/EntregarFondosForm";
+import PagoDeudasPersonalEspecializadoForm from "../../components/movimientoCaja/DeudasPersonalPagoEspecializado/PagoDeudasPersonalEspecializadoForm";
+import usePagarDeudasPersonalMultiple from "../../components/movimientoCaja/DeudasPersonalPagoEspecializado/usePagarDeudasPersonalMultiple";
 import PagarDeudaPersonalDialog from "../../components/tesoreria/PagarDeudaPersonalDialog";
 import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ AGREGAR
 import PagarDeudaTributariaDialog from "../../components/tesoreria/PagarDeudaTributariaDialog";
@@ -63,6 +66,10 @@ const TesoreriaPendientes = () => {
   const [asignacionSeleccionada, setAsignacionSeleccionada] = useState(null);
   const [showPagoDeudaPersonalDialog, setShowPagoDeudaPersonalDialog] = useState(false);
   const [deudaPersonalSeleccionada, setDeudaPersonalSeleccionada] = useState(null);
+  // Pago múltiple (especializado) de Deudas con Personal
+  const [seleccionDeudas, setSeleccionDeudas] = useState([]);
+  // Copia de las deudas al abrir el diálogo (null = cerrado): el formulario no debe verse afectado por recargas
+  const [deudasPagoMultiple, setDeudasPagoMultiple] = useState(null);
   const [showPagoDeudaTributariaDialog, setShowPagoDeudaTributariaDialog] = useState(false);
   const [deudaTributariaSeleccionada, setDeudaTributariaSeleccionada] = useState(null);
   const [showPagoEspecializadoDialog, setShowPagoEspecializadoDialog] = useState(false);
@@ -93,6 +100,7 @@ const TesoreriaPendientes = () => {
     monedaIds: [],
     estadoIds: [],
     personalIds: [],
+    tipoDeudaIds: [],
     montoDesde: null,
     montoHasta: null,
   });
@@ -172,6 +180,30 @@ const TesoreriaPendientes = () => {
       recargarSaldos();
     },
   });
+
+  const { pagarDeudas: pagarDeudasMultiple, loading: loadingPagoMultiple } = usePagarDeudasPersonalMultiple({
+    toast,
+    onSuccess: () => {
+      setSeleccionDeudas([]);
+      recargarPendientes();
+      recargarSaldos();
+    },
+  });
+
+  // Selección vigente: solo filas de deuda personal que siguen en la lista actual
+  const deudasSeleccionadas = useMemo(
+    () => seleccionDeudas.filter((s) => pendientes.some((p) => p.esDeudaPersonal && p.id === s.id)),
+    [seleccionDeudas, pendientes],
+  );
+
+  const etiquetaTotalSeleccion = useMemo(() => {
+    const totales = deudasSeleccionadas.reduce((acc, d) => {
+      const simbolo = d.moneda?.simbolo || "";
+      acc[simbolo] = (acc[simbolo] || 0) + Number(d.saldoPendiente || 0);
+      return acc;
+    }, {});
+    return Object.entries(totales).map(([s, t]) => `${s} ${formatearNumero(t)}`).join(" | ");
+  }, [deudasSeleccionadas]);
 
   // Hook para opciones dinámicas de filtros
   const opcionesFiltros = useFiltrosOpciones(pendientes, filtros.tipo);
@@ -288,6 +320,25 @@ const TesoreriaPendientes = () => {
       else if (campo === 'tipoDeuda') {
         // Si se cambia 'tipoDeuda', NO cambiar 'tipo'
         // El backend manejará la exclusión automáticamente cuando tipoDeuda tenga valor
+      }
+
+      // Al cambiar de sección las opciones avanzadas dejan de ser válidas: limpiarlas
+      if (campo === 'tipo' || campo === 'tipoDeuda') {
+        Object.assign(nuevosFiltros, {
+          fechaDesde: null,
+          fechaHasta: null,
+          clienteIds: [],
+          proveedorIds: [],
+          entidadComercialIds: [],
+          tipoDocumentoIds: [],
+          numeroDocumento: '',
+          monedaIds: [],
+          estadoIds: [],
+          personalIds: [],
+          tipoDeudaIds: [],
+          montoDesde: null,
+          montoHasta: null,
+        });
       }
 
       return nuevosFiltros;
@@ -460,6 +511,19 @@ const TesoreriaPendientes = () => {
     setShowEntregaFondosDialog(false);
     setAsignacionSeleccionada(null);
   };
+
+  // Pago múltiple: toma las filas frescas de la lista, no las del estado de selección
+  const handlePagarSeleccionadas = () => {
+    const ids = new Set(deudasSeleccionadas.map((d) => d.id));
+    setDeudasPagoMultiple(pendientes.filter((p) => p.esDeudaPersonal && ids.has(p.id)));
+  };
+
+  // Devuelve el resultado: el formulario lo necesita para generar vouchers y la confirmación
+  const handleGuardarPagoMultiple = async (formData) => {
+    return await pagarDeudasMultiple(formData);
+  };
+
+  const handleCancelarPagoMultiple = () => setDeudasPagoMultiple(null);
   // Línea 225 - AGREGAR
   const handlePagarDeudaPersonal = (deuda) => {
     setDeudaPersonalSeleccionada(deuda);
@@ -551,6 +615,7 @@ const TesoreriaPendientes = () => {
       <FiltrosDialog
         visible={showFiltrosDialog}
         tipo={filtros.tipo}
+        tipoDeuda={filtros.tipoDeuda}
         filtros={filtros}
         opciones={opcionesFiltros}
         onHide={() => setShowFiltrosDialog(false)}
@@ -559,7 +624,22 @@ const TesoreriaPendientes = () => {
       />
       
       {/* Tabla de Pendientes */}
-      <Card title="📋 Documentos Pendientes">
+      <Card
+        title={
+          <div className="flex justify-content-between align-items-center">
+            <span>📋 Documentos Pendientes</span>
+            {filtros.tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL && permisos.puedeCrear && (
+              <Button
+                label={`Pagar seleccionados (${deudasSeleccionadas.length})${etiquetaTotalSeleccion ? ` · ${etiquetaTotalSeleccion}` : ""}`}
+                icon="pi pi-money-bill"
+                severity="success"
+                disabled={deudasSeleccionadas.length === 0}
+                onClick={handlePagarSeleccionadas}
+              />
+            )}
+          </div>
+        }
+      >
         <PendientesTable
           pendientes={pendientes}
           loading={loadingPendientes}
@@ -570,6 +650,10 @@ const TesoreriaPendientes = () => {
           onPagoEspecializado={handlePagoEspecializado}
           onPagoEspecializadoCxP={handlePagoEspecializadoCxP}
           permisos={permisos}
+          tipo={filtros.tipo}
+          tipoDeuda={filtros.tipoDeuda}
+          seleccion={deudasSeleccionadas}
+          onSeleccionChange={setSeleccionDeudas}
         />
       </Card>
 
@@ -652,6 +736,30 @@ const TesoreriaPendientes = () => {
             onSubmit={handleGuardarEntrega}
             onCancel={handleCancelarEntrega}
             loading={loadingEntrega}
+            toast={toast}
+          />
+        </Dialog>
+      )}
+
+      {/* Diálogo de pago múltiple (especializado) de Deudas con Personal */}
+      {deudasPagoMultiple && (
+        <Dialog
+          header="💵 Pagar Deudas del Personal"
+          visible={true}
+          style={{ width: "1300px" }}
+          onHide={handleCancelarPagoMultiple}
+          modal
+          maximizable
+        >
+          <PagoDeudasPersonalEspecializadoForm
+            deudas={deudasPagoMultiple}
+            cuentasCorrientes={saldosCuentas}
+            mediosPago={mediosPago}
+            tiposMovimiento={tiposMovimiento}
+            empresas={empresas}
+            onSubmit={handleGuardarPagoMultiple}
+            onCancel={handleCancelarPagoMultiple}
+            loading={loadingPagoMultiple}
             toast={toast}
           />
         </Dialog>

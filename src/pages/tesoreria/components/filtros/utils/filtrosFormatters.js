@@ -96,6 +96,26 @@ export const formatearFiltroPersonal = (personal) => {
 };
 
 /**
+ * Formatea un tipo de deuda para mostrar en el filtro
+ * @param {object} tipoDeuda - Objeto tipo de deuda con cantidad y totales
+ * @returns {string} Texto formateado
+ */
+export const formatearFiltroTipoDeuda = (tipoDeuda) => {
+  if (!tipoDeuda) return '';
+
+  const nombre = tipoDeuda.nombre || tipoDeuda.descripcion || 'Sin nombre';
+  const cantidad = tipoDeuda.cantidad || 0;
+
+  let texto = `${nombre} (${cantidad} doc${cantidad !== 1 ? 's' : ''})`;
+
+  if (tipoDeuda.totalSoles > 0 || tipoDeuda.totalDolares > 0) {
+    texto += ` - ${formatearSubtotales(tipoDeuda.totalSoles, tipoDeuda.totalDolares)}`;
+  }
+
+  return texto;
+};
+
+/**
  * Formatea un contador de documentos
  * @param {number} cantidad - Cantidad de documentos
  * @returns {string} Texto formateado

@@ -3,7 +3,7 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import FiltrosController from './FiltrosController';
 import { contarFiltrosActivos, validarFiltros } from './utils/filtrosHelpers';
-import { TIPO_FILTRO_TESORERIA } from '../../../../utils/tesoreria.constants';
+import { TIPO_FILTRO_TESORERIA, TIPO_DEUDA_TESORERIA } from '../../../../utils/tesoreria.constants';
 
 /**
  * Diálogo modal para filtros avanzados
@@ -11,6 +11,7 @@ import { TIPO_FILTRO_TESORERIA } from '../../../../utils/tesoreria.constants';
 const FiltrosDialog = ({ 
   visible, 
   tipo, 
+  tipoDeuda,
   filtros, 
   opciones, 
   onHide, 
@@ -58,6 +59,8 @@ const FiltrosDialog = ({
 
   // Obtener título según tipo
   const getTitulo = () => {
+    if (tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL) return 'Deudas con Personal';
+    if (tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS) return 'Deudas Tributarias';
     switch (tipo) {
       case TIPO_FILTRO_TESORERIA.TODOS:
         return 'Todos los Documentos';
@@ -110,6 +113,7 @@ const FiltrosDialog = ({
     >
       <FiltrosController
         tipo={tipo}
+        tipoDeuda={tipoDeuda}
         filtros={filtrosTemp}
         opciones={opciones}
         onFiltroChange={handleFiltroChange}

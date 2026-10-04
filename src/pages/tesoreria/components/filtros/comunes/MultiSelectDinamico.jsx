@@ -7,6 +7,7 @@ import {
   formatearFiltroMoneda,
   formatearFiltroEstado,
   formatearFiltroPersonal,
+  formatearFiltroTipoDeuda,
   formatearSubtotales
 } from '../utils/filtrosFormatters';
 
@@ -49,6 +50,9 @@ const MultiSelectDinamico = ({
       case 'personal':
         texto = formatearFiltroPersonal(option);
         break;
+      case 'tipoDeuda':
+        texto = formatearFiltroTipoDeuda(option);
+        break;
       default:
         texto = option.descripcion || option.nombre || option.razonSocial || option.codigo || 'Sin descripción';
         if (showContadores && option.cantidad) {
@@ -67,7 +71,7 @@ const MultiSelectDinamico = ({
   const selectedItemTemplate = (option) => {
     if (!option) return null;
     
-    const nombre = option.razonSocial || option.nombre || option.descripcion || option.codigo || 'Sin nombre';
+    const nombre = option.razonSocial || option.nombreCompleto || option.nombre || option.descripcion || option.codigo || 'Sin nombre';
     return nombre;
   };
 
@@ -113,7 +117,7 @@ const MultiSelectDinamico = ({
         <div className="mt-2 flex flex-wrap gap-2">
           <small className="text-muted w-full">Seleccionados ({opcionesSeleccionadas.length}):</small>
           {opcionesSeleccionadas.map(opcion => {
-            const nombre = opcion.razonSocial || opcion.nombre || opcion.descripcion || opcion.codigo || 'Sin nombre';
+            const nombre = opcion.razonSocial || opcion.nombreCompleto || opcion.nombre || opcion.descripcion || opcion.codigo || 'Sin nombre';
             let subtitulo = '';
             
             // Agregar subtotales si es cliente/proveedor

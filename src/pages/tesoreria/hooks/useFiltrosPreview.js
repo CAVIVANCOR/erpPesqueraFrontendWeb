@@ -97,6 +97,13 @@ export const useFiltrosPreview = (filtros, documentos = []) => {
       );
     }
 
+    // Filtro por tipos de deuda
+    if (filtros.tipoDeudaIds && filtros.tipoDeudaIds.length > 0) {
+      docsFiltrados = docsFiltrados.filter(doc => 
+        doc.tipoDeuda && filtros.tipoDeudaIds.includes(doc.tipoDeuda.id)
+      );
+    }
+
     // Filtro por rango de montos
     if (filtros.montoDesde !== null && filtros.montoDesde !== undefined) {
       docsFiltrados = docsFiltrados.filter(doc => 

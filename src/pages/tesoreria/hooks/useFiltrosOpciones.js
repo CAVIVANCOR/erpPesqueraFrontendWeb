@@ -18,6 +18,7 @@ export const useFiltrosOpciones = (documentos = [], tipo) => {
         monedas: [],
         estados: [],
         personal: [],
+        tiposDeuda: [],
         rangoMontos: { min: 0, max: 0 },
         totalDocumentos: 0
       };
@@ -31,6 +32,7 @@ export const useFiltrosOpciones = (documentos = [], tipo) => {
     const monedasMap = new Map();
     const estadosMap = new Map();
     const personalMap = new Map();
+    const tiposDeudaMap = new Map();
     
     let montoMin = Infinity;
     let montoMax = -Infinity;
@@ -171,6 +173,26 @@ export const useFiltrosOpciones = (documentos = [], tipo) => {
         }
       }
 
+      // Tipos de deuda (deudas personal / tributarias)
+      if ((doc.esDeudaPersonal || doc.esDeudaTributaria) && doc.tipoDeuda) {
+        const key = doc.tipoDeuda.id;
+        if (!tiposDeudaMap.has(key)) {
+          tiposDeudaMap.set(key, {
+            ...doc.tipoDeuda,
+            cantidad: 0,
+            totalSoles: 0,
+            totalDolares: 0
+          });
+        }
+        const td = tiposDeudaMap.get(key);
+        td.cantidad++;
+        if (doc.moneda?.codigoSunat === 'PEN') {
+          td.totalSoles += Number(doc.saldoPendiente || 0);
+        } else if (doc.moneda?.codigoSunat === 'USD') {
+          td.totalDolares += Number(doc.saldoPendiente || 0);
+        }
+      }
+
       // Rango de montos
       const monto = Number(doc.saldoPendiente || 0);
       if (monto < montoMin) montoMin = monto;
@@ -185,6 +207,7 @@ export const useFiltrosOpciones = (documentos = [], tipo) => {
       monedas: Array.from(monedasMap.values()).sort((a, b) => b.cantidad - a.cantidad),
       estados: Array.from(estadosMap.values()).sort((a, b) => b.cantidad - a.cantidad),
       personal: Array.from(personalMap.values()).sort((a, b) => b.cantidad - a.cantidad),
+      tiposDeuda: Array.from(tiposDeudaMap.values()).sort((a, b) => b.cantidad - a.cantidad),
       rangoMontos: {
         min: montoMin === Infinity ? 0 : montoMin,
         max: montoMax === -Infinity ? 0 : montoMax

@@ -31,6 +31,7 @@ function getAuthHeaders() {
  * @param {Array<Number>} filtros.monedaIds - IDs de monedas (array)
  * @param {Array<Number>} filtros.estadoIds - IDs de estados
  * @param {Array<Number>} filtros.personalIds - IDs de personal
+ * @param {Array<Number>} filtros.tipoDeudaIds - IDs de tipos de deuda (personal/tributaria)
  * @param {Number} filtros.montoDesde - Monto mínimo
  * @param {Number} filtros.montoHasta - Monto máximo
  * 
@@ -79,6 +80,9 @@ export async function getPendientes(filtros = {}) {
   }
   if (filtros.personalIds && filtros.personalIds.length > 0) {
     params.append('personalIds', filtros.personalIds.join(','));
+  }
+  if (filtros.tipoDeudaIds && filtros.tipoDeudaIds.length > 0) {
+    params.append('tipoDeudaIds', filtros.tipoDeudaIds.join(','));
   }
 
   // Filtros avanzados - Texto y números

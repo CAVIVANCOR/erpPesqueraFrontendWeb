@@ -5,7 +5,89 @@ import { Button } from "primereact/button";
 import { Tag } from "primereact/tag";
 import { formatearNumero, formatearFecha } from "../../../utils/utils";
 import { getResponsiveFontSize } from "../../../utils/utils";
-import { ORIGEN_DOCUMENTO_TESORERIA } from "../../../utils/tesoreria.constants";
+import {
+  ORIGEN_DOCUMENTO_TESORERIA,
+  TIPO_DEUDA_TESORERIA,
+  TIPO_FILTRO_TESORERIA,
+} from "../../../utils/tesoreria.constants";
+
+/**
+ * ════════════════════════════════════════════════════════════════════════════
+ * CONFIGURACIÓN DE COLUMNAS POR CASO (TABLA ESPECIALIZADA)
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * Cada caso de la sección "Atenciones" define QUÉ columnas se muestran y en
+ * QUÉ orden. Las claves hacen referencia al catálogo `definicionesColumnas`
+ * que se construye dentro del componente (necesita los templates y callbacks).
+ *
+ * Para personalizar un caso basta con editar su lista aquí; no hay que tocar
+ * el render del DataTable.
+ *
+ * Claves disponibles:
+ *   tipo, origen, documento, tipoDeuda, entidad, personal, saldoInicial,
+ *   fechaEmision, fechaVencimiento, saldo, estado, acciones
+ */
+const COLUMNAS_BASE = [
+  "tipo",
+  "origen",
+  "documento",
+  "entidad",
+  "fechaEmision",
+  "fechaVencimiento",
+  "saldo",
+  "estado",
+  "acciones",
+];
+
+const COLUMNAS_POR_CASO = {
+  // Sin filtro específico (CxC + CxP + Asignaciones + Gastos Directos)
+  TODOS: COLUMNAS_BASE,
+  // Cuentas por Cobrar
+  COBRAR: COLUMNAS_BASE,
+  // Cuentas por Pagar
+  PAGAR: COLUMNAS_BASE,
+  // Asignaciones de fondos (Entregas a Rendir):
+  // la contraparte es el responsable (trabajador), por eso se muestra "Personal"
+  ASIGNACIONES: COLUMNAS_BASE.map((c) => (c === "entidad" ? "personal" : c)),
+  // Gastos directos (entregas con entidad comercial)
+  GASTOS_DIRECTOS: COLUMNAS_BASE,
+  // Deudas con Personal (tabla DeudaConPersonal):
+  // se reemplaza "Documento" por el Tipo de Deuda y "Entidad Comercial" por "Personal"
+  // Sin "acciones": el pago se hace con "Pagar seleccionados" (pago múltiple especializado)
+  DEUDAS_PERSONAL: [
+    "seleccion",
+    "tipo",
+    "origen",
+    "tipoDeuda",
+    "personal",
+    "fechaEmision",
+    "fechaVencimiento",
+    "saldo",
+    "saldoInicial",
+    "estado",
+  ],
+  // Deudas Tributarias (tabla DeudaTributaria):
+  // se reemplaza "Documento" por el Tipo de Deuda tributaria y se omite la
+  // columna de entidad (el backend la envía fija como SUNAT)
+  // y se agrega "S. Inicial" antes del estado
+  DEUDAS_TRIBUTARIAS: COLUMNAS_BASE.filter((c) => c !== "entidad")
+    .map((c) => (c === "documento" ? "tipoDeuda" : c))
+    .flatMap((c) => (c === "estado" ? ["saldoInicial", c] : [c])),
+};
+
+/**
+ * Resuelve el caso activo. `tipoDeuda` y `tipo` son filtros mutuamente
+ * excluyentes: si hay una deuda seleccionada, esta tiene prioridad.
+ */
+const resolverCaso = (tipo, tipoDeuda) => {
+  if (tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL) return "DEUDAS_PERSONAL";
+  if (tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS) return "DEUDAS_TRIBUTARIAS";
+  if (tipo === TIPO_FILTRO_TESORERIA.COBRAR) return "COBRAR";
+  if (tipo === TIPO_FILTRO_TESORERIA.PAGAR) return "PAGAR";
+  if (tipo === TIPO_FILTRO_TESORERIA.ASIGNACIONES) return "ASIGNACIONES";
+  if (tipo === TIPO_FILTRO_TESORERIA.GASTOS_DIRECTOS) return "GASTOS_DIRECTOS";
+  return "TODOS";
+};
 
 const PendientesTable = ({
   pendientes,
@@ -18,6 +100,9 @@ const PendientesTable = ({
   onPagoEspecializadoCxP,
   permisos,
   tipo,
+  tipoDeuda,
+  seleccion = [],
+  onSeleccionChange,
 }) => {
   // Templates
   const tipoTemplate = (rowData) => {
@@ -40,10 +125,33 @@ const PendientesTable = ({
     );
   };
 
+  const tipoDeudaTemplate = (rowData) => {
+    return (
+      <div>
+        <div className="text-sm text-gray-600">{rowData.tipoDeuda?.nombre}</div>
+      </div>
+    );
+  };
+
   const entidadTemplate = (rowData) => {
     return (
       <div>
         <div className="font-bold">{rowData.entidadComercial?.razonSocial}</div>
+      </div>
+    );
+  };
+
+  // Columna "Personal" (Deudas con Personal y Asignaciones): el backend arma
+  // entidadComercial con el nombre completo del trabajador/responsable;
+  // `personal` / `responsable` se usan como respaldo
+  const personalTemplate = (rowData) => {
+    return (
+      <div>
+        <div className="font-bold">
+          {rowData.entidadComercial?.razonSocial ||
+            rowData.personal?.nombreCompleto ||
+            rowData.responsable?.nombreCompleto}
+        </div>
       </div>
     );
   };
@@ -92,6 +200,16 @@ const PendientesTable = ({
           />
         )}
       </div>
+    );
+  };
+
+  // Indicador SI/NO de saldo inicial (DeudaConPersonal / DeudaTributaria .esSaldoInicial)
+  const saldoInicialTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.esSaldoInicial ? "SI" : "NO"}
+        severity={rowData.esSaldoInicial ? "warning" : "secondary"}
+      />
     );
   };
 
@@ -190,10 +308,57 @@ const PendientesTable = ({
     );
   };
 
+  // Catálogo de columnas disponibles (props de <Column> por clave)
+  const definicionesColumnas = {
+    // Casilla de selección (pago múltiple de Deudas con Personal)
+    seleccion: { selectionMode: "multiple", headerStyle: { width: "3rem" }, style: { width: "3rem" } },
+    tipo: { field: "tipo", header: "Tipo", body: tipoTemplate, style: { width: "100px" } },
+    origen: { field: "origen", header: "Origen", style: { width: "150px" } },
+    documento: { header: "Documento", body: documentoTemplate, style: { width: "200px" } },
+    tipoDeuda: { header: "Tipo de Deuda", body: tipoDeudaTemplate, style: { width: "200px" } },
+    entidad: { header: "Entidad Comercial", body: entidadTemplate, style: { width: "250px" } },
+    personal: { header: "Personal", body: personalTemplate, style: { width: "250px" } },
+    fechaEmision: {
+      header: "F. Emisión",
+      body: fechaEmisionTemplate,
+      style: { width: "110px", textAlign: "center" },
+      sortable: true,
+      field: "fechaEmision",
+    },
+    fechaVencimiento: {
+      header: "F. Vencimiento",
+      body: fechaVencimientoTemplate,
+      style: { width: "130px", textAlign: "center" },
+      sortable: true,
+      field: "fechaVencimiento",
+    },
+    saldo: { header: "Saldo Pendiente", body: montoTemplate, style: { width: "180px" } },
+    saldoInicial: {
+      header: "S. Inicial",
+      body: saldoInicialTemplate,
+      style: { width: "100px", textAlign: "center" },
+    },
+    estado: { header: "Estado", body: estadoTemplate, style: { width: "120px" } },
+    acciones: {
+      header: "Acciones",
+      body: accionesTemplate,
+      style: { width: "180px" },
+      frozen: true,
+      alignFrozen: "right",
+    },
+  };
+
+  // Columnas del caso activo (si faltara el caso, se usa el layout base)
+  const claveCaso = resolverCaso(tipo, tipoDeuda);
+  const columnasActivas = COLUMNAS_POR_CASO[claveCaso] || COLUMNAS_BASE;
+
   return (
     <DataTable
       value={pendientes}
       loading={loading}
+      {...(claveCaso === "DEUDAS_PERSONAL"
+        ? { selection: seleccion, onSelectionChange: (e) => onSeleccionChange?.(e.value), dataKey: "id" }
+        : {})}
       paginator
       rows={20}
       rowsPerPageOptions={[10, 20, 50, 100]}
@@ -203,54 +368,10 @@ const PendientesTable = ({
       size="small"
       style={{ fontSize: getResponsiveFontSize() }}
     >
-      <Column
-        field="tipo"
-        header="Tipo"
-        body={tipoTemplate}
-        style={{ width: "100px" }}
-      />
-      <Column field="origen" header="Origen" style={{ width: "150px" }} />
-      <Column
-        header="Documento"
-        body={documentoTemplate}
-        style={{ width: "200px" }}
-      />
-      <Column
-        header="Entidad Comercial"
-        body={entidadTemplate}
-        style={{ width: "250px" }}
-      />
-      <Column
-        header="F. Emisión"
-        body={fechaEmisionTemplate}
-        style={{ width: "110px", textAlign: "center" }}
-        sortable
-        field="fechaEmision"
-      />
-      <Column
-        header="F. Vencimiento"
-        body={fechaVencimientoTemplate}
-        style={{ width: "130px", textAlign: "center" }}
-        sortable
-        field="fechaVencimiento"
-      />
-      <Column
-        header="Saldo Pendiente"
-        body={montoTemplate}
-        style={{ width: "180px" }}
-      />
-      <Column
-        header="Estado"
-        body={estadoTemplate}
-        style={{ width: "120px" }}
-      />
-      <Column
-        header="Acciones"
-        body={accionesTemplate}
-        style={{ width: "180px" }}
-        frozen
-        alignFrozen="right"
-      />
+      {/* Columnas según el caso activo (ver COLUMNAS_POR_CASO) */}
+      {columnasActivas.map((clave) => (
+        <Column key={`${claveCaso}-${clave}`} {...definicionesColumnas[clave]} />
+      ))}
     </DataTable>
   );
 };

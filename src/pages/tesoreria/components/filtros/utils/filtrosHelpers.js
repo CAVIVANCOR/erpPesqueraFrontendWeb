@@ -19,6 +19,7 @@ export const contarFiltrosActivos = (filtros) => {
   if (filtros.monedaIds?.length > 0) count += filtros.monedaIds.length;
   if (filtros.estadoIds?.length > 0) count += filtros.estadoIds.length;
   if (filtros.personalIds?.length > 0) count += filtros.personalIds.length;
+  if (filtros.tipoDeudaIds?.length > 0) count += filtros.tipoDeudaIds.length;
   if (filtros.montoDesde !== null || filtros.montoHasta !== null) count++;
   
   return count;
@@ -165,6 +166,20 @@ export const generarResumenFiltros = (filtros, opciones) => {
         campo: 'personalIds'
       });
     });
+  }
+
+  // Tipos de deuda
+  if (filtros.tipoDeudaIds?.length > 0 && opciones.tiposDeuda) {
+    opciones.tiposDeuda
+      .filter(t => filtros.tipoDeudaIds.includes(t.id))
+      .forEach(t => {
+        resumen.push({
+          tipo: 'tiposDeuda',
+          icono: '🧾',
+          descripcion: t.nombre || t.descripcion,
+          campo: 'tipoDeudaIds'
+        });
+      });
   }
 
   // Rango de montos

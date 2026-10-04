@@ -47,3 +47,10 @@ export async function pagarDeudaPersonal(deudaId, data) {
   });
   return res.data;
 }
+
+export async function pagarDeudasPersonalMultiple(data) {
+  const res = await axios.post(`${API_URL}/pagar-multiple`, data, {
+    headers: getAuthHeaders()
+  });
+  return res.data;
+}

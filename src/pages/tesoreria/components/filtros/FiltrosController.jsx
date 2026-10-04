@@ -4,14 +4,17 @@ import FiltrosCxC from './especializados/FiltrosCxC';
 import FiltrosCxP from './especializados/FiltrosCxP';
 import FiltrosAsignaciones from './especializados/FiltrosAsignaciones';
 import FiltrosGastosDirectos from './especializados/FiltrosGastosDirectos';
+import FiltrosDeudaPersonal from './especializados/FiltrosDeudaPersonal';
+import FiltrosDeudaTributaria from './especializados/FiltrosDeudaTributaria';
 import ResumenFiltrosActivos from './comunes/ResumenFiltrosActivos';
-import { TIPO_FILTRO_TESORERIA } from '../../../../utils/tesoreria.constants';
+import { TIPO_FILTRO_TESORERIA, TIPO_DEUDA_TESORERIA } from '../../../../utils/tesoreria.constants';
 
 /**
  * Controlador que bifurca a componentes especializados según el tipo de filtro
  */
 const FiltrosController = ({ 
   tipo, 
+  tipoDeuda,
   filtros, 
   opciones, 
   onFiltroChange,
@@ -25,6 +28,14 @@ const FiltrosController = ({
       opciones,
       onFiltroChange
     };
+
+    // tipoDeuda tiene prioridad sobre tipo (son mutuamente excluyentes)
+    if (tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL) {
+      return <FiltrosDeudaPersonal {...props} />;
+    }
+    if (tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS) {
+      return <FiltrosDeudaTributaria {...props} />;
+    }
 
     switch (tipo) {
       case TIPO_FILTRO_TESORERIA.TODOS:
@@ -59,6 +70,7 @@ const FiltrosController = ({
     onFiltroChange('monedaIds', []);
     onFiltroChange('estadoIds', []);
     onFiltroChange('personalIds', []);
+    onFiltroChange('tipoDeudaIds', []);
     onFiltroChange('montoDesde', null);
     onFiltroChange('montoHasta', null);
   };
