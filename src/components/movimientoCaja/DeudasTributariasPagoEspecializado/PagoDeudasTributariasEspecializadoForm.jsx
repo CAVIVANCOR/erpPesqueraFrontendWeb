@@ -12,46 +12,62 @@ import { Tag } from "primereact/tag";
 import { formatearNumero, formatearFecha } from "../../../utils/utils";
 import { consultarTipoCambioSunat } from "../../../api/consultaExterna";
 import { actualizarUrlVoucherIndividual } from "../../../api/tesoreria/transferencias";
-import { sincronizarAdjuntosPagoDeudaPersonal } from "../../../api/tesoreria/pagoDeudaPersonal";
+import { sincronizarAdjuntosPagoDeudaTributaria } from "../../../api/tesoreria/pagoDeudaTributaria";
 import { useAuthStore } from "../../../shared/stores/useAuthStore";
 import CuentaCorrienteSelector from "../../common/CuentaCorrienteSelector";
 import TipoMovimientoSelector from "../../common/TipoMovimientoSelector";
 import EntidadComercialSelector from "../../common/EntidadComercialSelector";
 import { generarYSubirVoucherIndividual } from "../utils/VoucherIndividualMovimientoPDF";
-import { generarYSubirVoucherConsolidado } from "./VoucherConsolidadoPagoDeudasPersonalPDF";
-import ConfirmacionPagoDeudasPersonalDialog from "./ConfirmacionPagoDeudasPersonalDialog";
+import { generarYSubirVoucherConsolidado } from "./VoucherConsolidadoPagoDeudasTributariasPDF";
+import ConfirmacionPagoDeudasTributariasDialog from "./ConfirmacionPagoDeudasTributariasDialog";
 
 /**
  * ════════════════════════════════════════════════════════════════════════════
- * PAGO MÚLTIPLE (ESPECIALIZADO) DE DEUDAS CON PERSONAL
+ * PAGO MÚLTIPLE (ESPECIALIZADO) DE DEUDAS TRIBUTARIAS
  * ════════════════════════════════════════════════════════════════════════════
  *
- * Replica la estructura de EntregarFondosForm (secciones, validaciones, tipo de
- * cambio, vouchers y confirmación) con estas diferencias:
- *   - Paga N deudas (de una o varias personas) con UN solo egreso.
+ * Réplica de PagoDeudasPersonalEspecializadoForm (que a su vez replica EntregarFondosForm)
+ * con estas diferencias por negocio:
+ *   - Paga N deudas tributarias (IGV, Renta, ESSALUD, ONP…) con UN solo egreso.
  *   - El usuario puede desmarcar ítems aquí; el footer suma solo los marcados.
  *   - El monto puede ser total o parcial: se reparte proporcionalmente al saldo
  *     (método del mayor resto, igual que el backend) y se muestra como vista previa.
- *   - Entidad destino SIEMPRE obligatoria: con una sola persona se preselecciona
- *     Personal.enlaceEntidadComercialId (si no lo tiene, no se preselecciona nada);
- *     con varias personas (p. ej. AFP) la elige el usuario.
- *   - La operación (FISCAL/GERENCIAL) no se elige: la define la propia deuda.
+ *   - Entidad destino SIEMPRE obligatoria: se preselecciona la entidad recaudadora del tipo
+ *     de deuda (TipoDeudaTributaria.entidadRecaudadoraId) cuando es la misma para todas las
+ *     deudas marcadas; si hay varias (p. ej. SUNAT y ESSALUD) la elige el usuario.
+ *   - Las deudas tributarias siempre son formales: la operación es FISCAL (no existe gerencial).
+ *   - La glosa toma el mes del período tributario de la deuda (p. ej. "2026-01").
  */
 
-// Tipo de movimiento SUELDOS: valor por defecto sugerido (mismo valor que pagoDeudaPersonal.service.js).
+// Tipo de movimiento SUNAT: valor por defecto sugerido (mismo valor que pagoDeudaTributaria.service.js).
 // El selector muestra todos los tipos, igual que el resto de implementaciones.
-const TIPO_MOVIMIENTO_SUELDOS_ID = 149;
+const TIPO_MOVIMIENTO_SUNAT_ID = 165;
 
 const MESES = [
   "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SETIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
 ];
 
+/**
+ * El período tributario puede ser mensual ("2026-01"), trimestral ("2025-Q4") o anual ("2026").
+ * Debe mantenerse idéntico al del backend (pagoDeudaTributariaMultiple.service.js).
+ */
+const textoPeriodo = (periodo, fechaGeneracion) => {
+  const texto = String(periodo || "").trim();
+  let m = texto.match(/^(\d{4})-(\d{2})$/);
+  if (m && Number(m[2]) >= 1 && Number(m[2]) <= 12) return `MES DE ${MESES[Number(m[2]) - 1]} ${m[1]}`;
+  m = texto.match(/^(\d{4})-Q([1-4])$/i);
+  if (m) return `TRIMESTRE ${m[2]} DE ${m[1]}`;
+  m = texto.match(/^(\d{4})$/);
+  if (m) return `AÑO ${m[1]}`;
+  return `MES DE ${MESES[new Date(fechaGeneracion).getUTCMonth()]}`;
+};
+
 const aCentimos = (valor) => BigInt(Math.round(Number(valor || 0) * 100));
 
 /**
  * Reparto proporcional al saldo en céntimos (método del mayor resto).
- * Debe mantenerse idéntico al del backend (pagoDeudaPersonalMultiple.service.js).
+ * Debe mantenerse idéntico al del backend (pagoDeudaTributariaMultiple.service.js).
  */
 const repartirProporcional = (saldosCent, totalCent) => {
   const sumaSaldos = saldosCent.reduce((acc, s) => acc + s, 0n);
@@ -73,7 +89,7 @@ const repartirProporcional = (saldosCent, totalCent) => {
   return partes;
 };
 
-const PagoDeudasPersonalEspecializadoForm = ({
+const PagoDeudasTributariasEspecializadoForm = ({
   deudas = [],
   cuentasCorrientes = [],
   mediosPago = [],
@@ -124,17 +140,15 @@ const PagoDeudasPersonalEspecializadoForm = ({
   const monedaDeuda = base?.moneda;
   const esMonedaNacional = monedaDeuda?.codigoSunat === "PEN";
   const simbolo = monedaDeuda?.simbolo || "";
-  const esGerencial = Boolean(base?.esGerencial);
+  // Las deudas tributarias siempre son formales: no existe esGerencial en DeudaTributaria
+  const esGerencial = false;
 
-  // El backend exige misma empresa, moneda y tipo de libro: se valida también aquí
+  // El backend exige misma empresa y moneda: se valida también aquí
   const errorLote = useMemo(() => {
     if (seleccionados.length === 0) return null;
     const distintos = (fn) => new Set(seleccionados.map(fn)).size > 1;
     if (distintos((d) => Number(d.empresa?.id))) return "Las deudas deben ser de la misma empresa";
     if (distintos((d) => Number(d.moneda?.id))) return "Las deudas deben estar en la misma moneda";
-    if (distintos((d) => Boolean(d.esGerencial))) {
-      return "No se pueden mezclar deudas gerenciales con deudas formales en un mismo pago";
-    }
     return null;
   }, [seleccionados]);
 
@@ -158,16 +172,20 @@ const PagoDeudasPersonalEspecializadoForm = ({
     return mapa;
   }, [seleccionados, montoPago]);
 
-  const personas = useMemo(() => {
+  // Entidades recaudadoras distintas entre las deudas marcadas (SUNAT, ESSALUD, ONP…)
+  const entidadesRecaudadoras = useMemo(() => {
     const mapa = new Map();
     seleccionados.forEach((d) => {
-      if (d.personal?.id) mapa.set(Number(d.personal.id), d.personal);
+      const entidad = d.tipoDeuda?.entidadRecaudadora;
+      if (entidad?.id) mapa.set(Number(entidad.id), entidad);
     });
     return [...mapa.values()];
   }, [seleccionados]);
 
-  const unaSolaPersona = personas.length === 1;
-  const enlaceUnicaPersona = unaSolaPersona ? personas[0].enlaceEntidadComercialId : null;
+  // Si todas las deudas tienen tipo de deuda con entidad recaudadora y es la misma, se sugiere esa
+  const todasConRecaudadora = seleccionados.every((d) => d.tipoDeuda?.entidadRecaudadoraId);
+  const unaSolaRecaudadora = todasConRecaudadora && entidadesRecaudadoras.length === 1;
+  const recaudadoraUnica = unaSolaRecaudadora ? entidadesRecaudadoras[0] : null;
 
   const cuentaOrigen =
     cuentasCorrientes.find((c) => Number(c.id) === Number(cuentaOrigenId)) || null;
@@ -195,31 +213,30 @@ const PagoDeudasPersonalEspecializadoForm = ({
     );
   }, [totalSaldos]);
 
-  // Tipo de movimiento por defecto: SUELDOS, solo si existe en el catálogo cargado
+  // Tipo de movimiento por defecto: SUNAT, solo si existe en el catálogo cargado
   useEffect(() => {
     if (tipoMovimientoId) return;
-    const sueldos = tiposMovimiento.find((t) => Number(t.id) === TIPO_MOVIMIENTO_SUELDOS_ID);
-    if (sueldos) setTipoMovimientoId(Number(sueldos.id));
+    const sunat = tiposMovimiento.find((t) => Number(t.id) === TIPO_MOVIMIENTO_SUNAT_ID);
+    if (sunat) setTipoMovimientoId(Number(sunat.id));
   }, [tiposMovimiento]);
 
   // Glosa automática (misma regla que el backend) mientras el usuario no la edite
   useEffect(() => {
     if (glosaEditada.current || seleccionados.length === 0) return;
     const tipos = [...new Set(seleccionados.map((d) => d.tipoDeuda?.nombre?.toUpperCase()).filter(Boolean))];
-    const meses = [
-      ...new Set(
-        seleccionados.map((d) => MESES[new Date(d.fechaEmision).getUTCMonth()]).filter(Boolean),
-      ),
+    const periodos = [
+      ...new Set(seleccionados.map((d) => textoPeriodo(d.periodo, d.fechaEmision))),
     ];
-    setDescripcion(`PAGO DE ${tipos.join(" / ")} MES DE ${meses.join(" / ")}`);
+    setDescripcion(`PAGO DE ${tipos.join(" / ")} ${periodos.join(" / ")}`);
   }, [seleccionados]);
 
-  // Entidad destino: con UNA persona se preselecciona su entidad enlazada (si la tiene);
-  // con varias no se preselecciona nada. Nunca se pisa una elección manual del usuario.
+  // Entidad destino: si todas las deudas comparten entidad recaudadora se preselecciona;
+  // si hay varias (p. ej. SUNAT y ESSALUD) no se preselecciona nada y la elige el usuario.
+  // Nunca se pisa una elección manual del usuario.
   useEffect(() => {
     if (entidadElegidaPorUsuario.current) return;
-    setEntidadDestinoId(enlaceUnicaPersona ? Number(enlaceUnicaPersona) : null);
-  }, [enlaceUnicaPersona, personas.length]);
+    setEntidadDestinoId(recaudadoraUnica ? Number(recaudadoraUnica.id) : null);
+  }, [recaudadoraUnica?.id, entidadesRecaudadoras.length]);
 
   // Tipo de cambio SUNAT: solo si las deudas no son en soles.
   // Se usa TC de venta (sell_price) porque alimenta el asiento (igual que EntregarFondosForm).
@@ -367,7 +384,7 @@ const PagoDeudasPersonalEspecializadoForm = ({
         );
         if (consolidado.success) {
           resultado.urlVoucherConsolidado = consolidado.urlPdf;
-          await sincronizarAdjuntosPagoDeudaPersonal(consolidado.pagoId);
+          await sincronizarAdjuntosPagoDeudaTributaria(consolidado.pagoId);
         } else {
           console.error("❌ Error voucher consolidado:", consolidado.error);
         }
@@ -392,7 +409,7 @@ const PagoDeudasPersonalEspecializadoForm = ({
 
     setProcesando(true);
     try {
-      // El hook usePagarDeudasPersonalMultiple ejecuta el servicio y ya muestra los errores
+      // El hook usePagarDeudasTributariasMultiple ejecuta el servicio y ya muestra los errores
       let descripcionFinal = descripcion.trim();
       if (numeroCheque) descripcionFinal += ` N° CHEQUE: ${numeroCheque}`;
 
@@ -473,11 +490,12 @@ const PagoDeudasPersonalEspecializadoForm = ({
           >
             <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} footer="" />
             <Column
-              header="Personal"
-              body={(row) => <span className="font-bold">{row.personal?.nombreCompleto}</span>}
+              header="Tipo de Deuda"
+              body={(row) => <span className="font-bold">{row.tipoDeuda?.nombre}</span>}
               footer={`${seleccionados.length} de ${deudas.length} marcada(s)`}
             />
-            <Column header="Tipo de Deuda" body={(row) => row.tipoDeuda?.nombre} />
+            <Column header="Período" body={(row) => row.periodo} />
+            <Column header="N° Declaración" body={(row) => row.numeroDeclaracion || "-"} />
             <Column header="F. Emisión" body={(row) => formatearFecha(row.fechaEmision)} />
             <Column header="F. Vencimiento" body={(row) => formatearFecha(row.fechaVencimiento)} />
             <Column
@@ -601,16 +619,17 @@ const PagoDeudasPersonalEspecializadoForm = ({
                   required={true}
                   disabled={cargando}
                 />
-                {unaSolaPersona && !enlaceUnicaPersona && (
+                {!todasConRecaudadora && (
                   <small className="p-error block">
-                    {personas[0]?.nombreCompleto} no tiene entidad comercial enlazada. Asígnela en
-                    Personal para que se preseleccione automáticamente.
+                    Alguno de los tipos de deuda marcados no tiene entidad recaudadora. Asígnela en
+                    Tipos de Deuda Tributaria para que se preseleccione automáticamente.
                   </small>
                 )}
-                {!unaSolaPersona && personas.length > 1 && (
+                {todasConRecaudadora && entidadesRecaudadoras.length > 1 && (
                   <small className="p-text-secondary block">
-                    Hay {personas.length} personas en el pago: indique la entidad que recibe el dinero
-                    (por ejemplo, la AFP).
+                    Hay {entidadesRecaudadoras.length} entidades recaudadoras en el pago (
+                    {entidadesRecaudadoras.map((e) => e.razonSocial).join(", ")}): indique la entidad
+                    que recibe el dinero.
                   </small>
                 )}
               </div>
@@ -807,7 +826,7 @@ const PagoDeudasPersonalEspecializadoForm = ({
       </form>
 
       {/* Confirmación del pago: deudas pagadas, movimientos y asientos */}
-      <ConfirmacionPagoDeudasPersonalDialog
+      <ConfirmacionPagoDeudasTributariasDialog
         visible={showConfirmacion}
         onHide={() => {
           setShowConfirmacion(false);
@@ -821,4 +840,4 @@ const PagoDeudasPersonalEspecializadoForm = ({
   );
 };
 
-export default PagoDeudasPersonalEspecializadoForm;
+export default PagoDeudasTributariasEspecializadoForm;

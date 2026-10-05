@@ -272,12 +272,7 @@ export default function MovimientoCaja({ ruta }) {
   // ⭐ NUEVO: Guardar/actualizar movimiento
   const handleSaveMovimiento = async (movimientoActualizado) => {
     try {
-      // 🔍 DEBUG: Ver qué datos recibimos del componente
-      console.log('═══════════════════════════════════════════════════════');
-      console.log('📊 DATOS RECIBIDOS DEL COMPONENTE (movimientoActualizado):');
-      console.log('═══════════════════════════════════════════════════════');
-      console.log(JSON.stringify(movimientoActualizado, null, 2));
-      console.log('═══════════════════════════════════════════════════════\n');
+
 
       // ✅ IMPORTANTE: Filtrar solo los campos que se pueden actualizar
       // No enviar relaciones ni campos calculados
@@ -301,24 +296,6 @@ export default function MovimientoCaja({ ruta }) {
         ...(movimientoActualizado.tipoCambio && { tipoCambio: movimientoActualizado.tipoCambio }),
       };
 
-      // 🔍 DEBUG: Ver qué datos vamos a enviar al backend
-      console.log('═══════════════════════════════════════════════════════');
-      console.log('📤 DATOS QUE SE ENVIARÁN AL BACKEND (datosActualizacion):');
-      console.log('═══════════════════════════════════════════════════════');
-      console.log(JSON.stringify(datosActualizacion, null, 2));
-      console.log('═══════════════════════════════════════════════════════\n');
-
-      // 🔍 DEBUG: Verificar campos problemáticos
-      console.log('🔍 VERIFICACIÓN DE CAMPOS PROBLEMÁTICOS:');
-      console.log('  - moduloOrigenMotivoOperacionId:', movimientoActualizado.moduloOrigenMotivoOperacionId);
-      console.log('  - origenMotivoOperacionId:', movimientoActualizado.origenMotivoOperacionId);
-      console.log('  - usuarioMotivoOperacionId:', movimientoActualizado.usuarioMotivoOperacionId);
-      console.log('  - ¿Se están enviando al backend?', {
-        moduloOrigen: datosActualizacion.moduloOrigenMotivoOperacionId !== undefined,
-        origenMotivo: datosActualizacion.origenMotivoOperacionId !== undefined,
-        usuarioMotivo: datosActualizacion.usuarioMotivoOperacionId !== undefined
-      });
-      console.log('═══════════════════════════════════════════════════════\n');
 
       await actualizarMovimientoCaja(movimientoActualizado.id, datosActualizacion);
       

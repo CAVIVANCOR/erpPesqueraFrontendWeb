@@ -47,3 +47,18 @@ export async function pagarDeudaTributaria(deudaId, data) {
   });
   return res.data;
 }
+
+// Copia voucher consolidado y comprobante del pago indicado a los demás pagos de la operación
+export async function sincronizarAdjuntosPagoDeudaTributaria(pagoId) {
+  const res = await axios.put(`${API_URL}/${pagoId}/sincronizar-adjuntos`, null, {
+    headers: getAuthHeaders()
+  });
+  return res.data;
+}
+
+export async function pagarDeudasTributariasMultiple(data) {
+  const res = await axios.post(`${API_URL}/pagar-multiple`, data, {
+    headers: getAuthHeaders()
+  });
+  return res.data;
+}

@@ -780,7 +780,6 @@ export default function TransferenciaInternaDialog({
         };
       }
 
-      console.log('📤 Enviando datos al backend:', datos);
 
       // 2. Procesar transferencia en backend
       const resultado = await procesarTransferenciaInterna(datos);
@@ -1026,7 +1025,6 @@ export default function TransferenciaInternaDialog({
 
             if (voucherContable.success && voucherContable.urlPdf) {
               await actualizarUrlVoucherContable(movimiento.id, voucherContable.urlPdf);
-              console.log(`✅ Voucher contable generado para movimiento ${movimiento.id}`);
             } else {
               console.error(`❌ Error generando voucher contable: ${voucherContable.error}`);
             }
@@ -1037,8 +1035,6 @@ export default function TransferenciaInternaDialog({
           console.error(`❌ Error al generar voucher contable para movimiento ${movimiento.id}:`, error);
         }
       }
-
-      console.log('✅ Vouchers generados exitosamente');
 
     } catch (error) {
       console.error('❌ Error al generar vouchers:', error);

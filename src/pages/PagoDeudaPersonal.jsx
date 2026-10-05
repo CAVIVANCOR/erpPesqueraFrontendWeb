@@ -9,19 +9,25 @@ import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { Tag } from "primereact/tag";
 import { confirmDialog, ConfirmDialog } from "primereact/confirmdialog";
-import { formatearNumero } from "../utils/utils";
+import { formatearNumero, formatearFecha } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
 import {
   getPagosDeudaPersonal,
-  createPagoDeudaPersonal,
   updatePagoDeudaPersonal,
   deletePagoDeudaPersonal,
 } from "../api/tesoreria/pagoDeudaPersonal";
-import { getDeudasConPersonal } from "../api/tesoreria/deudaConPersonal";
-import { getAllMonedas } from "../api/moneda";
 import { getMediosPago } from "../api/medioPago";
-import PagoDeudaPersonalDialog from "../components/deudaConPersonal/PagoDeudaPersonalDialog";
+import { getPeriodosContables } from "../api/contabilidad/periodoContable";
+import PagoDeudaPersonalForm from "../components/deudaConPersonal/PagoDeudaPersonalForm";
 
+/**
+ * Lista de pagos de deudas con personal.
+ *
+ * Los pagos NO se crean aquí: se registran únicamente desde Caja y Bancos (pago especializado),
+ * que genera movimientos, saldos y asientos. Esta pantalla sirve para consultarlos, completar
+ * sus observaciones y adjuntos (voucher consolidado y comprobante de la entidad recaudadora)
+ * mediante PagoDeudaPersonalForm y, con el derecho de eliminar, borrar un pago erróneo.
+ */
 const PagoDeudaPersonal = () => {
   const toast = useRef(null);
   const dt = useRef(null);
@@ -29,15 +35,13 @@ const PagoDeudaPersonal = () => {
   const permisos = usePermissions("PAGO_DEUDA_PERSONAL");
 
   const [pagos, setPagos] = useState([]);
-  const [deudas, setDeudas] = useState([]);
-  const [monedas, setMonedas] = useState([]);
   const [mediosPago, setMediosPago] = useState([]);
+  const [periodosContables, setPeriodosContables] = useState([]);
   const [loading, setLoading] = useState(false);
   const [globalFilter, setGlobalFilter] = useState(null);
 
   const [dialogVisible, setDialogVisible] = useState(false);
   const [pagoSeleccionado, setPagoSeleccionado] = useState(null);
-  const [isEdit, setIsEdit] = useState(false);
 
   useEffect(() => {
     cargarDatos();
@@ -46,16 +50,14 @@ const PagoDeudaPersonal = () => {
   const cargarDatos = async () => {
     try {
       setLoading(true);
-      const [pagosData, deudasData, monedasData, mediosPagoData] = await Promise.all([
+      const [pagosData, mediosPagoData, periodosData] = await Promise.all([
         getPagosDeudaPersonal(),
-        getDeudasConPersonal(),
-        getAllMonedas(),
         getMediosPago(),
+        getPeriodosContables(),
       ]);
       setPagos(pagosData || []);
-      setDeudas(deudasData || []);
-      setMonedas(monedasData || []);
       setMediosPago(mediosPagoData || []);
+      setPeriodosContables(periodosData || []);
     } catch (error) {
       console.error("Error al cargar datos:", error);
       toast.current.show({
@@ -69,15 +71,8 @@ const PagoDeudaPersonal = () => {
     }
   };
 
-  const openNew = () => {
-    setPagoSeleccionado(null);
-    setIsEdit(false);
-    setDialogVisible(true);
-  };
-
-  const editPago = (pago) => {
+  const verPago = (pago) => {
     setPagoSeleccionado(pago);
-    setIsEdit(true);
     setDialogVisible(true);
   };
 
@@ -89,23 +84,13 @@ const PagoDeudaPersonal = () => {
   const handleSubmit = async (data) => {
     try {
       setLoading(true);
-      if (isEdit) {
-        await updatePagoDeudaPersonal(pagoSeleccionado.id, data);
-        toast.current.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Pago actualizado correctamente",
-          life: 3000,
-        });
-      } else {
-        await createPagoDeudaPersonal(data);
-        toast.current.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Pago registrado correctamente",
-          life: 3000,
-        });
-      }
+      await updatePagoDeudaPersonal(pagoSeleccionado.id, data);
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Pago actualizado correctamente",
+        life: 3000,
+      });
       hideDialog();
       await cargarDatos();
     } catch (error) {
@@ -122,8 +107,12 @@ const PagoDeudaPersonal = () => {
   };
 
   const confirmDelete = (pago) => {
+    // Eliminar no revierte los movimientos de caja ni los asientos que el pago haya generado
+    const advertenciaCaja = pago.movimientoCajaId
+      ? " Este pago se generó desde Caja y Bancos: al eliminarlo NO se revierten sus movimientos de caja ni sus asientos contables."
+      : "";
     confirmDialog({
-      message: `¿Está seguro de eliminar el pago de ${formatearNumero(pago.montoPagado, 2)}?`,
+      message: `¿Está seguro de eliminar el pago de ${formatearNumero(pago.montoPago, 2)}?${advertenciaCaja}`,
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
       acceptLabel: "Sí, eliminar",
@@ -162,20 +151,6 @@ const PagoDeudaPersonal = () => {
   };
 
   // Templates
-  const leftToolbarTemplate = () => {
-    return (
-      <div className="flex flex-wrap gap-2">
-        <Button
-          label="Nuevo Pago"
-          icon="pi pi-plus"
-          className="p-button-success"
-          onClick={openNew}
-          disabled={!permisos?.puedeCrear}
-        />
-      </div>
-    );
-  };
-
   const rightToolbarTemplate = () => {
     return (
       <Button
@@ -189,7 +164,7 @@ const PagoDeudaPersonal = () => {
 
   const header = (
     <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
-      <h4 className="m-0">Gestión de Pagos de Deuda Personal</h4>
+      <h4 className="m-0">Pagos de Deudas con Personal</h4>
       <span className="p-input-icon-left">
         <i className="pi pi-search" />
         <InputText
@@ -201,39 +176,25 @@ const PagoDeudaPersonal = () => {
     </div>
   );
 
-  const deudaTemplate = (rowData) => {
-    const deuda = deudas.find((d) => Number(d.id) === Number(rowData.deudaConPersonalId));
-    if (!deuda) return "-";
-    return `${deuda.numeroDocumento || "S/N"} - ${deuda.personal?.nombreCompleto || ""}`;
+  const personalTemplate = (rowData) => {
+    const personal = rowData.deudaConPersonal?.personal;
+    return personal ? `${personal.nombres || ""} ${personal.apellidos || ""}`.trim() : "-";
   };
 
-  const fechaPagoTemplate = (rowData) => {
-    return rowData.fechaPago
-      ? new Date(rowData.fechaPago).toLocaleDateString("es-PE")
-      : "-";
-  };
+  const tipoDeudaTemplate = (rowData) => rowData.deudaConPersonal?.tipoDeuda?.nombre || "-";
+
+  const fechaPagoTemplate = (rowData) => formatearFecha(rowData.fechaPago, "-");
 
   const medioPagoTemplate = (rowData) => {
-    const medio = mediosPago.find((m) => Number(m.id) === Number(rowData.medioPagoId));
-    return medio?.descripcion || "-";
+    const medio =
+      rowData.medioPago ||
+      mediosPago.find((m) => Number(m.id) === Number(rowData.medioPagoId));
+    return medio?.nombre || "-";
   };
 
-  const monedaPagoTemplate = (rowData) => {
-    const moneda = monedas.find((m) => Number(m.id) === Number(rowData.monedaPagoId));
-    const codigo = moneda?.codigoSunat || "-";
-    return (
-      <Tag
-        value={codigo}
-        style={{
-          backgroundColor: moneda?.colorFondo || "#ffffff",
-          color: "#000000",
-        }}
-      />
-    );
-  };
-
+  // El pago siempre está en la moneda de la deuda (PagoDeudaPersonal no tiene moneda propia)
   const montoTemplate = (rowData) => {
-    const moneda = monedas.find((m) => Number(m.id) === Number(rowData.monedaPagoId));
+    const moneda = rowData.deudaConPersonal?.moneda;
     return (
       <span
         style={{
@@ -246,40 +207,47 @@ const PagoDeudaPersonal = () => {
           textAlign: "right",
         }}
       >
-        {formatearNumero(rowData.montoPagado, 2)}
+        {moneda?.simbolo} {formatearNumero(rowData.montoPago, 2)}
       </span>
     );
   };
 
-  const montoAplicadoTemplate = (rowData) => {
-    const deuda = deudas.find((d) => Number(d.id) === Number(rowData.deudaConPersonalId));
-    const moneda = monedas.find((m) => Number(m.id) === Number(deuda?.monedaId));
-    return (
-      <span
-        style={{
-          backgroundColor: moneda?.colorFondo || "#ffffff",
-          padding: "0.25rem 0.5rem",
-          borderRadius: "4px",
-          fontWeight: "bold",
-          display: "inline-block",
-          width: "100%",
-          textAlign: "right",
-        }}
-      >
-        {formatearNumero(rowData.montoAplicadoDeuda, 2)}
-      </span>
-    );
+  const periodoContableTemplate = (rowData) => {
+    const periodo =
+      rowData.periodoContable ||
+      periodosContables.find((p) => Number(p.id) === Number(rowData.periodoContableId));
+    return periodo?.nombrePeriodo || "-";
   };
+
+  // Indica si el pago ya tiene cada adjunto cargado
+  const adjuntosTemplate = (rowData) => (
+    <div className="flex gap-2 justify-content-center">
+      <i
+        className={`pi pi-file-pdf ${rowData.urlVoucherOperacionConsolidado ? "text-green-500" : "text-300"}`}
+        title={rowData.urlVoucherOperacionConsolidado ? "Voucher consolidado cargado" : "Sin voucher consolidado"}
+      />
+      <i
+        className={`pi pi-paperclip ${rowData.urlComprobanteOperacion ? "text-green-500" : "text-300"}`}
+        title={rowData.urlComprobanteOperacion ? "Comprobante cargado" : "Sin comprobante"}
+      />
+    </div>
+  );
+
+  const origenTemplate = (rowData) =>
+    rowData.movimientoCajaId ? (
+      <Tag severity="success" value="Caja y Bancos" />
+    ) : (
+      <Tag severity="warning" value="Sin caja" />
+    );
 
   const actionBodyTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
         <Button
-          icon="pi pi-pencil"
+          icon={permisos?.puedeEditar ? "pi pi-pencil" : "pi pi-eye"}
           className="p-button-rounded p-button-warning p-button-sm"
-          onClick={() => editPago(rowData)}
-          disabled={!permisos?.puedeEditar}
-          tooltip="Editar"
+          onClick={() => verPago(rowData)}
+          tooltip={permisos?.puedeEditar ? "Ver / Editar" : "Ver"}
         />
         <Button
           icon="pi pi-trash"
@@ -298,11 +266,7 @@ const PagoDeudaPersonal = () => {
       <ConfirmDialog />
 
       <div className="card">
-        <Toolbar
-          className="mb-4"
-          left={leftToolbarTemplate}
-          right={rightToolbarTemplate}
-        />
+        <Toolbar className="mb-4" right={rightToolbarTemplate} />
 
         <DataTable
           ref={dt}
@@ -322,17 +286,25 @@ const PagoDeudaPersonal = () => {
           showGridlines
         >
           <Column field="id" header="ID" sortable style={{ minWidth: "4rem" }} />
-          <Column header="Deuda" body={deudaTemplate} sortable />
+          <Column
+            field="refOperacionEspecializadaMovCaja"
+            header="Operación"
+            sortable
+            style={{ minWidth: "6rem" }}
+          />
+          <Column header="Personal" body={personalTemplate} sortable />
+          <Column header="Tipo de Deuda" body={tipoDeudaTemplate} sortable />
           <Column header="Fecha Pago" body={fechaPagoTemplate} sortable />
           <Column header="Medio Pago" body={medioPagoTemplate} sortable />
-          <Column header="Moneda" body={monedaPagoTemplate} sortable />
           <Column header="Monto Pagado" body={montoTemplate} sortable />
-          <Column header="Monto Aplicado" body={montoAplicadoTemplate} sortable />
-          <Column field="numeroOperacion" header="N° Operación" sortable />
+          <Column field="numeroOperacion" header="N° Operación Bancaria" sortable />
+          <Column header="Período Contable" body={periodoContableTemplate} sortable />
+          <Column header="Origen" body={origenTemplate} />
+          <Column header="Adjuntos" body={adjuntosTemplate} exportable={false} />
           <Column
             body={actionBodyTemplate}
             exportable={false}
-            style={{ minWidth: "8rem" }}
+            style={{ minWidth: "6rem" }}
             header="Acciones"
           />
         </DataTable>
@@ -340,28 +312,27 @@ const PagoDeudaPersonal = () => {
 
       <Dialog
         visible={dialogVisible}
-        style={{ width: "600px" }}
-        header={isEdit ? "Editar Pago" : "Registrar Pago"}
+        style={{ width: "90vw", maxWidth: "1200px" }}
+        header="Editar Pago"
         modal
         className="p-fluid"
         onHide={hideDialog}
       >
-        <PagoDeudaPersonalDialog
-          pago={pagoSeleccionado}
-          deudaId={pagoSeleccionado?.deudaConPersonalId}
-          monedaDeudaId={
-            deudas.find((d) => Number(d.id) === Number(pagoSeleccionado?.deudaConPersonalId))
-              ?.monedaId
-          }
-          saldoPendiente={
-            deudas.find((d) => Number(d.id) === Number(pagoSeleccionado?.deudaConPersonalId))
-              ?.saldoPendiente || 0
-          }
-          monedas={monedas}
-          mediosPago={mediosPago}
-          onSubmit={handleSubmit}
-          onCancel={hideDialog}
-        />
+        {pagoSeleccionado && (
+          <PagoDeudaPersonalForm
+            key={pagoSeleccionado.id}
+            isEdit={true}
+            defaultValues={pagoSeleccionado}
+            mediosPago={mediosPago}
+            periodosContables={periodosContables}
+            onSubmit={handleSubmit}
+            onCancel={hideDialog}
+            onAdjuntosCambiados={cargarDatos}
+            readOnly={!permisos?.puedeEditar}
+            loading={loading}
+            toast={toast}
+          />
+        )}
       </Dialog>
     </div>
   );

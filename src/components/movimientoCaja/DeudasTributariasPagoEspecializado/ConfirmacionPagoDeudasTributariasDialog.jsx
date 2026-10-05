@@ -1,4 +1,4 @@
-// src/components/movimientoCaja/DeudasPersonalPagoEspecializado/ConfirmacionPagoDeudasPersonalDialog.jsx
+// src/components/movimientoCaja/DeudasTributariasPagoEspecializado/ConfirmacionPagoDeudasTributariasDialog.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { Dialog } from "primereact/dialog";
@@ -10,12 +10,12 @@ import { Column } from "primereact/column";
 import PDFViewerV2 from "../../pdf/PDFViewerV2";
 import AsientoContableViewer from "../../common/AsientoContableViewer";
 import { formatearNumero } from "../../../utils/utils";
-import { sincronizarAdjuntosPagoDeudaPersonal } from "../../../api/tesoreria/pagoDeudaPersonal";
-import PdfComprobanteEntidadRecaudadoraCard from "./PdfComprobanteEntidadRecaudadoraCard";
+import { sincronizarAdjuntosPagoDeudaTributaria } from "../../../api/tesoreria/pagoDeudaTributaria";
+import PdfComprobanteEntidadRecaudadoraTributariaCard from "./PdfComprobanteEntidadRecaudadoraTributariaCard";
 
 /**
  * ════════════════════════════════════════════════════════════
- * CONFIRMACIÓN DEL PAGO MÚLTIPLE DE DEUDAS CON PERSONAL
+ * CONFIRMACIÓN DEL PAGO MÚLTIPLE DE DEUDAS TRIBUTARIAS
  * ════════════════════════════════════════════════════════════
  *
  * Basado en ConfirmacionEntregaFondosDialog. Muestra:
@@ -28,7 +28,7 @@ import PdfComprobanteEntidadRecaudadoraCard from "./PdfComprobanteEntidadRecauda
  * - resultadoPago: `data` devuelto por el backend
  * - simbolo: símbolo de la moneda de las deudas (para el reparto)
  */
-export default function ConfirmacionPagoDeudasPersonalDialog({
+export default function ConfirmacionPagoDeudasTributariasDialog({
   visible,
   onHide,
   resultadoPago,
@@ -59,7 +59,7 @@ export default function ConfirmacionPagoDeudasPersonalDialog({
       return;
     }
     if (!pagoId) return;
-    sincronizarAdjuntosPagoDeudaPersonal(pagoId).catch((error) =>
+    sincronizarAdjuntosPagoDeudaTributaria(pagoId).catch((error) =>
       console.error("Error al sincronizar el comprobante con los pagos de la operación:", error),
     );
   }, [urlComprobante]);
@@ -72,7 +72,7 @@ export default function ConfirmacionPagoDeudasPersonalDialog({
   const renderHeader = () => (
     <div className="text-center mb-4">
       <i className="pi pi-check-circle text-green-500" style={{ fontSize: "4rem" }}></i>
-      <h3 className="mt-3 mb-2">¡Pago de Deudas del Personal Procesado Exitosamente!</h3>
+      <h3 className="mt-3 mb-2">¡Pago de Deudas Tributarias Procesado Exitosamente!</h3>
       <div className="text-xl">
         <Tag
           value={`Operación #${resultadoPago.correlativo}`}
@@ -103,8 +103,8 @@ export default function ConfirmacionPagoDeudasPersonalDialog({
             </div>
           }
         >
-          <Column field="personal" header="Personal" style={{ fontWeight: "bold" }} />
-          <Column field="tipoDeuda" header="Tipo de Deuda" />
+          <Column field="tipoDeuda" header="Tipo de Deuda" style={{ fontWeight: "bold" }} />
+          <Column field="periodo" header="Período" />
           <Column
             header="Monto Aplicado"
             body={(row) => (
@@ -308,7 +308,7 @@ export default function ConfirmacionPagoDeudasPersonalDialog({
       <Panel header="📄 Voucher Consolidado del Pago" className="mb-3">
         <PDFViewerV2
           pdfUrl={resultadoPago.urlVoucherConsolidado}
-          moduleName="pago-deuda-personal-consolidado"
+          moduleName="pago-deuda-tributaria-consolidado"
           height="600px"
         />
       </Panel>
@@ -320,7 +320,7 @@ export default function ConfirmacionPagoDeudasPersonalDialog({
     if (!pagoId) return null;
 
     return (
-      <PdfComprobanteEntidadRecaudadoraCard
+      <PdfComprobanteEntidadRecaudadoraTributariaCard
         pagoId={pagoId}
         control={control}
         errors={errors}
@@ -346,7 +346,7 @@ export default function ConfirmacionPagoDeudasPersonalDialog({
       <Dialog
         visible={visible}
         onHide={onHide}
-        header="Confirmación de Pago de Deudas del Personal"
+        header="Confirmación de Pago de Deudas Tributarias"
         style={{ width: "90vw", maxWidth: "1200px" }}
         footer={renderFooter()}
         modal

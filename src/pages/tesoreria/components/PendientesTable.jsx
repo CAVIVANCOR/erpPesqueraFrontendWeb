@@ -69,10 +69,15 @@ const COLUMNAS_POR_CASO = {
   // Deudas Tributarias (tabla DeudaTributaria):
   // se reemplaza "Documento" por el Tipo de Deuda tributaria y se omite la
   // columna de entidad (el backend la envía fija como SUNAT)
-  // y se agrega "S. Inicial" antes del estado
-  DEUDAS_TRIBUTARIAS: COLUMNAS_BASE.filter((c) => c !== "entidad")
-    .map((c) => (c === "documento" ? "tipoDeuda" : c))
-    .flatMap((c) => (c === "estado" ? ["saldoInicial", c] : [c])),
+  // y se agrega "S. Inicial" antes del estado.
+  // Sin "acciones": el pago se hace con "Pagar seleccionados" (pago múltiple especializado)
+  // y se agrega la casilla de selección al inicio.
+  DEUDAS_TRIBUTARIAS: [
+    "seleccion",
+    ...COLUMNAS_BASE.filter((c) => c !== "entidad" && c !== "acciones")
+      .map((c) => (c === "documento" ? "tipoDeuda" : c))
+      .flatMap((c) => (c === "estado" ? ["saldoInicial", c] : [c])),
+  ],
 };
 
 /**
@@ -356,7 +361,7 @@ const PendientesTable = ({
     <DataTable
       value={pendientes}
       loading={loading}
-      {...(claveCaso === "DEUDAS_PERSONAL"
+      {...(claveCaso === "DEUDAS_PERSONAL" || claveCaso === "DEUDAS_TRIBUTARIAS"
         ? { selection: seleccion, onSelectionChange: (e) => onSeleccionChange?.(e.value), dataKey: "id" }
         : {})}
       paginator

@@ -481,7 +481,6 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
     
     if (tipoSunat && !tipoMovimientoDetraccionId) {
       setTipoMovimientoDetraccionId(Number(tipoSunat.id));
-      console.log('✅ Tipo de movimiento SUNAT pre-seleccionado:', tipoSunat.nombre, 'ID:', tipoSunat.id);
     }
   }, [visible, tiposMovimiento, tipoMovimientoDetraccionId]);
 
@@ -1013,15 +1012,6 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
 
     try {
       // Preparar datos del pago
-      // ✅ DEBUG: Verificar valores antes de enviar
-      console.log('🔍 [handleProcesarPago] Valores calculados:', {
-        montoNetoIngresado,
-        montoDetraccionIngresado,
-        montoAplicadoDeuda,
-        tipoCambio,
-        monedaPagoId,
-        monedaDeudaId: cuentaPorPagar.monedaId
-      });
 
       const dataPago = {
         cuentaPorPagarId: cuentaPorPagar.id,
@@ -1159,7 +1149,6 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
 
           // Voucher individual del movimiento de ITF
           if (movimientos.itf) {
-            console.log('📄 [2/6] Generando voucher ITF ID:', movimientos.itf.id);
             try {
               const voucherITF = await generarYSubirVoucherIndividual(
                 movimientos.itf,
@@ -1168,7 +1157,6 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
                 cuentaPorPagar,
                 usuario
               );
-              console.log('✅ [2/6] Voucher ITF generado:', voucherITF.success);
               if (voucherITF.success && voucherITF.urlPdf) {
                 await actualizarUrlVoucherIndividual(movimientos.itf.id, voucherITF.urlPdf);
                 response.data.movimientos.itf.urlOperacionIndividualOperacionCaja = voucherITF.urlPdf;
@@ -1180,7 +1168,6 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
 
           // Voucher individual del movimiento de comisión
           if (movimientos.comision) {
-            console.log('📄 [3/6] Generando voucher COMISIÓN ID:', movimientos.comision.id);
             try {
               const voucherComision = await generarYSubirVoucherIndividual(
                 movimientos.comision,
@@ -1189,7 +1176,6 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
                 cuentaPorPagar,
                 usuario
               );
-              console.log('✅ [3/6] Voucher COMISIÓN generado:', voucherComision.success);
               if (voucherComision.success && voucherComision.urlPdf) {
                 await actualizarUrlVoucherIndividual(movimientos.comision.id, voucherComision.urlPdf);
                 response.data.movimientos.comision.urlOperacionIndividualOperacionCaja = voucherComision.urlPdf;
@@ -1201,7 +1187,6 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
 
           // ✅ Voucher individual de DETRACCIÓN EGRESO
           if (movimientos.detraccionEgreso) {
-            console.log('📄 [4/6] Generando voucher DETRACCIÓN ID:', movimientos.detraccionEgreso.id);
             try {
               const voucherDetraccion = await generarYSubirVoucherIndividual(
                 movimientos.detraccionEgreso,
@@ -1210,7 +1195,6 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
                 cuentaPorPagar,
                 usuario
               );
-              console.log('✅ [4/6] Voucher DETRACCIÓN generado:', voucherDetraccion.success);
               if (voucherDetraccion.success && voucherDetraccion.urlPdf) {
                 await actualizarUrlVoucherIndividual(movimientos.detraccionEgreso.id, voucherDetraccion.urlPdf);
                 response.data.movimientos.detraccionEgreso.urlOperacionIndividualOperacionCaja = voucherDetraccion.urlPdf;
@@ -1222,7 +1206,6 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
 
           // ✅ Voucher individual de ITF DETRACCIÓN
           if (movimientos.itfDetraccion) {
-            console.log('📄 [5/6] Generando voucher ITF DETRACCIÓN ID:', movimientos.itfDetraccion.id);
             try {
               const voucherITFDetraccion = await generarYSubirVoucherIndividual(
                 movimientos.itfDetraccion,
@@ -1231,7 +1214,6 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
                 cuentaPorPagar,
                 usuario
               );
-              console.log('✅ [5/6] Voucher ITF DETRACCIÓN generado:', voucherITFDetraccion.success);
               if (voucherITFDetraccion.success && voucherITFDetraccion.urlPdf) {
                 await actualizarUrlVoucherIndividual(movimientos.itfDetraccion.id, voucherITFDetraccion.urlPdf);
                 response.data.movimientos.itfDetraccion.urlOperacionIndividualOperacionCaja = voucherITFDetraccion.urlPdf;
@@ -1239,13 +1221,10 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
             } catch (error) {
               console.error('❌ [5/6] Error voucher ITF DETRACCIÓN:', error);
             }
-          } else {
-            console.log('⚠️ [5/6] NO HAY movimiento itfDetraccion');
           }
 
           // ✅ Voucher individual de COMISIÓN DETRACCIÓN
           if (movimientos.comisionDetraccion) {
-            console.log('📄 [6/6] Generando voucher COMISIÓN DETRACCIÓN ID:', movimientos.comisionDetraccion.id);
             try {
               const voucherComisionDetraccion = await generarYSubirVoucherIndividual(
                 movimientos.comisionDetraccion,
@@ -1254,7 +1233,6 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
                 cuentaPorPagar,
                 usuario
               );
-              console.log('✅ [6/6] Voucher COMISIÓN DETRACCIÓN generado:', voucherComisionDetraccion.success);
               if (voucherComisionDetraccion.success && voucherComisionDetraccion.urlPdf) {
                 await actualizarUrlVoucherIndividual(movimientos.comisionDetraccion.id, voucherComisionDetraccion.urlPdf);
                 response.data.movimientos.comisionDetraccion.urlOperacionIndividualOperacionCaja = voucherComisionDetraccion.urlPdf;
@@ -1262,13 +1240,9 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
             } catch (error) {
               console.error('❌ [6/6] Error voucher COMISIÓN DETRACCIÓN:', error);
             }
-          } else {
-            console.log('⚠️ [6/6] NO HAY movimiento comisionDetraccion');
-          }
+          } 
 
-          console.log('═══════════════════════════════════════════════════════════');
-          console.log('✅ DEBUG: FIN GENERACIÓN VOUCHERS INDIVIDUALES');
-          console.log('═══════════════════════════════════════════════════════════');
+
         } catch (error) {
           console.error('💥 ERROR CRÍTICO EN GENERACIÓN DE VOUCHERS:', error);
         }

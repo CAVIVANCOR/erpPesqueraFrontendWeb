@@ -256,15 +256,6 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       netoEsperado = totalFactura - detraccionPendiente;
     }
 
-    // 🔍 DEBUG
-    console.log('🔍 DEBUG Autodetracción:');
-    console.log('  totalFactura:', totalFactura);
-    console.log('  montoNeto:', montoNeto);
-    console.log('  detraccionPendiente:', detraccionPendiente);
-    console.log('  netoEsperado:', netoEsperado);
-    console.log('  montoNeto > netoEsperado:', montoNeto > netoEsperado);
-    console.log('  detraccionPendiente > 0:', detraccionPendiente > 0);
-    console.log('  ¿Se activará autodetracción?:', montoNeto > netoEsperado && detraccionPendiente > 0);
 
     // ✅ AUTODETRACCIÓN: Solo si el cliente paga MÁS que el neto esperado
     // (es decir, pagó el total bruto incluyendo la detracción)
@@ -1392,9 +1383,6 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
     const detraccion = preFactura.detraccion;
     if (!detraccion) return null;
 
-    console.log('🔍 DEBUG Render Detracción:');
-    console.log('  esAutodetraccion:', esAutodetraccion);
-    console.log('  montoDetraccionIngresado:', montoDetraccionIngresado);
 
     const monedaPago = monedas.find(m => Number(m.id) === Number(monedaPagoId));
     const montoDetEsperado = Number(detraccion.saldoPendiente || 0);

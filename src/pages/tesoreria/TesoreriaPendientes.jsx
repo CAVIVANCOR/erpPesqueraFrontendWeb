@@ -17,6 +17,8 @@ import PagarCuentaPorPagarEspecializadoDialog from "../../components/pagoCuentaP
 import EntregarFondosForm from "../../components/movimientoCaja/AsignacionEntregaARendirEspecializada/EntregarFondosForm";
 import PagoDeudasPersonalEspecializadoForm from "../../components/movimientoCaja/DeudasPersonalPagoEspecializado/PagoDeudasPersonalEspecializadoForm";
 import usePagarDeudasPersonalMultiple from "../../components/movimientoCaja/DeudasPersonalPagoEspecializado/usePagarDeudasPersonalMultiple";
+import PagoDeudasTributariasEspecializadoForm from "../../components/movimientoCaja/DeudasTributariasPagoEspecializado/PagoDeudasTributariasEspecializadoForm";
+import usePagarDeudasTributariasMultiple from "../../components/movimientoCaja/DeudasTributariasPagoEspecializado/usePagarDeudasTributariasMultiple";
 import PagarDeudaPersonalDialog from "../../components/tesoreria/PagarDeudaPersonalDialog";
 import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ AGREGAR
 import PagarDeudaTributariaDialog from "../../components/tesoreria/PagarDeudaTributariaDialog";
@@ -66,10 +68,12 @@ const TesoreriaPendientes = () => {
   const [asignacionSeleccionada, setAsignacionSeleccionada] = useState(null);
   const [showPagoDeudaPersonalDialog, setShowPagoDeudaPersonalDialog] = useState(false);
   const [deudaPersonalSeleccionada, setDeudaPersonalSeleccionada] = useState(null);
-  // Pago múltiple (especializado) de Deudas con Personal
+  // Pago múltiple (especializado) de Deudas con Personal y de Deudas Tributarias
   const [seleccionDeudas, setSeleccionDeudas] = useState([]);
   // Copia de las deudas al abrir el diálogo (null = cerrado): el formulario no debe verse afectado por recargas
   const [deudasPagoMultiple, setDeudasPagoMultiple] = useState(null);
+  // Qué formulario de pago múltiple se abrió: "PERSONAL" | "TRIBUTARIA"
+  const [tipoPagoMultiple, setTipoPagoMultiple] = useState(null);
   const [showPagoDeudaTributariaDialog, setShowPagoDeudaTributariaDialog] = useState(false);
   const [deudaTributariaSeleccionada, setDeudaTributariaSeleccionada] = useState(null);
   const [showPagoEspecializadoDialog, setShowPagoEspecializadoDialog] = useState(false);
@@ -190,10 +194,26 @@ const TesoreriaPendientes = () => {
     },
   });
 
-  // Selección vigente: solo filas de deuda personal que siguen en la lista actual
+  const { pagarDeudas: pagarDeudasTributariasMultiple, loading: loadingPagoTributariasMultiple } =
+    usePagarDeudasTributariasMultiple({
+      toast,
+      onSuccess: () => {
+        setSeleccionDeudas([]);
+        recargarPendientes();
+        recargarSaldos();
+      },
+    });
+
+  // Sección de deuda activa: determina qué filas se pueden seleccionar y qué formulario se abre
+  const esDeudasPersonal = filtros.tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL;
+  const esDeudasTributarias = filtros.tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS;
+  const esFilaDeudaActiva = (p) => (esDeudasTributarias ? p.esDeudaTributaria : p.esDeudaPersonal);
+
+  // Selección vigente: solo filas de la sección de deuda activa que siguen en la lista actual
+  // (los IDs de DeudaConPersonal y DeudaTributaria pueden coincidir entre sí)
   const deudasSeleccionadas = useMemo(
-    () => seleccionDeudas.filter((s) => pendientes.some((p) => p.esDeudaPersonal && p.id === s.id)),
-    [seleccionDeudas, pendientes],
+    () => seleccionDeudas.filter((s) => pendientes.some((p) => esFilaDeudaActiva(p) && p.id === s.id)),
+    [seleccionDeudas, pendientes, esDeudasTributarias],
   );
 
   const etiquetaTotalSeleccion = useMemo(() => {
@@ -515,15 +535,21 @@ const TesoreriaPendientes = () => {
   // Pago múltiple: toma las filas frescas de la lista, no las del estado de selección
   const handlePagarSeleccionadas = () => {
     const ids = new Set(deudasSeleccionadas.map((d) => d.id));
-    setDeudasPagoMultiple(pendientes.filter((p) => p.esDeudaPersonal && ids.has(p.id)));
+    setTipoPagoMultiple(esDeudasTributarias ? "TRIBUTARIA" : "PERSONAL");
+    setDeudasPagoMultiple(pendientes.filter((p) => esFilaDeudaActiva(p) && ids.has(p.id)));
   };
 
   // Devuelve el resultado: el formulario lo necesita para generar vouchers y la confirmación
   const handleGuardarPagoMultiple = async (formData) => {
-    return await pagarDeudasMultiple(formData);
+    return tipoPagoMultiple === "TRIBUTARIA"
+      ? await pagarDeudasTributariasMultiple(formData)
+      : await pagarDeudasMultiple(formData);
   };
 
-  const handleCancelarPagoMultiple = () => setDeudasPagoMultiple(null);
+  const handleCancelarPagoMultiple = () => {
+    setDeudasPagoMultiple(null);
+    setTipoPagoMultiple(null);
+  };
   // Línea 225 - AGREGAR
   const handlePagarDeudaPersonal = (deuda) => {
     setDeudaPersonalSeleccionada(deuda);
@@ -628,7 +654,7 @@ const TesoreriaPendientes = () => {
         title={
           <div className="flex justify-content-between align-items-center">
             <span>📋 Documentos Pendientes</span>
-            {filtros.tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL && permisos.puedeCrear && (
+            {(esDeudasPersonal || esDeudasTributarias) && permisos.puedeCrear && (
               <Button
                 label={`Pagar seleccionados (${deudasSeleccionadas.length})${etiquetaTotalSeleccion ? ` · ${etiquetaTotalSeleccion}` : ""}`}
                 icon="pi pi-money-bill"
@@ -742,7 +768,7 @@ const TesoreriaPendientes = () => {
       )}
 
       {/* Diálogo de pago múltiple (especializado) de Deudas con Personal */}
-      {deudasPagoMultiple && (
+      {deudasPagoMultiple && tipoPagoMultiple === "PERSONAL" && (
         <Dialog
           header="💵 Pagar Deudas del Personal"
           visible={true}
@@ -760,6 +786,30 @@ const TesoreriaPendientes = () => {
             onSubmit={handleGuardarPagoMultiple}
             onCancel={handleCancelarPagoMultiple}
             loading={loadingPagoMultiple}
+            toast={toast}
+          />
+        </Dialog>
+      )}
+
+      {/* Diálogo de pago múltiple (especializado) de Deudas Tributarias */}
+      {deudasPagoMultiple && tipoPagoMultiple === "TRIBUTARIA" && (
+        <Dialog
+          header="🏛️ Pagar Deudas Tributarias"
+          visible={true}
+          style={{ width: "1300px" }}
+          onHide={handleCancelarPagoMultiple}
+          modal
+          maximizable
+        >
+          <PagoDeudasTributariasEspecializadoForm
+            deudas={deudasPagoMultiple}
+            cuentasCorrientes={saldosCuentas}
+            mediosPago={mediosPago}
+            tiposMovimiento={tiposMovimiento}
+            empresas={empresas}
+            onSubmit={handleGuardarPagoMultiple}
+            onCancel={handleCancelarPagoMultiple}
+            loading={loadingPagoTributariasMultiple}
             toast={toast}
           />
         </Dialog>

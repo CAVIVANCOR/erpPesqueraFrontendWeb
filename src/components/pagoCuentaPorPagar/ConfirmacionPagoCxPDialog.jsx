@@ -501,21 +501,7 @@ export default function ConfirmacionPagoDialog({
 
     if (asientos.length === 0) return null;
 
-    // 🔍 DEBUG: Ver qué asientos y movimientos llegaron
-    console.log('📊 DEBUG Asientos Contables:');
-    console.log('  Total asientos recibidos:', asientos.length);
-    console.log('  IDs asientos:', asientos.map(a => a.id));
-    console.log('  procesoOrigenId de asientos:', asientos.map(a => a.procesoOrigenId));
-    console.log('  Movimientos disponibles:', {
-      egreso: resultadoPago.movimientos.egreso?.id,
-      itf: resultadoPago.movimientos.itf?.id,
-      comision: resultadoPago.movimientos.comision?.id,
-      detraccionEgreso: resultadoPago.movimientos.detraccionEgreso?.id,
-      itfDetraccion: resultadoPago.movimientos.itfDetraccion?.id,
-      comisionDetraccion: resultadoPago.movimientos.comisionDetraccion?.id,
-      autodetraccionEgreso: resultadoPago.movimientos.autodetraccionEgreso?.id,
-      autodetraccionIngreso: resultadoPago.movimientos.autodetraccionIngreso?.id
-    });
+
 
     const monedaPago = monedas.find(m =>
       Number(m.id) === Number(resultadoPago.pagoCuentaPorPagar?.monedaPagoId)
@@ -550,8 +536,7 @@ export default function ConfirmacionPagoDialog({
       };
     });
 
-    // 🔍 DEBUG: Ver tipos asignados
-    console.log('  Tipos asignados:', asientosConTipo.map(a => ({ id: a.id, tipo: a.tipo, procesoOrigenId: a.procesoOrigenId })));
+
 
     return (
       <Panel header="📊 Asientos Contables Generados" className="mb-3">

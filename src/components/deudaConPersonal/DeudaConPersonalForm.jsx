@@ -20,11 +20,10 @@ import {
 } from "../../api/tesoreria/deudaConPersonal";
 import {
   getPagosDeudaPersonalByDeuda,
-  createPagoDeudaPersonal,
   updatePagoDeudaPersonal,
   deletePagoDeudaPersonal,
 } from "../../api/tesoreria/pagoDeudaPersonal";
-import PagoDeudaPersonalDialog from "./PagoDeudaPersonalDialog";
+import PagoDeudaPersonalForm from "./PagoDeudaPersonalForm";
 import AsientoContableManager from "../common/AsientoContableManager";  // ⭐ NUEVO
 import AuditoriaDialog from "../common/AuditoriaDialog";
 // ════════════════════════════════════════════════════════════
@@ -134,7 +133,6 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
   const [loadingPagos, setLoadingPagos] = useState(false);
   const [showPagoDialog, setShowPagoDialog] = useState(false);
   const [pagoSeleccionado, setPagoSeleccionado] = useState(null);
-  const [isEditPago, setIsEditPago] = useState(false);
 
   // Estado para gestión de asientos contables (⭐ NUEVO)
   const [asientosActualizados, setAsientosActualizados] = useState(0);
@@ -209,15 +207,11 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
     return moneda?.colorFondo || "#ffffff";
   };
 
-  const getColorPorMonedaPago = (monedaPagoId) => {
-    const moneda = monedas?.find((m) => Number(m.id) === Number(monedaPagoId));
-    return moneda?.colorFondo || "#ffffff";
-  };
-
   // Recalcular montoPagado y saldoPendiente cuando cambien los pagos
+  // (monto del pago = PagoDeudaPersonal.montoPago, siempre en la moneda de la deuda)
   useEffect(() => {
     const totalPagado = pagos.reduce(
-      (sum, pago) => sum + Number(pago.montoAplicadoDeuda || 0),
+      (sum, pago) => sum + Number(pago.montoPago || 0),
       0
     );
     onChange("montoPagado", totalPagado);
@@ -227,7 +221,7 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
   // Calcular saldoPendiente cuando cambie montoOriginal, montoPagadoAnterior o pagos
   useEffect(() => {
     const totalPagadoSistema = pagos.reduce(
-      (sum, pago) => sum + Number(pago.montoAplicadoDeuda || 0),
+      (sum, pago) => sum + Number(pago.montoPago || 0),
       0
     );
 
@@ -403,21 +397,21 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
     onSubmit(data);
   };
 
-  const handleRegistrarPago = () => {
-    setPagoSeleccionado(null);
-    setIsEditPago(false);
-    setShowPagoDialog(true);
-  };
-
+  // Los pagos no se registran desde aquí: se generan únicamente desde Caja y Bancos
+  // (pago especializado). Desde esta pestaña se consultan, se editan sus observaciones y
+  // adjuntos y, con el derecho correspondiente, se eliminan (para corregir un pago erróneo).
   const handleEditarPago = (pago) => {
     setPagoSeleccionado(pago);
-    setIsEditPago(true);
     setShowPagoDialog(true);
   };
 
   const handleEliminarPago = (pago) => {
+    // Eliminar no revierte los movimientos de caja ni los asientos que el pago haya generado
+    const advertenciaCaja = pago.movimientoCajaId
+      ? " Este pago se generó desde Caja y Bancos: al eliminarlo NO se revierten sus movimientos de caja ni sus asientos contables."
+      : "";
     confirmDialog({
-      message: `¿Está seguro de eliminar el pago de ${formatearNumero(pago.montoPagado, 2)}?`,
+      message: `¿Está seguro de eliminar el pago de ${formatearNumero(pago.montoPago, 2)}?${advertenciaCaja}`,
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
       acceptLabel: "Sí, eliminar",
@@ -449,26 +443,13 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
 
   const handleSubmitPago = async (dataPago) => {
     try {
-      if (isEditPago) {
-        await updatePagoDeudaPersonal(pagoSeleccionado.id, dataPago);
-        toast?.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Pago actualizado correctamente",
-          life: 3000,
-        });
-      } else {
-        await createPagoDeudaPersonal({
-          ...dataPago,
-          deudaConPersonalId: Number(defaultValues.id),
-        });
-        toast?.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Pago registrado correctamente",
-          life: 3000,
-        });
-      }
+      await updatePagoDeudaPersonal(pagoSeleccionado.id, dataPago);
+      toast?.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Pago actualizado correctamente",
+        life: 3000,
+      });
       setShowPagoDialog(false);
       await cargarPagos();
       await recargarDeudaDesdeBackend();
@@ -484,42 +465,8 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
   };
 
   // Templates para DataTable
+  // El pago siempre está en la moneda de la deuda (PagoDeudaPersonal no tiene moneda propia)
   const montoTemplate = (rowData) => {
-    return (
-      <span
-        style={{
-          backgroundColor: getColorPorMonedaPago(rowData.monedaPagoId),
-          padding: "0.25rem 0.5rem",
-          borderRadius: "4px",
-          fontWeight: "bold",
-          display: "inline-block",
-          width: "100%",
-          textAlign: "right",
-        }}
-      >
-        {formatearNumero(rowData.montoPagado, 2)}
-      </span>
-    );
-  };
-
-  const monedaPagoTemplate = (rowData) => {
-    const moneda = monedas?.find((m) => Number(m.id) === Number(rowData.monedaPagoId));
-    const codigo = moneda?.codigoSunat || "-";
-    return (
-      <span
-        style={{
-          backgroundColor: getColorPorMonedaPago(rowData.monedaPagoId),
-          padding: "0.25rem 0.5rem",
-          borderRadius: "4px",
-          fontWeight: "bold",
-        }}
-      >
-        {codigo}
-      </span>
-    );
-  };
-
-  const montoAplicadoTemplate = (rowData) => {
     return (
       <span
         style={{
@@ -532,10 +479,31 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
           textAlign: "right",
         }}
       >
-        {formatearNumero(rowData.montoAplicadoDeuda || rowData.montoPagado, 2)}
+        {formatearNumero(rowData.montoPago, 2)}
       </span>
     );
   };
+
+  const periodoContableTemplate = (rowData) => {
+    const periodo =
+      rowData.periodoContable ||
+      periodosContables?.find((p) => Number(p.id) === Number(rowData.periodoContableId));
+    return periodo?.nombrePeriodo || "-";
+  };
+
+  // Indica si el pago ya tiene cada adjunto cargado
+  const adjuntosTemplate = (rowData) => (
+    <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
+      <i
+        className={`pi pi-file-pdf ${rowData.urlVoucherOperacionConsolidado ? "text-green-500" : "text-300"}`}
+        title={rowData.urlVoucherOperacionConsolidado ? "Voucher consolidado cargado" : "Sin voucher consolidado"}
+      />
+      <i
+        className={`pi pi-paperclip ${rowData.urlComprobanteOperacion ? "text-green-500" : "text-300"}`}
+        title={rowData.urlComprobanteOperacion ? "Comprobante cargado" : "Sin comprobante"}
+      />
+    </div>
+  );
 
   const fechaPagoTemplate = (rowData) => {
     return rowData.fechaPago
@@ -545,7 +513,7 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
 
   const medioPagoTemplate = (rowData) => {
     const medio = mediosPago?.find((m) => Number(m.id) === Number(rowData.medioPagoId));
-    return medio?.descripcion || "-";
+    return medio?.nombre || "-";
   };
 
   const accionesTemplate = (rowData) => {
@@ -556,7 +524,7 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
           className="p-button-rounded p-button-warning p-button-sm"
           onClick={() => handleEditarPago(rowData)}
           disabled={readOnly || !permisos?.puedeEditar}
-          tooltip="Editar pago"
+          tooltip="Ver / Editar pago"
         />
         <Button
           icon="pi pi-trash"
@@ -898,14 +866,10 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
             </div>
           </div>
           <div className="mb-3">
-            <Button
-              type="button"
-              label="Registrar Pago"
-              icon="pi pi-plus"
-              className="p-button-success"
-              onClick={handleRegistrarPago}
-              disabled={readOnly || !permisos?.puedeCrear || loading}
-            />
+            <small className="text-500">
+              Los pagos se registran únicamente desde Caja y Bancos. Aquí puede consultarlos,
+              completar sus observaciones y adjuntos y, si tiene el derecho, eliminar un pago erróneo.
+            </small>
           </div>
 
           <DataTable
@@ -919,10 +883,11 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
             <Column field="id" header="ID" style={{ width: "80px" }} />
             <Column header="Fecha Pago" body={fechaPagoTemplate} />
             <Column header="Medio Pago" body={medioPagoTemplate} />
-            <Column header="Moneda Pago" body={monedaPagoTemplate} />
             <Column header="Monto Pagado" body={montoTemplate} />
-            <Column header="Monto Aplicado" body={montoAplicadoTemplate} />
-            <Column field="numeroOperacion" header="N° Operación" />
+            <Column field="numeroOperacion" header="N° Operación Bancaria" />
+            <Column field="refOperacionEspecializadaMovCaja" header="Operación" />
+            <Column header="Período Contable" body={periodoContableTemplate} />
+            <Column header="Adjuntos" body={adjuntosTemplate} style={{ width: "90px" }} />
             <Column header="Acciones" body={accionesTemplate} style={{ width: "120px" }} />
           </DataTable>
         </TabPanel>
@@ -1003,21 +968,38 @@ const DeudaConPersonalForm = forwardRef((props, ref) => {
       {/* Dialog para pagos */}
       <Dialog
         visible={showPagoDialog}
-        style={{ width: "600px" }}
-        header={isEditPago ? "Editar Pago" : "Registrar Pago"}
+        style={{ width: "90vw", maxWidth: "1200px" }}
+        header="Editar Pago"
         modal
+        className="p-fluid"
         onHide={() => setShowPagoDialog(false)}
       >
-        <PagoDeudaPersonalDialog
-          pago={pagoSeleccionado}
-          deudaId={defaultValues?.id}
-          monedaDeudaId={formData.monedaId}
-          saldoPendiente={formData.saldoPendiente}
-          monedas={monedas}
-          mediosPago={mediosPago}
-          onSubmit={handleSubmitPago}
-          onCancel={() => setShowPagoDialog(false)}
-        />
+        {pagoSeleccionado && (
+          <PagoDeudaPersonalForm
+            key={pagoSeleccionado.id}
+            isEdit={true}
+            defaultValues={pagoSeleccionado}
+            deuda={{
+              personalNombre: (() => {
+                const p = personal?.find((x) => Number(x.id) === Number(formData.personalId));
+                return p ? `${p.nombres || ""} ${p.apellidos || ""}`.trim() : "";
+              })(),
+              tipoDeudaNombre: tiposDeuda?.find(
+                (t) => Number(t.id) === Number(formData.tipoDeudaId),
+              )?.nombre,
+              numeroDocumento: formData.numeroDocumento,
+              saldoPendiente: formData.saldoPendiente,
+              moneda: monedas?.find((m) => Number(m.id) === Number(formData.monedaId)),
+            }}
+            mediosPago={mediosPago}
+            periodosContables={periodosContables}
+            onSubmit={handleSubmitPago}
+            onCancel={() => setShowPagoDialog(false)}
+            onAdjuntosCambiados={cargarPagos}
+            readOnly={readOnly || !permisos?.puedeEditar}
+            toast={toast}
+          />
+        )}
       </Dialog>
       <ConfirmDialog />
     </>

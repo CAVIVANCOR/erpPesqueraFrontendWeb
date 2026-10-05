@@ -463,25 +463,51 @@ export default function DeudaConPersonal({ ruta }) {
     setPeriodoContableSeleccionado(null);
   };
 
+  // ════════════════════════════════════════════════════════════
+  // ORDENAMIENTO DE COLUMNAS
+  // La deuda solo trae los IDs de empresa, personal, tipo, moneda y estado; lo que se ve
+  // en la tabla es el nombre. Para que el orden coincida con lo mostrado (y no con el ID),
+  // esas columnas ordenan por el texto visible y los montos por su valor numérico
+  // (Decimal puede llegar como texto y ordenaría "1500" antes que "200").
+  // ════════════════════════════════════════════════════════════
+  const ordenarPor = (obtenerValor) => (e) =>
+    [...e.data].sort((a, b) => {
+      const va = obtenerValor(a);
+      const vb = obtenerValor(b);
+      const resultado =
+        typeof va === "number" && typeof vb === "number"
+          ? va - vb
+          : String(va).localeCompare(String(vb), "es", { sensitivity: "base" });
+      return e.order * resultado;
+    });
+
+  const getEmpresaNombre = (rowData) =>
+    empresas.find((e) => Number(e.id) === Number(rowData.empresaId))?.razonSocial || "";
+
+  const getPersonalNombre = (rowData) => {
+    const pers = personal.find((p) => Number(p.id) === Number(rowData.personalId));
+    return pers ? `${pers.nombres || ""} ${pers.apellidos || ""}`.trim() : "";
+  };
+
+  const getTipoDeudaNombre = (rowData) =>
+    tiposDeuda.find((t) => Number(t.id) === Number(rowData.tipoDeudaId))?.nombre || "";
+
+  const getMonedaCodigo = (rowData) =>
+    monedas.find((m) => Number(m.id) === Number(rowData.monedaId))?.codigoSunat || "";
+
+  const getEstadoDescripcion = (rowData) =>
+    estados.find((e) => Number(e.id) === Number(rowData.estadoId))?.descripcion || "";
+
   const empresaBodyTemplate = (rowData) => {
-    const empresa = empresas.find(
-      (e) => Number(e.id) === Number(rowData.empresaId)
-    );
-    return empresa?.razonSocial || "-";
+    return getEmpresaNombre(rowData) || "-";
   };
 
   const personalBodyTemplate = (rowData) => {
-    const pers = personal.find(
-      (p) => Number(p.id) === Number(rowData.personalId)
-    );
-    return pers?.nombres + " " + pers?.apellidos || "-";
+    return getPersonalNombre(rowData) || "-";
   };
 
   const tipoDeudaBodyTemplate = (rowData) => {
-    const tipo = tiposDeuda.find(
-      (t) => Number(t.id) === Number(rowData.tipoDeudaId)
-    );
-    return tipo?.nombre || "-";
+    return getTipoDeudaNombre(rowData) || "-";
   };
 
   const monedaBodyTemplate = (rowData) => {
@@ -867,21 +893,27 @@ export default function DeudaConPersonal({ ruta }) {
       >
         <Column field="id" header="ID" sortable style={{ minWidth: "80px" }} />
         <Column
+          field="empresaId"
           header="Empresa"
           body={empresaBodyTemplate}
           sortable
+          sortFunction={ordenarPor(getEmpresaNombre)}
           style={{ minWidth: "200px" }}
         />
         <Column
+          field="personalId"
           header="Personal"
           body={personalBodyTemplate}
           sortable
+          sortFunction={ordenarPor(getPersonalNombre)}
           style={{ minWidth: "200px" }}
         />
         <Column
+          field="tipoDeudaId"
           header="Tipo Deuda"
           body={tipoDeudaBodyTemplate}
           sortable
+          sortFunction={ordenarPor(getTipoDeudaNombre)}
           style={{ minWidth: "150px" }}
         />
         <Column
@@ -891,63 +923,85 @@ export default function DeudaConPersonal({ ruta }) {
           style={{ minWidth: "150px" }}
         />
         <Column
+          field="fecha"
           header="Fecha"
           body={(rowData) => fechaBodyTemplate(rowData, "fecha")}
           sortable
+          sortFunction={ordenarPor((d) => (d.fecha ? new Date(d.fecha).getTime() : 0))}
           style={{ minWidth: "120px" }}
         />
         <Column
+          field="fechaVencimiento"
           header="Fecha Venc."
           body={(rowData) => fechaBodyTemplate(rowData, "fechaVencimiento")}
           sortable
+          sortFunction={ordenarPor((d) =>
+            d.fechaVencimiento ? new Date(d.fechaVencimiento).getTime() : 0,
+          )}
           style={{ minWidth: "120px" }}
         />
         <Column
+          field="monedaId"
           header="Moneda"
           body={monedaBodyTemplate}
           sortable
+          sortFunction={ordenarPor(getMonedaCodigo)}
           style={{ minWidth: "100px" }}
         />
         <Column
+          field="montoOriginal"
           header="Monto Original"
           body={(rowData) => montoBodyTemplate(rowData, "montoOriginal")}
           sortable
+          sortFunction={ordenarPor((d) => Number(d.montoOriginal || 0))}
           style={{ minWidth: "120px", textAlign: "right" }}
         />
         <Column
+          field="montoPagadoAnterior"
           header="Pagado Anterior"
           body={(rowData) => montoBodyTemplate(rowData, "montoPagadoAnterior")}
           sortable
+          sortFunction={ordenarPor((d) => Number(d.montoPagadoAnterior || 0))}
           style={{ minWidth: "120px", textAlign: "right" }}
         />
         <Column
+          field="montoPagado"
           header="Monto Pagado"
           body={(rowData) => montoBodyTemplate(rowData, "montoPagado")}
           sortable
+          sortFunction={ordenarPor((d) => Number(d.montoPagado || 0))}
           style={{ minWidth: "120px", textAlign: "right" }}
         />
         <Column
+          field="saldoPendiente"
           header="Saldo Pend."
           body={(rowData) => montoBodyTemplate(rowData, "saldoPendiente")}
           sortable
+          sortFunction={ordenarPor((d) => Number(d.saldoPendiente || 0))}
           style={{ minWidth: "120px", textAlign: "right" }}
         />
         <Column
+          field="esSaldoInicial"
           header="Saldo Inicial"
           body={saldoInicialBodyTemplate}
           sortable
+          sortFunction={ordenarPor((d) => (d.esSaldoInicial ? 1 : 0))}
           style={{ minWidth: "100px", textAlign: "center" }}
         />
         <Column
+          field="estadoId"
           header="Estado"
           body={estadoBodyTemplate}
           sortable
+          sortFunction={ordenarPor(getEstadoDescripcion)}
           style={{ minWidth: "120px" }}
         />
         <Column
+          field="esGerencial"
           header="Gerencial"
           body={(rowData) => booleanBodyTemplate(rowData, "esGerencial")}
           sortable
+          sortFunction={ordenarPor((d) => (d.esGerencial ? 1 : 0))}
           style={{ minWidth: "100px", textAlign: "center" }}
         />
         <Column

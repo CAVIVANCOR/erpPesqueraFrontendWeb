@@ -162,7 +162,9 @@ export default function PersonalForm({
 
   const [areasFisicas, setAreasFisicas] = useState([]);
   const [sedesEmpresa, setSedesEmpresa] = useState([]);
-  const [entidadesComerciales, setEntidadesComerciales] = useState([]);
+  // Ya no se usa la lista aquí (EntidadComercialSelector carga sus propias entidades); se conserva
+  // la carga de combos tal cual para no alterar el orden de Promise.allSettled
+  const [, setEntidadesComerciales] = useState([]);
 
   // Reset profesional y actualización de preview de foto al abrir en modo edición o alta
   useEffect(() => {
@@ -616,9 +618,6 @@ export default function PersonalForm({
 
   // Estado local para las áreas físicas filtradas según sede seleccionada
   const [areasFisicasFiltradas, setAreasFisicasFiltradas] = useState([]);
-  // Estado local para las entidades comerciales filtradas según empresa seleccionada
-  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] =
-    useState([]);
   useEffect(() => {
     // Solo filtra si hay sede seleccionada y áreas físicas cargadas
     const sedeId = watch("sedeEmpresaId");
@@ -642,31 +641,9 @@ export default function PersonalForm({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watch("sedeEmpresaId"), areasFisicas]);
-  // Efecto: Filtrar entidades comerciales por empresa seleccionada
-  useEffect(() => {
-    const empresaId = watch("empresaId");
-    if (empresaId && entidadesComerciales.length > 0) {
-      const empresaIdNum = Number(empresaId);
-      const filtradas = entidadesComerciales.filter(
-        (e) => Number(e.empresaId) === empresaIdNum,
-      );
-      setEntidadesComercialesFiltradas(filtradas);
-
-      // Si la entidad seleccionada no pertenece a la empresa, límpiala
-      if (
-        watch("enlaceEntidadComercialId") &&
-        !filtradas.some(
-          (e) => Number(e.id) === Number(watch("enlaceEntidadComercialId")),
-        )
-      ) {
-        setValue("enlaceEntidadComercialId", null);
-      }
-    } else {
-      setEntidadesComercialesFiltradas([]);
-      setValue("enlaceEntidadComercialId", null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watch("empresaId"), entidadesComerciales]);
+  // EntidadComercial.empresaId está DEPRECIADO: una entidad comercial sirve para todas las empresas.
+  // Por eso ya no se filtra ni se limpia enlaceEntidadComercialId según la empresa del personal
+  // (antes este efecto borraba la selección cuando la empresa no coincidía con entidad.empresaId).
   // --- Normalización profesional de opciones de combos para evitar errores de tipo ---
   // Se fuerza que todos los id de las opciones sean numéricos, para que coincidan con los valores del formulario (también numéricos).
   const empresasNorm = (typeof empresas !== "undefined" ? empresas : []).map(
@@ -1327,7 +1304,7 @@ export default function PersonalForm({
                     error={!!errors.enlaceEntidadComercialId}
                     errorMessage={errors.enlaceEntidadComercialId?.message}
                     placeholder="Seleccione entidad comercial"
-                    label="Facturar a (Comisiones Pesca Industrial)"
+                    label="Enlace con Entidad Comercial"
                   />
                 )}
               />

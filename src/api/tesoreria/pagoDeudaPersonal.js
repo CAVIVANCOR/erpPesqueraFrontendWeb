@@ -48,6 +48,14 @@ export async function pagarDeudaPersonal(deudaId, data) {
   return res.data;
 }
 
+// Copia voucher consolidado y comprobante del pago indicado a los demás pagos de la operación
+export async function sincronizarAdjuntosPagoDeudaPersonal(pagoId) {
+  const res = await axios.put(`${API_URL}/${pagoId}/sincronizar-adjuntos`, null, {
+    headers: getAuthHeaders()
+  });
+  return res.data;
+}
+
 export async function pagarDeudasPersonalMultiple(data) {
   const res = await axios.post(`${API_URL}/pagar-multiple`, data, {
     headers: getAuthHeaders()
