@@ -548,8 +548,6 @@ export default function CuotaPrestamoList({
         delete cuotaLimpia.comisionEditadaManualmente;
         delete cuotaLimpia.seguroEditadoManualmente;
         delete cuotaLimpia.prestamo;
-        delete cuotaLimpia.movimientoCaja;
-        delete cuotaLimpia.asientosContables;
         return cuotaLimpia;
       });
 
@@ -687,8 +685,6 @@ export default function CuotaPrestamoList({
             delete cuotaLimpia.comisionEditadaManualmente;
             delete cuotaLimpia.seguroEditadoManualmente;
             delete cuotaLimpia.prestamo;
-            delete cuotaLimpia.movimientoCaja;
-            delete cuotaLimpia.asientosContables;
             return cuotaLimpia;
           });
           const cuotasActualizadas = await guardarCuotasBulk(prestamoBancarioId, cuotasLimpias);

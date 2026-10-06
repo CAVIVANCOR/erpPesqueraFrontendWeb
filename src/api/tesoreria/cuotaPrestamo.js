@@ -94,16 +94,6 @@ export async function deleteCuotaPrestamo(id) {
 }
 
 /**
- * Registrar pago de una cuota
- */
-export async function registrarPagoCuota(id, data) {
-  const res = await axios.post(`${API_URL}/${id}/pagar`, data, {
-    headers: getAuthHeaders(),
-  });
-  return res.data;
-}
-
-/**
  * Actualizar estados de cuotas vencidas
  */
 export async function actualizarCuotasVencidas() {
