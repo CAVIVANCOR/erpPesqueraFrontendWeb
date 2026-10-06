@@ -31,6 +31,7 @@ const TipoDeudaPersonalForm = ({
       descripcion: "",
       categoriaId: null,
       cuentaContableId: null,
+      cuentaProvisionId: null,
       periodicidad: null,
       activo: true,
     },
@@ -59,6 +60,7 @@ const TipoDeudaPersonalForm = ({
       setValue("descripcion", defaultValues.descripcion || "");
       setValue("categoriaId", defaultValues.categoriaId || null);
       setValue("cuentaContableId", defaultValues.cuentaContableId || null);
+      setValue("cuentaProvisionId", defaultValues.cuentaProvisionId || null);
       setValue("periodicidad", defaultValues.periodicidad || null);
       setValue("activo", defaultValues.activo !== undefined ? defaultValues.activo : true);
     } else {
@@ -67,6 +69,7 @@ const TipoDeudaPersonalForm = ({
         descripcion: "",
         categoriaId: null,
         cuentaContableId: null,
+        cuentaProvisionId: null,
         periodicidad: null,
         activo: true,
       });
@@ -82,6 +85,10 @@ const TipoDeudaPersonalForm = ({
       // El componente PlanCuentaContableSelector envía 0 cuando se limpia
       cuentaContableId: (data.cuentaContableId !== null && data.cuentaContableId !== undefined)
         ? Number(data.cuentaContableId)
+        : null,
+      // Igual que la cuenta contable: 0 limpia la cuenta de provisión
+      cuentaProvisionId: (data.cuentaProvisionId !== null && data.cuentaProvisionId !== undefined)
+        ? Number(data.cuentaProvisionId)
         : null,
       periodicidad: data.periodicidad || null,
       activo: Boolean(data.activo),
@@ -219,6 +226,27 @@ const TipoDeudaPersonalForm = ({
               required={false}
               error={!!errors.cuentaContableId}
               errorMessage={errors.cuentaContableId?.message}
+              showClearButton={true}
+            />
+          )}
+        />
+      </div>
+
+      {/* Cuenta de Provisión (gasto que se carga al provisionar la planilla) */}
+      <div className="field">
+        <Controller
+          name="cuentaProvisionId"
+          control={control}
+          render={({ field }) => (
+            <PlanCuentaContableSelector
+              value={(field.value !== null && field.value !== undefined) ? Number(field.value) : null}
+              onChange={(id) => field.onChange(id)}
+              label="Cuenta de Provisión (Gasto)"
+              placeholder="Elegir Cuenta de Provisión"
+              disabled={loading}
+              required={false}
+              error={!!errors.cuentaProvisionId}
+              errorMessage={errors.cuentaProvisionId?.message}
               showClearButton={true}
             />
           )}

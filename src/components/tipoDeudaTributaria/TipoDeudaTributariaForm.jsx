@@ -38,6 +38,7 @@ const TipoDeudaTributariaForm = ({
       entidadRecaudadoraId: null,
       periodicidad: "MENSUAL",
       cuentaContableId: null,
+      cuentaProvisionId: null,
       tipoLibroId: null,
       activo: true,
     },
@@ -85,6 +86,7 @@ const TipoDeudaTributariaForm = ({
       );
       setValue("periodicidad", defaultValues.periodicidad || "MENSUAL");
       setValue("cuentaContableId", defaultValues.cuentaContableId || null);
+      setValue("cuentaProvisionId", defaultValues.cuentaProvisionId || null);
       setValue("tipoLibroId", defaultValues.tipoLibroId || null);
       setValue(
         "activo",
@@ -98,6 +100,7 @@ const TipoDeudaTributariaForm = ({
         entidadRecaudadoraId: null,
         periodicidad: "MENSUAL",
         cuentaContableId: null,
+        cuentaProvisionId: null,
         tipoLibroId: null,
         activo: true,
       });
@@ -117,6 +120,10 @@ const TipoDeudaTributariaForm = ({
       // El componente PlanCuentaContableSelector envía 0 cuando se limpia
       cuentaContableId: (data.cuentaContableId !== null && data.cuentaContableId !== undefined)
         ? Number(data.cuentaContableId)
+        : null,
+      // Igual que la cuenta contable: 0 limpia la cuenta de provisión
+      cuentaProvisionId: (data.cuentaProvisionId !== null && data.cuentaProvisionId !== undefined)
+        ? Number(data.cuentaProvisionId)
         : null,
       tipoLibroId: data.tipoLibroId ? Number(data.tipoLibroId) : null,
       activo: Boolean(data.activo),
@@ -311,6 +318,27 @@ const TipoDeudaTributariaForm = ({
               required={false}
               error={!!errors.cuentaContableId}
               errorMessage={errors.cuentaContableId?.message}
+              showClearButton={true}
+            />
+          )}
+        />
+      </div>
+
+      {/* Cuenta de Provisión (gasto que se carga al provisionar el tributo) */}
+      <div className="field mt-4">
+        <Controller
+          name="cuentaProvisionId"
+          control={control}
+          render={({ field }) => (
+            <PlanCuentaContableSelector
+              value={(field.value !== null && field.value !== undefined) ? Number(field.value) : null}
+              onChange={(id) => field.onChange(id)}
+              label="Cuenta de Provisión (Gasto)"
+              placeholder="Elegir Cuenta de Provisión"
+              disabled={loading}
+              required={false}
+              error={!!errors.cuentaProvisionId}
+              errorMessage={errors.cuentaProvisionId?.message}
               showClearButton={true}
             />
           )}

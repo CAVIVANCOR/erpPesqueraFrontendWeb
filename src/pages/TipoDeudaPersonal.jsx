@@ -254,6 +254,12 @@ export default function TipoDeudaPersonal({ ruta }) {
       : "-";
   };
 
+  const cuentaProvisionBodyTemplate = (rowData) => {
+    return rowData.cuentaProvision
+      ? `${rowData.cuentaProvision.codigoCuenta} - ${rowData.cuentaProvision.nombreCuenta}`
+      : "-";
+  };
+
 const periodicidadBodyTemplate = (rowData) => getFrecuenciaPagoLabel(rowData.periodicidad);
 
 
@@ -439,6 +445,12 @@ const periodicidadBodyTemplate = (rowData) => getFrecuenciaPagoLabel(rowData.per
         <Column
           header="Cuenta Contable"
           body={cuentaContableBodyTemplate}
+          sortable
+          style={{ minWidth: "250px" }}
+        />
+        <Column
+          header="Cuenta de Provisión"
+          body={cuentaProvisionBodyTemplate}
           sortable
           style={{ minWidth: "250px" }}
         />

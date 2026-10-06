@@ -258,6 +258,12 @@ export default function TipoDeudaTributaria({ ruta }) {
       : "-";
   };
 
+  const cuentaProvisionBodyTemplate = (rowData) => {
+    return rowData.cuentaProvision
+      ? `${rowData.cuentaProvision.codigoCuenta} - ${rowData.cuentaProvision.nombreCuenta}`
+      : "-";
+  };
+
   const periodicidadBodyTemplate = (rowData) => getFrecuenciaPagoLabel(rowData.periodicidad);
 
 
@@ -454,6 +460,12 @@ export default function TipoDeudaTributaria({ ruta }) {
         <Column
           header="Cuenta Contable"
           body={cuentaContableBodyTemplate}
+          sortable
+          style={{ minWidth: "250px" }}
+        />
+        <Column
+          header="Cuenta de Provisión"
+          body={cuentaProvisionBodyTemplate}
           sortable
           style={{ minWidth: "250px" }}
         />
