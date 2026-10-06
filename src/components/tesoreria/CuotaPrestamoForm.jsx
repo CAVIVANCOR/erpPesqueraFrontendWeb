@@ -5,6 +5,7 @@ import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { getEstadosMultiFuncionPorTipoProvieneDe } from "../../api/estadoMultiFuncion";
+import { ESTADO_CUOTA_PRESTAMO } from "../../utils/utils";
 
 export default function CuotaPrestamoForm({
   isEdit = false,
@@ -25,7 +26,7 @@ export default function CuotaPrestamoForm({
     montoSeguro: defaultValues?.montoSeguro || 0,
     montoTotal: defaultValues?.montoTotal || 0,
     saldoCapitalDespues: defaultValues?.saldoCapitalDespues || 0,
-    estadoPago: defaultValues?.estadoPago || "PENDIENTE",
+    estadoCuotaId: Number(defaultValues?.estadoCuotaId || ESTADO_CUOTA_PRESTAMO.PENDIENTE),
     fechaPago: defaultValues?.fechaPago ? new Date(defaultValues.fechaPago) : new Date(),
     montoPagado: defaultValues?.montoPagado || defaultValues?.montoTotal || 0,
   });
@@ -67,7 +68,7 @@ export default function CuotaPrestamoForm({
         montoSeguro: defaultValues?.montoSeguro || 0,
         montoTotal: defaultValues?.montoTotal || 0,
         saldoCapitalDespues: defaultValues?.saldoCapitalDespues || 0,
-        estadoPago: defaultValues?.estadoPago || "PENDIENTE",
+        estadoCuotaId: Number(defaultValues?.estadoCuotaId || ESTADO_CUOTA_PRESTAMO.PENDIENTE),
         fechaPago: defaultValues?.fechaPago ? new Date(defaultValues.fechaPago) : new Date(),
         montoPagado: defaultValues?.montoPagado || defaultValues?.montoTotal || 0,
       });
@@ -79,7 +80,7 @@ export default function CuotaPrestamoForm({
       const estados = await getEstadosMultiFuncionPorTipoProvieneDe(31);
       const options = estados.map(e => ({
         label: e.descripcion,
-        value: e.descripcion,
+        value: Number(e.id),
       }));
       setEstadosOptions(options);
     } catch (error) {
@@ -107,7 +108,7 @@ export default function CuotaPrestamoForm({
         montoComision: Number(formData.montoComision),
         montoSeguro: Number(formData.montoSeguro),
         montoTotal: Number(formData.montoTotal),
-        estadoPago: formData.estadoPago,
+        estadoCuotaId: Number(formData.estadoCuotaId),
       };
       await onSubmit(dataToSend);
     }
@@ -184,14 +185,14 @@ export default function CuotaPrestamoForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="estadoPago" style={{ fontWeight: "bold" }}>
+          <label htmlFor="estadoCuotaId" style={{ fontWeight: "bold" }}>
             Estado *
           </label>
           <Dropdown
-            id="estadoPago"
-            value={formData.estadoPago}
+            id="estadoCuotaId"
+            value={formData.estadoCuotaId}
             options={estadosOptions}
-            onChange={(e) => handleChange("estadoPago", e.value)}
+            onChange={(e) => handleChange("estadoCuotaId", e.value)}
             required
             disabled
             tooltip="El estado se actualiza automáticamente"

@@ -8,7 +8,7 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import PDFViewerV2 from "../../pdf/PDFViewerV2";
 import AsientoContableViewer from "../../common/AsientoContableViewer";
-import { formatearNumero } from "../../../utils/utils";
+import { formatearNumero, ESTADO_CUOTA_PRESTAMO } from "../../../utils/utils";
 
 /**
  * ════════════════════════════════════════════════════════════
@@ -121,8 +121,8 @@ export default function ConfirmacionOperacionPrestamoDialog({
             header="Estado"
             body={(row) => (
               <Tag
-                value={row.estadoPago === "PAGADO" ? "PAGADO" : "PAGO PARCIAL"}
-                severity={row.estadoPago === "PAGADO" ? "success" : "warning"}
+                value={Number(row.estadoCuotaId) === Number(ESTADO_CUOTA_PRESTAMO.PAGADO) ? "PAGADO" : "PAGO PARCIAL"}
+                severity={Number(row.estadoCuotaId) === Number(ESTADO_CUOTA_PRESTAMO.PAGADO) ? "success" : "warning"}
               />
             )}
           />

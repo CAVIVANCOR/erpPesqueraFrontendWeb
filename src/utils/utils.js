@@ -499,17 +499,6 @@ export const TIPO_GARANTIA_OPTIONS = [
 ];
 
 /**
- * Estado de pago de cuota
- * Schema: enum EstadoPagoCuota
- */
-export const ESTADO_PAGO_CUOTA_OPTIONS = [
-  { label: "PENDIENTE", value: "PENDIENTE" },
-  { label: "PAGADO", value: "PAGADO" },
-  { label: "VENCIDO", value: "VENCIDO" },
-  { label: "PARCIAL", value: "PARCIAL" },
-];
-
-/**
  * Estados de cuotas de préstamo bancario
  * Basado en EstadoMultiFuncion con tipoProvieneDeId = 31
  */

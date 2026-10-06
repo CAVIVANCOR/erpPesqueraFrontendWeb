@@ -718,13 +718,8 @@ export default function CuotaPrestamoList({
   };
 
   const estadoBodyTemplate = (rowData) => {
-    const severity =
-      rowData.estadoPago === "PAGADO"
-        ? "success"
-        : rowData.estadoPago === "VENCIDO"
-          ? "danger"
-          : "warning";
-    return <Tag value={rowData.estadoPago} severity={severity} />;
+    const estado = estadosCuota.find(e => Number(e.id) === Number(rowData.estadoCuotaId));
+    return <Tag value={estado?.descripcion} severity={estado?.severityColor || "secondary"} />;
   };
 
   const fechaBodyTemplate = (rowData) => {
@@ -777,7 +772,7 @@ export default function CuotaPrestamoList({
 
   const cuotasFiltradas = useMemo(() => {
     if (!estadoFiltro) return cuotas;
-    return cuotas.filter(c => c.estadoPago === estadoFiltro);
+    return cuotas.filter(c => Number(c.estadoCuotaId) === Number(estadoFiltro));
   }, [cuotas, estadoFiltro]);
 
   return (
@@ -834,7 +829,7 @@ export default function CuotaPrestamoList({
           rows={20}
           rowsPerPageOptions={[20, 40, 80, 160]}
           filters={filters}
-          globalFilterFields={["numeroCuota", "estadoPago"]}
+          globalFilterFields={["numeroCuota"]}
           emptyMessage="No se encontraron cuotas"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cuotas"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
@@ -883,7 +878,7 @@ export default function CuotaPrestamoList({
                   value={estadoFiltro}
                   options={[
                     { label: "Todos los estados", value: null },
-                    ...estadosCuota.map(e => ({ label: e.descripcion, value: e.descripcion }))
+                    ...estadosCuota.map(e => ({ label: e.descripcion, value: Number(e.id) }))
                   ]}
                   onChange={(e) => setEstadoFiltro(e.value)}
                   placeholder="Filtrar por estado"
@@ -1009,13 +1004,13 @@ export default function CuotaPrestamoList({
             style={{ width: "130px", textAlign: "right", backgroundColor: "#f5f5f5" }}
           />
           <Column
-            field="estadoPago"
+            field="estadoCuotaId"
             header="Estado"
             body={(rowData) => {
-              const estado = estadosCuota.find(e => e.descripcion === rowData.estadoPago);
+              const estado = estadosCuota.find(e => Number(e.id) === Number(rowData.estadoCuotaId));
               return (
                 <Tag
-                  value={rowData.estadoPago}
+                  value={estado?.descripcion}
                   severity={estado?.severityColor || "secondary"}
                 />
               );
