@@ -6,6 +6,7 @@ import FiltrosAsignaciones from './especializados/FiltrosAsignaciones';
 import FiltrosGastosDirectos from './especializados/FiltrosGastosDirectos';
 import FiltrosDeudaPersonal from './especializados/FiltrosDeudaPersonal';
 import FiltrosDeudaTributaria from './especializados/FiltrosDeudaTributaria';
+import FiltrosPrestamo from './especializados/FiltrosPrestamo';
 import ResumenFiltrosActivos from './comunes/ResumenFiltrosActivos';
 import { TIPO_FILTRO_TESORERIA, TIPO_DEUDA_TESORERIA } from '../../../../utils/tesoreria.constants';
 
@@ -35,6 +36,13 @@ const FiltrosController = ({
     }
     if (tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS) {
       return <FiltrosDeudaTributaria {...props} />;
+    }
+    // Préstamos: el "vencimiento" del desembolso es su fecha prevista de desembolso
+    if (tipoDeuda === TIPO_DEUDA_TESORERIA.PRESTAMOS_CUOTAS) {
+      return <FiltrosPrestamo {...props} />;
+    }
+    if (tipoDeuda === TIPO_DEUDA_TESORERIA.PRESTAMOS_DESEMBOLSOS) {
+      return <FiltrosPrestamo {...props} etiquetaFecha="Rango de Fechas de Desembolso" />;
     }
 
     switch (tipo) {

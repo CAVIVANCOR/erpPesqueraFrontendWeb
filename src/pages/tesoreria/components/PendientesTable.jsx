@@ -25,7 +25,7 @@ import {
  *
  * Claves disponibles:
  *   tipo, origen, documento, tipoDeuda, entidad, personal, saldoInicial,
- *   fechaEmision, fechaVencimiento, saldo, estado, acciones
+ *   fechaEmision, fechaVencimiento, saldo, impuesto, estado, acciones
  */
 const COLUMNAS_BASE = [
   "tipo",
@@ -39,13 +39,21 @@ const COLUMNAS_BASE = [
   "acciones",
 ];
 
+// Inserta "Imp. Trib." justo después del saldo del documento
+const conColumnasImpuesto = (c) => (c === "saldo" ? [c, "impuesto"] : [c]);
+
 const COLUMNAS_POR_CASO = {
   // Sin filtro específico (CxC + CxP + Asignaciones + Gastos Directos)
   TODOS: COLUMNAS_BASE,
-  // Cuentas por Cobrar
-  COBRAR: COLUMNAS_BASE,
-  // Cuentas por Pagar
-  PAGAR: COLUMNAS_BASE,
+  // Cuentas por Cobrar: se agrega la casilla de selección para el cobro múltiple de facturas
+  // de un cliente ("Cobrar seleccionados"); se conserva "acciones" para el cobro individual.
+  // También "Imp. Trib." (igual que Cuentas por Pagar)
+  COBRAR: ["seleccion", ...COLUMNAS_BASE.flatMap(conColumnasImpuesto)],
+  // Cuentas por Pagar: se agrega "Imp. Trib." (% de detracción, retención o percepción)
+  // para identificar a simple vista los documentos con impuesto, y la casilla de selección
+  // para el pago múltiple de facturas de un proveedor ("Pagar seleccionados");
+  // se conserva "acciones" para el pago individual
+  PAGAR: ["seleccion", ...COLUMNAS_BASE.flatMap(conColumnasImpuesto)],
   // Asignaciones de fondos (Entregas a Rendir):
   // la contraparte es el responsable (trabajador), por eso se muestra "Personal"
   ASIGNACIONES: COLUMNAS_BASE.map((c) => (c === "entidad" ? "personal" : c)),
@@ -78,6 +86,36 @@ const COLUMNAS_POR_CASO = {
       .map((c) => (c === "documento" ? "tipoDeuda" : c))
       .flatMap((c) => (c === "estado" ? ["saldoInicial", c] : [c])),
   ],
+  // Préstamos - Cuotas (tabla CuotaPrestamo): egreso. La entidad es el banco y se agrega la
+  // composición de la cuota (capital / interés / otros) y "S. Inicial".
+  // Sin "acciones": el pago se hace con "Pagar seleccionados" (cuotas de UN mismo préstamo)
+  PRESTAMOS_CUOTAS: [
+    "seleccion",
+    "tipo",
+    "origen",
+    "documento",
+    "entidad",
+    "fechaVencimiento",
+    "composicion",
+    "saldo",
+    "saldoInicial",
+    "estado",
+  ],
+  // Préstamos - Desembolsos (tabla PrestamoBancario): ingreso. "F. Emisión" = fecha del contrato y
+  // "F. Vencimiento" = fecha prevista de desembolso.
+  // Sin "acciones": el ingreso se registra con "Registrar desembolso"
+  PRESTAMOS_DESEMBOLSOS: [
+    "seleccion",
+    "tipo",
+    "origen",
+    "documento",
+    "entidad",
+    "fechaEmision",
+    "fechaVencimiento",
+    "composicion",
+    "saldo",
+    "estado",
+  ],
 };
 
 /**
@@ -87,6 +125,8 @@ const COLUMNAS_POR_CASO = {
 const resolverCaso = (tipo, tipoDeuda) => {
   if (tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL) return "DEUDAS_PERSONAL";
   if (tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS) return "DEUDAS_TRIBUTARIAS";
+  if (tipoDeuda === TIPO_DEUDA_TESORERIA.PRESTAMOS_CUOTAS) return "PRESTAMOS_CUOTAS";
+  if (tipoDeuda === TIPO_DEUDA_TESORERIA.PRESTAMOS_DESEMBOLSOS) return "PRESTAMOS_DESEMBOLSOS";
   if (tipo === TIPO_FILTRO_TESORERIA.COBRAR) return "COBRAR";
   if (tipo === TIPO_FILTRO_TESORERIA.PAGAR) return "PAGAR";
   if (tipo === TIPO_FILTRO_TESORERIA.ASIGNACIONES) return "ASIGNACIONES";
@@ -171,6 +211,27 @@ const PendientesTable = ({
     );
   };
 
+  // Impuesto tributario unificado (mismo criterio que OrdenCompra.jsx): solo uno aplica por
+  // documento. Prioridad: Detracción > Retención > Percepción
+  const impuestoTemplate = (rowData) => {
+    const impuesto = rowData.impuestoTributario;
+    if (!impuesto) return <span style={{ color: "#999" }}>-</span>;
+
+    const porcentaje = Number(impuesto.porcentaje || 0).toFixed(2);
+    const presentacion = {
+      DETRACCION: { texto: `📊 Detrac ${porcentaje}%`, severity: "warning" },
+      RETENCION: { texto: `💰 Reten ${porcentaje}%`, severity: "help" },
+      PERCEPCION: { texto: `📈 Percep ${porcentaje}%`, severity: "info" },
+    }[impuesto.tipo];
+    if (!presentacion) return <span style={{ color: "#999" }}>-</span>;
+
+    return (
+      <div style={{ textAlign: "center" }}>
+        <Tag value={presentacion.texto} severity={presentacion.severity} style={{ fontSize: "0.75rem" }} />
+      </div>
+    );
+  };
+
   const fechaEmisionTemplate = (rowData) => {
     return (
       <div style={{ fontSize: "0.875rem" }}>
@@ -218,13 +279,49 @@ const PendientesTable = ({
     );
   };
 
+  // Composición de la cuota (capital / interés / otros) o tipo de préstamo del desembolso
+  const composicionTemplate = (rowData) => {
+    if (rowData.cuota) {
+      const simbolo = rowData.moneda?.simbolo;
+      const otros =
+        Number(rowData.cuota.montoComision || 0) + Number(rowData.cuota.montoSeguro || 0);
+      return (
+        <div style={{ fontSize: "0.8rem", lineHeight: 1.35 }}>
+          <div>Capital: {simbolo} {formatearNumero(rowData.cuota.montoCapital)}</div>
+          <div>Interés: {simbolo} {formatearNumero(rowData.cuota.montoInteres)}</div>
+          {otros > 0 && <div>Com./Seg.: {simbolo} {formatearNumero(otros)}</div>}
+        </div>
+      );
+    }
+    return (
+      <div style={{ fontSize: "0.8rem" }}>
+        {rowData.prestamo?.tipoPrestamo || "-"}
+        {rowData.prestamo?.esFactoring && (
+          <Tag value="FACTORING" severity="info" style={{ fontSize: "0.65rem", marginLeft: 6 }} />
+        )}
+      </div>
+    );
+  };
+
   const estadoTemplate = (rowData) => {
     const severityColor = rowData.estado?.severityColor || "secondary";
     return (
-      <Tag
-        value={rowData.estado?.descripcion}
-        severity={severityColor}
-      />
+      <div className="flex flex-column gap-1 align-items-start">
+        <Tag
+          value={rowData.estado?.descripcion}
+          severity={severityColor}
+        />
+        {/* Cuota de préstamo que vence antes del corte del saldo inicial y aún no está marcada como histórica */}
+        {rowData.vencidaAntesDelCorte && (
+          <Tag
+            value="ANTES DEL CORTE"
+            severity="warning"
+            icon="pi pi-exclamation-triangle"
+            style={{ fontSize: "0.65rem" }}
+            tooltip="Vence antes del 01/01/2026. Si ya se pagó el año pasado, márquela como histórica (saldo inicial) en el cronograma del préstamo antes de pagarla aquí."
+          />
+        )}
+      </div>
     );
   };
 
@@ -338,11 +435,17 @@ const PendientesTable = ({
       field: "fechaVencimiento",
     },
     saldo: { header: "Saldo Pendiente", body: montoTemplate, style: { width: "180px" } },
+    impuesto: {
+      header: "Imp. Trib.",
+      body: impuestoTemplate,
+      style: { width: "120px", textAlign: "center" },
+    },
     saldoInicial: {
       header: "S. Inicial",
       body: saldoInicialTemplate,
       style: { width: "100px", textAlign: "center" },
     },
+    composicion: { header: "Composición", body: composicionTemplate, style: { width: "190px" } },
     estado: { header: "Estado", body: estadoTemplate, style: { width: "120px" } },
     acciones: {
       header: "Acciones",
@@ -361,7 +464,7 @@ const PendientesTable = ({
     <DataTable
       value={pendientes}
       loading={loading}
-      {...(claveCaso === "DEUDAS_PERSONAL" || claveCaso === "DEUDAS_TRIBUTARIAS"
+      {...(claveCaso === "DEUDAS_PERSONAL" || claveCaso === "DEUDAS_TRIBUTARIAS" || claveCaso === "COBRAR" || claveCaso === "PAGAR" || claveCaso === "PRESTAMOS_CUOTAS" || claveCaso === "PRESTAMOS_DESEMBOLSOS"
         ? { selection: seleccion, onSelectionChange: (e) => onSeleccionChange?.(e.value), dataKey: "id" }
         : {})}
       paginator

@@ -108,3 +108,21 @@ export async function actualizarUrlComprobanteImpuesto(pagoId, urlPdf) {
   );
   return res.data;
 }
+
+/**
+ * Cobro múltiple: varias facturas de un cliente con un solo ingreso consolidado
+ */
+export async function cobrarFacturasMultiple(data) {
+  const res = await axios.post(`${API_URL}/cobrar-multiple`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Copia el voucher consolidado del pago indicado a los demás pagos de la misma operación
+ */
+export async function sincronizarVoucherCobroMultiple(pagoId) {
+  const res = await axios.put(`${API_URL}/pago/${pagoId}/sincronizar-voucher`, null, {
+    headers: getAuthHeaders(),
+  });
+  return res.data;
+}

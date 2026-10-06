@@ -347,10 +347,19 @@ const PendientesHeader = ({
       );
     }
 
-    const datos =
-      tipo.value === TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL
-        ? resumen.deudasPersonales
-        : resumen.deudasTributarias;
+    // Datos del resumen por botón (Personal, Tributarias y las dos secciones de Préstamos)
+    const datos = {
+      [TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL]: resumen.deudasPersonales,
+      [TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS]: resumen.deudasTributarias,
+      [TIPO_DEUDA_TESORERIA.PRESTAMOS_DESEMBOLSOS]: resumen.prestamosDesembolsos,
+      [TIPO_DEUDA_TESORERIA.PRESTAMOS_CUOTAS]: resumen.prestamosCuotas,
+    }[tipo.value];
+    const unidadDocumentos = {
+      [TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL]: "deudas",
+      [TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS]: "tributos",
+      [TIPO_DEUDA_TESORERIA.PRESTAMOS_DESEMBOLSOS]: "préstamos",
+      [TIPO_DEUDA_TESORERIA.PRESTAMOS_CUOTAS]: "cuotas",
+    }[tipo.value];
 
     if (!datos || datos.length === 0) {
       return (
@@ -394,7 +403,7 @@ const PendientesHeader = ({
           className="text-xs mt-1"
           style={{ color: "#6c757d", fontWeight: "500", fontSize: "0.65rem" }}
         >
-          ({totalDocs} {tipo.value === TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL ? "deudas" : "tributos"})
+          ({totalDocs} {unidadDocumentos})
         </div>
       </div>
     );
@@ -427,7 +436,7 @@ const PendientesHeader = ({
   ];
 
 
-  // 🆕 Opciones de Deudas (Personal y Tributaria)
+  // 🆕 Opciones de Deudas (Personal y Tributaria) y de Préstamos (desembolsos = ingreso, cuotas = egreso)
   const deudasOptions = [
     {
       ...LABELS_TIPO_DEUDA[TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL],
@@ -436,6 +445,14 @@ const PendientesHeader = ({
     {
       ...LABELS_TIPO_DEUDA[TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS],
       value: TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS,
+    },
+    {
+      ...LABELS_TIPO_DEUDA[TIPO_DEUDA_TESORERIA.PRESTAMOS_DESEMBOLSOS],
+      value: TIPO_DEUDA_TESORERIA.PRESTAMOS_DESEMBOLSOS,
+    },
+    {
+      ...LABELS_TIPO_DEUDA[TIPO_DEUDA_TESORERIA.PRESTAMOS_CUOTAS],
+      value: TIPO_DEUDA_TESORERIA.PRESTAMOS_CUOTAS,
     },
   ];
 
@@ -534,61 +551,8 @@ const PendientesHeader = ({
               {getDeudasLabel(option)}
             </Button>
           ))}
-
-          {/* Botones de Financieros (Placeholder por ahora) */}
-          <Button
-            icon="pi pi-money-bill"
-            severity="success"
-            outlined
-            disabled
-            style={{
-              flex: "1 1 calc(12.5% - 8px)",
-              minWidth: "90px",
-              minHeight: "85px",
-              padding: "0.4rem",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "0.75rem",
-            }}
-          >
-            <div className="text-center">
-              <div className="font-bold mb-1" style={{ fontSize: "0.75rem" }}>
-                Financ. Ingresos
-              </div>
-              <div className="text-xs" style={{ color: "#6c757d", fontSize: "0.65rem" }}>
-                (Próximamente)
-              </div>
-            </div>
-          </Button>
-
-          <Button
-            icon="pi pi-wallet"
-            severity="danger"
-            outlined
-            disabled
-            style={{
-              flex: "1 1 calc(12.5% - 8px)",
-              minWidth: "90px",
-              minHeight: "85px",
-              padding: "0.4rem",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "0.75rem",
-            }}
-          >
-            <div className="text-center">
-              <div className="font-bold mb-1" style={{ fontSize: "0.75rem" }}>
-                Financ. Pagos
-              </div>
-              <div className="text-xs" style={{ color: "#6c757d", fontSize: "0.65rem" }}>
-                (Próximamente)
-              </div>
-            </div>
-          </Button>
+          {/* Los botones "Financ. Ingresos / Financ. Pagos" (próximamente) quedaron reemplazados por
+              los botones de Préstamos (Desembolsos y Cuotas) de deudasOptions */}
         </div>
       </div>
 

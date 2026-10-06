@@ -61,6 +61,8 @@ const FiltrosDialog = ({
   const getTitulo = () => {
     if (tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL) return 'Deudas con Personal';
     if (tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS) return 'Deudas Tributarias';
+    if (tipoDeuda === TIPO_DEUDA_TESORERIA.PRESTAMOS_CUOTAS) return 'Cuotas de Préstamos';
+    if (tipoDeuda === TIPO_DEUDA_TESORERIA.PRESTAMOS_DESEMBOLSOS) return 'Desembolsos de Préstamos';
     switch (tipo) {
       case TIPO_FILTRO_TESORERIA.TODOS:
         return 'Todos los Documentos';

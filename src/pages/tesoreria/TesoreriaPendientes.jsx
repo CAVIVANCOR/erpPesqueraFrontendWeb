@@ -19,6 +19,12 @@ import PagoDeudasPersonalEspecializadoForm from "../../components/movimientoCaja
 import usePagarDeudasPersonalMultiple from "../../components/movimientoCaja/DeudasPersonalPagoEspecializado/usePagarDeudasPersonalMultiple";
 import PagoDeudasTributariasEspecializadoForm from "../../components/movimientoCaja/DeudasTributariasPagoEspecializado/PagoDeudasTributariasEspecializadoForm";
 import usePagarDeudasTributariasMultiple from "../../components/movimientoCaja/DeudasTributariasPagoEspecializado/usePagarDeudasTributariasMultiple";
+import CobroMultipleEspecializadoForm from "../../components/pagoCuentaPorCobrar/CobroMultipleEspecializado/CobroMultipleEspecializadoForm";
+import useCobrarFacturasMultiple from "../../components/pagoCuentaPorCobrar/CobroMultipleEspecializado/useCobrarFacturasMultiple";
+import PagoMultipleEspecializadoForm from "../../components/pagoCuentaPorPagar/PagoMultipleEspecializado/PagoMultipleEspecializadoForm";
+import usePagarFacturasMultiple from "../../components/pagoCuentaPorPagar/PagoMultipleEspecializado/usePagarFacturasMultiple";
+import OperacionPrestamoForm from "../../components/movimientoCaja/PrestamosPagoEspecializado/OperacionPrestamoForm";
+import useOperacionPrestamo from "../../components/movimientoCaja/PrestamosPagoEspecializado/useOperacionPrestamo";
 import PagarDeudaPersonalDialog from "../../components/tesoreria/PagarDeudaPersonalDialog";
 import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ AGREGAR
 import PagarDeudaTributariaDialog from "../../components/tesoreria/PagarDeudaTributariaDialog";
@@ -204,16 +210,61 @@ const TesoreriaPendientes = () => {
       },
     });
 
-  // Sección de deuda activa: determina qué filas se pueden seleccionar y qué formulario se abre
+  const { cobrarFacturas: cobrarFacturasMultiple, loading: loadingCobroMultiple } =
+    useCobrarFacturasMultiple({
+      toast,
+      onSuccess: () => {
+        setSeleccionDeudas([]);
+        recargarPendientes();
+        recargarSaldos();
+      },
+    });
+
+  const { pagarFacturas: pagarFacturasMultiple, loading: loadingPagoFacturasMultiple } =
+    usePagarFacturasMultiple({
+      toast,
+      onSuccess: () => {
+        setSeleccionDeudas([]);
+        recargarPendientes();
+        recargarSaldos();
+      },
+    });
+
+  const { pagarCuotas: pagarCuotasPrestamo, desembolsar: desembolsarPrestamo, loading: loadingOperacionPrestamo } =
+    useOperacionPrestamo({
+      toast,
+      onSuccess: () => {
+        setSeleccionDeudas([]);
+        recargarPendientes();
+        recargarSaldos();
+      },
+    });
+
+  // Sección activa: determina qué filas se pueden seleccionar y qué formulario se abre
   const esDeudasPersonal = filtros.tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_PERSONAL;
   const esDeudasTributarias = filtros.tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS;
-  const esFilaDeudaActiva = (p) => (esDeudasTributarias ? p.esDeudaTributaria : p.esDeudaPersonal);
+  // Préstamos: pago de cuotas (egreso) y desembolso (ingreso), con un formulario común de dos modos
+  const esPrestamoCuotas = filtros.tipoDeuda === TIPO_DEUDA_TESORERIA.PRESTAMOS_CUOTAS;
+  const esPrestamoDesembolsos = filtros.tipoDeuda === TIPO_DEUDA_TESORERIA.PRESTAMOS_DESEMBOLSOS;
+  const hayFiltroDeuda =
+    esDeudasPersonal || esDeudasTributarias || esPrestamoCuotas || esPrestamoDesembolsos;
+  // Cuentas por Cobrar (sin filtro de deuda): cobro múltiple de facturas de un cliente
+  const esCobrar = !hayFiltroDeuda && filtros.tipo === TIPO_FILTRO_TESORERIA.COBRAR;
+  // Cuentas por Pagar (sin filtro de deuda): pago múltiple de facturas de un proveedor
+  const esPagar = !hayFiltroDeuda && filtros.tipo === TIPO_FILTRO_TESORERIA.PAGAR;
+  const esFilaSeleccionable = (p) => {
+    if (esCobrar) return p.esCuentaPorCobrar;
+    if (esPagar) return p.esCuentaPorPagar;
+    if (esPrestamoCuotas) return p.esCuotaPrestamo;
+    if (esPrestamoDesembolsos) return p.esDesembolsoPrestamo;
+    return esDeudasTributarias ? p.esDeudaTributaria : p.esDeudaPersonal;
+  };
 
-  // Selección vigente: solo filas de la sección de deuda activa que siguen en la lista actual
-  // (los IDs de DeudaConPersonal y DeudaTributaria pueden coincidir entre sí)
+  // Selección vigente: solo filas de la sección activa que siguen en la lista actual
+  // (los IDs de DeudaConPersonal, DeudaTributaria, CuentaPorCobrar y CuentaPorPagar pueden coincidir entre sí)
   const deudasSeleccionadas = useMemo(
-    () => seleccionDeudas.filter((s) => pendientes.some((p) => esFilaDeudaActiva(p) && p.id === s.id)),
-    [seleccionDeudas, pendientes, esDeudasTributarias],
+    () => seleccionDeudas.filter((s) => pendientes.some((p) => esFilaSeleccionable(p) && p.id === s.id)),
+    [seleccionDeudas, pendientes, esDeudasTributarias, esCobrar, esPagar, esPrestamoCuotas, esPrestamoDesembolsos],
   );
 
   const etiquetaTotalSeleccion = useMemo(() => {
@@ -535,12 +586,28 @@ const TesoreriaPendientes = () => {
   // Pago múltiple: toma las filas frescas de la lista, no las del estado de selección
   const handlePagarSeleccionadas = () => {
     const ids = new Set(deudasSeleccionadas.map((d) => d.id));
-    setTipoPagoMultiple(esDeudasTributarias ? "TRIBUTARIA" : "PERSONAL");
-    setDeudasPagoMultiple(pendientes.filter((p) => esFilaDeudaActiva(p) && ids.has(p.id)));
+    setTipoPagoMultiple(
+      esCobrar
+        ? "COBRAR"
+        : esPagar
+          ? "PAGAR"
+          : esPrestamoCuotas
+            ? "PRESTAMO_CUOTAS"
+            : esPrestamoDesembolsos
+              ? "PRESTAMO_DESEMBOLSO"
+              : esDeudasTributarias
+                ? "TRIBUTARIA"
+                : "PERSONAL",
+    );
+    setDeudasPagoMultiple(pendientes.filter((p) => esFilaSeleccionable(p) && ids.has(p.id)));
   };
 
   // Devuelve el resultado: el formulario lo necesita para generar vouchers y la confirmación
   const handleGuardarPagoMultiple = async (formData) => {
+    if (tipoPagoMultiple === "COBRAR") return await cobrarFacturasMultiple(formData);
+    if (tipoPagoMultiple === "PAGAR") return await pagarFacturasMultiple(formData);
+    if (tipoPagoMultiple === "PRESTAMO_CUOTAS") return await pagarCuotasPrestamo(formData);
+    if (tipoPagoMultiple === "PRESTAMO_DESEMBOLSO") return await desembolsarPrestamo(formData);
     return tipoPagoMultiple === "TRIBUTARIA"
       ? await pagarDeudasTributariasMultiple(formData)
       : await pagarDeudasMultiple(formData);
@@ -654,9 +721,9 @@ const TesoreriaPendientes = () => {
         title={
           <div className="flex justify-content-between align-items-center">
             <span>📋 Documentos Pendientes</span>
-            {(esDeudasPersonal || esDeudasTributarias) && permisos.puedeCrear && (
+            {(hayFiltroDeuda || esCobrar || esPagar) && permisos.puedeCrear && (
               <Button
-                label={`Pagar seleccionados (${deudasSeleccionadas.length})${etiquetaTotalSeleccion ? ` · ${etiquetaTotalSeleccion}` : ""}`}
+                label={`${esCobrar ? "Cobrar" : esPrestamoDesembolsos ? "Registrar desembolso" : "Pagar"}${esPrestamoDesembolsos ? "" : " seleccionados"} (${deudasSeleccionadas.length})${etiquetaTotalSeleccion ? ` · ${etiquetaTotalSeleccion}` : ""}`}
                 icon="pi pi-money-bill"
                 severity="success"
                 disabled={deudasSeleccionadas.length === 0}
@@ -786,6 +853,84 @@ const TesoreriaPendientes = () => {
             onSubmit={handleGuardarPagoMultiple}
             onCancel={handleCancelarPagoMultiple}
             loading={loadingPagoMultiple}
+            toast={toast}
+          />
+        </Dialog>
+      )}
+
+      {/* Diálogo de cobro múltiple (especializado) de facturas de un cliente */}
+      {deudasPagoMultiple && tipoPagoMultiple === "COBRAR" && (
+        <Dialog
+          header="💰 Cobrar Facturas del Cliente"
+          visible={true}
+          style={{ width: "1300px" }}
+          onHide={handleCancelarPagoMultiple}
+          modal
+          maximizable
+        >
+          <CobroMultipleEspecializadoForm
+            cuentasPorCobrar={deudasPagoMultiple}
+            cuentasCorrientes={saldosCuentas}
+            mediosPago={mediosPago}
+            tiposMovimiento={tiposMovimiento}
+            empresas={empresas}
+            onSubmit={handleGuardarPagoMultiple}
+            onCancel={handleCancelarPagoMultiple}
+            loading={loadingCobroMultiple}
+            toast={toast}
+          />
+        </Dialog>
+      )}
+
+      {/* Diálogo de operaciones de préstamo (especializado): pago de cuotas (egreso) o desembolso (ingreso) */}
+      {deudasPagoMultiple &&
+        (tipoPagoMultiple === "PRESTAMO_CUOTAS" || tipoPagoMultiple === "PRESTAMO_DESEMBOLSO") && (
+          <Dialog
+            header={
+              tipoPagoMultiple === "PRESTAMO_DESEMBOLSO"
+                ? "🏦 Desembolso de Préstamo"
+                : "🏦 Pago de Cuotas de Préstamo"
+            }
+            visible={true}
+            style={{ width: "1300px" }}
+            onHide={handleCancelarPagoMultiple}
+            modal
+            maximizable
+          >
+            <OperacionPrestamoForm
+              modo={tipoPagoMultiple === "PRESTAMO_DESEMBOLSO" ? "DESEMBOLSO" : "PAGO_CUOTAS"}
+              filas={deudasPagoMultiple}
+              cuentasCorrientes={saldosCuentas}
+              mediosPago={mediosPago}
+              tiposMovimiento={tiposMovimiento}
+              empresas={empresas}
+              onSubmit={handleGuardarPagoMultiple}
+              onCancel={handleCancelarPagoMultiple}
+              loading={loadingOperacionPrestamo}
+              toast={toast}
+            />
+          </Dialog>
+        )}
+
+      {/* Diálogo de pago múltiple (especializado) de facturas de un proveedor */}
+      {deudasPagoMultiple && tipoPagoMultiple === "PAGAR" && (
+        <Dialog
+          header="💸 Pagar Facturas del Proveedor"
+          visible={true}
+          style={{ width: "1300px" }}
+          onHide={handleCancelarPagoMultiple}
+          modal
+          maximizable
+        >
+          <PagoMultipleEspecializadoForm
+            cuentasPorPagar={deudasPagoMultiple}
+            cuentasCorrientes={saldosCuentas}
+            mediosPago={mediosPago}
+            tiposMovimiento={tiposMovimiento}
+            empresas={empresas}
+            onSubmit={handleGuardarPagoMultiple}
+            onCancel={handleCancelarPagoMultiple}
+            loading={loadingPagoFacturasMultiple}
             toast={toast}
           />
         </Dialog>
