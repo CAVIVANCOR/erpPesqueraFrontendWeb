@@ -5,7 +5,7 @@ import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { Tag } from "primereact/tag";
 import { Toast } from "primereact/toast";
-import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { ConfirmDialog } from "primereact/confirmdialog";
 import { Calendar } from "primereact/calendar";
 import { InputNumber } from "primereact/inputnumber";
 import { FilterMatchMode } from "primereact/api";
@@ -16,6 +16,7 @@ import {
   generarCronogramaCuotas,
   guardarCuotasBulk,
   marcarCuotaSaldoInicial,
+  desmarcarCuotaSaldoInicial,
   updateCuotaPrestamo,
 } from "../../api/tesoreria/cuotaPrestamo";
 import { getResponsiveFontSize, ESTADO_CUOTA_PRESTAMO } from "../../utils/utils";
@@ -148,43 +149,103 @@ export default function CuotaPrestamoList({
     }
   };
 
-  const handleMarcarSaldoInicial = (cuota) => {
-    confirmDialog({
-      message: `¿Marcar cuota #${cuota.numeroCuota} como Historico?\n\nEsta acción:\n• Marcará la cuota como pagada el 31/12/2025\n• Actualizará los saldos del préstamo\n• No se puede deshacer fácilmente`,
-      header: "Confirmar Historico",
-      icon: "pi pi-exclamation-triangle",
-      acceptLabel: "Confirmar",
-      rejectLabel: "Cancelar",
-      accept: async () => {
-        try {
-          setLoading(true);
-          await marcarCuotaSaldoInicial(cuota.id);
-          toast.current.show({
-            severity: "success",
-            summary: "Éxito",
-            detail: `Cuota #${cuota.numeroCuota} marcada como Historico`,
-            life: 3000,
-          });
-          await cargarCuotas();
+  // Confirmación controlada por estado: al recibir `message`, el ConfirmDialog no escucha a
+  // confirmDialog() global, así que no se abre junto a los de otros componentes de la pantalla
+  const [confirmacion, setConfirmacion] = useState({ visible: false, tipo: null, cuota: null });
+  const cerrarConfirmacion = () => setConfirmacion({ visible: false, tipo: null, cuota: null });
 
-          // Notificar al padre que las cuotas cambiaron
-          if (onCuotasChanged) {
-            onCuotasChanged();
-          }
-        } catch (error) {
-          console.error("Error al marcar Historico:", error);
-          toast.current.show({
-            severity: "error",
-            summary: "Error",
-            detail: error.response?.data?.message || "Error al marcar Historico",
-            life: 5000,
-          });
-        } finally {
-          setLoading(false);
-        }
-      },
-    });
+  const handleMarcarSaldoInicial = (cuota) =>
+    setConfirmacion({ visible: true, tipo: "marcar", cuota });
+
+  const handleDesmarcarSaldoInicial = (cuota) =>
+    setConfirmacion({ visible: true, tipo: "desmarcar", cuota });
+
+  const ejecutarCambioHistorico = async (cuota, desmarcar) => {
+    try {
+      setLoading(true);
+      if (desmarcar) {
+        await desmarcarCuotaSaldoInicial(cuota.id);
+      } else {
+        await marcarCuotaSaldoInicial(cuota.id);
+      }
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: desmarcar
+          ? `Cuota #${cuota.numeroCuota} ya no es Historico`
+          : `Cuota #${cuota.numeroCuota} marcada como Historico`,
+        life: 3000,
+      });
+      await cargarCuotas();
+
+      // Notificar al padre que las cuotas cambiaron
+      if (onCuotasChanged) {
+        onCuotasChanged();
+      }
+    } catch (error) {
+      console.error("Error al cambiar Historico:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.message ||
+          (desmarcar ? "Error al quitar Historico" : "Error al marcar Historico"),
+        life: 5000,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // Contenido del diálogo según la acción pedida. El mensaje nunca debe quedar vacío: con
+  // `message` vacío el ConfirmDialog volvería a suscribirse a confirmDialog() global
+  const getConfirmacion = () => {
+    const { tipo, cuota } = confirmacion;
+    if (tipo === "marcar") {
+      return {
+        header: "Confirmar Historico",
+        acceptLabel: "Confirmar",
+        rejectLabel: "Cancelar",
+        message: (
+          <span>
+            ¿Marcar la cuota <b>#{cuota.numeroCuota}</b> como Historico?
+            <br />
+            <small>Se registrará como pagada el 31/12/2025.</small>
+          </span>
+        ),
+        accept: () => ejecutarCambioHistorico(cuota, false),
+      };
+    }
+    if (tipo === "desmarcar") {
+      return {
+        header: "Quitar Historico",
+        acceptLabel: "Confirmar",
+        rejectLabel: "Cancelar",
+        message: (
+          <span>
+            ¿Quitar la marca Historico de la cuota <b>#{cuota.numeroCuota}</b>?
+            <br />
+            <small>
+              Quedará sin pagar para registrarla desde Caja con su fecha real. Si el asiento de
+              apertura ya existe, deberá revisarse.
+            </small>
+          </span>
+        ),
+        accept: () => ejecutarCambioHistorico(cuota, true),
+      };
+    }
+    if (tipo === "eliminar") {
+      return {
+        header: "Confirmar Eliminación",
+        acceptLabel: "Sí",
+        rejectLabel: "No",
+        message: <span>¿Está seguro de eliminar la cuota {cuota.numeroCuota}?</span>,
+        accept: () => handleDelete(cuota.id),
+      };
+    }
+    return { header: "", acceptLabel: "Sí", rejectLabel: "No", message: <span />, accept: () => {} };
+  };
+  const confirmacionActual = getConfirmacion();
 
 
   const handleEdit = (cuota) => {
@@ -683,16 +744,7 @@ export default function CuotaPrestamoList({
     };
   }, [cuotas]);
 
-  const confirmDelete = (cuota) => {
-    confirmDialog({
-      message: `¿Está seguro de eliminar la cuota ${cuota.numeroCuota}?`,
-      header: "Confirmar Eliminación",
-      icon: "pi pi-exclamation-triangle",
-      acceptLabel: "Sí",
-      rejectLabel: "No",
-      accept: () => handleDelete(cuota.id),
-    });
-  };
+  const confirmDelete = (cuota) => setConfirmacion({ visible: true, tipo: "eliminar", cuota });
 
   const handleDelete = async (id) => {
     try {
@@ -778,7 +830,19 @@ export default function CuotaPrestamoList({
   return (
     <div>
       <Toast ref={toast} />
-      <ConfirmDialog />
+      <ConfirmDialog
+        visible={confirmacion.visible}
+        onHide={cerrarConfirmacion}
+        message={confirmacionActual.message}
+        header={confirmacionActual.header}
+        icon="pi pi-exclamation-triangle"
+        acceptLabel={confirmacionActual.acceptLabel}
+        rejectLabel={confirmacionActual.rejectLabel}
+        accept={confirmacionActual.accept}
+        reject={cerrarConfirmacion}
+        style={{ width: "26rem" }}
+        breakpoints={{ "640px": "90vw" }}
+      />
 
       <Dialog
         header="Seleccionar Fecha"
@@ -1018,24 +1082,49 @@ export default function CuotaPrestamoList({
             style={{ width: "120px" }}
           />
           <Column
+            field="fechaPago"
+            header="Fecha Pago"
+            // Se muestra en UTC: la marca Historico guarda 31/12/2025 a medianoche UTC y en hora local de Perú se vería 30/12
+            body={(rowData) =>
+              rowData.fechaPago
+                ? new Date(rowData.fechaPago).toLocaleDateString("es-PE", { timeZone: "UTC" })
+                : "-"
+            }
+            style={{ width: "110px", textAlign: "center" }}
+          />
+          <Column
+            field="montoPagado"
+            header="Pagado"
+            body={(rowData) => (rowData.montoPagado != null ? montoBodyTemplate(rowData, "montoPagado") : "-")}
+            style={{ width: "110px", textAlign: "right" }}
+          />
+          <Column
+            field="montoMora"
+            header="Mora"
+            body={(rowData) => (rowData.montoMora != null ? montoBodyTemplate(rowData, "montoMora") : "-")}
+            style={{ width: "90px", textAlign: "right" }}
+          />
+          <Column
             header="Historico"
             body={(rowData) => {
               const fechaCorte = new Date("2026-01-01");
               const fechaVenc = new Date(rowData.fechaVencimiento);
-              const puedeMarcar = fechaVenc < fechaCorte && !rowData.saldoInicialPagada && !readOnly;
-
               if (fechaVenc >= fechaCorte) return null;
 
               return (
                 <BooleanToggleButton
                   value={rowData.saldoInicialPagada}
-                  onChange={() => handleMarcarSaldoInicial(rowData)}
+                  onChange={() =>
+                    rowData.saldoInicialPagada
+                      ? handleDesmarcarSaldoInicial(rowData)
+                      : handleMarcarSaldoInicial(rowData)
+                  }
                   labelTrue="Sí"
                   labelFalse="No"
                   severityTrue="info"
                   severityFalse="secondary"
                   size="small"
-                  disabled={!puedeMarcar}
+                  disabled={readOnly}
                   style={{ width: "60px" }}
                 />
               );

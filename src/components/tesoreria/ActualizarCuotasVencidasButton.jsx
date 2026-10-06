@@ -28,8 +28,8 @@ export default function ActualizarCuotasVencidasButton({
       toast.current?.show({
         severity: "success",
         summary: "Proceso completado",
-        detail: `${resultado.cuotasActualizadas} cuotas actualizadas en ${resultado.prestamosAfectados} préstamos`,
-        life: 3000,
+        detail: `${resultado.cuotasActualizadas} cuotas actualizadas en ${resultado.prestamosAfectados} préstamos. Estado recalculado en ${resultado.prestamosEstadoActualizado ?? 0} préstamos`,
+        life: 5000,
       });
 
       if (onSuccess && typeof onSuccess === "function") {

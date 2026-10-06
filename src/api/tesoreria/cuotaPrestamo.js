@@ -143,3 +143,13 @@ export async function marcarCuotaSaldoInicial(id) {
   });
   return res.data;
 }
+
+/**
+ * Desmarcar cuota como saldo inicial (vuelve a ser una cuota sin pagar)
+ */
+export async function desmarcarCuotaSaldoInicial(id) {
+  const res = await axios.post(`${API_URL}/${id}/desmarcar-saldo-inicial`, {}, {
+    headers: getAuthHeaders(),
+  });
+  return res.data;
+}

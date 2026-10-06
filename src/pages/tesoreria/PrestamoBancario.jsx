@@ -29,6 +29,7 @@ import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import { getResponsiveFontSize } from "../../utils/utils";
 import EmpresaSelector from "../../components/common/EmpresaSelector";
+import ActualizarCuotasVencidasButton from "../../components/tesoreria/ActualizarCuotasVencidasButton";
 
 export default function PrestamoBancario({ ruta }) {
   const usuario = useAuthStore((state) => state.usuario);
@@ -834,6 +835,15 @@ export default function PrestamoBancario({ ruta }) {
                   }}
                   loading={loading}
                   tooltip="Actualizar todos los datos desde el servidor"
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <ActualizarCuotasVencidasButton
+                  toast={toast}
+                  label="Actualizar Estado"
+                  tooltip="Ejecuta ahora el proceso diario: pasa las cuotas vencidas a VENCIDO y recalcula el estado de los préstamos"
+                  disabled={loading || !permisos.puedeEditar}
+                  onSuccess={cargarDatos}
                 />
               </div>
               <div style={{ flex: 0.25 }}>
