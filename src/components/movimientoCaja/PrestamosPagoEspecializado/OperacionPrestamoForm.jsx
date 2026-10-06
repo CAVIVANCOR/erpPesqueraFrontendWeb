@@ -12,10 +12,12 @@ import { Tag } from "primereact/tag";
 import { formatearNumero, formatearFecha } from "../../../utils/utils";
 import { consultarTipoCambioSunat } from "../../../api/consultaExterna";
 import { actualizarUrlVoucherIndividual } from "../../../api/tesoreria/transferencias";
+import { sincronizarAdjuntosPagoCuotaPrestamo } from "../../../api/tesoreria/operacionPrestamo";
 import { useAuthStore } from "../../../shared/stores/useAuthStore";
 import CuentaCorrienteSelector from "../../common/CuentaCorrienteSelector";
 import TipoMovimientoSelector from "../../common/TipoMovimientoSelector";
 import { generarYSubirVoucherIndividual } from "../utils/VoucherIndividualMovimientoPDF";
+import { generarYSubirVoucherConsolidado } from "./VoucherConsolidadoPagoCuotasPrestamoPDF";
 import ConfirmacionOperacionPrestamoDialog from "./ConfirmacionOperacionPrestamoDialog";
 
 /**
@@ -368,6 +370,38 @@ const OperacionPrestamoForm = ({
           }
         } catch (error) {
           console.error(`❌ Error voucher ${clave}:`, error);
+        }
+      }
+
+      // Voucher consolidado del pago de cuotas: al subirlo, el backend guarda su URL en el primer
+      // pago de la operación y luego se copia a los demás pagos para que todos muestren el mismo archivo
+      if (data.operacion === "PAGO_CUOTAS") {
+        try {
+          const empresaPago = empresas.find(
+            (e) => Number(e.id) === Number(data.movimientos?.principal?.empresaId),
+          );
+          const consolidado = await generarYSubirVoucherConsolidado(
+            {
+              correlativo: data.correlativo,
+              fechaPago: fecha,
+              numeroOperacion,
+              // Si el usuario no escribió glosa, el backend armó una: se usa la del movimiento
+              descripcion: descripcion.trim() || data.movimientos?.principal?.descripcion,
+              tipoCambio: esMonedaNacional ? 1 : tipoCambio,
+              numeroCheque: esCheque ? numeroCheque : undefined,
+            },
+            data,
+            empresaPago,
+            usuario,
+          );
+          if (consolidado.success) {
+            data.urlVoucherConsolidado = consolidado.urlPdf;
+            await sincronizarAdjuntosPagoCuotaPrestamo(consolidado.pagoId);
+          } else {
+            console.error("❌ Error voucher consolidado:", consolidado.error);
+          }
+        } catch (error) {
+          console.error("❌ Error voucher consolidado:", error);
         }
       }
     } catch (error) {

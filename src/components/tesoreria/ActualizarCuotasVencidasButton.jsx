@@ -28,7 +28,7 @@ export default function ActualizarCuotasVencidasButton({
       toast.current?.show({
         severity: "success",
         summary: "Proceso completado",
-        detail: `${resultado.cuotasActualizadas} cuotas actualizadas en ${resultado.prestamosAfectados} préstamos. Estado recalculado en ${resultado.prestamosEstadoActualizado ?? 0} préstamos`,
+        detail: `${resultado.cuotasActualizadas} cuotas pasaron a vencidas. Se recalcularon ${resultado.prestamosRevisados ?? 0} préstamos y cambió el estado de ${resultado.prestamosEstadoActualizado ?? 0}`,
         life: 5000,
       });
 

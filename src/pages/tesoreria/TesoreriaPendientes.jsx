@@ -111,6 +111,9 @@ const TesoreriaPendientes = () => {
     estadoIds: [],
     personalIds: [],
     tipoDeudaIds: [],
+    bancoIds: [],
+    tipoPrestamoIds: [],
+    prestamoIds: [],
     montoDesde: null,
     montoHasta: null,
   });
@@ -407,6 +410,9 @@ const TesoreriaPendientes = () => {
           estadoIds: [],
           personalIds: [],
           tipoDeudaIds: [],
+          bancoIds: [],
+          tipoPrestamoIds: [],
+          prestamoIds: [],
           montoDesde: null,
           montoHasta: null,
         });

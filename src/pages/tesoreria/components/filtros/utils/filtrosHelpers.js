@@ -20,6 +20,9 @@ export const contarFiltrosActivos = (filtros) => {
   if (filtros.estadoIds?.length > 0) count += filtros.estadoIds.length;
   if (filtros.personalIds?.length > 0) count += filtros.personalIds.length;
   if (filtros.tipoDeudaIds?.length > 0) count += filtros.tipoDeudaIds.length;
+  if (filtros.bancoIds?.length > 0) count += filtros.bancoIds.length;
+  if (filtros.tipoPrestamoIds?.length > 0) count += filtros.tipoPrestamoIds.length;
+  if (filtros.prestamoIds?.length > 0) count += filtros.prestamoIds.length;
   if (filtros.montoDesde !== null || filtros.montoHasta !== null) count++;
   
   return count;
@@ -181,6 +184,22 @@ export const generarResumenFiltros = (filtros, opciones) => {
         });
       });
   }
+
+  // Bancos, tipos de préstamo y préstamos (cuotas de préstamo). El `tipo` del chip coincide con la
+  // clave de `opciones` para que ResumenFiltrosActivos pueda quitar cada uno.
+  [
+    { campo: 'bancoIds', tipo: 'bancos', icono: '🏦' },
+    { campo: 'tipoPrestamoIds', tipo: 'tiposPrestamo', icono: '🏷️' },
+    { campo: 'prestamoIds', tipo: 'prestamos', icono: '📑' },
+  ].forEach(({ campo, tipo, icono }) => {
+    if (filtros[campo]?.length > 0 && opciones[tipo]) {
+      opciones[tipo]
+        .filter(o => filtros[campo].includes(o.id))
+        .forEach(o => {
+          resumen.push({ tipo, icono, descripcion: o.nombre, campo });
+        });
+    }
+  });
 
   // Rango de montos
   if (filtros.montoDesde !== null || filtros.montoHasta !== null) {

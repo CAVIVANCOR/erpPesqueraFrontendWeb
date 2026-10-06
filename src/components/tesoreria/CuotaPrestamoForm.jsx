@@ -4,8 +4,15 @@ import { Button } from "primereact/button";
 import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
+import { InputText } from "primereact/inputtext";
+import { InputTextarea } from "primereact/inputtextarea";
+import { Panel } from "primereact/panel";
+import { Tag } from "primereact/tag";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
 import { getEstadosMultiFuncionPorTipoProvieneDe } from "../../api/estadoMultiFuncion";
-import { ESTADO_CUOTA_PRESTAMO } from "../../utils/utils";
+import { getPagosCuotaPrestamo } from "../../api/tesoreria/pagoCuotaPrestamo";
+import { ESTADO_CUOTA_PRESTAMO, formatearNumero, formatearFecha } from "../../utils/utils";
 
 export default function CuotaPrestamoForm({
   isEdit = false,
@@ -32,6 +39,18 @@ export default function CuotaPrestamoForm({
   });
 
   const [estadosOptions, setEstadosOptions] = useState([]);
+  const [pagos, setPagos] = useState([]);
+  const [loadingPagos, setLoadingPagos] = useState(false);
+
+  // Detalle de pagos de la cuota: solo en edición de una cuota ya guardada
+  useEffect(() => {
+    if (!isEdit || !defaultValues?.id) return;
+    setLoadingPagos(true);
+    getPagosCuotaPrestamo({ cuotaPrestamoId: defaultValues.id })
+      .then((data) => setPagos(data || []))
+      .catch((error) => console.error("Error al cargar los pagos de la cuota:", error))
+      .finally(() => setLoadingPagos(false));
+  }, [isEdit, defaultValues?.id]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => {
@@ -307,6 +326,116 @@ export default function CuotaPrestamoForm({
           />
         </div>
       </div>
+
+      {isEdit && defaultValues?.id && (
+        <>
+          {/* Estado de pago: lo calcula el sistema desde los pagos, por eso es de solo lectura */}
+          <Panel header="💳 Estado de Pago de la Cuota" className="mt-3">
+            <div style={{ display: "flex", gap: 10, marginBottom: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold" }}>Fecha del Último Pago</label>
+                <InputText value={formatearFecha(defaultValues.fechaPago, "-")} disabled />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold" }}>Monto Pagado</label>
+                <InputNumber
+                  value={Number(defaultValues.montoPagado || 0)}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  disabled
+                  tooltip="Capital + interés + seguro + comisión de los pagos. No incluye mora"
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold" }}>Saldo Pendiente</label>
+                <InputNumber
+                  value={defaultValues.saldoInicialPagada
+                    ? 0
+                    : Math.max(Number(defaultValues.montoTotal || 0) - Number(defaultValues.montoPagado || 0), 0)}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  disabled
+                />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, marginBottom: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold" }}>Mora Acumulada</label>
+                <InputNumber
+                  value={Number(defaultValues.montoMora || 0)}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  disabled
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold" }}>Días de Mora</label>
+                <InputNumber value={Number(defaultValues.diasMora || 0)} disabled />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold", display: "block" }}>Histórico (Saldo Inicial)</label>
+                <Tag
+                  severity={defaultValues.saldoInicialPagada ? "info" : "secondary"}
+                  value={defaultValues.saldoInicialPagada ? "Sí: pagada antes del 01/01/2026" : "No"}
+                  style={{ marginTop: 8 }}
+                />
+              </div>
+            </div>
+            <div>
+              <label style={{ fontWeight: "bold" }}>Observaciones</label>
+              <InputTextarea value={defaultValues.observaciones || ""} rows={2} disabled />
+            </div>
+          </Panel>
+
+          {/* Detalle de los pagos registrados desde Caja y Bancos */}
+          <Panel header={`📋 Detalle de Pagos (${pagos.length})`} className="mt-3">
+            <DataTable
+              value={pagos}
+              dataKey="id"
+              loading={loadingPagos}
+              size="small"
+              showGridlines
+              stripedRows
+              emptyMessage={
+                defaultValues.saldoInicialPagada
+                  ? "Cuota histórica: se pagó antes del saldo inicial y no tiene pagos registrados."
+                  : "Esta cuota aún no tiene pagos registrados."
+              }
+              footer={pagos.length > 0 && (
+                <div className="flex justify-content-end font-bold">
+                  TOTAL PAGADO: {formatearNumero(pagos.reduce((suma, p) => suma + Number(p.montoTotal || 0), 0))}
+                </div>
+              )}
+            >
+              <Column field="refOperacionEspecializadaMovCaja" header="Operación" style={{ minWidth: "5rem" }} />
+              <Column header="Fecha Pago" body={(p) => formatearFecha(p.fechaPago, "-")} style={{ minWidth: "6rem" }} />
+              <Column header="Capital" body={(p) => formatearNumero(p.montoCapital)} style={{ textAlign: "right" }} />
+              <Column header="Interés" body={(p) => formatearNumero(p.montoInteres)} style={{ textAlign: "right" }} />
+              <Column header="Seguro" body={(p) => formatearNumero(p.montoSeguro)} style={{ textAlign: "right" }} />
+              <Column header="Comisión" body={(p) => formatearNumero(p.montoComision)} style={{ textAlign: "right" }} />
+              <Column header="Mora" body={(p) => formatearNumero(p.montoMora)} style={{ textAlign: "right" }} />
+              <Column
+                header="Total"
+                body={(p) => <b>{formatearNumero(p.montoTotal)}</b>}
+                style={{ textAlign: "right" }}
+              />
+              <Column field="diasMora" header="Días Mora" style={{ textAlign: "center" }} />
+              <Column
+                header="Origen"
+                body={(p) => (
+                  <Tag
+                    severity={p.movimientoCajaId ? "success" : "warning"}
+                    value={p.movimientoCajaId ? "Caja y Bancos" : "Sin caja"}
+                  />
+                )}
+              />
+            </DataTable>
+          </Panel>
+        </>
+      )}
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
         <Button label="Cancelar" icon="pi pi-times" onClick={onCancel} className="p-button-text" type="button" disabled={loading} />

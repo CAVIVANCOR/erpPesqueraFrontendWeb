@@ -678,7 +678,7 @@ export default function Dashboard() {
       titulo: "FINANZAS",
       descripcion: "Tesorería Avanzada: Préstamos, Créditos e Inversiones",
       icono: "pi-wallet",
-      modulos: 11,
+      modulos: 12,
       color: "#8E44AD",
       submenu: [
         {
@@ -702,6 +702,12 @@ export default function Dashboard() {
         {
           label: "Pagos Cuentas Por Cobrar",
           key: "pagoCuentaPorCobrar",
+          icon: "pi-shopping-cart",
+          tab: "operaciones",
+        },
+        {
+          label: "Pagos Cuotas Prestamos",
+          key: "pagoCuotaPrestamo",
           icon: "pi-shopping-cart",
           tab: "operaciones",
         },

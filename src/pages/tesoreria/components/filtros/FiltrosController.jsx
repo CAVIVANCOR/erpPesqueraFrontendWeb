@@ -37,9 +37,10 @@ const FiltrosController = ({
     if (tipoDeuda === TIPO_DEUDA_TESORERIA.DEUDAS_TRIBUTARIAS) {
       return <FiltrosDeudaTributaria {...props} />;
     }
-    // Préstamos: el "vencimiento" del desembolso es su fecha prevista de desembolso
+    // Préstamos: el "vencimiento" del desembolso es su fecha prevista de desembolso.
+    // Las cuotas se filtran además por banco, tipo de préstamo y préstamo.
     if (tipoDeuda === TIPO_DEUDA_TESORERIA.PRESTAMOS_CUOTAS) {
-      return <FiltrosPrestamo {...props} />;
+      return <FiltrosPrestamo {...props} conFiltrosPrestamo />;
     }
     if (tipoDeuda === TIPO_DEUDA_TESORERIA.PRESTAMOS_DESEMBOLSOS) {
       return <FiltrosPrestamo {...props} etiquetaFecha="Rango de Fechas de Desembolso" />;
@@ -79,6 +80,9 @@ const FiltrosController = ({
     onFiltroChange('estadoIds', []);
     onFiltroChange('personalIds', []);
     onFiltroChange('tipoDeudaIds', []);
+    onFiltroChange('bancoIds', []);
+    onFiltroChange('tipoPrestamoIds', []);
+    onFiltroChange('prestamoIds', []);
     onFiltroChange('montoDesde', null);
     onFiltroChange('montoHasta', null);
   };

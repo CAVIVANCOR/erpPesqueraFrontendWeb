@@ -93,6 +93,7 @@ import TipoDetraccion from "../../pages/TipoDetraccion";
 import TipoRetencionPercepcion from "../../pages/TipoRetencionPercepcion";
 import DeudaConPersonal from "../../pages/DeudaConPersonal";
 import PagoDeudaPersonal from "../../pages/PagoDeudaPersonal";
+import PagoCuotaPrestamo from "../../pages/PagoCuotaPrestamo";
 import TipoDeudaTributaria from "../../pages/TipoDeudaTributaria";
 import DeudaTributaria from "../../pages/DeudaTributaria";
 import PagoDeudaTributaria from "../../pages/PagoDeudaTributaria";
@@ -270,6 +271,10 @@ export default function BaseLayout({ children, onLogout }) {
     pagoCuentaPorPagar: {
       label: "Pagos Cuentas por Pagar",
       componente: <PagoCuentaPorPagar ruta="pagoCuentaPorPagar" />,
+    },
+    pagoCuotaPrestamo: {
+      label: "Pagos Cuotas Prestamos",
+      componente: <PagoCuotaPrestamo ruta="pagoCuotaPrestamo" />,
     },
     tipoDeudaPersonal: {
       label: "Tipos Deuda de Personal",

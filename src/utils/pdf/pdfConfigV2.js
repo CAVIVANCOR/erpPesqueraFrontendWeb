@@ -959,6 +959,38 @@ export const PDF_MODULES_CONFIG = {
     },
   },
 
+  // ════════════════════════════════════════════════════════════
+  // PAGO DE CUOTAS DE PRÉSTAMO (operación especializada de Caja)
+  // Deben coincidir con pdfModules.config.js del backend.
+  // ════════════════════════════════════════════════════════════
+
+  "pago-cuota-prestamo-consolidado": {
+    uploadPath: "uploads/pdf-system/pago-cuota-prestamo-consolidado",
+    oldPaths: [],
+    apiEndpoint: "/pdf/pago-cuota-prestamo-consolidado",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf"],
+    maxFiles: 20,
+    database: {
+      table: "PagoCuotaPrestamo",
+      field: "urlVoucherOperacionConsolidado",
+    },
+  },
+
+  // Comprobante emitido por el banco o la entidad financiera con el detalle de lo pagado
+  "pago-cuota-prestamo-comprobante": {
+    uploadPath: "uploads/pdf-system/pago-cuota-prestamo-comprobante",
+    oldPaths: [],
+    apiEndpoint: "/pdf/pago-cuota-prestamo-comprobante",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf", "image/jpeg", "image/png"],
+    maxFiles: 20,
+    database: {
+      table: "PagoCuotaPrestamo",
+      field: "urlComprobanteOperacion",
+    },
+  },
+
   "movimiento-caja": {
     uploadPath: "uploads/pdf-system/movimiento-caja",
     oldPaths: [],

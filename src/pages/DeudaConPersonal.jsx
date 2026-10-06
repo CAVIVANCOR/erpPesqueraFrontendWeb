@@ -11,6 +11,7 @@ import { Toolbar } from "primereact/toolbar";
 import { Tag } from "primereact/tag";
 import { Dropdown } from "primereact/dropdown";
 import EmpresaSelector from "../components/common/EmpresaSelector";
+import BooleanToggleButton from "../components/common/BooleanToggleButton";
 import DeudaConPersonalForm from "../components/deudaConPersonal/DeudaConPersonalForm";
 import { getMediosPago } from "../api/medioPago";
 import {
@@ -58,6 +59,8 @@ export default function DeudaConPersonal({ ruta }) {
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
   const [tipoPagoSeleccionado, setTipoPagoSeleccionado] = useState("TODOS"); // "TODOS" | "FISCAL" | "GERENCIAL"
   const [periodoContableSeleccionado, setPeriodoContableSeleccionado] = useState(null);
+  // null = todas | true = solo saldo inicial | false = solo deudas nuevas
+  const [saldoInicialSeleccionado, setSaldoInicialSeleccionado] = useState(null);
   const [periodosContablesFiltrados, setPeriodosContablesFiltrados] = useState([]);
 
   // Opciones dinámicas para filtros
@@ -166,6 +169,12 @@ export default function DeudaConPersonal({ ruta }) {
     }
     // Si es "TODOS", no filtra
 
+    if (saldoInicialSeleccionado !== null) {
+      filtrados = filtrados.filter(
+        (item) => Boolean(item.esSaldoInicial) === saldoInicialSeleccionado
+      );
+    }
+
     if (periodoContableSeleccionado) {
       filtrados = filtrados.filter(
         (item) => Number(item.periodoContableId) === Number(periodoContableSeleccionado)
@@ -180,6 +189,7 @@ export default function DeudaConPersonal({ ruta }) {
     estadoSeleccionado,
     monedaSeleccionada,
     tipoPagoSeleccionado,
+    saldoInicialSeleccionado,
     periodoContableSeleccionado,
     deudas,
   ]);
@@ -460,6 +470,7 @@ export default function DeudaConPersonal({ ruta }) {
     setEstadoSeleccionado(null);
     setMonedaSeleccionada(null);
     setTipoPagoSeleccionado("TODOS");
+    setSaldoInicialSeleccionado(null);
     setPeriodoContableSeleccionado(null);
   };
 
@@ -852,6 +863,31 @@ export default function DeudaConPersonal({ ruta }) {
                   }}
                   disabled={loading}
                   style={{ width: "100%", marginTop: "0.25rem" }}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label style={{ fontWeight: "bold", display: "block", marginBottom: "0.25rem" }}>
+                  Saldo Inicial
+                </label>
+                {/* El componente es de dos estados (true/false): el filtro necesita un tercero
+                    (TODOS), así que el clic recorre null → true → false → null y el estado
+                    "false" del botón se muestra como TODOS o DEUDA NUEVA según el filtro */}
+                <BooleanToggleButton
+                  value={saldoInicialSeleccionado === true}
+                  onChange={() =>
+                    setSaldoInicialSeleccionado(
+                      saldoInicialSeleccionado === null
+                        ? true
+                        : saldoInicialSeleccionado === true
+                          ? false
+                          : null
+                    )
+                  }
+                  labelTrue="SALDO INICIAL"
+                  labelFalse={saldoInicialSeleccionado === false ? "DEUDA NUEVA" : "TODOS"}
+                  severityTrue="primary"
+                  severityFalse={saldoInicialSeleccionado === false ? "info" : "secondary"}
+                  disabled={loading}
                 />
               </div>
               <div style={{ flex: 2 }}>

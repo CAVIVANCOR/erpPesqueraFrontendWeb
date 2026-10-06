@@ -1,5 +1,6 @@
 // src/components/movimientoCaja/PrestamosPagoEspecializado/ConfirmacionOperacionPrestamoDialog.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
@@ -9,6 +10,8 @@ import { Column } from "primereact/column";
 import PDFViewerV2 from "../../pdf/PDFViewerV2";
 import AsientoContableViewer from "../../common/AsientoContableViewer";
 import { formatearNumero, ESTADO_CUOTA_PRESTAMO } from "../../../utils/utils";
+import { sincronizarAdjuntosPagoCuotaPrestamo } from "../../../api/tesoreria/operacionPrestamo";
+import PdfComprobanteEntidadFinancieraCard from "./PdfComprobanteEntidadFinancieraCard";
 
 /**
  * ════════════════════════════════════════════════════════════
@@ -36,6 +39,37 @@ export default function ConfirmacionOperacionPrestamoDialog({
   const [voucherPdfUrl, setVoucherPdfUrl] = useState(null);
   const [voucherAsientoVisible, setVoucherAsientoVisible] = useState(false);
   const [asientoSeleccionado, setAsientoSeleccionado] = useState(null);
+
+  // El comprobante del banco se guarda en el primer pago de la operación (solo pago de cuotas)
+  const pagoId = resultado?.distribucion?.[0]?.pagoId;
+  const {
+    control,
+    watch,
+    setValue,
+    getValues,
+    reset,
+    formState: { errors },
+  } = useForm({ defaultValues: { urlComprobanteOperacion: null } });
+
+  // Al subir o eliminar el comprobante se copia a los demás pagos de la operación.
+  // Se compara contra el último valor conocido para no sincronizar sin un cambio real.
+  const urlComprobante = watch("urlComprobanteOperacion");
+  const urlAnterior = useRef(null);
+
+  // Cada operación nueva parte sin comprobante: el diálogo permanece montado entre operaciones
+  useEffect(() => {
+    urlAnterior.current = null;
+    reset({ urlComprobanteOperacion: null });
+  }, [pagoId]);
+
+  useEffect(() => {
+    if (urlComprobante === urlAnterior.current) return;
+    urlAnterior.current = urlComprobante;
+    if (!pagoId) return;
+    sincronizarAdjuntosPagoCuotaPrestamo(pagoId).catch((error) =>
+      console.error("Error al sincronizar el comprobante con los pagos de la operación:", error),
+    );
+  }, [urlComprobante]);
 
   if (!resultado) return null;
 
@@ -312,6 +346,39 @@ export default function ConfirmacionOperacionPrestamoDialog({
     );
   };
 
+  // Voucher consolidado de toda la operación (se genera y sube automáticamente al pagar)
+  const renderVoucherConsolidado = () => {
+    if (esDesembolso || !resultado.urlVoucherConsolidado) return null;
+
+    return (
+      <Panel header="📄 Voucher Consolidado del Pago" className="mb-3">
+        <PDFViewerV2
+          pdfUrl={resultado.urlVoucherConsolidado}
+          moduleName="pago-cuota-prestamo-consolidado"
+          height="600px"
+        />
+      </Panel>
+    );
+  };
+
+  // Comprobante opcional del banco o la entidad financiera
+  const renderComprobanteEntidad = () => {
+    if (esDesembolso || !pagoId) return null;
+
+    return (
+      <PdfComprobanteEntidadFinancieraCard
+        pagoId={pagoId}
+        control={control}
+        errors={errors}
+        setValue={setValue}
+        watch={watch}
+        getValues={getValues}
+        defaultValues={{ urlComprobanteOperacion: null }}
+        readOnly={false}
+      />
+    );
+  };
+
   const renderFooter = () => (
     <div className="flex justify-content-end gap-2">
       <Button label="Cerrar" icon="pi pi-times" onClick={onHide} severity="secondary" />
@@ -333,6 +400,8 @@ export default function ConfirmacionOperacionPrestamoDialog({
         {renderCuotas()}
         {renderMovimientos()}
         {renderAsientosContables()}
+        {renderVoucherConsolidado()}
+        {renderComprobanteEntidad()}
       </Dialog>
 
       {/* DIÁLOGO: VER ASIENTO CONTABLE */}

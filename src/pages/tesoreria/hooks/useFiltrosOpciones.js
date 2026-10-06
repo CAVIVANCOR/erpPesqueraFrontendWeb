@@ -19,6 +19,9 @@ export const useFiltrosOpciones = (documentos = [], tipo) => {
         estados: [],
         personal: [],
         tiposDeuda: [],
+        bancos: [],
+        tiposPrestamo: [],
+        prestamos: [],
         rangoMontos: { min: 0, max: 0 },
         totalDocumentos: 0
       };
@@ -33,6 +36,9 @@ export const useFiltrosOpciones = (documentos = [], tipo) => {
     const estadosMap = new Map();
     const personalMap = new Map();
     const tiposDeudaMap = new Map();
+    const bancosMap = new Map();
+    const tiposPrestamoMap = new Map();
+    const prestamosMap = new Map();
     
     let montoMin = Infinity;
     let montoMax = -Infinity;
@@ -193,6 +199,26 @@ export const useFiltrosOpciones = (documentos = [], tipo) => {
         }
       }
 
+      // Cuotas de préstamo: banco, tipo de préstamo y préstamo (filtro en cascada).
+      // Cada préstamo lleva su banco y su tipo para poder acotar las listas entre sí.
+      if (doc.esCuotaPrestamo && doc.prestamo) {
+        const saldo = Number(doc.saldoPendiente || 0);
+        const acumular = (mapa, id, datos) => {
+          if (!mapa.has(id)) mapa.set(id, { id, ...datos, cantidad: 0, total: 0 });
+          const item = mapa.get(id);
+          item.cantidad++;
+          item.total += saldo;
+        };
+        const { bancoId, tipoPrestamoId } = doc.prestamo;
+        acumular(bancosMap, bancoId, { nombre: doc.entidadComercial?.razonSocial || 'Sin banco' });
+        acumular(tiposPrestamoMap, tipoPrestamoId, { nombre: doc.prestamo.tipoPrestamo || 'Sin tipo' });
+        acumular(prestamosMap, doc.prestamo.id, {
+          nombre: doc.prestamo.numeroPrestamo,
+          bancoId,
+          tipoPrestamoId,
+        });
+      }
+
       // Rango de montos
       const monto = Number(doc.saldoPendiente || 0);
       if (monto < montoMin) montoMin = monto;
@@ -208,6 +234,9 @@ export const useFiltrosOpciones = (documentos = [], tipo) => {
       estados: Array.from(estadosMap.values()).sort((a, b) => b.cantidad - a.cantidad),
       personal: Array.from(personalMap.values()).sort((a, b) => b.cantidad - a.cantidad),
       tiposDeuda: Array.from(tiposDeudaMap.values()).sort((a, b) => b.cantidad - a.cantidad),
+      bancos: Array.from(bancosMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      tiposPrestamo: Array.from(tiposPrestamoMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      prestamos: Array.from(prestamosMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)),
       rangoMontos: {
         min: montoMin === Infinity ? 0 : montoMin,
         max: montoMax === -Infinity ? 0 : montoMax

@@ -1137,7 +1137,7 @@ export default function CuotaPrestamoList({
       <Dialog
         header="Editar Cuota"
         visible={showEditDialog}
-        style={{ width: "800px" }}
+        style={{ width: "1000px", maxWidth: "95vw" }}
         onHide={() => {
           setShowEditDialog(false);
           setSelectedCuota(null);

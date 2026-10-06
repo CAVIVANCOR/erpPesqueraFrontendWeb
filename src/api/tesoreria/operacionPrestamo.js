@@ -21,6 +21,16 @@ export async function pagarCuotasPrestamo(data) {
 }
 
 /**
+ * Copia voucher consolidado y comprobante del pago indicado a los demás pagos de la operación
+ */
+export async function sincronizarAdjuntosPagoCuotaPrestamo(pagoId) {
+  const res = await axios.put(`${API_URL}/pagos/${pagoId}/sincronizar-adjuntos`, null, {
+    headers: getAuthHeaders(),
+  });
+  return res.data;
+}
+
+/**
  * Desembolso del préstamo: ingreso del dinero a la cuenta de la empresa
  */
 export async function desembolsarPrestamo(data) {

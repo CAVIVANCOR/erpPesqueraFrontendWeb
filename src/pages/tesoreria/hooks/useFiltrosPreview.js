@@ -104,6 +104,23 @@ export const useFiltrosPreview = (filtros, documentos = []) => {
       );
     }
 
+    // Filtros de cuotas de préstamo: banco, tipo de préstamo y préstamo
+    if (filtros.bancoIds && filtros.bancoIds.length > 0) {
+      docsFiltrados = docsFiltrados.filter(doc =>
+        doc.prestamo && filtros.bancoIds.includes(doc.prestamo.bancoId)
+      );
+    }
+    if (filtros.tipoPrestamoIds && filtros.tipoPrestamoIds.length > 0) {
+      docsFiltrados = docsFiltrados.filter(doc =>
+        doc.prestamo && filtros.tipoPrestamoIds.includes(doc.prestamo.tipoPrestamoId)
+      );
+    }
+    if (filtros.prestamoIds && filtros.prestamoIds.length > 0) {
+      docsFiltrados = docsFiltrados.filter(doc =>
+        doc.prestamo && filtros.prestamoIds.includes(doc.prestamo.id)
+      );
+    }
+
     // Filtro por rango de montos
     if (filtros.montoDesde !== null && filtros.montoDesde !== undefined) {
       docsFiltrados = docsFiltrados.filter(doc => 

@@ -32,6 +32,9 @@ function getAuthHeaders() {
  * @param {Array<Number>} filtros.estadoIds - IDs de estados
  * @param {Array<Number>} filtros.personalIds - IDs de personal
  * @param {Array<Number>} filtros.tipoDeudaIds - IDs de tipos de deuda (personal/tributaria)
+ * @param {Array<Number>} filtros.bancoIds - IDs de bancos (cuotas de préstamo)
+ * @param {Array<Number>} filtros.tipoPrestamoIds - IDs de tipos de préstamo (cuotas de préstamo)
+ * @param {Array<Number>} filtros.prestamoIds - IDs de préstamos (cuotas de préstamo)
  * @param {Number} filtros.montoDesde - Monto mínimo
  * @param {Number} filtros.montoHasta - Monto máximo
  * 
@@ -83,6 +86,15 @@ export async function getPendientes(filtros = {}) {
   }
   if (filtros.tipoDeudaIds && filtros.tipoDeudaIds.length > 0) {
     params.append('tipoDeudaIds', filtros.tipoDeudaIds.join(','));
+  }
+  if (filtros.bancoIds && filtros.bancoIds.length > 0) {
+    params.append('bancoIds', filtros.bancoIds.join(','));
+  }
+  if (filtros.tipoPrestamoIds && filtros.tipoPrestamoIds.length > 0) {
+    params.append('tipoPrestamoIds', filtros.tipoPrestamoIds.join(','));
+  }
+  if (filtros.prestamoIds && filtros.prestamoIds.length > 0) {
+    params.append('prestamoIds', filtros.prestamoIds.join(','));
   }
 
   // Filtros avanzados - Texto y números
