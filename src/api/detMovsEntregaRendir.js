@@ -293,11 +293,11 @@ export const asignarActivoMasivo = async (activoId, movimientosIds) => {
  * @param {number} id - ID del detalle de movimientos entrega a rendir
  * @returns {Promise<Object>} Resultado de la generación con IDs de documentos creados
  */
-export const generarDocumentosFinancieros = async (id) => {
+export const generarDocumentosFinancieros = async (id, accionOcExistente = null) => {
   try {
     const response = await axios.post(
       `${API_URL}/${id}/generar-documentos-financieros`,
-      {},
+      { accionOcExistente },
       { headers: getAuthHeaders() }
     );
     return response.data;

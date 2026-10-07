@@ -1354,8 +1354,8 @@ export default function AsientoContable({ ruta }) {
         stripedRows
         showGridlines
         paginator
-        rows={40}
-        rowsPerPageOptions={[40, 80, 160, 320]}
+        rows={20}
+        rowsPerPageOptions={[20, 80, 160, 320]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} asientos"
         sortField="id"

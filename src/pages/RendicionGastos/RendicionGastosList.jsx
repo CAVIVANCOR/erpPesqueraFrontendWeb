@@ -15,6 +15,7 @@ import { Tag } from "primereact/tag";
 import DetMovsRendicionGastosForm from "../../components/rendicionGastos/DetMovsRendicionGastosForm";
 import AsignarCentroCostoMasivo from "../../components/common/AsignarCentroCostoMasivo";
 import AsignarActivoMasivo from "../../components/common/AsignarActivoMasivo";
+import GeneracionDocumentosLoteDialog from "../../components/rendicionGastos/GeneracionDocumentosLoteDialog";
 import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 import {
   crearDetMovsEntregaRendir,
@@ -93,6 +94,7 @@ export default function RendicionGastosList({ ruta }) {
   // Estados para diálogos de asignación masiva
   const [showAsignarCentroCostoDialog, setShowAsignarCentroCostoDialog] = useState(false);
   const [showAsignarActivoDialog, setShowAsignarActivoDialog] = useState(false);
+  const [showGenerarDocumentosLoteDialog, setShowGenerarDocumentosLoteDialog] = useState(false);
   // Cargar datos iniciales
   useEffect(() => {
     cargarDatos();
@@ -1717,6 +1719,26 @@ export default function RendicionGastosList({ ruta }) {
                     style={{ width: "100%" }}
                   />
                 </div>
+
+                {/* Botón: Generar Documentos Financieros en lote */}
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Generar Docs"
+                    icon="pi pi-file-export"
+                    className="p-button-success"
+                    onClick={() => setShowGenerarDocumentosLoteDialog(true)}
+                    disabled={loading || !Array.isArray(selectedMovimientos) || selectedMovimientos.length === 0}
+                    tooltip={
+                      !Array.isArray(selectedMovimientos) || selectedMovimientos.length === 0
+                        ? "Seleccione gastos para generar documentos financieros"
+                        : `Generar documentos financieros de ${selectedMovimientos.length} movimiento(s)`
+                    }
+                    tooltipOptions={{ position: "top" }}
+                    type="button"
+                    raised
+                    style={{ width: "100%" }}
+                  />
+                </div>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <Button
                     label="Recalcular"
@@ -2231,6 +2253,17 @@ export default function RendicionGastosList({ ruta }) {
         registrosSeleccionados={Array.isArray(selectedMovimientos) ? selectedMovimientos.map(m => m.id) : []}
         onAsignar={handleAsignarActivo}
         nombreModulo="movimientos"
+      />
+
+      {/* Diálogo: Generar Documentos Financieros en lote */}
+      <GeneracionDocumentosLoteDialog
+        visible={showGenerarDocumentosLoteDialog}
+        onHide={() => setShowGenerarDocumentosLoteDialog(false)}
+        gastos={Array.isArray(selectedMovimientos) ? selectedMovimientos : []}
+        onFinalizado={() => {
+          setSelectedMovimientos([]);
+          cargarDatos();
+        }}
       />
     </div>
   );

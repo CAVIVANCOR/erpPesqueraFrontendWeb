@@ -34,6 +34,9 @@ const AsientoContableManager = ({
   onAsientoChange,
   onBeforeGenerate,
   soloVer = false,
+  // IDs de submódulo origen cuyos asientos NO se pueden regenerar ni eliminar (p. ej. los generados desde Rendición de Gastos).
+  // Esos asientos solo se pueden ver/editar; el resto de asientos del documento sigue funcionando normal.
+  submodulosSinRegeneracion = [],
 }) => {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
@@ -72,6 +75,10 @@ const AsientoContableManager = ({
   // - Es MovimientoCaja (asientos automáticos)
   // - soloVer = true (modo solo lectura)
   const puedeGenerar = documentoId && !periodoEstaCerrado && !esMovimientoCaja && !soloVer;
+  // Asientos cuyo origen no permite regenerarlos ni eliminarlos
+  const esAsientoProtegido = (asiento) =>
+    submodulosSinRegeneracion.some((id) => Number(id) === Number(asiento?.submoduloOrigenId));
+  const regeneracionBloqueada = asientos.some(esAsientoProtegido);
   // Efectos
   useEffect(() => {
     if (periodoContableId) {
@@ -412,8 +419,8 @@ const AsientoContableManager = ({
   };
 
   const handleBotonPrincipal = () => {
-    // ✅ BIFURCACIÓN: Modo solo lectura vs modo normal
-    if (soloVer) {
+    // ✅ BIFURCACIÓN: Modo solo lectura (o asientos protegidos por su origen) vs modo normal
+    if (soloVer || regeneracionBloqueada) {
       // Modo solo lectura: Abrir directamente el diálogo con la lista
       // No intenta generar ni validar, solo muestra los asientos existentes
       setShowListDialog(true);
@@ -519,7 +526,7 @@ const AsientoContableManager = ({
         onClick={() => handleVerAsiento(rowData)}
         tooltip="Ver asiento"
       />
-      {Number(rowData.estadoId) !== ESTADO_ASIENTO_CONTABLE.APROBADO && !periodoEstaCerrado && (
+      {Number(rowData.estadoId) !== ESTADO_ASIENTO_CONTABLE.APROBADO && !periodoEstaCerrado && !esAsientoProtegido(rowData) && (
         <Button
           icon="pi pi-trash"
           className="p-button-danger p-button-sm"
@@ -634,10 +641,10 @@ const AsientoContableManager = ({
     const tieneAprobados = aprobados > 0;
     
     // ✅ BIFURCACIÓN: Label e icono según modo
-    const labelBoton = soloVer
-      ? "Ver Asientos Contables"  // Modo solo lectura
+    const labelBoton = soloVer || regeneracionBloqueada
+      ? "Ver Asientos Contables"  // Modo solo lectura / asientos protegidos
       : tieneAsientos ? "Regenerar Asientos" : "Generar Asientos";  // Modo normal
-    const iconoBoton = soloVer
+    const iconoBoton = soloVer || regeneracionBloqueada
       ? "pi pi-eye"  // Icono de ver
       : tieneAsientos ? "pi pi-refresh" : "pi pi-book";  // Iconos de generar/regenerar
     const colorBoton = tieneAprobados ? "p-button-success" : tieneAsientos ? "p-button-warning" : "p-button-info";
@@ -688,6 +695,13 @@ const AsientoContableManager = ({
             <Message
               severity="info"
               text="Modo solo lectura: Los asientos se generan automáticamente y no se pueden modificar desde aquí."
+              style={{ marginBottom: "1rem" }}
+            />
+          )}
+          {regeneracionBloqueada && !soloVer && (
+            <Message
+              severity="info"
+              text="Estos asientos fueron generados automáticamente desde otro módulo (Rendición de Gastos) y no se pueden regenerar ni eliminar."
               style={{ marginBottom: "1rem" }}
             />
           )}

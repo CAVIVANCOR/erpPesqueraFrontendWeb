@@ -8,7 +8,6 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { TabView, TabPanel } from "primereact/tabview";
 import { Panel } from "primereact/panel";
 import { Accordion, AccordionTab } from "primereact/accordion";
 import { Dialog } from "primereact/dialog";
@@ -18,7 +17,6 @@ import {
   formatearNumero,
   formatearFecha,
 } from "../../utils/utils";
-import CardAsientoContable from "../common/CardAsientoContable";
 import PagoCuentaPorPagarForm from "../pagoCuentaPorPagar/PagoCuentaPorPagarForm";
 import {
   getPagosByCuentaPorPagar,
@@ -44,14 +42,12 @@ const CuentaPorPagarForm = forwardRef(({
   cuentasCorrientes,
   onSubmit,
   onCancel,
-  onGenerarAsiento,
   loading,
   readOnly = false,
   permisos = {},
   toast,
 }, ref) => {
   const usuario = useAuthStore((state) => state.usuario);
-  const [activeTab, setActiveTab] = useState(0);
 
   // Estados principales
   const [ordenCompraId, setOrdenCompraId] = useState(
@@ -437,9 +433,9 @@ const CuentaPorPagarForm = forwardRef(({
   };
 
   const monedaDeudaTemplate = (rowData) => {
-    const moneda = monedas?.find(
-      (m) => Number(m.id) === Number(rowData.monedaId),
-    );
+    const moneda =
+      rowData.monedaDeuda ||
+      monedas?.find((m) => Number(m.id) === Number(rowData.monedaDeudaId));
     const codigo = moneda?.codigoSunat || "-";
     return (
       <span
@@ -457,9 +453,11 @@ const CuentaPorPagarForm = forwardRef(({
 
   const cuentaCorrienteTemplate = (rowData) => {
     if (!rowData.cuentaBancariaId) return "-";
-    const cuenta = cuentasCorrientes?.find(
-      (c) => Number(c.id) === Number(rowData.cuentaBancariaId),
-    );
+    const cuenta =
+      rowData.cuentaBancaria ||
+      cuentasCorrientes?.find(
+        (c) => Number(c.id) === Number(rowData.cuentaBancariaId),
+      );
     return cuenta?.numeroCuenta || "-";
   };
 
@@ -486,15 +484,17 @@ const CuentaPorPagarForm = forwardRef(({
   };
 
   const medioPagoTemplate = (rowData) => {
-    const medio = mediosPago?.find(
-      (m) => Number(m.id) === Number(rowData.medioPagoId),
-    );
-    return medio?.descripcion || "-";
+    const medio =
+      rowData.medioPago ||
+      mediosPago?.find((m) => Number(m.id) === Number(rowData.medioPagoId));
+    return medio?.nombre || "-";
   };
 
   const bancoTemplate = (rowData) => {
     if (!rowData.bancoId) return "-";
-    const banco = bancos?.find((b) => Number(b.id) === Number(rowData.bancoId));
+    const banco =
+      rowData.banco ||
+      bancos?.find((b) => Number(b.id) === Number(rowData.bancoId));
     return banco?.nombre || "-";
   };
 
@@ -552,12 +552,6 @@ const CuentaPorPagarForm = forwardRef(({
     <div className="p-fluid">
       <ConfirmDialog />
 
-      <TabView
-        activeIndex={activeTab}
-        onTabChange={(e) => setActiveTab(e.index)}
-      >
-        {/* TAB 1: DATOS GENERALES */}
-        <TabPanel header="Datos Generales" leftIcon="pi pi-file">
           <div className="p-fluid">
             <div
               style={{
@@ -1213,21 +1207,6 @@ const CuentaPorPagarForm = forwardRef(({
               </div>
             </div>
           </Panel>
-        </TabPanel>
-
-        {/* TAB 2: ASIENTO CONTABLE */}
-        {isEdit && (
-          <TabPanel header="Asiento Contable" leftIcon="pi pi-book">
-            <CardAsientoContable
-              asientoContableId={defaultValues?.asientoContableId}
-              onGenerarAsiento={() => onGenerarAsiento(defaultValues)}
-              permisos={permisos}
-              loading={loading}
-              tituloCard="Asiento Contable"
-            />
-          </TabPanel>
-        )}
-      </TabView>
 
       {/* Botones de acción */}
       <div

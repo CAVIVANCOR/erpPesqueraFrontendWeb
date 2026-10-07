@@ -2,7 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
 import { ProgressBar } from "primereact/progressbar";
-import { generarDocumentosFinancieros } from "../../api/detMovsEntregaRendir";
+import { Message } from "primereact/message";
+import { RadioButton } from "primereact/radiobutton";
+import { generarDocumentosFinancieros, getDetMovsEntregaRendirPorId } from "../../api/detMovsEntregaRendir";
 /**
  * Componente genérico para generar documentos financieros desde DetMovsEntregaRendir
  * Genera: OrdenCompra → CuentaPorPagar → Pago → 2 Asientos Contables
@@ -16,12 +18,27 @@ import { generarDocumentosFinancieros } from "../../api/detMovsEntregaRendir";
 export default function GeneradorDocumentosFinancierosDialog({
   visible,
   onHide,
-  detMovEntregaRendir,
+  detMovEntregaRendir: detMovProp,
   onGeneracionExitosa,
   toast,
 }) {
   const [loading, setLoading] = useState(false);
   const [generandoDocumentos, setGenerandoDocumentos] = useState(false);
+  const [detMovCompleto, setDetMovCompleto] = useState(null);
+  const [errorGeneracion, setErrorGeneracion] = useState(null);
+  const [decisionOC, setDecisionOC] = useState(null);
+  const [accionOC, setAccionOC] = useState("A");
+
+  useEffect(() => {
+    if (!visible || !detMovProp?.id) return;
+    setDetMovCompleto(null);
+    setErrorGeneracion(null);
+    getDetMovsEntregaRendirPorId(detMovProp.id)
+      .then(setDetMovCompleto)
+      .catch(() => setDetMovCompleto(null));
+  }, [visible, detMovProp?.id]);
+
+  const detMovEntregaRendir = detMovCompleto || detMovProp;
 
   const validarDatos = () => {
     if (!detMovEntregaRendir) {
@@ -103,19 +120,30 @@ export default function GeneradorDocumentosFinancierosDialog({
     return true;
   };
 
-  const handleGenerar = async () => {
+  const handleGenerar = async (accionOcExistente = null) => {
     if (!validarDatos()) return;
 
     try {
       setLoading(true);
       setGenerandoDocumentos(true);
 
-      const resultado = await generarDocumentosFinancieros(detMovEntregaRendir.id);
+      setErrorGeneracion(null);
+      const resultado = await generarDocumentosFinancieros(detMovEntregaRendir.id, accionOcExistente);
 
+      // La OC ya existe: el usuario decide qué hacer (A / B / C) en un diálogo de confirmación
+      if (resultado?.requiereDecision) {
+        setDecisionOC(resultado);
+        setAccionOC("A");
+        return;
+      }
+
+      setDecisionOC(null);
       toast?.current?.show({
-        severity: "success",
-        summary: "✅ Documentos Generados",
-        detail: "Orden de Compra, Cuenta por Pagar, Pago y Asientos Contables creados exitosamente",
+        severity: resultado?.ordenCompraExistente ? "info" : "success",
+        summary: resultado?.ordenCompraExistente ? "Orden de Compra existente" : "✅ Documentos Generados",
+        detail: resultado?.ordenCompraExistente
+          ? resultado.message
+          : "Orden de Compra, Cuenta por Pagar, Pago y Asientos Contables creados exitosamente",
         life: 4000,
       });
 
@@ -126,11 +154,15 @@ export default function GeneradorDocumentosFinancierosDialog({
       onHide();
     } catch (error) {
       console.error("Error al generar documentos:", error);
+      const mensajeError = error.response?.data?.message || error.message || "Error al generar documentos financieros";
+      // Se muestra también dentro del diálogo para que el usuario siempre vea qué debe corregir
+      setErrorGeneracion(mensajeError);
+      setDecisionOC(null);
       toast?.current?.show({
         severity: "error",
         summary: "❌ Error al Generar Documentos",
-        detail: error.response?.data?.message || error.message || "Error al generar documentos financieros",
-        life: 6000,
+        detail: mensajeError,
+        life: 10000,
       });
     } finally {
       setLoading(false);
@@ -138,15 +170,18 @@ export default function GeneradorDocumentosFinancierosDialog({
     }
   };
 
-  const calcularIGV = (monto) => {
-    return (Number(monto) * 0.18).toFixed(2);
-  };
+  const esGerencial = detMovEntregaRendir?.operacionSinFactura === true;
+  const esReciboHonorarios = Number(detMovEntregaRendir?.tipoDocumentoId) === 12;
+  const montoTotal = Number(detMovEntregaRendir?.monto || 0);
+  const sinIGV = esGerencial || esReciboHonorarios;
+  const subtotal = sinIGV ? montoTotal : montoTotal / 1.18;
+  const igv = montoTotal - subtotal;
+  const numeroComprobante = esGerencial
+    ? "SIN COMPROBANTE (GERENCIAL)"
+    : `${detMovEntregaRendir?.tipoDocumento?.descripcion || ""} ${detMovEntregaRendir?.numeroSerieComprobante || ""}-${detMovEntregaRendir?.numeroCorrelativoComprobante || ""}`.trim();
+  const cantidadAsientos = esGerencial ? 1 : 3;
 
-  const calcularTotal = (monto) => {
-    return (Number(monto) * 1.18).toFixed(2);
-  };
-
-  const esGastoAsignacion = detMovEntregaRendir?.asignacionOrigenId !== null;
+  const esGastoAsignacion = detMovEntregaRendir?.asignacionOrigenId != null;
   const tipoGasto = esGastoAsignacion ? "GASTO DE ASIGNACIÓN" : "GASTO ELEVADO";
 
   return (
@@ -179,7 +214,7 @@ export default function GeneradorDocumentosFinancierosDialog({
 
             <div>
               <strong>Responsable:</strong>
-              <div>{detMovEntregaRendir?.responsable?.nombreCompleto || "-"}</div>
+              <div>{detMovEntregaRendir?.responsable ? `${detMovEntregaRendir.responsable.nombres} ${detMovEntregaRendir.responsable.apellidos}`.trim() : "-"}</div>
             </div>
 
             <div>
@@ -189,7 +224,7 @@ export default function GeneradorDocumentosFinancierosDialog({
 
             <div>
               <strong>Comprobante:</strong>
-              <div>{detMovEntregaRendir?.tipoDocumento?.descripcion || "-"} {detMovEntregaRendir?.numeroSerieComprobante}-{detMovEntregaRendir?.numeroCorrelativoComprobante}</div>
+              <div>{numeroComprobante}</div>
             </div>
 
             <div>
@@ -199,12 +234,23 @@ export default function GeneradorDocumentosFinancierosDialog({
 
             <div>
               <strong>Producto:</strong>
-              <div>{detMovEntregaRendir?.producto?.descripcion || "-"}</div>
+              <div>{detMovEntregaRendir?.producto?.descripcionArmada || "-"}</div>
             </div>
 
             <div>
               <strong>Centro Costo:</strong>
-              <div>{detMovEntregaRendir?.centroCosto?.descripcion || "-"}</div>
+              <div>{detMovEntregaRendir?.centroCosto ? `${detMovEntregaRendir.centroCosto.Codigo} - ${detMovEntregaRendir.centroCosto.Nombre}` : "-"}</div>
+            </div>
+
+            <div>
+              <strong>Unidad de Negocio:</strong>
+              {detMovEntregaRendir?.unidadNegocioOrigen?.nombre ? (
+                <div>{detMovEntregaRendir.unidadNegocioOrigen.nombre}</div>
+              ) : (
+                <div style={{ color: "#D32F2F", fontSize: "0.85rem" }}>
+                  {detMovEntregaRendir?.unidadNegocioOrigen?.motivo || "Cargando..."}
+                </div>
+              )}
             </div>
           </div>
 
@@ -212,15 +258,15 @@ export default function GeneradorDocumentosFinancierosDialog({
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", textAlign: "right" }}>
               <div>
                 <div style={{ fontSize: "0.85rem", color: "#757575" }}>Subtotal:</div>
-                <div style={{ fontSize: "1.1rem", fontWeight: "bold" }}>{detMovEntregaRendir?.moneda?.simbolo} {Number(detMovEntregaRendir?.monto || 0).toFixed(2)}</div>
+                <div style={{ fontSize: "1.1rem", fontWeight: "bold" }}>{detMovEntregaRendir?.moneda?.simbolo} {subtotal.toFixed(2)}</div>
               </div>
               <div>
-                <div style={{ fontSize: "0.85rem", color: "#757575" }}>IGV (18%):</div>
-                <div style={{ fontSize: "1.1rem", fontWeight: "bold" }}>{detMovEntregaRendir?.moneda?.simbolo} {calcularIGV(detMovEntregaRendir?.monto || 0)}</div>
+                <div style={{ fontSize: "0.85rem", color: "#757575" }}>{sinIGV ? "IGV:" : "IGV (18%):"}</div>
+                <div style={{ fontSize: "1.1rem", fontWeight: "bold" }}>{detMovEntregaRendir?.moneda?.simbolo} {igv.toFixed(2)}</div>
               </div>
               <div>
                 <div style={{ fontSize: "0.85rem", color: "#757575" }}>TOTAL:</div>
-                <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#1976D2" }}>{detMovEntregaRendir?.moneda?.simbolo} {calcularTotal(detMovEntregaRendir?.monto || 0)}</div>
+                <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#1976D2" }}>{detMovEntregaRendir?.moneda?.simbolo} {montoTotal.toFixed(2)}</div>
               </div>
             </div>
           </div>
@@ -235,8 +281,8 @@ export default function GeneradorDocumentosFinancierosDialog({
               <div style={{ fontSize: "1.5rem", marginRight: "0.75rem" }}>1️⃣</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: "bold" }}>📄 Orden de Compra</div>
-                <div style={{ fontSize: "0.85rem", color: "#757575" }}>Número: OC-2024-XXXXX (auto-generado)</div>
-                <div style={{ fontSize: "0.85rem", color: "#757575" }}>Estado: APROBADO</div>
+                <div style={{ fontSize: "0.85rem", color: "#757575" }}>Numeración interna: Orden de Compra, serie 002 (auto-generado)</div>
+                <div style={{ fontSize: "0.85rem", color: "#757575" }}>Tipo: {esGerencial ? "GERENCIAL (sin comprobante)" : "FISCAL"}</div>
               </div>
             </div>
 
@@ -244,8 +290,7 @@ export default function GeneradorDocumentosFinancierosDialog({
               <div style={{ fontSize: "1.5rem", marginRight: "0.75rem" }}>2️⃣</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: "bold" }}>💰 Cuenta por Pagar</div>
-                <div style={{ fontSize: "0.85rem", color: "#757575" }}>Comprobante: {detMovEntregaRendir?.numeroSerieComprobante}-{detMovEntregaRendir?.numeroCorrelativoComprobante}</div>
-                <div style={{ fontSize: "0.85rem", color: "#757575" }}>Estado: PENDIENTE</div>
+                <div style={{ fontSize: "0.85rem", color: "#757575" }}>Comprobante: {numeroComprobante}</div>
               </div>
             </div>
 
@@ -254,25 +299,14 @@ export default function GeneradorDocumentosFinancierosDialog({
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: "bold" }}>💵 Pago Automático</div>
                 <div style={{ fontSize: "0.85rem", color: "#757575" }}>Medio: EFECTIVO</div>
-                <div style={{ fontSize: "0.85rem", color: "#757575" }}>Estado: PAGADO</div>
               </div>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", padding: "0.5rem", backgroundColor: "#FFFFFF", borderRadius: "4px" }}>
               <div style={{ fontSize: "1.5rem", marginRight: "0.75rem" }}>4️⃣</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: "bold" }}>📊 Asiento Contable (Compra)</div>
-                <div style={{ fontSize: "0.85rem", color: "#757575" }}>Número: ASI-2024-XXXXX (auto-generado)</div>
-                <div style={{ fontSize: "0.85rem", color: "#757575" }}>Estado: APROBADO</div>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", padding: "0.5rem", backgroundColor: "#FFFFFF", borderRadius: "4px" }}>
-              <div style={{ fontSize: "1.5rem", marginRight: "0.75rem" }}>5️⃣</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: "bold" }}>📊 Asiento Contable (Pago)</div>
-                <div style={{ fontSize: "0.85rem", color: "#757575" }}>Número: ASI-2024-XXXXX (auto-generado)</div>
-                <div style={{ fontSize: "0.85rem", color: "#757575" }}>Estado: APROBADO</div>
+                <div style={{ fontWeight: "bold" }}>📊 {esGerencial ? "Asiento Contable Gerencial (Pago + Destino)" : "Asientos Contables (Compra, Destino y Pago)"}</div>
+                <div style={{ fontSize: "0.85rem", color: "#757575" }}>Cantidad: {cantidadAsientos} (numeración auto-generada)</div>
               </div>
             </div>
           </div>
@@ -286,14 +320,27 @@ export default function GeneradorDocumentosFinancierosDialog({
               <div style={{ fontWeight: "bold", marginBottom: "0.5rem", color: "#E65100" }}>⚠️ Advertencias Importantes</div>
               <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.9rem" }}>
                 <li>Esta operación NO se puede deshacer</li>
-                <li>Se generarán 5 documentos automáticamente</li>
-                <li>Los asientos contables quedarán APROBADOS</li>
+                <li>Se generarán {3 + cantidadAsientos} documentos automáticamente</li>
+                <li>Si la Orden de Compra ya existe, se le pedirá elegir cómo continuar</li>
                 <li>La cuenta por pagar quedará PAGADA y CANCELADA</li>
                 <li>El proceso es una transacción completa (todo o nada)</li>
               </ul>
             </div>
           </div>
         </div>
+
+        {errorGeneracion && (
+          <Message
+            severity="error"
+            className="w-full mb-3 justify-content-start"
+            content={
+              <div>
+                <strong>No se pudieron generar los documentos:</strong>
+                <div>{errorGeneracion}</div>
+              </div>
+            }
+          />
+        )}
 
               {/* INDICADOR DE PROGRESO */}
         {generandoDocumentos && (
@@ -329,12 +376,86 @@ export default function GeneradorDocumentosFinancierosDialog({
           <Button
             label={generandoDocumentos ? "Generando..." : "✅ Confirmar y Generar Documentos"}
             icon={generandoDocumentos ? "pi pi-spin pi-spinner" : "pi pi-check"}
-            onClick={handleGenerar}
+            onClick={() => handleGenerar()}
             className="p-button-success"
             disabled={generandoDocumentos}
           />
         </div>
       </div>
+
+      {/* DECISIÓN CUANDO LA ORDEN DE COMPRA YA EXISTE */}
+      <Dialog
+        visible={!!decisionOC}
+        style={{ width: "560px" }}
+        header="⚠ Ya existe una Orden de Compra para este gasto"
+        modal
+        onHide={() => setDecisionOC(null)}
+      >
+        {decisionOC && (
+          <div className="p-fluid">
+            <div style={{ marginBottom: "1rem", padding: "0.75rem", backgroundColor: "#F5F5F5", borderRadius: "4px", fontSize: "0.9rem" }}>
+              <div>
+                <strong>OC {decisionOC.ordenCompra.numeroDocumento}</strong>
+                {decisionOC.ordenCompra.proveedor ? ` · ${decisionOC.ordenCompra.proveedor}` : ""}
+                {` · ${detMovEntregaRendir?.moneda?.simbolo || ""} ${Number(decisionOC.ordenCompra.total || 0).toFixed(2)}`}
+                {decisionOC.ordenCompra.fechaDocumento
+                  ? ` · ${new Date(decisionOC.ordenCompra.fechaDocumento).toLocaleDateString("es-PE", { timeZone: "UTC" })}`
+                  : ""}
+              </div>
+              <div style={{ marginTop: "0.25rem" }}>
+                Tiene: CxP {decisionOC.tiene.cuentaPorPagar ? "✔" : "✘"} · Pago {decisionOC.tiene.pago ? "✔" : "✘"} · Asientos {decisionOC.tiene.asientos ? "✔" : "✘"}
+              </div>
+            </div>
+
+            <div style={{ fontWeight: "bold", marginBottom: "0.5rem" }}>¿Qué desea hacer?</div>
+            {[
+              { valor: "A", titulo: "A. Solo actualizar referencias", detalle: "Origen, activo y URL del comprobante. No se genera nada más." },
+              { valor: "B", titulo: "B. Actualizar y completar lo que falte", detalle: "Se crean la CxP, el pago y los asientos que no existan." },
+              { valor: "C", titulo: "C. Borrar y volver a generar todo", detalle: "Elimina OC, CxP, pagos y asientos de este gasto y los genera de nuevo (consume un correlativo nuevo)." },
+            ]
+              .filter((opcion) => decisionOC.opciones.includes(opcion.valor))
+              .map((opcion) => (
+                <div key={opcion.valor} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                  <RadioButton
+                    inputId={`accionOC${opcion.valor}`}
+                    value={opcion.valor}
+                    checked={accionOC === opcion.valor}
+                    onChange={(e) => setAccionOC(e.value)}
+                  />
+                  <label htmlFor={`accionOC${opcion.valor}`} style={{ cursor: "pointer" }}>
+                    <div style={{ fontWeight: "bold", color: opcion.valor === "C" ? "#D32F2F" : undefined }}>{opcion.titulo}</div>
+                    <div style={{ fontSize: "0.85rem", color: "#757575" }}>{opcion.detalle}</div>
+                  </label>
+                </div>
+              ))}
+
+            {accionOC === "C" && (
+              <Message
+                severity="warn"
+                className="w-full mb-3 justify-content-start"
+                text="Se eliminarán documentos contables ya generados. Esta acción no se puede deshacer."
+              />
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "1rem" }}>
+              <Button
+                label="Cancelar"
+                icon="pi pi-times"
+                className="p-button-secondary"
+                onClick={() => setDecisionOC(null)}
+                disabled={generandoDocumentos}
+              />
+              <Button
+                label={generandoDocumentos ? "Procesando..." : "Confirmar"}
+                icon={generandoDocumentos ? "pi pi-spin pi-spinner" : "pi pi-check"}
+                className={accionOC === "C" ? "p-button-danger" : "p-button-success"}
+                onClick={() => handleGenerar(accionOC)}
+                disabled={generandoDocumentos}
+              />
+            </div>
+          </div>
+        )}
+      </Dialog>
     </Dialog>
   );
 }

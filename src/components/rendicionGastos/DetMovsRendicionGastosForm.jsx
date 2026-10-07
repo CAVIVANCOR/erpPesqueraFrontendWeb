@@ -33,6 +33,10 @@ import {
   obtenerValoresIniciales,
 } from "../../api/detMovsEntregaRendir";
 import GeneradorDocumentosFinancierosDialog from "../common/GeneradorDocumentosFinancierosDialog";
+import {
+  puedeGenerarDocumentos,
+  validarRequisitosGeneracion,
+} from "../../utils/generacionDocumentosFinancieros";
 import { getEmbarcaciones } from "../../api/embarcacion";
 import CentroCostoSelector from "../common/CentroCostoSelector"; // ✅ AGREGAR
 import ActivoSelector from '../common/ActivoSelector';
@@ -725,46 +729,12 @@ const DetMovsRendicionGastosForm = ({
     // Si necesitas refrescar datos específicos, hazlo aquí de forma selectiva
   };
 
-  const validarRequisitosGeneracion = () => {
-    const errores = [];
-
-    if (!isEditing || !movimiento) {
-      errores.push("Debe guardar el movimiento primero");
-      return { valido: false, errores };
-    }
-
-    if (!movimiento.entidadComercialId) {
-      errores.push("Debe especificar un proveedor");
-    }
-
-    // Solo validar comprobante si NO es operación sin factura
-    if (!movimiento.operacionSinFactura) {
-      if (!movimiento.tipoDocumentoId) {
-        errores.push("Debe especificar el tipo de comprobante");
-      }
-
-      if (!movimiento.numeroSerieComprobante || !movimiento.numeroCorrelativoComprobante) {
-        errores.push("Debe ingresar serie y correlativo del comprobante");
-      }
-    }
-
-    if (!movimiento.monto || movimiento.monto <= 0) {
-      errores.push("El monto debe ser mayor a cero");
-    }
-
-    if (!movimiento.productoId) {
-      errores.push("Debe especificar un producto/servicio");
-    }
-
-    if (!movimiento.centroCostoId) {
-      errores.push("Debe especificar un centro de costo");
-    }
-
-    return { valido: errores.length === 0, errores };
-  };
-
   const handleClickGenerarDocumentos = () => {
-    const { valido, errores } = validarRequisitosGeneracion();
+    // Las reglas viven en utils/generacionDocumentosFinancieros (compartidas con la lista)
+    const { valido, errores } =
+      !isEditing || !movimiento
+        ? { valido: false, errores: ["Debe guardar el movimiento primero"] }
+        : validarRequisitosGeneracion(movimiento);
 
     if (!valido) {
       const mensajeDetalle = errores.map((error, index) => `${index + 1}. ${error}`).join('\n');
@@ -1941,7 +1911,8 @@ const DetMovsRendicionGastosForm = ({
               size="small"
               severity="info"
               onClick={handleClickGenerarDocumentos}
-              tooltip="Genera automáticamente: OC, CxP, Pago y Asientos Contables"
+              disabled={!puedeGenerarDocumentos(movimiento)}
+              tooltip="Genera automáticamente: OC, CxP, Pago y Asientos Contables (solo gastos de una entrega a rendir)"
               tooltipOptions={{ position: "top" }}
             />
           )}

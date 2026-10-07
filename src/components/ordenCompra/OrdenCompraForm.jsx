@@ -13,6 +13,7 @@ import { obtenerContactosPorEntidad } from "../../api/contactoEntidad";
 import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 import { getSeriesDoc } from "../../api/preFactura";
 import AsientoContableManager from "../common/AsientoContableManager";
+import { SUBMODULO_ORIGEN } from "../../utils/submodulos.constants";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
 import { getMediosPago } from "../../api/medioPago";
 import { getAllCuentaCorriente } from "../../api/cuentaCorriente";
@@ -1729,6 +1730,7 @@ export default function OrdenCompraForm({
               periodoContableId={periodoContableId}
               showAsButton={true}
               onBeforeGenerate={handleBeforeGenerateAsiento}
+              submodulosSinRegeneracion={[SUBMODULO_ORIGEN.RENDICION_GASTOS]}
             />
           )}
         </div>

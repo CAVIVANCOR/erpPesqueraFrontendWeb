@@ -334,6 +334,10 @@ export default function PagoCuentaPorPagarForm({
       if (defaultValues.periodoContableId !== undefined) {
         setPeriodoContableId(Number(defaultValues.periodoContableId));
       }
+      // El Dropdown de período filtra por empresa: se toma la del propio pago para no depender de que la CxP esté en el listado
+      if (defaultValues.empresaId) {
+        setEmpresaId(Number(defaultValues.empresaId));
+      }
 
       setCreadoPor(defaultValues.creadoPor || null);
       setActualizadoPor(defaultValues.actualizadoPor || null);

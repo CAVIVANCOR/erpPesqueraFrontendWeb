@@ -7,8 +7,10 @@ import { Toast } from "primereact/toast";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { Toolbar } from "primereact/toolbar";
-import { Tag } from "primereact/tag";
+import { Calendar } from "primereact/calendar";
+import { Dropdown } from "primereact/dropdown";
 import PagoCuentaPorCobrarForm from "../components/pagoCuentaPorCobrar/PagoCuentaPorCobrarForm";
+import EmpresaSelector from "../components/common/EmpresaSelector";
 import {
   getPago,
   getPagoById,
@@ -24,6 +26,7 @@ import { getAllCuentaCorriente } from "../api/cuentaCorriente";
 import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { getPeriodosContables } from "../api/contabilidad/periodoContable";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { getResponsiveFontSize, formatearFecha, formatearNumero } from "../utils/utils";
 
 export default function PagoCuentaPorCobrar() {
   const toast = useRef(null);
@@ -45,6 +48,24 @@ export default function PagoCuentaPorCobrar() {
   const [globalFilter, setGlobalFilter] = useState("");
 
   const [formData, setFormData] = useState({});
+
+  // ═══════════════════════════════════════════════════════════
+  // ESTADOS DE FILTROS
+  // ═══════════════════════════════════════════════════════════
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
+  const [rangoFechas, setRangoFechas] = useState(null);
+  const [medioPagoSeleccionado, setMedioPagoSeleccionado] = useState(null);
+  const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
+  const [cuentaCorrienteSeleccionada, setCuentaCorrienteSeleccionada] = useState(null);
+  const [periodoSeleccionado, setPeriodoSeleccionado] = useState(null);
+  const [nroDocumentoBusqueda, setNroDocumentoBusqueda] = useState("");
+  const [pagosFiltrados, setPagosFiltrados] = useState([]);
+  const [clientesUnicos, setClientesUnicos] = useState([]);
+  const [mediosPagoUnicos, setMediosPagoUnicos] = useState([]);
+  const [monedasUnicas, setMonedasUnicas] = useState([]);
+  const [cuentasCorrientesUnicas, setCuentasCorrientesUnicas] = useState([]);
+  const [periodosUnicos, setPeriodosUnicos] = useState([]);
 
   useEffect(() => {
     loadData();
@@ -72,9 +93,10 @@ export default function PagoCuentaPorCobrar() {
         getEstadosMultiFuncion(),
         getPeriodosContables(),
       ]);
-      const pagosFiltrados =
-        pagosData?.filter((p) => p.cuentaPorCobrarId !== null) || [];
-      setPagos(pagosFiltrados);
+
+      // El listado consolidado trae pagos de CxC y de CxP: aquí solo interesan los de CxC
+      setPagos(pagosData?.filter((p) => p.tipoPago === "COBRAR") || []);
+
       const cuentasPendientes =
         cuentasData?.filter((c) => Number(c.saldoPendiente || 0) > 0) || [];
       setCuentasPorCobrar(cuentasPendientes);
@@ -95,6 +117,147 @@ export default function PagoCuentaPorCobrar() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ═══════════════════════════════════════════════════════════
+  // EFECTO: GENERAR OPCIONES ÚNICAS PARA FILTROS
+  // ═══════════════════════════════════════════════════════════
+  useEffect(() => {
+    const datosParaOpciones = empresaSeleccionada
+      ? pagosFiltrados.filter((p) => Number(p.empresaId) === Number(empresaSeleccionada))
+      : pagosFiltrados;
+
+    const unicos = (obtener) => [
+      ...new Map(
+        datosParaOpciones
+          .map(obtener)
+          .filter(Boolean)
+          .map((item) => [item.id, item])
+      ).values(),
+    ];
+
+    const clientes = unicos((p) => p.cuentaPorCobrar?.cliente);
+    const medios = unicos((p) => p.medioPago);
+    const monedasPago = unicos((p) => p.monedaPago);
+    const cuentas = unicos((p) => p.cuentaBancaria);
+    const periodos = unicos((p) => p.periodoContable);
+
+    setClientesUnicos(clientes);
+    setMediosPagoUnicos(medios);
+    setMonedasUnicas(monedasPago);
+    setCuentasCorrientesUnicas(cuentas);
+    setPeriodosUnicos(periodos);
+
+    // Limpiar selecciones que ya no existen
+    const existe = (lista, id) => lista.find((item) => Number(item.id) === Number(id));
+    if (clienteSeleccionado && !existe(clientes, clienteSeleccionado)) setClienteSeleccionado(null);
+    if (medioPagoSeleccionado && !existe(medios, medioPagoSeleccionado)) setMedioPagoSeleccionado(null);
+    if (monedaSeleccionada && !existe(monedasPago, monedaSeleccionada)) setMonedaSeleccionada(null);
+    if (cuentaCorrienteSeleccionada && !existe(cuentas, cuentaCorrienteSeleccionada)) setCuentaCorrienteSeleccionada(null);
+    if (periodoSeleccionado && !existe(periodos, periodoSeleccionado)) setPeriodoSeleccionado(null);
+  }, [
+    pagosFiltrados,
+    empresaSeleccionada,
+    clienteSeleccionado,
+    medioPagoSeleccionado,
+    monedaSeleccionada,
+    cuentaCorrienteSeleccionada,
+    periodoSeleccionado,
+  ]);
+
+  // ═══════════════════════════════════════════════════════════
+  // EFECTO: APLICAR FILTROS
+  // ═══════════════════════════════════════════════════════════
+  useEffect(() => {
+    let filtrados = pagos;
+
+    if (empresaSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.empresaId) === Number(empresaSeleccionada)
+      );
+    }
+
+    if (clienteSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.cuentaPorCobrar?.clienteId) === Number(clienteSeleccionado)
+      );
+    }
+
+    // Filtro por rango de fechas (fechaPago)
+    if (rangoFechas && rangoFechas[0]) {
+      filtrados = filtrados.filter((item) => {
+        const fechaPago = new Date(item.fechaPago);
+        const fechaIni = new Date(rangoFechas[0]);
+        fechaIni.setHours(0, 0, 0, 0);
+
+        if (rangoFechas[1]) {
+          const fechaFinDia = new Date(rangoFechas[1]);
+          fechaFinDia.setHours(23, 59, 59, 999);
+          return fechaPago >= fechaIni && fechaPago <= fechaFinDia;
+        }
+        return fechaPago >= fechaIni;
+      });
+    }
+
+    if (medioPagoSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.medioPagoId) === Number(medioPagoSeleccionado)
+      );
+    }
+
+    if (monedaSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.monedaPagoId) === Number(monedaSeleccionada)
+      );
+    }
+
+    if (cuentaCorrienteSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.cuentaBancariaId) === Number(cuentaCorrienteSeleccionada)
+      );
+    }
+
+    if (periodoSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.periodoContableId) === Number(periodoSeleccionado)
+      );
+    }
+
+    // Filtro por N° de documento (PreFactura de la CxC) o N° de operación bancaria
+    if (nroDocumentoBusqueda && nroDocumentoBusqueda.trim() !== "") {
+      const busqueda = nroDocumentoBusqueda.toLowerCase().trim();
+      filtrados = filtrados.filter((item) => {
+        const nroDocumento = item.cuentaPorCobrar?.numeroPreFactura || "";
+        const nroOperacion = item.numeroOperacion || "";
+        return (
+          nroDocumento.toLowerCase().includes(busqueda) ||
+          nroOperacion.toLowerCase().includes(busqueda)
+        );
+      });
+    }
+
+    setPagosFiltrados(filtrados);
+  }, [
+    pagos,
+    empresaSeleccionada,
+    clienteSeleccionado,
+    rangoFechas,
+    medioPagoSeleccionado,
+    monedaSeleccionada,
+    cuentaCorrienteSeleccionada,
+    periodoSeleccionado,
+    nroDocumentoBusqueda,
+  ]);
+
+  const limpiarFiltros = () => {
+    setEmpresaSeleccionada(null);
+    setClienteSeleccionado(null);
+    setRangoFechas(null);
+    setMedioPagoSeleccionado(null);
+    setMonedaSeleccionada(null);
+    setCuentaCorrienteSeleccionada(null);
+    setPeriodoSeleccionado(null);
+    setNroDocumentoBusqueda("");
   };
 
   const openNew = () => {
@@ -118,7 +281,7 @@ export default function PagoCuentaPorCobrar() {
       const dataParaEdicion = {
         ...pagoCompleto,
         cuentaPorCobrarId: Number(pagoCompleto.cuentaPorCobrarId),
-        monedaId: Number(pagoCompleto.monedaId),
+        monedaPagoId: Number(pagoCompleto.monedaPagoId),
         medioPagoId: Number(pagoCompleto.medioPagoId),
         bancoId: pagoCompleto.bancoId ? Number(pagoCompleto.bancoId) : null,
         cuentaBancariaId: pagoCompleto.cuentaBancariaId
@@ -218,14 +381,22 @@ export default function PagoCuentaPorCobrar() {
     setSelectedPago(null);
   };
 
+  // ═══════════════════════════════════════════════════════════
+  // TEMPLATES DE COLUMNAS
+  // ═══════════════════════════════════════════════════════════
+  const empresaBodyTemplate = (rowData) =>
+    rowData.empresa?.razonSocial || rowData.empresaNombre || "-";
+
   const cuentaPorCobrarBodyTemplate = (rowData) => {
     const cuenta = cuentasPorCobrar.find(
       (c) => Number(c.id) === Number(rowData.cuentaPorCobrarId),
     );
-    if (!cuenta && rowData.cuentaPorCobrar) {
-      return `${rowData.cuentaPorCobrar.numeroPreFactura || rowData.cuentaPorCobrarId}`;
-    }
-    return cuenta?.numeroPreFactura || rowData.cuentaPorCobrarId || "-";
+    return (
+      rowData.cuentaPorCobrar?.numeroPreFactura ||
+      cuenta?.numeroPreFactura ||
+      rowData.cuentaPorCobrarId ||
+      "-"
+    );
   };
 
   const clienteBodyTemplate = (rowData) => {
@@ -239,35 +410,65 @@ export default function PagoCuentaPorCobrar() {
   };
 
   const monedaBodyTemplate = (rowData) => {
-    const moneda = monedas.find(
-      (m) => Number(m.id) === Number(rowData.monedaId),
-    );
+    const moneda =
+      rowData.monedaPago ||
+      monedas.find((m) => Number(m.id) === Number(rowData.monedaPagoId));
     return moneda?.codigoSunat || "-";
   };
 
   const medioPagoBodyTemplate = (rowData) => {
-    if (rowData.medioPago) {
-      return rowData.medioPago.nombre;
-    }
-    const medio = mediosPago.find(
-      (m) => Number(m.id) === Number(rowData.medioPagoId),
-    );
+    const medio =
+      rowData.medioPago ||
+      mediosPago.find((m) => Number(m.id) === Number(rowData.medioPagoId));
     return medio?.nombre || "-";
   };
 
-  const fechaBodyTemplate = (rowData, field) => {
-    if (!rowData[field]) return "-";
-    return new Date(rowData[field]).toLocaleDateString("es-PE");
+  const cuentaCorrienteBodyTemplate = (rowData) => {
+    const cuenta =
+      rowData.cuentaBancaria ||
+      cuentasCorrientes.find((c) => Number(c.id) === Number(rowData.cuentaBancariaId));
+    if (!cuenta) return "-";
+    const banco =
+      rowData.banco ||
+      bancos.find((b) => Number(b.id) === Number(cuenta.bancoId));
+    return [banco?.nombre, cuenta.numeroCuenta, cuenta.descripcion]
+      .filter(Boolean)
+      .join(" - ");
   };
 
-  const montoBodyTemplate = (rowData, field) => {
-    const monto = rowData[field] || 0;
-    return new Intl.NumberFormat("es-PE", {
-      style: "decimal",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(monto);
+  const periodoContableBodyTemplate = (rowData) => {
+    const periodo =
+      rowData.periodoContable ||
+      periodosContables.find((p) => Number(p.id) === Number(rowData.periodoContableId));
+    return periodo?.nombrePeriodo || "-";
   };
+
+  const fechaBodyTemplate = (rowData, field) => formatearFecha(rowData[field], "-");
+
+  // Monto en la moneda real del cobro, resaltado con el color de la moneda
+  const montoPagadoBodyTemplate = (rowData) => {
+    const moneda =
+      rowData.monedaPago ||
+      monedas.find((m) => Number(m.id) === Number(rowData.monedaPagoId));
+    return (
+      <span
+        style={{
+          backgroundColor: moneda?.colorFondo || "#ffffff",
+          padding: "0.25rem 0.5rem",
+          borderRadius: "4px",
+          fontWeight: "bold",
+          display: "inline-block",
+          width: "100%",
+          textAlign: "right",
+        }}
+      >
+        {moneda?.simbolo} {formatearNumero(rowData.montoPagado, 2)}
+      </span>
+    );
+  };
+
+  const tipoCambioBodyTemplate = (rowData) =>
+    rowData.tipoCambio ? formatearNumero(rowData.tipoCambio, 3) : "-";
 
   const actionBodyTemplate = (rowData) => {
     return (
@@ -306,6 +507,14 @@ export default function PagoCuentaPorCobrar() {
           onClick={loadData}
           loading={loading}
         />
+        <Button
+          label="Limpiar Filtros"
+          icon="pi pi-filter-slash"
+          className="p-button-secondary"
+          outlined
+          onClick={limpiarFiltros}
+          disabled={loading}
+        />
       </div>
     );
   };
@@ -342,11 +551,144 @@ export default function PagoCuentaPorCobrar() {
     </>
   );
 
+  const filtroDropdown = (id, etiqueta, value, onChange, opciones, placeholder = "Todos") => (
+    <div style={{ flex: 2 }}>
+      <label htmlFor={id} style={{ fontWeight: "bold" }}>
+        {etiqueta}
+      </label>
+      <Dropdown
+        id={id}
+        value={value}
+        options={opciones}
+        onChange={(e) => onChange(e.value)}
+        placeholder={placeholder}
+        optionLabel="label"
+        optionValue="value"
+        showClear
+        filter
+        disabled={loading}
+        style={{ width: "100%" }}
+      />
+    </div>
+  );
+
   return (
     <div className="card">
       <Toast ref={toast} />
 
-      <h2>Gestión de Cobros (Pagos de Cuentas por Cobrar)</h2>
+      <div style={{ marginBottom: "1rem" }}>
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 2 }}>
+            <h2>Cobros de Cuentas por Cobrar</h2>
+          </div>
+          <div style={{ flex: 2 }}>
+            <label style={{ fontWeight: "bold" }}>Empresa</label>
+            <EmpresaSelector
+              empresaId={usuario?.empresaId}
+              onEmpresaChange={(id) => setEmpresaSeleccionada(id)}
+            />
+          </div>
+        </div>
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            marginTop: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {filtroDropdown(
+            "clienteFiltro",
+            "Cliente",
+            clienteSeleccionado,
+            setClienteSeleccionado,
+            clientesUnicos.map((c) => ({ label: c.razonSocial, value: Number(c.id) }))
+          )}
+          <div style={{ flex: 2 }}>
+            <label htmlFor="rangoFechas" style={{ fontWeight: "bold" }}>
+              Rango de Fechas (Cobro)
+            </label>
+            <Calendar
+              id="rangoFechas"
+              value={rangoFechas}
+              onChange={(e) => setRangoFechas(e.value)}
+              selectionMode="range"
+              dateFormat="dd/mm/yy"
+              showIcon
+              placeholder="Seleccionar rango..."
+              style={{ width: "100%" }}
+              disabled={loading}
+              readOnlyInput
+            />
+          </div>
+          {filtroDropdown(
+            "medioPagoFiltro",
+            "Medio de Pago",
+            medioPagoSeleccionado,
+            setMedioPagoSeleccionado,
+            mediosPagoUnicos.map((m) => ({ label: m.nombre, value: Number(m.id) }))
+          )}
+          {filtroDropdown(
+            "monedaFiltro",
+            "Moneda",
+            monedaSeleccionada,
+            setMonedaSeleccionada,
+            monedasUnicas.map((m) => ({ label: m.codigoSunat, value: Number(m.id) })),
+            "Todas"
+          )}
+        </div>
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            marginTop: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {filtroDropdown(
+            "cuentaCorrienteFiltro",
+            "Cuenta Corriente",
+            cuentaCorrienteSeleccionada,
+            setCuentaCorrienteSeleccionada,
+            cuentasCorrientesUnicas.map((c) => {
+              const banco = bancos.find((b) => Number(b.id) === Number(c.bancoId));
+              return {
+                label: [banco?.nombre, c.numeroCuenta, c.descripcion].filter(Boolean).join(" - "),
+                value: Number(c.id),
+              };
+            })
+          )}
+          {filtroDropdown(
+            "periodoFiltro",
+            "Período Contable",
+            periodoSeleccionado,
+            setPeriodoSeleccionado,
+            periodosUnicos.map((p) => ({ label: p.nombrePeriodo, value: Number(p.id) }))
+          )}
+          <div style={{ flex: 2 }}>
+            <label htmlFor="nroDocumentoInput" style={{ fontWeight: "bold" }}>
+              N° Documento / Operación
+            </label>
+            <InputText
+              id="nroDocumentoInput"
+              value={nroDocumentoBusqueda}
+              onChange={(e) => setNroDocumentoBusqueda(e.target.value)}
+              placeholder="Buscar por N° Documento u Operación..."
+              style={{ width: "100%" }}
+              disabled={loading}
+            />
+          </div>
+        </div>
+      </div>
 
       <Toolbar
         className="mb-4"
@@ -355,23 +697,27 @@ export default function PagoCuentaPorCobrar() {
       />
 
       <DataTable
-        value={pagos}
+        value={pagosFiltrados}
+        dataKey="id"
         loading={loading}
         globalFilter={globalFilter}
-        emptyMessage="No se encontraron pagos"
+        emptyMessage="No se encontraron cobros"
         paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
-        responsiveLayout="scroll"
+        rows={25}
+        rowsPerPageOptions={[25, 50, 100, 150]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cobros"
         stripedRows
+        showGridlines
         size="small"
+        style={{ fontSize: getResponsiveFontSize() }}
       >
         <Column field="id" header="ID" sortable style={{ minWidth: "80px" }} />
         <Column
-          header="Cuenta por Cobrar"
-          body={cuentaPorCobrarBodyTemplate}
+          header="Empresa"
+          body={empresaBodyTemplate}
           sortable
-          style={{ minWidth: "150px" }}
+          style={{ minWidth: "200px" }}
         />
         <Column
           header="Cliente"
@@ -380,34 +726,70 @@ export default function PagoCuentaPorCobrar() {
           style={{ minWidth: "200px" }}
         />
         <Column
-          header="Fecha Pago"
+          header="N° Dcmto Origen"
+          body={cuentaPorCobrarBodyTemplate}
+          sortable
+          style={{ minWidth: "150px" }}
+        />
+        <Column
+          header="Fecha Cobro"
           body={(rowData) => fechaBodyTemplate(rowData, "fechaPago")}
           sortable
           style={{ minWidth: "120px" }}
         />
         <Column
-          header="Monto Pagado"
-          body={(rowData) => montoBodyTemplate(rowData, "montoPago")}
-          sortable
-          style={{ minWidth: "120px", textAlign: "right" }}
-        />
-        <Column
           header="Moneda"
           body={monedaBodyTemplate}
           sortable
-          style={{ minWidth: "100px" }}
+          style={{ minWidth: "90px" }}
+        />
+        <Column
+          header="Monto Cobrado"
+          body={montoPagadoBodyTemplate}
+          sortable
+          style={{ minWidth: "140px" }}
+        />
+        <Column
+          header="T.C."
+          body={tipoCambioBodyTemplate}
+          sortable
+          style={{ minWidth: "80px", textAlign: "right" }}
         />
         <Column
           header="Medio de Pago"
           body={medioPagoBodyTemplate}
           sortable
-          style={{ minWidth: "150px" }}
+          style={{ minWidth: "130px" }}
+        />
+        <Column
+          header="Cuenta Corriente"
+          body={cuentaCorrienteBodyTemplate}
+          sortable
+          style={{ minWidth: "220px" }}
         />
         <Column
           field="numeroOperacion"
-          header="Nro. Operación"
+          header="N° Operación Bancaria"
           sortable
           style={{ minWidth: "150px" }}
+        />
+        <Column
+          header="Período Contable"
+          body={periodoContableBodyTemplate}
+          sortable
+          style={{ minWidth: "130px" }}
+        />
+        <Column
+          field="refOperacionEspecializadaMovCaja"
+          header="ID Op/Caja E."
+          sortable
+          style={{ minWidth: "100px" }}
+        />
+        <Column
+          field="movimientoCajaId"
+          header="Mov. Caja"
+          sortable
+          style={{ minWidth: "100px" }}
         />
         <Column
           header="Acciones"
@@ -458,7 +840,7 @@ export default function PagoCuentaPorCobrar() {
           {selectedPago && (
             <span>
               ¿Está seguro de eliminar el pago de{" "}
-              <b>{montoBodyTemplate(selectedPago, "montoPago")}</b>?
+              <b>{formatearNumero(selectedPago.montoPagado, 2)}</b>?
             </span>
           )}
         </div>
