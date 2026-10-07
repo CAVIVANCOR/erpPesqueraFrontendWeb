@@ -418,6 +418,15 @@ export async function actualizarTipoAfectacionIGVMasivo(ids, tipoAfectacionIGVId
   );
   return res.data;
 }
+
+export async function actualizarUnidadNegocioMasivo(ids, unidadNegocioId) {
+  const res = await axios.put(
+    `${API_URL}/actualizar-unidad-negocio-masivo`,
+    { ids, unidadNegocioId },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
 /**
  * Exporta Registro de Ventas SUNAT 14.1 (TXT)
  */

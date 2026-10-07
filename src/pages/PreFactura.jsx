@@ -27,6 +27,7 @@ import {
   actualizarPreFactura,
   actualizarTipoOperacionSunatMasivo,
   actualizarTipoAfectacionIGVMasivo,
+  actualizarUnidadNegocioMasivo,
   facturarPreFacturaNegra,
   facturarPreFacturaBlanca,
   aprobarPreFactura,
@@ -74,6 +75,7 @@ import { useDashboardStore } from "../shared/stores/useDashboardStore";
 import AuditoriaDialog from "../components/common/AuditoriaDialog";
 import AsignarTipoOperacionSunatDialog from "../components/common/AsignarTipoOperacionSunatDialog";
 import AsignarTipoAfectacionIGVDialog from "../components/common/AsignarTipoAfectacionIGVDialog";
+import AsignarUnidadNegocioDialog from "../components/common/AsignarUnidadNegocioDialog";
 import { generarPreFacturasExcel } from "../components/preFactura/reports/generarPreFacturasExcel";
 import FiltroTipoLibroButton from "../components/common/FiltroTipoLibroButton";
 import { formatearMontoConSigno, TIPO_DOC_ID } from "../utils/tiposDocumento.constants";
@@ -100,6 +102,7 @@ const PreFactura = ({ ruta }) => {
   const [showAsignarTipoAfectacionDialog, setShowAsignarTipoAfectacionDialog] = useState(false);
   const [selectedRecords, setSelectedRecords] = useState([]);
   const [showAsignarTipoOpDialog, setShowAsignarTipoOpDialog] = useState(false);
+  const [showAsignarUnidadNegocioDialog, setShowAsignarUnidadNegocioDialog] = useState(false);
   const [items, setItems] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
@@ -1260,6 +1263,31 @@ const PreFactura = ({ ruta }) => {
     }
   };
 
+  const handleAsignarUnidadNegocio = async (ids, unidadNegocioId) => {
+    try {
+      const resultado = await actualizarUnidadNegocioMasivo(ids, unidadNegocioId);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: resultado.mensaje || `${resultado.actualizados} registro(s) actualizado(s)`,
+        life: 3000,
+      });
+
+      setSelectedRecords([]);
+      cargarDatos();
+    } catch (error) {
+      console.error("Error actualizando unidad de negocio:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al actualizar registros",
+        life: 3000,
+      });
+      throw error;
+    }
+  };
+
   const cerrarDialogo = () => {
     // Si hay una PreFactura en el stack de navegación, volver a ella
     if (navigationStack.length > 0) {
@@ -2245,6 +2273,18 @@ const PreFactura = ({ ruta }) => {
                     style={{ width: "100%" }}
                   />
                 </div>
+                <div style={{ flex: 2 }}>
+                  <Button
+                    label="Asignar Unidad de Negocio"
+                    icon="pi pi-sitemap"
+                    onClick={() => setShowAsignarUnidadNegocioDialog(true)}
+                    disabled={!selectedRecords || selectedRecords.length === 0}
+                    className="p-button-help"
+                    tooltip="Asignar unidad de negocio a registros seleccionados"
+                    tooltipOptions={{ position: "top" }}
+                    style={{ width: "100%" }}
+                  />
+                </div>
               </div>
 
 
@@ -2945,6 +2985,14 @@ const PreFactura = ({ ruta }) => {
         onHide={() => setShowAsignarTipoOpDialog(false)}
         selectedIds={selectedRecords.map(r => r.id)}
         onAplicar={handleAsignarTipoOperacion}
+        toast={toast}
+        entidadNombre="PreFacturas"
+      />
+      <AsignarUnidadNegocioDialog
+        visible={showAsignarUnidadNegocioDialog}
+        onHide={() => setShowAsignarUnidadNegocioDialog(false)}
+        selectedIds={selectedRecords.map(r => r.id)}
+        onAplicar={handleAsignarUnidadNegocio}
         toast={toast}
         entidadNombre="PreFacturas"
       />
