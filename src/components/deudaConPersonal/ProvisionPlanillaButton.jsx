@@ -20,6 +20,7 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Calendar } from "primereact/calendar";
 import { generarProvisionPlanilla } from "../../api/tesoreria/deudaConPersonal";
+import AsientoContableViewer from "../common/AsientoContableViewer";
 import { formatearNumero, formatearFecha } from "../../utils/utils";
 
 const ProvisionPlanillaButton = ({
@@ -37,6 +38,7 @@ const ProvisionPlanillaButton = ({
   const [seleccion, setSeleccion] = useState([]);
   const [fechaAsiento, setFechaAsiento] = useState(null);
   const [procesando, setProcesando] = useState(false);
+  const [resultadoProvision, setResultadoProvision] = useState(null);
 
   // No se provisionan los saldos iniciales ni las deudas que ya tienen asiento
   const estaContabilizada = (d) => d.asientosContables?.length > 0;
@@ -82,13 +84,9 @@ const ProvisionPlanillaButton = ({
         deudaIds: seleccion.map((d) => Number(d.id)),
         fechaAsiento: fechaAsiento ? fechaAsiento.toISOString() : undefined,
       });
-      mostrarToast(
-        "success",
-        "Provisión generada",
-        `Asiento ${resultado.numeroAsiento || resultado.asientoId} · ${resultado.deudasProvisionadas} deudas · ${formatearNumero(resultado.totalDebe)}`,
-        7000,
-      );
+      mostrarToast("success", "Provisión generada", `Asiento ${resultado.numeroAsiento}`);
       setVisible(false);
+      setResultadoProvision(resultado);
       onFinalizado?.();
     } catch (error) {
       mostrarToast(
@@ -191,6 +189,28 @@ const ProvisionPlanillaButton = ({
             />
           </DataTable>
         </div>
+      </Dialog>
+
+      {/* Resultado: asiento de provisión generado */}
+      <Dialog
+        visible={Boolean(resultadoProvision)}
+        onHide={() => setResultadoProvision(null)}
+        header={`Provisión de Planilla generada - ${resultadoProvision?.numeroAsiento || ""}`}
+        footer={
+          <Button label="Cerrar" icon="pi pi-times" onClick={() => setResultadoProvision(null)} />
+        }
+        style={{ width: "1000px", maxWidth: "95vw" }}
+        modal
+      >
+        {resultadoProvision && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div className="font-bold">
+              {resultadoProvision.deudasProvisionadas} deuda(s) provisionada(s) · {resultadoProvision.lineas} línea(s) · Debe/Haber{" "}
+              {formatearNumero(resultadoProvision.totalDebe)}
+            </div>
+            <AsientoContableViewer asientoContableId={resultadoProvision.asientoId} showHeader={true} />
+          </div>
+        )}
       </Dialog>
     </>
   );
