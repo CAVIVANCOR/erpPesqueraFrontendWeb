@@ -21,6 +21,12 @@ export async function getDeudaConPersonalById(id) {
   return res.data;
 }
 
+// Genera UN asiento consolidado de provisión de planilla con las deudas indicadas
+export async function generarProvisionPlanilla(data) {
+  const res = await axios.post(`${API_URL}/provision-planilla`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function createDeudaConPersonal(data) {
   const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
   return res.data;

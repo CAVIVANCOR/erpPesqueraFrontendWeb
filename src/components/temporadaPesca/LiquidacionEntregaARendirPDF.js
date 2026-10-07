@@ -7,9 +7,10 @@
  */
 
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
-import { formatearNumero, formatearFecha } from "../../utils/utils";
+import { formatearNumero, formatearFecha, MODULO_SISTEMA } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
+import { getParametroAprobadorVigente } from "../../api/parametroAprobador";
 import { agregarDocumentosAdjuntos } from "./LiquidacionDocumentosAdjuntos";
 
 export async function generarYSubirPDFLiquidacionEntregaARendir(
@@ -76,6 +77,32 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
   // Obtener usuario logueado para firma de liquidación
   const usuarioLogueado = useAuthStore.getState().usuario;
+
+  // Firmante de la liquidación: el aprobador vigente de Tesorería de la empresa (ParametroAprobador:
+  // activo y con vigencia al día de hoy). Si no hay uno configurado, firma el usuario logueado.
+  let firmanteLiquidacion = null;
+  try {
+    const empresaIdFirma = empresa?.id ?? liquidacion.empresaId;
+    const aprobador = empresaIdFirma
+      ? await getParametroAprobadorVigente(empresaIdFirma, MODULO_SISTEMA.TESORERIA)
+      : null;
+    if (aprobador?.personal) {
+      firmanteLiquidacion = {
+        nombre: `${aprobador.personal.nombres || ""} ${aprobador.personal.apellidos || ""}`.trim(),
+        tipoDocumento: aprobador.personal.tipoDocIdentidad?.codigo || "Doc",
+        numeroDocumento: aprobador.personal.numeroDocumento,
+      };
+    }
+  } catch (error) {
+    console.error("Error al obtener el aprobador vigente de Tesorería:", error);
+  }
+  if (!firmanteLiquidacion && usuarioLogueado?.personal) {
+    firmanteLiquidacion = {
+      nombre: `${usuarioLogueado.personal.nombres || ""} ${usuarioLogueado.personal.apellidos || ""}`.trim(),
+      tipoDocumento: usuarioLogueado.personal.tipoDocIdentidad?.codigo || "Doc",
+      numeroDocumento: usuarioLogueado.personal.numeroDocumento,
+    };
+  }
 
   const pdfDoc = await PDFDocument.create();
   const pages = [];
@@ -638,10 +665,22 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
     const lineasTextoGasto = [...lineasCatTipoGasto, ...lineasDescGasto];
 
+    // Activo afecto: segunda línea de la fila, desde la columna Id; ocupa el ancho de las tres
+    // primeras columnas (Id, Fecha y N° Dcmto) hasta donde empieza la descripción
+    const nombreActivoAfecto = (gasto.activoAfecto?.nombre || "").trim();
+    const anchoActivoAfecto = colX[3] - colX[0] - 8;
+    const lineasActivoAfecto = nombreActivoAfecto
+      ? dividirTextoEnLineas(nombreActivoAfecto, anchoActivoAfecto, fontOblique, 6)
+      : [];
+
     // CALCULAR ALTURA DINÁMICA DE LA FILA
+    // La altura cubre la descripción o, si es mayor, las líneas del activo afecto (7 pt por línea)
     let numLineasGasto = lineasTextoGasto.length;
-    // 🔧 NO sumar línea por embarcación (ahora va en columna N° Dcmto)
-    const alturaFilaGasto = Math.max(14, numLineasGasto * 8 + 6);
+    const alturaFilaGasto = Math.max(
+      14,
+      numLineasGasto * 8 + 6,
+      lineasActivoAfecto.length > 0 ? lineasActivoAfecto.length * 7 + 8 : 0
+    );
 
     // Verificar si hay espacio para la fila
     if (yPosition < 40) {
@@ -738,29 +777,19 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
       yLineaDescGasto -= 8;
     });
 
-    // ⭐ EMBARCACIÓN - DEBAJO DE N° DCMTO
-    if (gasto.embarcacion) {
-      const nombreEmbarcacion = gasto.embarcacion.activo?.nombre ||
-        gasto.embarcacion.matricula ||
-        "";
-
-      if (nombreEmbarcacion) {
-        // Dividir en líneas si es necesario (máx 70pt de ancho)
-        const lineasEmb = dividirTextoEnLineas(nombreEmbarcacion, 70, fontOblique, 6);
-        let yEmb = yTopCeldaGasto - 7;
-
-        lineasEmb.forEach(linea => {
-          page.drawText(linea, {
-            x: colX[2] + 2,
-            y: yEmb,
-            size: 6,
-            font: fontOblique,
-            color: rgb(0.2, 0.2, 0.6),
-          });
-          yEmb -= 7;
-        });
-      }
-    }
+    // ⭐ ACTIVO AFECTO - SEGUNDA LÍNEA, DESDE LA COLUMNA ID
+    // Reemplaza a la embarcación (campo deprecado): el activo del gasto es DetMovsEntregaRendir.activoAfecto
+    let yActivoAfecto = yTopCeldaGasto - 7;
+    lineasActivoAfecto.forEach((linea) => {
+      page.drawText(linea, {
+        x: colX[0] + 3,
+        y: yActivoAfecto,
+        size: 6,
+        font: fontOblique,
+        color: rgb(0.2, 0.2, 0.6),
+      });
+      yActivoAfecto -= 7;
+    });
 
     // Moneda, T/C, Monto, Saldo
     const monGasto = gasto.moneda?.simbolo || "S/";
@@ -896,8 +925,8 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     });
   }
 
-  // Firma Derecha - Usuario Logueado
-  if (usuarioLogueado?.personal) {
+  // Firma Derecha - Responsable de Liquidación (aprobador vigente de Tesorería)
+  if (firmanteLiquidacion) {
     let yFirma = firmaYPosition;
 
     page.drawLine({
@@ -908,8 +937,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     });
 
     yFirma -= 10;
-    const nombreUsuario = `${usuarioLogueado.personal.nombres || ""} ${usuarioLogueado.personal.apellidos || ""}`.trim();
-    page.drawText(nombreUsuario, {
+    page.drawText(firmanteLiquidacion.nombre, {
       x: firmaDerX,
       y: yFirma,
       size: 7,
@@ -917,11 +945,9 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     });
 
     yFirma -= 9;
-    if (usuarioLogueado.personal.numeroDocumento) {
-      const tipoDocUsuario =
-        usuarioLogueado.personal.tipoDocumento?.abreviatura || "Doc";
+    if (firmanteLiquidacion.numeroDocumento) {
       page.drawText(
-        `${tipoDocUsuario}: ${usuarioLogueado.personal.numeroDocumento}`,
+        `${firmanteLiquidacion.tipoDocumento}: ${firmanteLiquidacion.numeroDocumento}`,
         {
           x: firmaDerX,
           y: yFirma,

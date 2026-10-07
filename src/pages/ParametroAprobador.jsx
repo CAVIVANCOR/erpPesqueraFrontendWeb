@@ -13,7 +13,7 @@
  * @version 1.0.0
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -90,15 +90,50 @@ const ParametroAprobador = ({ ruta }) => {
     })
     .filter(Boolean);
 
+  // Filas de la tabla con los nombres ya resueltos. Se derivan de los parámetros y de los catálogos,
+  // de modo que cada fila es un objeto nuevo cuando llega o cambia cualquier catálogo (el DataTable
+  // de PrimeReact solo vuelve a dibujar una celda si cambia su `rowData`). Además permite que
+  // el orden y la búsqueda global trabajen sobre el texto que se ve y no sobre los IDs.
+  const filas = useMemo(() => {
+    const porId = (lista) => new Map(lista.map((item) => [Number(item.id), item]));
+    const personalPorId = porId(personal);
+    const modulosPorId = porId(modulosSistema);
+    const empresasPorId = porId(empresas);
+    const embarcacionesPorId = porId(embarcaciones);
+    const activosPorId = porId(activos);
+    const sedesPorId = porId(sedes);
+
+    return parametrosAprobador.map((parametro) => {
+      const responsable = personalPorId.get(Number(parametro.personalRespId));
+      const embarcacion = embarcacionesPorId.get(Number(parametro.embarcacionId));
+      const activoEmbarcacion = embarcacion
+        ? activosPorId.get(Number(embarcacion.activoId))
+        : null;
+
+      return {
+        ...parametro,
+        personalNombre: responsable
+          ? `${responsable.nombres} ${responsable.apellidos}`
+          : "N/A",
+        moduloNombre: modulosPorId.get(Number(parametro.moduloSistemaId))?.nombre || "N/A",
+        empresaNombre: empresasPorId.get(Number(parametro.empresaId))?.razonSocial || "N/A",
+        embarcacionNombre: activoEmbarcacion?.nombre || "N/A",
+        sedeNombre: sedesPorId.get(Number(parametro.sedeId))?.nombre || "N/A",
+      };
+    });
+  }, [parametrosAprobador, personal, modulosSistema, empresas, embarcaciones, activos, sedes]);
+
+  // Los parámetros y los catálogos con los que se resuelven sus nombres se cargan juntos: la tabla
+  // permanece en estado de carga hasta tener todo y nunca se pinta con catálogos vacíos.
   useEffect(() => {
-    cargarParametrosAprobador();
-    cargarDatosCombos();
+    cargarDatos();
   }, []);
 
-  const cargarDatosCombos = async () => {
+  const cargarDatos = async () => {
     try {
       setLoading(true);
       const [
+        parametrosData,
         personalData,
         modulosData,
         empresasData,
@@ -106,6 +141,7 @@ const ParametroAprobador = ({ ruta }) => {
         activosData,
         sedesData,
       ] = await Promise.all([
+        getParametrosAprobador(),
         getPersonal(),
         getModulos(),
         getEmpresas(),
@@ -114,6 +150,7 @@ const ParametroAprobador = ({ ruta }) => {
         getSedes(),
       ]);
 
+      setParametrosAprobador(parametrosData);
       setPersonal(personalData);
       setModulosSistema(modulosData);
       setEmpresas(empresasData);
@@ -124,7 +161,7 @@ const ParametroAprobador = ({ ruta }) => {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar datos de combos",
+        detail: "Error al cargar parámetros aprobador",
         life: 3000,
       });
     } finally {
@@ -278,46 +315,6 @@ const ParametroAprobador = ({ ruta }) => {
     }
   };
 
-  const personalTemplate = (rowData) => {
-    const personalResp = personal.find(
-      (p) => Number(rowData.personalRespId) === Number(p.id)
-    );
-    return personalResp
-      ? `${personalResp.nombres} ${personalResp.apellidos}`
-      : "N/A";
-  };
-
-  const moduloSistemaTemplate = (rowData) => {
-    const modulo = modulosSistema.find(
-      (m) => Number(rowData.moduloSistemaId) === Number(m.id)
-    );
-    return modulo?.nombre || "N/A";
-  };
-
-  const empresaTemplate = (rowData) => {
-    const empresa = empresas.find(
-      (e) => Number(rowData.empresaId) === Number(e.id)
-    );
-    return empresa?.razonSocial || "N/A";
-  };
-
-  const embarcacionTemplate = (rowData) => {
-    if (!rowData.embarcacionId) return "N/A";
-    const embarcacion = embarcaciones.find(
-      (e) => Number(rowData.embarcacionId) === Number(e.id)
-    );
-    const activo = activos.find(
-      (a) => Number(embarcacion.activoId) === Number(a.id)
-    );
-    return activo?.nombre || "N/A";
-  };
-
-  const sedeTemplate = (rowData) => {
-    if (!rowData.sedeId) return "N/A";
-    const sede = sedes.find((s) => Number(rowData.sedeId) === Number(s.id));
-    return sede?.nombre || "N/A";
-  };
-
   const fechaTemplate = (rowData, field) => {
     const fecha = rowData[field];
     return fecha ? new Date(fecha).toLocaleDateString("es-ES") : "N/A";
@@ -369,7 +366,7 @@ const ParametroAprobador = ({ ruta }) => {
   };
 
   // Función para filtrar datos
-  const datosFiltrados = parametrosAprobador.filter((parametro) => {
+  const datosFiltrados = filas.filter((parametro) => {
     const cumpleFiltroModulo =
       !filtroModuloSistema ||
       Number(parametro.moduloSistemaId) === Number(filtroModuloSistema);
@@ -395,7 +392,7 @@ const ParametroAprobador = ({ ruta }) => {
         rows={5}
         rowsPerPageOptions={[5, 10, 15, 20]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} personal"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} parámetros"
         style={{
           cursor:
             permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
@@ -409,7 +406,13 @@ const ParametroAprobador = ({ ruta }) => {
         selectionMode="single"
         emptyMessage="No se encontraron parámetros aprobador"
         globalFilter={globalFilter}
-        globalFilterFields={["personalRespId", "moduloSistemaId", "empresaId"]}
+        globalFilterFields={[
+          "personalNombre",
+          "moduloNombre",
+          "empresaNombre",
+          "embarcacionNombre",
+          "sedeNombre",
+        ]}
         header={
           <div className="flex align-items-center gap-2">
             <div
@@ -516,48 +519,51 @@ const ParametroAprobador = ({ ruta }) => {
       >
         <Column field="id" header="ID" sortable style={{ width: "80px" }} />
         <Column
+          field="personalNombre"
           header="Personal Responsable"
-          body={personalTemplate}
           sortable
           style={{ minWidth: "150px" }}
         />
         <Column
+          field="moduloNombre"
           header="Módulo Sistema"
-          body={moduloSistemaTemplate}
           sortable
           style={{ minWidth: "120px" }}
         />
         <Column
+          field="empresaNombre"
           header="Empresa"
-          body={empresaTemplate}
           sortable
           style={{ minWidth: "150px" }}
         />
         <Column
+          field="embarcacionNombre"
           header="Embarcación"
-          body={embarcacionTemplate}
           sortable
           style={{ minWidth: "150px" }}
         />
         <Column
+          field="sedeNombre"
           header="Sede"
-          body={sedeTemplate}
           sortable
           style={{ minWidth: "150px" }}
         />
         <Column
+          field="vigenteDesde"
           header="Vigente Desde"
           body={(rowData) => fechaTemplate(rowData, "vigenteDesde")}
           sortable
           style={{ minWidth: "100px" }}
         />
         <Column
+          field="vigenteHasta"
           header="Vigente Hasta"
           body={(rowData) => fechaTemplate(rowData, "vigenteHasta")}
           sortable
           style={{ minWidth: "80px" }}
         />
         <Column
+          field="cesado"
           header="Estado"
           body={cesadoTemplate}
           sortable

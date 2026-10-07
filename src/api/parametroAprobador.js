@@ -28,6 +28,15 @@ export async function getParametrosAprobadorPorModulo(empresaId, moduloSistemaId
   return res.data;
 }
 
+// Aprobador vigente de la empresa para un módulo (null si no hay ninguno configurado)
+export async function getParametroAprobadorVigente(empresaId, moduloSistemaId) {
+  const res = await axios.get(`${API_URL}/vigente`, {
+    params: { empresaId, moduloSistemaId },
+    headers: getAuthHeaders()
+  });
+  return res.data;
+}
+
 export async function getParametroAprobadorPorId(id) {
   const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;

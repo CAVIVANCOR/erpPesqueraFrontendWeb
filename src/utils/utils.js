@@ -499,6 +499,14 @@ export const TIPO_GARANTIA_OPTIONS = [
 ];
 
 /**
+ * Módulos del sistema (ModuloSistema.id) con los que se configura el aprobador vigente
+ * (ParametroAprobador.moduloSistemaId)
+ */
+export const MODULO_SISTEMA = {
+  TESORERIA: 16,
+};
+
+/**
  * Estados de cuotas de préstamo bancario
  * Basado en EstadoMultiFuncion con tipoProvieneDeId = 31
  */

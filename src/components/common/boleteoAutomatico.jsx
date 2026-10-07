@@ -2,7 +2,7 @@
  * boleteoAutomatico.jsx
  *
  * Componente autónomo tipo botón para crear PreFactura + DetallePreFactura a partir
- * de boletas ya emitidas, cargadas desde un archivo JSON.
+ * de boletas y notas de crédito ya emitidas, cargadas desde un archivo JSON.
  *
  * Flujo:
  *   1. El botón pide el archivo JSON.
@@ -19,6 +19,13 @@
  *   ID TIPO DOC FINAL, SERIE, CORRELATIVO, NUMERO COMPLETO, ID CLIENTE, ID VENDEDOR,
  *   ID FORMA PAGO, ID UNIDAD NEGOCIO, ID TIPO PRODUCTO, ID PRODUCTO, CANTIDAD,
  *   ID MONEDA, PRECIO TOTAL (con IGV incluido)
+ *
+ * Notas de crédito: son las filas cuyo ID TIPO DOC FINAL es el de Nota de Crédito
+ * (TIPO_DOC_ID.NOTA_CREDITO). Además exigen las columnas del documento que afectan:
+ *   TIPO DE DOC AFECTO (id del tipo de documento), SERIE DE DOC AFECT,
+ *   CORRELATIVO DE DOC y MOTIVO DE ANULACION ID (id de MotivoNotaCreditoDebito).
+ * El backend busca ese documento en la tabla PreFactura (no en el archivo); por eso las
+ * boletas se procesan siempre antes que las notas de crédito.
  *
  * Props:
  * - label: texto del botón
@@ -41,6 +48,14 @@ import { Tag } from "primereact/tag";
 import { importarBoletasAutomatico } from "../../api/preFactura";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 import { formatearNumero } from "../../utils/utils";
+import { TIPO_DOC_ID } from "../../utils/tiposDocumento.constants";
+
+const COLUMNAS_REQUERIDAS_NOTA_CREDITO = [
+  "TIPO DE DOC AFECTO",
+  "SERIE DE DOC AFECT",
+  "CORRELATIVO DE DOC",
+  "MOTIVO DE ANULACION ID",
+];
 
 const COLUMNAS_REQUERIDAS = [
   "FECHA DOCUMENTO",
@@ -106,6 +121,18 @@ const normalizarFila = (filaOriginal) => {
     return { error: `Faltan columnas: ${faltantes.join(", ")}` };
   }
 
+  // Una nota de crédito debe indicar el documento que afecta y el motivo
+  const tipoDocumentoFinalId = aNumero(fila["ID TIPO DOC FINAL"]);
+  const esNotaCredito = tipoDocumentoFinalId === Number(TIPO_DOC_ID.NOTA_CREDITO);
+  if (esNotaCredito) {
+    const faltantesNC = COLUMNAS_REQUERIDAS_NOTA_CREDITO.filter(
+      (c) => fila[c] === undefined || fila[c] === null || String(fila[c]).trim() === "",
+    );
+    if (faltantesNC.length > 0) {
+      return { error: `Nota de crédito sin datos del documento afecto: ${faltantesNC.join(", ")}` };
+    }
+  }
+
   const fechaDocumento = parsearFecha(fila["FECHA DOCUMENTO"]);
   const fechaVencimiento = parsearFecha(fila["FECHA VENCIMIENTO"]);
   if (!fechaDocumento || !fechaVencimiento) return { error: "Fecha inválida" };
@@ -123,7 +150,14 @@ const normalizarFila = (filaOriginal) => {
       ymd: fechaDocumento.ymd,
       tipoDocumentoId: aNumero(fila["ID TIPO DOCUMENTO"]),
       serieDocId: aNumero(fila["ID SERIE DOC"]),
-      tipoDocumentoFinalId: aNumero(fila["ID TIPO DOC FINAL"]),
+      tipoDocumentoFinalId,
+      esNotaCredito,
+      ...(esNotaCredito && {
+        tipoDocumentoAfectoId: aNumero(fila["TIPO DE DOC AFECTO"]),
+        serieDocAfecto: String(fila["SERIE DE DOC AFECT"]).trim(),
+        correlativoDocAfecto: String(fila["CORRELATIVO DE DOC"]).trim(),
+        motivoNotaCreditoDebitoId: aNumero(fila["MOTIVO DE ANULACION ID"]),
+      }),
       numSerieDocFinal: String(fila["SERIE"]).trim(),
       numCorreDocFinal: String(fila["CORRELATIVO"]).trim(),
       numeroDocumentoFinal: String(fila["NUMERO COMPLETO"]).trim(),
@@ -163,9 +197,12 @@ const normalizarArchivo = (filas) => {
     boletas.push(boleta);
   });
 
-  // La numeración interna se asigna en el orden en que se procesan: se ordena por boleta
+  // La numeración interna se asigna en el orden en que se procesan. Primero van todas las boletas
+  // y después las notas de crédito (el backend busca el documento afecto en la base de datos, así
+  // que debe existir antes); dentro de cada grupo, por serie y correlativo.
   boletas.sort(
     (a, b) =>
+      Number(a.esNotaCredito) - Number(b.esNotaCredito) ||
       a.numSerieDocFinal.localeCompare(b.numSerieDocFinal) ||
       Number(a.numCorreDocFinal) - Number(b.numCorreDocFinal),
   );
@@ -295,7 +332,7 @@ const BoleteoAutomatico = ({
 
       try {
         const { resultados } = await importarBoletasAutomatico(
-          lote.map(({ ymd, ...boleta }) => ({ ...boleta, tipoCambio: tipoCambioPorFecha[ymd] })),
+          lote.map(({ ymd, esNotaCredito, ...boleta }) => ({ ...boleta, tipoCambio: tipoCambioPorFecha[ymd] })),
           parametros,
         );
 
@@ -304,7 +341,9 @@ const BoleteoAutomatico = ({
             acumulado.creadas += 1;
             return {
               tipo: "ok",
-              texto: `${r.numeroDocumentoFinal} → ${r.numeroDocumento} · total ${formatearNumero(r.total)}`,
+              texto:
+                `${r.numeroDocumentoFinal} → ${r.numeroDocumento} · total ${formatearNumero(r.total)}` +
+                (r.documentoAfecto ? ` · afecta ${r.documentoAfecto}` : ""),
             };
           }
           if (r.estado === "OMITIDA") {
@@ -354,10 +393,15 @@ const BoleteoAutomatico = ({
   // ────────────────────────────────────────────────────────
   // Render
   // ────────────────────────────────────────────────────────
-  const sumaTotal = datos.boletas.reduce((suma, b) => suma + b.totalConIGV, 0);
-  const rango =
-    total > 0
-      ? `${datos.boletas[0].numeroDocumentoFinal} → ${datos.boletas[total - 1].numeroDocumentoFinal}`
+  const boletasArchivo = datos.boletas.filter((b) => !b.esNotaCredito);
+  const notasArchivo = datos.boletas.filter((b) => b.esNotaCredito);
+  const sumar = (lista) => lista.reduce((suma, b) => suma + b.totalConIGV, 0);
+  // Las notas de crédito restan: el total que se muestra es el neto del archivo
+  const sumaTotal = sumar(boletasArchivo) - sumar(notasArchivo);
+  // La lista ya está ordenada por serie y correlativo dentro de cada grupo
+  const rangoDe = (lista) =>
+    lista.length > 0
+      ? `${lista[0].numeroDocumentoFinal} → ${lista[lista.length - 1].numeroDocumentoFinal}`
       : "";
 
   const colorLinea = {
@@ -407,7 +451,7 @@ const BoleteoAutomatico = ({
         style={style}
         disabled={disabled}
         onClick={() => inputRef.current?.click()}
-        tooltip="Crear PreFacturas desde un archivo JSON de boletas"
+        tooltip="Crear PreFacturas desde un archivo JSON de boletas y notas de crédito"
         tooltipOptions={{ position: "top" }}
       />
 
@@ -429,15 +473,25 @@ const BoleteoAutomatico = ({
               <div>{archivo}</div>
             </div>
             <div>
-              <div className="font-bold">Boletas a procesar</div>
-              <div>{total}</div>
+              <div className="font-bold">Documentos a procesar</div>
+              <div>
+                {total}
+                {notasArchivo.length > 0 &&
+                  ` (${boletasArchivo.length} boletas · ${notasArchivo.length} notas de crédito)`}
+              </div>
             </div>
             <div>
-              <div className="font-bold">Rango</div>
-              <div>{rango}</div>
+              <div className="font-bold">{notasArchivo.length > 0 ? "Rango de boletas" : "Rango"}</div>
+              <div>{rangoDe(boletasArchivo)}</div>
             </div>
+            {notasArchivo.length > 0 && (
+              <div>
+                <div className="font-bold">Rango de notas de crédito</div>
+                <div>{rangoDe(notasArchivo)}</div>
+              </div>
+            )}
             <div>
-              <div className="font-bold">Total</div>
+              <div className="font-bold">{notasArchivo.length > 0 ? "Total neto (boletas − NC)" : "Total"}</div>
               <div>{formatearNumero(sumaTotal)}</div>
             </div>
           </div>
@@ -451,7 +505,7 @@ const BoleteoAutomatico = ({
                 </div>
               )}
               {datos.duplicadasEnArchivo > 0 && (
-                <div>⚠ {datos.duplicadasEnArchivo} boleta(s) repetida(s) en el archivo se ignoraron</div>
+                <div>⚠ {datos.duplicadasEnArchivo} documento(s) repetido(s) en el archivo se ignoraron</div>
               )}
             </div>
           )}
@@ -466,7 +520,7 @@ const BoleteoAutomatico = ({
                   style={{ height: "1.8rem" }}
                 />
                 <div style={{ textAlign: "center", marginTop: "0.25rem" }}>
-                  {procesadas} de {total} boletas
+                  {procesadas} de {total} documentos
                 </div>
               </div>
 

@@ -10,7 +10,9 @@ import { InputText } from "primereact/inputtext";
 import { Toolbar } from "primereact/toolbar";
 import { Tag } from "primereact/tag";
 import { Dropdown } from "primereact/dropdown";
+import { MultiSelect } from "primereact/multiselect";
 import EmpresaSelector from "../components/common/EmpresaSelector";
+import ProvisionPlanillaButton from "../components/deudaConPersonal/ProvisionPlanillaButton";
 import BooleanToggleButton from "../components/common/BooleanToggleButton";
 import DeudaConPersonalForm from "../components/deudaConPersonal/DeudaConPersonalForm";
 import { getMediosPago } from "../api/medioPago";
@@ -53,8 +55,8 @@ export default function DeudaConPersonal({ ruta }) {
 
   // Estados de filtros
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
-  const [personalSeleccionado, setPersonalSeleccionado] = useState(null);
-  const [tipoDeudaSeleccionado, setTipoDeudaSeleccionado] = useState(null);
+  const [personalSeleccionado, setPersonalSeleccionado] = useState([]); // varios trabajadores
+  const [tipoDeudaSeleccionado, setTipoDeudaSeleccionado] = useState([]); // varios tipos de deuda
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
   const [tipoPagoSeleccionado, setTipoPagoSeleccionado] = useState("TODOS"); // "TODOS" | "FISCAL" | "GERENCIAL"
@@ -67,6 +69,11 @@ export default function DeudaConPersonal({ ruta }) {
   const [deudasFiltradas, setDeudasFiltradas] = useState([]);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [personalesUnicos, setPersonalesUnicos] = useState([]);
+  // Deudas con todos los filtros menos el de personal: de aquí salen las opciones del filtro múltiple
+  const [deudasSeleccionadas, setDeudasSeleccionadas] = useState([]);
+  const [baseOpcionesPersonal, setBaseOpcionesPersonal] = useState([]);
+  // Igual para el filtro múltiple de tipo de deuda (sin su propio filtro)
+  const [baseOpcionesTipoDeuda, setBaseOpcionesTipoDeuda] = useState([]);
   const [tiposDeudaUnicos, setTiposDeudaUnicos] = useState([]);
   const [estadosUnicos, setEstadosUnicos] = useState([]);
   const [monedasUnicas, setMonedasUnicas] = useState([]);
@@ -95,11 +102,17 @@ export default function DeudaConPersonal({ ruta }) {
     setPeriodosUnicos(opciones.periodosUnicos);
 
     // Limpiar selecciones que ya no existen
-    if (personalSeleccionado && !opciones.personalesUnicos.find(p => Number(p.id) === Number(personalSeleccionado))) {
-      setPersonalSeleccionado(null);
+    if (personalSeleccionado.length > 0) {
+      const vigentes = personalSeleccionado.filter((id) =>
+        opciones.personalesUnicos.some((p) => Number(p.id) === Number(id))
+      );
+      if (vigentes.length !== personalSeleccionado.length) setPersonalSeleccionado(vigentes);
     }
-    if (tipoDeudaSeleccionado && !opciones.tiposDeudaUnicos.find(t => Number(t.id) === Number(tipoDeudaSeleccionado))) {
-      setTipoDeudaSeleccionado(null);
+    if (tipoDeudaSeleccionado.length > 0) {
+      const vigentes = tipoDeudaSeleccionado.filter((id) =>
+        opciones.tiposDeudaUnicos.some((t) => Number(t.id) === Number(id))
+      );
+      if (vigentes.length !== tipoDeudaSeleccionado.length) setTipoDeudaSeleccionado(vigentes);
     }
     if (estadoSeleccionado && !opciones.estadosUnicos.find(e => Number(e.id) === Number(estadoSeleccionado))) {
       setEstadoSeleccionado(null);
@@ -110,7 +123,7 @@ export default function DeudaConPersonal({ ruta }) {
     if (periodoContableSeleccionado && !opciones.periodosUnicos.find(p => Number(p.id) === Number(periodoContableSeleccionado))) {
       setPeriodoContableSeleccionado(null);
     }
-  }, [itemsFiltrados, deudasFiltradas, empresaSeleccionada]);
+  }, [itemsFiltrados, deudasFiltradas, baseOpcionesPersonal, baseOpcionesTipoDeuda, empresaSeleccionada]);
 
   // Filtrar períodos contables por empresa seleccionada
   useEffect(() => {
@@ -138,18 +151,6 @@ export default function DeudaConPersonal({ ruta }) {
     setDeudasFiltradas(filtrados);
 
     // Filtros secundarios
-    if (personalSeleccionado) {
-      filtrados = filtrados.filter(
-        (item) => Number(item.personalId) === Number(personalSeleccionado)
-      );
-    }
-
-    if (tipoDeudaSeleccionado) {
-      filtrados = filtrados.filter(
-        (item) => Number(item.tipoDeudaId) === Number(tipoDeudaSeleccionado)
-      );
-    }
-
     if (estadoSeleccionado) {
       filtrados = filtrados.filter(
         (item) => Number(item.estadoId) === Number(estadoSeleccionado)
@@ -181,7 +182,24 @@ export default function DeudaConPersonal({ ruta }) {
       );
     }
 
-    setItemsFiltrados(filtrados);
+    // Personal y tipo de deuda son filtros múltiples: las opciones de cada uno se arman con el
+    // otro aplicado pero sin el propio, para poder elegir varios
+    const porPersonal = (lista) =>
+      personalSeleccionado.length > 0
+        ? lista.filter((item) =>
+            personalSeleccionado.some((id) => Number(id) === Number(item.personalId))
+          )
+        : lista;
+    const porTipoDeuda = (lista) =>
+      tipoDeudaSeleccionado.length > 0
+        ? lista.filter((item) =>
+            tipoDeudaSeleccionado.some((id) => Number(id) === Number(item.tipoDeudaId))
+          )
+        : lista;
+
+    setBaseOpcionesPersonal(porTipoDeuda(filtrados));
+    setBaseOpcionesTipoDeuda(porPersonal(filtrados));
+    setItemsFiltrados(porPersonal(porTipoDeuda(filtrados)));
   }, [
     empresaSeleccionada,
     personalSeleccionado,
@@ -244,7 +262,7 @@ export default function DeudaConPersonal({ ruta }) {
 
     // Personales únicos (filtrados por empresa si hay una seleccionada)
     const personalesUnicos = [...new Map(
-      datosParaOpciones
+      baseOpcionesPersonal
         .filter(d => d.personal)
         .filter(d => !empresaSeleccionada || Number(d.empresaId) === Number(empresaSeleccionada))
         .map(d => [d.personal.id, d.personal])
@@ -252,7 +270,7 @@ export default function DeudaConPersonal({ ruta }) {
 
     // Tipos de deuda únicos
     const tiposDeudaUnicos = [...new Map(
-      datosParaOpciones
+      baseOpcionesTipoDeuda
         .filter(d => d.tipoDeuda)
         .map(d => [d.tipoDeuda.id, d.tipoDeuda])
     ).values()];
@@ -465,8 +483,8 @@ export default function DeudaConPersonal({ ruta }) {
 
   const limpiarFiltros = () => {
     setEmpresaSeleccionada(null);
-    setPersonalSeleccionado(null);
-    setTipoDeudaSeleccionado(null);
+    setPersonalSeleccionado([]);
+    setTipoDeudaSeleccionado([]);
     setEstadoSeleccionado(null);
     setMonedaSeleccionada(null);
     setTipoPagoSeleccionado("TODOS");
@@ -553,6 +571,16 @@ export default function DeudaConPersonal({ ruta }) {
       <Tag
         value={rowData.esSaldoInicial ? "SI" : "NO"}
         severity={rowData.esSaldoInicial ? "info" : "secondary"}
+      />
+    );
+  };
+
+  const contabilizadoBodyTemplate = (rowData) => {
+    const contabilizado = rowData.asientosContables?.length > 0;
+    return (
+      <Tag
+        value={contabilizado ? "Contabilizado" : "Pendiente"}
+        severity={contabilizado ? "success" : "secondary"}
       />
     );
   };
@@ -702,6 +730,20 @@ export default function DeudaConPersonal({ ruta }) {
                   }
                 />
               </div>
+              <div style={{ flex: 1 }}>
+                <ProvisionPlanillaButton
+                  style={{ width: "100%" }}
+                  disabled={!permisos.puedeCrear || loading || !empresaSeleccionada}
+                  toast={toast}
+                  onFinalizado={loadData}
+                  seleccionInicialIds={deudasSeleccionadas.map((d) => Number(d.id))}
+                  deudas={itemsFiltrados.map((d) => ({
+                    ...d,
+                    personalNombre: getPersonalNombre(d),
+                    tipoDeudaNombre: getTipoDeudaNombre(d),
+                  }))}
+                />
+              </div>
               <div style={{ flex: 0.25 }}>
                 <Button
                   icon="pi pi-filter-slash"
@@ -753,17 +795,21 @@ export default function DeudaConPersonal({ ruta }) {
                 <label htmlFor="personalFiltro" style={{ fontWeight: "bold" }}>
                   Personal (Trabajador)
                 </label>
-                <Dropdown
+                <MultiSelect
                   id="personalFiltro"
                   value={personalSeleccionado}
                   options={personalesUnicos.map((p) => ({
                     label: p.nombreCompleto || `${p.nombres} ${p.apellidos}`,
                     value: Number(p.id),
                   }))}
-                  onChange={(e) => setPersonalSeleccionado(e.value)}
+                  onChange={(e) => setPersonalSeleccionado(e.value || [])}
                   placeholder="Todos"
                   optionLabel="label"
                   optionValue="value"
+                  showSelectAll
+                  selectAllLabel="Seleccionar Todos"
+                  maxSelectedLabels={0}
+                  selectedItemsLabel="{0} trabajadores seleccionados"
                   showClear
                   filter
                   disabled={loading}
@@ -774,17 +820,22 @@ export default function DeudaConPersonal({ ruta }) {
                 <label htmlFor="tipoDeudaFiltro" style={{ fontWeight: "bold" }}>
                   Tipo de Deuda
                 </label>
-                <Dropdown
+                <MultiSelect
                   id="tipoDeudaFiltro"
                   value={tipoDeudaSeleccionado}
                   options={tiposDeudaUnicos.map((t) => ({
                     label: t.nombre,
                     value: Number(t.id),
                   }))}
-                  onChange={(e) => setTipoDeudaSeleccionado(e.value)}
+                  onChange={(e) => setTipoDeudaSeleccionado(e.value || [])}
                   placeholder="Todos"
                   optionLabel="label"
                   optionValue="value"
+                  display="chip"
+                  showSelectAll
+                  selectAllLabel="Seleccionar Todos"
+                  maxSelectedLabels={3}
+                  selectedItemsLabel="{0} tipos seleccionados"
                   showClear
                   filter
                   disabled={loading}
@@ -916,6 +967,9 @@ export default function DeudaConPersonal({ ruta }) {
         sortField="id"
         sortOrder={-1}
         size="small"
+        dataKey="id"
+        selection={deudasSeleccionadas}
+        onSelectionChange={(e) => setDeudasSeleccionadas(e.value)}
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar
             ? (e) => editDeuda(e.data)
@@ -927,6 +981,7 @@ export default function DeudaConPersonal({ ruta }) {
           fontSize: getResponsiveFontSize(),
         }}
       >
+        <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
         <Column field="id" header="ID" sortable style={{ minWidth: "80px" }} />
         <Column
           field="empresaId"
@@ -1023,6 +1078,13 @@ export default function DeudaConPersonal({ ruta }) {
           sortable
           sortFunction={ordenarPor((d) => (d.esSaldoInicial ? 1 : 0))}
           style={{ minWidth: "100px", textAlign: "center" }}
+        />
+        <Column
+          header="Contabilizado"
+          body={contabilizadoBodyTemplate}
+          sortable
+          sortFunction={ordenarPor((d) => (d.asientosContables?.length > 0 ? 1 : 0))}
+          style={{ minWidth: "120px", textAlign: "center" }}
         />
         <Column
           field="estadoId"
