@@ -304,11 +304,14 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       // En autodetracción: el cliente pagó el total, pero solo el neto cancela la CxC
       const saldoCxC = Number(cuentaPorCobrar?.saldoPendiente || 0);
       setMontoAplicadoDeuda(saldoCxC);
+    } else if (Number(montoNetoIngresado || 0) === 0 && Number(montoDetraccionIngresado || 0) > 0) {
+      // Solo detracción (el neto ya se cobró): el monto de la detracción cancela esa parte de la deuda
+      setMontoAplicadoDeuda(Number(montoDetraccionIngresado));
     } else {
       // Pago normal: solo el monto neto cancela la deuda de la CxC
       setMontoAplicadoDeuda(Number(montoNetoIngresado || 0));
     }
-  }, [montoNetoIngresado, esAutodetraccion, cuentaPorCobrar]);
+  }, [montoNetoIngresado, montoDetraccionIngresado, esAutodetraccion, cuentaPorCobrar]);
 
   // ════════════════════════════════════════════════════════════
   // EFECTOS: CONSULTA TIPO DE CAMBIO
@@ -612,7 +615,8 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       return false;
     }
 
-    if (!tipoMovimientoIngresoId) {
+    // El tipo de movimiento de ingreso es del pago del neto: no se exige al pagar solo la detracción
+    if (!tipoMovimientoIngresoId && Number(montoNetoIngresado) > 0) {
       toast?.current?.show({
         severity: 'error',
         summary: 'Error',
@@ -742,10 +746,14 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
         montoPagado: Number(montoNetoIngresado) || 0,
         monedaPagoId: Number(monedaPagoId),
         tipoCambio: Number(tipoCambio),
-        montoAplicadoDeuda: Number(montoAplicadoDeuda),
+        // Solo detracción: el monto de la detracción es lo que se aplica a la deuda
+        montoAplicadoDeuda:
+          !esAutodetraccion && Number(montoNetoIngresado || 0) === 0 && Number(montoDetraccionIngresado || 0) > 0
+            ? Number(montoDetraccionIngresado)
+            : Number(montoAplicadoDeuda),
         monedaDeudaId: Number(cuentaPorCobrar.monedaId),
         medioPagoId: Number(medioPagoId),
-        tipoMovimientoIngresoId: Number(tipoMovimientoIngresoId),
+        tipoMovimientoIngresoId: tipoMovimientoIngresoId ? Number(tipoMovimientoIngresoId) : null,
         numeroOperacion: numeroOperacion || null,
         bancoId: bancoId ? Number(bancoId) : null,
         cuentaBancariaId: cuentaBancariaId ? Number(cuentaBancariaId) : null,
@@ -829,7 +837,11 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
           // ✅ Actualizar URL en PagoCuentaPorCobrar (tabla correcta)
           await actualizarUrlVoucherConsolidadoPago(pagoCuentaPorCobrar.id, voucherConsolidado.urlPdf);
           // También actualizar en MovimientoCaja para compatibilidad
-          await actualizarUrlVoucherConsolidado(movimientos.ingreso.id, voucherConsolidado.urlPdf);
+          // Si solo se pagó la detracción no hay ingreso del neto: se usa el movimiento de la detracción
+          await actualizarUrlVoucherConsolidado(
+            (movimientos.ingreso || movimientos.detraccionIngreso).id,
+            voucherConsolidado.urlPdf
+          );
           // ✅ Actualizar en el objeto de respuesta para que se muestre en ConfirmacionPagoDialog
           response.data.pagoCuentaPorCobrar.urlVoucherOperacionConsolidado = voucherConsolidado.urlPdf;
         }
