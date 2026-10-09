@@ -16,6 +16,12 @@ import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
 import { useAuthStore } from "../../shared/stores/useAuthStore"; // ← AGREGAR ESTA LÍNEA
 import IrACxCEditar from "../common/IrACxCEditar";
 import SelectorDocumentoAfecto from "../common/SelectorDocumentoAfecto";
+import AplicarNotaCreditoPanel from "./AplicarNotaCreditoPanel";
+import {
+  getEstadoNotaCredito,
+  aplicarNotaCreditoPreFactura,
+  revertirNotaCreditoPreFactura,
+} from "../../api/preFactura";
 import AuditoriaDialog from "../common/AuditoriaDialog";
 import CambiarTipoSerieDialog from "../common/CambiarTipoSerieDialog";
 import BooleanToggleButton from "../common/BooleanToggleButton";
@@ -870,6 +876,19 @@ export default function DatosGeneralesTab({
               />
             </div>
           </div>
+
+          {/* Aplicación (canje) de la Nota de Crédito al documento afecto: solo NC */}
+          {Number(formData.tipoDocumentoId) === 8 && (
+            <AplicarNotaCreditoPanel
+              documentoId={preFacturaId}
+              getEstado={getEstadoNotaCredito}
+              aplicar={aplicarNotaCreditoPreFactura}
+              revertir={revertirNotaCreditoPreFactura}
+              dcmtoAfectoNCNDId={formData.dcmtoAfectoNCNDId}
+              puedeEditar={!readOnly && !estaAnulada}
+              toast={toast}
+            />
+          )}
         </Panel>
       )}
 

@@ -19,6 +19,7 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { formatearFecha, formatearNumero, getResponsiveFontSize } from "../utils/utils";
 import EmpresaSelector from "../components/common/EmpresaSelector";
+import ReporteMovimientoFondos from "../components/reportes/ReporteMovimientoFondos";
 
 // ============================================================
 // CONFIGURACIÓN DE FILTROS
@@ -278,6 +279,13 @@ export default function MovimientoCaja({ ruta }) {
 
   const movimientosFiltrados = useMemo(
     () => filtrarMovimientos(movimientos, filtros),
+    [movimientos, filtros]
+  );
+
+  // Registros para el reporte: de TODAS las empresas; respetan los demás filtros salvo el rango,
+  // que se elige en el propio reporte
+  const movimientosParaReporte = useMemo(
+    () => filtrarMovimientos(movimientos, { ...filtros, empresaId: null, rangoFechas: null }),
     [movimientos, filtros]
   );
 
@@ -636,6 +644,16 @@ export default function MovimientoCaja({ ruta }) {
                     badge={cantidadAvanzados > 0 ? String(cantidadAvanzados) : null}
                     badgeClassName="p-badge-info"
                     onClick={() => setMostrarAvanzados((v) => !v)}
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <ReporteMovimientoFondos
+                    movimientos={movimientosParaReporte}
+                    rangoFechas={filtros.rangoFechas}
+                    empresas={empresas}
+                    usuarioNombre={usuario?.nombreCompleto || usuario?.username || usuario?.email || ""}
+                    toast={toast}
                     disabled={loading}
                   />
                 </div>

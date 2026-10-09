@@ -43,6 +43,11 @@ import { generarYSubirVoucherContable } from '../movimientoCaja/utils/VoucherCon
  * - Generación de vouchers PDF
  */
 
+// Cuando solo se paga la detracción (el neto ya se cobró) el depósito va siempre a la cuenta del
+// Banco de la Nación: medio DEPOSITO EN CUENTA y moneda soles
+const MEDIO_PAGO_DEPOSITO_EN_CUENTA_ID = 2;
+const MONEDA_PEN_ID = 1;
+
 export default function PagarCuentaPorCobrarEspecializadoDialog({
   visible,
   onHide,
@@ -507,6 +512,22 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   // ════════════════════════════════════════════════════════════
   // MEMOS: CÁLCULOS DE RESUMEN
   // ════════════════════════════════════════════════════════════
+  // Solo detracción: sin pago del neto (ya cobrado) y sin autodetracción. Es independiente del neto:
+  // no exige monto neto, medio de pago, moneda ni tipo de movimiento de ingreso
+  const soloDetraccion =
+    !esAutodetraccion &&
+    Number(montoNetoIngresado || 0) === 0 &&
+    Number(montoDetraccionIngresado || 0) > 0;
+
+  // En modo solo detracción el medio de pago es siempre DEPOSITO EN CUENTA y la moneda soles
+  useEffect(() => {
+    if (!soloDetraccion) return;
+    if (Number(medioPagoId) !== MEDIO_PAGO_DEPOSITO_EN_CUENTA_ID) {
+      setMedioPagoId(MEDIO_PAGO_DEPOSITO_EN_CUENTA_ID);
+    }
+    if (!monedaPagoId) setMonedaPagoId(MONEDA_PEN_ID);
+  }, [soloDetraccion, medioPagoId, monedaPagoId]);
+
   const resumenOperacion = useMemo(() => {
     // Monto Bruto = solo el pago neto (no incluye detracción)
     const montoBruto = Number(montoNetoIngresado || 0);
@@ -595,7 +616,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       }
     }
 
-    if (!monedaPagoId) {
+    if (!monedaPagoId && !soloDetraccion) {
       toast?.current?.show({
         severity: 'error',
         summary: 'Error',
@@ -605,7 +626,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       return false;
     }
 
-    if (!medioPagoId) {
+    if (!medioPagoId && !soloDetraccion) {
       toast?.current?.show({
         severity: 'error',
         summary: 'Error',
@@ -744,7 +765,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
         fechaPago: fechaPago.toISOString(),
         // montoPagado debe ser solo el monto neto (el que genera el movimiento de ingreso)
         montoPagado: Number(montoNetoIngresado) || 0,
-        monedaPagoId: Number(monedaPagoId),
+        monedaPagoId: Number(monedaPagoId || (soloDetraccion ? MONEDA_PEN_ID : 0)),
         tipoCambio: Number(tipoCambio),
         // Solo detracción: el monto de la detracción es lo que se aplica a la deuda
         montoAplicadoDeuda:
@@ -752,7 +773,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
             ? Number(montoDetraccionIngresado)
             : Number(montoAplicadoDeuda),
         monedaDeudaId: Number(cuentaPorCobrar.monedaId),
-        medioPagoId: Number(medioPagoId),
+        medioPagoId: soloDetraccion ? MEDIO_PAGO_DEPOSITO_EN_CUENTA_ID : Number(medioPagoId),
         tipoMovimientoIngresoId: tipoMovimientoIngresoId ? Number(tipoMovimientoIngresoId) : null,
         numeroOperacion: numeroOperacion || null,
         bancoId: bancoId ? Number(bancoId) : null,
@@ -1194,6 +1215,15 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
     return (
       <Panel header="💵 1. PAGO DEL NETO" className="mb-3">
         <div className="p-fluid">
+          {soloDetraccion && (
+            <div style={{ backgroundColor: '#e8f4fd', padding: '0.75rem', borderRadius: '4px', marginBottom: '1rem' }}>
+              <strong>ℹ️ Solo se pagará la detracción</strong>
+              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>
+                El pago del neto es independiente y no se registra en esta operación. La detracción se deposita
+                siempre con el medio DEPOSITO EN CUENTA, a la cuenta del Banco de la Nación.
+              </p>
+            </div>
+          )}
           <div
             style={{
               display: "flex",
@@ -1260,7 +1290,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="monedaPagoId" className="font-bold">
-                Moneda <span className="text-red-500">*</span>
+                Moneda {!soloDetraccion && <span className="text-red-500">*</span>}
               </label>
               <Dropdown
                 id="monedaPagoId"
@@ -1274,7 +1304,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
 
             <div style={{ flex: 1 }}>
               <label htmlFor="montoNetoIngresado" className="font-bold">
-                Monto Pagado Neto <span className="text-red-500">*</span>
+                Monto Pagado Neto {!soloDetraccion && <span className="text-red-500">*</span>}
               </label>
               <InputNumber
                 id="montoNetoIngresado"
@@ -1298,7 +1328,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
           >
             <div style={{ flex: 1 }}>
               <label htmlFor="medioPagoId" className="font-bold">
-                Medio de Pago <span className="text-red-500">*</span>
+                Medio de Pago {!soloDetraccion && <span className="text-red-500">*</span>}
               </label>
               <Dropdown
                 id="medioPagoId"
@@ -1308,7 +1338,8 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 placeholder="Seleccione medio de pago"
                 className="w-full"
                 filter
-                showClear
+                showClear={!soloDetraccion}
+                disabled={soloDetraccion}
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -1328,7 +1359,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 tiposMovimiento={tiposMovimiento}
                 value={tipoMovimientoIngresoId}
                 onChange={(value) => setTipoMovimientoIngresoId(value)}
-                required={true}
+                required={!soloDetraccion}
                 placeholder="Buscar tipo de movimiento..."
               />
             </div>

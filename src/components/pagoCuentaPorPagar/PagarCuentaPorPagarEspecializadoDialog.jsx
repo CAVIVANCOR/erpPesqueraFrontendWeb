@@ -43,6 +43,9 @@ import { generarYSubirVoucherContable } from '../movimientoCaja/utils/VoucherCon
  * - Generación de vouchers PDF
  */
 
+// La detracción se paga siempre con DEPOSITO EN CUENTA; el neto es una operación independiente
+const MEDIO_PAGO_DEPOSITO_EN_CUENTA_ID = 2;
+
 export default function PagarCuentaPorPagarEspecializadoDialog({
   visible,
   onHide,
@@ -757,6 +760,24 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
   // ════════════════════════════════════════════════════════════
   // FUNCIONES: VALIDACIÓN
   // ════════════════════════════════════════════════════════════
+  // Solo detracción: sin pago del neto y sin autodetracción. Es independiente del neto:
+  // no exige monto neto, medio de pago, moneda ni tipo de movimiento de egreso
+  const soloDetraccion =
+    !esAutodetraccion &&
+    Number(montoNetoIngresado || 0) === 0 &&
+    Number(montoDetraccionIngresado || 0) > 0;
+
+  // El medio de pago de la detracción es siempre DEPOSITO EN CUENTA (y también el del neto si solo se paga la detracción)
+  useEffect(() => {
+    if (!visible) return;
+    if (Number(medioPagoDetraccionId) !== MEDIO_PAGO_DEPOSITO_EN_CUENTA_ID) {
+      setMedioPagoDetraccionId(MEDIO_PAGO_DEPOSITO_EN_CUENTA_ID);
+    }
+    if (soloDetraccion && Number(medioPagoId) !== MEDIO_PAGO_DEPOSITO_EN_CUENTA_ID) {
+      setMedioPagoId(MEDIO_PAGO_DEPOSITO_EN_CUENTA_ID);
+    }
+  }, [visible, soloDetraccion, medioPagoId, medioPagoDetraccionId]);
+
   const validarFormulario = () => {
     // Validar que al menos un monto esté ingresado
     if (Number(montoNetoIngresado) === 0 && Number(montoDetraccionIngresado) === 0) {
@@ -765,6 +786,17 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
         summary: 'Error',
         detail: 'Debe ingresar al menos un monto (neto o detracción).',
         life: 3000
+      });
+      return false;
+    }
+
+    // Solo detracción: la cuenta desde la que se paga es obligatoria
+    if (soloDetraccion && !cuentaBancariaDetraccionId) {
+      toast?.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Debe seleccionar la cuenta corriente de origen para pagar la detracción.',
+        life: 4000
       });
       return false;
     }
@@ -864,7 +896,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
       // ✅ ITF y Comisión de detracción son OPCIONALES (no se validan)
     }
 
-    if (!monedaPagoId) {
+    if (!monedaPagoId && !soloDetraccion) {
       toast?.current?.show({
         severity: 'error',
         summary: 'Error',
@@ -874,7 +906,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
       return false;
     }
 
-    if (!medioPagoId) {
+    if (!medioPagoId && !soloDetraccion) {
       toast?.current?.show({
         severity: 'error',
         summary: 'Error',
@@ -884,7 +916,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
       return false;
     }
 
-    if (!tipoMovimientoEgresoId) {
+    if (!tipoMovimientoEgresoId && !soloDetraccion) {
       toast?.current?.show({
         severity: 'error',
         summary: 'Error',
@@ -1034,8 +1066,8 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
         tipoCambio: Number(tipoCambio),
         montoAplicadoDeuda: Number(montoAplicadoDeuda),
         monedaDeudaId: Number(cuentaPorPagar.monedaId),
-        medioPagoId: Number(medioPagoId),
-        tipoMovimientoEgresoId: Number(tipoMovimientoEgresoId),
+        medioPagoId: soloDetraccion ? MEDIO_PAGO_DEPOSITO_EN_CUENTA_ID : Number(medioPagoId),
+        tipoMovimientoEgresoId: tipoMovimientoEgresoId ? Number(tipoMovimientoEgresoId) : null,
         numeroOperacion: numeroOperacion || null,
         bancoId: bancoId ? Number(bancoId) : null,
         cuentaBancariaId: cuentaBancariaId ? Number(cuentaBancariaId) : null,
@@ -1067,7 +1099,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
           observaciones: observaciones || null,
           // ✅ CAMPOS PARA PAGO DE DETRACCIÓN
           cuentaBancariaDetraccionId: Number(cuentaBancariaDetraccionId),
-          medioPagoDetraccionId: medioPagoDetraccionId ? Number(medioPagoDetraccionId) : null,
+          medioPagoDetraccionId: MEDIO_PAGO_DEPOSITO_EN_CUENTA_ID,
           monedaDetraccionId: monedaDetraccionId ? Number(monedaDetraccionId) : null,
           tipoCambioDetraccion: Number(tipoCambioDetraccion) || 1,
           montoDetraccion: Number(montoDetraccionIngresado) || 0,
@@ -1129,7 +1161,11 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
           // ✅ Actualizar URL en PagoCuentaPorPagar (tabla correcta)
           await actualizarUrlVoucherConsolidadoPago(pagoCuentaPorPagar.id, voucherConsolidado.urlPdf);
           // También actualizar en MovimientoCaja para compatibilidad
-          await actualizarUrlVoucherConsolidado(movimientos.egreso.id, voucherConsolidado.urlPdf);
+          // En solo detracción no hay egreso del neto: el movimiento principal es el de la detracción
+          const movimientoPrincipal = movimientos.egreso || movimientos.detraccionEgreso;
+          if (movimientoPrincipal) {
+            await actualizarUrlVoucherConsolidado(movimientoPrincipal.id, voucherConsolidado.urlPdf);
+          }
           // ✅ Actualizar en el objeto de respuesta para que se muestre en ConfirmacionPagoDialog
           response.data.pagoCuentaPorPagar.urlVoucherOperacionConsolidado = voucherConsolidado.urlPdf;
         }
@@ -1546,6 +1582,15 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
     return (
       <Panel header="💵 1. PAGO DEL NETO" className="mb-3">
         <div className="p-fluid">
+          {soloDetraccion && (
+            <div style={{ backgroundColor: '#e8f4fd', padding: '0.75rem', borderRadius: '4px', marginBottom: '1rem' }}>
+              <strong>ℹ️ Solo se pagará la detracción</strong>
+              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>
+                El pago del neto es independiente y no se registra en esta operación. La detracción se paga
+                siempre con el medio DEPOSITO EN CUENTA, desde la cuenta de origen de la sección 2.
+              </p>
+            </div>
+          )}
           <div
             style={{
               display: "flex",
@@ -1593,7 +1638,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="monedaPagoId" className="font-bold">
-                Moneda <span className="text-red-500">*</span>
+                Moneda {!soloDetraccion && <span className="text-red-500">*</span>}
               </label>
               <Dropdown
                 id="monedaPagoId"
@@ -1625,7 +1670,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="montoNetoIngresado" className="font-bold">
-                Monto Pagado Neto <span className="text-red-500">*</span>
+                Monto Pagado Neto {!soloDetraccion && <span className="text-red-500">*</span>}
               </label>
               <InputNumber
                 id="montoNetoIngresado"
@@ -1649,7 +1694,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
           >
             <div style={{ flex: 1 }}>
               <label htmlFor="medioPagoId" className="font-bold">
-                Medio de Pago <span className="text-red-500">*</span>
+                Medio de Pago {!soloDetraccion && <span className="text-red-500">*</span>}
               </label>
               <Dropdown
                 id="medioPagoId"
@@ -1659,7 +1704,8 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
                 placeholder="Seleccione medio de pago"
                 className="w-full"
                 filter
-                showClear
+                showClear={!soloDetraccion}
+                disabled={soloDetraccion}
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -1679,7 +1725,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
                 tiposMovimiento={tiposMovimiento}
                 value={tipoMovimientoEgresoId}
                 onChange={(value) => setTipoMovimientoEgresoId(value)}
-                required={true}
+                required={!soloDetraccion}
                 placeholder="Buscar tipo de movimiento..."
               />
             </div>
@@ -1878,7 +1924,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
                 placeholder="Seleccione medio de pago"
                 className="w-full"
                 filter
-                showClear
+                disabled
               />
             </div>
             <div style={{ flex: 1 }}>

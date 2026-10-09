@@ -51,6 +51,34 @@ export async function getPreFacturaPorId(id) {
 }
 
 /**
+ * Estado de aplicación (canje) de una Nota de Crédito a su documento afecto
+ * @param {number} id - ID de la pre-factura que es Nota de Crédito
+ * @returns {Promise<Object>} { esNotaCredito, totalNC, aplicada, pagoCanje, documentoAfecto }
+ */
+export async function getEstadoNotaCredito(id) {
+  const response = await axios.get(`${API_URL}/${id}/estado-nota-credito`, { headers: getAuthHeaders() });
+  return response.data;
+}
+
+/**
+ * Aplica la Nota de Crédito al documento afecto (canje: baja su saldo y recalcula detracción/retención/percepción)
+ * @param {number} id - ID de la pre-factura que es Nota de Crédito
+ */
+export async function aplicarNotaCreditoPreFactura(id) {
+  const response = await axios.post(`${API_URL}/${id}/aplicar-nota-credito`, {}, { headers: getAuthHeaders() });
+  return response.data;
+}
+
+/**
+ * Revierte la aplicación de la Nota de Crédito
+ * @param {number} id - ID de la pre-factura que es Nota de Crédito
+ */
+export async function revertirNotaCreditoPreFactura(id) {
+  const response = await axios.post(`${API_URL}/${id}/revertir-nota-credito`, {}, { headers: getAuthHeaders() });
+  return response.data;
+}
+
+/**
  * Crea una nueva pre-factura
  * @param {Object} preFacturaData - Datos de la pre-factura
  * @returns {Promise<Object>} Pre-factura creada

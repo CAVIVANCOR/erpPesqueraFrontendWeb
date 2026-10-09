@@ -14,6 +14,26 @@ export async function getOrdenesCompra() {
   return res.data;
 }
 
+/**
+ * Estado de aplicación (canje) de una Nota de Crédito de compra a su documento afecto
+ */
+export async function getEstadoNotaCreditoOC(id) {
+  const res = await axios.get(`${API_URL}/${id}/estado-nota-credito`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/** Aplica la Nota de Crédito de compra al documento afecto (canje) */
+export async function aplicarNotaCreditoOC(id) {
+  const res = await axios.post(`${API_URL}/${id}/aplicar-nota-credito`, {}, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/** Revierte la aplicación de la Nota de Crédito de compra */
+export async function revertirNotaCreditoOC(id) {
+  const res = await axios.post(`${API_URL}/${id}/revertir-nota-credito`, {}, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function getOrdenCompraPorId(id) {
   const res = await axios.get(`${API_URL}/${id}`, {
     headers: getAuthHeaders(),

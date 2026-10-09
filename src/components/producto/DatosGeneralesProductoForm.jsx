@@ -992,7 +992,7 @@ export default function DatosGeneralesProductoForm({
                   <Dropdown
                     id="tipoAfectacionIGVId"
                     value={field.value ? Number(field.value) : null}
-                    onChange={(e) => field.onChange(e.value)}
+                    onChange={(e) => field.onChange(e.value ?? null)}
                     options={tiposAfectacionIGVOptions}
                     placeholder="Seleccione tipo afectación IGV"
                     style={{ fontWeight: "bold" }}
@@ -1026,7 +1026,9 @@ export default function DatosGeneralesProductoForm({
                           id="tipoDetraccionId"
                           value={field.value ? Number(field.value) : null}
                           onChange={(e) => {
-                            field.onChange(e.value);
+                            // La X integrada del Dropdown entrega undefined; con undefined el formulario
+                            // repone el valor original, por eso se normaliza a null
+                            field.onChange(e.value ?? null);
                             // Auto-llenar porcentajeDetraccion y marcar sujetoDetraccion
                             if (e.value) {
                               const tipoSeleccionado = tiposDetraccionOptions.find(t => Number(t.value) === Number(e.value));
@@ -1034,6 +1036,9 @@ export default function DatosGeneralesProductoForm({
                                 setValue("porcentajeDetraccion", tipoSeleccionado.tasa, { shouldValidate: true });
                                 setValue("sujetoDetraccion", true, { shouldValidate: true });
                               }
+                            } else {
+                              setValue("porcentajeDetraccion", 0, { shouldValidate: true, shouldDirty: true });
+                              setValue("sujetoDetraccion", false, { shouldValidate: true, shouldDirty: true });
                             }
                           }}
                           options={tiposDetraccionOptions}
@@ -1059,7 +1064,7 @@ export default function DatosGeneralesProductoForm({
                           severity="danger"
                           size="small"
                           onClick={() => {
-                            field.onChange(null);
+                            setValue("tipoDetraccionId", null, { shouldValidate: true, shouldDirty: true });
                             setValue("porcentajeDetraccion", 0, { shouldValidate: true, shouldDirty: true });
                             setValue("sujetoDetraccion", false, { shouldValidate: true, shouldDirty: true });
                           }}

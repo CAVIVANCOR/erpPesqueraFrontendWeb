@@ -487,6 +487,12 @@ export default function ProductoForm({
       });
 
 
+      // Al editar, el tipo de detracción limpiado (X) debe enviarse como null: el backend entonces
+      // limpia también porcentajeDetraccion y sujetoDetraccion. Si se omitiera, el valor anterior no cambia.
+      if (modoEdicion) {
+        datosParaEnviar.tipoDetraccionId = data.tipoDetraccionId ? Number(data.tipoDetraccionId) : null;
+      }
+
       // Asegurar que los campos booleanos críticos siempre se envíen
       if (datosParaEnviar.exoneradoRetencion === undefined) {
         datosParaEnviar.exoneradoRetencion = false;

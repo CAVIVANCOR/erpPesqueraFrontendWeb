@@ -15,6 +15,12 @@ import CambiarTipoSerieDialog from "../common/CambiarTipoSerieDialog"; // ✅ AG
 import CentroCostoSelector from "../common/CentroCostoSelector";
 import ActivoSelector from "../common/ActivoSelector"; // ⭐ AGREGADO: Selector de activos
 import SelectorDocumentoAfectoOC from "../common/SelectorDocumentoAfectoOC";
+import AplicarNotaCreditoPanel from "../preFactura/AplicarNotaCreditoPanel";
+import {
+  getEstadoNotaCreditoOC,
+  aplicarNotaCreditoOC,
+  revertirNotaCreditoOC,
+} from "../../api/ordenCompra";
 
 export default function DatosGeneralesTab({
   formData,
@@ -589,6 +595,19 @@ export default function DatosGeneralesTab({
               />
             </div>
           </div>
+
+          {/* Aplicación (canje) de la Nota de Crédito al documento afecto: solo NC */}
+          {Number(formData.tipoDocumentoId) === 8 && (
+            <AplicarNotaCreditoPanel
+              documentoId={formData.id}
+              getEstado={getEstadoNotaCreditoOC}
+              aplicar={aplicarNotaCreditoOC}
+              revertir={revertirNotaCreditoOC}
+              dcmtoAfectoNCNDId={dcmtoAfectoNCNDId}
+              puedeEditar={!readOnly}
+              toast={toast}
+            />
+          )}
         </Panel>
       )}
 
