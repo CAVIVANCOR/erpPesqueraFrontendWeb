@@ -108,6 +108,7 @@ export default function DatosGeneralesTab({
   onNumSerieDocFinalChange,
   numCorreDocFinal,
   onNumCorreDocFinalChange,
+  onStockDespachado = () => { }, // ⭐ se llama tras generar movimientos de salida, kardex y saldos
 }) {
   // Determinar si es exportación para mostrar campos adicionales
   const esExportacion = formData.paisDestinoId || formData.incotermId;
@@ -121,6 +122,25 @@ export default function DatosGeneralesTab({
   const puedeEditarConPermiso = tienePermisoEspecial
     ? !estaAnulada && !readOnly
     : puedeEditar && !readOnly;
+
+  // ⭐ DESPACHO DE STOCK (asignar stock por línea y generar kardex): solo con la pre-factura emitida
+  const ESTADOS_DESPACHABLES = [95, 96, 97, 98, 99]; // FACTURADA, EMITIDA, CE GENERADO, VALIDADO SUNAT, NO VALIDADO SUNAT
+  const esNotaCreditoDebito = [8, 9].includes(Number(formData.tipoDocumentoId));
+  const estaEmitida = ESTADOS_DESPACHABLES.includes(Number(formData.estadoId));
+  const tienePermisoDespacho = permisos.puedeEditar === true || tienePermisoEspecial;
+  const puedeDespachar =
+    Boolean(preFacturaId) && estaEmitida && !esNotaCreditoDebito && tienePermisoDespacho && !readOnly;
+  const motivoNoDespachar = !preFacturaId
+    ? "Guarde la pre-factura primero"
+    : readOnly
+      ? "Modo solo lectura"
+      : esNotaCreditoDebito
+        ? "No aplica a notas de crédito o débito"
+        : !estaEmitida
+          ? "Disponible tras emitir la pre-factura"
+          : !tienePermisoDespacho
+            ? "No tiene permisos para generar kardex"
+            : "";
 
   const puedeEditarDetallesConPermiso = tienePermisoEspecial
     ? !estaAnulada && !readOnly
@@ -1400,6 +1420,10 @@ export default function DatosGeneralesTab({
           aplicaPercepcion={aplicaPercepcion}
           montoPercepcion={montoPercepcion}
           porcentajePercepcion={porcentajePercepcion}
+          kardexGenerado={Boolean(formData.movSalidaAlmacenId)}
+          puedeDespachar={puedeDespachar}
+          motivoNoDespachar={motivoNoDespachar}
+          onStockDespachado={onStockDespachado}
         />
       </Panel>
 

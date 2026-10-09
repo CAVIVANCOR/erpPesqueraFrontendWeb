@@ -395,6 +395,20 @@ export async function generarMovimientoAlmacenPreFactura(id, datosKardex) {
   return res.data;
 }
 
+/**
+ * Despacha el stock elegido por el usuario: un movimiento de salida por almacén, con su kardex y saldos.
+ * @param {number} id - ID de la pre-factura (emitida)
+ * @param {Object} payload - { conceptosPorAlmacen: {almacenId: conceptoId}, lineas: [{detallePreFacturaId, saldoDetProductoClienteId, cantidad}] }
+ */
+export async function despacharStockPreFactura(id, payload) {
+  const res = await axios.post(
+    `${API_URL}/${id}/despachar-stock`,
+    payload,
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
+
 export async function regenerarKardexPreFactura(id) {
   const res = await axios.post(
     `${API_URL}/${id}/regenerar-kardex`,

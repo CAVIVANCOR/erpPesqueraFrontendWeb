@@ -1872,6 +1872,19 @@ const PreFactura = ({ ruta }) => {
     }
   };
 
+  // Tras despachar el stock (movimientos de salida, kardex y saldos) se recarga el documento y la lista
+  const handleStockDespachado = async () => {
+    try {
+      if (selectedPreFactura?.id) {
+        const preFacturaActualizada = await getPreFacturaPorId(selectedPreFactura.id);
+        setSelectedPreFactura(preFacturaActualizada);
+      }
+      await cargarDatos();
+    } catch (error) {
+      console.error("Error al recargar la pre-factura tras el despacho de stock:", error);
+    }
+  };
+
   const handleProcesarRegeneracionKardex = async (preFacturaId) => {
     try {
       setLoading(true);
@@ -2948,7 +2961,7 @@ const PreFactura = ({ ruta }) => {
           onIrAMovimientoAlmacen={handleIrAMovimientoAlmacen}
           onIrACotizacionVenta={handleIrACotizacionVenta}
           onIrAContratoServicio={handleIrAContratoServicio}
-          onGenerarKardex={handleGenerarKardex}
+          onStockDespachado={handleStockDespachado}
         />
       </Dialog>
 

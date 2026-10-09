@@ -1,5 +1,5 @@
 // src/components/preFactura/DetallesTab.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -18,7 +18,9 @@ import {
   actualizarDetallePreFactura,
   eliminarDetallePreFactura,
 } from "../../api/detallePreFactura";
-import AsignarStockDialog from '../common/kardex/asignar-stock/AsignarStockDialog';
+import useAsignacionStock from "./asignacionStock/useAsignacionStock";
+import BotonAsignacionStock from "./asignacionStock/BotonAsignacionStock";
+import AsignacionStockDialogs from "./asignacionStock/AsignacionStockDialogs";
 
 export default function DetallesTab({
   preFacturaId,
@@ -51,7 +53,11 @@ export default function DetallesTab({
   tipoDocumentoId = null,
   tiposDocumentoOptions = [],
   onChange = () => { },
-  onEstadoAsignacionChange = () => { },
+  // ⭐ ASIGNACIÓN DE STOCK / KARDEX
+  kardexGenerado = false, // la PreFactura ya tiene sus movimientos de salida
+  puedeDespachar = false, // emitida, con permiso y no es nota de crédito/débito
+  motivoNoDespachar = "", // por qué el botón está deshabilitado
+  onStockDespachado = () => { }, // se llama tras generar movimientos, kardex y saldos
   // ⭐ NUEVOS PROPS PARA PRECIO AUTOMÁTICO
   clienteId = null,
   fechaDocumento = null,
@@ -79,16 +85,20 @@ export default function DetallesTab({
     cantidadVenta: null,
     precioUnitarioVenta: null,
   });
-  // ⭐ ESTADOS PARA ASIGNACIÓN DE STOCK (FASE 1 y FASE 2)
-  const [asignacionesStock, setAsignacionesStock] = useState({});
-  const [estadoGlobalAsignacion, setEstadoGlobalAsignacion] = useState({
-    estaCompleto: false,
-    itemsAsignados: 0,
-    itemsTotales: 0,
-    movimientosAGenerar: []
+  // ⭐ ASIGNACIÓN DE STOCK: componente autónomo, el JSON vive en memoria y se limpia al cambiar/salir de la PreFactura
+  const asignacionStock = useAsignacionStock({
+    preFacturaId,
+    detalles,
+    empresaId,
+    kardexGenerado,
+    puedeDespachar,
+    motivoNoDespachar,
+    toast,
+    onGenerado: async () => {
+      await cargarDetalles();
+      await onStockDespachado();
+    },
   });
-  const [showAsignarStock, setShowAsignarStock] = useState(false);
-  const [detalleParaAsignar, setDetalleParaAsignar] = useState(null);
   // Cargar detalles cuando cambie preFacturaId
   useEffect(() => {
     if (preFacturaId) {
@@ -279,32 +289,6 @@ export default function DetallesTab({
     }
   };
 
-  // ⭐ HANDLER: Confirmar asignación de stock (FASE 1)
-  const handleConfirmarAsignacion = (resultado) => {
-    setAsignacionesStock(prev => ({
-      ...prev,
-      [resultado.detallePreFacturaId]: {
-        estaAsignado: true,
-        asignaciones: resultado.asignaciones,
-        cantidadTotal: resultado.cantidadTotal,
-        pesoTotal: resultado.pesoTotal
-      }
-    }));
-    setShowAsignarStock(false);
-    setDetalleParaAsignar(null);
-    toast.current?.show({
-      severity: 'success',
-      summary: 'Stock Asignado',
-      detail: `Se asignaron ${resultado.asignaciones.length} lote(s) correctamente`,
-      life: 3000
-    });
-  };
-  // ⭐ HANDLER: Abrir dialog de asignación de stock
-  const handleAbrirAsignarStock = (detalle) => {
-    setDetalleParaAsignar(detalle);
-    setShowAsignarStock(true);
-  };
-
   const confirmarEliminar = (detalle) => {
     confirmDialog({
       message: `¿Está seguro de eliminar el producto "${detalle.producto?.nombre || "N/A"}"?`,
@@ -315,72 +299,6 @@ export default function DetallesTab({
       accept: () => handleEliminar(detalle.id),
     });
   };
-
-  // ⭐ FUNCIÓN: Actualizar estado global de asignación
-  const actualizarEstadoGlobalAsignacion = useCallback(() => {
-    const itemsAsignados = detalles.filter(det =>
-      asignacionesStock[det.id]?.estaAsignado === true
-    ).length;
-
-    const itemsTotales = detalles.length;
-    const estaCompleto = itemsTotales > 0 && itemsAsignados === itemsTotales;
-
-    let movimientosAGenerar = [];
-    if (estaCompleto) {
-      const todosLosLotes = [];
-      detalles.forEach(det => {
-        const asignacion = asignacionesStock[det.id];
-        if (asignacion?.lotes) {
-          todosLosLotes.push(...asignacion.lotes);
-        }
-      });
-
-      const lotesPorAlmacen = todosLosLotes.reduce((acc, lote) => {
-        if (!acc[lote.almacenId]) {
-          acc[lote.almacenId] = {
-            almacenId: lote.almacenId,
-            almacenNombre: lote.almacenNombre,
-            lotes: []
-          };
-        }
-        acc[lote.almacenId].lotes.push(lote);
-        return acc;
-      }, {});
-
-      movimientosAGenerar = Object.values(lotesPorAlmacen).map(grupo => ({
-        almacenId: grupo.almacenId,
-        almacenNombre: grupo.almacenNombre,
-        cantidadTotal: grupo.lotes.reduce((sum, l) => sum + l.cantidad, 0),
-        pesoTotal: grupo.lotes.reduce((sum, l) => sum + l.peso, 0),
-        numLotes: grupo.lotes.length,
-        lotes: grupo.lotes,
-        conceptoMovAlmacenId: null,
-        dirOrigenId: null,
-        dirDestinoId: null,
-        observaciones: ""
-      }));
-    }
-
-    setEstadoGlobalAsignacion({
-      estaCompleto,
-      itemsAsignados,
-      itemsTotales,
-      movimientosAGenerar
-    });
-  }, [detalles, asignacionesStock]);
-
-
-  // ⭐ EFECTO: Actualizar estado global cuando cambian detalles o asignaciones
-  useEffect(() => {
-    actualizarEstadoGlobalAsignacion();
-  }, [actualizarEstadoGlobalAsignacion]);
-
-  // ⭐ EFECTO: Notificar cambios de estado global al padre
-  useEffect(() => {
-    if (onEstadoAsignacionChange) {
-      onEstadoAsignacionChange(estadoGlobalAsignacion);
-    }
-  }, [estadoGlobalAsignacion, onEstadoAsignacionChange]);
 
   const handleEliminar = async (detalleId) => {
     setLoading(true);
@@ -463,25 +381,17 @@ export default function DetallesTab({
     return (
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
         <Button
-          icon="pi pi-box"
-          label="Asignar"
-          className="p-button-sm p-button-info"
-          onClick={() => handleAbrirAsignarStock(rowData)}
-          disabled={readOnly}
-          tooltip="Asignar stock desde almacenes"
-        />
-        <Button
           icon="pi pi-pencil"
           className="p-button-rounded p-button-text p-button-warning"
           onClick={() => abrirDialogoEditar(rowData)}
-          disabled={!puedeEditar || readOnly}
+          disabled={!puedeEditar || readOnly || asignacionStock.kardexGenerado}
           tooltip="Editar"
         />
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-text p-button-danger"
           onClick={() => confirmarEliminar(rowData)}
-          disabled={!puedeEditar || readOnly}
+          disabled={!puedeEditar || readOnly || asignacionStock.kardexGenerado}
           tooltip="Eliminar"
         />
       </div>
@@ -557,7 +467,7 @@ export default function DetallesTab({
             icon="pi pi-plus"
             className="p-button-success"
             onClick={abrirDialogoNuevo}
-            disabled={!puedeEditar || readOnly || !preFacturaId}
+            disabled={!puedeEditar || readOnly || !preFacturaId || asignacionStock.kardexGenerado}
             style={{ width: "100%", fontWeight: "bold" }}
             tooltip={
               !preFacturaId
@@ -743,6 +653,7 @@ export default function DetallesTab({
         size="small"
         showGridlines
         stripedRows
+        cellMemo={false}
       >
         <Column
           field="producto.familia.nombre"
@@ -848,27 +759,14 @@ export default function DetallesTab({
           alignHeader="center"
         />
         <Column
-          header="Cant Asignada"
-          body={(rowData) => {
-            const asignacion = asignacionesStock[rowData.id];
-            if (!asignacion || !asignacion.estaAsignado) {
-              return (
-                <Tag severity="warning" value="Sin asignar" icon="pi pi-exclamation-triangle" />
-              );
-            }
-            return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Tag severity="success" value={`${asignacion.cantidadAsignada} ${rowData.producto?.unidadMedida?.simbolo || ''}`} icon="pi pi-check" />
-                <small style={{ color: '#6c757d' }}>({asignacion.lotes?.length || 0} lotes)</small>
-              </div>
-            );
-          }}
-          style={{ minWidth: "180px" }}
+          header="Stock / Kardex"
+          body={(rowData) => <BotonAsignacionStock a={asignacionStock} detalle={rowData} />}
+          style={{ minWidth: "230px" }}
         />
         <Column
           header="Acciones"
           body={accionesTemplate}
-          style={{ minWidth: "220px" }}
+          style={{ minWidth: "110px" }}
         />
       </DataTable>
 
@@ -1130,21 +1028,8 @@ export default function DetallesTab({
         onSelect={handleProductoSeleccionado}
       />
 
-      {/* ⭐ DIÁLOGO: Asignar Stock (FASE 1) */}
-      <AsignarStockDialog
-        visible={showAsignarStock}
-        onHide={() => {
-          setShowAsignarStock(false);
-          setDetalleParaAsignar(null);
-        }}
-        empresaId={empresaId}
-        productoId={detalleParaAsignar?.productoId}
-        productoNombre={detalleParaAsignar?.producto?.descripcionArmada}
-        cantidadRequerida={detalleParaAsignar?.cantidad}
-        unidadMedida={detalleParaAsignar?.producto?.unidadMedida?.simbolo}
-        detallePreFacturaId={detalleParaAsignar?.id}
-        onConfirmar={handleConfirmarAsignacion}
-      />
+      {/* ⭐ DIÁLOGOS: asignación de stock por línea y confirmación de generación del kardex */}
+      <AsignacionStockDialogs a={asignacionStock} />
     </div>
   );
 }

@@ -57,7 +57,7 @@ export default function PreFacturaForm({
   onAnular,
   onReactivar, // ⭐ NUEVO
   onClienteCreado, // ← NUEVO
-  onGenerarKardex, // ⭐ AGREGAR ESTA LÍNEA
+  onStockDespachado, // ⭐ se llama tras despachar stock (movimientos, kardex y saldos) para recargar el documento
   loading,
   toast,
   permisos = {},
@@ -1078,28 +1078,6 @@ export default function PreFacturaForm({
     }
   };
 
-  const handleGenerarKardexClick = () => {
-    if (!defaultValues.id) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "Debe guardar la pre-factura antes de generar el kardex",
-      });
-      return;
-    }
-
-    if (!defaultValues.detalles || defaultValues.detalles.length === 0) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "La pre-factura debe tener al menos un detalle para generar el kardex",
-      });
-      return;
-    }
-
-    onGenerarKardex(defaultValues.id);
-  };
-
 
   // Calcular automáticamente porcentajeAdelanto cuando cambia montoAdelantadoCliente
   useEffect(() => {
@@ -1616,23 +1594,9 @@ export default function PreFacturaForm({
   const estaComprobanteGenerado = estadoId === ESTADO_PREFACTURA.COMPROBANTE_ELECTRONICO_GENERADO;
   const estaValidadoSunat = estadoId === ESTADO_PREFACTURA.VALIDADO_SUNAT;
   const estaNoValidadoSunat = estadoId === ESTADO_PREFACTURA.NO_VALIDADO_SUNAT;
-  const kardexGenerado = Boolean(defaultValues?.movSalidaAlmacenId);
 
   // ⭐ PERMISOS ESPECIALES: Usuario con puedeAprobarDocs tiene acceso total
   const tienePermisoEspecial = permisos.puedeAprobarDocs === true;
-
-  // Estados válidos para generar kardex (todos excepto PENDIENTE y ANULADA)
-  const puedeGenerarKardex = tienePermisoEspecial
-    ? !estaAnulada
-    : [
-      ESTADO_PREFACTURA.APROBADA,
-      ESTADO_PREFACTURA.PARTICIONADA,
-      ESTADO_PREFACTURA.FACTURADA,
-      ESTADO_PREFACTURA.EMITIDA,
-      ESTADO_PREFACTURA.COMPROBANTE_ELECTRONICO_GENERADO,
-      ESTADO_PREFACTURA.VALIDADO_SUNAT,
-      ESTADO_PREFACTURA.NO_VALIDADO_SUNAT,
-    ].includes(estadoId);
 
   const puedeEditar = tienePermisoEspecial
     ? !estaAnulada && !loading
@@ -1851,6 +1815,7 @@ export default function PreFacturaForm({
             readOnly={readOnly}
             onIrAPreFacturaOrigen={onIrAPreFacturaOrigen}
             onIrAMovimientoAlmacen={onIrAMovimientoAlmacen}
+            onStockDespachado={onStockDespachado}
             onIrACotizacionVenta={onIrACotizacionVenta}
             onIrAContratoServicio={onIrAContratoServicio}
             onClienteCreado={handleClienteCreado}
@@ -2063,35 +2028,7 @@ export default function PreFacturaForm({
 
         {/* Botones derecha: Guardar y Cancelar */}
         <div style={{ display: "flex", gap: 8 }}>
-          {/* Botón Generar Kardex */}
-          {isEdit && formData.id && (
-            <Button
-              label={kardexGenerado ? "Regenerar Kardex" : "Generar Kardex"}
-              icon="pi pi-database"
-              className="p-button-info"
-              onClick={handleGenerarKardexClick}
-              disabled={
-                tienePermisoEspecial
-                  ? (readOnly || loading || estaAnulada)
-                  : (readOnly || loading || !permisos.puedeEditar || estaAnulada || estaPendiente || !puedeGenerarKardex)
-              }
-              tooltip={
-                readOnly
-                  ? "Modo solo lectura"
-                  : estaAnulada
-                    ? "No se puede generar kardex en pre-facturas ANULADAS"
-                    : estaPendiente && !tienePermisoEspecial
-                      ? "No se puede generar kardex en pre-factura pendiente"
-                      : !permisos.puedeEditar && !tienePermisoEspecial
-                        ? "No tiene permisos para generar kardex"
-                        : !puedeGenerarKardex && !tienePermisoEspecial
-                          ? "Solo se puede generar kardex en pre-facturas APROBADAS, PARTICIONADAS, FACTURADAS, EMITIDAS o con estados SUNAT"
-                          : kardexGenerado
-                            ? "Regenerar kardex (eliminar y crear nuevo movimiento)"
-                            : "Generar movimiento de salida de almacén"
-              }
-            />
-          )}
+          {/* El kardex ya no se genera desde aquí: se asigna el stock por línea en el detalle (botón de cada línea) */}
           {/* Componente genérico de asientos contables */}
           {isEdit && formData.id && (
             <AsientoContableManager
