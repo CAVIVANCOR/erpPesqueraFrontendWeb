@@ -83,9 +83,7 @@ export const createDetRepuestoContratistaOT = async (detalleRepuesto) => {
       cantidad: Number(detalleRepuesto.cantidad) || 0,
       precioUnitario: Number(detalleRepuesto.precioUnitario) || 0,
       total: Number(detalleRepuesto.total) || 0,
-      monedaId: Number(detalleRepuesto.monedaId),
-      incluidoEnPresupuesto: Boolean(detalleRepuesto.incluidoEnPresupuesto),
-      ordenCompraId: detalleRepuesto.ordenCompraId ? Number(detalleRepuesto.ordenCompraId) : null
+      monedaId: Number(detalleRepuesto.monedaId)
     };
     const response = await axios.post(API_URL, datosNormalizados, getAuthHeaders());
     return response.data;
@@ -115,9 +113,7 @@ export const updateDetRepuestoContratistaOT = async (id, detalleRepuesto) => {
       cantidad: Number(detalleRepuesto.cantidad) || 0,
       precioUnitario: Number(detalleRepuesto.precioUnitario) || 0,
       total: Number(detalleRepuesto.total) || 0,
-      monedaId: Number(detalleRepuesto.monedaId),
-      incluidoEnPresupuesto: Boolean(detalleRepuesto.incluidoEnPresupuesto),
-      ordenCompraId: detalleRepuesto.ordenCompraId ? Number(detalleRepuesto.ordenCompraId) : null
+      monedaId: Number(detalleRepuesto.monedaId)
     };
     const response = await axios.put(`${API_URL}/${id}`, datosNormalizados, getAuthHeaders());
     return response.data;

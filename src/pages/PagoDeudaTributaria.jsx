@@ -1,5 +1,5 @@
 // src/pages/PagoDeudaTributaria.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -8,6 +8,8 @@ import { Toolbar } from "primereact/toolbar";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { Tag } from "primereact/tag";
+import { Calendar } from "primereact/calendar";
+import { Dropdown } from "primereact/dropdown";
 import { confirmDialog, ConfirmDialog } from "primereact/confirmdialog";
 import { formatearNumero, formatearFecha } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
@@ -19,6 +21,8 @@ import {
 import { getMediosPago } from "../api/medioPago";
 import { getPeriodosContables } from "../api/contabilidad/periodoContable";
 import PagoDeudaTributariaForm from "../components/deudaTributaria/PagoDeudaTributariaForm";
+import EmpresaSelector from "../components/common/EmpresaSelector";
+import { useAuthStore } from "../shared/stores/useAuthStore";
 
 /**
  * Lista de pagos de deudas tributarias.
@@ -28,9 +32,19 @@ import PagoDeudaTributariaForm from "../components/deudaTributaria/PagoDeudaTrib
  * sus observaciones y adjuntos (voucher consolidado y comprobante de la entidad recaudadora)
  * mediante PagoDeudaTributariaForm y, con el derecho de eliminar, borrar un pago erróneo.
  */
+const obtenerOpcionesUnicas = (datos, obtener) => [
+  ...new Map(
+    datos
+      .map(obtener)
+      .filter(Boolean)
+      .map((item) => [Number(item.id), item]),
+  ).values(),
+];
+
 const PagoDeudaTributaria = () => {
   const toast = useRef(null);
   const dt = useRef(null);
+  const usuario = useAuthStore((state) => state.usuario);
 
   const permisos = usePermissions("PAGO_DEUDA_TRIBUTARIA");
 
@@ -42,6 +56,14 @@ const PagoDeudaTributaria = () => {
 
   const [dialogVisible, setDialogVisible] = useState(false);
   const [pagoSeleccionado, setPagoSeleccionado] = useState(null);
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [entidadSeleccionada, setEntidadSeleccionada] = useState(null);
+  const [tipoDeudaSeleccionado, setTipoDeudaSeleccionado] = useState(null);
+  const [rangoFechas, setRangoFechas] = useState(null);
+  const [medioPagoSeleccionado, setMedioPagoSeleccionado] = useState(null);
+  const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
+  const [periodoSeleccionado, setPeriodoSeleccionado] = useState(null);
+  const [nroOperacionBusqueda, setNroOperacionBusqueda] = useState("");
 
   useEffect(() => {
     cargarDatos();
@@ -69,6 +91,105 @@ const PagoDeudaTributaria = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const pagosDeEmpresa = useMemo(
+    () => empresaSeleccionada
+      ? pagos.filter((p) => Number(p.deudaTributaria?.empresaId) === Number(empresaSeleccionada))
+      : pagos,
+    [pagos, empresaSeleccionada],
+  );
+
+  const entidadesUnicas = useMemo(
+    () => obtenerOpcionesUnicas(pagosDeEmpresa, (p) => p.deudaTributaria?.tipoDeuda?.entidadRecaudadora)
+      .sort((a, b) => (a.razonSocial || "").localeCompare(b.razonSocial || "")),
+    [pagosDeEmpresa],
+  );
+
+  const tiposDeudaUnicos = useMemo(() => {
+    const datos = entidadSeleccionada
+      ? pagosDeEmpresa.filter((p) => Number(p.deudaTributaria?.tipoDeuda?.entidadRecaudadora?.id) === Number(entidadSeleccionada))
+      : pagosDeEmpresa;
+    return obtenerOpcionesUnicas(datos, (p) => p.deudaTributaria?.tipoDeuda)
+      .sort((a, b) => (a.nombre || "").localeCompare(b.nombre || ""));
+  }, [pagosDeEmpresa, entidadSeleccionada]);
+
+  const mediosPagoUnicos = useMemo(
+    () => obtenerOpcionesUnicas(pagosDeEmpresa, (p) => p.medioPago)
+      .sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "")),
+    [pagosDeEmpresa],
+  );
+
+  const monedasUnicas = useMemo(
+    () => obtenerOpcionesUnicas(pagosDeEmpresa, (p) => p.deudaTributaria?.moneda)
+      .sort((a, b) => (a.codigoSunat || "").localeCompare(b.codigoSunat || "")),
+    [pagosDeEmpresa],
+  );
+
+  const periodosUnicos = useMemo(
+    () => obtenerOpcionesUnicas(pagosDeEmpresa, (p) => p.periodoContable)
+      .sort((a, b) => (a.nombrePeriodo || "").localeCompare(b.nombrePeriodo || "")),
+    [pagosDeEmpresa],
+  );
+
+  const pagosFiltrados = useMemo(() => {
+    let filtrados = pagosDeEmpresa;
+
+    if (entidadSeleccionada) {
+      filtrados = filtrados.filter((p) => Number(p.deudaTributaria?.tipoDeuda?.entidadRecaudadora?.id) === Number(entidadSeleccionada));
+    }
+    if (tipoDeudaSeleccionado) {
+      filtrados = filtrados.filter((p) => Number(p.deudaTributaria?.tipoDeudaId) === Number(tipoDeudaSeleccionado));
+    }
+    if (rangoFechas?.[0]) {
+      const desde = new Date(rangoFechas[0]);
+      desde.setHours(0, 0, 0, 0);
+      const hasta = rangoFechas[1] ? new Date(rangoFechas[1]) : null;
+      hasta?.setHours(23, 59, 59, 999);
+      filtrados = filtrados.filter((p) => {
+        const fecha = new Date(p.fechaPago);
+        return fecha >= desde && (!hasta || fecha <= hasta);
+      });
+    }
+    if (medioPagoSeleccionado) {
+      filtrados = filtrados.filter((p) => Number(p.medioPagoId) === Number(medioPagoSeleccionado));
+    }
+    if (monedaSeleccionada) {
+      filtrados = filtrados.filter((p) => Number(p.deudaTributaria?.monedaId) === Number(monedaSeleccionada));
+    }
+    if (periodoSeleccionado) {
+      filtrados = filtrados.filter((p) => Number(p.periodoContableId) === Number(periodoSeleccionado));
+    }
+    if (nroOperacionBusqueda.trim()) {
+      const busqueda = nroOperacionBusqueda.trim().toLowerCase();
+      filtrados = filtrados.filter((p) =>
+        String(p.numeroOperacion || "").toLowerCase().includes(busqueda) ||
+        String(p.numeroConstancia || "").toLowerCase().includes(busqueda) ||
+        String(p.refOperacionEspecializadaMovCaja || "").toLowerCase().includes(busqueda),
+      );
+    }
+
+    return filtrados;
+  }, [pagosDeEmpresa, entidadSeleccionada, tipoDeudaSeleccionado, rangoFechas, medioPagoSeleccionado, monedaSeleccionada, periodoSeleccionado, nroOperacionBusqueda]);
+
+  useEffect(() => {
+    if (entidadSeleccionada && !entidadesUnicas.some((e) => Number(e.id) === Number(entidadSeleccionada))) {
+      setEntidadSeleccionada(null);
+    }
+    if (tipoDeudaSeleccionado && !tiposDeudaUnicos.some((t) => Number(t.id) === Number(tipoDeudaSeleccionado))) {
+      setTipoDeudaSeleccionado(null);
+    }
+  }, [entidadesUnicas, tiposDeudaUnicos, entidadSeleccionada, tipoDeudaSeleccionado]);
+
+  const limpiarFiltros = () => {
+    setEmpresaSeleccionada(null);
+    setEntidadSeleccionada(null);
+    setTipoDeudaSeleccionado(null);
+    setRangoFechas(null);
+    setMedioPagoSeleccionado(null);
+    setMonedaSeleccionada(null);
+    setPeriodoSeleccionado(null);
+    setNroOperacionBusqueda("");
   };
 
   const verPago = (pago) => {
@@ -151,20 +272,56 @@ const PagoDeudaTributaria = () => {
   };
 
   // Templates
-  const rightToolbarTemplate = () => {
-    return (
+  const leftToolbarTemplate = () => (
+    <div style={{ display: "flex", gap: "0.5rem" }}>
       <Button
-        label="Exportar"
-        icon="pi pi-upload"
-        className="p-button-help"
-        onClick={exportCSV}
+        label="Actualizar"
+        icon="pi pi-refresh"
+        className="p-button-info"
+        onClick={cargarDatos}
+        loading={loading}
       />
-    );
-  };
+      <Button
+        label="Limpiar Filtros"
+        icon="pi pi-filter-slash"
+        className="p-button-secondary"
+        outlined
+        onClick={limpiarFiltros}
+        disabled={loading}
+      />
+    </div>
+  );
+
+  const rightToolbarTemplate = () => (
+    <Button
+      label="Exportar"
+      icon="pi pi-upload"
+      className="p-button-help"
+      onClick={exportCSV}
+    />
+  );
+
+  const filtroDropdown = (id, etiqueta, value, onChange, opciones, placeholder = "Todos") => (
+    <div style={{ flex: 2 }}>
+      <label htmlFor={id} style={{ fontWeight: "bold" }}>{etiqueta}</label>
+      <Dropdown
+        id={id}
+        value={value}
+        options={opciones}
+        onChange={(e) => onChange(e.value)}
+        placeholder={placeholder}
+        optionLabel="label"
+        optionValue="value"
+        showClear
+        filter
+        disabled={loading}
+        style={{ width: "100%" }}
+      />
+    </div>
+  );
 
   const header = (
-    <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
-      <h4 className="m-0">Pagos de Deudas Tributarias</h4>
+    <div className="flex flex-wrap gap-2 align-items-center justify-content-end">
       <span className="p-input-icon-left">
         <i className="pi pi-search" />
         <InputText
@@ -175,6 +332,8 @@ const PagoDeudaTributaria = () => {
       </span>
     </div>
   );
+
+  const empresaTemplate = (rowData) => rowData.deudaTributaria?.empresa?.razonSocial || "-";
 
   const tipoDeudaTemplate = (rowData) => rowData.deudaTributaria?.tipoDeuda?.nombre || "-";
 
@@ -266,11 +425,115 @@ const PagoDeudaTributaria = () => {
       <ConfirmDialog />
 
       <div className="card">
-        <Toolbar className="mb-4" right={rightToolbarTemplate} />
+        <div style={{ marginBottom: "1rem" }}>
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h2>Pagos de Deudas Tributarias</h2>
+            </div>
+            <div style={{ flex: 2 }}>
+              <label style={{ fontWeight: "bold" }}>Empresa</label>
+              <EmpresaSelector
+                empresaId={usuario?.empresaId}
+                onEmpresaChange={setEmpresaSeleccionada}
+              />
+            </div>
+          </div>
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              marginTop: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            {filtroDropdown(
+              "entidadFiltro",
+              "Entidad Recaudadora",
+              entidadSeleccionada,
+              setEntidadSeleccionada,
+              entidadesUnicas.map((e) => ({ label: e.razonSocial, value: Number(e.id) })),
+            )}
+            {filtroDropdown(
+              "tipoDeudaFiltro",
+              "Tipo de Deuda",
+              tipoDeudaSeleccionado,
+              setTipoDeudaSeleccionado,
+              tiposDeudaUnicos.map((t) => ({ label: t.nombre, value: Number(t.id) })),
+            )}
+            <div style={{ flex: 2 }}>
+              <label htmlFor="rangoFechas" style={{ fontWeight: "bold" }}>Rango de Fechas (Pago)</label>
+              <Calendar
+                id="rangoFechas"
+                value={rangoFechas}
+                onChange={(e) => setRangoFechas(e.value)}
+                selectionMode="range"
+                dateFormat="dd/mm/yy"
+                showIcon
+                placeholder="Seleccionar rango..."
+                style={{ width: "100%" }}
+                disabled={loading}
+                readOnlyInput
+              />
+            </div>
+          </div>
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              marginTop: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            {filtroDropdown(
+              "medioPagoFiltro",
+              "Medio de Pago",
+              medioPagoSeleccionado,
+              setMedioPagoSeleccionado,
+              mediosPagoUnicos.map((m) => ({ label: m.nombre, value: Number(m.id) })),
+            )}
+            {filtroDropdown(
+              "monedaFiltro",
+              "Moneda",
+              monedaSeleccionada,
+              setMonedaSeleccionada,
+              monedasUnicas.map((m) => ({ label: m.codigoSunat, value: Number(m.id) })),
+              "Todas",
+            )}
+            {filtroDropdown(
+              "periodoFiltro",
+              "Período Contable",
+              periodoSeleccionado,
+              setPeriodoSeleccionado,
+              periodosUnicos.map((p) => ({ label: p.nombrePeriodo, value: Number(p.id) })),
+            )}
+            <div style={{ flex: 2 }}>
+              <label htmlFor="nroOperacionInput" style={{ fontWeight: "bold" }}>N° Operación / Constancia</label>
+              <InputText
+                id="nroOperacionInput"
+                value={nroOperacionBusqueda}
+                onChange={(e) => setNroOperacionBusqueda(e.target.value)}
+                placeholder="Buscar operación o constancia..."
+                style={{ width: "100%" }}
+                disabled={loading}
+              />
+            </div>
+          </div>
+        </div>
+
+        <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate} />
 
         <DataTable
           ref={dt}
-          value={pagos}
+          value={pagosFiltrados}
           dataKey="id"
           paginator
           rows={10}
@@ -278,6 +541,14 @@ const PagoDeudaTributaria = () => {
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} pagos"
           globalFilter={globalFilter}
+          globalFilterFields={[
+            "refOperacionEspecializadaMovCaja",
+            "numeroOperacion",
+            "numeroConstancia",
+            "deudaTributaria.tipoDeuda.nombre",
+            "deudaTributaria.tipoDeuda.entidadRecaudadora.razonSocial",
+            "deudaTributaria.empresa.razonSocial",
+          ]}
           header={header}
           loading={loading}
           emptyMessage="No se encontraron pagos"
@@ -292,14 +563,16 @@ const PagoDeudaTributaria = () => {
             sortable
             style={{ minWidth: "6rem" }}
           />
-          <Column header="Tipo de Deuda" body={tipoDeudaTemplate} sortable />
-          <Column header="Período" body={periodoTemplate} sortable />
-          <Column header="Entidad Recaudadora" body={entidadRecaudadoraTemplate} sortable />
-          <Column header="Fecha Pago" body={fechaPagoTemplate} sortable />
-          <Column header="Medio Pago" body={medioPagoTemplate} sortable />
-          <Column header="Monto Pagado" body={montoTemplate} sortable />
+          <Column header="Empresa" body={empresaTemplate} sortable sortField="deudaTributaria.empresa.razonSocial" />
+          <Column header="Tipo de Deuda" body={tipoDeudaTemplate} sortable sortField="deudaTributaria.tipoDeuda.nombre" />
+          <Column header="Período" body={periodoTemplate} sortable sortField="deudaTributaria.periodo" />
+          <Column header="Entidad Recaudadora" body={entidadRecaudadoraTemplate} sortable sortField="deudaTributaria.tipoDeuda.entidadRecaudadora.razonSocial" />
+          <Column header="Fecha Pago" body={fechaPagoTemplate} field="fechaPago" sortable />
+          <Column header="Medio Pago" body={medioPagoTemplate} sortable sortField="medioPago.nombre" />
+          <Column header="Monto Pagado" body={montoTemplate} field="montoPago" sortable />
           <Column field="numeroOperacion" header="N° Operación Bancaria" sortable />
-          <Column header="Período Contable" body={periodoContableTemplate} sortable />
+          <Column field="numeroConstancia" header="N° Constancia" sortable />
+          <Column header="Período Contable" body={periodoContableTemplate} sortable sortField="periodoContable.nombrePeriodo" />
           <Column header="Origen" body={origenTemplate} />
           <Column header="Adjuntos" body={adjuntosTemplate} exportable={false} />
           <Column

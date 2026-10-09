@@ -59,7 +59,11 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
   proveedores = [],
   estadosCxP = [],
   toast,
-  onSuccess
+  onSuccess,
+  esGastoDirecto = false,
+  detMovsEntregaRendirId = null,
+  tipoMovimientoIdHeredado = null,
+  loading: loadingProp = false,
 }) {
   const usuario = useAuthStore((state) => state.usuario);
   
@@ -195,10 +199,12 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
       // Inicializar moneda de pago con la moneda de la deuda
       setMonedaPagoId(Number(cuentaPorPagar.monedaId));
 
-      // Inicializar montos en CERO
-      setMontoPagado(0);
-      setMontoAplicadoDeuda(0);
-      setMontoNetoIngresado(0);
+      // Inicializar montos: en gastos directos se pre-llena el saldo pendiente
+      // para agilizar el pago, pero sigue siendo editable (puede ser parcial).
+      const saldoPendienteInicial = Number(cuentaPorPagar.saldoPendiente || 0);
+      setMontoPagado(esGastoDirecto ? saldoPendienteInicial : 0);
+      setMontoAplicadoDeuda(esGastoDirecto ? saldoPendienteInicial : 0);
+      setMontoNetoIngresado(esGastoDirecto ? saldoPendienteInicial : 0);
       setMontoDetraccionIngresado(0);
       
       // Inicializar estados de pago de detracción
@@ -238,6 +244,11 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
         setImporteTotalPercepcion(Number(cuentaPorPagar.saldoPendiente || 0));
       } else {
         setAplicaPercepcion(false);
+      }
+
+      // Pre-seleccionar tipo de movimiento heredado del gasto directo
+      if (esGastoDirecto && tipoMovimientoIdHeredado) {
+        setTipoMovimientoEgresoId(Number(tipoMovimientoIdHeredado));
       }
 
       // Preseleccionar período contable según fecha de pago
@@ -2439,12 +2450,16 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
   // ════════════════════════════════════════════════════════════
   // RENDER PRINCIPAL
   // ════════════════════════════════════════════════════════════
+  const tituloDialogo = esGastoDirecto
+    ? '💳 Pagar Gasto Directo - Cuenta Por Pagar'
+    : '💳 Pagar Cuenta Por Pagar - Operación Especializada';
+
   return (
     <>
       <Dialog
         visible={visible}
         onHide={handleCerrar}
-        header="💳 Pagar Cuenta Por Pagar - Operación Especializada"
+        header={tituloDialogo}
         style={{ width: '95vw', maxWidth: '1400px' }}
         maximizable
         modal

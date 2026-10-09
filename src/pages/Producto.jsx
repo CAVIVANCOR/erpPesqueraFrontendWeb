@@ -58,6 +58,7 @@ import { getTiposAfectacionIGVActivos } from "../api/facturacionElectronica/tipo
 import { generarProductosExcel } from "../components/producto/reports/generarProductosExcel";
 import ClonadorEntidadesDialog from "../components/common/ClonadorEntidadesDialog";
 import { clonarProductosAEmpresas } from "../api/producto";
+import AsignarCampoMasaProductoButton from "../components/common/AsignarCampoMasaProductoButton";
 
 const Producto = ({ ruta }) => {
   const toast = useRef(null);
@@ -77,7 +78,7 @@ const Producto = ({ ruta }) => {
   const [productoAEliminar, setProductoAEliminar] = useState(null);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
   const [clientesCatalogo, setClientesCatalogo] = useState([]); // Catálogo completo
-  
+
   // Estados para clonación de productos
   const [productosSeleccionados, setProductosSeleccionados] = useState([]);
   const [clonarDialogVisible, setClonarDialogVisible] = useState(false);
@@ -439,7 +440,7 @@ const Producto = ({ ruta }) => {
     if (selectedTipoAlmacenamiento && !opciones.tiposAlmacenamientoUnicos.find(t => Number(t.id) === Number(selectedTipoAlmacenamiento.id))) {
       setSelectedTipoAlmacenamiento(null);
     }
-       if (selectedUnidadMedida && !opciones.unidadesMedidaUnicas.find(u => Number(u.id) === Number(selectedUnidadMedida.id))) {
+    if (selectedUnidadMedida && !opciones.unidadesMedidaUnicas.find(u => Number(u.id) === Number(selectedUnidadMedida.id))) {
       setSelectedUnidadMedida(null);
     }
     if (selectedTipoAfectacionIGV && opciones.tiposAfectacionIGVUnicos.length > 0 && !opciones.tiposAfectacionIGVUnicos.find(t => Number(t.id) === Number(selectedTipoAfectacionIGV.id))) {
@@ -452,7 +453,7 @@ const Producto = ({ ruta }) => {
     if (productos.length > 0) {
       aplicarFiltros();
     }
-    }, [
+  }, [
     productos,
     selectedEmpresa,
     selectedCliente,
@@ -764,6 +765,54 @@ const Producto = ({ ruta }) => {
     );
   };
 
+  const tipoAfectacionIGVTemplate = (rowData) => {
+    const tipo = rowData.tipoAfectacionIGV;
+    if (!tipo) {
+      return <span style={{ color: "#999", fontStyle: "italic" }}>Sin asignar</span>;
+    }
+    return (
+      <span style={{ whiteSpace: "normal", wordWrap: "break-word", display: "block" }}>
+        {tipo.codigo} - {tipo.nombre}
+      </span>
+    );
+  };
+
+  const tipoDetraccionTemplate = (rowData) => {
+    const tipo = rowData.tipoDetraccion;
+    if (!tipo) {
+      return <span style={{ color: "#999", fontStyle: "italic" }}>Sin asignar</span>;
+    }
+    return (
+      <span style={{ whiteSpace: "normal", wordWrap: "break-word", display: "block" }}>
+        {tipo.codigo} - {tipo.nombre}
+      </span>
+    );
+  };
+
+  const cuentaContableTemplate = (rowData, field) => {
+    const cuenta = rowData[field];
+    if (!cuenta) {
+      return <span style={{ color: "#999", fontStyle: "italic" }}>Sin asignar</span>;
+    }
+    return (
+      <div
+        style={{
+          display: "flex",
+          gap: "0.25rem",
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        <Tag
+          value={cuenta.codigoCuenta}
+          severity="info"
+          style={{ fontSize: "0.75rem" }}
+        />
+        <span style={{ fontSize: "0.85rem" }}>{cuenta.nombreCuenta}</span>
+      </div>
+    );
+  };
+
   const accionesTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
@@ -828,7 +877,7 @@ const Producto = ({ ruta }) => {
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 2}}>
             <EmpresaSelector
               empresaId={usuario?.empresaId}
               onEmpresaChange={(id) => {
@@ -839,7 +888,7 @@ const Producto = ({ ruta }) => {
               }}
             />
           </div>
-          <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 2}}>
             <Dropdown
               value={selectedCliente}
               options={clientes}
@@ -850,17 +899,17 @@ const Producto = ({ ruta }) => {
               className="w-15rem"
               disabled={!selectedEmpresa}
               filter
-              style={{ fontWeight: "bold" }}
+              style={{ fontWeight: "bold", width: "100%" }}
             />
           </div>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1}}>
             <Button
               label="Nuevo"
               icon="pi pi-plus"
               className={
                 isNuevoDisabled
-                  ? "p-button-outlined p-button-sm"
-                  : "p-button-success p-button-sm"
+                  ? "p-button-outlined"
+                  : "p-button-success"
               }
               onClick={abrirDialogoNuevo}
               disabled={isNuevoDisabled}
@@ -872,12 +921,12 @@ const Producto = ({ ruta }) => {
                     : "Crear nuevo producto"
               }
               tooltipOptions={{ position: "top" }}
+              style={{ width: "100%" }}
             />
           </div>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 0.25}}>
             <Button
               icon="pi pi-refresh"
-              className="p-button-outlined p-button-info p-button-sm"
               onClick={async () => {
                 await cargarProductos();
                 await cargarCatalogos();
@@ -891,13 +940,12 @@ const Producto = ({ ruta }) => {
               loading={loading}
               tooltip="Actualizar todos los datos desde el servidor"
               tooltipOptions={{ position: "top" }}
+              style={{ width: "100%" }}
             />
           </div>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 0.25 }}>
             <Button
-              label="Limpiar Filtros"
               icon="pi pi-filter-slash"
-              className="p-button-outlined p-button-secondary p-button-sm"
               onClick={limpiarFiltros}
               disabled={
                 !selectedEmpresa &&
@@ -912,7 +960,58 @@ const Producto = ({ ruta }) => {
               }
               tooltip="Limpiar todos los filtros aplicados"
               tooltipOptions={{ position: "top" }}
+              style={{ width: "100%" }}
             />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              label="Clonar"
+              icon="pi pi-clone"
+              className="p-button-help"
+              onClick={() => setClonarDialogVisible(true)}
+              disabled={!permisos.puedeCrear || productosSeleccionados.length === 0}
+              tooltip={
+                !permisos.puedeCrear
+                  ? "No tiene permisos para clonar productos"
+                  : productosSeleccionados.length === 0
+                    ? "Seleccione productos para clonar"
+                    : `Clonar ${productosSeleccionados.length} producto(s) a otras empresas`
+              }
+              tooltipOptions={{ position: "top" }}
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <AsignarCampoMasaProductoButton
+              selectedIds={productosSeleccionados.map((p) => p.id)}
+              disabled={!permisos.puedeEditar}
+              onExito={cargarProductos}
+              label="Asignar"
+              icon="pi pi-pencil"
+              className="p-button-warning"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              label="A Excel"
+              icon="pi pi-file-excel"
+              className="p-button-success"
+              onClick={handleExportarExcel}
+              disabled={loading}
+              tooltip="Exportar todos los Productos a Excel"
+              style={{ fontWeight: "bold", width: "100%" }}
+            />
+          </div>
+          <div style={{ flex: 1}}>
+            <span className="p-input-icon-left">
+              <InputText
+                value={globalFilterValue}
+                onChange={onGlobalFilterChange}
+                placeholder="Buscar..."
+                className="p-inputtext-sm"
+                style={{ fontWeight: "bold", width: "100%" }}
+              />
+            </span>
           </div>
         </div>
         <div
@@ -924,17 +1023,7 @@ const Producto = ({ ruta }) => {
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-            <span className="p-input-icon-left">
-              <InputText
-                value={globalFilterValue}
-                onChange={onGlobalFilterChange}
-                placeholder="Buscar..."
-                className="p-inputtext-sm"
-                style={{ fontWeight: "bold" }}
-              />
-            </span>
-          </div>
+          
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <Dropdown
               value={selectedFamilia}
@@ -945,7 +1034,7 @@ const Producto = ({ ruta }) => {
               onChange={onFamiliaFilterChange}
               className="w-15rem"
               filter
-              style={{ fontWeight: "bold" }}
+              style={{ fontWeight: "bold", width: "100%" }}
             />
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -959,7 +1048,7 @@ const Producto = ({ ruta }) => {
               className="w-15rem"
               disabled={!selectedFamilia}
               filter
-              style={{ fontWeight: "bold" }}
+              style={{ fontWeight: "bold", width: "100%" }}
             />
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -972,7 +1061,7 @@ const Producto = ({ ruta }) => {
               onChange={onEspecieFilterChange}
               className="w-15rem"
               filter
-              style={{ fontWeight: "bold" }}
+              style={{ fontWeight: "bold", width: "100%" }}
               emptyMessage="No hay especies en los productos filtrados"
             />
           </div>
@@ -986,7 +1075,7 @@ const Producto = ({ ruta }) => {
               onChange={onTipoAlmacenamientoFilterChange}
               className="w-15rem"
               filter
-              style={{ fontWeight: "bold" }}
+              style={{ fontWeight: "bold", width: "100%" }}
             />
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -999,7 +1088,7 @@ const Producto = ({ ruta }) => {
               onChange={onUnidadMedidaFilterChange}
               className="w-15rem"
               filter
-              style={{ fontWeight: "bold" }}
+              style={{ fontWeight: "bold", width: "100%" }}
             />
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -1012,37 +1101,12 @@ const Producto = ({ ruta }) => {
               onChange={onTipoAfectacionIGVFilterChange}
               className="w-15rem"
               filter
-              style={{ fontWeight: "bold" }}
+              style={{ fontWeight: "bold", width: "100%" }}
               emptyMessage="No hay tipos de afectación en los productos filtrados"
             />
           </div>
-          <div style={{ flex: 1 }}>
-            <Button
-              label="Exportar Excel"
-              icon="pi pi-file-excel"
-              className="p-button-success"
-              onClick={handleExportarExcel}
-              disabled={loading}
-              tooltip="Exportar todos los Productos a Excel"
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <Button
-              label="Clonar a Otras Empresas"
-              icon="pi pi-clone"
-              className="p-button-help"
-              onClick={() => setClonarDialogVisible(true)}
-              disabled={!permisos.puedeCrear || productosSeleccionados.length === 0}
-              tooltip={
-                !permisos.puedeCrear
-                  ? "No tiene permisos para clonar productos"
-                  : productosSeleccionados.length === 0
-                    ? "Seleccione productos para clonar"
-                    : `Clonar ${productosSeleccionados.length} producto(s) a otras empresas`
-              }
-              tooltipOptions={{ position: "top" }}
-            />
-          </div>
+          
+
         </div>
       </div>
     );
@@ -1142,17 +1206,53 @@ const Producto = ({ ruta }) => {
           style={{ width: "150px", whiteSpace: "normal", wordWrap: "break-word" }}
         />
         <Column
-          field="tipoAlmacenamiento.nombre"
-          header="Almacena"
+          field="tipoAfectacionIGV.nombre"
+          header="Afectación IGV"
           sortable
-          body={tipoAlmacenamientoTemplate}
-          style={{ width: "60px" }}
+          body={tipoAfectacionIGVTemplate}
+          style={{ width: "140px" }}
         />
-
         <Column
-          header="Estado"
-          body={cesadoTemplate}
-          style={{ width: "60px", textAlign: "center" }}
+          field="tipoDetraccion.nombre"
+          header="Detracción"
+          sortable
+          body={tipoDetraccionTemplate}
+          style={{ width: "160px" }}
+        />
+        <Column
+          field="cuentaCompras.codigoCuenta"
+          header="Cuenta Compras"
+          sortable
+          body={(rowData) => cuentaContableTemplate(rowData, "cuentaCompras")}
+          style={{ width: "170px" }}
+        />
+        <Column
+          field="cuentaInventario.codigoCuenta"
+          header="Cuenta Inventario"
+          sortable
+          body={(rowData) => cuentaContableTemplate(rowData, "cuentaInventario")}
+          style={{ width: "170px" }}
+        />
+        <Column
+          field="cuentaCostoVentas.codigoCuenta"
+          header="Cuenta Costo Ventas"
+          sortable
+          body={(rowData) => cuentaContableTemplate(rowData, "cuentaCostoVentas")}
+          style={{ width: "170px" }}
+        />
+        <Column
+          field="cuentaVariacion.codigoCuenta"
+          header="Cuenta Variación"
+          sortable
+          body={(rowData) => cuentaContableTemplate(rowData, "cuentaVariacion")}
+          style={{ width: "170px" }}
+        />
+        <Column
+          field="cuentaVentas.codigoCuenta"
+          header="Cuenta Ventas"
+          sortable
+          body={(rowData) => cuentaContableTemplate(rowData, "cuentaVentas")}
+          style={{ width: "170px" }}
         />
         <Column
           body={accionesTemplate}

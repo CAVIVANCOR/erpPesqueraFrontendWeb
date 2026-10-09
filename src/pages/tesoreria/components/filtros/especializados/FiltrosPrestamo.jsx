@@ -121,6 +121,19 @@ const FiltrosPrestamo = ({
       )}
       <div style={filaStyle}>
         <div style={{ flex: 1 }}>
+          <MultiSelectDinamico
+            label="Estado del Préstamo"
+            value={filtros.estadoIds || []}
+            opciones={opciones.estados || []}
+            onChange={(value) => onFiltroChange('estadoIds', value)}
+            placeholder="Todos los estados"
+            filterBy="descripcion"
+            showContadores={true}
+            tipo="estado"
+            icono="📊"
+          />
+        </div>
+        <div style={{ flex: 1 }}>
           <RangoFechasField
             onChange={({ fechaDesde, fechaHasta }) => {
               onFiltroChange('fechaDesde', fechaDesde);

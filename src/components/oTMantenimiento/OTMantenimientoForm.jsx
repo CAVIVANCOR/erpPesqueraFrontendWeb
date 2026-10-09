@@ -221,7 +221,7 @@ const OTMantenimientoForm = ({
     if (!formData.motivoOriginoId) camposFaltantes.push("Motivo de Origen");
     if (!formData.estadoId) camposFaltantes.push("Estado");
     if (!formData.monedaId) camposFaltantes.push("Moneda");
-  
+
 
     if (camposFaltantes.length > 0) {
       toast?.current?.show({
@@ -282,512 +282,515 @@ const OTMantenimientoForm = ({
       >
         {/* TAB 1: DATOS GENERALES */}
         <TabPanel header="Datos Generales">
-            {/* FILA: Empresa, Sede */}
-            <div
-              style={{
-                marginTop: "0.5rem",
-                alignItems: "end",
-                display: "flex",
-                gap: 3,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 2 }}>
-                <label htmlFor="empresaId" style={{ fontWeight: "bold" }}>
-                  Empresa *
-                </label>
-                <Dropdown
-                  id="empresaId"
-                  value={formData.empresaId}
-                  options={empresas.map((e) => ({
-                    label: e.razonSocial,
-                    value: Number(e.id),
-                  }))}
-                  onChange={(e) => handleChange("empresaId", e.value)}
-                  placeholder="Seleccionar empresa"
-                  filter
-                  disabled={disabled || empresaFija}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 2 }}>
-                <label htmlFor="sedeId" style={{ fontWeight: "bold" }}>
-                  Sede
-                </label>
-                <Dropdown
-                  id="sedeId"
-                  value={formData.sedeId}
-                  options={sedesFiltradas.map((s) => ({
-                    label: s.nombre,
-                    value: Number(s.id),
-                  }))}
-                  onChange={(e) => handleChange("sedeId", e.value)}
-                  placeholder="Seleccionar sede"
-                  filter
-                  showClear
-                  disabled={disabled || !formData.empresaId}
-                  style={{ width: "100%" }}
-                />
-              </div>
+          {/* FILA: Empresa, Sede */}
+          <div
+            style={{
+              marginTop: "0.5rem",
+              alignItems: "end",
+              display: "flex",
+              gap: 3,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <label htmlFor="empresaId" style={{ fontWeight: "bold" }}>
+                Empresa *
+              </label>
+              <Dropdown
+                id="empresaId"
+                value={formData.empresaId}
+                options={empresas.map((e) => ({
+                  label: e.razonSocial,
+                  value: Number(e.id),
+                }))}
+                onChange={(e) => handleChange("empresaId", e.value)}
+                placeholder="Seleccionar empresa"
+                filter
+                disabled={disabled || empresaFija}
+                style={{ width: "100%" }}
+              />
             </div>
-
-            {/* FILA: Tipo Documento, Serie, Número Documento, Moneda */}
-            <div
-              style={{
-                marginTop: "0.5rem",
-                alignItems: "end",
-                display: "flex",
-                gap: 3,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <label htmlFor="tipoDocumentoId" style={{ fontWeight: "bold" }}>
-                  Tipo Documento *
-                </label>
-                <Dropdown
-                  id="tipoDocumentoId"
-                  value={formData.tipoDocumentoId}
-                  options={tiposDocumento
-                    .filter((t) => Number(t.id) === 21)
-                    .map((t) => ({
-                      label: t.descripcion,
-                      value: Number(t.id),
-                    }))}
-                  onChange={(e) => handleChange("tipoDocumentoId", e.value)}
-                  placeholder="Orden de Trabajo"
-                  disabled={true}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="serieDocId" style={{ fontWeight: "bold" }}>
-                  Serie de Dcmto <span style={{ color: "red" }}>*</span>
-                </label>
-                <Dropdown
-                  id="serieDocId"
-                  value={formData.serieDocId}
-                  options={seriesDoc.map((s) => {
-                    const correlativoActual = Number(s.correlativo);
-                    const descripcionSerie = getDescripcionSerie(s.serie);
-                    return {
-                      label: `${descripcionSerie} (N: ${correlativoActual})`,
-                      value: Number(s.id),
-                    };
-                  })}
-                  onChange={(e) => handleSerieDocChange(e.value)}
-                  placeholder="Seleccionar serie"
-                  disabled={!formData.empresaId || !!formData.serieDocId}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="numeroCompleto" style={{ fontWeight: "bold" }}>
-                  Número Completo
-                </label>
-                <InputText
-                  id="numeroCompleto"
-                  value={formData.numeroCompleto}
-                  readOnly
-                  style={{
-                    width: "100%",
-                    fontWeight: "bold",
-                    textTransform: "uppercase",
-                  }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="monedaId" style={{ fontWeight: "bold" }}>
-                  Moneda *
-                </label>
-                <Dropdown
-                  id="monedaId"
-                  value={formData.monedaId}
-                  options={monedas.map((m) => ({
-                    label: `${m.codigoSunat}`,
-                    value: Number(m.id),
-                  }))}
-                  onChange={(e) => handleChange("monedaId", e.value)}
-                  placeholder="Seleccionar moneda"
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
+            <div style={{ flex: 2 }}>
+              <label htmlFor="sedeId" style={{ fontWeight: "bold" }}>
+                Sede
+              </label>
+              <Dropdown
+                id="sedeId"
+                value={formData.sedeId}
+                options={sedesFiltradas.map((s) => ({
+                  label: s.nombre,
+                  value: Number(s.id),
+                }))}
+                onChange={(e) => handleChange("sedeId", e.value)}
+                placeholder="Seleccionar sede"
+                filter
+                showClear
+                disabled={disabled || !formData.empresaId}
+                style={{ width: "100%" }}
+              />
             </div>
+          </div>
 
-            {/* FILA: Activo, Tipo Mantenimiento, Motivo Origen */}
-            <div
-              style={{
-                marginTop: "0.5rem",
-                alignItems: "end",
-                display: "flex",
-                gap: 3,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 2 }}>
-                <ActivoSelector
-                  value={formData.activoId}
-                  onChange={(value) => handleChange("activoId", value)}
-                  empresaIdPreseleccionada={formData.empresaId}
-                  disabled={disabled || !formData.empresaId}
-                  required={true}
-                  placeholder="Seleccionar activo"
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label
-                  htmlFor="tipoMantenimientoId"
-                  style={{ fontWeight: "bold" }}
-                >
-                  Tipo Mantenimiento *
-                </label>
-                <Dropdown
-                  id="tipoMantenimientoId"
-                  value={formData.tipoMantenimientoId}
-                  options={tiposMantenimiento.map((t) => ({
-                    label: t.nombre,
+          {/* FILA: Tipo Documento, Serie, Número Documento, Moneda */}
+          <div
+            style={{
+              marginTop: "0.5rem",
+              alignItems: "end",
+              display: "flex",
+              gap: 3,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="tipoDocumentoId" style={{ fontWeight: "bold" }}>
+                Tipo Documento *
+              </label>
+              <Dropdown
+                id="tipoDocumentoId"
+                value={formData.tipoDocumentoId}
+                options={tiposDocumento
+                  .filter((t) => Number(t.id) === 21)
+                  .map((t) => ({
+                    label: t.descripcion,
                     value: Number(t.id),
                   }))}
-                  onChange={(e) => handleChange("tipoMantenimientoId", e.value)}
-                  placeholder="Seleccionar tipo"
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="motivoOriginoId" style={{ fontWeight: "bold" }}>
-                  Motivo Origen *
-                </label>
-                <Dropdown
-                  id="motivoOriginoId"
-                  value={formData.motivoOriginoId}
-                  options={motivosOrigen.map((m) => ({
-                    label: m.nombre,
-                    value: Number(m.id),
-                  }))}
-                  onChange={(e) => handleChange("motivoOriginoId", e.value)}
-                  placeholder="Seleccionar motivo"
-                  filter
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
+                onChange={(e) => handleChange("tipoDocumentoId", e.value)}
+                placeholder="Orden de Trabajo"
+                disabled={true}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="serieDocId" style={{ fontWeight: "bold" }}>
+                Serie de Dcmto <span style={{ color: "red" }}>*</span>
+              </label>
+              <Dropdown
+                id="serieDocId"
+                value={formData.serieDocId}
+                options={seriesDoc.map((s) => {
+                  const correlativoActual = Number(s.correlativo);
+                  const descripcionSerie = getDescripcionSerie(s.serie);
+                  return {
+                    label: `${descripcionSerie} (N: ${correlativoActual})`,
+                    value: Number(s.id),
+                  };
+                })}
+                onChange={(e) => handleSerieDocChange(e.value)}
+                placeholder="Seleccionar serie"
+                disabled={!formData.empresaId || !!formData.serieDocId}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="numeroCompleto" style={{ fontWeight: "bold" }}>
+                Número Completo
+              </label>
+              <InputText
+                id="numeroCompleto"
+                value={formData.numeroCompleto}
+                readOnly
+                style={{
+                  width: "100%",
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="monedaId" style={{ fontWeight: "bold" }}>
+                Moneda *
+              </label>
+              <Dropdown
+                id="monedaId"
+                value={formData.monedaId}
+                options={monedas.map((m) => ({
+                  label: `${m.codigoSunat}`,
+                  value: Number(m.id),
+                }))}
+                onChange={(e) => handleChange("monedaId", e.value)}
+                placeholder="Seleccionar moneda"
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
+            </div>
+          </div>
+
+          {/* FILA: Activo, Tipo Mantenimiento, Motivo Origen */}
+          <div
+            style={{
+              marginTop: "0.5rem",
+              alignItems: "end",
+              display: "flex",
+              gap: 3,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <ActivoSelector
+                value={formData.activoId}
+                onChange={(value) => handleChange("activoId", value)}
+                empresaIdPreseleccionada={formData.empresaId}
+                disabled={disabled || !formData.empresaId}
+                required={true}
+                placeholder="Seleccionar activo"
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="tipoMantenimientoId"
+                style={{ fontWeight: "bold" }}
+              >
+                Tipo Mantenimiento *
+              </label>
+              <Dropdown
+                id="tipoMantenimientoId"
+                value={formData.tipoMantenimientoId}
+                options={tiposMantenimiento.map((t) => ({
+                  label: t.nombre,
+                  value: Number(t.id),
+                }))}
+                onChange={(e) => handleChange("tipoMantenimientoId", e.value)}
+                placeholder="Seleccionar tipo"
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="motivoOriginoId" style={{ fontWeight: "bold" }}>
+                Motivo Origen *
+              </label>
+              <Dropdown
+                id="motivoOriginoId"
+                value={formData.motivoOriginoId}
+                options={motivosOrigen.map((m) => ({
+                  label: m.nombre,
+                  value: Number(m.id),
+                }))}
+                onChange={(e) => handleChange("motivoOriginoId", e.value)}
+                placeholder="Seleccionar motivo"
+                filter
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
+            </div>
+          </div>
+
+          {/* FILA: Estado, Prioridad, Fecha Documento */}
+          <div
+            style={{
+              marginTop: "0.5rem",
+              alignItems: "end",
+              display: "flex",
+              gap: 3,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <label htmlFor="estadoId" style={{ fontWeight: "bold" }}>
+                Estado *
+              </label>
+              <Dropdown
+                id="estadoId"
+                value={formData.estadoId}
+                options={(() => {
+                  return estadosDoc.map((e) => ({
+                    label: e.descripcion,
+                    value: Number(e.id),
+                  }));
+                })()}
+                onChange={(e) => handleChange("estadoId", e.value)}
+                placeholder="Seleccionar estado"
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontWeight: "bold" }}>Prioridad</label>
+              <Button
+                type="button"
+                label={formData.prioridadAlta ? "ALTA" : "NORMAL"}
+                severity={formData.prioridadAlta ? "danger" : "secondary"}
+                onClick={() =>
+                  handleChange("prioridadAlta", !formData.prioridadAlta)
+                }
+                disabled={disabled}
+                style={{
+                  width: "100%",
+                  fontWeight: "bold",
+                  marginTop: "0.25rem",
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="fechaDocumento" style={{ fontWeight: "bold" }}>
+                Fecha Documento
+              </label>
+              <Calendar
+                id="fechaDocumento"
+                value={formData.fechaDocumento}
+                onChange={(e) => handleChange("fechaDocumento", e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                showButtonBar
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
+            </div>
+          </div>
+
+          {/* FILA: Fecha Programada, Fecha Inicio, Fecha Fin */}
+          <div
+            style={{
+              marginTop: "0.5rem",
+              alignItems: "end",
+              display: "flex",
+              gap: 3,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="fechaProgramada" style={{ fontWeight: "bold" }}>
+                Fecha Programada
+              </label>
+              <Calendar
+                id="fechaProgramada"
+                value={formData.fechaProgramada}
+                onChange={(e) => handleChange("fechaProgramada", e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                showButtonBar
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="fechaInicio" style={{ fontWeight: "bold" }}>
+                Fecha Inicio
+              </label>
+              <Calendar
+                id="fechaInicio"
+                value={formData.fechaInicio}
+                onChange={(e) => handleChange("fechaInicio", e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                showButtonBar
+                showTime
+                hourFormat="24"
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="fechaFin" style={{ fontWeight: "bold" }}>
+                Fecha Fin
+              </label>
+              <Calendar
+                id="fechaFin"
+                value={formData.fechaFin}
+                onChange={(e) => handleChange("fechaFin", e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                showButtonBar
+                showTime
+                hourFormat="24"
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
+            </div>
+          </div>
+
+          {/* FILA: Solicitante, Responsable */}
+          <div
+            style={{
+              marginTop: "0.5rem",
+              alignItems: "end",
+              display: "flex",
+              gap: 3,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="solicitanteId" style={{ fontWeight: "bold" }}>
+                Solicitante
+              </label>
+              <Dropdown
+                id="solicitanteId"
+                value={formData.solicitanteId}
+                options={personalOptions.map((p) => ({
+                  label: `${p.nombres} ${p.apellidos}`,
+                  value: Number(p.id),
+                }))}
+                onChange={(e) => handleChange("solicitanteId", e.value)}
+                placeholder="Seleccionar solicitante"
+                filter
+                showClear
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="responsableId" style={{ fontWeight: "bold" }}>
+                Responsable
+              </label>
+              <Dropdown
+                id="responsableId"
+                value={formData.responsableId}
+                options={personalOptions.map((p) => ({
+                  label: `${p.nombres} ${p.apellidos}`,
+                  value: Number(p.id),
+                }))}
+                onChange={(e) => handleChange("responsableId", e.value)}
+                placeholder="Seleccionar responsable"
+                filter
+                showClear
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="autorizadoPorId" style={{ fontWeight: "bold" }}>
+                Autorizado Por
+              </label>
+              <Dropdown
+                id="autorizadoPorId"
+                value={formData.autorizadoPorId}
+                options={personalOptions.map((p) => ({
+                  label: `${p.nombres} ${p.apellidos}`,
+                  value: Number(p.id),
+                }))}
+                onChange={(e) => handleChange("autorizadoPorId", e.value)}
+                placeholder="Seleccionar autorizador"
+                filter
+                showClear
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="validadoPorId" style={{ fontWeight: "bold" }}>
+                Validado Por
+              </label>
+              <Dropdown
+                id="validadoPorId"
+                value={formData.validadoPorId}
+                options={personalOptions.map((p) => ({
+                  label: `${p.nombres} ${p.apellidos}`,
+                  value: Number(p.id),
+                }))}
+                onChange={(e) => handleChange("validadoPorId", e.value)}
+                placeholder="Seleccionar validador"
+                filter
+                showClear
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
+            </div>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            {/* FILA: Descripción del Problema */}
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="descripcionProblema"
+                style={{ fontWeight: "bold" }}
+              >
+                Descripción del Problema
+              </label>
+              <InputTextarea
+                id="descripcionProblema"
+                value={formData.descripcionProblema}
+                onChange={(e) =>
+                  handleChange("descripcionProblema", e.target.value)
+                }
+                rows={3}
+                placeholder="Describa el problema o necesidad de mantenimiento"
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
             </div>
 
-            {/* FILA: Estado, Prioridad, Fecha Documento */}
-            <div
-              style={{
-                marginTop: "0.5rem",
-                alignItems: "end",
-                display: "flex",
-                gap: 3,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 2 }}>
-                <label htmlFor="estadoId" style={{ fontWeight: "bold" }}>
-                  Estado *
-                </label>
-                <Dropdown
-                  id="estadoId"
-                  value={formData.estadoId}
-                  options={(() => {
-                    return estadosDoc.map((e) => ({
-                      label: e.descripcion,
-                      value: Number(e.id),
-                    }));
-                  })()}
-                  onChange={(e) => handleChange("estadoId", e.value)}
-                  placeholder="Seleccionar estado"
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontWeight: "bold" }}>Prioridad</label>
-                <Button
-                  type="button"
-                  label={formData.prioridadAlta ? "ALTA" : "NORMAL"}
-                  severity={formData.prioridadAlta ? "danger" : "secondary"}
-                  onClick={() =>
-                    handleChange("prioridadAlta", !formData.prioridadAlta)
-                  }
-                  disabled={disabled}
-                  style={{
-                    width: "100%",
-                    fontWeight: "bold",
-                    marginTop: "0.25rem",
-                  }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="fechaDocumento" style={{ fontWeight: "bold" }}>
-                  Fecha Documento
-                </label>
-                <Calendar
-                  id="fechaDocumento"
-                  value={formData.fechaDocumento}
-                  onChange={(e) => handleChange("fechaDocumento", e.value)}
-                  dateFormat="dd/mm/yy"
-                  showIcon
-                  showButtonBar
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
+            {/* FILA: Solución Aplicada */}
+            <div style={{ flex: 1 }}>
+              <label htmlFor="solucionAplicada" style={{ fontWeight: "bold" }}>
+                Solución Aplicada
+              </label>
+              <InputTextarea
+                id="solucionAplicada"
+                value={formData.solucionAplicada}
+                onChange={(e) =>
+                  handleChange("solucionAplicada", e.target.value)
+                }
+                rows={3}
+                placeholder="Describa la solución aplicada"
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
             </div>
 
-            {/* FILA: Fecha Programada, Fecha Inicio, Fecha Fin */}
-            <div
-              style={{
-                marginTop: "0.5rem",
-                alignItems: "end",
-                display: "flex",
-                gap: 3,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <label htmlFor="fechaProgramada" style={{ fontWeight: "bold" }}>
-                  Fecha Programada
-                </label>
-                <Calendar
-                  id="fechaProgramada"
-                  value={formData.fechaProgramada}
-                  onChange={(e) => handleChange("fechaProgramada", e.value)}
-                  dateFormat="dd/mm/yy"
-                  showIcon
-                  showButtonBar
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="fechaInicio" style={{ fontWeight: "bold" }}>
-                  Fecha Inicio
-                </label>
-                <Calendar
-                  id="fechaInicio"
-                  value={formData.fechaInicio}
-                  onChange={(e) => handleChange("fechaInicio", e.value)}
-                  dateFormat="dd/mm/yy"
-                  showIcon
-                  showButtonBar
-                  showTime
-                  hourFormat="24"
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="fechaFin" style={{ fontWeight: "bold" }}>
-                  Fecha Fin
-                </label>
-                <Calendar
-                  id="fechaFin"
-                  value={formData.fechaFin}
-                  onChange={(e) => handleChange("fechaFin", e.value)}
-                  dateFormat="dd/mm/yy"
-                  showIcon
-                  showButtonBar
-                  showTime
-                  hourFormat="24"
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
+            {/* FILA: Observaciones */}
+            <div style={{ flex: 1 }}>
+              <label htmlFor="observaciones" style={{ fontWeight: "bold" }}>
+                Observaciones
+              </label>
+              <InputTextarea
+                id="observaciones"
+                value={formData.observaciones}
+                onChange={(e) => handleChange("observaciones", e.target.value)}
+                rows={3}
+                placeholder="Observaciones adicionales"
+                disabled={disabled}
+                style={{ width: "100%" }}
+              />
             </div>
+          </div>
 
-            {/* FILA: Solicitante, Responsable */}
-            <div
-              style={{
-                marginTop: "0.5rem",
-                alignItems: "end",
-                display: "flex",
-                gap: 3,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <label htmlFor="solicitanteId" style={{ fontWeight: "bold" }}>
-                  Solicitante
-                </label>
-                <Dropdown
-                  id="solicitanteId"
-                  value={formData.solicitanteId}
-                  options={personalOptions.map((p) => ({
-                    label: `${p.nombres} ${p.apellidos}`,
-                    value: Number(p.id),
-                  }))}
-                  onChange={(e) => handleChange("solicitanteId", e.value)}
-                  placeholder="Seleccionar solicitante"
-                  filter
-                  showClear
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="responsableId" style={{ fontWeight: "bold" }}>
-                  Responsable
-                </label>
-                <Dropdown
-                  id="responsableId"
-                  value={formData.responsableId}
-                  options={personalOptions.map((p) => ({
-                    label: `${p.nombres} ${p.apellidos}`,
-                    value: Number(p.id),
-                  }))}
-                  onChange={(e) => handleChange("responsableId", e.value)}
-                  placeholder="Seleccionar responsable"
-                  filter
-                  showClear
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
-                         <div style={{ flex: 1 }}>
-                <label htmlFor="autorizadoPorId" style={{ fontWeight: "bold" }}>
-                  Autorizado Por
-                </label>
-                <Dropdown
-                  id="autorizadoPorId"
-                  value={formData.autorizadoPorId}
-                  options={personalOptions.map((p) => ({
-                    label: `${p.nombres} ${p.apellidos}`,
-                    value: Number(p.id),
-                  }))}
-                  onChange={(e) => handleChange("autorizadoPorId", e.value)}
-                  placeholder="Seleccionar autorizador"
-                  filter
-                  showClear
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="validadoPorId" style={{ fontWeight: "bold" }}>
-                  Validado Por
-                </label>
-                <Dropdown
-                  id="validadoPorId"
-                  value={formData.validadoPorId}
-                  options={personalOptions.map((p) => ({
-                    label: `${p.nombres} ${p.apellidos}`,
-                    value: Number(p.id),
-                  }))}
-                  onChange={(e) => handleChange("validadoPorId", e.value)}
-                  placeholder="Seleccionar validador"
-                  filter
-                  showClear
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              {/* FILA: Descripción del Problema */}
-              <div style={{ flex: 1 }}>
-                <label
-                  htmlFor="descripcionProblema"
-                  style={{ fontWeight: "bold" }}
-                >
-                  Descripción del Problema
-                </label>
-                <InputTextarea
-                  id="descripcionProblema"
-                  value={formData.descripcionProblema}
-                  onChange={(e) =>
-                    handleChange("descripcionProblema", e.target.value)
-                  }
-                  rows={3}
-                  placeholder="Describa el problema o necesidad de mantenimiento"
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
+          {/* SECCIÓN DE CONTRATISTAS / PRESUPUESTOS */}
+          <div style={{ marginTop: "1.5rem" }}>
+            <DetContratistasOTCard
+              otMantenimientoId={formData.id}
+              empresaId={formData.empresaId}
+              monedaIdOT={formData.monedaId}
+              monedas={monedas}
+              estadosContratista={estadosDoc}
+              puedeEditar={!readOnly}
+              onCountChange={setCountContratistas}
+              readOnly={readOnly}
+              permisos={permisos}
+            />
 
-              {/* FILA: Solución Aplicada */}
-              <div style={{ flex: 1 }}>
-                <label htmlFor="solucionAplicada" style={{ fontWeight: "bold" }}>
-                  Solución Aplicada
-                </label>
-                <InputTextarea
-                  id="solucionAplicada"
-                  value={formData.solucionAplicada}
-                  onChange={(e) =>
-                    handleChange("solucionAplicada", e.target.value)
-                  }
-                  rows={3}
-                  placeholder="Describa la solución aplicada"
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
+            {!formData.id && (
+              <div
+                style={{ padding: "1rem", textAlign: "center", color: "#666" }}
+              >
+                <i
+                  className="pi pi-info-circle"
+                  style={{ fontSize: "1.5rem" }}
+                ></i>
+                <p style={{ marginTop: "0.5rem" }}>
+                  Guarde primero la orden de trabajo para poder agregar
+                  contratistas.
+                </p>
               </div>
-
-              {/* FILA: Observaciones */}
-              <div style={{ flex: 1 }}>
-                <label htmlFor="observaciones" style={{ fontWeight: "bold" }}>
-                  Observaciones
-                </label>
-                <InputTextarea
-                  id="observaciones"
-                  value={formData.observaciones}
-                  onChange={(e) => handleChange("observaciones", e.target.value)}
-                  rows={3}
-                  placeholder="Observaciones adicionales"
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
-            </div>
-
+            )}
+          </div>
         </TabPanel>
 
-        {/* TAB 2: CONTRATISTAS */}
-        <TabPanel
-          header={`Contratistas ${countContratistas > 0 ? `(${countContratistas})` : ""}`}
-          leftIcon="pi pi-users"
-        >
-          <DetContratistasOTCard
-            otMantenimientoId={formData.id}
-            empresaId={formData.empresaId}
-            monedas={monedas}
-            estadosContratista={estadosDoc}
-            puedeEditar={!readOnly}
-            onCountChange={setCountContratistas}
-            readOnly={readOnly}
-            permisos={permisos}
-          />
-
-          {!formData.id && (
-            <div
-              style={{ padding: "1rem", textAlign: "center", color: "#666" }}
-            >
-              <i
-                className="pi pi-info-circle"
-                style={{ fontSize: "1.5rem" }}
-              ></i>
-              <p style={{ marginTop: "0.5rem" }}>
-                Guarde primero la orden de trabajo para poder agregar
-                contratistas.
-              </p>
-            </div>
-          )}
-        </TabPanel>
-
-        {/* TAB 3: DOCUMENTOS PDF */}
+        {/* TAB 2: DOCUMENTOS PDF */}
         <TabPanel header="Documentos">
           <div
             style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
           >
+            <VerImpresionOTMantenimientoPDF
+              otMantenimientoId={defaultValues?.id}
+              datosOT={formData}
+              toast={toast}
+              onPdfGenerated={(url) => handleChange("urlOrdenTrabajoPdf", url)}
+            />
             <PdfFotosAntesCard
               control={control}
               errors={errors}
@@ -810,13 +813,7 @@ const OTMantenimientoForm = ({
               readOnly={readOnly}
             />
 
-            <VerImpresionOTMantenimientoPDF
-              otMantenimientoId={defaultValues?.id}
-              datosOT={formData}
-              tareas={[]}
-              toast={toast}
-              onPdfGenerated={(url) => handleChange("urlOrdenTrabajoPdf", url)}
-            />
+
           </div>
 
           {!formData.id && (

@@ -58,6 +58,7 @@ export default function DeudaTributaria({ ruta }) {
   const [periodoContableSeleccionado, setPeriodoContableSeleccionado] = useState(null);
   // null = todas | true = solo saldo inicial | false = solo deudas nuevas
   const [saldoInicialSeleccionado, setSaldoInicialSeleccionado] = useState(null);
+  const [contabilizadaSeleccionada, setContabilizadaSeleccionada] = useState(null);
   const [periodosContablesFiltrados, setPeriodosContablesFiltrados] = useState([]);
 
   // Opciones dinámicas para filtros
@@ -167,6 +168,12 @@ export default function DeudaTributaria({ ruta }) {
       );
     }
 
+    if (contabilizadaSeleccionada !== null) {
+      filtrados = filtrados.filter(
+        (item) => (item.asientosContables?.length > 0) === contabilizadaSeleccionada
+      );
+    }
+
     setItemsFiltrados(filtrados);
   }, [
     empresaSeleccionada,
@@ -176,6 +183,7 @@ export default function DeudaTributaria({ ruta }) {
     tipoPagoSeleccionado,
     saldoInicialSeleccionado,
     periodoContableSeleccionado,
+    contabilizadaSeleccionada,
     deudas,
   ]);
 
@@ -442,6 +450,7 @@ export default function DeudaTributaria({ ruta }) {
     setMonedaSeleccionada(null);
     setTipoPagoSeleccionado("TODOS");
     setSaldoInicialSeleccionado(null);
+    setContabilizadaSeleccionada(null);
     setPeriodoContableSeleccionado(null);
   };
 
@@ -521,6 +530,16 @@ export default function DeudaTributaria({ ruta }) {
       <Tag
         value={rowData.esSaldoInicial ? "SI" : "NO"}
         severity={rowData.esSaldoInicial ? "info" : "secondary"}
+      />
+    );
+  };
+
+  const contabilizadoBodyTemplate = (rowData) => {
+    const contabilizado = rowData.asientosContables?.length > 0;
+    return (
+      <Tag
+        value={contabilizado ? "Contabilizado" : "Pendiente"}
+        severity={contabilizado ? "success" : "secondary"}
       />
     );
   };
@@ -838,6 +857,28 @@ export default function DeudaTributaria({ ruta }) {
                 />
               </div>
               <div style={{ flex: 2 }}>
+                <label style={{ fontWeight: "bold", display: "block", marginBottom: "0.25rem" }}>
+                  Contabilización
+                </label>
+                <BooleanToggleButton
+                  value={contabilizadaSeleccionada === true}
+                  onChange={() =>
+                    setContabilizadaSeleccionada(
+                      contabilizadaSeleccionada === null
+                        ? true
+                        : contabilizadaSeleccionada === true
+                          ? false
+                          : null
+                    )
+                  }
+                  labelTrue="CONTABILIZADAS"
+                  labelFalse={contabilizadaSeleccionada === false ? "PENDIENTES" : "TODAS"}
+                  severityTrue="success"
+                  severityFalse={contabilizadaSeleccionada === false ? "warning" : "secondary"}
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
                 <label htmlFor="periodoFiltro" style={{ fontWeight: "bold" }}>
                   Periodo Contable
                 </label>
@@ -968,6 +1009,13 @@ export default function DeudaTributaria({ ruta }) {
           sortable
           sortFunction={ordenarPor((d) => (d.esSaldoInicial ? 1 : 0))}
           style={{ minWidth: "100px", textAlign: "center" }}
+        />
+        <Column
+          header="Contabilizado"
+          body={contabilizadoBodyTemplate}
+          sortable
+          sortFunction={ordenarPor((d) => (d.asientosContables?.length > 0 ? 1 : 0))}
+          style={{ minWidth: "120px", textAlign: "center" }}
         />
         <Column
           field="estadoId"

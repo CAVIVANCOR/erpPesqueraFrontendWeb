@@ -1,33 +1,227 @@
 // src/pages/MovimientoCaja.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Toast } from "primereact/toast";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
+import { MultiSelect } from "primereact/multiselect";
 import { InputText } from "primereact/inputtext";
+import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
 import { Tag } from "primereact/tag";
 import { Badge } from "primereact/badge";
 import MovimientoCajaDialog from "../components/movimientoCaja/MovimientoCajaDialog";
 import { getAllMovimientoCaja, actualizarMovimientoCaja } from "../api/movimientoCaja";
 import { getEmpresas } from "../api/empresa";
-import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
-import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { formatearFecha, formatearNumero, getResponsiveFontSize } from "../utils/utils";
 import EmpresaSelector from "../components/common/EmpresaSelector";
 
-// Constantes de estados de Movimientos Caja
-const ESTADOS_MOVIMIENTO_CAJA = {
-  PENDIENTE: 20,
-  VALIDADO: 21,
-  ASIENTO_GENERADO: 22
+// ============================================================
+// CONFIGURACIÓN DE FILTROS
+// ============================================================
+
+const ORIGENES_MOVIMIENTO = {
+  CXC: "Cobro de CxC",
+  CXP: "Pago de CxP",
+  TRANSFERENCIA: "Transferencia",
+  REVERSION: "Reversión",
+  OTROS: "Otras operaciones",
 };
 
-const ESTADOS_MOVIMIENTO_CAJA_IDS = Object.values(ESTADOS_MOVIMIENTO_CAJA);
+const NATURALEZAS = [
+  { label: "Ingresos", value: "INGRESO" },
+  { label: "Egresos", value: "EGRESO" },
+];
+
+const LIBROS = [
+  { label: "Fiscal (Blanca)", value: "FISCAL" },
+  { label: "Gerencial (Negra)", value: "GERENCIAL" },
+];
+
+const DOCUMENTO_SUSTENTO = [
+  { label: "Con factura", value: "CON" },
+  { label: "Sin factura", value: "SIN" },
+];
+
+const origenDe = (m) => {
+  if (m.esReversion) return "REVERSION";
+  if (m.esTransferencia || m.tipoMovimiento?.esTransferencia) return "TRANSFERENCIA";
+  if (m.cuentaPorCobrarId) return "CXC";
+  if (m.cuentaPorPagarId) return "CXP";
+  return "OTROS";
+};
+
+const nombreCuenta = (c) =>
+  `${c.banco?.nombre || "Banco"} · ${c.numeroCuenta || c.id}${c.moneda?.simbolo ? ` (${c.moneda.simbolo})` : ""}`;
+
+/**
+ * Filtros de selección múltiple. Cada uno es dinámico y cruzado: sus opciones se calculan
+ * sobre los movimientos que cumplen TODOS los demás filtros (el filtro se excluye a sí mismo).
+ * `extraer` devuelve las opciones {id, label} que aporta un movimiento a la faceta.
+ */
+const FACETAS = [
+  {
+    key: "estados",
+    label: "Estado",
+    placeholder: "Todos los estados",
+    extraer: (m) =>
+      m.estadoMovimientoCaja
+        ? [{ id: m.estadoId, label: m.estadoMovimientoCaja.descripcion || m.estadoMovimientoCaja.nombre || `Estado ${m.estadoId}` }]
+        : [],
+  },
+  {
+    key: "monedas",
+    label: "Moneda",
+    placeholder: "Todas las monedas",
+    extraer: (m) =>
+      m.moneda
+        ? [{ id: m.monedaId, label: `${m.moneda.codigoSunat || ""}${m.moneda.simbolo ? ` (${m.moneda.simbolo})` : ""}`.trim() }]
+        : [],
+  },
+  {
+    key: "tipos",
+    label: "Tipo de Movimiento",
+    placeholder: "Todos los tipos",
+    extraer: (m) =>
+      m.tipoMovimiento ? [{ id: m.tipoMovimientoId, label: m.tipoMovimiento.nombre }] : [],
+  },
+  {
+    key: "entidades",
+    label: "Entidad Comercial",
+    placeholder: "Todas las entidades",
+    extraer: (m) =>
+      m.entidadComercial
+        ? [{
+            id: m.entidadComercialId,
+            label: `${m.entidadComercial.razonSocial}${m.entidadComercial.numeroDocumento ? ` - ${m.entidadComercial.numeroDocumento}` : ""}`,
+          }]
+        : [],
+  },
+  {
+    key: "mediosPago",
+    label: "Medio de Pago",
+    placeholder: "Todos los medios",
+    extraer: (m) =>
+      m.medioPago ? [{ id: m.medioPagoId, label: m.medioPago.nombre }] : [],
+  },
+  {
+    key: "cuentas",
+    label: "Cuenta Bancaria (origen / destino)",
+    placeholder: "Todas las cuentas",
+    extraer: (m) =>
+      [m.cuentaCorrienteOrigen, m.cuentaCorrienteDestino]
+        .filter(Boolean)
+        .map((c) => ({ id: c.id, label: nombreCuenta(c) })),
+  },
+  {
+    key: "centrosCosto",
+    label: "Centro de Costo",
+    placeholder: "Todos los centros",
+    extraer: (m) =>
+      m.centroCosto
+        ? [{ id: m.centroCostoId, label: `${m.centroCosto.Codigo ? `${m.centroCosto.Codigo} - ` : ""}${m.centroCosto.Nombre}` }]
+        : [],
+  },
+  {
+    key: "origenes",
+    label: "Origen de la Operación",
+    placeholder: "Todos los orígenes",
+    extraer: (m) => {
+      const origen = origenDe(m);
+      return [{ id: origen, label: ORIGENES_MOVIMIENTO[origen] }];
+    },
+  },
+];
+
+const FILTROS_INICIALES = {
+  empresaId: null,
+  rangoFechas: null,
+  naturaleza: null,
+  libro: null,
+  sustento: null,
+  montoMin: null,
+  montoMax: null,
+  busqueda: "",
+  estados: [],
+  monedas: [],
+  tipos: [],
+  entidades: [],
+  mediosPago: [],
+  cuentas: [],
+  centrosCosto: [],
+  origenes: [],
+};
+
+const FACETAS_AVANZADAS = ["tipos", "entidades", "mediosPago", "cuentas", "centrosCosto", "origenes"];
+
+const coincideBusqueda = (m, texto) => {
+  const t = (texto || "").trim().toLowerCase();
+  if (!t) return true;
+  if (t.startsWith("#")) {
+    const id = t.slice(1).trim();
+    return String(m.id) === id || String(m.refOperacionEspecializadaMovCaja ?? "") === id;
+  }
+  return [
+    m.descripcion,
+    m.referenciaExtId,
+    m.numeroOperacionPagoBanco,
+    m.numeroOperacionPagoBancoImpuesto,
+    m.entidadComercial?.razonSocial,
+    m.entidadComercial?.numeroDocumento,
+    m.producto?.descripcionArmada,
+    m.producto?.codigo,
+  ].some((v) => v && String(v).toLowerCase().includes(t));
+};
+
+/**
+ * Aplica todos los filtros sobre la lista. `excluir` omite una faceta
+ * para calcular las opciones de esa misma faceta.
+ */
+const filtrarMovimientos = (lista, filtros, excluir = null) => {
+  const [desde, hasta] = filtros.rangoFechas || [];
+  const fechaIni = desde ? new Date(desde) : null;
+  if (fechaIni) fechaIni.setHours(0, 0, 0, 0);
+  const fechaFin = hasta ? new Date(hasta) : null;
+  if (fechaFin) fechaFin.setHours(23, 59, 59, 999);
+
+  return lista.filter((m) => {
+    if (filtros.empresaId && Number(m.empresaId) !== Number(filtros.empresaId)) return false;
+
+    if (fechaIni) {
+      if (!m.fechaOperacionMovCaja) return false;
+      const fecha = new Date(m.fechaOperacionMovCaja);
+      if (fecha < fechaIni || (fechaFin && fecha > fechaFin)) return false;
+    }
+
+    if (filtros.naturaleza === "INGRESO" && m.tipoMovimiento?.esIngreso !== true) return false;
+    if (filtros.naturaleza === "EGRESO" && m.tipoMovimiento?.esIngreso !== false) return false;
+
+    if (filtros.libro === "FISCAL" && m.esGerencial) return false;
+    if (filtros.libro === "GERENCIAL" && !m.esGerencial) return false;
+
+    if (filtros.sustento === "CON" && m.operacionSinFactura) return false;
+    if (filtros.sustento === "SIN" && !m.operacionSinFactura) return false;
+
+    const monto = Number(m.monto) || 0;
+    if (filtros.montoMin !== null && monto < filtros.montoMin) return false;
+    if (filtros.montoMax !== null && monto > filtros.montoMax) return false;
+
+    if (!coincideBusqueda(m, filtros.busqueda)) return false;
+
+    for (const faceta of FACETAS) {
+      if (faceta.key === excluir) continue;
+      const seleccion = filtros[faceta.key];
+      if (seleccion.length === 0) continue;
+      const aporta = faceta.extraer(m);
+      if (!aporta.some((o) => seleccion.some((id) => String(id) === String(o.id)))) return false;
+    }
+    return true;
+  });
+};
 
 export default function MovimientoCaja({ ruta }) {
   const { usuario } = useAuthStore();
@@ -39,48 +233,36 @@ export default function MovimientoCaja({ ruta }) {
   }
 
   const [movimientos, setMovimientos] = useState([]);
-  const [movimientosFiltrados, setMovimientosFiltrados] = useState([]);
   const [selectedMovimiento, setSelectedMovimiento] = useState(null);
   const [showDialog, setShowDialog] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [empresas, setEmpresas] = useState([]);
-  const [tiposMovimiento, setTiposMovimiento] = useState([]);
-  const [estados, setEstados] = useState([]);
+  const [filtros, setFiltros] = useState(FILTROS_INICIALES);
+  const [busquedaInput, setBusquedaInput] = useState("");
+  const [mostrarAvanzados, setMostrarAvanzados] = useState(false);
 
-  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
-  const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
-  const [rangoFechas, setRangoFechas] = useState(null);
-  const [tipoSeleccionado, setTipoSeleccionado] = useState(null);
-  const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
-
-  const [tiposMovimientoUnicos, setTiposMovimientoUnicos] = useState([]);
-  const [estadosUnicos, setEstadosUnicos] = useState([]);
+  const setFiltro = (clave, valor) => setFiltros((prev) => ({ ...prev, [clave]: valor }));
 
   useEffect(() => {
     loadData();
   }, []);
 
+  // Búsqueda de texto con retardo para no recalcular en cada tecla
+  useEffect(() => {
+    const t = setTimeout(() => setFiltro("busqueda", busquedaInput), 300);
+    return () => clearTimeout(t);
+  }, [busquedaInput]);
+
   const loadData = async () => {
     try {
       setLoading(true);
-      const [movimientosData, empresasData, tiposMovData, estadosData] = await Promise.all([
+      const [movimientosData, empresasData] = await Promise.all([
         getAllMovimientoCaja(),
         getEmpresas(),
-        getAllTipoMovEntregaRendir(),
-        getEstadosMultiFuncion()
       ]);
-
-      // Filtrar solo estados de Movimientos Caja
-      const estadosMovimientoCaja = estadosData.filter(e =>
-        ESTADOS_MOVIMIENTO_CAJA_IDS.includes(Number(e.id))
-      );
-
       setMovimientos(movimientosData);
-      setMovimientosFiltrados(movimientosData);
       setEmpresas(empresasData);
-      setTiposMovimiento(tiposMovData);
-      setEstados(estadosMovimientoCaja);
     } catch (error) {
       console.error("Error al cargar datos:", error);
       toast.current?.show({
@@ -94,82 +276,61 @@ export default function MovimientoCaja({ ruta }) {
     }
   };
 
-  const obtenerOpcionesDinamicas = () => {
-    const datosParaOpciones = movimientosFiltrados.length > 0 ? movimientosFiltrados : movimientos;
+  const movimientosFiltrados = useMemo(
+    () => filtrarMovimientos(movimientos, filtros),
+    [movimientos, filtros]
+  );
 
-    const tiposMovimientoUnicos = [...new Map(
-      datosParaOpciones
-        .filter(m => m.tipoMovimiento)
-        .map(m => [m.tipoMovimiento.id, m.tipoMovimiento])
-    ).values()];
+  // Opciones dinámicas y cruzadas de cada filtro múltiple
+  const opcionesPorFaceta = useMemo(() => {
+    const resultado = {};
+    FACETAS.forEach((faceta) => {
+      const mapa = new Map();
+      filtrarMovimientos(movimientos, filtros, faceta.key).forEach((m) =>
+        faceta.extraer(m).forEach((o) => mapa.set(String(o.id), o))
+      );
+      resultado[faceta.key] = [...mapa.values()].sort((a, b) => a.label.localeCompare(b.label));
+    });
+    return resultado;
+  }, [movimientos, filtros]);
 
-    const estadosUnicos = [...new Map(
-      datosParaOpciones
-        .filter(m => m.estadoMovimientoCaja)
-        .map(m => [m.estadoMovimientoCaja.id, m.estadoMovimientoCaja])
-    ).values()];
-
-    return {
-      tiposMovimientoUnicos,
-      estadosUnicos
-    };
-  };
-
+  // Depurar selecciones que ya no tienen movimientos al cambiar otros filtros
   useEffect(() => {
-    const opciones = obtenerOpcionesDinamicas();
-    setTiposMovimientoUnicos(opciones.tiposMovimientoUnicos);
-    setEstadosUnicos(opciones.estadosUnicos);
-
-    if (tipoSeleccionado && !opciones.tiposMovimientoUnicos.find(t => Number(t.id) === Number(tipoSeleccionado))) {
-      setTipoSeleccionado(null);
-    }
-    if (estadoSeleccionado && !opciones.estadosUnicos.find(e => Number(e.id) === Number(estadoSeleccionado))) {
-      setEstadoSeleccionado(null);
-    }
-  }, [movimientosFiltrados, movimientos, empresaSeleccionada]);
-
-  useEffect(() => {
-    aplicarFiltros();
-  }, [empresaSeleccionada, rangoFechas, tipoSeleccionado, estadoSeleccionado, movimientos]);
-
-  const aplicarFiltros = () => {
-    let filtrados = [...movimientos];
-
-    if (empresaSeleccionada) {
-      filtrados = filtrados.filter(m => Number(m.empresaId) === Number(empresaSeleccionada));
-    }
-
-    if (rangoFechas && rangoFechas[0]) {
-      filtrados = filtrados.filter(m => {
-        const fechaMov = new Date(m.fechaOperacionMovCaja);
-        const fechaIni = new Date(rangoFechas[0]);
-        fechaIni.setHours(0, 0, 0, 0);
-
-        if (rangoFechas[1]) {
-          const fechaFin = new Date(rangoFechas[1]);
-          fechaFin.setHours(23, 59, 59, 999);
-          return fechaMov >= fechaIni && fechaMov <= fechaFin;
+    if (movimientos.length === 0) return;
+    setFiltros((prev) => {
+      let cambio = false;
+      const siguiente = { ...prev };
+      FACETAS.forEach((faceta) => {
+        const validos = prev[faceta.key].filter((id) =>
+          opcionesPorFaceta[faceta.key].some((o) => String(o.id) === String(id))
+        );
+        if (validos.length !== prev[faceta.key].length) {
+          siguiente[faceta.key] = validos;
+          cambio = true;
         }
-        return fechaMov >= fechaIni;
       });
-    }
+      return cambio ? siguiente : prev;
+    });
+  }, [opcionesPorFaceta, movimientos.length]);
 
-    if (tipoSeleccionado) {
-      filtrados = filtrados.filter(m => Number(m.tipoMovimientoId) === Number(tipoSeleccionado));
-    }
+  const cantidadAvanzados =
+    FACETAS_AVANZADAS.reduce((acc, k) => acc + filtros[k].length, 0) +
+    (filtros.libro ? 1 : 0) +
+    (filtros.sustento ? 1 : 0) +
+    (filtros.montoMin !== null || filtros.montoMax !== null ? 1 : 0);
 
-    if (estadoSeleccionado) {
-      filtrados = filtrados.filter(m => Number(m.estadoId) === Number(estadoSeleccionado));
-    }
+  const hayFiltros =
+    cantidadAvanzados > 0 ||
+    !!filtros.rangoFechas ||
+    !!filtros.naturaleza ||
+    !!filtros.busqueda ||
+    filtros.estados.length > 0 ||
+    filtros.monedas.length > 0;
 
-    setMovimientosFiltrados(filtrados);
-  };
-
+  // La empresa se conserva: el selector sigue mostrando la empresa activa
   const limpiarFiltros = () => {
-    setEmpresaSeleccionada(null);
-    setRangoFechas(null);
-    setTipoSeleccionado(null);
-    setEstadoSeleccionado(null);
+    setFiltros({ ...FILTROS_INICIALES, empresaId: filtros.empresaId });
+    setBusquedaInput("");
   };
 
   const calcularTotalesPorMoneda = () => {
@@ -321,12 +482,14 @@ export default function MovimientoCaja({ ruta }) {
   const montoTemplate = (rowData) => {
     const monto = Number(rowData.monto) || 0;
     const simboloMoneda = rowData.moneda?.simbolo || "";
+    const esIngreso = rowData.tipoMovimiento?.esIngreso;
+    const severity = esIngreso === true ? "success" : esIngreso === false ? "danger" : "info";
 
     return (
       <div style={{ textAlign: "right" }}>
         <Tag
           value={`${simboloMoneda} ${formatearNumero(monto)}`}
-          severity="info"
+          severity={severity}
           style={{
             fontSize: "0.9rem",
             fontWeight: "bold"
@@ -346,7 +509,7 @@ export default function MovimientoCaja({ ruta }) {
     const severity = rowData.estadoMovimientoCaja.severityColor || "secondary";
     return (
       <Badge
-        value={rowData.estadoMovimientoCaja.nombre}
+        value={rowData.estadoMovimientoCaja.descripcion || rowData.estadoMovimientoCaja.nombre}
         severity={severity}
         size="small"
       />
@@ -356,6 +519,10 @@ export default function MovimientoCaja({ ruta }) {
   const tipoMovimientoTemplate = (rowData) => {
     return rowData.tipoMovimiento?.nombre || "N/A";
   };
+
+  const entidadTemplate = (rowData) => rowData.entidadComercial?.razonSocial || "-";
+
+  const medioPagoTemplate = (rowData) => rowData.medioPago?.nombre || "-";
 
   const empresaTemplate = (rowData) => {
     if (!rowData.empresa) return "N/A";
@@ -370,6 +537,49 @@ export default function MovimientoCaja({ ruta }) {
 
   const monedaTemplate = (rowData) => {
     return rowData.moneda?.codigoSunat || "";
+  };
+
+  const ordenarPorMonto = (e) =>
+    [...e.data].sort((a, b) => e.order * ((Number(a.monto) || 0) - (Number(b.monto) || 0)));
+
+  // MultiSelect de una faceta con opciones dinámicas y cruzadas
+  const renderFaceta = (clave) => {
+    const faceta = FACETAS.find((f) => f.key === clave);
+    const opciones = opcionesPorFaceta[clave] || [];
+    return (
+      <div style={{ flex: 2, minWidth: "220px" }} key={clave}>
+        <label htmlFor={`faceta-${clave}`} style={{ fontWeight: "bold" }}>
+          {faceta.label}
+        </label>
+        <MultiSelect
+          id={`faceta-${clave}`}
+          value={filtros[clave]}
+          options={opciones}
+          optionLabel="label"
+          optionValue="id"
+          onChange={(e) => setFiltro(clave, e.value)}
+          placeholder={faceta.placeholder}
+          filter
+          showClear
+          display="comma"
+          maxSelectedLabels={2}
+          selectedItemsLabel="{0} seleccionados"
+          emptyMessage="Sin opciones con los filtros actuales"
+          disabled={loading}
+          style={{ width: "100%" }}
+        />
+        <small style={{ color: "#6c757d" }}>{opciones.length} opción(es) disponible(s)</small>
+      </div>
+    );
+  };
+
+  const filaStyle = {
+    alignItems: "start",
+    display: "flex",
+    gap: 10,
+    marginTop: 10,
+    flexWrap: "wrap",
+    flexDirection: window.innerWidth < 768 ? "column" : "row",
   };
 
   return (
@@ -407,15 +617,26 @@ export default function MovimientoCaja({ ruta }) {
               }}>
                 <div style={{ flex: 2 }}>
                   <h2>Movimientos de Caja</h2>
+                  <small style={{ color: "#6c757d" }}>
+                    {movimientosFiltrados.length} de {movimientos.length} movimiento(s)
+                  </small>
                 </div>
                 <div style={{ flex: 2 }}>
                   <label style={{ fontWeight: "bold" }}>Empresa*</label>
                   <EmpresaSelector
                     empresaId={usuario?.empresaId}
-                    onEmpresaChange={(id) => {
-                      setEmpresaIdSelector(id);
-                      setEmpresaSeleccionada(id);
-                    }}
+                    onEmpresaChange={(id) => setFiltro("empresaId", id)}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Más filtros"
+                    icon={mostrarAvanzados ? "pi pi-chevron-up" : "pi pi-sliders-h"}
+                    className="p-button-outlined"
+                    badge={cantidadAvanzados > 0 ? String(cantidadAvanzados) : null}
+                    badgeClassName="p-badge-info"
+                    onClick={() => setMostrarAvanzados((v) => !v)}
+                    disabled={loading}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -425,75 +646,142 @@ export default function MovimientoCaja({ ruta }) {
                     className="p-button-secondary"
                     outlined
                     onClick={limpiarFiltros}
-                    disabled={loading}
+                    disabled={loading || !hayFiltros}
                   />
                 </div>
               </div>
-              <div style={{
-                alignItems: "end",
-                display: "flex",
-                gap: 10,
-                marginTop: 10,
-                flexDirection: window.innerWidth < 768 ? "column" : "row"
-              }}>
-                <div style={{ flex: 2 }}>
+
+              {/* Filtros principales */}
+              <div style={filaStyle}>
+                <div style={{ flex: 2, minWidth: "220px" }}>
                   <label htmlFor="rangoFechas" style={{ fontWeight: "bold" }}>
                     Rango de Fechas
                   </label>
                   <Calendar
                     id="rangoFechas"
-                    value={rangoFechas}
-                    onChange={(e) => setRangoFechas(e.value)}
+                    value={filtros.rangoFechas}
+                    onChange={(e) => setFiltro("rangoFechas", e.value)}
                     selectionMode="range"
                     dateFormat="dd/mm/yy"
                     showIcon
+                    showButtonBar
                     placeholder="Seleccionar rango..."
                     style={{ width: "100%" }}
                     disabled={loading}
                     readOnlyInput
                   />
                 </div>
-                <div style={{ flex: 2 }}>
-                  <label htmlFor="tipoFiltro" style={{ fontWeight: "bold" }}>
-                    Tipo Movimiento
+                <div style={{ flex: 1, minWidth: "160px" }}>
+                  <label htmlFor="naturalezaFiltro" style={{ fontWeight: "bold" }}>
+                    Naturaleza
                   </label>
                   <Dropdown
-                    id="tipoFiltro"
-                    value={tipoSeleccionado}
-                    options={tiposMovimientoUnicos.map((t) => ({
-                      label: t.nombre,
-                      value: Number(t.id)
-                    }))}
-                    onChange={(e) => setTipoSeleccionado(e.value)}
-                    placeholder="Todos"
-                    optionLabel="label"
-                    optionValue="value"
+                    id="naturalezaFiltro"
+                    value={filtros.naturaleza}
+                    options={NATURALEZAS}
+                    onChange={(e) => setFiltro("naturaleza", e.value)}
+                    placeholder="Ingresos y egresos"
                     showClear
-                    filter
                     disabled={loading}
                   />
                 </div>
-                <div style={{ flex: 2 }}>
-                  <label htmlFor="estadoFiltro" style={{ fontWeight: "bold" }}>
-                    Estado
+                {renderFaceta("estados")}
+                {renderFaceta("monedas")}
+                <div style={{ flex: 3, minWidth: "260px" }}>
+                  <label htmlFor="busquedaFiltro" style={{ fontWeight: "bold" }}>
+                    Buscar
                   </label>
-                  <Dropdown
-                    id="estadoFiltro"
-                    value={estadoSeleccionado}
-                    options={estadosUnicos.map((e) => ({
-                      label: e.descripcion,
-                      value: Number(e.id)
-                    }))}
-                    onChange={(e) => setEstadoSeleccionado(e.value)}
-                    placeholder="Todos"
-                    optionLabel="label"
-                    optionValue="value"
-                    showClear
-                    filter
-                    disabled={loading}
-                  />
+                  <span className="p-input-icon-left" style={{ width: "100%" }}>
+                    <i className="pi pi-search" />
+                    <InputText
+                      id="busquedaFiltro"
+                      value={busquedaInput}
+                      onChange={(e) => setBusquedaInput(e.target.value)}
+                      placeholder="Descripción, N° operación, entidad... (#ID o #correlativo)"
+                      style={{ width: "100%" }}
+                      disabled={loading}
+                    />
+                  </span>
                 </div>
               </div>
+
+              {/* Filtros avanzados */}
+              {mostrarAvanzados && (
+                <>
+                  <div style={filaStyle}>
+                    {renderFaceta("tipos")}
+                    {renderFaceta("entidades")}
+                    {renderFaceta("mediosPago")}
+                  </div>
+                  <div style={filaStyle}>
+                    {renderFaceta("cuentas")}
+                    {renderFaceta("centrosCosto")}
+                    {renderFaceta("origenes")}
+                  </div>
+                  <div style={filaStyle}>
+                    <div style={{ flex: 1, minWidth: "180px" }}>
+                      <label htmlFor="libroFiltro" style={{ fontWeight: "bold" }}>
+                        Tipo de Libro
+                      </label>
+                      <Dropdown
+                        id="libroFiltro"
+                        value={filtros.libro}
+                        options={LIBROS}
+                        onChange={(e) => setFiltro("libro", e.value)}
+                        placeholder="Fiscal y gerencial"
+                        showClear
+                        disabled={loading}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: "180px" }}>
+                      <label htmlFor="sustentoFiltro" style={{ fontWeight: "bold" }}>
+                        Documento Sustento
+                      </label>
+                      <Dropdown
+                        id="sustentoFiltro"
+                        value={filtros.sustento}
+                        options={DOCUMENTO_SUSTENTO}
+                        onChange={(e) => setFiltro("sustento", e.value)}
+                        placeholder="Con y sin factura"
+                        showClear
+                        disabled={loading}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: "160px" }}>
+                      <label htmlFor="montoMinFiltro" style={{ fontWeight: "bold" }}>
+                        Monto Mínimo
+                      </label>
+                      <InputNumber
+                        id="montoMinFiltro"
+                        value={filtros.montoMin}
+                        onValueChange={(e) => setFiltro("montoMin", e.value ?? null)}
+                        mode="decimal"
+                        minFractionDigits={2}
+                        maxFractionDigits={2}
+                        min={0}
+                        placeholder="0.00"
+                        disabled={loading}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: "160px" }}>
+                      <label htmlFor="montoMaxFiltro" style={{ fontWeight: "bold" }}>
+                        Monto Máximo
+                      </label>
+                      <InputNumber
+                        id="montoMaxFiltro"
+                        value={filtros.montoMax}
+                        onValueChange={(e) => setFiltro("montoMax", e.value ?? null)}
+                        mode="decimal"
+                        minFractionDigits={2}
+                        maxFractionDigits={2}
+                        min={0}
+                        placeholder="Sin límite"
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           }
         >
@@ -504,10 +792,11 @@ export default function MovimientoCaja({ ruta }) {
             sortable
           />
           <Column
-            field="empresaId"
+            field="empresa.razonSocial"
             header="Empresa"
             body={empresaTemplate}
             style={{ verticalAlign: "top" }}
+            sortable
           />
           <Column
             field="fechaOperacionMovCaja"
@@ -517,10 +806,17 @@ export default function MovimientoCaja({ ruta }) {
             sortable
           />
           <Column
-            field="tipoMovimientoId"
+            field="tipoMovimiento.nombre"
             header="Tipo"
             body={tipoMovimientoTemplate}
             style={{ width: 200, verticalAlign: "top" }}
+            sortable
+          />
+          <Column
+            field="entidadComercial.razonSocial"
+            header="Entidad Comercial"
+            body={entidadTemplate}
+            style={{ verticalAlign: "top" }}
             sortable
           />
           <Column
@@ -530,17 +826,27 @@ export default function MovimientoCaja({ ruta }) {
             sortable
           />
           <Column
-            field="monedaId"
+            field="medioPago.nombre"
+            header="Medio de Pago"
+            body={medioPagoTemplate}
+            style={{ width: 140, verticalAlign: "top" }}
+            sortable
+          />
+          <Column
+            field="moneda.codigoSunat"
             header="Moneda"
             body={monedaTemplate}
             style={{ width: 80, textAlign: "center", verticalAlign: "top" }}
             sortable
           />
           <Column
+            field="monto"
             header="Monto"
             body={montoTemplate}
             style={{ width: 180, textAlign: "right", verticalAlign: "top" }}
             bodyStyle={{ textAlign: "right" }}
+            sortable
+            sortFunction={ordenarPorMonto}
           />
           <Column
             field="refOperacionEspecializadaMovCaja"
@@ -550,7 +856,7 @@ export default function MovimientoCaja({ ruta }) {
             sortable
           />
           <Column
-            field="estadoId"
+            field="estadoMovimientoCaja.descripcion"
             header="Estado"
             body={estadoTemplate}
             style={{ width: 150, textAlign: "center", verticalAlign: "top" }}

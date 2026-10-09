@@ -19,6 +19,7 @@ export default function GeneradorDocumentosFinancierosDialog({
   visible,
   onHide,
   detMovEntregaRendir: detMovProp,
+  esGastoDirecto = false,
   onGeneracionExitosa,
   toast,
 }) {
@@ -128,7 +129,11 @@ export default function GeneradorDocumentosFinancierosDialog({
       setGenerandoDocumentos(true);
 
       setErrorGeneracion(null);
-      const resultado = await generarDocumentosFinancieros(detMovEntregaRendir.id, accionOcExistente);
+      const resultado = await generarDocumentosFinancieros(
+        detMovEntregaRendir.id,
+        accionOcExistente,
+        esGastoDirecto,
+      );
 
       // La OC ya existe: el usuario decide qué hacer (A / B / C) en un diálogo de confirmación
       if (resultado?.requiereDecision) {
@@ -143,7 +148,9 @@ export default function GeneradorDocumentosFinancierosDialog({
         summary: resultado?.ordenCompraExistente ? "Orden de Compra existente" : "✅ Documentos Generados",
         detail: resultado?.ordenCompraExistente
           ? resultado.message
-          : "Orden de Compra, Cuenta por Pagar, Pago y Asientos Contables creados exitosamente",
+          : esGastoDirecto
+            ? "Orden de Compra, Cuenta por Pagar y Asientos Contables creados exitosamente. El pago se realizará por Caja."
+            : "Orden de Compra, Cuenta por Pagar, Pago y Asientos Contables creados exitosamente",
         life: 4000,
       });
 
@@ -179,10 +186,10 @@ export default function GeneradorDocumentosFinancierosDialog({
   const numeroComprobante = esGerencial
     ? "SIN COMPROBANTE (GERENCIAL)"
     : `${detMovEntregaRendir?.tipoDocumento?.descripcion || ""} ${detMovEntregaRendir?.numeroSerieComprobante || ""}-${detMovEntregaRendir?.numeroCorrelativoComprobante || ""}`.trim();
-  const cantidadAsientos = esGerencial ? 1 : 3;
+  const cantidadAsientos = esGastoDirecto ? (esGerencial ? 1 : 2) : (esGerencial ? 1 : 3);
 
   const esGastoAsignacion = detMovEntregaRendir?.asignacionOrigenId != null;
-  const tipoGasto = esGastoAsignacion ? "GASTO DE ASIGNACIÓN" : "GASTO ELEVADO";
+  const tipoGasto = esGastoDirecto ? "GASTO DIRECTO" : (esGastoAsignacion ? "GASTO DE ASIGNACIÓN" : "GASTO ELEVADO");
 
   return (
     <Dialog
@@ -294,18 +301,30 @@ export default function GeneradorDocumentosFinancierosDialog({
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", padding: "0.5rem", backgroundColor: "#FFFFFF", borderRadius: "4px" }}>
-              <div style={{ fontSize: "1.5rem", marginRight: "0.75rem" }}>3️⃣</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: "bold" }}>💵 Pago Automático</div>
-                <div style={{ fontSize: "0.85rem", color: "#757575" }}>Medio: EFECTIVO</div>
+            {!esGastoDirecto && (
+              <div style={{ display: "flex", alignItems: "center", padding: "0.5rem", backgroundColor: "#FFFFFF", borderRadius: "4px" }}>
+                <div style={{ fontSize: "1.5rem", marginRight: "0.75rem" }}>3️⃣</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: "bold" }}>💵 Pago Automático</div>
+                  <div style={{ fontSize: "0.85rem", color: "#757575" }}>Medio: EFECTIVO</div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {esGastoDirecto && (
+              <div style={{ display: "flex", alignItems: "center", padding: "0.5rem", backgroundColor: "#FFFFFF", borderRadius: "4px" }}>
+                <div style={{ fontSize: "1.5rem", marginRight: "0.75rem" }}>{esGerencial ? "3️⃣" : "3️⃣"}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: "bold" }}>⏳ Pago Pendiente</div>
+                  <div style={{ fontSize: "0.85rem", color: "#757575" }}>Se cancelará posteriormente desde el módulo de Caja</div>
+                </div>
+              </div>
+            )}
 
             <div style={{ display: "flex", alignItems: "center", padding: "0.5rem", backgroundColor: "#FFFFFF", borderRadius: "4px" }}>
-              <div style={{ fontSize: "1.5rem", marginRight: "0.75rem" }}>4️⃣</div>
+              <div style={{ fontSize: "1.5rem", marginRight: "0.75rem" }}>{esGastoDirecto ? "4️⃣" : "4️⃣"}</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: "bold" }}>📊 {esGerencial ? "Asiento Contable Gerencial (Pago + Destino)" : "Asientos Contables (Compra, Destino y Pago)"}</div>
+                <div style={{ fontWeight: "bold" }}>📊 {esGastoDirecto ? (esGerencial ? "Asiento Contable Gerencial (Gasto y Proveedor)" : "Asientos Contables (Compra y Destino)") : (esGerencial ? "Asiento Contable Gerencial (Pago + Destino)" : "Asientos Contables (Compra, Destino y Pago)")}</div>
                 <div style={{ fontSize: "0.85rem", color: "#757575" }}>Cantidad: {cantidadAsientos} (numeración auto-generada)</div>
               </div>
             </div>
@@ -320,9 +339,13 @@ export default function GeneradorDocumentosFinancierosDialog({
               <div style={{ fontWeight: "bold", marginBottom: "0.5rem", color: "#E65100" }}>⚠️ Advertencias Importantes</div>
               <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.9rem" }}>
                 <li>Esta operación NO se puede deshacer</li>
-                <li>Se generarán {3 + cantidadAsientos} documentos automáticamente</li>
+                <li>Se generarán {esGastoDirecto ? 2 + cantidadAsientos : 3 + cantidadAsientos} documentos automáticamente</li>
                 <li>Si la Orden de Compra ya existe, se le pedirá elegir cómo continuar</li>
-                <li>La cuenta por pagar quedará PAGADA y CANCELADA</li>
+                {esGastoDirecto ? (
+                  <li>La cuenta por pagar quedará PENDIENTE para su cancelación por Caja</li>
+                ) : (
+                  <li>La cuenta por pagar quedará PAGADA y CANCELADA</li>
+                )}
                 <li>El proceso es una transacción completa (todo o nada)</li>
               </ul>
             </div>
@@ -410,8 +433,8 @@ export default function GeneradorDocumentosFinancierosDialog({
             <div style={{ fontWeight: "bold", marginBottom: "0.5rem" }}>¿Qué desea hacer?</div>
             {[
               { valor: "A", titulo: "A. Solo actualizar referencias", detalle: "Origen, activo y URL del comprobante. No se genera nada más." },
-              { valor: "B", titulo: "B. Actualizar y completar lo que falte", detalle: "Se crean la CxP, el pago y los asientos que no existan." },
-              { valor: "C", titulo: "C. Borrar y volver a generar todo", detalle: "Elimina OC, CxP, pagos y asientos de este gasto y los genera de nuevo (consume un correlativo nuevo)." },
+              { valor: "B", titulo: "B. Actualizar y completar lo que falte", detalle: esGastoDirecto ? "Se crean la CxP y los asientos que no existan. El pago se hará por Caja." : "Se crean la CxP, el pago y los asientos que no existan." },
+              { valor: "C", titulo: "C. Borrar y volver a generar todo", detalle: esGastoDirecto ? "Elimina OC, CxP y asientos de este gasto y los genera de nuevo (consume un correlativo nuevo). El pago se hará por Caja." : "Elimina OC, CxP, pagos y asientos de este gasto y los genera de nuevo (consume un correlativo nuevo)." },
             ]
               .filter((opcion) => decisionOC.opciones.includes(opcion.valor))
               .map((opcion) => (

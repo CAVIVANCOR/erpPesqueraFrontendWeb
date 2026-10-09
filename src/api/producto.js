@@ -129,3 +129,23 @@ export async function clonarProductosAEmpresas(productosIds, empresasDestinoIds,
   );
   return res.data;
 }
+
+/**
+ * Actualiza un campo específico en múltiples productos seleccionados
+ * @param {Array<number|string>} ids - IDs de productos a actualizar
+ * @param {string} campo - Nombre del campo a modificar
+ * @param {number|string|null} valorId - Valor a asignar (null para limpiar)
+ * @returns {Promise<Object>} Resultado con cantidad de actualizados y mensaje
+ */
+export async function actualizarCampoMasaProductos(ids, campo, valorId) {
+  const res = await axios.post(
+    `${API_URL}/actualizar-campo-masa`,
+    {
+      ids,
+      campo,
+      valorId: valorId || null,
+    },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

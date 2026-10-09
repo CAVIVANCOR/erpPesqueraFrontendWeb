@@ -7,7 +7,7 @@
  * @version 1.0.0
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -17,6 +17,8 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import { Dropdown } from "primereact/dropdown";
+import { MultiSelect } from "primereact/multiselect";
+import { OverlayPanel } from "primereact/overlaypanel";
 import { Calendar } from "primereact/calendar";
 import {
   getOrdenesTrabajoMantenimiento,
@@ -79,6 +81,19 @@ const OTMantenimiento = ({ ruta }) => {
   const [fechaInicio, setFechaInicio] = useState(null);
   const [fechaFin, setFechaFin] = useState(null);
 
+  // Filtros avanzados (temporales hasta aplicar)
+  const [tipoMantenimientoFiltroTemp, setTipoMantenimientoFiltroTemp] =
+    useState(null);
+  const [motivoFiltroTemp, setMotivoFiltroTemp] = useState(null);
+  const [estadoFiltroTemp, setEstadoFiltroTemp] = useState(null);
+  const [rangoFechasFiltro, setRangoFechasFiltro] = useState(null);
+  const [rangoFechasFiltroTemp, setRangoFechasFiltroTemp] = useState(null);
+  const [contratistasFiltro, setContratistasFiltro] = useState([]);
+  const [productosFiltro, setProductosFiltro] = useState([]);
+  const [contratistasFiltroTemp, setContratistasFiltroTemp] = useState([]);
+  const [productosFiltroTemp, setProductosFiltroTemp] = useState([]);
+  const opFiltrosAvanzados = useRef(null);
+
   // Estados para catálogos
   const [empresas, setEmpresas] = useState([]);
   const [sedes, setSedes] = useState([]);
@@ -131,6 +146,24 @@ const OTMantenimiento = ({ ruta }) => {
       // Aplicar filtros de fecha en frontend
       let ordenesFiltradas = ordenesNormalizadas;
 
+      if (tipoMantenimientoFiltro) {
+        ordenesFiltradas = ordenesFiltradas.filter(
+          (item) => Number(item.tipoMantenimientoId) === Number(tipoMantenimientoFiltro),
+        );
+      }
+
+      if (motivoFiltro) {
+        ordenesFiltradas = ordenesFiltradas.filter(
+          (item) => Number(item.motivoOriginoId) === Number(motivoFiltro),
+        );
+      }
+
+      if (estadoFiltro) {
+        ordenesFiltradas = ordenesFiltradas.filter(
+          (item) => Number(item.estadoId) === Number(estadoFiltro),
+        );
+      }
+
       if (fechaInicio) {
         ordenesFiltradas = ordenesFiltradas.filter((item) => {
           const fechaDoc = new Date(item.fechaProgramada || item.fechaCreacion);
@@ -147,6 +180,24 @@ const OTMantenimiento = ({ ruta }) => {
           fechaFinDia.setHours(23, 59, 59, 999);
           return fechaDoc <= fechaFinDia;
         });
+      }
+
+      // Filtro por contratista (múltiple)
+      if (contratistasFiltro && contratistasFiltro.length > 0) {
+        const ids = contratistasFiltro.map(Number);
+        ordenesFiltradas = ordenesFiltradas.filter((item) =>
+          item.contratistas?.some((c) => ids.includes(Number(c.contratistaId))),
+        );
+      }
+
+      // Filtro por producto/servicio (múltiple)
+      if (productosFiltro && productosFiltro.length > 0) {
+        const ids = productosFiltro.map(Number);
+        ordenesFiltradas = ordenesFiltradas.filter((item) =>
+          item.contratistas?.some((c) =>
+            c.repuestos?.some((r) => ids.includes(Number(r.productoId))),
+          ),
+        );
       }
 
       setOrdenesTrabajo(ordenesFiltradas);
@@ -273,6 +324,83 @@ const OTMantenimiento = ({ ruta }) => {
     estadoFiltro,
     fechaInicio,
     fechaFin,
+    contratistasFiltro,
+    productosFiltro,
+  ]);
+
+  // Opciones dinámicas para filtros avanzados: solo contratistas/productos que existen en los registros mostrados
+  const contratistasDisponibles = useMemo(() => {
+    const map = new Map();
+    ordenesTrabajo.forEach((orden) =>
+      orden.contratistas?.forEach((c) => {
+        if (c.contratista) {
+          map.set(Number(c.contratista.id), c.contratista);
+        }
+      }),
+    );
+    return Array.from(map.values());
+  }, [ordenesTrabajo]);
+
+  const productosDisponibles = useMemo(() => {
+    const map = new Map();
+    ordenesTrabajo.forEach((orden) =>
+      orden.contratistas?.forEach((c) =>
+        c.repuestos?.forEach((r) => {
+          if (r.producto) {
+            map.set(Number(r.producto.id), r.producto);
+          }
+        }),
+      ),
+    );
+    return Array.from(map.values());
+  }, [ordenesTrabajo]);
+
+  const tiposMantenimientoDisponibles = useMemo(() => {
+    const map = new Map();
+    ordenesTrabajo.forEach((orden) => {
+      if (orden.tipoMantenimiento) {
+        map.set(Number(orden.tipoMantenimiento.id), orden.tipoMantenimiento);
+      }
+    });
+    return Array.from(map.values());
+  }, [ordenesTrabajo]);
+
+  const motivosDisponibles = useMemo(() => {
+    const map = new Map();
+    ordenesTrabajo.forEach((orden) => {
+      if (orden.motivoOrigino) {
+        map.set(Number(orden.motivoOrigino.id), orden.motivoOrigino);
+      }
+    });
+    return Array.from(map.values());
+  }, [ordenesTrabajo]);
+
+  const estadosDisponibles = useMemo(() => {
+    const map = new Map();
+    ordenesTrabajo.forEach((orden) => {
+      if (orden.estado) {
+        map.set(Number(orden.estado.id), orden.estado);
+      }
+    });
+    return Array.from(map.values());
+  }, [ordenesTrabajo]);
+
+  const filtrosActivosCount = useMemo(() => {
+    let count = 0;
+    if (tipoMantenimientoFiltro) count++;
+    if (motivoFiltro) count++;
+    if (estadoFiltro) count++;
+    if (rangoFechasFiltro && (rangoFechasFiltro[0] || rangoFechasFiltro[1])) count++;
+    count += (contratistasFiltro || []).length;
+    count += (productosFiltro || []).length;
+    return count;
+  }, [
+    tipoMantenimientoFiltro,
+    motivoFiltro,
+    estadoFiltro,
+    rangoFechasFiltro,
+    contratistasFiltro,
+    productosFiltro,
   ]);
 
   /**
@@ -477,6 +605,66 @@ const OTMantenimiento = ({ ruta }) => {
     setEstadoFiltro(null);
     setFechaInicio(null);
     setFechaFin(null);
+    setRangoFechasFiltro(null);
+    setContratistasFiltro([]);
+    setProductosFiltro([]);
+    setTipoMantenimientoFiltroTemp(null);
+    setMotivoFiltroTemp(null);
+    setEstadoFiltroTemp(null);
+    setRangoFechasFiltroTemp(null);
+    setContratistasFiltroTemp([]);
+    setProductosFiltroTemp([]);
+  };
+
+  const abrirFiltrosAvanzados = (e) => {
+    setTipoMantenimientoFiltroTemp(tipoMantenimientoFiltro);
+    setMotivoFiltroTemp(motivoFiltro);
+    setEstadoFiltroTemp(estadoFiltro);
+    setRangoFechasFiltroTemp(rangoFechasFiltro);
+    setContratistasFiltroTemp(contratistasFiltro || []);
+    setProductosFiltroTemp(productosFiltro || []);
+    opFiltrosAvanzados.current?.toggle(e);
+  };
+
+  const aplicarFiltrosAvanzados = () => {
+    setTipoMantenimientoFiltro(tipoMantenimientoFiltroTemp);
+    setMotivoFiltro(motivoFiltroTemp);
+    setEstadoFiltro(estadoFiltroTemp);
+    setRangoFechasFiltro(rangoFechasFiltroTemp);
+
+    if (rangoFechasFiltroTemp && rangoFechasFiltroTemp[0]) {
+      setFechaInicio(rangoFechasFiltroTemp[0]);
+    } else {
+      setFechaInicio(null);
+    }
+    if (rangoFechasFiltroTemp && rangoFechasFiltroTemp[1]) {
+      setFechaFin(rangoFechasFiltroTemp[1]);
+    } else {
+      setFechaFin(null);
+    }
+
+    setContratistasFiltro(contratistasFiltroTemp || []);
+    setProductosFiltro(productosFiltroTemp || []);
+    opFiltrosAvanzados.current?.hide();
+  };
+
+  const cancelarFiltrosAvanzados = () => {
+    setTipoMantenimientoFiltroTemp(tipoMantenimientoFiltro);
+    setMotivoFiltroTemp(motivoFiltro);
+    setEstadoFiltroTemp(estadoFiltro);
+    setRangoFechasFiltroTemp(rangoFechasFiltro);
+    setContratistasFiltroTemp(contratistasFiltro || []);
+    setProductosFiltroTemp(productosFiltro || []);
+    opFiltrosAvanzados.current?.hide();
+  };
+
+  const limpiarFiltrosAvanzados = () => {
+    setTipoMantenimientoFiltroTemp(null);
+    setMotivoFiltroTemp(null);
+    setEstadoFiltroTemp(null);
+    setRangoFechasFiltroTemp(null);
+    setContratistasFiltroTemp([]);
+    setProductosFiltroTemp([]);
   };
 
 
@@ -516,9 +704,9 @@ const OTMantenimiento = ({ ruta }) => {
    * Template para estado
    */
   const estadoTemplate = (rowData) => {
-    if (!rowData.estadoDoc) return "N/A";
-    const severity = rowData.estadoDoc.severityColor || "secondary";
-    return <Tag value={rowData.estadoDoc.descripcion} severity={severity} />;
+    if (!rowData.estado) return "N/A";
+    const severity = rowData.estado.severityColor || "secondary";
+    return <Tag value={rowData.estado.descripcion} severity={severity} />;
   };
 
   /**
@@ -560,7 +748,7 @@ const OTMantenimiento = ({ ruta }) => {
 
       <div className="card">
         <div className="flex justify-content-between align-items-center mb-4">
-          <h2>Órdenes de Trabajo de Mantenimiento</h2>
+          <h3>Ordenes de Trabajo Mantenimiento</h3>
         </div>
 
         <DataTable
@@ -600,7 +788,7 @@ const OTMantenimiento = ({ ruta }) => {
                 }}
               >
                 <div style={{ flex: 2 }}>
-                  <h2>Órdenes de Trabajo</h2>
+                  <h2>Ordenes de Trabajo</h2>
                 </div>
                 <div style={{ flex: 2 }}>
                   <label style={{ fontWeight: "bold" }}>
@@ -661,106 +849,238 @@ const OTMantenimiento = ({ ruta }) => {
                     disabled={loading}
                   />
                 </div>
-              </div>
-              <div
-                style={{
-                  alignItems: "end",
-                  display: "flex",
-                  gap: 10,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              >
                 <div style={{ flex: 2 }}>
-                  <label
-                    htmlFor="tipoMantenimientoFiltro"
-                    style={{ fontWeight: "bold" }}
+                  <label style={{ fontWeight: "bold" }}>
+                    Filtros Avanzados
+                  </label>
+                  <Button
+                    label="Filtros"
+                    icon="pi pi-filter"
+                    onClick={abrirFiltrosAvanzados}
+                    className="p-button-outlined"
+                    badge={
+                      filtrosActivosCount > 0 ? String(filtrosActivosCount) : null
+                    }
+                    badgeClassName="p-badge-info"
+                    style={{
+                      width: "100%",
+                      fontWeight: "bold",
+                      justifyContent: "flex-start",
+                    }}
+                    disabled={loading}
+                    tooltip={
+                      filtrosActivosCount > 0
+                        ? `${filtrosActivosCount} filtros activos`
+                        : "Filtrar por tipo, motivo, estado, fecha, contratista y producto"
+                    }
+                    tooltipOptions={{ position: "top" }}
+                  />
+                </div>
+              </div>
+              <OverlayPanel ref={opFiltrosAvanzados} style={{ width: "450px" }}>
+                <div style={{ padding: "10px" }}>
+                  <h3 style={{ marginTop: 0, marginBottom: "15px", color: "#2c3e50" }}>
+                    <i className="pi pi-filter" style={{ marginRight: "8px" }}></i>
+                    Filtros Avanzados
+                  </h3>
+
+                  {/* Tipo Mantenimiento */}
+                  <div style={{ marginBottom: "20px" }}>
+                    <label
+                      htmlFor="tipoMantenimientoFiltroTemp"
+                      style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}
+                    >
+                      Tipo Mantenimiento
+                    </label>
+                    <Dropdown
+                      id="tipoMantenimientoFiltroTemp"
+                      value={tipoMantenimientoFiltroTemp}
+                      options={tiposMantenimientoDisponibles.map((t) => ({
+                        label: t.nombre,
+                        value: Number(t.id),
+                      }))}
+                      onChange={(e) => setTipoMantenimientoFiltroTemp(e.value)}
+                      placeholder="Todos"
+                      optionLabel="label"
+                      optionValue="value"
+                      showClear
+                      style={{ width: "100%" }}
+                    />
+                    <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
+                      {tiposMantenimientoDisponibles.length} tipo(s) disponible(s)
+                    </small>
+                  </div>
+
+                  {/* Motivo */}
+                  <div style={{ marginBottom: "20px" }}>
+                    <label
+                      htmlFor="motivoFiltroTemp"
+                      style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}
+                    >
+                      Motivo Origen
+                    </label>
+                    <Dropdown
+                      id="motivoFiltroTemp"
+                      value={motivoFiltroTemp}
+                      options={motivosDisponibles.map((m) => ({
+                        label: m.nombre,
+                        value: Number(m.id),
+                      }))}
+                      onChange={(e) => setMotivoFiltroTemp(e.value)}
+                      placeholder="Todos"
+                      optionLabel="label"
+                      optionValue="value"
+                      showClear
+                      style={{ width: "100%" }}
+                    />
+                    <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
+                      {motivosDisponibles.length} motivo(s) disponible(s)
+                    </small>
+                  </div>
+
+                  {/* Estado */}
+                  <div style={{ marginBottom: "20px" }}>
+                    <label
+                      htmlFor="estadoFiltroTemp"
+                      style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}
+                    >
+                      Estado
+                    </label>
+                    <Dropdown
+                      id="estadoFiltroTemp"
+                      value={estadoFiltroTemp}
+                      options={estadosDisponibles.map((e) => ({
+                        label: e.descripcion,
+                        value: Number(e.id),
+                      }))}
+                      onChange={(e) => setEstadoFiltroTemp(e.value)}
+                      placeholder="Todos"
+                      optionLabel="label"
+                      optionValue="value"
+                      showClear
+                      style={{ width: "100%" }}
+                    />
+                    <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
+                      {estadosDisponibles.length} estado(s) disponible(s)
+                    </small>
+                  </div>
+
+                  {/* Rango de Fechas */}
+                  <div style={{ marginBottom: "20px" }}>
+                    <label
+                      htmlFor="rangoFechasFiltroTemp"
+                      style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}
+                    >
+                      Rango de Fechas
+                    </label>
+                    <Calendar
+                      id="rangoFechasFiltroTemp"
+                      value={rangoFechasFiltroTemp}
+                      onChange={(e) => setRangoFechasFiltroTemp(e.value)}
+                      selectionMode="range"
+                      placeholder="Seleccionar rango de fechas"
+                      dateFormat="dd/mm/yy"
+                      showIcon
+                      showButtonBar
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+
+                  {/* Contratista */}
+                  <div style={{ marginBottom: "20px" }}>
+                    <label
+                      htmlFor="contratistasFiltroTemp"
+                      style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}
+                    >
+                      Contratista
+                    </label>
+                    <MultiSelect
+                      id="contratistasFiltroTemp"
+                      value={contratistasFiltroTemp}
+                      options={contratistasDisponibles.map((c) => ({
+                        label: `${c.numeroDocumento || ""} - ${c.razonSocial || ""}`,
+                        value: Number(c.id),
+                      }))}
+                      onChange={(e) => setContratistasFiltroTemp(e.value || [])}
+                      placeholder="Seleccionar contratistas"
+                      optionLabel="label"
+                      optionValue="value"
+                      display="chip"
+                      filter
+                      showSelectAll
+                      selectAllLabel="Seleccionar Todos"
+                      style={{ width: "100%" }}
+                      maxSelectedLabels={3}
+                      emptyMessage="No hay contratistas disponibles"
+                    />
+                    <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
+                      {contratistasDisponibles.length} contratista(s) disponible(s)
+                    </small>
+                  </div>
+
+                  {/* Producto / Servicio */}
+                  <div style={{ marginBottom: "20px" }}>
+                    <label
+                      htmlFor="productosFiltroTemp"
+                      style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}
+                    >
+                      Producto / Servicio
+                    </label>
+                    <MultiSelect
+                      id="productosFiltroTemp"
+                      value={productosFiltroTemp}
+                      options={productosDisponibles.map((p) => ({
+                        label: `${p.codigo || ""} - ${p.descripcionArmada || p.descripcionBase || ""}`,
+                        value: Number(p.id),
+                      }))}
+                      onChange={(e) => setProductosFiltroTemp(e.value || [])}
+                      placeholder="Seleccionar productos/servicios"
+                      optionLabel="label"
+                      optionValue="value"
+                      display="chip"
+                      filter
+                      showSelectAll
+                      selectAllLabel="Seleccionar Todos"
+                      style={{ width: "100%" }}
+                      maxSelectedLabels={3}
+                      emptyMessage="No hay productos disponibles"
+                    />
+                    <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
+                      {productosDisponibles.length} producto(s) disponible(s)
+                    </small>
+                  </div>
+
+                  {/* Botones */}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "8px",
+                      justifyContent: "flex-end",
+                      borderTop: "1px solid #dee2e6",
+                      paddingTop: "15px",
+                    }}
                   >
-                    Tipo Mantenimiento
-                  </label>
-                  <Dropdown
-                    id="tipoMantenimientoFiltro"
-                    value={tipoMantenimientoFiltro}
-                    options={tiposMantenimiento.map((t) => ({
-                      label: t.nombre,
-                      value: Number(t.id),
-                    }))}
-                    onChange={(e) => setTipoMantenimientoFiltro(e.value)}
-                    placeholder="Todos"
-                    optionLabel="label"
-                    optionValue="value"
-                    showClear
-                    disabled={loading}
-                  />
+                    <Button
+                      label="Limpiar"
+                      icon="pi pi-times"
+                      onClick={limpiarFiltrosAvanzados}
+                      className="p-button-text p-button-secondary"
+                    />
+                    <Button
+                      label="Cancelar"
+                      icon="pi pi-ban"
+                      onClick={cancelarFiltrosAvanzados}
+                      className="p-button-text"
+                    />
+                    <Button
+                      label="Aplicar"
+                      icon="pi pi-check"
+                      onClick={aplicarFiltrosAvanzados}
+                      className="p-button-success"
+                    />
+                  </div>
                 </div>
-                <div style={{ flex: 2 }}>
-                  <label htmlFor="motivoFiltro" style={{ fontWeight: "bold" }}>
-                    Motivo
-                  </label>
-                  <Dropdown
-                    id="motivoFiltro"
-                    value={motivoFiltro}
-                    options={motivosOrigen.map((m) => ({
-                      label: m.nombre,
-                      value: Number(m.id),
-                    }))}
-                    onChange={(e) => setMotivoFiltro(e.value)}
-                    placeholder="Todos"
-                    optionLabel="label"
-                    optionValue="value"
-                    showClear
-                    disabled={loading}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="fechaInicio" style={{ fontWeight: "bold" }}>
-                    Desde
-                  </label>
-                  <Calendar
-                    id="fechaInicio"
-                    value={fechaInicio}
-                    onChange={(e) => setFechaInicio(e.value)}
-                    placeholder="Fecha inicio"
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    showButtonBar
-                    disabled={loading}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="fechaFin" style={{ fontWeight: "bold" }}>
-                    Hasta
-                  </label>
-                  <Calendar
-                    id="fechaFin"
-                    value={fechaFin}
-                    onChange={(e) => setFechaFin(e.value)}
-                    placeholder="Fecha fin"
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    showButtonBar
-                    disabled={loading}
-                  />
-                </div>
-                <div style={{ flex: 2 }}>
-                  <label htmlFor="estadoFiltro" style={{ fontWeight: "bold" }}>
-                    Estado
-                  </label>
-                  <Dropdown
-                    id="estadoFiltro"
-                    value={estadoFiltro}
-                    options={estadosDoc.map((e) => ({
-                      label: e.descripcion,
-                      value: Number(e.id),
-                    }))}
-                    onChange={(e) => setEstadoFiltro(e.value)}
-                    placeholder="Todos"
-                    optionLabel="label"
-                    optionValue="value"
-                    showClear
-                    disabled={loading}
-                  />
-                </div>
-              </div>
+              </OverlayPanel>
             </div>
           }
         >
@@ -813,7 +1133,7 @@ const OTMantenimiento = ({ ruta }) => {
           />
 
           <Column
-            field="estadoDoc.descripcion"
+            field="estado.descripcion"
             header="Estado"
             body={estadoTemplate}
             sortable
@@ -822,7 +1142,7 @@ const OTMantenimiento = ({ ruta }) => {
           />
 
           <Column
-            field="descripcion"
+            field="descripcionProblema"
             header="Descripción"
             sortable
             style={{ width: "200px", verticalAlign: "top" }}
@@ -837,6 +1157,7 @@ const OTMantenimiento = ({ ruta }) => {
             className="text-center"
           />
         </DataTable>
+
       </div>
 
       <Dialog

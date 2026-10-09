@@ -28,6 +28,7 @@ const PendientesHeader = ({
   onOperacion, // ✅ Callback para operaciones
   opcionesFiltros, // ✅ NUEVO: Opciones para filtros avanzados
   onOpenFiltrosDialog, // ✅ NUEVO: Callback para abrir diálogo de filtros
+  onGastosDirectosClick, // ✅ NUEVO: Callback para abrir diálogo de gastos directos
 }) => {
   // Función para obtener el estilo de tag según la moneda
   const getMonedaTagStyle = (codigoMoneda) => {
@@ -456,15 +457,11 @@ const PendientesHeader = ({
     },
   ];
 
-  // 🆕 Opciones de Operaciones (solo Transferencia Interna y Gasto Urgente)
+  // 🆕 Opciones de Operaciones (Gasto Urgente ahora está dentro de Gastos Directos)
   const operacionesOptions = [
     {
       ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.TRANSFERENCIA_INTERNA],
       value: TIPO_OPERACION_TESORERIA.TRANSFERENCIA_INTERNA,
-    },
-    {
-      ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.GASTO_URGENTE],
-      value: TIPO_OPERACION_TESORERIA.GASTO_URGENTE,
     },
   ];
   // Función para manejar clic en operaciones
@@ -503,14 +500,24 @@ const PendientesHeader = ({
 
         <div style={{ display: "flex", gap: 2, flexWrap: "nowrap" }}>
           {/* Botones de Tipo (Todos, Por Cobrar, Por Pagar) */}
-          {tipoOptions.map((option) => (
+          {tipoOptions.map((option) => {
+            const seleccionado =
+              filtros.tipoDeuda === TIPO_DEUDA_TESORERIA.NINGUNO &&
+              filtros.tipo === option.value;
+            return (
             <Button
               key={option.value || "todos"}
               icon={option.icon}
               severity={option.severity}
-              outlined={filtros.tipo !== option.value}
-              raised={filtros.tipo === option.value}
-              onClick={() => onFiltroChange("tipo", option.value)}
+              outlined={!seleccionado}
+              raised={seleccionado}
+              onClick={() => {
+                if (option.value === TIPO_FILTRO_TESORERIA.GASTOS_DIRECTOS) {
+                  onGastosDirectosClick?.();
+                } else {
+                  onFiltroChange("tipo", option.value);
+                }
+              }}
               disabled={loading}
               style={{
                 flex: "1 1 calc(12.5% - 8px)",
@@ -526,14 +533,18 @@ const PendientesHeader = ({
             >
               {getTipoLabel(option)}
             </Button>
-          ))}
+            );
+          })}
           {/* Botones de Deudas (Personal, Tributarias) */}
-          {deudasOptions.map((option) => (
+          {deudasOptions.map((option) => {
+            const seleccionado = filtros.tipoDeuda === option.value;
+            return (
             <Button
               key={option.value}
               icon={option.icon}
               severity={option.severity}
-              outlined
+              outlined={!seleccionado}
+              raised={seleccionado}
               onClick={() => onFiltroChange("tipoDeuda", option.value)}
               disabled={loading}
               style={{
@@ -550,7 +561,8 @@ const PendientesHeader = ({
             >
               {getDeudasLabel(option)}
             </Button>
-          ))}
+            );
+          })}
           {/* Los botones "Financ. Ingresos / Financ. Pagos" (próximamente) quedaron reemplazados por
               los botones de Préstamos (Desembolsos y Cuotas) de deudasOptions */}
         </div>

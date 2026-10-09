@@ -79,7 +79,6 @@ export const createDetContratistaOT = async (detalleContratista) => {
       otMantenimientoId: Number(detalleContratista.otMantenimientoId),
       numeroLinea: Number(detalleContratista.numeroLinea),
       contratistaId: Number(detalleContratista.contratistaId),
-      productoServicioId: Number(detalleContratista.productoServicioId),
       activoId: detalleContratista.activoId ? Number(detalleContratista.activoId) : null,
       servicioDescripcion: detalleContratista.servicioDescripcion?.trim() || '',
       montoPactado: Number(detalleContratista.montoPactado) || 0,
@@ -87,7 +86,6 @@ export const createDetContratistaOT = async (detalleContratista) => {
       saldo: Number(detalleContratista.saldo) || 0,
       monedaId: Number(detalleContratista.monedaId),
       estadoId: Number(detalleContratista.estadoId),
-      preFacturaId: detalleContratista.preFacturaId ? Number(detalleContratista.preFacturaId) : null,
       urlDocumentoContratista: detalleContratista.urlDocumentoContratista?.trim() || null,
       urlFotosProductos: detalleContratista.urlFotosProductos?.trim() || null,
       urlFotosAntes: detalleContratista.urlFotosAntes?.trim() || null,
@@ -117,7 +115,6 @@ export const updateDetContratistaOT = async (id, detalleContratista) => {
       otMantenimientoId: Number(detalleContratista.otMantenimientoId),
       numeroLinea: Number(detalleContratista.numeroLinea),
       contratistaId: Number(detalleContratista.contratistaId),
-      productoServicioId: Number(detalleContratista.productoServicioId),
       activoId: detalleContratista.activoId ? Number(detalleContratista.activoId) : null,
       servicioDescripcion: detalleContratista.servicioDescripcion?.trim() || '',
       montoPactado: Number(detalleContratista.montoPactado) || 0,
@@ -125,7 +122,6 @@ export const updateDetContratistaOT = async (id, detalleContratista) => {
       saldo: Number(detalleContratista.saldo) || 0,
       monedaId: Number(detalleContratista.monedaId),
       estadoId: Number(detalleContratista.estadoId),
-      preFacturaId: detalleContratista.preFacturaId ? Number(detalleContratista.preFacturaId) : null,
       urlDocumentoContratista: detalleContratista.urlDocumentoContratista?.trim() || null,
       urlFotosProductos: detalleContratista.urlFotosProductos?.trim() || null,
       urlFotosAntes: detalleContratista.urlFotosAntes?.trim() || null,
@@ -228,6 +224,63 @@ export const validarDuplicado = async (otMantenimientoId, numeroLinea, excludeId
     return response.data.existeDuplicado;
   } catch (error) {
     console.error('Error al validar duplicado:', error);
+    throw error;
+  }
+};
+
+
+
+/**
+ * Lista los documentos de compra (OrdenCompra) generados desde un presupuesto
+ * @param {number} presupuestoId - ID del presupuesto (DetContratistasOT)
+ * @returns {Promise<Array>} Lista de documentos generados
+ */
+export const getDocumentosCompraPorPresupuesto = async (presupuestoId) => {
+  try {
+    const response = await axios.get(`${API_URL}/${presupuestoId}/documentos-compra`, getAuthHeaders());
+    return response.data;
+  } catch (error) {
+    console.error(`Error al obtener documentos de compra del presupuesto ${presupuestoId}:`, error);
+    throw error;
+  }
+};
+
+
+
+/**
+ * Busca productos equivalentes en la empresa seleccionada para los ítems del presupuesto
+ * (coincidencia por Producto.descripcionArmada)
+ * @param {number} presupuestoId - ID del presupuesto (DetContratistasOT)
+ * @param {number} empresaId - ID de la empresa que facturará el documento
+ * @returns {Promise<Object>} Ítems del presupuesto con sus productos equivalentes
+ */
+export const getProductosEquivalentes = async (presupuestoId, empresaId) => {
+  try {
+    const response = await axios.get(`${API_URL}/${presupuestoId}/productos-equivalentes`, {
+      ...getAuthHeaders(),
+      params: { empresaId }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al buscar productos equivalentes:', error);
+    throw error;
+  }
+};
+
+
+
+/**
+ * Genera un documento de compra (OrdenCompra + CxP + asientos) desde un presupuesto
+ * @param {number} presupuestoId - ID del presupuesto (DetContratistasOT)
+ * @param {Object} datos - Datos del documento a generar (modo, empresa, proveedor, ítems, etc.)
+ * @returns {Promise<Object>} Resultado con la OC generada
+ */
+export const generarDocumentoCompra = async (presupuestoId, datos) => {
+  try {
+    const response = await axios.post(`${API_URL}/${presupuestoId}/generar-documento-compra`, datos, getAuthHeaders());
+    return response.data;
+  } catch (error) {
+    console.error('Error al generar documento de compra:', error);
     throw error;
   }
 };

@@ -85,7 +85,7 @@ export const useFiltrosOpciones = (documentos = [], tipo) => {
       }
 
       // Entidades comerciales (para TODOS)
-      if (doc.entidadComercial) {
+      if (doc.entidadComercial && !doc.esAsignacion) {
         const key = doc.entidadComercial.id;
         if (!entidadesMap.has(key)) {
           entidadesMap.set(key, {
@@ -199,9 +199,9 @@ export const useFiltrosOpciones = (documentos = [], tipo) => {
         }
       }
 
-      // Cuotas de préstamo: banco, tipo de préstamo y préstamo (filtro en cascada).
+      // Cuotas y desembolsos de préstamo: banco, tipo de préstamo y préstamo (filtro en cascada).
       // Cada préstamo lleva su banco y su tipo para poder acotar las listas entre sí.
-      if (doc.esCuotaPrestamo && doc.prestamo) {
+      if ((doc.esCuotaPrestamo || doc.esDesembolsoPrestamo) && doc.prestamo) {
         const saldo = Number(doc.saldoPendiente || 0);
         const acumular = (mapa, id, datos) => {
           if (!mapa.has(id)) mapa.set(id, { id, ...datos, cantidad: 0, total: 0 });

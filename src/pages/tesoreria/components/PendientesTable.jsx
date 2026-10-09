@@ -109,7 +109,6 @@ const COLUMNAS_POR_CASO = {
     "tipo",
     "origen",
     "documento",
-    "entidad",
     "fechaEmision",
     "fechaVencimiento",
     "composicion",
@@ -143,6 +142,7 @@ const PendientesTable = ({
   onPagarDeudaTributaria,
   onPagoEspecializado,
   onPagoEspecializadoCxP,
+  onProcesarGastoDirecto,
   permisos,
   tipo,
   tipoDeuda,
@@ -163,6 +163,32 @@ const PendientesTable = ({
   };
 
   const documentoTemplate = (rowData) => {
+    // Desembolsos de préstamo: mostrar info rica en una sola línea (patrón CuentaCorrienteSelector)
+    if (rowData.esDesembolsoPrestamo) {
+      return (
+        <span style={{ display: "inline-flex", gap: "0.25rem", alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontWeight: "700", color: "#1565C0" }}>
+            {rowData.prestamo?.numeroPrestamo || rowData.documentoNumero}
+          </span>
+          <span style={{ color: "#999" }}>-</span>
+          <span style={{ color: "#1976D2", fontWeight: "600" }}>
+            {rowData.entidadComercial?.razonSocial || "Sin banco"}
+          </span>
+          <span style={{ color: "#999" }}>-</span>
+          <span style={{ color: "#2E7D32", fontWeight: "600" }}>
+            {rowData.moneda?.codigoSunat || "N/A"}
+          </span>
+          {rowData.prestamo?.tipoPrestamo && (
+            <>
+              <span style={{ color: "#999" }}>-</span>
+              <span style={{ color: "#F57C00", fontWeight: "500" }}>
+                {rowData.prestamo.tipoPrestamo}
+              </span>
+            </>
+          )}
+        </span>
+      );
+    }
     return (
       <div>
         <div className="text-sm text-gray-600">{rowData.documentoNumero}</div>
@@ -341,6 +367,20 @@ const PendientesTable = ({
         />
       );
     }
+
+    // Gastos directos: abrir formulario de rendición para completar datos y generar documentos
+    if (rowData.origen === "Gasto Directo") {
+      return (
+        <Button
+          label="Procesar Gasto"
+          icon="pi pi-file-edit"
+          className="p-button-sm p-button-warning"
+          onClick={() => onProcesarGastoDirecto?.(rowData)}
+          tooltip="Completar datos y generar OC, CxP y asientos"
+          tooltipOptions={{ position: "left" }}
+        />
+      );
+    }
     // AGREGAR ESTE BLOQUE DESPUÉS DE LA ASIGNACIÓN
     // Si es una deuda personal, mostrar botón específico
     if (rowData.origen === ORIGEN_DOCUMENTO_TESORERIA.DEUDA_PERSONAL) {
@@ -414,11 +454,11 @@ const PendientesTable = ({
   const definicionesColumnas = {
     // Casilla de selección (pago múltiple de Deudas con Personal)
     seleccion: { selectionMode: "multiple", headerStyle: { width: "3rem" }, style: { width: "3rem" } },
-    tipo: { field: "tipo", header: "Tipo", body: tipoTemplate, style: { width: "100px" } },
-    origen: { field: "origen", header: "Origen", style: { width: "150px" } },
-    documento: { header: "Documento", body: documentoTemplate, style: { width: "200px" } },
+    tipo: { field: "tipo", header: "Tipo", body: tipoTemplate, sortable: true, style: { width: "100px" } },
+    origen: { field: "origen", header: "Origen", sortable: true, style: { width: "150px" } },
+    documento: { field: "documentoNumero", header: "Documento", body: documentoTemplate, sortable: true, style: { width: "200px" } },
     tipoDeuda: { header: "Tipo de Deuda", body: tipoDeudaTemplate, style: { width: "200px" } },
-    entidad: { header: "Entidad Comercial", body: entidadTemplate, style: { width: "250px" } },
+    entidad: { field: "entidadComercial.razonSocial", header: "Entidad Comercial", body: entidadTemplate, sortable: true, style: { width: "250px" } },
     personal: { header: "Personal", body: personalTemplate, style: { width: "250px" } },
     fechaEmision: {
       header: "F. Emisión",

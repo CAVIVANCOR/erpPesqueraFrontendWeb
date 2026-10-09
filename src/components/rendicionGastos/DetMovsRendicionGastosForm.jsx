@@ -59,6 +59,8 @@ const DetMovsRendicionGastosForm = ({
   onCancelar,
   permisos = {},
   onEntidadComercialCreada,
+  modoGasto = "normal", // 'normal' | 'directo'
+  onGeneracionDocumentosExitosa,
 }) => {
   const toast = useRef(null);
   const isEditing = !!movimiento;
@@ -727,7 +729,10 @@ const DetMovsRendicionGastosForm = ({
 
     // Opcional: Actualizar solo el movimiento actual sin recargar toda la lista
     // Si necesitas refrescar datos específicos, hazlo aquí de forma selectiva
+    onGeneracionDocumentosExitosa?.(resultado);
   };
+
+  const esModoDirecto = modoGasto === "directo";
 
   const handleClickGenerarDocumentos = () => {
     // Las reglas viven en utils/generacionDocumentosFinancieros (compartidas con la lista)
@@ -1483,58 +1488,7 @@ const DetMovsRendicionGastosForm = ({
                   disabled={formularioDeshabilitado}
                 />
               </div>
-              <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">
-                  Liquidación Tripulantes
-                </label>
-                <Button
-                  type="button"
-                  label={
-                    formaParteCalculoLiquidacionTripulantes
-                      ? "INCLUIDO"
-                      : "EXCLUIDO"
-                  }
-                  icon={
-                    formaParteCalculoLiquidacionTripulantes
-                      ? "pi pi-check-circle"
-                      : "pi pi-times-circle"
-                  }
-                  className={
-                    formaParteCalculoLiquidacionTripulantes
-                      ? "p-button-success"
-                      : "p-button-secondary"
-                  }
-                  onClick={handleToggleCalculoLiquidacion}
-                  size="small"
-                  style={{ width: "100%" }}
-                  disabled={formularioDeshabilitado}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">
-                  Liq. Alquiler Cuota
-                </label>
-                <Button
-                  type="button"
-                  label={
-                    formaParteCalculoLiqAlquilerCuota ? "INCLUIDO" : "EXCLUIDO"
-                  }
-                  icon={
-                    formaParteCalculoLiqAlquilerCuota
-                      ? "pi pi-check-circle"
-                      : "pi pi-times-circle"
-                  }
-                  className={
-                    formaParteCalculoLiqAlquilerCuota
-                      ? "p-button-success"
-                      : "p-button-secondary"
-                  }
-                  onClick={handleToggleCalculoLiqAlquilerCuota}
-                  size="small"
-                  style={{ width: "100%" }}
-                  disabled={formularioDeshabilitado}
-                />
-              </div>
+
               {/* Campo Activo Afecto */}
               <div style={{ flex: 4 }}>
                 <Controller
@@ -1750,6 +1704,58 @@ const DetMovsRendicionGastosForm = ({
                   className="p-inputtext-sm"
                 />
               </div>
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Liquidación Tripulantes
+                </label>
+                <Button
+                  type="button"
+                  label={
+                    formaParteCalculoLiquidacionTripulantes
+                      ? "INCLUIDO"
+                      : "EXCLUIDO"
+                  }
+                  icon={
+                    formaParteCalculoLiquidacionTripulantes
+                      ? "pi pi-check-circle"
+                      : "pi pi-times-circle"
+                  }
+                  className={
+                    formaParteCalculoLiquidacionTripulantes
+                      ? "p-button-success"
+                      : "p-button-secondary"
+                  }
+                  onClick={handleToggleCalculoLiquidacion}
+                  size="small"
+                  style={{ width: "100%" }}
+                  disabled={formularioDeshabilitado}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Liq. Alquiler Cuota
+                </label>
+                <Button
+                  type="button"
+                  label={
+                    formaParteCalculoLiqAlquilerCuota ? "INCLUIDO" : "EXCLUIDO"
+                  }
+                  icon={
+                    formaParteCalculoLiqAlquilerCuota
+                      ? "pi pi-check-circle"
+                      : "pi pi-times-circle"
+                  }
+                  className={
+                    formaParteCalculoLiqAlquilerCuota
+                      ? "p-button-success"
+                      : "p-button-secondary"
+                  }
+                  onClick={handleToggleCalculoLiqAlquilerCuota}
+                  size="small"
+                  style={{ width: "100%" }}
+                  disabled={formularioDeshabilitado}
+                />
+              </div>
             </div>
           </form>
         </Card>
@@ -1911,8 +1917,16 @@ const DetMovsRendicionGastosForm = ({
               size="small"
               severity="info"
               onClick={handleClickGenerarDocumentos}
-              disabled={!puedeGenerarDocumentos(movimiento)}
-              tooltip="Genera automáticamente: OC, CxP, Pago y Asientos Contables (solo gastos de una entrega a rendir)"
+              disabled={
+                esModoDirecto
+                  ? !validarRequisitosGeneracion(movimiento).valido
+                  : !puedeGenerarDocumentos(movimiento)
+              }
+              tooltip={
+                esModoDirecto
+                  ? "Genera automáticamente: OC, CxP y Asientos Contables (sin pago; se cancela por Caja)"
+                  : "Genera automáticamente: OC, CxP, Pago y Asientos Contables (solo gastos de una entrega a rendir)"
+              }
               tooltipOptions={{ position: "top" }}
             />
           )}
@@ -1934,6 +1948,7 @@ const DetMovsRendicionGastosForm = ({
         visible={generadorDocumentosVisible}
         onHide={() => setGeneradorDocumentosVisible(false)}
         detMovEntregaRendir={movimiento}
+        esGastoDirecto={esModoDirecto}
         onGeneracionExitosa={handleGeneracionDocumentosExitosa}
         toast={toast}
       />

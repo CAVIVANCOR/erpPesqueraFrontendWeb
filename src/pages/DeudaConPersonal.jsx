@@ -63,6 +63,7 @@ export default function DeudaConPersonal({ ruta }) {
   const [periodoContableSeleccionado, setPeriodoContableSeleccionado] = useState(null);
   // null = todas | true = solo saldo inicial | false = solo deudas nuevas
   const [saldoInicialSeleccionado, setSaldoInicialSeleccionado] = useState(null);
+  const [contabilizadaSeleccionada, setContabilizadaSeleccionada] = useState(null);
   const [periodosContablesFiltrados, setPeriodosContablesFiltrados] = useState([]);
 
   // Opciones dinámicas para filtros
@@ -182,6 +183,12 @@ export default function DeudaConPersonal({ ruta }) {
       );
     }
 
+    if (contabilizadaSeleccionada !== null) {
+      filtrados = filtrados.filter(
+        (item) => (item.asientosContables?.length > 0) === contabilizadaSeleccionada
+      );
+    }
+
     // Personal y tipo de deuda son filtros múltiples: las opciones de cada uno se arman con el
     // otro aplicado pero sin el propio, para poder elegir varios
     const porPersonal = (lista) =>
@@ -209,6 +216,7 @@ export default function DeudaConPersonal({ ruta }) {
     tipoPagoSeleccionado,
     saldoInicialSeleccionado,
     periodoContableSeleccionado,
+    contabilizadaSeleccionada,
     deudas,
   ]);
 
@@ -489,6 +497,7 @@ export default function DeudaConPersonal({ ruta }) {
     setMonedaSeleccionada(null);
     setTipoPagoSeleccionado("TODOS");
     setSaldoInicialSeleccionado(null);
+    setContabilizadaSeleccionada(null);
     setPeriodoContableSeleccionado(null);
   };
 
@@ -938,6 +947,28 @@ export default function DeudaConPersonal({ ruta }) {
                   labelFalse={saldoInicialSeleccionado === false ? "DEUDA NUEVA" : "TODOS"}
                   severityTrue="primary"
                   severityFalse={saldoInicialSeleccionado === false ? "info" : "secondary"}
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label style={{ fontWeight: "bold", display: "block", marginBottom: "0.25rem" }}>
+                  Contabilización
+                </label>
+                <BooleanToggleButton
+                  value={contabilizadaSeleccionada === true}
+                  onChange={() =>
+                    setContabilizadaSeleccionada(
+                      contabilizadaSeleccionada === null
+                        ? true
+                        : contabilizadaSeleccionada === true
+                          ? false
+                          : null
+                    )
+                  }
+                  labelTrue="CONTABILIZADAS"
+                  labelFalse={contabilizadaSeleccionada === false ? "PENDIENTES" : "TODAS"}
+                  severityTrue="success"
+                  severityFalse={contabilizadaSeleccionada === false ? "warning" : "secondary"}
                   disabled={loading}
                 />
               </div>

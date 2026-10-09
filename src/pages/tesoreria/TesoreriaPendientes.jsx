@@ -29,6 +29,19 @@ import PagarDeudaPersonalDialog from "../../components/tesoreria/PagarDeudaPerso
 import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ AGREGAR
 import PagarDeudaTributariaDialog from "../../components/tesoreria/PagarDeudaTributariaDialog";
 import TransferenciaInternaDialog from "../../components/movimientoCaja/transferenciaEspecializada/TransferenciaInternaDialog";
+import DetMovsRendicionGastosForm from "../../components/rendicionGastos/DetMovsRendicionGastosForm";
+import PagarGastoDirectoDialog from "../../components/movimientoCaja/GastoDirectoEspecializado/PagarGastoDirectoDialog";
+import {
+  crearDetMovsEntregaRendir,
+  actualizarDetMovsEntregaRendir,
+  getDetMovsEntregaRendirPorId,
+} from "../../api/detMovsEntregaRendir";
+import { getPersonalActivoPorEmpresa } from "../../api/personal";
+import { getCentrosCosto } from "../../api/centroCosto";
+import { getAllCategoriaTipoMovEntregaRendir } from "../../api/categoriaTipoMovEntregaRendir";
+import { getEntidadesComercialesPorEmpresa } from "../../api/entidadComercial";
+import { getTiposDocumento } from "../../api/tipoDocumento";
+import { getProductos } from "../../api/producto";
 import { getEntidadComercialPorId } from "../../api/entidadComercial";
 import { getCuentaPorCobrarById } from "../../api/cuentasPorCobrarPagar/cuentaPorCobrar";
 import { getCuentaPorPagarById } from "../../api/cuentasPorCobrarPagar/cuentaPorPagar";
@@ -91,7 +104,25 @@ const TesoreriaPendientes = () => {
   const [showPagoProveedorDialog, setShowPagoProveedorDialog] = useState(false);
   const [showRetiroDineroDialog, setShowRetiroDineroDialog] = useState(false);
   const [showIngresoDineroDialog, setShowIngresoDineroDialog] = useState(false);
-  const [showGastoUrgenteDialog, setShowGastoUrgenteDialog] = useState(false);
+  // Gasto Urgente ya no se usa como operación independiente; ahora está dentro de Gastos Directos
+  const [showGastosDirectosDialog, setShowGastosDirectosDialog] = useState(false);
+  const [showGastoDirectoFormDialog, setShowGastoDirectoFormDialog] = useState(false);
+  const [gastoDirectoFormMode, setGastoDirectoFormMode] = useState(null); // 'crear' | 'editar'
+  const [gastoDirectoSeleccionado, setGastoDirectoSeleccionado] = useState(null);
+  const [showPagarGastoDirectoDialog, setShowPagarGastoDirectoDialog] = useState(false);
+  const [pagoGastoDirectoCxPId, setPagoGastoDirectoCxPId] = useState(null);
+  const [pagoGastoDirectoDetMovId, setPagoGastoDirectoDetMovId] = useState(null);
+  const [pagoGastoDirectoTipoMovId, setPagoGastoDirectoTipoMovId] = useState(null);
+  const [catalogosGastoDirecto, setCatalogosGastoDirecto] = useState({
+    personal: [],
+    centrosCosto: [],
+    categorias: [],
+    entidadesComerciales: [],
+    tiposDocumento: [],
+    productos: [],
+    movimientosAsignacion: [],
+    loading: false,
+  });
 
   const [filtros, setFiltros] = useState({
     empresaId: usuario?.empresaId || null,
@@ -653,12 +684,174 @@ const TesoreriaPendientes = () => {
       case TIPO_OPERACION_TESORERIA.INGRESO_DINERO:
         setShowIngresoDineroDialog(true);
         break;
-      case TIPO_OPERACION_TESORERIA.GASTO_URGENTE:
-        setShowGastoUrgenteDialog(true);
-        break;
       default:
         console.warn("Operación no reconocida:", operacion);
     }
+  };
+
+  // ════════════════════════════════════════════════════════════
+  // GASTOS DIRECTOS
+  // ════════════════════════════════════════════════════════════
+  const handleGastosDirectosClick = () => {
+    setShowGastosDirectosDialog(true);
+  };
+
+  const handleGastoDirectoSolicitado = () => {
+    setFiltros((prev) => ({ ...prev, tipo: TIPO_FILTRO_TESORERIA.GASTOS_DIRECTOS }));
+    setShowGastosDirectosDialog(false);
+  };
+
+  const cargarCatalogosGastoDirecto = async () => {
+    if (catalogosGastoDirecto.loading) return;
+    setCatalogosGastoDirecto((prev) => ({ ...prev, loading: true }));
+    try {
+      const empresaId = filtros.empresaId || usuario?.empresaId;
+      const [
+        personalData,
+        centrosCostoData,
+        categoriasData,
+        entidadesData,
+        tiposDocumentoData,
+        productosData,
+      ] = await Promise.all([
+        getPersonalActivoPorEmpresa(empresaId),
+        getCentrosCosto(),
+        getAllCategoriaTipoMovEntregaRendir(),
+        getEntidadesComercialesPorEmpresa(empresaId),
+        getTiposDocumento(),
+        getProductos(),
+      ]);
+      setCatalogosGastoDirecto({
+        personal: personalData || [],
+        centrosCosto: centrosCostoData || [],
+        categorias: categoriasData || [],
+        entidadesComerciales: entidadesData || [],
+        tiposDocumento: tiposDocumentoData || [],
+        productos: productosData || [],
+        movimientosAsignacion: [],
+        loading: false,
+      });
+    } catch (error) {
+      console.error("Error al cargar catálogos de gasto directo:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar los catálogos necesarios",
+        life: 3000,
+      });
+      setCatalogosGastoDirecto((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleGastoDirectoUrgente = async () => {
+    setGastoDirectoSeleccionado(null);
+    setGastoDirectoFormMode("crear");
+    setShowGastosDirectosDialog(false);
+    setShowGastoDirectoFormDialog(true);
+    await cargarCatalogosGastoDirecto();
+  };
+
+  const handleProcesarGastoDirecto = async (rowData) => {
+    try {
+      const movimiento = await getDetMovsEntregaRendirPorId(rowData.origenId);
+      setGastoDirectoSeleccionado(movimiento);
+      setGastoDirectoFormMode("editar");
+      setShowGastoDirectoFormDialog(true);
+      await cargarCatalogosGastoDirecto();
+    } catch (error) {
+      console.error("Error al cargar gasto directo:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar el gasto directo",
+        life: 3000,
+      });
+    }
+  };
+
+  const refrescarGastoDirecto = async (id) => {
+    try {
+      const movimiento = await getDetMovsEntregaRendirPorId(id);
+      setGastoDirectoSeleccionado(movimiento);
+    } catch (error) {
+      console.error("Error al refrescar gasto directo:", error);
+    }
+  };
+
+  const handleGuardarGastoDirecto = async (data) => {
+    try {
+      let resultado;
+      if (gastoDirectoFormMode === "crear") {
+        resultado = await crearDetMovsEntregaRendir(data);
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Gasto directo creado correctamente",
+          life: 3000,
+        });
+      } else {
+        resultado = await actualizarDetMovsEntregaRendir(gastoDirectoSeleccionado.id, data);
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Gasto directo actualizado correctamente",
+          life: 3000,
+        });
+      }
+      if (resultado?.id) {
+        await refrescarGastoDirecto(resultado.id);
+      }
+      recargarPendientes();
+      // En modo creación, dejamos el formulario abierto en modo edición para que pueda generar documentos.
+      if (gastoDirectoFormMode === "crear" && resultado?.id) {
+        setGastoDirectoFormMode("editar");
+      }
+    } catch (error) {
+      console.error("Error al guardar gasto directo:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.error || "Error al guardar el gasto directo",
+        life: 3000,
+      });
+    }
+  };
+
+  const handleCerrarGastoDirectoForm = () => {
+    setShowGastoDirectoFormDialog(false);
+    setGastoDirectoSeleccionado(null);
+    setGastoDirectoFormMode(null);
+  };
+
+  const handleGeneracionGastoDirectoExitosa = (resultado) => {
+    const cxpId = resultado?.documentosGenerados?.cuentaPorPagar?.id;
+    const detMovId = gastoDirectoSeleccionado?.id || resultado?.documentosGenerados?.detMovsEntregaRendirId;
+
+    if (cxpId) {
+      setPagoGastoDirectoCxPId(cxpId);
+      setPagoGastoDirectoDetMovId(detMovId || null);
+      setPagoGastoDirectoTipoMovId(gastoDirectoSeleccionado?.tipoMovimientoId || null);
+      setShowPagarGastoDirectoDialog(true);
+    } else {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Atención",
+        detail: "Documentos generados, pero no se encontró la CxP para el pago",
+        life: 3000,
+      });
+    }
+
+    recargarPendientes();
+    handleCerrarGastoDirectoForm();
+  };
+
+  const handlePagoGastoDirectoExitoso = () => {
+    setShowPagarGastoDirectoDialog(false);
+    setPagoGastoDirectoCxPId(null);
+    setPagoGastoDirectoDetMovId(null);
+    setPagoGastoDirectoTipoMovId(null);
+    recargarPendientes();
+    recargarSaldos();
   };
 
   return (
@@ -708,6 +901,7 @@ const TesoreriaPendientes = () => {
         onOperacion={handleOperacion}
         opcionesFiltros={opcionesFiltros} // ✅ NUEVO: Para filtros avanzados
         onOpenFiltrosDialog={handleOpenFiltrosDialog} // ✅ NUEVO: Para abrir diálogo
+        onGastosDirectosClick={handleGastosDirectosClick} // ✅ NUEVO: Diálogo de gastos directos
       />
 
       {/* Diálogo de Filtros Avanzados */}
@@ -723,22 +917,19 @@ const TesoreriaPendientes = () => {
       />
       
       {/* Tabla de Pendientes */}
-      <Card
-        title={
-          <div className="flex justify-content-between align-items-center">
-            <span>📋 Documentos Pendientes</span>
-            {(hayFiltroDeuda || esCobrar || esPagar) && permisos.puedeCrear && (
-              <Button
-                label={`${esCobrar ? "Cobrar" : esPrestamoDesembolsos ? "Registrar desembolso" : "Pagar"}${esPrestamoDesembolsos ? "" : " seleccionados"} (${deudasSeleccionadas.length})${etiquetaTotalSeleccion ? ` · ${etiquetaTotalSeleccion}` : ""}`}
-                icon="pi pi-money-bill"
-                severity="success"
-                disabled={deudasSeleccionadas.length === 0}
-                onClick={handlePagarSeleccionadas}
-              />
-            )}
-          </div>
-        }
-      >
+      <div className="flex justify-content-between align-items-center mb-2">
+        <span className="text-xl font-bold">📋 Documentos Pendientes</span>
+        {(hayFiltroDeuda || esCobrar || esPagar) && permisos.puedeCrear && (
+          <Button
+            label={`${esCobrar ? "Cobrar" : esPrestamoDesembolsos ? "Registrar desembolso" : "Pagar"}${esPrestamoDesembolsos ? "" : " seleccionados"} (${deudasSeleccionadas.length})${etiquetaTotalSeleccion ? ` · ${etiquetaTotalSeleccion}` : ""}`}
+            icon="pi pi-money-bill"
+            severity="success"
+            disabled={deudasSeleccionadas.length === 0}
+            onClick={handlePagarSeleccionadas}
+          />
+        )}
+      </div>
+      <Card>
         <PendientesTable
           pendientes={pendientes}
           loading={loadingPendientes}
@@ -748,6 +939,7 @@ const TesoreriaPendientes = () => {
           onPagarDeudaTributaria={handlePagarDeudaTributaria}
           onPagoEspecializado={handlePagoEspecializado}
           onPagoEspecializadoCxP={handlePagoEspecializadoCxP}
+          onProcesarGastoDirecto={handleProcesarGastoDirecto}
           permisos={permisos}
           tipo={filtros.tipo}
           tipoDeuda={filtros.tipoDeuda}
@@ -1097,15 +1289,106 @@ const TesoreriaPendientes = () => {
         <p>Funcionalidad en desarrollo...</p>
       </Dialog>
 
+      {/* Diálogo para elegir el tipo de Gasto Directo */}
       <Dialog
-        header="🚨 Gasto Directo Urgente"
-        visible={showGastoUrgenteDialog}
-        style={{ width: "90vw", maxWidth: "900px" }}
-        onHide={() => setShowGastoUrgenteDialog(false)}
+        header="🚨 Gastos Directos"
+        visible={showGastosDirectosDialog}
+        style={{ width: "90vw", maxWidth: "500px" }}
+        onHide={() => setShowGastosDirectosDialog(false)}
         modal
+        closable={false}
       >
-        <p>Funcionalidad en desarrollo...</p>
+        <div className="p-fluid" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <p style={{ margin: 0, color: "#555" }}>
+            Seleccione el tipo de gasto directo que desea atender:
+          </p>
+          <Button
+            label="📝 Gasto Solicitado por Responsable"
+            icon="pi pi-users"
+            severity="info"
+            onClick={handleGastoDirectoSolicitado}
+            style={{ justifyContent: "flex-start" }}
+          />
+          <Button
+            label="🚨 Gasto Urgente"
+            icon="pi pi-bolt"
+            severity="warning"
+            onClick={handleGastoDirectoUrgente}
+            style={{ justifyContent: "flex-start" }}
+          />
+          <Button
+            label="Cancelar"
+            icon="pi pi-times"
+            className="p-button-secondary"
+            onClick={() => setShowGastosDirectosDialog(false)}
+          />
+        </div>
       </Dialog>
+
+      {/* Diálogo para crear/editar gasto directo y generar documentos */}
+      <Dialog
+        header={gastoDirectoFormMode === "crear" ? "🚨 Nuevo Gasto Directo Urgente" : "📝 Procesar Gasto Directo"}
+        visible={showGastoDirectoFormDialog}
+        style={{ width: "95vw", maxWidth: "1400px" }}
+        onHide={handleCerrarGastoDirectoForm}
+        modal
+        maximizable
+        maximized={window.innerWidth < 768}
+      >
+        <DetMovsRendicionGastosForm
+          key={gastoDirectoSeleccionado?.id || "nuevo-gasto-directo"}
+          movimiento={gastoDirectoSeleccionado}
+          modoGasto="directo"
+          personal={catalogosGastoDirecto.personal}
+          centrosCosto={catalogosGastoDirecto.centrosCosto}
+          tiposMovimiento={tiposMovimiento}
+          categorias={catalogosGastoDirecto.categorias}
+          entidadesComerciales={catalogosGastoDirecto.entidadesComerciales}
+          monedas={monedas}
+          tiposDocumento={catalogosGastoDirecto.tiposDocumento}
+          productos={catalogosGastoDirecto.productos}
+          empresas={empresas}
+          movimientosAsignacionEntregaRendir={catalogosGastoDirecto.movimientosAsignacion}
+          todosLosMovimientos={[]}
+          onGuardadoExitoso={handleGuardarGastoDirecto}
+          onCancelar={handleCerrarGastoDirectoForm}
+          onGeneracionDocumentosExitosa={handleGeneracionGastoDirectoExitosa}
+          onEntidadComercialCreada={(nuevaEntidad) => {
+            setCatalogosGastoDirecto((prev) => ({
+              ...prev,
+              entidadesComerciales: [...prev.entidadesComerciales, nuevaEntidad],
+            }));
+          }}
+          permisos={permisos}
+        />
+      </Dialog>
+
+      {/* Diálogo de pago especializado para Gasto Directo */}
+      <PagarGastoDirectoDialog
+        visible={showPagarGastoDirectoDialog}
+        onHide={() => {
+          setShowPagarGastoDirectoDialog(false);
+          setPagoGastoDirectoCxPId(null);
+          setPagoGastoDirectoDetMovId(null);
+          setPagoGastoDirectoTipoMovId(null);
+        }}
+        cuentaPorPagarId={pagoGastoDirectoCxPId}
+        detMovsEntregaRendirId={pagoGastoDirectoDetMovId}
+        tipoMovimientoIdHeredado={pagoGastoDirectoTipoMovId}
+        monedas={monedas}
+        mediosPago={mediosPago}
+        bancos={bancos}
+        cuentasCorrientes={saldosCuentas}
+        tiposMovimiento={tiposMovimiento}
+        tiposDetraccion={tiposDetraccion}
+        tiposRetencionPercepcion={tiposRetencionPercepcion}
+        periodosContables={periodosContables}
+        empresas={empresas}
+        proveedores={proveedores}
+        estadosCxP={estadosCxP}
+        toast={toast}
+        onSuccess={handlePagoGastoDirectoExitoso}
+      />
 
       {/* Diálogo para pago especializado de cuenta por pagar */}
       {cuentaPorPagarEspecializada && (() => {

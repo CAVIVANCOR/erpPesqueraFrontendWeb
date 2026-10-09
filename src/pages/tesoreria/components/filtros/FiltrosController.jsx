@@ -43,7 +43,7 @@ const FiltrosController = ({
       return <FiltrosPrestamo {...props} conFiltrosPrestamo />;
     }
     if (tipoDeuda === TIPO_DEUDA_TESORERIA.PRESTAMOS_DESEMBOLSOS) {
-      return <FiltrosPrestamo {...props} etiquetaFecha="Rango de Fechas de Desembolso" />;
+      return <FiltrosPrestamo {...props} conFiltrosPrestamo etiquetaFecha="Rango de Fechas de Desembolso" />;
     }
 
     switch (tipo) {

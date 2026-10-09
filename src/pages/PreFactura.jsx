@@ -127,11 +127,9 @@ const PreFactura = ({ ruta }) => {
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState(null);
-  const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [rangoFechas, setRangoFechas] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [filtroParticionadas, setFiltroParticionadas] = useState(null);
-  const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [productosUnicos, setProductosUnicos] = useState([]);
   const [tiposDocInternoAplicados, setTiposDocInternoAplicados] = useState([]);
   const [tiposDocFinalAplicados, setTiposDocFinalAplicados] = useState([]);
@@ -169,6 +167,11 @@ const PreFactura = ({ ruta }) => {
   // Estados temporales para filtros avanzados (no aplicados aún)
   const [tiposDocInternoTemp, setTiposDocInternoTemp] = useState([]);
   const [tiposDocFinalTemp, setTiposDocFinalTemp] = useState([]);
+  const [clientesAplicados, setClientesAplicados] = useState([]);
+  const [productosAplicados, setProductosAplicados] = useState([]);
+  const [clientesTemp, setClientesTemp] = useState([]);
+  const [productosTemp, setProductosTemp] = useState([]);
+  const [panelFiltrosAbierto, setPanelFiltrosAbierto] = useState(false);
 
   const toast = useRef(null);
   const menuExport = useRef(null);
@@ -466,39 +469,32 @@ const PreFactura = ({ ruta }) => {
     }
   ];
 
-  // Obtener opciones únicas de los datos filtrados
-  const obtenerOpcionesDinamicas = () => {
-    const datosParaOpciones = itemsFiltrados.length > 0 ? itemsFiltrados : preFacturasFiltradas;
-    // Clientes únicos (filtrados por empresa si hay una seleccionada)
-    const clientesUnicos = [...new Map(
-      datosParaOpciones
+  // Opciones de cada filtro avanzado: se calculan sobre las ventas que cumplen
+  // TODOS los demás filtros (cada filtro se excluye a sí mismo), para que sean dinámicos y cruzados.
+  const opcionesFacetas = (facets) => {
+    const ordenarPorDescripcion = (a, b) =>
+      (a.descripcion || a.nombre || "").localeCompare(b.descripcion || b.nombre || "");
+
+    const clientes = [...new Map(
+      filtrarItems(facets, ["cliente"])
         .filter(pf => pf.cliente)
-        .filter(pf => !empresaSeleccionada || Number(pf.empresaId) === Number(empresaSeleccionada))
         .map(pf => [pf.cliente.id, pf.cliente])
     ).values()];
-    // Estados únicos
-    const estadosUnicos = [...new Map(
-      datosParaOpciones
-        .filter(pf => pf.estadoDoc)
-        .map(pf => [pf.estadoDoc.id, pf.estadoDoc])
-    ).values()];
-    // Tipos de Documento Interno disponibles (basados en datos filtrados)
-    const tiposDocInternoDisponibles = [...new Map(
-      datosParaOpciones
+
+    const tiposInterno = [...new Map(
+      filtrarItems(facets, ["tipoInterno"])
         .filter(pf => pf.tipoDocumento)
         .map(pf => [pf.tipoDocumento.id, pf.tipoDocumento])
-    ).values()].sort((a, b) => (a.descripcion || a.nombre || "").localeCompare(b.descripcion || b.nombre || ""));
+    ).values()].sort(ordenarPorDescripcion);
 
-    // Tipos de Documento Final disponibles (basados en datos filtrados)
-    const tiposDocFinalDisponibles = [...new Map(
-      datosParaOpciones
+    const tiposFinal = [...new Map(
+      filtrarItems(facets, ["tipoFinal"])
         .filter(pf => pf.tipoDocumentoFinal)
         .map(pf => [pf.tipoDocumentoFinal.id, pf.tipoDocumentoFinal])
-    ).values()].sort((a, b) => (a.descripcion || a.nombre || "").localeCompare(b.descripcion || b.nombre || ""));
+    ).values()].sort(ordenarPorDescripcion);
 
-    // Productos únicos (de los detalles)
     const productosMap = new Map();
-    datosParaOpciones.forEach((pf) => {
+    filtrarItems(facets, ["producto"]).forEach((pf) => {
       if (pf.detalles && Array.isArray(pf.detalles)) {
         pf.detalles.forEach((detalle) => {
           if (detalle.producto && detalle.producto.id) {
@@ -510,9 +506,35 @@ const PreFactura = ({ ruta }) => {
         });
       }
     });
-    const productosUnicos = Array.from(productosMap.values()).sort((a, b) =>
+    const productos = Array.from(productosMap.values()).sort((a, b) =>
       a.descripcionArmada.localeCompare(b.descripcionArmada)
     );
+
+    return { clientes, productos, tiposInterno, tiposFinal };
+  };
+
+  const facetsAplicados = {
+    clientes: clientesAplicados,
+    productos: productosAplicados,
+    tiposInterno: tiposDocInternoAplicados,
+    tiposFinal: tiposDocFinalAplicados,
+  };
+
+  // Obtener opciones únicas de los datos filtrados
+  const obtenerOpcionesDinamicas = () => {
+    const datosParaOpciones = itemsFiltrados.length > 0 ? itemsFiltrados : preFacturasFiltradas;
+    // Estados únicos
+    const estadosUnicos = [...new Map(
+      datosParaOpciones
+        .filter(pf => pf.estadoDoc)
+        .map(pf => [pf.estadoDoc.id, pf.estadoDoc])
+    ).values()];
+    const {
+      clientes: clientesUnicos,
+      productos: productosUnicos,
+      tiposInterno: tiposDocInternoDisponibles,
+      tiposFinal: tiposDocFinalDisponibles,
+    } = opcionesFacetas(facetsAplicados);
 
     return {
       clientesUnicos,
@@ -535,32 +557,32 @@ const PreFactura = ({ ruta }) => {
     setTiposDocFinalDisponibles(opciones.tiposDocFinalDisponibles);
 
     // Limpiar selecciones que ya no existen
-    if (clienteSeleccionado && !opciones.clientesUnicos.find(c => Number(c.id) === Number(clienteSeleccionado))) {
-      setClienteSeleccionado(null);
-    }
     if (estadoSeleccionado && !opciones.estadosUnicos.find(e => Number(e.id) === Number(estadoSeleccionado))) {
       setEstadoSeleccionado(null);
     }
-    if (productoSeleccionado && !opciones.productosUnicos.find(p => Number(p.id) === Number(productoSeleccionado))) {
-      setProductoSeleccionado(null);
+
+    // Depurar filtros avanzados aplicados que ya no existen por otros filtros
+    if (items.length > 0) {
+      const depurar = (aplicados, disponibles, setter) => {
+        const validos = aplicados.filter(id => disponibles.some(d => Number(d.id) === Number(id)));
+        if (validos.length !== aplicados.length) setter(validos);
+      };
+      depurar(clientesAplicados, opciones.clientesUnicos, setClientesAplicados);
+      depurar(productosAplicados, opciones.productosUnicos, setProductosAplicados);
+      depurar(tiposDocInternoAplicados, opciones.tiposDocInternoDisponibles, setTiposDocInternoAplicados);
+      depurar(tiposDocFinalAplicados, opciones.tiposDocFinalDisponibles, setTiposDocFinalAplicados);
     }
   }, [itemsFiltrados, preFacturasFiltradas, empresaSeleccionada]);
 
-  // Filtrar items cuando cambien los filtros
-  useEffect(() => {
+  // Aplica todos los filtros sobre items. `excluir` permite omitir un filtro
+  // ("cliente" | "producto" | "tipoInterno" | "tipoFinal") para calcular sus propias opciones.
+  function filtrarItems(facets = facetsAplicados, excluir = []) {
     let filtrados = items;
 
     // Filtro por empresa
     if (empresaSeleccionada) {
       filtrados = filtrados.filter(
         (item) => Number(item.empresaId) === Number(empresaSeleccionada),
-      );
-    }
-
-    // Filtro por cliente
-    if (clienteSeleccionado) {
-      filtrados = filtrados.filter(
-        (item) => Number(item.clienteId) === Number(clienteSeleccionado),
       );
     }
 
@@ -591,16 +613,33 @@ const PreFactura = ({ ruta }) => {
     }
 
     // Filtro por tipos de documento interno (múltiple)
-    if (tiposDocInternoAplicados && tiposDocInternoAplicados.length > 0) {
+    if (facets.tiposInterno.length > 0 && !excluir.includes("tipoInterno")) {
       filtrados = filtrados.filter((item) =>
-        tiposDocInternoAplicados.some(id => Number(item.tipoDocumentoId) === Number(id))
+        facets.tiposInterno.some(id => Number(item.tipoDocumentoId) === Number(id))
       );
     }
 
     // Filtro por tipos de documento final (múltiple)
-    if (tiposDocFinalAplicados && tiposDocFinalAplicados.length > 0) {
+    if (facets.tiposFinal.length > 0 && !excluir.includes("tipoFinal")) {
       filtrados = filtrados.filter((item) =>
-        tiposDocFinalAplicados.some(id => Number(item.tipoDocumentoFinalId) === Number(id))
+        facets.tiposFinal.some(id => Number(item.tipoDocumentoFinalId) === Number(id))
+      );
+    }
+
+    // Filtro por clientes (múltiple)
+    if (facets.clientes.length > 0 && !excluir.includes("cliente")) {
+      filtrados = filtrados.filter((item) =>
+        facets.clientes.some(id => Number(item.clienteId) === Number(id))
+      );
+    }
+
+    // Filtro por productos del detalle (múltiple): contiene al menos uno
+    if (facets.productos.length > 0 && !excluir.includes("producto")) {
+      filtrados = filtrados.filter((item) =>
+        Array.isArray(item.detalles) &&
+        item.detalles.some((detalle) =>
+          facets.productos.some(id => Number(detalle.producto?.id) === Number(id))
+        )
       );
     }
 
@@ -613,18 +652,6 @@ const PreFactura = ({ ruta }) => {
           item.preFacturaOrigenId !== null &&
           item.preFacturaOrigenId !== undefined,
       );
-    }
-
-    // Filtro por producto seleccionado (dropdown)
-    if (productoSeleccionado) {
-      filtrados = filtrados.filter((item) => {
-        if (item.detalles && Array.isArray(item.detalles)) {
-          return item.detalles.some((detalle) => {
-            return Number(detalle.producto?.id) === Number(productoSeleccionado);
-          });
-        }
-        return false;
-      });
     }
 
     // Filtro por ID (#), número de liquidación o número de documento final
@@ -688,16 +715,21 @@ const PreFactura = ({ ruta }) => {
       });
     }
 
-    setItemsFiltrados(filtrados);
+    return filtrados;
+  }
+
+  // Filtrar items cuando cambien los filtros
+  useEffect(() => {
+    setItemsFiltrados(filtrarItems());
   }, [
     empresaSeleccionada,
-    clienteSeleccionado,
     rangoFechas,
     estadoSeleccionado,
     tiposDocInternoAplicados,
     tiposDocFinalAplicados,
+    clientesAplicados,
+    productosAplicados,
     filtroParticionadas,
-    productoSeleccionado,
     nroLiquidacionBusqueda,
     filtroTipoLibro,
     periodoSeleccionado,
@@ -2017,15 +2049,17 @@ const PreFactura = ({ ruta }) => {
 
   const limpiarFiltros = () => {
     setEmpresaSeleccionada(null);
-    setClienteSeleccionado(null);
     setRangoFechas(null);
     setEstadoSeleccionado(null);
     setTiposDocInternoAplicados([]);
     setTiposDocFinalAplicados([]);
     setTiposDocInternoTemp([]);
     setTiposDocFinalTemp([]);
+    setClientesAplicados([]);
+    setProductosAplicados([]);
+    setClientesTemp([]);
+    setProductosTemp([]);
     setFiltroParticionadas(null);
-    setProductoSeleccionado(null);
     setNroLiquidacionBusqueda("");
     setPeriodoSeleccionado(null);
   };
@@ -2036,6 +2070,8 @@ const PreFactura = ({ ruta }) => {
     // Sincronizar temporales con aplicados al abrir
     setTiposDocInternoTemp([...tiposDocInternoAplicados]);
     setTiposDocFinalTemp([...tiposDocFinalAplicados]);
+    setClientesTemp([...clientesAplicados]);
+    setProductosTemp([...productosAplicados]);
     opFiltrosAvanzados.current.toggle(event);
   };
 
@@ -2043,6 +2079,8 @@ const PreFactura = ({ ruta }) => {
   const aplicarFiltrosAvanzados = () => {
     setTiposDocInternoAplicados([...tiposDocInternoTemp]);
     setTiposDocFinalAplicados([...tiposDocFinalTemp]);
+    setClientesAplicados([...clientesTemp]);
+    setProductosAplicados([...productosTemp]);
     opFiltrosAvanzados.current.hide();
 
     toast.current?.show({
@@ -2057,6 +2095,8 @@ const PreFactura = ({ ruta }) => {
   const limpiarFiltrosAvanzados = () => {
     setTiposDocInternoTemp([]);
     setTiposDocFinalTemp([]);
+    setClientesTemp([]);
+    setProductosTemp([]);
   };
 
   // Cancelar y cerrar sin aplicar
@@ -2064,8 +2104,60 @@ const PreFactura = ({ ruta }) => {
     // Restaurar temporales a los aplicados
     setTiposDocInternoTemp([...tiposDocInternoAplicados]);
     setTiposDocFinalTemp([...tiposDocFinalAplicados]);
+    setClientesTemp([...clientesAplicados]);
+    setProductosTemp([...productosAplicados]);
     opFiltrosAvanzados.current.hide();
   };
+
+  // Cambio de un filtro temporal: recalcula opciones cruzadas y depura los demás temporales
+  const cambiarFacetaTemp = (clave, valor) => {
+    let facets = {
+      clientes: clientesTemp,
+      productos: productosTemp,
+      tiposInterno: tiposDocInternoTemp,
+      tiposFinal: tiposDocFinalTemp,
+      [clave]: valor,
+    };
+    for (let i = 0; i < 4; i++) {
+      const opciones = opcionesFacetas(facets);
+      const depurado = {
+        clientes: facets.clientes.filter(id => opciones.clientes.some(o => Number(o.id) === Number(id))),
+        productos: facets.productos.filter(id => opciones.productos.some(o => Number(o.id) === Number(id))),
+        tiposInterno: facets.tiposInterno.filter(id => opciones.tiposInterno.some(o => Number(o.id) === Number(id))),
+        tiposFinal: facets.tiposFinal.filter(id => opciones.tiposFinal.some(o => Number(o.id) === Number(id))),
+      };
+      const estable = Object.keys(depurado).every(k => depurado[k].length === facets[k].length);
+      // El filtro que el usuario acaba de modificar no se depura a sí mismo
+      depurado[clave] = valor;
+      facets = depurado;
+      if (estable) break;
+    }
+    setClientesTemp(facets.clientes);
+    setProductosTemp(facets.productos);
+    setTiposDocInternoTemp(facets.tiposInterno);
+    setTiposDocFinalTemp(facets.tiposFinal);
+  };
+
+  // Opciones del panel: se recalculan en vivo con los valores temporales mientras está abierto
+  const opcionesPanel = panelFiltrosAbierto
+    ? opcionesFacetas({
+        clientes: clientesTemp,
+        productos: productosTemp,
+        tiposInterno: tiposDocInternoTemp,
+        tiposFinal: tiposDocFinalTemp,
+      })
+    : {
+        clientes: clientesUnicos,
+        productos: productosUnicos,
+        tiposInterno: tiposDocInternoDisponibles,
+        tiposFinal: tiposDocFinalDisponibles,
+      };
+
+  const totalFiltrosAvanzados =
+    tiposDocInternoAplicados.length +
+    tiposDocFinalAplicados.length +
+    clientesAplicados.length +
+    productosAplicados.length;
 
 
   return (
@@ -2299,26 +2391,6 @@ const PreFactura = ({ ruta }) => {
                 }}
               >
                 <div style={{ flex: 2 }}>
-                  <label htmlFor="clienteFiltro" style={{ fontWeight: "bold" }}>
-                    Cliente
-                  </label>
-                  <Dropdown
-                    id="clienteFiltro"
-                    value={clienteSeleccionado}
-                    options={clientesUnicos.map((p) => ({
-                      label: p.razonSocial,
-                      value: Number(p.id),
-                    }))}
-                    onChange={(e) => setClienteSeleccionado(e.value)}
-                    placeholder="Todos"
-                    optionLabel="label"
-                    optionValue="value"
-                    showClear
-                    filter
-                    disabled={loading}
-                  />
-                </div>
-                <div style={{ flex: 2 }}>
                   <label htmlFor="rangoFechas" style={{ fontWeight: "bold" }}>
                     Rango de Fechas
                   </label>
@@ -2361,15 +2433,11 @@ const PreFactura = ({ ruta }) => {
                     Filtros Avanzados
                   </label>
                   <Button
-                    label="Tipos de Documento"
+                    label="Doc., Clientes, Productos"
                     icon="pi pi-filter"
                     onClick={abrirFiltrosAvanzados}
                     className="p-button-outlined"
-                    badge={
-                      (tiposDocInternoAplicados.length + tiposDocFinalAplicados.length) > 0
-                        ? String(tiposDocInternoAplicados.length + tiposDocFinalAplicados.length)
-                        : null
-                    }
+                    badge={totalFiltrosAvanzados > 0 ? String(totalFiltrosAvanzados) : null}
                     badgeClassName="p-badge-info"
                     style={{
                       width: "100%",
@@ -2378,19 +2446,24 @@ const PreFactura = ({ ruta }) => {
                     }}
                     disabled={loading}
                     tooltip={
-                      (tiposDocInternoAplicados.length + tiposDocFinalAplicados.length) > 0
-                        ? `${tiposDocInternoAplicados.length + tiposDocFinalAplicados.length} filtros activos`
-                        : "Filtrar por tipos de documento"
+                      totalFiltrosAvanzados > 0
+                        ? `${totalFiltrosAvanzados} filtros activos`
+                        : "Filtrar por tipos de documento, clientes y productos"
                     }
                     tooltipOptions={{ position: "top" }}
                   />
 
                   {/* OverlayPanel de Filtros Avanzados */}
-                  <OverlayPanel ref={opFiltrosAvanzados} style={{ width: "450px" }}>
+                  <OverlayPanel
+                    ref={opFiltrosAvanzados}
+                    style={{ width: "450px" }}
+                    onShow={() => setPanelFiltrosAbierto(true)}
+                    onHide={() => setPanelFiltrosAbierto(false)}
+                  >
                     <div style={{ padding: "10px" }}>
                       <h3 style={{ marginTop: 0, marginBottom: "15px", color: "#2c3e50" }}>
                         <i className="pi pi-filter" style={{ marginRight: "8px" }}></i>
-                        Filtros de Tipo de Documento
+                        Filtros Avanzados
                       </h3>
 
                       {/* Tipo Documento Interno */}
@@ -2401,11 +2474,11 @@ const PreFactura = ({ ruta }) => {
                         <MultiSelect
                           id="tipoDocInternoTemp"
                           value={tiposDocInternoTemp}
-                          options={tiposDocInternoDisponibles.map((t) => ({
+                          options={opcionesPanel.tiposInterno.map((t) => ({
                             label: `${t.codigo || ""} - ${t.descripcion || t.nombre || ""}`,
                             value: Number(t.id),
                           }))}
-                          onChange={(e) => setTiposDocInternoTemp(e.value)}
+                          onChange={(e) => cambiarFacetaTemp("tiposInterno", e.value)}
                           placeholder="Seleccionar tipos"
                           optionLabel="label"
                           optionValue="value"
@@ -2418,7 +2491,7 @@ const PreFactura = ({ ruta }) => {
                           emptyMessage="No hay tipos disponibles con los filtros actuales"
                         />
                         <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
-                          {tiposDocInternoDisponibles.length} tipo(s) disponible(s)
+                          {opcionesPanel.tiposInterno.length} tipo(s) disponible(s)
                         </small>
                       </div>
 
@@ -2430,11 +2503,11 @@ const PreFactura = ({ ruta }) => {
                         <MultiSelect
                           id="tipoDocFinalTemp"
                           value={tiposDocFinalTemp}
-                          options={tiposDocFinalDisponibles.map((t) => ({
+                          options={opcionesPanel.tiposFinal.map((t) => ({
                             label: `${t.codigo || ""} - ${t.descripcion || t.nombre || ""}`,
                             value: Number(t.id),
                           }))}
-                          onChange={(e) => setTiposDocFinalTemp(e.value)}
+                          onChange={(e) => cambiarFacetaTemp("tiposFinal", e.value)}
                           placeholder="Seleccionar comprobantes"
                           optionLabel="label"
                           optionValue="value"
@@ -2447,7 +2520,65 @@ const PreFactura = ({ ruta }) => {
                           emptyMessage="No hay comprobantes disponibles con los filtros actuales"
                         />
                         <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
-                          {tiposDocFinalDisponibles.length} comprobante(s) disponible(s)
+                          {opcionesPanel.tiposFinal.length} comprobante(s) disponible(s)
+                        </small>
+                      </div>
+
+                      {/* Clientes (múltiple) */}
+                      <div style={{ marginBottom: "20px" }}>
+                        <label htmlFor="clientesTemp" style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>
+                          Clientes
+                        </label>
+                        <MultiSelect
+                          id="clientesTemp"
+                          value={clientesTemp}
+                          options={opcionesPanel.clientes.map((c) => ({
+                            label: c.razonSocial,
+                            value: Number(c.id),
+                          }))}
+                          onChange={(e) => cambiarFacetaTemp("clientes", e.value)}
+                          placeholder="Seleccionar clientes"
+                          optionLabel="label"
+                          optionValue="value"
+                          display="chip"
+                          filter
+                          showSelectAll={true}
+                          selectAllLabel="Seleccionar Todos"
+                          style={{ width: "100%" }}
+                          maxSelectedLabels={3}
+                          emptyMessage="No hay clientes disponibles con los filtros actuales"
+                        />
+                        <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
+                          {opcionesPanel.clientes.length} cliente(s) disponible(s)
+                        </small>
+                      </div>
+
+                      {/* Productos del detalle (múltiple) */}
+                      <div style={{ marginBottom: "20px" }}>
+                        <label htmlFor="productosTemp" style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>
+                          Productos del detalle
+                        </label>
+                        <MultiSelect
+                          id="productosTemp"
+                          value={productosTemp}
+                          options={opcionesPanel.productos.map((p) => ({
+                            label: p.descripcionArmada,
+                            value: Number(p.id),
+                          }))}
+                          onChange={(e) => cambiarFacetaTemp("productos", e.value)}
+                          placeholder="Seleccionar productos"
+                          optionLabel="label"
+                          optionValue="value"
+                          display="chip"
+                          filter
+                          showSelectAll={true}
+                          selectAllLabel="Seleccionar Todos"
+                          style={{ width: "100%" }}
+                          maxSelectedLabels={3}
+                          emptyMessage="No hay productos disponibles con los filtros actuales"
+                        />
+                        <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
+                          {opcionesPanel.productos.length} producto(s) disponible(s) · Muestra ventas que contengan al menos uno
                         </small>
                       </div>
 
@@ -2474,27 +2605,6 @@ const PreFactura = ({ ruta }) => {
                       </div>
                     </div>
                   </OverlayPanel>
-                </div>
-                {/* Filtro por Producto - Dropdown */}
-                <div style={{ flex: 2 }}>
-                  <label htmlFor="productoDropdown" style={{ fontWeight: "bold" }}>
-                    Producto
-                  </label>
-                  <Dropdown
-                    id="productoDropdown"
-                    value={productoSeleccionado}
-                    options={productosUnicos.map((p) => ({
-                      label: p.descripcionArmada,
-                      value: p.id,
-                    }))}
-                    onChange={(e) => setProductoSeleccionado(e.value)}
-                    placeholder="Seleccionar producto..."
-                    filter
-                    showClear
-                    style={{ width: "100%" }}
-                    disabled={loading}
-                    emptyMessage="No hay productos en las Ventas filtradas"
-                  />
                 </div>
                 {/* Filtro por Número de Liquidación */}
                 <div style={{ flex: 2 }}>

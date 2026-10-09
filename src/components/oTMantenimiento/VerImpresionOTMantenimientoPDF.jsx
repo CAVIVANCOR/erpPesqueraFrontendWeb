@@ -2,12 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Card } from "primereact/card";
 import PDFGeneratedUploader from "../pdf/PDFGeneratedUploader";
 import { generarYSubirPDFOTMantenimiento } from "./OTMantenimientoPDF";
-import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { getOrdenTrabajoPorId } from "../../api/oTMantenimiento";
+import { getDocumentosCompraPorPresupuesto } from "../../api/detContratistasOT";
 
 const VerImpresionOTMantenimientoPDF = ({
   otMantenimientoId,
   datosOT = {},
-  tareas = [],
   toast,
   onPdfGenerated,
 }) => {
@@ -24,46 +24,26 @@ const VerImpresionOTMantenimientoPDF = ({
       throw new Error("Debe guardar la orden de trabajo antes de generar el PDF");
     }
 
-    const token = useAuthStore.getState().token;
-    const headers = { Authorization: `Bearer ${token}` };
+    const otCompleta = await getOrdenTrabajoPorId(datosOT.id);
 
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/ot-mantenimiento/${datosOT.id}`,
-      { headers }
+    const contratistasCompletos = await Promise.all(
+      (otCompleta.contratistas || []).map(async (contratista) => {
+        try {
+          return {
+            ...contratista,
+            documentosCompra: await getDocumentosCompraPorPresupuesto(contratista.id),
+          };
+        } catch (error) {
+          console.error(`Error cargando documentos del presupuesto ${contratista.id}:`, error);
+          return { ...contratista, documentosCompra: [] };
+        }
+      })
     );
-    if (!response.ok) throw new Error("No se pudo cargar la OT completa desde el servidor");
-    const otCompleta = await response.json();
-
-    let tareasCompletas = [];
-    try {
-      const responseTareas = await fetch(
-        `${import.meta.env.VITE_API_URL}/tareas-ot/ot/${datosOT.id}`,
-        { headers }
-      );
-      if (responseTareas.ok) {
-        tareasCompletas = await responseTareas.json();
-      }
-    } catch (error) {
-      console.error("Error cargando tareas:", error);
-    }
-
-    let empresa;
-    try {
-      const responseEmpresa = await fetch(
-        `${import.meta.env.VITE_API_URL}/empresas/${otCompleta.empresaId}`,
-        { headers }
-      );
-      if (responseEmpresa.ok) {
-        empresa = await responseEmpresa.json();
-      }
-    } catch (error) {
-      console.error("Error cargando empresa:", error);
-    }
 
     const resultado = await generarYSubirPDFOTMantenimiento(
       otCompleta,
-      tareasCompletas,
-      empresa
+      otCompleta.empresa,
+      contratistasCompletos
     );
 
     return resultado;

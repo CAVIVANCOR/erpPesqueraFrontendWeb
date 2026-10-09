@@ -101,7 +101,7 @@ export default function OrdenCompra({ ruta }) {
 
 
   // Filtrado automático por Unidad de Negocio
-  const { datosFiltrados: ordenesFiltradas } = useUnidadNegocioFilter(itemsFiltrados);
+  const { datosFiltrados: ordenesFiltradas, unidadActiva } = useUnidadNegocioFilter(itemsFiltrados);
 
   const [empresas, setEmpresas] = useState([]);
   const [proveedores, setProveedores] = useState([]);
@@ -140,14 +140,10 @@ export default function OrdenCompra({ ruta }) {
   const [toDelete, setToDelete] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
-  const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [centroCostoSeleccionado, setCentroCostoSeleccionado] = useState(null);
   const [activoSeleccionado, setActivoSeleccionado] = useState(null); // ⭐ AGREGADO: Filtro por activo afecto
-  const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState(null);
-  const [productosUnicos, setProductosUnicos] = useState([]);
-  const [proveedoresUnicos, setProveedoresUnicos] = useState([]);
   const [showKardexDialog, setShowKardexDialog] = useState(false);
   const [kardexDocumentoActual, setKardexDocumentoActual] = useState(null);
   const [showConsultaStock, setShowConsultaStock] = useState(false);
@@ -162,10 +158,13 @@ export default function OrdenCompra({ ruta }) {
   // Estados para filtros avanzados de tipo documento
   const [tiposDocInternoAplicados, setTiposDocInternoAplicados] = useState([]);
   const [tiposDocFinalAplicados, setTiposDocFinalAplicados] = useState([]);
-  const [tiposDocInternoDisponibles, setTiposDocInternoDisponibles] = useState([]);
-  const [tiposDocFinalDisponibles, setTiposDocFinalDisponibles] = useState([]);
+  const [proveedoresAplicados, setProveedoresAplicados] = useState([]);
+  const [productosAplicados, setProductosAplicados] = useState([]);
   const [tiposDocInternoTemp, setTiposDocInternoTemp] = useState([]);
   const [tiposDocFinalTemp, setTiposDocFinalTemp] = useState([]);
+  const [proveedoresTemp, setProveedoresTemp] = useState([]);
+  const [productosTemp, setProductosTemp] = useState([]);
+  const [panelFiltrosAbierto, setPanelFiltrosAbierto] = useState(false);
 
   // Estados para opciones de dropdowns
   const [tiposDocumentoFinal, setTiposDocumentoFinal] = useState([]);
@@ -242,21 +241,36 @@ export default function OrdenCompra({ ruta }) {
 
 
 
-  useEffect(() => {
-    const proveedoresMap = new Map();
-    ordenesFiltradas.forEach((item) => {
-      if (item.proveedorId && item.proveedor) {
-        proveedoresMap.set(item.proveedorId, item.proveedor);
-      }
-    });
-    const proveedoresArray = Array.from(proveedoresMap.values());
-    setProveedoresUnicos(proveedoresArray);
-  }, [ordenesFiltradas]);
+  // Opciones de cada filtro avanzado: se calculan sobre las órdenes que cumplen
+  // TODOS los demás filtros (cada filtro se excluye a sí mismo), para que sean dinámicas y cruzadas.
+  const opcionesFacetas = (facets) => {
+    const porUnidad = (lista) =>
+      unidadActiva
+        ? lista.filter((o) => o.unidadNegocioId && Number(o.unidadNegocioId) === Number(unidadActiva.id))
+        : lista;
+    const ordenarPorDescripcion = (a, b) =>
+      (a.descripcion || a.nombre || "").localeCompare(b.descripcion || b.nombre || "");
 
-  // ✅ Extraer productos únicos de los detalles de las órdenes filtradas
-  useEffect(() => {
+    const proveedores = [...new Map(
+      porUnidad(filtrarItems(facets, ["proveedor"]))
+        .filter((o) => o.proveedorId && o.proveedor)
+        .map((o) => [o.proveedorId, o.proveedor])
+    ).values()].sort((a, b) => (a.razonSocial || "").localeCompare(b.razonSocial || ""));
+
+    const tiposInterno = [...new Map(
+      porUnidad(filtrarItems(facets, ["tipoInterno"]))
+        .filter((o) => o.tipoDocumento)
+        .map((o) => [o.tipoDocumento.id, o.tipoDocumento])
+    ).values()].sort(ordenarPorDescripcion);
+
+    const tiposFinal = [...new Map(
+      porUnidad(filtrarItems(facets, ["tipoFinal"]))
+        .filter((o) => o.tipoDocumentoFinal)
+        .map((o) => [o.tipoDocumentoFinal.id, o.tipoDocumentoFinal])
+    ).values()].sort(ordenarPorDescripcion);
+
     const productosMap = new Map();
-    ordenesFiltradas.forEach((orden) => {
+    porUnidad(filtrarItems(facets, ["producto"])).forEach((orden) => {
       if (orden.detalles && Array.isArray(orden.detalles)) {
         orden.detalles.forEach((detalle) => {
           if (detalle.producto && detalle.producto.id) {
@@ -268,16 +282,33 @@ export default function OrdenCompra({ ruta }) {
         });
       }
     });
-    const productosArray = Array.from(productosMap.values()).sort((a, b) =>
+    const productos = Array.from(productosMap.values()).sort((a, b) =>
       a.descripcionArmada.localeCompare(b.descripcionArmada)
     );
-    setProductosUnicos(productosArray);
 
-    // Limpiar selección si el producto ya no existe en los filtrados
-    if (productoSeleccionado && !productosArray.find(p => Number(p.id) === Number(productoSeleccionado))) {
-      setProductoSeleccionado(null);
-    }
-  }, [ordenesFiltradas, productoSeleccionado]);
+    return { proveedores, productos, tiposInterno, tiposFinal };
+  };
+
+  const facetsAplicados = {
+    proveedores: proveedoresAplicados,
+    productos: productosAplicados,
+    tiposInterno: tiposDocInternoAplicados,
+    tiposFinal: tiposDocFinalAplicados,
+  };
+
+  // Depurar filtros avanzados aplicados que dejan de existir al cambiar otros filtros
+  useEffect(() => {
+    if (items.length === 0) return;
+    const opciones = opcionesFacetas(facetsAplicados);
+    const depurar = (aplicados, disponibles, setter) => {
+      const validos = aplicados.filter((id) => disponibles.some((d) => Number(d.id) === Number(id)));
+      if (validos.length !== aplicados.length) setter(validos);
+    };
+    depurar(proveedoresAplicados, opciones.proveedores, setProveedoresAplicados);
+    depurar(productosAplicados, opciones.productos, setProductosAplicados);
+    depurar(tiposDocInternoAplicados, opciones.tiposInterno, setTiposDocInternoAplicados);
+    depurar(tiposDocFinalAplicados, opciones.tiposFinal, setTiposDocFinalAplicados);
+  }, [itemsFiltrados, unidadActiva]);
 
   // ✅ Extraer tipos de afectación IGV únicos de los detalles
   useEffect(() => {
@@ -320,36 +351,9 @@ export default function OrdenCompra({ ruta }) {
     }
   }, [ordenesFiltradas, submoduloOrigenSeleccionado]);
 
-  // ✅ Calcular tipos de documento disponibles dinámicamente
-  useEffect(() => {
-    // Tipos de Documento Interno disponibles
-    const tiposInternoMap = new Map();
-    ordenesFiltradas.forEach((orden) => {
-      if (orden.tipoDocumento) {
-        tiposInternoMap.set(orden.tipoDocumento.id, orden.tipoDocumento);
-      }
-    });
-    const tiposInternoArray = Array.from(tiposInternoMap.values()).sort((a, b) =>
-      (a.descripcion || a.nombre || "").localeCompare(b.descripcion || b.nombre || "")
-    );
-    setTiposDocInternoDisponibles(tiposInternoArray);
-
-    // Tipos de Documento Final disponibles
-    const tiposFinalMap = new Map();
-    ordenesFiltradas.forEach((orden) => {
-      if (orden.tipoDocumentoFinal) {
-        tiposFinalMap.set(orden.tipoDocumentoFinal.id, orden.tipoDocumentoFinal);
-      }
-    });
-    const tiposFinalArray = Array.from(tiposFinalMap.values()).sort((a, b) =>
-      (a.descripcion || a.nombre || "").localeCompare(b.descripcion || b.nombre || "")
-    );
-    setTiposDocFinalDisponibles(tiposFinalArray);
-  }, [ordenesFiltradas]);
-
-
-  // ✅ Filtrado completo de órdenes
-  useEffect(() => {
+  // ✅ Filtrado completo de órdenes. `excluir` omite un filtro avanzado
+  // ("proveedor" | "producto" | "tipoInterno" | "tipoFinal") para calcular sus propias opciones.
+  function filtrarItems(facets = facetsAplicados, excluir = []) {
     let filtered = items;
 
     // Filtro por empresa
@@ -366,10 +370,10 @@ export default function OrdenCompra({ ruta }) {
       );
     }
 
-    // Filtro por proveedor
-    if (proveedorSeleccionado) {
-      filtered = filtered.filter(
-        (orden) => Number(orden.proveedorId) === Number(proveedorSeleccionado),
+    // Filtro por proveedores (múltiple)
+    if (facets.proveedores.length > 0 && !excluir.includes("proveedor")) {
+      filtered = filtered.filter((orden) =>
+        facets.proveedores.some(id => Number(orden.proveedorId) === Number(id))
       );
     }
 
@@ -400,16 +404,16 @@ export default function OrdenCompra({ ruta }) {
     }
 
     // ✅ Filtros avanzados por tipos de documento interno (múltiple)
-    if (tiposDocInternoAplicados && tiposDocInternoAplicados.length > 0) {
+    if (facets.tiposInterno.length > 0 && !excluir.includes("tipoInterno")) {
       filtered = filtered.filter((orden) =>
-        tiposDocInternoAplicados.some(id => Number(orden.tipoDocumentoId) === Number(id))
+        facets.tiposInterno.some(id => Number(orden.tipoDocumentoId) === Number(id))
       );
     }
 
     // ✅ Filtros avanzados por tipos de documento final (múltiple)
-    if (tiposDocFinalAplicados && tiposDocFinalAplicados.length > 0) {
+    if (facets.tiposFinal.length > 0 && !excluir.includes("tipoFinal")) {
       filtered = filtered.filter((orden) =>
-        tiposDocFinalAplicados.some(id => Number(orden.tipoDocumentoFinalId) === Number(id))
+        facets.tiposFinal.some(id => Number(orden.tipoDocumentoFinalId) === Number(id))
       );
     }
 
@@ -427,16 +431,14 @@ export default function OrdenCompra({ ruta }) {
       );
     }
 
-    // ✅ Filtro por producto (en detalles)
-    if (productoSeleccionado) {
-      filtered = filtered.filter((orden) => {
-        if (orden.detalles && Array.isArray(orden.detalles)) {
-          return orden.detalles.some((detalle) => {
-            return Number(detalle.producto?.id) === Number(productoSeleccionado);
-          });
-        }
-        return false;
-      });
+    // ✅ Filtro por productos del detalle (múltiple): contiene al menos uno
+    if (facets.productos.length > 0 && !excluir.includes("producto")) {
+      filtered = filtered.filter((orden) =>
+        Array.isArray(orden.detalles) &&
+        orden.detalles.some((detalle) =>
+          facets.productos.some(id => Number(detalle.producto?.id) === Number(id))
+        )
+      );
     }
 
     // ✅ Filtro por tipo de afectación IGV (en detalles)
@@ -516,19 +518,23 @@ export default function OrdenCompra({ ruta }) {
     }
     // Si es "TODOS", no se filtra
 
-    setItemsFiltrados(filtered);
+    return filtered;
+  }
+
+  useEffect(() => {
+    setItemsFiltrados(filtrarItems());
   }, [
     items,
     empresaSeleccionada,
     periodoSeleccionado,
     estadoSeleccionado,
-    proveedorSeleccionado,
     rangoFechaDocumento,
     tipoDocumentoFinalIdSeleccionado,
     tiposDocInternoAplicados,
     tiposDocFinalAplicados,
+    proveedoresAplicados,
+    productosAplicados,
     centroCostoSeleccionado,
-    productoSeleccionado,
     tipoAfectacionIGVSeleccionado,
     submoduloOrigenSeleccionado,
     filtroTipoLibro,
@@ -941,9 +947,7 @@ export default function OrdenCompra({ ruta }) {
 
   const limpiarFiltros = () => {
     setEmpresaSeleccionada(null);
-    setProveedorSeleccionado(null);
     setEstadoSeleccionado(null);
-    setProductoSeleccionado(null);
     setTipoAfectacionIGVSeleccionado(null);
     setSubmoduloOrigenSeleccionado(null);
     setRangoFechaDocumento(null);
@@ -952,6 +956,10 @@ export default function OrdenCompra({ ruta }) {
     setTiposDocFinalAplicados([]);
     setTiposDocInternoTemp([]);
     setTiposDocFinalTemp([]);
+    setProveedoresAplicados([]);
+    setProductosAplicados([]);
+    setProveedoresTemp([]);
+    setProductosTemp([]);
     setCentroCostoSeleccionado(null);
     setActivoSeleccionado(null); // ⭐ AGREGADO: Limpiar filtro de activo
   };
@@ -962,6 +970,9 @@ export default function OrdenCompra({ ruta }) {
   const abrirFiltrosAvanzados = (event) => {
     setTiposDocInternoTemp([...tiposDocInternoAplicados]);
     setTiposDocFinalTemp([...tiposDocFinalAplicados]);
+    setProveedoresTemp([...proveedoresAplicados]);
+    setProductosTemp([...productosAplicados]);
+    setPanelFiltrosAbierto(true);
     opFiltrosAvanzados.current.toggle(event);
   };
 
@@ -969,6 +980,8 @@ export default function OrdenCompra({ ruta }) {
   const aplicarFiltrosAvanzados = () => {
     setTiposDocInternoAplicados([...tiposDocInternoTemp]);
     setTiposDocFinalAplicados([...tiposDocFinalTemp]);
+    setProveedoresAplicados([...proveedoresTemp]);
+    setProductosAplicados([...productosTemp]);
     opFiltrosAvanzados.current.hide();
 
     toast.current?.show({
@@ -983,14 +996,63 @@ export default function OrdenCompra({ ruta }) {
   const limpiarFiltrosAvanzados = () => {
     setTiposDocInternoTemp([]);
     setTiposDocFinalTemp([]);
+    setProveedoresTemp([]);
+    setProductosTemp([]);
   };
 
   // ✅ Cancelar y cerrar sin aplicar
   const cancelarFiltrosAvanzados = () => {
     setTiposDocInternoTemp([...tiposDocInternoAplicados]);
     setTiposDocFinalTemp([...tiposDocFinalAplicados]);
+    setProveedoresTemp([...proveedoresAplicados]);
+    setProductosTemp([...productosAplicados]);
     opFiltrosAvanzados.current.hide();
   };
+
+  // Cambio de un filtro temporal: recalcula opciones cruzadas y depura los demás temporales
+  const cambiarFacetaTemp = (clave, valor) => {
+    let facets = {
+      proveedores: proveedoresTemp,
+      productos: productosTemp,
+      tiposInterno: tiposDocInternoTemp,
+      tiposFinal: tiposDocFinalTemp,
+      [clave]: valor,
+    };
+    for (let i = 0; i < 4; i++) {
+      const opciones = opcionesFacetas(facets);
+      const depurado = {
+        proveedores: facets.proveedores.filter(id => opciones.proveedores.some(o => Number(o.id) === Number(id))),
+        productos: facets.productos.filter(id => opciones.productos.some(o => Number(o.id) === Number(id))),
+        tiposInterno: facets.tiposInterno.filter(id => opciones.tiposInterno.some(o => Number(o.id) === Number(id))),
+        tiposFinal: facets.tiposFinal.filter(id => opciones.tiposFinal.some(o => Number(o.id) === Number(id))),
+      };
+      const estable = Object.keys(depurado).every(k => depurado[k].length === facets[k].length);
+      // El filtro que el usuario acaba de modificar no se depura a sí mismo
+      depurado[clave] = valor;
+      facets = depurado;
+      if (estable) break;
+    }
+    setProveedoresTemp(facets.proveedores);
+    setProductosTemp(facets.productos);
+    setTiposDocInternoTemp(facets.tiposInterno);
+    setTiposDocFinalTemp(facets.tiposFinal);
+  };
+
+  // Opciones del panel: se calculan en vivo con los valores temporales solo mientras está abierto
+  const opcionesPanel = panelFiltrosAbierto
+    ? opcionesFacetas({
+        proveedores: proveedoresTemp,
+        productos: productosTemp,
+        tiposInterno: tiposDocInternoTemp,
+        tiposFinal: tiposDocFinalTemp,
+      })
+    : { proveedores: [], productos: [], tiposInterno: [], tiposFinal: [] };
+
+  const totalFiltrosAvanzados =
+    tiposDocInternoAplicados.length +
+    tiposDocFinalAplicados.length +
+    proveedoresAplicados.length +
+    productosAplicados.length;
 
 
   /**
@@ -2409,15 +2471,11 @@ export default function OrdenCompra({ ruta }) {
                   Filtros Avanzados:
                 </label>
                 <Button
-                  label="Tipos de Dcmto"
+                  label="Dcmto, Proveedor, Producto"
                   icon="pi pi-filter"
                   onClick={abrirFiltrosAvanzados}
                   className="p-button-outlined"
-                  badge={
-                    (tiposDocInternoAplicados.length + tiposDocFinalAplicados.length) > 0
-                      ? String(tiposDocInternoAplicados.length + tiposDocFinalAplicados.length)
-                      : null
-                  }
+                  badge={totalFiltrosAvanzados > 0 ? String(totalFiltrosAvanzados) : null}
                   badgeClassName="p-badge-info"
                   style={{
                     width: "100%",
@@ -2426,18 +2484,23 @@ export default function OrdenCompra({ ruta }) {
                   }}
                   disabled={loading}
                   tooltip={
-                    (tiposDocInternoAplicados.length + tiposDocFinalAplicados.length) > 0
-                      ? `${tiposDocInternoAplicados.length + tiposDocFinalAplicados.length} filtros activos`
-                      : "Filtrar por tipos de documento"
+                    totalFiltrosAvanzados > 0
+                      ? `${totalFiltrosAvanzados} filtros activos`
+                      : "Filtrar por tipos de documento, proveedores y productos"
                   }
                   tooltipOptions={{ position: "top" }}
                 />
                 {/* OverlayPanel de Filtros Avanzados */}
-                <OverlayPanel ref={opFiltrosAvanzados} style={{ width: "450px" }}>
+                <OverlayPanel
+                  ref={opFiltrosAvanzados}
+                  style={{ width: "450px" }}
+                  onShow={() => setPanelFiltrosAbierto(true)}
+                  onHide={() => setPanelFiltrosAbierto(false)}
+                >
                   <div style={{ padding: "10px" }}>
                     <h3 style={{ marginTop: 0, marginBottom: "15px", color: "#2c3e50" }}>
                       <i className="pi pi-filter" style={{ marginRight: "8px" }}></i>
-                      Filtros de Tipo de Documento
+                      Filtros Avanzados
                     </h3>
 
                     {/* Tipo Documento Interno */}
@@ -2448,11 +2511,11 @@ export default function OrdenCompra({ ruta }) {
                       <MultiSelect
                         id="tipoDocInternoTemp"
                         value={tiposDocInternoTemp}
-                        options={tiposDocInternoDisponibles.map((t) => ({
+                        options={opcionesPanel.tiposInterno.map((t) => ({
                           label: `${t.codigo || ""} - ${t.descripcion || t.nombre || ""}`,
                           value: Number(t.id),
                         }))}
-                        onChange={(e) => setTiposDocInternoTemp(e.value)}
+                        onChange={(e) => cambiarFacetaTemp("tiposInterno", e.value)}
                         placeholder="Seleccionar tipos"
                         optionLabel="label"
                         optionValue="value"
@@ -2465,7 +2528,7 @@ export default function OrdenCompra({ ruta }) {
                         emptyMessage="No hay tipos disponibles con los filtros actuales"
                       />
                       <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
-                        {tiposDocInternoDisponibles.length} tipo(s) disponible(s)
+                        {opcionesPanel.tiposInterno.length} tipo(s) disponible(s)
                       </small>
                     </div>
 
@@ -2477,11 +2540,11 @@ export default function OrdenCompra({ ruta }) {
                       <MultiSelect
                         id="tipoDocFinalTemp"
                         value={tiposDocFinalTemp}
-                        options={tiposDocFinalDisponibles.map((t) => ({
+                        options={opcionesPanel.tiposFinal.map((t) => ({
                           label: `${t.codigo || ""} - ${t.descripcion || t.nombre || ""}`,
                           value: Number(t.id),
                         }))}
-                        onChange={(e) => setTiposDocFinalTemp(e.value)}
+                        onChange={(e) => cambiarFacetaTemp("tiposFinal", e.value)}
                         placeholder="Seleccionar comprobantes"
                         optionLabel="label"
                         optionValue="value"
@@ -2494,7 +2557,65 @@ export default function OrdenCompra({ ruta }) {
                         emptyMessage="No hay comprobantes disponibles con los filtros actuales"
                       />
                       <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
-                        {tiposDocFinalDisponibles.length} comprobante(s) disponible(s)
+                        {opcionesPanel.tiposFinal.length} comprobante(s) disponible(s)
+                      </small>
+                    </div>
+
+                    {/* Proveedores (múltiple) */}
+                    <div style={{ marginBottom: "20px" }}>
+                      <label htmlFor="proveedoresTemp" style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>
+                        Proveedores
+                      </label>
+                      <MultiSelect
+                        id="proveedoresTemp"
+                        value={proveedoresTemp}
+                        options={opcionesPanel.proveedores.map((p) => ({
+                          label: p.razonSocial,
+                          value: Number(p.id),
+                        }))}
+                        onChange={(e) => cambiarFacetaTemp("proveedores", e.value)}
+                        placeholder="Seleccionar proveedores"
+                        optionLabel="label"
+                        optionValue="value"
+                        display="chip"
+                        filter
+                        showSelectAll={true}
+                        selectAllLabel="Seleccionar Todos"
+                        style={{ width: "100%" }}
+                        maxSelectedLabels={3}
+                        emptyMessage="No hay proveedores disponibles con los filtros actuales"
+                      />
+                      <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
+                        {opcionesPanel.proveedores.length} proveedor(es) disponible(s)
+                      </small>
+                    </div>
+
+                    {/* Productos del detalle (múltiple) */}
+                    <div style={{ marginBottom: "20px" }}>
+                      <label htmlFor="productosTemp" style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>
+                        Productos del detalle
+                      </label>
+                      <MultiSelect
+                        id="productosTemp"
+                        value={productosTemp}
+                        options={opcionesPanel.productos.map((p) => ({
+                          label: p.descripcionArmada,
+                          value: Number(p.id),
+                        }))}
+                        onChange={(e) => cambiarFacetaTemp("productos", e.value)}
+                        placeholder="Seleccionar productos"
+                        optionLabel="label"
+                        optionValue="value"
+                        display="chip"
+                        filter
+                        showSelectAll={true}
+                        selectAllLabel="Seleccionar Todos"
+                        style={{ width: "100%" }}
+                        maxSelectedLabels={3}
+                        emptyMessage="No hay productos disponibles con los filtros actuales"
+                      />
+                      <small style={{ color: "#6c757d", display: "block", marginTop: "5px" }}>
+                        {opcionesPanel.productos.length} producto(s) disponible(s) · Muestra órdenes que contengan al menos uno
                       </small>
                     </div>
 
@@ -2642,48 +2763,6 @@ export default function OrdenCompra({ ruta }) {
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <div style={{ flex: 1 }}>
-                <label htmlFor="proveedorFiltro" style={{ fontWeight: "bold" }}>
-                  Proveedor
-                </label>
-                <Dropdown
-                  id="proveedorFiltro"
-                  value={proveedorSeleccionado}
-                  options={proveedoresUnicos.map((p) => ({
-                    label: p.razonSocial,
-                    value: Number(p.id),
-                  }))}
-                  onChange={(e) => setProveedorSeleccionado(e.value)}
-                  placeholder="Todos"
-                  optionLabel="label"
-                  optionValue="value"
-                  showClear
-                  filter
-                  disabled={loading}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="productoFiltro" style={{ fontWeight: "bold" }}>
-                  Producto
-                </label>
-                <Dropdown
-                  id="productoFiltro"
-                  value={productoSeleccionado}
-                  options={productosUnicos.map((p) => ({
-                    label: p.descripcionArmada,
-                    value: Number(p.id),
-                  }))}
-                  onChange={(e) => setProductoSeleccionado(e.value)}
-                  placeholder="Todos los productos"
-                  optionLabel="label"
-                  optionValue="value"
-                  showClear
-                  filter
-                  disabled={loading}
-                  style={{ width: "100%" }}
-                />
-              </div>
               <div style={{ flex: 1 }}>
                 <label htmlFor="estadoFiltro" style={{ fontWeight: "bold" }}>
                   Estado
