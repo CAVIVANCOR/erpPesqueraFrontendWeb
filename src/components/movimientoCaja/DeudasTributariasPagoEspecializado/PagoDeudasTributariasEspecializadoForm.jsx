@@ -118,6 +118,11 @@ const PagoDeudasTributariasEspecializadoForm = ({
   const [comision, setComision] = useState(0);
   const [tipoCambio, setTipoCambio] = useState(1);
   const [montoPago, setMontoPago] = useState(0);
+  // Montos escritos a mano por deuda ({ [id de la fila]: monto }); null = reparto proporcional al saldo
+  const [montosManuales, setMontosManuales] = useState(null);
+  // Total que el usuario está escribiendo en "Monto a Pagar" y aún no confirma (null = ninguno);
+  // sirve solo para mostrar el reparto proporcional en vivo en la tabla
+  const [montoEscrito, setMontoEscrito] = useState(null);
   const [tipoMovimientoId, setTipoMovimientoId] = useState(null);
   const [entidadDestinoId, setEntidadDestinoId] = useState(null);
 
@@ -162,7 +167,8 @@ const PagoDeudasTributariasEspecializadoForm = ({
     if (seleccionados.length === 0) return {};
     const saldosCent = seleccionados.map((d) => aCentimos(d.saldoPendiente));
     const sumaCent = saldosCent.reduce((acc, s) => acc + s, 0n);
-    const totalCent = aCentimos(montoPago);
+    // Mientras el usuario escribe el total se usa ese valor (vista previa en vivo)
+    const totalCent = aCentimos(montoEscrito ?? montoPago);
     if (totalCent <= 0n || totalCent > sumaCent) return {};
     const partes = repartirProporcional(saldosCent, totalCent);
     const mapa = {};
@@ -170,7 +176,17 @@ const PagoDeudasTributariasEspecializadoForm = ({
       mapa[d.id] = Number(partes[i]) / 100;
     });
     return mapa;
-  }, [seleccionados, montoPago]);
+  }, [seleccionados, montoPago, montoEscrito]);
+
+  // Monto que se pagará por cada deuda marcada: el escrito a mano (acotado al saldo) o el proporcional
+  const montoEfectivoPorDeuda = useMemo(() => {
+    if (!montosManuales || montoEscrito !== null) return montoPorDeuda;
+    const mapa = {};
+    seleccionados.forEach((d) => {
+      mapa[d.id] = Math.min(Number(montosManuales[d.id] || 0), Number(d.saldoPendiente || 0));
+    });
+    return mapa;
+  }, [montosManuales, montoPorDeuda, seleccionados, montoEscrito]);
 
   // Entidades recaudadoras distintas entre las deudas marcadas (SUNAT, ESSALUD, ONP…)
   const entidadesRecaudadoras = useMemo(() => {
@@ -206,11 +222,23 @@ const PagoDeudasTributariasEspecializadoForm = ({
     setSeleccionados(deudas);
   }, [deudas]);
 
-  // Monto por defecto = total de lo marcado (pago total); si el usuario ya lo editó solo se acota
+  // Al marcar o desmarcar deudas se descartan los montos manuales: el reparto vuelve a ser proporcional
   useEffect(() => {
-    setMontoPago((prev) =>
-      montoEditado.current ? Math.min(Number(prev || 0), totalSaldos) : totalSaldos,
-    );
+    setMontosManuales(null);
+  }, [seleccionados]);
+
+  // Monto por defecto = total de lo marcado (pago total). Un pago parcial escrito por el usuario
+  // se conserva solo mientras siga siendo válido (mayor a cero y sin superar lo marcado); si no,
+  // vuelve al total. Así, tras desmarcar y volver a marcar deudas, el monto nunca queda en cero.
+  useEffect(() => {
+    setMontoPago((prev) => {
+      const actual = Number(prev || 0);
+      if (montoEditado.current && actual > 0 && aCentimos(actual) <= aCentimos(totalSaldos)) {
+        return actual;
+      }
+      montoEditado.current = false;
+      return totalSaldos;
+    });
   }, [totalSaldos]);
 
   // Tipo de movimiento por defecto: SUNAT, solo si existe en el catálogo cargado
@@ -416,6 +444,13 @@ const PagoDeudasTributariasEspecializadoForm = ({
       const resultado = await onSubmit({
         deudaIds: seleccionados.map((d) => Number(d.origenId)),
         montoPago: Number(montoPago),
+        // Solo con montos escritos a mano; sin esto el backend reparte proporcionalmente al saldo
+        ...(montosManuales && {
+          montosPorDeuda: seleccionados.map((d) => ({
+            deudaId: Number(d.origenId),
+            monto: Number(montoEfectivoPorDeuda[d.id] || 0),
+          })),
+        }),
         fechaPago: fechaPago.toISOString(),
         cuentaCorrienteOrigenId: Number(cuentaOrigenId),
         medioPagoId: Number(medioPagoId),
@@ -445,6 +480,26 @@ const PagoDeudasTributariasEspecializadoForm = ({
   // ════════════════════════════════════════════════════════════
   const estaMarcado = (row) => seleccionados.some((s) => s.id === row.id);
 
+  // El usuario escribe el monto de una deuda: se parte del reparto vigente y solo cambia esa fila;
+  // el monto total pasa a ser la suma de los montos por deuda
+  const handleMontoFila = (row, valor) => {
+    const base = {};
+    seleccionados.forEach((d) => {
+      base[d.id] = Number(montoEfectivoPorDeuda[d.id] || 0);
+    });
+    base[row.id] = Math.min(Number(valor || 0), Number(row.saldoPendiente || 0));
+    const totalCent = seleccionados.reduce((acc, d) => acc + aCentimos(base[d.id]), 0n);
+    montoEditado.current = true;
+    setMontosManuales(base);
+    setMontoPago(Number(totalCent) / 100);
+  };
+
+  const volverARepartoProporcional = () => {
+    setMontosManuales(null);
+    montoEditado.current = false;
+    setMontoPago(totalSaldos);
+  };
+
   const saldoTemplate = (row) => (
     <div className="text-right">
       {row.moneda?.simbolo} {formatearNumero(row.saldoPendiente)}
@@ -453,17 +508,33 @@ const PagoDeudasTributariasEspecializadoForm = ({
 
   const aPagarTemplate = (row) => {
     if (!estaMarcado(row)) return <div className="text-right text-500">—</div>;
-    const monto = montoPorDeuda[row.id];
     return (
-      <div className="text-right font-bold" style={{ color: "#2e7d32" }}>
-        {row.moneda?.simbolo} {formatearNumero(monto || 0)}
-      </div>
+      <InputNumber
+        value={montoEfectivoPorDeuda[row.id] || 0}
+        onValueChange={(e) => {
+          // Solo la edición del usuario cambia el reparto (PrimeReact también emite ajustes internos);
+          // si el valor no cambió (p. ej. al pasar el foco por la celda) no se toca nada
+          if (!e.originalEvent) return;
+          const nuevo = Number(e.value ?? 0);
+          if (aCentimos(nuevo) === aCentimos(montoEfectivoPorDeuda[row.id] || 0)) return;
+          handleMontoFila(row, nuevo);
+        }}
+        mode="decimal"
+        minFractionDigits={2}
+        maxFractionDigits={2}
+        min={0}
+        max={Number(row.saldoPendiente || 0)}
+        disabled={cargando}
+        inputClassName="text-right font-bold"
+        inputStyle={{ color: "#2e7d32", width: "100%" }}
+        style={{ width: "100%" }}
+      />
     );
   };
 
   const quedaTemplate = (row) => {
     if (!estaMarcado(row)) return <div className="text-right text-500">—</div>;
-    const resta = Number(row.saldoPendiente || 0) - Number(montoPorDeuda[row.id] || 0);
+    const resta = Number(row.saldoPendiente || 0) - Number(montoEfectivoPorDeuda[row.id] || 0);
     return (
       <div className="text-right">
         {row.moneda?.simbolo} {formatearNumero(resta)}
@@ -471,7 +542,7 @@ const PagoDeudasTributariasEspecializadoForm = ({
     );
   };
 
-  const totalAPagar = Object.values(montoPorDeuda).reduce((acc, m) => acc + m, 0);
+  const totalAPagar = Object.values(montoEfectivoPorDeuda).reduce((acc, m) => acc + m, 0);
 
   return (
     <>
@@ -483,6 +554,9 @@ const PagoDeudasTributariasEspecializadoForm = ({
             selection={seleccionados}
             onSelectionChange={(e) => setSeleccionados(e.value)}
             dataKey="id"
+            // Las columnas "A Pagar" y "Queda" dependen del monto escrito abajo (no de la fila):
+            // sin esto PrimeReact memoriza las celdas y no las vuelve a calcular al cambiar el monto
+            cellMemo={false}
             emptyMessage="No hay deudas para pagar"
             size="small"
             stripedRows
@@ -518,8 +592,9 @@ const PagoDeudasTributariasEspecializadoForm = ({
               }
             />
             <Column
-              header="A Pagar"
+              header={`A Pagar (${simbolo})`}
               body={aPagarTemplate}
+              style={{ minWidth: "10rem" }}
               footer={
                 <div className="text-right" style={{ color: "#2e7d32" }}>
                   {simbolo} {formatearNumero(totalAPagar)}
@@ -530,9 +605,24 @@ const PagoDeudasTributariasEspecializadoForm = ({
           </DataTable>
           {errorLote && <small className="p-error block mt-2">{errorLote}</small>}
           <small className="p-text-secondary block mt-2">
-            Marque o desmarque las deudas que se pagarán. Si el monto es menor a la suma de saldos,
-            el pago se reparte proporcionalmente al saldo de cada deuda marcada.
+            Marque o desmarque las deudas que se pagarán. Puede escribir el monto de cada deuda en
+            "A Pagar"; si escribe el monto total abajo, se reparte proporcionalmente al saldo de
+            cada deuda marcada.
           </small>
+          {montosManuales && (
+            <div className="mt-2">
+              <Button
+                type="button"
+                label="Volver al reparto proporcional"
+                icon="pi pi-refresh"
+                size="small"
+                severity="secondary"
+                outlined
+                onClick={volverARepartoProporcional}
+                disabled={cargando}
+              />
+            </div>
+          )}
         </Panel>
 
         <Divider />
@@ -725,8 +815,20 @@ const PagoDeudasTributariasEspecializadoForm = ({
                   <InputNumber
                     id="montoOrigen"
                     value={montoPago}
+                    onChange={(e) => {
+                      // Vista previa en vivo mientras se escribe (el valor se confirma al salir del campo)
+                      const escrito = Math.min(Number(e.value ?? 0), totalSaldos);
+                      setMontoEscrito(aCentimos(escrito) === aCentimos(montoPago) ? null : escrito);
+                    }}
+                    onBlur={() => setMontoEscrito(null)}
                     onValueChange={(e) => {
-                      montoEditado.current = true;
+                      setMontoEscrito(null);
+                      // Escribir el total descarta los montos manuales por deuda (vuelve el reparto proporcional)
+                      // (solo si el valor cambió: PrimeReact también emite el evento al pasar el foco)
+                      if (e.originalEvent && aCentimos(e.value) !== aCentimos(montoPago)) {
+                        montoEditado.current = true;
+                        setMontosManuales(null);
+                      }
                       setMontoPago(e.value);
                     }}
                     mode="decimal"
@@ -739,7 +841,9 @@ const PagoDeudasTributariasEspecializadoForm = ({
                   />
                   {aCentimos(montoPago) < aCentimos(totalSaldos) && (
                     <small className="p-text-secondary">
-                      Pago parcial: se reparte proporcionalmente entre las deudas marcadas.
+                      {montosManuales
+                        ? "Pago parcial: monto indicado por deuda en la tabla (suma de la columna A Pagar)."
+                        : "Pago parcial: se reparte proporcionalmente entre las deudas marcadas."}
                     </small>
                   )}
                 </div>

@@ -241,6 +241,21 @@ export default function Banco({ ruta }) {
           sortable
         />
         <Column
+          field="enlaceEntidadComercial.razonSocial"
+          header="Entidad Comercial"
+          body={(rowData) => {
+            if (!rowData.enlaceEntidadComercial) return <span style={{ color: '#999' }}>Sin enlace</span>;
+            const { razonSocial, numeroDocumento } = rowData.enlaceEntidadComercial;
+            return (
+              <span>
+                <strong>{razonSocial}</strong>
+                {numeroDocumento ? ` (${numeroDocumento})` : ""}
+              </span>
+            );
+          }}
+          sortable
+        />
+        <Column
           field="activo"
           header="Activo"
           body={(rowData) => (rowData.activo ? "Sí" : "No")}

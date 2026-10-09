@@ -6,6 +6,7 @@ import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 import BooleanToggleButton from '../common/BooleanToggleButton';
 import PlanCuentaContableSelector from '../common/PlanCuentaContableSelector';
+import EntidadComercialSelector from '../common/EntidadComercialSelector';
 
 export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, loading, paises = [], readOnly = false }) {
   const [nombre, setNombre] = React.useState(defaultValues.nombre || '');
@@ -23,6 +24,12 @@ export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, l
   const [cuentaContableId, setCuentaContableId] = React.useState(
     (defaultValues.cuentaContableId !== null && defaultValues.cuentaContableId !== undefined)
       ? Number(defaultValues.cuentaContableId)
+      : null
+  );
+  // Entidad comercial que representa al banco (acreedor/tercero en movimientos y asientos)
+  const [enlaceEntidadComercialId, setEnlaceEntidadComercialId] = React.useState(
+    (defaultValues.enlaceEntidadComercialId !== null && defaultValues.enlaceEntidadComercialId !== undefined)
+      ? Number(defaultValues.enlaceEntidadComercialId)
       : null
   );
 
@@ -43,6 +50,11 @@ export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, l
         ? Number(defaultValues.cuentaContableId)
         : null
     );
+    setEnlaceEntidadComercialId(
+      (defaultValues.enlaceEntidadComercialId !== null && defaultValues.enlaceEntidadComercialId !== undefined)
+        ? Number(defaultValues.enlaceEntidadComercialId)
+        : null
+    );
 
   }, [defaultValues]);
 
@@ -59,6 +71,8 @@ export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, l
       cuentaContableId: (cuentaContableId !== null && cuentaContableId !== undefined)
         ? Number(cuentaContableId)
         : null,
+      // null = sin enlace (el backend limpia el campo)
+      enlaceEntidadComercialId: enlaceEntidadComercialId ? Number(enlaceEntidadComercialId) : null,
     });
   };
 
@@ -103,6 +117,30 @@ export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, l
           showClearButton={true}
           placeholder="Seleccionar cuenta contable del banco"
         />
+      </div>
+      <div className="p-field">
+        <EntidadComercialSelector
+          value={enlaceEntidadComercialId}
+          onChange={setEnlaceEntidadComercialId}
+          label="Entidad Comercial del Banco"
+          placeholder="Enlazar con la entidad comercial del banco (opcional)"
+          disabled={loading || readOnly}
+        />
+        <small style={{ color: "#6c757d", display: "block" }}>
+          Se usa como tercero (acreedor) en los movimientos de caja y asientos de préstamos.
+          Déjelo vacío para registros como "S/B" o billeteras digitales sin entidad.
+        </small>
+        {enlaceEntidadComercialId && !readOnly && (
+          <Button
+            type="button"
+            label="Quitar enlace"
+            icon="pi pi-times"
+            className="p-button-text p-button-danger p-button-sm"
+            onClick={() => setEnlaceEntidadComercialId(null)}
+            disabled={loading}
+            style={{ width: "auto", marginTop: 4 }}
+          />
+        )}
       </div>
       <div className="p-field">
         <label htmlFor="activo">Activo</label>

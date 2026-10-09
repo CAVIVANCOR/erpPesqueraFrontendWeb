@@ -450,6 +450,53 @@ const PendientesTable = ({
     );
   };
 
+  // Caso activo (define las columnas y los pies de tabla)
+  const claveCaso = resolverCaso(tipo, tipoDeuda);
+  const esDeudasPersonal = claveCaso === "DEUDAS_PERSONAL";
+
+  // Nombre que se muestra en la columna "Personal" (mismo criterio que personalTemplate)
+  const nombrePersonal = (rowData) =>
+    rowData.entidadComercial?.razonSocial ||
+    rowData.personal?.nombreCompleto ||
+    rowData.responsable?.nombreCompleto ||
+    "";
+
+  // Ordenamiento por el nombre visible, sin distinguir mayúsculas ni tildes
+  const ordenarPorPersonal = (e) =>
+    [...e.data].sort(
+      (a, b) =>
+        e.order *
+        nombrePersonal(a).localeCompare(nombrePersonal(b), "es", { sensitivity: "base" }),
+    );
+
+  // Ordenamiento numérico del saldo (el valor puede llegar como texto)
+  const ordenarPorSaldo = (e) =>
+    [...e.data].sort(
+      (a, b) => e.order * ((Number(a.saldoPendiente) || 0) - (Number(b.saldoPendiente) || 0)),
+    );
+
+  // Sumatoria del saldo pendiente de TODAS las filas de la lista, agrupada por moneda
+  // (no se mezclan monedas distintas); se acumula en céntimos para evitar errores de redondeo
+  const totalesSaldoPorMoneda = () => {
+    const totales = new Map();
+    (pendientes || []).forEach((fila) => {
+      const simbolo = fila.moneda?.simbolo || "";
+      const centimos = Math.round((Number(fila.saldoPendiente) || 0) * 100);
+      totales.set(simbolo, (totales.get(simbolo) || 0) + centimos);
+    });
+    return [...totales.entries()].map(([simbolo, centimos]) => ({ simbolo, total: centimos / 100 }));
+  };
+
+  const saldoFooterTemplate = () => (
+    <div className="text-right font-bold">
+      {totalesSaldoPorMoneda().map(({ simbolo, total }) => (
+        <div key={simbolo || "sin-moneda"}>
+          {simbolo} {formatearNumero(total)}
+        </div>
+      ))}
+    </div>
+  );
+
   // Catálogo de columnas disponibles (props de <Column> por clave)
   const definicionesColumnas = {
     // Casilla de selección (pago múltiple de Deudas con Personal)
@@ -459,7 +506,18 @@ const PendientesTable = ({
     documento: { field: "documentoNumero", header: "Documento", body: documentoTemplate, sortable: true, style: { width: "200px" } },
     tipoDeuda: { header: "Tipo de Deuda", body: tipoDeudaTemplate, style: { width: "200px" } },
     entidad: { field: "entidadComercial.razonSocial", header: "Entidad Comercial", body: entidadTemplate, sortable: true, style: { width: "250px" } },
-    personal: { header: "Personal", body: personalTemplate, style: { width: "250px" } },
+    personal: {
+      header: "Personal",
+      body: personalTemplate,
+      field: "entidadComercial.razonSocial",
+      sortable: true,
+      sortFunction: ordenarPorPersonal,
+      style: { width: "250px" },
+      // Deudas con Personal: etiqueta del pie con la cantidad de deudas listadas
+      ...(esDeudasPersonal
+        ? { footer: `TOTAL (${(pendientes || []).length} deudas)`, footerStyle: { fontWeight: "bold" } }
+        : {}),
+    },
     fechaEmision: {
       header: "F. Emisión",
       body: fechaEmisionTemplate,
@@ -474,7 +532,16 @@ const PendientesTable = ({
       sortable: true,
       field: "fechaVencimiento",
     },
-    saldo: { header: "Saldo Pendiente", body: montoTemplate, style: { width: "180px" } },
+    saldo: {
+      header: "Saldo Pendiente",
+      body: montoTemplate,
+      field: "saldoPendiente",
+      sortable: true,
+      sortFunction: ordenarPorSaldo,
+      style: { width: "180px" },
+      // Deudas con Personal: sumatoria del saldo pendiente por moneda
+      ...(esDeudasPersonal ? { footer: saldoFooterTemplate } : {}),
+    },
     impuesto: {
       header: "Imp. Trib.",
       body: impuestoTemplate,
@@ -497,7 +564,6 @@ const PendientesTable = ({
   };
 
   // Columnas del caso activo (si faltara el caso, se usa el layout base)
-  const claveCaso = resolverCaso(tipo, tipoDeuda);
   const columnasActivas = COLUMNAS_POR_CASO[claveCaso] || COLUMNAS_BASE;
 
   return (

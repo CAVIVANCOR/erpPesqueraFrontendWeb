@@ -41,13 +41,6 @@ export async function getPagosDeudaTributariaByDeuda(deudaId) {
   return res.data;
 }
 
-export async function pagarDeudaTributaria(deudaId, data) {
-  const res = await axios.post(`${API_URL}/${deudaId}/pagar`, data, { 
-    headers: getAuthHeaders() 
-  });
-  return res.data;
-}
-
 // Copia voucher consolidado y comprobante del pago indicado a los demás pagos de la operación
 export async function sincronizarAdjuntosPagoDeudaTributaria(pagoId) {
   const res = await axios.put(`${API_URL}/${pagoId}/sincronizar-adjuntos`, null, {
