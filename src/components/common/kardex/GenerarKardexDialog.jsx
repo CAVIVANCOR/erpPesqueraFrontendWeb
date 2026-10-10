@@ -230,16 +230,7 @@ export default function GenerarKardexDialog({
   };
 
   const conceptoOptionTemplate = (option) => {
-    return (
-      <div>
-        <strong>{option.descripcion}</strong>
-        {option.descripcionArmada && (
-          <div style={{ fontSize: "0.85em", color: "#666" }}>
-            {option.descripcionArmada}
-          </div>
-        )}
-      </div>
-    );
+    return <strong>{option.descripcionArmada || option.descripcion}</strong>;
   };
 
   const direccionOptionTemplate = (option) => {
@@ -429,10 +420,11 @@ export default function GenerarKardexDialog({
             value={formData.conceptoMovAlmacenId}
             options={conceptos}
             onChange={(e) => handleChange("conceptoMovAlmacenId", e.value)}
-            optionLabel="descripcion"
+            optionLabel="descripcionArmada"
             optionValue="id"
             placeholder={config.placeholderConcepto}
             filter
+            filterBy="descripcionArmada"
             showClear
             style={{ width: "100%" }}
             itemTemplate={conceptoOptionTemplate}

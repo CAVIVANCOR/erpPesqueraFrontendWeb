@@ -243,6 +243,8 @@ export default function PreFacturaForm({
     movSalidaAlmacenId: defaultValues?.movSalidaAlmacenId
       ? Number(defaultValues.movSalidaAlmacenId)
       : null,
+    movimientosSalida: defaultValues?.movimientosSalida || [],
+    tieneMovimientosSalida: Boolean(defaultValues?.tieneMovimientosSalida),
 
     // Sistema y Auditoría
     creadoPor: defaultValues?.creadoPor
@@ -452,6 +454,8 @@ export default function PreFacturaForm({
         movSalidaAlmacenId: defaultValues?.movSalidaAlmacenId
           ? Number(defaultValues.movSalidaAlmacenId)
           : null,
+        movimientosSalida: defaultValues?.movimientosSalida || [],
+        tieneMovimientosSalida: Boolean(defaultValues?.tieneMovimientosSalida),
 
         // Sistema y Auditoría
         creadoPor: defaultValues?.creadoPor

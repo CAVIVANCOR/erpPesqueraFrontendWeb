@@ -3173,6 +3173,7 @@ export default function OrdenCompra({ ruta }) {
           totalItems={kardexDocumentoActual.detalles?.length || 0}
           empresaId={kardexDocumentoActual.empresaId}
           empresaEntidadComercialId={kardexDocumentoActual.empresa?.entidadComercialId}
+          fechaDocumento={kardexDocumentoActual.fechaDocumento}
           onGenerar={handleProcesarGeneracionKardex}
           loading={loading}
         />

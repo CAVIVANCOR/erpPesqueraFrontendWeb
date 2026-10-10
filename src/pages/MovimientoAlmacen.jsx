@@ -393,6 +393,16 @@ export default function MovimientoAlmacen({ ruta }) {
         life: 6000,
       });
 
+      // Avisos del servidor (p. ej. la venta de origen aún tiene movimientos de otros almacenes)
+      (resultado.resultados?.advertencias || []).forEach((advertencia) =>
+        toast.current.show({
+          severity: "warn",
+          summary: "Atención",
+          detail: advertencia,
+          life: 12000,
+        })
+      );
+
       cargarDatos();
     } catch (err) {
       const errorMsg =

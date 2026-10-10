@@ -98,6 +98,10 @@ export default function DetallesTab({
       await cargarDetalles();
       await onStockDespachado();
     },
+    onEliminado: async () => {
+      await cargarDetalles();
+      await onStockDespachado();
+    },
   });
   // Cargar detalles cuando cambie preFacturaId
   useEffect(() => {
@@ -478,6 +482,22 @@ export default function DetallesTab({
             }
           />
         </div>
+
+        {/* ELIMINAR KARDEX - Borra todos los movimientos de salida generados para poder generar de nuevo */}
+        {asignacionStock.kardexGenerado && (
+          <div style={{ flex: 1 }}>
+            <label style={{ opacity: 0 }}>.</label>
+            <Button
+              label="Eliminar Kardex"
+              icon="pi pi-trash"
+              severity="danger"
+              onClick={asignacionStock.pedirEliminacion}
+              disabled={readOnly || asignacionStock.eliminando}
+              style={{ width: "100%", fontWeight: "bold" }}
+              tooltip="Elimina todos los movimientos de almacén generados y devuelve el stock"
+            />
+          </div>
+        )}
 
         {/* PAGOS PREVIOS SI - Solo para Saldos Iniciales */}
         {esSaldoInicial && (

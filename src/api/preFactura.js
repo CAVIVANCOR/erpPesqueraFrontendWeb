@@ -409,6 +409,17 @@ export async function despacharStockPreFactura(id, payload) {
   return res.data;
 }
 
+/**
+ * Elimina el kardex de la venta: todos los movimientos de salida generados, con saldos y costos recalculados.
+ * @param {number} id - ID de la pre-factura
+ */
+export async function eliminarStockDespachadoPreFactura(id) {
+  const res = await axios.delete(`${API_URL}/${id}/despachar-stock`, {
+    headers: getAuthHeaders(),
+  });
+  return res.data;
+}
+
 export async function regenerarKardexPreFactura(id) {
   const res = await axios.post(
     `${API_URL}/${id}/regenerar-kardex`,

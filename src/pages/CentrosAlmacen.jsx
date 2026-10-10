@@ -100,9 +100,7 @@ export default function CentrosAlmacen({ ruta }) {
     // Filtrar por proveedor (entidad comercial)
     if (proveedorSeleccionado) {
       filtrados = filtrados.filter((centro) => {
-        return (
-          Number(centro.entidadComercialId) === Number(proveedorSeleccionado)
-        );
+        return Number(centro.proveedorId) === Number(proveedorSeleccionado);
       });
     }
 
@@ -163,10 +161,6 @@ export default function CentrosAlmacen({ ruta }) {
   };
 
   const handleEdit = (rowData) => {
-    // Establecer automáticamente la empresa del centro
-    if (rowData.empresaId) {
-      setEmpresaSeleccionada(rowData.empresaId);
-    }
     setEditing(rowData);
     setShowDialog(true);
   };
@@ -253,6 +247,13 @@ export default function CentrosAlmacen({ ruta }) {
     ) : (
       <i className="pi pi-times" style={{ color: "red" }} />
     );
+  };
+
+  const empresaTemplate = (rowData) => {
+    const empresa = empresas.find(
+      (e) => Number(e.id) === Number(rowData.empresaId),
+    );
+    return empresa ? empresa.razonSocial : "-";
   };
 
   const proveedorTemplate = (rowData) => {
@@ -561,6 +562,7 @@ export default function CentrosAlmacen({ ruta }) {
         }
       >
         <Column field="id" header="ID" style={{ width: 80 }} sortable />
+        <Column body={empresaTemplate} header="Empresa" sortable />
         <Column field="nombre" header="Nombre" sortable />
         <Column field="descripcion" header="Descripción" sortable />
         <Column body={proveedorTemplate} header="Proveedor" sortable />
@@ -608,7 +610,7 @@ export default function CentrosAlmacen({ ruta }) {
           defaultValues={editing || {}}
           proveedores={proveedores}
           empresas={empresas}
-          empresaId={empresaSeleccionada}
+          empresaId={editing?.empresaId || empresaSeleccionada}
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}

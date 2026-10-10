@@ -4,7 +4,7 @@
 // Al generar, se envían al backend, que crea un movimiento por almacén, su kardex y actualiza los saldos.
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { getConceptosMovAlmacen } from "../../../api/conceptoMovAlmacen";
-import { despacharStockPreFactura } from "../../../api/preFactura";
+import { despacharStockPreFactura, eliminarStockDespachadoPreFactura } from "../../../api/preFactura";
 
 const TIPO_CONCEPTO_VENTA = 2;
 const TIPO_MOVIMIENTO_SALIDA = 3;
@@ -29,6 +29,7 @@ export default function useAsignacionStock({
   motivoNoDespachar = "",
   toast,
   onGenerado,
+  onEliminado,
 }) {
   const [asignaciones, setAsignaciones] = useState({});
   const [conceptos, setConceptos] = useState([]);
@@ -37,6 +38,9 @@ export default function useAsignacionStock({
   const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
   const [generando, setGenerando] = useState(false);
   const [generadoLocal, setGeneradoLocal] = useState(false);
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+  const [eliminadoLocal, setEliminadoLocal] = useState(false);
 
   // El JSON se limpia al cargar otra PreFactura y al salir de la actual
   useEffect(() => {
@@ -45,6 +49,8 @@ export default function useAsignacionStock({
     setLineaActiva(null);
     setMostrarConfirmacion(false);
     setGeneradoLocal(false);
+    setConfirmandoEliminar(false);
+    setEliminadoLocal(false);
     return () => setAsignaciones({});
   }, [preFacturaId]);
 
@@ -232,13 +238,46 @@ export default function useAsignacionStock({
     }
   };
 
+  // Elimina TODOS los movimientos de salida de la venta (kardex y saldos revertidos) para poder generar de nuevo
+  const eliminarKardex = async () => {
+    setEliminando(true);
+    try {
+      const resultado = await eliminarStockDespachadoPreFactura(preFacturaId);
+      setAsignaciones({});
+      setGeneradoLocal(false);
+      setEliminadoLocal(true);
+      setConfirmandoEliminar(false);
+      toast?.current?.show({
+        severity: "success",
+        summary: "Kardex eliminado",
+        detail: resultado?.mensaje || "Movimientos de almacén eliminados y saldos actualizados",
+        life: 6000,
+      });
+      if (onEliminado) await onEliminado(resultado);
+      return resultado;
+    } catch (error) {
+      console.error("Error al eliminar el kardex de la venta:", error);
+      mostrarError(
+        error.response?.data?.mensaje || error.response?.data?.message || error.message || "Error desconocido"
+      );
+      return null;
+    } finally {
+      setEliminando(false);
+    }
+  };
+
   return {
     // datos
     json: asignaciones,
     empresaId,
     preFacturaId,
     detalles,
-    kardexGenerado: kardexGenerado || generadoLocal,
+    kardexGenerado: eliminadoLocal ? generadoLocal : kardexGenerado || generadoLocal,
+    confirmandoEliminar,
+    eliminando,
+    pedirEliminacion: () => setConfirmandoEliminar(true),
+    cerrarEliminacion: () => setConfirmandoEliminar(false),
+    eliminarKardex,
     puedeDespachar,
     motivoNoDespachar,
     generando,

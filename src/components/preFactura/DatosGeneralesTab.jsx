@@ -123,24 +123,16 @@ export default function DatosGeneralesTab({
     ? !estaAnulada && !readOnly
     : puedeEditar && !readOnly;
 
-  // ⭐ DESPACHO DE STOCK (asignar stock por línea y generar kardex): solo con la pre-factura emitida
-  const ESTADOS_DESPACHABLES = [95, 96, 97, 98, 99]; // FACTURADA, EMITIDA, CE GENERADO, VALIDADO SUNAT, NO VALIDADO SUNAT
-  const esNotaCreditoDebito = [8, 9].includes(Number(formData.tipoDocumentoId));
-  const estaEmitida = ESTADOS_DESPACHABLES.includes(Number(formData.estadoId));
-  const tienePermisoDespacho = permisos.puedeEditar === true || tienePermisoEspecial;
-  const puedeDespachar =
-    Boolean(preFacturaId) && estaEmitida && !esNotaCreditoDebito && tienePermisoDespacho && !readOnly;
-  const motivoNoDespachar = !preFacturaId
-    ? "Guarde la pre-factura primero"
-    : readOnly
-      ? "Modo solo lectura"
-      : esNotaCreditoDebito
-        ? "No aplica a notas de crédito o débito"
-        : !estaEmitida
-          ? "Disponible tras emitir la pre-factura"
-          : !tienePermisoDespacho
-            ? "No tiene permisos para generar kardex"
-            : "";
+  // ⭐ DESPACHO DE STOCK: el botón de cada línea solo se bloquea cuando el kardex ya fue generado.
+  // El servidor valida el estado del documento y el tipo al generar, y avisa con un mensaje claro.
+  const movimientosSalidaVenta =
+    formData.movimientosSalida?.length > 0
+      ? formData.movimientosSalida
+      : formData.movSalidaAlmacenId
+        ? [{ id: formData.movSalidaAlmacenId }]
+        : [];
+  const puedeDespachar = true;
+  const motivoNoDespachar = "";
 
   const puedeEditarDetallesConPermiso = tienePermisoEspecial
     ? !estaAnulada && !readOnly
@@ -1091,34 +1083,30 @@ export default function DatosGeneralesTab({
             />
           </div>
           {/* MOVIMIENTO DE ALMACÉN - Botón para ir al movimiento */}
-          {formData.movSalidaAlmacenId && (
+          {movimientosSalidaVenta.length > 0 && (
             <div style={{ flex: 1 }}>
               <label
                 style={{
                   fontWeight: "bold",
                   fontSize: getResponsiveFontSize(),
                 }}
-                htmlFor="movAlmacen"
               >
-                Movimiento de Almacén (Kardex)
+                Movimientos de Almacén (Kardex)
               </label>
-              <Button
-                id="movAlmacen"
-                label={`ID: ${formData.movSalidaAlmacenId}`}
-                icon="pi pi-box"
-                severity="success"
-                onClick={() =>
-                  onIrAMovimientoAlmacen &&
-                  onIrAMovimientoAlmacen(formData.movSalidaAlmacenId)
-                }
-                outlined
-                style={{
-                  width: "100%",
-                  fontWeight: "bold",
-                  textTransform: "uppercase",
-                }}
-                disabled={readOnly}
-              />
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem" }}>
+                {movimientosSalidaVenta.map((mov) => (
+                  <Button
+                    key={mov.id}
+                    label={mov.numeroDocumento || `ID: ${mov.id}`}
+                    icon="pi pi-box"
+                    severity="success"
+                    onClick={() => onIrAMovimientoAlmacen && onIrAMovimientoAlmacen(mov.id)}
+                    outlined
+                    style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                    disabled={readOnly}
+                  />
+                ))}
+              </div>
             </div>
           )}
           {/* COTIZACIÓN VENTA - Botón para ir a la cotización */}
@@ -1420,7 +1408,7 @@ export default function DatosGeneralesTab({
           aplicaPercepcion={aplicaPercepcion}
           montoPercepcion={montoPercepcion}
           porcentajePercepcion={porcentajePercepcion}
-          kardexGenerado={Boolean(formData.movSalidaAlmacenId)}
+          kardexGenerado={Boolean(formData.tieneMovimientosSalida || formData.movSalidaAlmacenId)}
           puedeDespachar={puedeDespachar}
           motivoNoDespachar={motivoNoDespachar}
           onStockDespachado={onStockDespachado}

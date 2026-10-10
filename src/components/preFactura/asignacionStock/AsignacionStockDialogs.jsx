@@ -3,12 +3,14 @@
 import React from "react";
 import AsignarStockLineaDialog from "./AsignarStockLineaDialog";
 import ConfirmarGeneracionDialog from "./ConfirmarGeneracionDialog";
+import EliminarKardexDialog from "./EliminarKardexDialog";
 
 export default function AsignacionStockDialogs({ a }) {
   return (
     <>
       <AsignarStockLineaDialog a={a} />
       <ConfirmarGeneracionDialog a={a} />
+      <EliminarKardexDialog a={a} />
     </>
   );
 }

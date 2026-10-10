@@ -68,13 +68,8 @@ export default function CentrosAlmacenForm({
     });
   };
 
-  // Filtrar proveedores por empresa seleccionada
-  const proveedoresFiltrados = React.useMemo(() => {
-    if (!empresaIdLocal) return [];
-    return proveedores.filter(p => Number(p.empresaId) === Number(empresaIdLocal));
-  }, [proveedores, empresaIdLocal]);
-
-  const proveedoresOptions = proveedoresFiltrados.map((p) => ({ ...p, id: Number(p.id) }));
+  // Las entidades comerciales son globales (no pertenecen a una empresa): se listan todas
+  const proveedoresOptions = proveedores.map((p) => ({ ...p, id: Number(p.id) }));
   const empresasOptions = empresas.map((e) => ({ ...e, id: Number(e.id) }));
 
   return (
@@ -89,11 +84,7 @@ export default function CentrosAlmacenForm({
               options={empresasOptions}
               optionLabel="razonSocial"
               optionValue="id"
-              onChange={(e) => {
-                setEmpresaIdLocal(e.value);
-                // Limpiar proveedor cuando cambia la empresa
-                setProveedorId("");
-              }}
+              onChange={(e) => setEmpresaIdLocal(e.value)}
               placeholder="Seleccione empresa"
               disabled={loading || readOnly || isEdit}
               required
@@ -136,8 +127,8 @@ export default function CentrosAlmacenForm({
               optionLabel="razonSocial"
               optionValue="id"
               onChange={(e) => setProveedorId(e.value)}
-              placeholder={empresaIdLocal ? "Seleccione proveedor" : "Primero seleccione una empresa"}
-              disabled={loading || readOnly || !empresaIdLocal}
+              placeholder="Seleccione proveedor"
+              disabled={loading || readOnly}
               showClear
               filter
             />
