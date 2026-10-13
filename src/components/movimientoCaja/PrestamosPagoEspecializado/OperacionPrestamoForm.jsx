@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import ConfirmarSinFondosDialog from "../../common/ConfirmarSinFondosDialog";
+import { obtenerAvisoSinFondos } from "../../../utils/avisoSinFondos";
 import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
@@ -278,6 +280,9 @@ const OperacionPrestamoForm = ({
   // ════════════════════════════════════════════════════════════
   // VALIDACIONES (mismos criterios que EntregarFondosForm)
   // ════════════════════════════════════════════════════════════
+  const [avisoSinFondos, setAvisoSinFondos] = useState(null);
+  const sinFondosConfirmadoRef = useRef(false);
+
   const validarFormulario = () => {
     const mostrarError = (detail) => {
       toast?.current?.show({ severity: "error", summary: "Error", detail, life: 3000 });
@@ -326,19 +331,6 @@ const OperacionPrestamoForm = ({
     }
     if (esDesembolso && Number(itf || 0) + Number(comision || 0) > totalPrincipal) {
       return mostrarError("El ITF y la comisión no pueden superar el monto desembolsado");
-    }
-
-    // Solo advierte (egreso): el pago puede dejar la cuenta en negativo y no debe bloquearse
-    if (!esDesembolso) {
-      const saldo = Number(cuentaSeleccionada?.saldoActual ?? cuentaSeleccionada?.saldo);
-      if (cuentaSeleccionada && !Number.isNaN(saldo) && saldo < totalDebitado) {
-        toast?.current?.show({
-          severity: "warn",
-          summary: "Saldo Insuficiente",
-          detail: `Saldo disponible: ${simbolo} ${formatearNumero(saldo)}. Requerido: ${simbolo} ${formatearNumero(totalDebitado)}. La cuenta quedará en negativo.`,
-          life: 6000,
-        });
-      }
     }
 
     return true;
@@ -419,6 +411,16 @@ const OperacionPrestamoForm = ({
     e.preventDefault();
 
     if (!validarFormulario()) return;
+
+    // Egreso sin fondos: no se bloquea, pero se pide confirmación antes de procesar (saldo real de la cuenta elegida)
+    if (!esDesembolso && !sinFondosConfirmadoRef.current) {
+      const aviso = await obtenerAvisoSinFondos({ cuentaCorrienteId: cuentaId, totalRequerido: totalDebitado, simbolo });
+      if (aviso) {
+        setAvisoSinFondos(aviso);
+        return;
+      }
+    }
+    sinFondosConfirmadoRef.current = false;
 
     setProcesando(true);
     try {
@@ -895,6 +897,16 @@ const OperacionPrestamoForm = ({
           />
         </div>
       </form>
+
+      <ConfirmarSinFondosDialog
+        mensaje={avisoSinFondos}
+        onCancelar={() => setAvisoSinFondos(null)}
+        onConfirmar={() => {
+          sinFondosConfirmadoRef.current = true;
+          setAvisoSinFondos(null);
+          handleSubmit({ preventDefault: () => {} });
+        }}
+      />
 
       <ConfirmacionOperacionPrestamoDialog
         visible={showConfirmacion}

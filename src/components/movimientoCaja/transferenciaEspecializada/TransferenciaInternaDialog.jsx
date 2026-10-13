@@ -85,6 +85,9 @@ export default function TransferenciaInternaDialog({
   const [descripcion, setDescripcion] = useState('');
   const [numeroOperacion, setNumeroOperacion] = useState('');
 
+  // Aviso de cuenta de origen sin fondos (pide confirmación antes de procesar)
+  const [avisoSinFondos, setAvisoSinFondos] = useState(null);
+
   // Estados para confirmación
   const [showConfirmacion, setShowConfirmacion] = useState(false);
   const [resultadoTransferencia, setResultadoTransferencia] = useState(null);
@@ -494,16 +497,7 @@ export default function TransferenciaInternaDialog({
         return false;
       }
 
-      // Validar saldo disponible
-      if (cuentaOrigen && cuentaOrigen.saldo < totalDebitado) {
-        toast?.current?.show({
-          severity: 'error',
-          summary: 'Saldo Insuficiente',
-          detail: `Saldo disponible: ${monedaOrigen?.simbolo} ${formatearNumero(cuentaOrigen.saldo)}. Requerido: ${monedaOrigen?.simbolo} ${formatearNumero(totalDebitado)}`,
-          life: 5000
-        });
-        return false;
-      }
+      // La falta de fondos no bloquea: el servidor realiza la operación y devuelve la alerta en rojo
     }
     // ========================================
     // FLUJO 2: INGRESO DIRECTO (solo destino)
@@ -595,16 +589,7 @@ export default function TransferenciaInternaDialog({
         return false;
       }
 
-      // Validar saldo disponible
-      if (cuentaOrigen && cuentaOrigen.saldo < totalDebitado) {
-        toast?.current?.show({
-          severity: 'error',
-          summary: 'Saldo Insuficiente',
-          detail: `Saldo disponible: ${monedaOrigen?.simbolo} ${formatearNumero(cuentaOrigen.saldo)}. Requerido: ${monedaOrigen?.simbolo} ${formatearNumero(totalDebitado)}`,
-          life: 5000
-        });
-        return false;
-      }
+      // La falta de fondos no bloquea: el servidor realiza la operación y devuelve la alerta en rojo
     }
 
     return true;
@@ -613,7 +598,7 @@ export default function TransferenciaInternaDialog({
   // ════════════════════════════════════════════════════════════
   // FUNCIÓN: PROCESAR TRANSFERENCIA
   // ════════════════════════════════════════════════════════════
-  const handleProcesarTransferencia = async () => {
+  const handleProcesarTransferencia = async (confirmarSinFondos = false) => {
     if (!validarFormulario()) return;
 
     setLoading(true);
@@ -781,6 +766,9 @@ export default function TransferenciaInternaDialog({
       }
 
 
+      // El servidor avisa si la cuenta de origen no tiene fondos; solo se registra con la confirmación del usuario
+      datos.confirmarSinFondos = confirmarSinFondos === true;
+
       // 2. Procesar transferencia en backend
       const resultado = await procesarTransferenciaInterna(datos);
 
@@ -814,6 +802,11 @@ export default function TransferenciaInternaDialog({
       onSuccess?.();
 
     } catch (error) {
+      // Cuenta de origen sin fondos: se pide confirmación antes de registrar la operación
+      if (error.response?.data?.codigo === 'SALDO_INSUFICIENTE') {
+        setAvisoSinFondos(error.response.data.mensaje || 'La cuenta de origen no tiene fondos suficientes.');
+        return;
+      }
       console.error('Error al procesar transferencia:', error);
       toast?.current?.show({
         severity: 'error',
@@ -1081,7 +1074,7 @@ export default function TransferenciaInternaDialog({
         <Button
           label="Procesar Transferencia"
           icon="pi pi-check"
-          onClick={handleProcesarTransferencia}
+          onClick={() => handleProcesarTransferencia()}
           loading={loading}
           disabled={loading}
         />
@@ -1554,6 +1547,39 @@ export default function TransferenciaInternaDialog({
           </Panel>
 
         </div>
+      </Dialog>
+
+      {/* Cuenta de origen sin fondos: confirmar antes de procesar */}
+      <Dialog
+        header="Cuenta sin fondos"
+        visible={Boolean(avisoSinFondos)}
+        onHide={() => setAvisoSinFondos(null)}
+        style={{ width: '32rem' }}
+        modal
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              className="p-button-text"
+              onClick={() => setAvisoSinFondos(null)}
+            />
+            <Button
+              label="Procesar de todas formas"
+              icon="pi pi-exclamation-triangle"
+              severity="danger"
+              onClick={() => {
+                setAvisoSinFondos(null);
+                handleProcesarTransferencia(true);
+              }}
+            />
+          </div>
+        }
+      >
+        <p style={{ color: '#c62828', fontWeight: 'bold', marginTop: 0 }}>{avisoSinFondos}</p>
+        <p style={{ marginBottom: 0 }}>
+          ¿Desea realizar la operación de todas formas? La cuenta de origen quedará con saldo negativo.
+        </p>
       </Dialog>
 
       {/* Dialog de Confirmación */}

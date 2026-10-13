@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import ConfirmarSinFondosDialog from "../../common/ConfirmarSinFondosDialog";
+import { obtenerAvisoSinFondos } from "../../../utils/avisoSinFondos";
 import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
@@ -292,6 +294,9 @@ const PagoDeudasPersonalEspecializadoForm = ({
   // ════════════════════════════════════════════════════════════
   // VALIDACIONES (mismos criterios que EntregarFondosForm)
   // ════════════════════════════════════════════════════════════
+  const [avisoSinFondos, setAvisoSinFondos] = useState(null);
+  const sinFondosConfirmadoRef = useRef(false);
+
   const validarFormulario = () => {
     const mostrarError = (detail) => {
       toast?.current?.show({ severity: "error", summary: "Error", detail, life: 3000 });
@@ -325,17 +330,6 @@ const PagoDeudasPersonalEspecializadoForm = ({
     }
     if (!esMonedaNacional && !(Number(tipoCambio) > 0)) {
       return mostrarError("Debe ingresar un tipo de cambio válido");
-    }
-
-    // Solo advierte: el pago puede dejar la cuenta en negativo y no debe bloquearse
-    const saldo = Number(cuentaOrigen?.saldoActual ?? cuentaOrigen?.saldo);
-    if (cuentaOrigen && !Number.isNaN(saldo) && saldo < totalDebitado) {
-      toast?.current?.show({
-        severity: "warn",
-        summary: "Saldo Insuficiente",
-        detail: `Saldo disponible: ${simbolo} ${formatearNumero(saldo)}. Requerido: ${simbolo} ${formatearNumero(totalDebitado)}. La cuenta quedará en negativo.`,
-        life: 6000,
-      });
     }
 
     return true;
@@ -417,6 +411,16 @@ const PagoDeudasPersonalEspecializadoForm = ({
     e.preventDefault();
 
     if (!validarFormulario()) return;
+
+    // Sin fondos: no se bloquea, pero se pide confirmación antes de procesar (saldo real de la cuenta elegida)
+    if (!sinFondosConfirmadoRef.current) {
+      const aviso = await obtenerAvisoSinFondos({ cuentaCorrienteId: cuentaOrigenId, totalRequerido: totalDebitado, simbolo });
+      if (aviso) {
+        setAvisoSinFondos(aviso);
+        return;
+      }
+    }
+    sinFondosConfirmadoRef.current = false;
 
     setProcesando(true);
     try {
@@ -909,6 +913,16 @@ const PagoDeudasPersonalEspecializadoForm = ({
           />
         </div>
       </form>
+
+      <ConfirmarSinFondosDialog
+        mensaje={avisoSinFondos}
+        onCancelar={() => setAvisoSinFondos(null)}
+        onConfirmar={() => {
+          sinFondosConfirmadoRef.current = true;
+          setAvisoSinFondos(null);
+          handleSubmit({ preventDefault: () => {} });
+        }}
+      />
 
       {/* Confirmación del pago: deudas pagadas, movimientos y asientos */}
       <ConfirmacionPagoDeudasPersonalDialog

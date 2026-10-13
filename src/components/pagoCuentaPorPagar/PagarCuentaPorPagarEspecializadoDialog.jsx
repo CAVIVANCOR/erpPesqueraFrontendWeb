@@ -1,5 +1,7 @@
 // src/components/pagoCuentaPorPagar/PagarCuentaPorPagarEspecializadoDialog.jsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import ConfirmarSinFondosDialog from '../common/ConfirmarSinFondosDialog';
+import { consultarSaldoCuenta } from '../../utils/avisoSinFondos';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputNumber } from 'primereact/inputnumber';
@@ -270,103 +272,76 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
   }, [visible, cuentaPorPagar, fechaPago, periodosContables]);
 
   // ════════════════════════════════════════════════════════════
-  // VALIDACIÓN EN TIEMPO REAL: SALDO INSUFICIENTE
+  // SALDO INSUFICIENTE: se evalúa al procesar el pago y se pide confirmación (no se bloquea)
   // ════════════════════════════════════════════════════════════
-  useEffect(() => {
-    if (!visible || !cuentaBancariaId) return;
+  const [avisoSinFondos, setAvisoSinFondos] = useState(null);
+  const sinFondosConfirmadoRef = useRef(false);
 
-    // Calcular total a egresar en la moneda de pago (pago neto + ITF + comisión)
-    const totalEgresoPagoMonedaPago = Number(montoNetoIngresado || 0) + Number(montoITF || 0) + Number(montoComision || 0);
+  const obtenerAvisosSinFondos = async () => {
+    const avisos = [];
 
-    if (totalEgresoPagoMonedaPago > 0) {
-      // Buscar la cuenta corriente seleccionada
-      const cuentaSeleccionada = cuentasCorrientes?.find(c => Number(c.id) === Number(cuentaBancariaId));
-      
-      if (cuentaSeleccionada) {
-        const saldoActual = Number(cuentaSeleccionada.saldoActual || 0);
-        const monedaPago = monedas?.find(m => Number(m.id) === Number(monedaPagoId));
-        const monedaCuenta = monedas?.find(m => Number(m.id) === Number(cuentaSeleccionada.monedaId));
-        
-        // Convertir el total a pagar a la moneda de la cuenta corriente
-        let totalEgresoPagoMonedaCuenta = totalEgresoPagoMonedaPago;
-        
-        if (Number(monedaPagoId) !== Number(cuentaSeleccionada.monedaId)) {
-          // Hay conversión de moneda
-          const tc = Number(tipoCambio || 1);
-          
-          // Si pago en soles y cuenta en dólares: dividir entre TC
-          // Si pago en dólares y cuenta en soles: multiplicar por TC
-          if (Number(monedaPagoId) === 1 && Number(cuentaSeleccionada.monedaId) === 2) {
-            // Soles a Dólares
-            totalEgresoPagoMonedaCuenta = totalEgresoPagoMonedaPago / tc;
-          } else if (Number(monedaPagoId) === 2 && Number(cuentaSeleccionada.monedaId) === 1) {
-            // Dólares a Soles
-            totalEgresoPagoMonedaCuenta = totalEgresoPagoMonedaPago * tc;
-          }
-        }
-        
-        if (saldoActual < totalEgresoPagoMonedaCuenta) {
-          const diferencia = totalEgresoPagoMonedaCuenta - saldoActual;
-          
-          toast?.current?.show({
-            severity: 'warn',
-            summary: '⚠️ Saldo Insuficiente - Pago Neto',
-            detail: `Saldo insuficiente en ${cuentaSeleccionada.banco?.nombre || ''} ${cuentaSeleccionada.numeroCuenta || ''}.\nSaldo actual: ${monedaCuenta?.simbolo || ''} ${saldoActual.toFixed(2)}\nTotal a egresar (convertido): ${monedaCuenta?.simbolo || ''} ${totalEgresoPagoMonedaCuenta.toFixed(2)}\nPago: ${monedaPago?.simbolo || ''} ${totalEgresoPagoMonedaPago.toFixed(2)} (TC: ${tipoCambio})\nFalta: ${monedaCuenta?.simbolo || ''} ${diferencia.toFixed(2)}`,
-            life: 10000
-          });
+    const evaluar = async ({ cuentaId, monedaDocId, tc, montoIngresado, itf, comision, etiqueta }) => {
+      if (!cuentaId) return;
+      const totalMonedaDoc = Number(montoIngresado || 0) + Number(itf || 0) + Number(comision || 0);
+      if (!(totalMonedaDoc > 0)) return;
+
+      // Saldo y moneda REALES de la cuenta elegida (la empresa sale de la cuenta, no del filtro de pantalla)
+      const datosCuenta = await consultarSaldoCuenta(cuentaId);
+      if (!datosCuenta) return;
+      const cuentaLista = cuentasCorrientes?.find((c) => Number(c.id) === Number(cuentaId));
+      const cuenta = { ...(cuentaLista || {}), monedaId: datosCuenta.monedaId };
+
+      const saldoActual = Number(datosCuenta.saldoActual || 0);
+      const monedaDoc = monedas?.find((m) => Number(m.id) === Number(monedaDocId));
+      const monedaCuenta = monedas?.find((m) => Number(m.id) === Number(cuenta.monedaId));
+
+      // Convertir el total a egresar a la moneda de la cuenta corriente
+      let totalMonedaCuenta = totalMonedaDoc;
+      if (Number(monedaDocId) !== Number(cuenta.monedaId)) {
+        const tcAplicado = Number(tc || 1);
+        if (Number(monedaDocId) === 1 && Number(cuenta.monedaId) === 2) {
+          totalMonedaCuenta = totalMonedaDoc / tcAplicado; // Soles a Dólares
+        } else if (Number(monedaDocId) === 2 && Number(cuenta.monedaId) === 1) {
+          totalMonedaCuenta = totalMonedaDoc * tcAplicado; // Dólares a Soles
         }
       }
-    }
-  }, [montoNetoIngresado, montoITF, montoComision, cuentaBancariaId, tipoCambio, visible, cuentasCorrientes, monedas, monedaPagoId, toast]);
 
-  // ════════════════════════════════════════════════════════════
-  // VALIDACIÓN EN TIEMPO REAL: SALDO INSUFICIENTE DETRACCIÓN
-  // ════════════════════════════════════════════════════════════
-  useEffect(() => {
-    if (!visible || !aplicaDetraccion || !cuentaBancariaDetraccionId) return;
-
-    // Calcular total a egresar en la moneda de detracción (detracción + ITF + comisión)
-    const totalEgresoDetraccionMonedaDetraccion = Number(montoDetraccionIngresado || 0) + Number(itfDetraccion || 0) + Number(comisionDetraccion || 0);
-
-    if (totalEgresoDetraccionMonedaDetraccion > 0) {
-      // Buscar la cuenta corriente de detracción seleccionada
-      const cuentaDetraccionSeleccionada = cuentasCorrientes?.find(c => Number(c.id) === Number(cuentaBancariaDetraccionId));
-      
-      if (cuentaDetraccionSeleccionada) {
-        const saldoActual = Number(cuentaDetraccionSeleccionada.saldoActual || 0);
-        const monedaDetraccion = monedas?.find(m => Number(m.id) === Number(monedaDetraccionId));
-        const monedaCuenta = monedas?.find(m => Number(m.id) === Number(cuentaDetraccionSeleccionada.monedaId));
-        
-        // Convertir el total a pagar a la moneda de la cuenta corriente
-        let totalEgresoDetraccionMonedaCuenta = totalEgresoDetraccionMonedaDetraccion;
-        
-        if (Number(monedaDetraccionId) !== Number(cuentaDetraccionSeleccionada.monedaId)) {
-          // Hay conversión de moneda
-          const tc = Number(tipoCambioDetraccion || 1);
-          
-          // Si detracción en soles y cuenta en dólares: dividir entre TC
-          // Si detracción en dólares y cuenta en soles: multiplicar por TC
-          if (Number(monedaDetraccionId) === 1 && Number(cuentaDetraccionSeleccionada.monedaId) === 2) {
-            // Soles a Dólares
-            totalEgresoDetraccionMonedaCuenta = totalEgresoDetraccionMonedaDetraccion / tc;
-          } else if (Number(monedaDetraccionId) === 2 && Number(cuentaDetraccionSeleccionada.monedaId) === 1) {
-            // Dólares a Soles
-            totalEgresoDetraccionMonedaCuenta = totalEgresoDetraccionMonedaDetraccion * tc;
-          }
-        }
-        
-        if (saldoActual < totalEgresoDetraccionMonedaCuenta) {
-          const diferencia = totalEgresoDetraccionMonedaCuenta - saldoActual;
-          toast?.current?.show({
-            severity: 'warn',
-            summary: '⚠️ Saldo Insuficiente - Detracción',
-            detail: `Saldo insuficiente en ${cuentaDetraccionSeleccionada.banco?.nombre || ''} ${cuentaDetraccionSeleccionada.numeroCuenta || ''} para detracción.\nSaldo actual: ${monedaCuenta?.simbolo || ''} ${saldoActual.toFixed(2)}\nTotal a egresar (convertido): ${monedaCuenta?.simbolo || ''} ${totalEgresoDetraccionMonedaCuenta.toFixed(2)}\nDetracción: ${monedaDetraccion?.simbolo || ''} ${totalEgresoDetraccionMonedaDetraccion.toFixed(2)} (TC: ${tipoCambioDetraccion})\nFalta: ${monedaCuenta?.simbolo || ''} ${diferencia.toFixed(2)}`,
-            life: 10000
-          });
-        }
+      if (saldoActual < totalMonedaCuenta) {
+        const diferencia = totalMonedaCuenta - saldoActual;
+        avisos.push(
+          `${etiqueta}: la cuenta ${cuenta.banco?.nombre || ''} ${cuenta.numeroCuenta || ''} no tiene fondos suficientes.\n` +
+          `Saldo actual: ${monedaCuenta?.simbolo || ''} ${saldoActual.toFixed(2)}. ` +
+          `Total a egresar (convertido): ${monedaCuenta?.simbolo || ''} ${totalMonedaCuenta.toFixed(2)}. ` +
+          `Pago: ${monedaDoc?.simbolo || ''} ${totalMonedaDoc.toFixed(2)} (TC: ${tc}). ` +
+          `Falta: ${monedaCuenta?.simbolo || ''} ${diferencia.toFixed(2)}`
+        );
       }
+    };
+
+    await evaluar({
+      cuentaId: cuentaBancariaId,
+      monedaDocId: monedaPagoId,
+      tc: tipoCambio,
+      montoIngresado: montoNetoIngresado,
+      itf: montoITF,
+      comision: montoComision,
+      etiqueta: 'Pago neto',
+    });
+
+    if (aplicaDetraccion) {
+      await evaluar({
+        cuentaId: cuentaBancariaDetraccionId,
+        monedaDocId: monedaDetraccionId,
+        tc: tipoCambioDetraccion,
+        montoIngresado: montoDetraccionIngresado,
+        itf: itfDetraccion,
+        comision: comisionDetraccion,
+        etiqueta: 'Detracción',
+      });
     }
-  }, [montoDetraccionIngresado, itfDetraccion, comisionDetraccion, cuentaBancariaDetraccionId, tipoCambioDetraccion, aplicaDetraccion, visible, cuentasCorrientes, monedas, monedaDetraccionId, toast]);
+
+    return avisos;
+  };
 
   // ════════════════════════════════════════════════════════════
   // NOTA: ITF NO SE CALCULA AUTOMÁTICAMENTE
@@ -1050,6 +1025,14 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
   // ════════════════════════════════════════════════════════════
   const handleProcesarPago = async () => {
     if (!validarFormulario()) return;
+
+    // Sin fondos: no se bloquea, pero se pide confirmación antes de procesar
+    const avisosSinFondos = sinFondosConfirmadoRef.current ? [] : await obtenerAvisosSinFondos();
+    if (avisosSinFondos.length > 0 && !sinFondosConfirmadoRef.current) {
+      setAvisoSinFondos(avisosSinFondos.join('\n\n'));
+      return;
+    }
+    sinFondosConfirmadoRef.current = false;
 
     setLoading(true);
 
@@ -2520,6 +2503,17 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
           {renderObservaciones()}
         </div>
       </Dialog>
+
+      {/* Cuenta sin fondos: confirmar antes de procesar */}
+      <ConfirmarSinFondosDialog
+        mensaje={avisoSinFondos}
+        onCancelar={() => setAvisoSinFondos(null)}
+        onConfirmar={() => {
+          sinFondosConfirmadoRef.current = true;
+          setAvisoSinFondos(null);
+          handleProcesarPago();
+        }}
+      />
 
       {/* Diálogo de Confirmación */}
       <ConfirmacionPagoDialog

@@ -20,6 +20,15 @@ export async function procesarTransferenciaInterna(data) {
 }
 
 /**
+ * Saldo real de una cuenta corriente: { cuentaCorrienteId, empresaId, monedaId, saldoActual }
+ * La empresa se deduce de la cuenta, no del filtro de pantalla.
+ */
+export async function obtenerSaldoCuenta(cuentaCorrienteId) {
+  const res = await axios.get(`${API_URL}/saldo-cuenta/${cuentaCorrienteId}`, { headers: getAuthHeaders() });
+  return res.data.data;
+}
+
+/**
  * Actualizar URL del voucher consolidado
  */
 export async function actualizarUrlVoucherConsolidado(movimientoId, urlPdf) {
