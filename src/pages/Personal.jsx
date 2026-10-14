@@ -691,10 +691,18 @@ export default function PersonalPage({ ruta }) {
           JSON.stringify(err.response.data),
         );
       }
+      const datosError = err?.response?.data;
+      const mensajeServidor = datosError?.mensaje || datosError?.message || datosError?.error;
+      const esConflicto = err?.response?.status === 409;
       toast?.show({
         severity: "error",
-        summary: "Error",
-        detail: "No se pudo guardar el personal.",
+        summary: esConflicto ? "No se puede guardar: dato duplicado" : "No se pudo guardar el personal",
+        detail:
+          mensajeServidor ||
+          (err?.response
+            ? `El servidor respondió con error ${err.response.status}.`
+            : "No hay conexión con el servidor. Verifique su red e intente nuevamente."),
+        life: 8000,
       });
     } finally {
       setLoading(false);
