@@ -17,13 +17,72 @@ function getAuthHeader() {
  * @param {Array<number>} cuentaCorrienteIds - Cuentas a reprocesar
  * @returns {Promise<Object>} { cuentasProcesadas, filasRevisadas, filasCorregidas, filasConciliadasCorregidas, cuentas }
  */
-export const reprocesarSaldosCuentas = async (cuentaCorrienteIds) => {
+export const reprocesarSaldosCuentas = async (cuentaCorrienteIds, { forzar = false, saldoIds = null } = {}) => {
   const response = await axios.post(
     `${API_URL}/reprocesar`,
-    { cuentaCorrienteIds },
+    { cuentaCorrienteIds, forzar, saldoIds },
     { headers: getAuthHeader() }
   );
   return response.data.data;
+};
+
+/**
+ * Reprocesa los saldos informando el avance en tiempo real (el servidor responde con un JSON por línea).
+ * @param {Array<number>} cuentaCorrienteIds - Cuentas a reprocesar
+ * @param {Object} opciones - { forzar, saldoIds }
+ * @param {Function} onEvento - Se llama por cada evento: inicio, cuenta, fila, cuenta_fin
+ * @returns {Promise<Object>} Resultado final del servidor
+ */
+export const reprocesarSaldosCuentasConProgreso = async (
+  cuentaCorrienteIds,
+  { forzar = false, saldoIds = null } = {},
+  onEvento
+) => {
+  const response = await fetch(`${API_URL}/reprocesar-progreso`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    body: JSON.stringify({ cuentaCorrienteIds, forzar, saldoIds }),
+  });
+
+  if (!response.ok || !response.body) {
+    let mensaje = `Error ${response.status} al reprocesar los saldos`;
+    try {
+      const cuerpo = await response.json();
+      mensaje = cuerpo.error || cuerpo.message || cuerpo.mensaje || mensaje;
+    } catch {
+      /* respuesta sin JSON */
+    }
+    throw new Error(mensaje);
+  }
+
+  const lector = response.body.getReader();
+  const decodificador = new TextDecoder('utf-8');
+  let pendiente = '';
+  let resultado = null;
+
+  const procesarLinea = (linea) => {
+    if (!linea.trim()) return;
+    const evento = JSON.parse(linea);
+    if (evento.tipo === 'error') throw new Error(evento.mensaje);
+    if (evento.tipo === 'fin') {
+      resultado = evento.resultado;
+      return;
+    }
+    onEvento?.(evento);
+  };
+
+  for (;;) {
+    const { done, value } = await lector.read();
+    if (done) break;
+    pendiente += decodificador.decode(value, { stream: true });
+    const lineas = pendiente.split('\n');
+    pendiente = lineas.pop();
+    lineas.forEach(procesarLinea);
+  }
+  procesarLinea(pendiente);
+
+  if (!resultado) throw new Error('La conexión se cerró antes de terminar el reproceso.');
+  return resultado;
 };
 
 /**
