@@ -22,6 +22,7 @@ import {
   eliminarSaldoCuentaCorriente,
   generarBorradorAsiento,
   guardarAsientoContable,
+  reprocesarSaldosCuentas,
 } from "../api/saldoCuentaCorriente";
 import { deleteAsientoContable } from "../api/contabilidad/asientoContable";
 import { getAllCuentaCorriente } from "../api/cuentaCorriente";
@@ -69,6 +70,10 @@ export default function SaldoCuentaCorriente({ ruta }) {
   const [showAsientoEditor, setShowAsientoEditor] = useState(false);
   const [borradorAsiento, setBorradorAsiento] = useState(null);
   const [saldoParaAsiento, setSaldoParaAsiento] = useState(null);
+  const [confirmReproceso, setConfirmReproceso] = useState(false);
+
+  // Cuentas corrientes con registros en la lista filtrada (las "cuentas mostradas")
+  const cuentasMostradasIds = [...new Set(itemsFiltrados.map((item) => Number(item.cuentaCorrienteId)))].filter(Boolean);
 
   useEffect(() => {
     cargarDatos();
@@ -233,6 +238,35 @@ export default function SaldoCuentaCorriente({ ruta }) {
           err.response?.data?.message ||
           "No se pudo eliminar el saldo.",
         life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReprocesar = async () => {
+    setConfirmReproceso(false);
+    if (cuentasMostradasIds.length === 0) return;
+    setLoading(true);
+    try {
+      const r = await reprocesarSaldosCuentas(cuentasMostradasIds);
+      toast.current?.show({
+        severity: r.filasCorregidas > 0 ? "success" : "info",
+        summary: "Saldos reprocesados",
+        detail:
+          r.filasCorregidas > 0
+            ? `${r.cuentasProcesadas} cuenta(s) revisadas, ${r.filasRevisadas} registros: se corrigieron ${r.filasCorregidas}.` +
+              (r.filasConciliadasCorregidas > 0 ? ` (${r.filasConciliadasCorregidas} ya estaban conciliados)` : "")
+            : `${r.cuentasProcesadas} cuenta(s) revisadas, ${r.filasRevisadas} registros: los saldos ya estaban correctos.`,
+        life: 6000,
+      });
+      await cargarDatos();
+    } catch (err) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: err.response?.data?.error || err.response?.data?.message || "No se pudieron reprocesar los saldos.",
+        life: 6000,
       });
     } finally {
       setLoading(false);
@@ -691,6 +725,25 @@ export default function SaldoCuentaCorriente({ ruta }) {
         reject={() => setConfirmState({ visible: false, row: null })}
         style={{ minWidth: 400 }}
       />
+      <ConfirmDialog
+        visible={confirmReproceso}
+        onHide={() => setConfirmReproceso(false)}
+        message={
+          <span>
+            Se recalculará la cadena de saldos (anterior y actual) de las{" "}
+            <b>{cuentasMostradasIds.length}</b> cuenta(s) mostradas, completa y en orden de fecha e id.
+            <br />
+            Solo se corrigen las filas cuyo saldo no coincide; ingresos, egresos y conciliación no se modifican.
+          </span>
+        }
+        header="Reprocesar saldos"
+        icon="pi pi-sync"
+        acceptLabel="Reprocesar"
+        rejectLabel="Cancelar"
+        accept={handleReprocesar}
+        reject={() => setConfirmReproceso(false)}
+        style={{ minWidth: 420 }}
+      />
       <DataTable
         value={itemsFiltrados}
         loading={loading}
@@ -766,6 +819,18 @@ export default function SaldoCuentaCorriente({ ruta }) {
                   }}
                   loading={loading}
                   tooltip="Actualizar todos los datos desde el servidor"
+                />
+              </div>
+              <div style={{ flex: 0.8 }}>
+                <Button
+                  label="Reprocesar saldos"
+                  icon="pi pi-sync"
+                  className="p-button-warning"
+                  size="small"
+                  outlined
+                  disabled={loading || !permisos.puedeEditar || cuentasMostradasIds.length === 0}
+                  onClick={() => setConfirmReproceso(true)}
+                  tooltip="Recalcula la cadena de saldos de las cuentas mostradas (orden fecha e id)"
                 />
               </div>
               <div style={{ flex: 0.5 }}>

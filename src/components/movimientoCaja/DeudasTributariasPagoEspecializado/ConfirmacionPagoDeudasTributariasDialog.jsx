@@ -13,6 +13,7 @@ import { formatearNumero } from "../../../utils/utils";
 import { sincronizarAdjuntosPagoDeudaTributaria } from "../../../api/tesoreria/pagoDeudaTributaria";
 import PdfComprobanteEntidadRecaudadoraTributariaCard from "./PdfComprobanteEntidadRecaudadoraTributariaCard";
 
+import BotonRevertirOperacion from "../../movimientoCaja/reversionOperacion/BotonRevertirOperacion";
 /**
  * ════════════════════════════════════════════════════════════
  * CONFIRMACIÓN DEL PAGO MÚLTIPLE DE DEUDAS TRIBUTARIAS
@@ -335,6 +336,7 @@ export default function ConfirmacionPagoDeudasTributariasDialog({
 
   const renderFooter = () => (
     <div className="flex justify-content-end gap-2">
+      <BotonRevertirOperacion resultado={resultadoPago} onRevertida={onHide} />
       <Button label="Cerrar" icon="pi pi-times" onClick={onHide} severity="secondary" />
     </div>
   );

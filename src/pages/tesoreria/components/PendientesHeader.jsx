@@ -29,6 +29,7 @@ const PendientesHeader = ({
   opcionesFiltros, // ✅ NUEVO: Opciones para filtros avanzados
   onOpenFiltrosDialog, // ✅ NUEVO: Callback para abrir diálogo de filtros
   onGastosDirectosClick, // ✅ NUEVO: Callback para abrir diálogo de gastos directos
+  onRevertirOperacion, // Callback para abrir la lista de operaciones a revertir
 }) => {
   // Función para obtener el estilo de tag según la moneda
   const getMonedaTagStyle = (codigoMoneda) => {
@@ -629,6 +630,38 @@ const PendientesHeader = ({
               </Button>
             </div>
           ))}
+
+          {/* Revertir una operación ya realizada */}
+          {onRevertirOperacion && permisos?.puedeCrear && (
+            <div style={{ flex: 1 }}>
+              <Button
+                icon="pi pi-undo"
+                severity="danger"
+                outlined
+                onClick={onRevertirOperacion}
+                disabled={loading}
+                tooltip="Deshacer una operación ya realizada (pagos, cobros, transferencias, entregas, préstamos)"
+                tooltipOptions={{ position: "top" }}
+                style={{
+                  flex: "0 0 auto",
+                  minWidth: "140px",
+                  minHeight: "85px",
+                  padding: "0.4rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.75rem",
+                }}
+              >
+                <div className="text-center">
+                  <div className="font-bold mb-1" style={{ fontSize: "0.75rem" }}>
+                    Revertir Operación
+                  </div>
+                </div>
+              </Button>
+            </div>
+          )}
 
           {/* Filtros Avanzados - ocupa el espacio restante */}
             <div style={{ flex: 3 }}>

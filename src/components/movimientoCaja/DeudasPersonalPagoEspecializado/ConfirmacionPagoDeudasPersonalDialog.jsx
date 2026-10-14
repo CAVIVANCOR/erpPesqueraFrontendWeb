@@ -13,6 +13,7 @@ import { formatearNumero } from "../../../utils/utils";
 import { sincronizarAdjuntosPagoDeudaPersonal } from "../../../api/tesoreria/pagoDeudaPersonal";
 import PdfComprobanteEntidadRecaudadoraCard from "./PdfComprobanteEntidadRecaudadoraCard";
 
+import BotonRevertirOperacion from "../../movimientoCaja/reversionOperacion/BotonRevertirOperacion";
 /**
  * ════════════════════════════════════════════════════════════
  * CONFIRMACIÓN DEL PAGO MÚLTIPLE DE DEUDAS CON PERSONAL
@@ -335,6 +336,7 @@ export default function ConfirmacionPagoDeudasPersonalDialog({
 
   const renderFooter = () => (
     <div className="flex justify-content-end gap-2">
+      <BotonRevertirOperacion resultado={resultadoPago} onRevertida={onHide} />
       <Button label="Cerrar" icon="pi pi-times" onClick={onHide} severity="secondary" />
     </div>
   );

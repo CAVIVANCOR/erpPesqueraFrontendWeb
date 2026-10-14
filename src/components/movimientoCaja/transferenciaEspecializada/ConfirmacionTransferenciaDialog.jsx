@@ -10,6 +10,7 @@ import PDFViewerV2 from '../../pdf/PDFViewerV2';
 import AsientoContableViewer from '../../common/AsientoContableViewer';
 import { formatearNumero } from '../../../utils/utils';
 
+import BotonRevertirOperacion from "../../movimientoCaja/reversionOperacion/BotonRevertirOperacion";
 /**
  * ════════════════════════════════════════════════════════════
  * COMPONENTE: CONFIRMACIÓN DE TRANSFERENCIA INTERNA
@@ -431,6 +432,7 @@ export default function ConfirmacionTransferenciaDialog({
   const renderFooter = () => {
     return (
       <div className="flex justify-content-end gap-2">
+        <BotonRevertirOperacion resultado={resultadoTransferencia} onRevertida={onHide} />
         <Button
           label="Cerrar"
           icon="pi pi-times"

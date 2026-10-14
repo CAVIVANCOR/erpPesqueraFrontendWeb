@@ -13,6 +13,7 @@ import { formatearNumero, ESTADO_CUOTA_PRESTAMO } from "../../../utils/utils";
 import { sincronizarAdjuntosPagoCuotaPrestamo } from "../../../api/tesoreria/operacionPrestamo";
 import PdfComprobanteEntidadFinancieraCard from "./PdfComprobanteEntidadFinancieraCard";
 
+import BotonRevertirOperacion from "../../movimientoCaja/reversionOperacion/BotonRevertirOperacion";
 /**
  * ════════════════════════════════════════════════════════════
  * CONFIRMACIÓN DE LA OPERACIÓN DE PRÉSTAMO (pago de cuotas o desembolso)
@@ -381,6 +382,7 @@ export default function ConfirmacionOperacionPrestamoDialog({
 
   const renderFooter = () => (
     <div className="flex justify-content-end gap-2">
+      <BotonRevertirOperacion resultado={resultado} onRevertida={onHide} />
       <Button label="Cerrar" icon="pi pi-times" onClick={onHide} severity="secondary" />
     </div>
   );

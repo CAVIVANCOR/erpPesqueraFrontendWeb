@@ -13,6 +13,7 @@ import PdfComprobanteImpuestoCard from './PdfComprobanteImpuestoCard';
 import AsientoContableViewer from '../common/AsientoContableViewer';
 import { formatearNumero } from '../../utils/utils';
 
+import BotonRevertirOperacion from "../movimientoCaja/reversionOperacion/BotonRevertirOperacion";
 /**
  * ════════════════════════════════════════════════════════════
  * COMPONENTE: CONFIRMACIÓN DE PAGO ESPECIALIZADO
@@ -558,6 +559,7 @@ export default function ConfirmacionPagoDialog({
   const renderFooter = () => {
     return (
       <div className="flex justify-content-end gap-2">
+        <BotonRevertirOperacion resultado={resultadoPago} onRevertida={onHide} />
         <Button
           label="Cerrar"
           icon="pi pi-times"

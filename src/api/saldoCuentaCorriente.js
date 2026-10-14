@@ -13,6 +13,20 @@ function getAuthHeader() {
 }
 
 /**
+ * Reprocesa la cadena de saldos de las cuentas indicadas (orden fecha e id)
+ * @param {Array<number>} cuentaCorrienteIds - Cuentas a reprocesar
+ * @returns {Promise<Object>} { cuentasProcesadas, filasRevisadas, filasCorregidas, filasConciliadasCorregidas, cuentas }
+ */
+export const reprocesarSaldosCuentas = async (cuentaCorrienteIds) => {
+  const response = await axios.post(
+    `${API_URL}/reprocesar`,
+    { cuentaCorrienteIds },
+    { headers: getAuthHeader() }
+  );
+  return response.data.data;
+};
+
+/**
  * Obtiene todos los saldos de cuentas corrientes
  * @returns {Promise<Array>} Lista de saldos
  */

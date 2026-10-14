@@ -29,6 +29,8 @@ import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ A
 import TransferenciaInternaDialog from "../../components/movimientoCaja/transferenciaEspecializada/TransferenciaInternaDialog";
 import DetMovsRendicionGastosForm from "../../components/rendicionGastos/DetMovsRendicionGastosForm";
 import PagarGastoDirectoDialog from "../../components/movimientoCaja/GastoDirectoEspecializado/PagarGastoDirectoDialog";
+import ListaOperacionesDialog from "../../components/movimientoCaja/reversionOperacion/ListaOperacionesDialog";
+import { EVENTO_OPERACION_REVERTIDA } from "../../components/movimientoCaja/reversionOperacion/RevertirOperacionDialog";
 import {
   crearDetMovsEntregaRendir,
   actualizarDetMovsEntregaRendir,
@@ -93,6 +95,7 @@ const TesoreriaPendientes = () => {
   const [cuentaPorPagarEspecializada, setCuentaPorPagarEspecializada] = useState(null);
   // 🆕 Estados para diálogos de operaciones
   const [showTransferenciaInternaDialog, setShowTransferenciaInternaDialog] = useState(false);
+  const [showListaOperacionesDialog, setShowListaOperacionesDialog] = useState(false);
   const [showPagoProveedorDialog, setShowPagoProveedorDialog] = useState(false);
   const [showRetiroDineroDialog, setShowRetiroDineroDialog] = useState(false);
   const [showIngresoDineroDialog, setShowIngresoDineroDialog] = useState(false);
@@ -175,6 +178,17 @@ const TesoreriaPendientes = () => {
     error: errorSaldos,
     recargarSaldos,
   } = useSaldosCuentas(filtros.empresaId);
+
+  // Una operación revertida (desde su confirmación o desde la lista) devuelve documentos a pendientes
+  // y cambia los saldos de las cuentas: se recargan ambos.
+  useEffect(() => {
+    const alRevertir = () => {
+      recargarPendientes();
+      recargarSaldos();
+    };
+    window.addEventListener(EVENTO_OPERACION_REVERTIDA, alRevertir);
+    return () => window.removeEventListener(EVENTO_OPERACION_REVERTIDA, alRevertir);
+  }, [recargarPendientes, recargarSaldos]);
 
   const { registrarPago, loading: loadingPago } = useRegistrarPago({
     toast,
@@ -852,6 +866,14 @@ const TesoreriaPendientes = () => {
         opcionesFiltros={opcionesFiltros} // ✅ NUEVO: Para filtros avanzados
         onOpenFiltrosDialog={handleOpenFiltrosDialog} // ✅ NUEVO: Para abrir diálogo
         onGastosDirectosClick={handleGastosDirectosClick} // ✅ NUEVO: Diálogo de gastos directos
+        onRevertirOperacion={() => setShowListaOperacionesDialog(true)}
+      />
+
+      <ListaOperacionesDialog
+        visible={showListaOperacionesDialog}
+        onHide={() => setShowListaOperacionesDialog(false)}
+        empresas={empresas}
+        empresaIdInicial={filtros.empresaId || null}
       />
 
       {/* Diálogo de Filtros Avanzados */}
