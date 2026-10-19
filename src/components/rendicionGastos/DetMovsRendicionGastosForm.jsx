@@ -18,6 +18,7 @@ import { Message } from "primereact/message";
 import { Toast } from "primereact/toast";
 import { classNames } from "primereact/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { mensajeDeError } from "../../utils/mensajeError";
 import { Card } from "primereact/card";
 import TipoMovimientoSelector from "../common/TipoMovimientoSelector";
 import ModuloDocumentoSelector from "../common/ModuloDocumentoSelector";
@@ -80,15 +81,16 @@ const DetMovsRendicionGastosForm = ({
     handleSubmit,
     setValue,
     getValues,
+    setError,
     formState: { errors },
     reset,
     watch,
     trigger,
   } = useForm({
     defaultValues: {
-      empresaId: 1,
-      moduloOrigenId: 2,
-      documentoOrigenId: 37,
+      empresaId: usuario?.empresaId ? Number(usuario.empresaId) : null,
+      moduloOrigenId: null,
+      documentoOrigenId: null,
       responsableId: "",
       fechaMovimiento: new Date(),
       tipoMovimientoId: "",
@@ -231,14 +233,17 @@ const DetMovsRendicionGastosForm = ({
           activoAfectoId: movimiento.activoAfectoId ? Number(movimiento.activoAfectoId) : null,
         });
       } else {
-        if (rendicionGastos) {
-          setValue("empresaId", Number(rendicionGastos.empresaId) || 1);
-          setValue("moduloOrigenId", 2);
-          setValue("documentoOrigenId", 37);
+        // La empresa preseleccionada es la del usuario logueado
+        const empresaUsuario = usuario?.empresaId ? Number(usuario.empresaId) : null;
+        if (empresaUsuario) {
+          setValue("empresaId", empresaUsuario);
+        } else if (rendicionGastos?.empresaId) {
+          setValue("empresaId", Number(rendicionGastos.empresaId));
         }
 
-        setValue("moduloOrigenId", Number(2));
-        setValue("documentoOrigenId", Number(37));
+        // El origen (módulo y documento) ya no tiene valor predeterminado: el usuario debe elegirlo
+        setValue("moduloOrigenId", null);
+        setValue("documentoOrigenId", null);
 
         setValue("fechaMovimiento", new Date());
         setValue("operacionSinFactura", true);  // ← AGREGAR: Preseleccionar S/COMPROBANTE
@@ -252,8 +257,8 @@ const DetMovsRendicionGastosForm = ({
           );
 
           if (selectedPersonal) {
-            // Preseleccionar empresa
-            if (selectedPersonal.empresaId) {
+            // Empresa del personal solo si el usuario logueado no tiene empresa propia
+            if (!empresaUsuario && selectedPersonal.empresaId) {
               setValue("empresaId", Number(selectedPersonal.empresaId));
             }
 
@@ -337,8 +342,8 @@ const DetMovsRendicionGastosForm = ({
         toast.current?.show({
           severity: "error",
           summary: "Error",
-          detail: "No se pudieron cargar las asignaciones",
-          life: 3000,
+          detail: mensajeDeError(error, "No se pudieron cargar las asignaciones"),
+          life: 8000,
         });
         throw error;
       }
@@ -381,8 +386,8 @@ const DetMovsRendicionGastosForm = ({
         toast.current?.show({
           severity: "error",
           summary: "Error",
-          detail: "No se pudieron cargar las embarcaciones",
-          life: 3000,
+          detail: mensajeDeError(error, "No se pudieron cargar las embarcaciones"),
+          life: 8000,
         });
         throw error;
       }
@@ -447,8 +452,8 @@ const DetMovsRendicionGastosForm = ({
         toast.current.show({
           severity: "error",
           summary: "Error",
-          detail: "Error al crear el proveedor",
-          life: 3000,
+          detail: mensajeDeError(error, "No se pudo crear el proveedor"),
+          life: 8000,
         });
       }
     }
@@ -638,8 +643,37 @@ const DetMovsRendicionGastosForm = ({
         });
         return;
       }
+      if (!Number(data.empresaId)) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Dato obligatorio",
+          detail: "La Empresa es obligatoria: seleccione la empresa del movimiento.",
+          life: 4000,
+        });
+        return;
+      }
+      if (!Number(data.moduloOrigenId)) {
+        setError("moduloOrigenId", { type: "required", message: "El Módulo Origen es obligatorio." });
+        toast.current?.show({
+          severity: "error",
+          summary: "Dato obligatorio",
+          detail: "El Módulo Origen es obligatorio: seleccione de qué módulo proviene el movimiento.",
+          life: 5000,
+        });
+        return;
+      }
+      if (!Number(data.documentoOrigenId)) {
+        setError("moduloOrigenId", { type: "required", message: "El Documento Origen es obligatorio." });
+        toast.current?.show({
+          severity: "error",
+          summary: "Dato obligatorio",
+          detail: "El Documento Origen es obligatorio: seleccione el documento de origen del módulo elegido.",
+          life: 5000,
+        });
+        return;
+      }
       const datosNormalizados = {
-        empresaId: Number(data.empresaId) || 1,
+        empresaId: Number(data.empresaId),
         moduloOrigenId: data.moduloOrigenId
           ? Number(data.moduloOrigenId)
           : null,
@@ -715,8 +749,8 @@ const DetMovsRendicionGastosForm = ({
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al procesar los datos del formulario",
-        life: 3000,
+        detail: mensajeDeError(error, "No se pudieron procesar los datos del formulario"),
+        life: 8000,
       });
     }
   };

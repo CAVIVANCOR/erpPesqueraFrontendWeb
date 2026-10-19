@@ -32,6 +32,7 @@ import {
   generarCuentaPorPagar,
 } from "../api/ordenCompra";
 import { getEmpresas } from "../api/empresa";
+import { mensajeDeError } from "../utils/mensajeError";
 import { getEntidadesComerciales } from "../api/entidadComercial";
 import { getFormasPago } from "../api/formaPago";
 import { getProductos } from "../api/producto";
@@ -777,6 +778,8 @@ export default function OrdenCompra({ ruta }) {
         resultados.detallesMovAlmacen +
         resultados.kardexEliminados +
         resultados.asientosContables +
+        (resultados.detracciones || 0) +
+        (resultados.retenciones || 0) +
         resultados.percepciones +
         resultados.datosAdicionales +
         resultados.ordenesCompraHijas;
@@ -799,6 +802,12 @@ export default function OrdenCompra({ ruta }) {
       }
       if (resultados.asientosContables > 0) {
         registrosEliminados.push(`📒 Asientos Contables: ${resultados.asientosContables} eliminados`);
+      }
+      if (resultados.detracciones > 0) {
+        registrosEliminados.push(`🏛️ Detracciones: ${resultados.detracciones} eliminadas`);
+      }
+      if (resultados.retenciones > 0) {
+        registrosEliminados.push(`🏛️ Retenciones: ${resultados.retenciones} eliminadas`);
       }
       if (resultados.percepciones > 0) {
         registrosEliminados.push(`📊 Percepciones: ${resultados.percepciones} eliminadas`);
@@ -853,13 +862,11 @@ export default function OrdenCompra({ ruta }) {
 
       cargarDatos();
     } catch (error) {
-      const mensajeError = error.response?.data?.error || error.message || "Error desconocido";
-
       toast.current.show({
         severity: "error",
-        summary: "Error al Eliminar",
-        detail: `No se pudo eliminar la Orden de Compra.\n\n${mensajeError}\n\nTodos los cambios fueron revertidos (transacción atómica).`,
-        life: 6000,
+        summary: "No se pudo eliminar la Orden de Compra",
+        detail: `${mensajeDeError(error, "Error al eliminar la orden de compra")}\n\nNo se eliminó nada: todos los cambios fueron revertidos.`,
+        life: 12000,
       });
     }
     setLoading(false);

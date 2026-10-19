@@ -22,6 +22,7 @@ import {
 } from '../../../api/tesoreria/transferencias';
 import { useAuthStore } from '../../../shared/stores/useAuthStore';
 import { getResponsiveFontSize, formatearFecha, formatearNumero } from '../../../utils/utils';
+import { mensajeDeError } from '../../../utils/mensajeError';
 import TipoMovimientoSelector from '../../common/TipoMovimientoSelector';
 import { generarYSubirVoucherIndividual } from '../utils/VoucherIndividualMovimientoPDF';
 import { generarYSubirVoucherContable } from '../utils/VoucherContableMovimientoPDF';
@@ -94,6 +95,8 @@ export default function TransferenciaInternaDialog({
 
   // Estado para operación gerencial (negra)
   const [esGerencial, setEsGerencial] = useState(false);
+  // Préstamo entre empresas relacionadas: 'DESEMBOLSO' | 'DEVOLUCION' (solo con los tipos PRESTAMOS RELACIONADOS)
+  const [operacionPrestamoRelacionado, setOperacionPrestamoRelacionado] = useState(null);
 
   // ════════════════════════════════════════════════════════════
   // ESTADOS CUENTA ORIGEN
@@ -164,6 +167,20 @@ export default function TransferenciaInternaDialog({
     }
     return cuenta;
   }, [cuentaDestinoId, cuentasCorrientes, monedaDestinoSelector]);
+
+  // ════════════════════════════════════════════════════════════
+  // COMPUTED: PRÉSTAMO ENTRE EMPRESAS RELACIONADAS
+  // ════════════════════════════════════════════════════════════
+  // Tipos de movimiento PRESTAMOS RELACIONADOS: egreso (188) en el origen e ingreso (187) en el destino.
+  // El servidor valida que las cuentas sean de empresas distintas.
+  const TIPO_PRESTAMO_RELACIONADO_EGRESO = 188;
+  const TIPO_PRESTAMO_RELACIONADO_INGRESO = 187;
+  const esPrestamoRelacionado = Boolean(
+    cuentaOrigenId &&
+    cuentaDestinoId &&
+    Number(tipoMovimientoEgresoId) === TIPO_PRESTAMO_RELACIONADO_EGRESO &&
+    Number(tipoMovimientoIngresoId) === TIPO_PRESTAMO_RELACIONADO_INGRESO
+  );
 
   // ════════════════════════════════════════════════════════════
   // COMPUTED: DETECTAR SI HAY CAMBIO DE MONEDA
@@ -314,6 +331,7 @@ export default function TransferenciaInternaDialog({
     setDescripcion('');
     setNumeroOperacion('');
     setEsGerencial(false);
+    setOperacionPrestamoRelacionado(null);
     setCuentaOrigenId(null);
     setMonedaOrigenSelector(null);
     setMontoOrigen(0);
@@ -648,6 +666,33 @@ export default function TransferenciaInternaDialog({
       }
 
       // ========================================
+      // PRÉSTAMO ENTRE EMPRESAS RELACIONADAS
+      // ========================================
+      const usaTipoPrestamo =
+        Number(tipoMovimientoEgresoId) === TIPO_PRESTAMO_RELACIONADO_EGRESO ||
+        Number(tipoMovimientoIngresoId) === TIPO_PRESTAMO_RELACIONADO_INGRESO;
+      if (usaTipoPrestamo) {
+        let errorPrestamo = null;
+        if (!(cuentaOrigenId && cuentaDestinoId)) {
+          errorPrestamo = 'Los tipos de movimiento PRESTAMOS RELACIONADOS solo se usan en una transferencia entre una cuenta de origen y una de destino de empresas relacionadas.';
+        } else if (!esPrestamoRelacionado) {
+          errorPrestamo = 'Un préstamo entre relacionadas requiere el tipo de movimiento PRESTAMOS RELACIONADOS tanto en el origen (egreso) como en el destino (ingreso).';
+        } else if (!operacionPrestamoRelacionado) {
+          errorPrestamo = 'Debe indicar si la operación es un Desembolso (nuevo préstamo) o una Devolución de un préstamo entre relacionadas.';
+        }
+        if (errorPrestamo) {
+          toast?.current?.show({
+            severity: 'error',
+            summary: 'Préstamo entre relacionadas',
+            detail: errorPrestamo,
+            life: 8000
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // ========================================
       // PREPARAR DATOS SEGÚN FLUJO (BIFURCACIONES INDEPENDIENTES)
       // ========================================
       // La descripción/glosa ya fue validada como obligatoria
@@ -685,6 +730,9 @@ export default function TransferenciaInternaDialog({
 
           // Operación gerencial
           esGerencial: Boolean(esGerencial),
+
+          // Préstamo entre relacionadas: 'DESEMBOLSO' | 'DEVOLUCION' (null en las demás transferencias)
+          operacionPrestamoRelacionado: esPrestamoRelacionado ? operacionPrestamoRelacionado : null,
 
           // Usuario
           usuarioId: Number(usuario.id)
@@ -810,9 +858,9 @@ export default function TransferenciaInternaDialog({
       console.error('Error al procesar transferencia:', error);
       toast?.current?.show({
         severity: 'error',
-        summary: 'Error',
-        detail: error.message || 'Error al procesar la transferencia',
-        life: 5000
+        summary: 'No se pudo procesar la transferencia',
+        detail: mensajeDeError(error, 'Error al procesar la transferencia'),
+        life: 10000
       });
     } finally {
       setLoading(false);
@@ -1483,6 +1531,34 @@ export default function TransferenciaInternaDialog({
                 />
               </div>
             </div>
+            {esPrestamoRelacionado && (
+              <div style={{ marginBottom: 10 }}>
+                <label htmlFor="operacionPrestamoRelacionado" className="font-bold">
+                  Operación del préstamo entre relacionadas *
+                </label>
+                <Dropdown
+                  id="operacionPrestamoRelacionado"
+                  value={operacionPrestamoRelacionado}
+                  options={[
+                    { label: 'Desembolso: se entrega un préstamo a la relacionada', value: 'DESEMBOLSO' },
+                    { label: 'Devolución: se paga o se cobra la devolución de un préstamo', value: 'DEVOLUCION' },
+                  ]}
+                  onChange={(e) => setOperacionPrestamoRelacionado(e.value)}
+                  placeholder="Seleccione Desembolso o Devolución"
+                  disabled={loading}
+                  className={!operacionPrestamoRelacionado ? 'p-invalid' : ''}
+                  style={{ width: '100%' }}
+                />
+                <small style={{ color: '#6c757d' }}>
+                  {operacionPrestamoRelacionado === 'DESEMBOLSO' &&
+                    'Origen: Cuentas por cobrar a relacionadas (171111) / Banco. Destino: Banco / Cuentas por pagar a relacionadas (471101).'}
+                  {operacionPrestamoRelacionado === 'DEVOLUCION' &&
+                    'Origen: Cuentas por pagar a relacionadas (471101) / Banco. Destino: Banco / Cuentas por cobrar a relacionadas (171111).'}
+                  {!operacionPrestamoRelacionado &&
+                    'Indique si es un nuevo préstamo o la devolución de uno existente: define cómo se contabiliza en cada empresa.'}
+                </small>
+              </div>
+            )}
             <div
               style={{
                 alignItems: "end",
