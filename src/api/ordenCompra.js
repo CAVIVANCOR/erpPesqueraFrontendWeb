@@ -294,3 +294,12 @@ export async function exportarRegistroComprasSUNAT(params) {
   });
   return res.data;
 }
+
+/**
+ * Compras elegibles para el Registro de Compras del período (detracción pagada hasta el quinto día hábil del mes
+ * siguiente) y las excluidas con su motivo.
+ */
+export async function obtenerElegiblesRegistroCompras(params) {
+  const res = await axios.get(`${API_URL}/registro-compras/elegibles`, { headers: getAuthHeaders(), params });
+  return res.data;
+}

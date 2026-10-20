@@ -72,7 +72,7 @@ import FiltroTipoLibroButton from "../components/common/FiltroTipoLibroButton";
 import { getTiposAfectacionIGVActivos } from "../api/facturacionElectronica/tipoAfectacionIGV"; // AGREGADO
 import OrigenAsientoViewer from "../components/common/origenAsiento/OrigenAsientoViewer";
 import RegeneracionMasivaCompras from "../components/common/RegeneracionMasivaCompras";
-import { exportarRegistroComprasSUNAT } from '../api/ordenCompra';
+import { exportarRegistroComprasSUNAT, obtenerElegiblesRegistroCompras } from '../api/ordenCompra';
 import TemporaryPDFViewer from "../components/reports/TemporaryPDFViewer";
 import TemporaryExcelViewer from "../components/reports/TemporaryExcelViewer";
 import { generarRegistroComprasExcel } from "../components/ordenCompra/reports/generarRegistroComprasExcel";
@@ -149,6 +149,7 @@ export default function OrdenCompra({ ruta }) {
   const [kardexDocumentoActual, setKardexDocumentoActual] = useState(null);
   const [showConsultaStock, setShowConsultaStock] = useState(false);
   const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [dialogExcluidasRegistro, setDialogExcluidasRegistro] = useState(null);
   const [showExcelViewer, setShowExcelViewer] = useState(false);
   const [reportData, setReportData] = useState(null);
 
@@ -1624,7 +1625,7 @@ export default function OrdenCompra({ ruta }) {
     }
   };
 
-  const handleExportar = async (tipo) => {
+  const handleExportar = async (tipo, confirmado = false) => {
     // El Registro de Compras SUNAT es por periodo: no se exporta con "Todos" seleccionado
     if (!empresaIdSelector || !periodoSeleccionado || periodoSeleccionado === PERIODO_TODOS) {
       toast.current?.show({
@@ -1645,6 +1646,17 @@ export default function OrdenCompra({ ruta }) {
       let blob;
       let filename;
 
+      // Regla del Registro de Compras: solo fiscales con la detracción pagada hasta el quinto día hábil del mes siguiente
+      const { idsElegibles, excluidas, plazoDetraccion } = await obtenerElegiblesRegistroCompras(params);
+      const elegibles = new Set(idsElegibles.map(Number));
+
+      // Antes de imprimir se informa qué documentos con detracción no cancelada quedarán fuera, para que el usuario
+      // pueda corregirlos (pagar la detracción en Tesorería) o continuar sabiendo que no saldrán.
+      if (excluidas.length > 0 && !confirmado) {
+        setDialogExcluidasRegistro({ tipo, excluidas, plazo: plazoDetraccion });
+        return;
+      }
+
       if (tipo === 'sunat') {
         blob = await exportarRegistroComprasSUNAT(params);
         const empresaData = empresas.find(e => Number(e.id) === Number(empresaIdSelector));
@@ -1657,14 +1669,16 @@ export default function OrdenCompra({ ruta }) {
         // Usar ordenesFiltradas que ya tiene TODOS los filtros aplicados
         let ordenesParaExportar = ordenesFiltradas.filter(oc =>
           oc.comprobanteRecibido === true &&
-          ![38, 40].includes(Number(oc.estadoId))
+          oc.esGerencial === false &&
+          ![38, 40].includes(Number(oc.estadoId)) &&
+          elegibles.has(Number(oc.id))
         );
 
         if (ordenesParaExportar.length === 0) {
           toast.current?.show({
             severity: "warn",
             summary: "Sin datos",
-            detail: "No hay órdenes de compra facturadas en los filtros aplicados",
+            detail: "No hay órdenes de compra fiscales facturadas, con detracción pagada a tiempo, en los filtros aplicados",
             life: 3000,
           });
           return;
@@ -2285,6 +2299,45 @@ export default function OrdenCompra({ ruta }) {
     <div className="p-fluid">
       <Toast ref={toast} />
       <Menu model={menuExportItems} popup ref={menuExport} />
+
+      <Dialog
+        header="Documentos que no saldrán en el Registro de Compras"
+        visible={!!dialogExcluidasRegistro}
+        style={{ width: "70vw" }}
+        modal
+        onHide={() => setDialogExcluidasRegistro(null)}
+        footer={
+          <div>
+            <Button label="Cancelar y corregir" icon="pi pi-times" className="p-button-text" onClick={() => setDialogExcluidasRegistro(null)} />
+            <Button
+              label="Continuar sin estos documentos"
+              icon="pi pi-print"
+              onClick={() => {
+                const { tipo } = dialogExcluidasRegistro;
+                setDialogExcluidasRegistro(null);
+                handleExportar(tipo, true);
+              }}
+            />
+          </div>
+        }
+      >
+        {dialogExcluidasRegistro && (
+          <>
+            <p style={{ marginTop: 0 }}>
+              Los siguientes <b>{dialogExcluidasRegistro.excluidas.length}</b> documento(s) fiscales tienen detracción y no se incluirán en el registro
+              porque la detracción no está cancelada
+              {dialogExcluidasRegistro.plazo ? ` hasta el ${new Date(dialogExcluidasRegistro.plazo).toLocaleDateString("es-PE")} (quinto día hábil del mes siguiente)` : ""}.
+              Para incluirlos, registre el pago de la detracción en Tesorería y vuelva a exportar.
+            </p>
+            <DataTable value={dialogExcluidasRegistro.excluidas} size="small" scrollable scrollHeight="45vh" stripedRows>
+              <Column field="numeroDocumento" header="Documento" style={{ width: "12rem" }} />
+              <Column field="proveedor" header="Proveedor" />
+              <Column field="total" header="Total" style={{ width: "8rem" }} body={(r) => Number(r.total || 0).toFixed(2)} />
+              <Column field="motivo" header="Motivo" />
+            </DataTable>
+          </>
+        )}
+      </Dialog>
       <ConfirmDialog
         visible={showConfirm}
         onHide={() => setShowConfirm(false)}
