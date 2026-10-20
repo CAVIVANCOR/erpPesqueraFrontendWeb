@@ -27,6 +27,7 @@ import OperacionPrestamoForm from "../../components/movimientoCaja/PrestamosPago
 import useOperacionPrestamo from "../../components/movimientoCaja/PrestamosPagoEspecializado/useOperacionPrestamo";
 import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ AGREGAR
 import TransferenciaInternaDialog from "../../components/movimientoCaja/transferenciaEspecializada/TransferenciaInternaDialog";
+import PagoLetraCambioDialog from "../../components/movimientoCaja/LetrasCambioPagoEspecializado/PagoLetraCambioDialog";
 import DetMovsRendicionGastosForm from "../../components/rendicionGastos/DetMovsRendicionGastosForm";
 import PagarGastoDirectoDialog from "../../components/movimientoCaja/GastoDirectoEspecializado/PagarGastoDirectoDialog";
 import ListaOperacionesDialog from "../../components/movimientoCaja/reversionOperacion/ListaOperacionesDialog";
@@ -95,6 +96,7 @@ const TesoreriaPendientes = () => {
   const [cuentaPorPagarEspecializada, setCuentaPorPagarEspecializada] = useState(null);
   // 🆕 Estados para diálogos de operaciones
   const [showTransferenciaInternaDialog, setShowTransferenciaInternaDialog] = useState(false);
+  const [showPagoLetrasDialog, setShowPagoLetrasDialog] = useState(false);
   const [showListaOperacionesDialog, setShowListaOperacionesDialog] = useState(false);
   const [showPagoProveedorDialog, setShowPagoProveedorDialog] = useState(false);
   const [showRetiroDineroDialog, setShowRetiroDineroDialog] = useState(false);
@@ -639,6 +641,9 @@ const TesoreriaPendientes = () => {
       case TIPO_OPERACION_TESORERIA.TRANSFERENCIA_INTERNA:
         setShowTransferenciaInternaDialog(true);
         break;
+      case TIPO_OPERACION_TESORERIA.LETRAS_CAMBIO:
+        setShowPagoLetrasDialog(true);
+        break;
       case TIPO_OPERACION_TESORERIA.PAGO_PROVEEDOR:
         setShowPagoProveedorDialog(true);
         break;
@@ -1166,6 +1171,18 @@ const TesoreriaPendientes = () => {
         tiposMovimiento={tiposMovimiento}
         empresas={empresas}
         toast={toast}
+        onSuccess={() => {
+          recargarSaldos();
+        }}
+      />
+
+      <PagoLetraCambioDialog
+        visible={showPagoLetrasDialog}
+        onHide={() => setShowPagoLetrasDialog(false)}
+        toast={toast}
+        mediosPago={mediosPago}
+        tiposMovimiento={tiposMovimiento}
+        empresas={empresas}
         onSuccess={() => {
           recargarSaldos();
         }}

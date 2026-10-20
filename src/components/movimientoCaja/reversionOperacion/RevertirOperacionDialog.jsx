@@ -174,7 +174,7 @@ const RevertirOperacionDialog = ({ visible, onHide, movimientoId = null, empresa
                   </DataTable>
                 )}
                 {plan.prestamos.map((p) => (
-                  <div key={String(p.id)} className="mb-1">• Préstamo {p.numeroPrestamo}: {p.accion}</div>
+                  <div key={String(p.id)} className="mb-1">• {p.etiqueta || "Préstamo"} {p.numeroPrestamo}: {p.accion}</div>
                 ))}
                 {plan.asignaciones.map((a) => (
                   <div key={String(a.id)} className="mb-1">

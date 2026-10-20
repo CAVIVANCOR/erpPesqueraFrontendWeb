@@ -22,6 +22,7 @@ import { mensajeDeError } from "../../utils/mensajeError";
 import { Card } from "primereact/card";
 import TipoMovimientoSelector from "../common/TipoMovimientoSelector";
 import ModuloDocumentoSelector from "../common/ModuloDocumentoSelector";
+import { getModulos } from "../../api/moduloSistema";
 import ProductoSelector from "../common/ProductoSelector";
 import PdfDetMovRendicionGastosCard from "./PdfDetMovRendicionGastosCard";
 import PdfComprobanteOperacionDetMovCard from "./PdfComprobanteOperacionDetMovCard";
@@ -64,6 +65,19 @@ const DetMovsRendicionGastosForm = ({
   onGeneracionDocumentosExitosa,
 }) => {
   const toast = useRef(null);
+
+  // Gasto urgente: el origen siempre es el módulo COMPRAS (modelo OrdenCompra) y el documento es la Orden de
+  // Compra que se genera después; mientras no exista queda en 0 y el sistema lo completa al generar la OC.
+  const [moduloCompras, setModuloCompras] = useState(null);
+  useEffect(() => {
+    if (modoGasto !== "directo") return;
+    getModulos()
+      .then((modulos) => setModuloCompras((modulos || []).find((m) => m.modeloDocumentoOrigen === "OrdenCompra") || null))
+      .catch(() => setModuloCompras(null));
+  }, [modoGasto]);
+  const origenAutomatico =
+    modoGasto === "directo" &&
+    (!movimiento?.id || (moduloCompras && Number(movimiento.moduloOrigenId) === Number(moduloCompras.id)));
   const isEditing = !!movimiento;
   const { usuario } = useAuthStore();
   const [cardActiva, setCardActiva] = useState("datos");
@@ -652,25 +666,43 @@ const DetMovsRendicionGastosForm = ({
         });
         return;
       }
-      if (!Number(data.moduloOrigenId)) {
-        setError("moduloOrigenId", { type: "required", message: "El Módulo Origen es obligatorio." });
-        toast.current?.show({
-          severity: "error",
-          summary: "Dato obligatorio",
-          detail: "El Módulo Origen es obligatorio: seleccione de qué módulo proviene el movimiento.",
-          life: 5000,
-        });
-        return;
-      }
-      if (!Number(data.documentoOrigenId)) {
-        setError("moduloOrigenId", { type: "required", message: "El Documento Origen es obligatorio." });
-        toast.current?.show({
-          severity: "error",
-          summary: "Dato obligatorio",
-          detail: "El Documento Origen es obligatorio: seleccione el documento de origen del módulo elegido.",
-          life: 5000,
-        });
-        return;
+      if (origenAutomatico) {
+        if (!moduloCompras) {
+          toast.current?.show({
+            severity: "error",
+            summary: "Falta configuración",
+            detail: "No se encontró el módulo COMPRAS (con modelo de documento OrdenCompra) en el mantenimiento de módulos del sistema: es el origen del gasto urgente.",
+            life: 8000,
+          });
+          return;
+        }
+        // Documento 0 = pendiente: se completa con el id de la Orden de Compra al generar los documentos
+        data = {
+          ...data,
+          moduloOrigenId: Number(moduloCompras.id),
+          documentoOrigenId: Number(movimiento?.documentoOrigenId || 0),
+        };
+      } else {
+        if (!Number(data.moduloOrigenId)) {
+          setError("moduloOrigenId", { type: "required", message: "El Módulo Origen es obligatorio." });
+          toast.current?.show({
+            severity: "error",
+            summary: "Dato obligatorio",
+            detail: "El Módulo Origen es obligatorio: seleccione de qué módulo proviene el movimiento.",
+            life: 5000,
+          });
+          return;
+        }
+        if (!Number(data.documentoOrigenId)) {
+          setError("moduloOrigenId", { type: "required", message: "El Documento Origen es obligatorio." });
+          toast.current?.show({
+            severity: "error",
+            summary: "Dato obligatorio",
+            detail: "El Documento Origen es obligatorio: seleccione el documento de origen del módulo elegido.",
+            life: 5000,
+          });
+          return;
+        }
       }
       const datosNormalizados = {
         empresaId: Number(data.empresaId),
@@ -847,6 +879,21 @@ const DetMovsRendicionGastosForm = ({
                 )}
               </div>
               <div style={{ flex: 2 }}>
+                {origenAutomatico ? (
+                  <>
+                    <label style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>Origen (automático)</label>
+                    <InputText
+                      value={
+                        Number(movimiento?.documentoOrigenId) > 0
+                          ? `COMPRAS - ORDEN DE COMPRA #${movimiento.documentoOrigenId}`
+                          : "COMPRAS - SE ASIGNA AL GENERAR LA ORDEN DE COMPRA"
+                      }
+                      disabled
+                      style={{ width: "100%", fontWeight: "bold" }}
+                    />
+                  </>
+                ) : (
+                <>
                 <ModuloDocumentoSelector
                   value={{
                     moduloOrigenId: Number(watch("moduloOrigenId") || 0),
@@ -876,6 +923,8 @@ const DetMovsRendicionGastosForm = ({
                     severity="error"
                     text={errors.moduloOrigenId.message}
                   />
+                )}
+                </>
                 )}
               </div>
               <div style={{ flex: 0.8, position: "relative" }}>

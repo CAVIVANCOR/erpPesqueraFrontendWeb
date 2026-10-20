@@ -569,22 +569,10 @@ export default function Dashboard() {
         },
 
         {
-          label: "Letra de Cambio",
+          label: "Letras de Cambio",
           key: "letra-cambio",
-          icon: "pi-file",
-          tab: "tablas", // ← NUEVO
-        },
-        {
-          label: "Endoso Letra de Cambio",
-          key: "endoso-letra-cambio",
-          icon: "pi-sync",
-          tab: "tablas", // ← NUEVO
-        },
-        {
-          label: "Pago Letra de Cambio",
-          key: "pago-letra-cambio",
-          icon: "pi-money-bill",
-          tab: "tablas", // ← NUEVO
+          icon: "pi-file-edit",
+          tab: "operaciones",
         },
         {
           label: "Ubicación de Letra",

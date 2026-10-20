@@ -464,6 +464,10 @@ const PendientesHeader = ({
       ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.TRANSFERENCIA_INTERNA],
       value: TIPO_OPERACION_TESORERIA.TRANSFERENCIA_INTERNA,
     },
+    {
+      ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.LETRAS_CAMBIO],
+      value: TIPO_OPERACION_TESORERIA.LETRAS_CAMBIO,
+    },
   ];
   // Función para manejar clic en operaciones
   const handleOperacionClick = (operacion) => {

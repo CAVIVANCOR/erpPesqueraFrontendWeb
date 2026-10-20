@@ -142,9 +142,7 @@ import InversionFinanciera from "../../pages/tesoreria/InversionFinanciera";
 import ReporteLineasDisponibles from "../../pages/tesoreria/ReporteLineasDisponibles";
 import ComprobanteElectronico from "../../pages/ComprobanteElectronico";
 import UnidadesNegocio from "../../pages/UnidadesNegocio";
-import LetraCambio from "../../pages/LetraCambio";
-import EndosoLetraCambio from "../../pages/EndosoLetraCambio";
-import PagoLetraCambio from "../../pages/PagoLetraCambio";
+import LetraCambioOperaciones from "../../pages/tesoreria/LetraCambioOperaciones";
 import UbicacionLetra from "../../pages/UbicacionLetra";
 import FlujoCajaProyectado from "../../pages/FlujoCajaProyectado";
 import PresupuestoAnual from "../../pages/PresupuestoAnual";
@@ -521,16 +519,8 @@ export default function BaseLayout({ children, onLogout }) {
       componente: <Usuarios ruta="usuarios" />,
     },
     "letra-cambio": {
-      label: "Letra de Cambio",
-      componente: <LetraCambio ruta="letra-cambio" />,
-    },
-    "endoso-letra-cambio": {
-      label: "Endoso Letra de Cambio",
-      componente: <EndosoLetraCambio ruta="endoso-letra-cambio" />,
-    },
-    "pago-letra-cambio": {
-      label: "Pago Letra de Cambio",
-      componente: <PagoLetraCambio ruta="pago-letra-cambio" />,
+      label: "Letras de Cambio",
+      componente: <LetraCambioOperaciones ruta="letra-cambio" />,
     },
     "ubicacion-letra": {
       label: "Ubicación de Letra",

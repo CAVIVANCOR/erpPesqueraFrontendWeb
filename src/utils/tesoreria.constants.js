@@ -144,6 +144,7 @@ export const TIPO_OPERACION_TESORERIA = {
   RETIRO_DINERO: 'RETIRO_DINERO',
   INGRESO_DINERO: 'INGRESO_DINERO',
   GASTO_URGENTE: 'GASTO_URGENTE',
+  LETRAS_CAMBIO: 'LETRAS_CAMBIO',
 };
 
 
@@ -692,6 +693,12 @@ export const LABELS_TIPO_OPERACION = {
     severity: 'danger',
     icon: 'pi pi-bolt',
     descripcion: 'Provisión + Pago inmediato',
+  },
+  [TIPO_OPERACION_TESORERIA.LETRAS_CAMBIO]: {
+    label: 'Pago / Cobro de Letras',
+    severity: 'help',
+    icon: 'pi pi-file-edit',
+    descripcion: 'Pago de letras por pagar y cobranza de letras por cobrar (capital, interés y mora)',
   },
 };
 
