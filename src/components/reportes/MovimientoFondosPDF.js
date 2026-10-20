@@ -1,4 +1,5 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { esIngresoMovimiento } from "../../utils/naturalezaMovimientoCaja";
 
 const PAGE_SIZE = [841.89, 595.28];
 const MARGIN = 28;
@@ -95,7 +96,8 @@ const lineasDe = (m) => {
     ];
   }
   const cuenta = origen || destino || null;
-  let esIngreso = m.tipoMovimiento?.esIngreso;
+  // Naturaleza real (origen CxC/CxP primero, luego el tipo de movimiento); si no se puede determinar, se infiere de la cuenta
+  let esIngreso = esIngresoMovimiento(m);
   if (typeof esIngreso !== "boolean") esIngreso = Boolean(destino && !origen);
   return [{ cuenta, ingreso: esIngreso ? monto : 0, egreso: esIngreso ? 0 : monto }];
 };

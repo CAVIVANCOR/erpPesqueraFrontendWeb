@@ -294,7 +294,8 @@ const CuentaCorrienteSelector = ({
         bancoId: Number(cuenta.bancoId), // ← BANCO AUTOMÁTICO
         empresaId: Number(cuenta.empresaId), // ← EMPRESA AUTOMÁTICA (ID)
         empresa: cuenta.empresa, // ← EMPRESA AUTOMÁTICA (objeto completo con razonSocial, ruc, etc.)
-        moneda: cuenta.moneda // ← MONEDA AUTOMÁTICA (incluye colorFondo)
+        moneda: cuenta.moneda, // ← MONEDA AUTOMÁTICA (incluye colorFondo)
+        cuenta // ← Cuenta completa (banco, número de cuenta, etc.) para quien necesite describirla
       });
     }
 

@@ -23,6 +23,7 @@ import {
 import { useAuthStore } from '../../../shared/stores/useAuthStore';
 import { getResponsiveFontSize, formatearFecha, formatearNumero } from '../../../utils/utils';
 import { mensajeDeError } from '../../../utils/mensajeError';
+import { listarPrestamosRelacionadosVigentes } from '../../../api/tesoreria/prestamosRelacionados';
 import TipoMovimientoSelector from '../../common/TipoMovimientoSelector';
 import { generarYSubirVoucherIndividual } from '../utils/VoucherIndividualMovimientoPDF';
 import { generarYSubirVoucherContable } from '../utils/VoucherContableMovimientoPDF';
@@ -58,6 +59,12 @@ import ConfirmacionTransferenciaDialog from './ConfirmacionTransferenciaDialog';
  * - Generación automática de vouchers PDF
  * - Actualización de saldos en cascada
  */
+
+// Empresa y cuenta (banco + número) tal como se citan en la glosa de un préstamo entre relacionadas
+const describirCuenta = (empresa, cuenta) => ({
+  empresa: empresa?.razonSocial || cuenta?.empresa?.razonSocial || '',
+  cuenta: [cuenta?.banco?.nombreCorto || cuenta?.banco?.nombre, cuenta?.numeroCuenta].filter(Boolean).join(' CTA. '),
+});
 
 export default function TransferenciaInternaDialog({
   visible,
@@ -97,6 +104,14 @@ export default function TransferenciaInternaDialog({
   const [esGerencial, setEsGerencial] = useState(false);
   // Préstamo entre empresas relacionadas: 'DESEMBOLSO' | 'DEVOLUCION' (solo con los tipos PRESTAMOS RELACIONADOS)
   const [operacionPrestamoRelacionado, setOperacionPrestamoRelacionado] = useState(null);
+  const [prestamoRelacionadoId, setPrestamoRelacionadoId] = useState(null);
+  const [empresaOrigenSelector, setEmpresaOrigenSelector] = useState(null);
+  const [empresaDestinoSelector, setEmpresaDestinoSelector] = useState(null);
+  // Empresa y cuenta (banco + número) elegidas en cada selector, para armar la glosa del préstamo
+  const [infoCuentaOrigen, setInfoCuentaOrigen] = useState(null);
+  const [infoCuentaDestino, setInfoCuentaDestino] = useState(null);
+  const [prestamosVigentes, setPrestamosVigentes] = useState([]);
+  const [cargandoPrestamos, setCargandoPrestamos] = useState(false);
 
   // ════════════════════════════════════════════════════════════
   // ESTADOS CUENTA ORIGEN
@@ -181,6 +196,50 @@ export default function TransferenciaInternaDialog({
     Number(tipoMovimientoEgresoId) === TIPO_PRESTAMO_RELACIONADO_EGRESO &&
     Number(tipoMovimientoIngresoId) === TIPO_PRESTAMO_RELACIONADO_INGRESO
   );
+
+  // Devolución: préstamos vigentes entre las dos empresas (sale de la prestataria hacia la prestamista)
+  const empresaOrigenId = empresaOrigenSelector || cuentaOrigen?.empresaId;
+  const empresaDestinoId = empresaDestinoSelector || cuentaDestino?.empresaId;
+  useEffect(() => {
+    setPrestamoRelacionadoId(null);
+    setPrestamosVigentes([]);
+    if (!esPrestamoRelacionado || operacionPrestamoRelacionado !== 'DEVOLUCION' || !empresaOrigenId || !empresaDestinoId) return;
+    let cancelado = false;
+    setCargandoPrestamos(true);
+    listarPrestamosRelacionadosVigentes({ empresaPrestatariaId: empresaOrigenId, empresaPrestamistaId: empresaDestinoId })
+      .then((lista) => { if (!cancelado) setPrestamosVigentes(lista || []); })
+      .catch((error) => {
+        if (cancelado) return;
+        toast?.current?.show({
+          severity: 'error',
+          summary: 'No se pudieron cargar los préstamos',
+          detail: mensajeDeError(error, 'Error al consultar los préstamos vigentes entre las empresas'),
+          life: 8000
+        });
+      })
+      .finally(() => { if (!cancelado) setCargandoPrestamos(false); });
+    return () => { cancelado = true; };
+  }, [esPrestamoRelacionado, operacionPrestamoRelacionado, empresaOrigenId, empresaDestinoId]);
+
+  // Glosa de la operación armada al elegir Desembolso/Devolución: empresa, cuenta, moneda y monto de cada lado.
+  // Se actualiza al cambiar cuentas, montos o préstamo, pero solo si el usuario no la editó a mano
+  // (está vacía o es la última glosa generada automáticamente).
+  const ultimaGlosaPrestamo = useRef('');
+  useEffect(() => {
+    if (!esPrestamoRelacionado || !operacionPrestamoRelacionado) return;
+    const lado = (info, moneda, monto) => {
+      const importe = Number(monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return `${info?.empresa || 'EMPRESA'} (${info?.cuenta || 'CUENTA'}) ${moneda?.codigoSunat || ''} ${importe}`.replace(/\s+/g, ' ');
+    };
+    let titulo = 'DESEMBOLSO DE PRÉSTAMO ENTRE EMPRESAS RELACIONADAS';
+    if (operacionPrestamoRelacionado === 'DEVOLUCION') {
+      const prestamo = prestamosVigentes.find((p) => Number(p.id) === Number(prestamoRelacionadoId));
+      titulo = `DEVOLUCIÓN DE PRÉSTAMO ENTRE EMPRESAS RELACIONADAS${prestamo ? ` N° ${prestamo.numeroPrestamo}` : ''}`;
+    }
+    const glosa = `${titulo} - ORIGEN: ${lado(infoCuentaOrigen, monedaOrigen, montoOrigen)} - DESTINO: ${lado(infoCuentaDestino, monedaDestino, montoDestino)}`;
+    setDescripcion((actual) => (!actual || actual === ultimaGlosaPrestamo.current ? glosa : actual));
+    ultimaGlosaPrestamo.current = glosa;
+  }, [esPrestamoRelacionado, operacionPrestamoRelacionado, prestamoRelacionadoId, prestamosVigentes, infoCuentaOrigen, infoCuentaDestino, monedaOrigenSelector, monedaDestinoSelector, montoOrigen, montoDestino]);
 
   // ════════════════════════════════════════════════════════════
   // COMPUTED: DETECTAR SI HAY CAMBIO DE MONEDA
@@ -332,6 +391,12 @@ export default function TransferenciaInternaDialog({
     setNumeroOperacion('');
     setEsGerencial(false);
     setOperacionPrestamoRelacionado(null);
+    setPrestamoRelacionadoId(null);
+    setPrestamosVigentes([]);
+    setEmpresaOrigenSelector(null);
+    setEmpresaDestinoSelector(null);
+    setInfoCuentaOrigen(null);
+    setInfoCuentaDestino(null);
     setCuentaOrigenId(null);
     setMonedaOrigenSelector(null);
     setMontoOrigen(0);
@@ -679,6 +744,8 @@ export default function TransferenciaInternaDialog({
           errorPrestamo = 'Un préstamo entre relacionadas requiere el tipo de movimiento PRESTAMOS RELACIONADOS tanto en el origen (egreso) como en el destino (ingreso).';
         } else if (!operacionPrestamoRelacionado) {
           errorPrestamo = 'Debe indicar si la operación es un Desembolso (nuevo préstamo) o una Devolución de un préstamo entre relacionadas.';
+        } else if (operacionPrestamoRelacionado === 'DEVOLUCION' && !prestamoRelacionadoId) {
+          errorPrestamo = 'Debe seleccionar el préstamo entre relacionadas que se está devolviendo.';
         }
         if (errorPrestamo) {
           toast?.current?.show({
@@ -733,6 +800,7 @@ export default function TransferenciaInternaDialog({
 
           // Préstamo entre relacionadas: 'DESEMBOLSO' | 'DEVOLUCION' (null en las demás transferencias)
           operacionPrestamoRelacionado: esPrestamoRelacionado ? operacionPrestamoRelacionado : null,
+          prestamoRelacionadoId: esPrestamoRelacionado && operacionPrestamoRelacionado === 'DEVOLUCION' ? Number(prestamoRelacionadoId) : null,
 
           // Usuario
           usuarioId: Number(usuario.id)
@@ -1237,8 +1305,10 @@ export default function TransferenciaInternaDialog({
                 <label htmlFor="cuentaOrigen" className="font-bold">Cuenta Corriente *</label>
                 <CuentaCorrienteSelector
                   value={cuentaOrigenId}
-                  onChange={({ cuentaCorrienteId, bancoId, moneda }) => {
+                  onChange={({ cuentaCorrienteId, bancoId, empresaId, empresa, cuenta, moneda }) => {
                     setCuentaOrigenId(cuentaCorrienteId);
+                    setEmpresaOrigenSelector(empresaId || null); // Empresa de la cuenta (préstamos entre relacionadas)
+                    setInfoCuentaOrigen(describirCuenta(empresa, cuenta));
                     setMonedaOrigenSelector(moneda); // Guardar moneda del selector
                   }}
                   label=""
@@ -1449,8 +1519,10 @@ export default function TransferenciaInternaDialog({
                 <label htmlFor="cuentaDestino" className="font-bold">Cuenta Corriente *</label>
                 <CuentaCorrienteSelector
                   value={cuentaDestinoId}
-                  onChange={({ cuentaCorrienteId, bancoId, moneda }) => {
+                  onChange={({ cuentaCorrienteId, bancoId, empresaId, empresa, cuenta, moneda }) => {
                     setCuentaDestinoId(cuentaCorrienteId);
+                    setEmpresaDestinoSelector(empresaId || null); // Empresa de la cuenta (préstamos entre relacionadas)
+                    setInfoCuentaDestino(describirCuenta(empresa, cuenta));
                     setMonedaDestinoSelector(moneda); // Guardar moneda del selector
                     
                     // 🔄 Sincronizar medio de pago destino si ya hay medio de pago origen seleccionado
@@ -1557,6 +1629,39 @@ export default function TransferenciaInternaDialog({
                   {!operacionPrestamoRelacionado &&
                     'Indique si es un nuevo préstamo o la devolución de uno existente: define cómo se contabiliza en cada empresa.'}
                 </small>
+
+                {operacionPrestamoRelacionado === 'DESEMBOLSO' && (
+                  <div style={{ marginTop: 8 }}>
+                    <small style={{ color: '#6c757d' }}>
+                      Se creará un nuevo préstamo entre relacionadas. Su número (PR-000001...) se genera automáticamente al confirmar.
+                    </small>
+                  </div>
+                )}
+
+                {operacionPrestamoRelacionado === 'DEVOLUCION' && (
+                  <div style={{ marginTop: 8 }}>
+                    <label htmlFor="prestamoRelacionadoId" className="font-bold">
+                      Préstamo que se devuelve *
+                    </label>
+                    <Dropdown
+                      id="prestamoRelacionadoId"
+                      value={prestamoRelacionadoId}
+                      options={prestamosVigentes.map((p) => ({
+                        label: `N° ${p.numeroPrestamo} · saldo ${p.simbolo} ${formatearNumero(p.saldoCapital)}`,
+                        value: Number(p.id),
+                      }))}
+                      onChange={(e) => setPrestamoRelacionadoId(e.value)}
+                      placeholder={cargandoPrestamos ? 'Cargando préstamos...' : 'Seleccione el préstamo'}
+                      emptyMessage="No hay préstamos vigentes de la empresa de destino a la empresa de origen"
+                      disabled={loading || cargandoPrestamos}
+                      className={!prestamoRelacionadoId ? 'p-invalid' : ''}
+                      style={{ width: '100%' }}
+                    />
+                    <small style={{ color: '#6c757d' }}>
+                      La devolución sale de la empresa de origen (deudora) hacia la de destino (acreedora). Puede pagarse en otra moneda al tipo de cambio de la operación.
+                    </small>
+                  </div>
+                )}
               </div>
             )}
             <div

@@ -20,6 +20,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { formatearFecha, formatearNumero, getResponsiveFontSize } from "../utils/utils";
 import EmpresaSelector from "../components/common/EmpresaSelector";
 import ReporteMovimientoFondos from "../components/reportes/ReporteMovimientoFondos";
+import { esIngresoMovimiento } from "../utils/naturalezaMovimientoCaja";
 
 // ============================================================
 // CONFIGURACIÓN DE FILTROS
@@ -198,8 +199,8 @@ const filtrarMovimientos = (lista, filtros, excluir = null) => {
       if (fecha < fechaIni || (fechaFin && fecha > fechaFin)) return false;
     }
 
-    if (filtros.naturaleza === "INGRESO" && m.tipoMovimiento?.esIngreso !== true) return false;
-    if (filtros.naturaleza === "EGRESO" && m.tipoMovimiento?.esIngreso !== false) return false;
+    if (filtros.naturaleza === "INGRESO" && esIngresoMovimiento(m) !== true) return false;
+    if (filtros.naturaleza === "EGRESO" && esIngresoMovimiento(m) !== false) return false;
 
     if (filtros.libro === "FISCAL" && m.esGerencial) return false;
     if (filtros.libro === "GERENCIAL" && !m.esGerencial) return false;
@@ -490,7 +491,7 @@ export default function MovimientoCaja({ ruta }) {
   const montoTemplate = (rowData) => {
     const monto = Number(rowData.monto) || 0;
     const simboloMoneda = rowData.moneda?.simbolo || "";
-    const esIngreso = rowData.tipoMovimiento?.esIngreso;
+    const esIngreso = esIngresoMovimiento(rowData);
     const severity = esIngreso === true ? "success" : esIngreso === false ? "danger" : "info";
 
     return (

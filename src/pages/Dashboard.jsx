@@ -718,6 +718,12 @@ export default function Dashboard() {
           tab: "operaciones",
         },
         {
+          label: "Préstamos Relacionados",
+          key: "prestamoRelacionado",
+          icon: "pi-sync",
+          tab: "operaciones",
+        },
+        {
           label: "Línea de Crédito",
           key: "lineaCredito",
           icon: "pi-credit-card",
