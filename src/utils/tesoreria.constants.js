@@ -108,8 +108,8 @@ export const TIPO_VENCIMIENTO_TESORERIA = {
  * FRONTEND: Se usa en PendientesHeader.jsx para los botones de entregas (solo visuales)
  * 
  * LÓGICA DE CLASIFICACIÓN (en backend):
- * - ASIGNACIONES: formaParteCalculoEntregaARendir=true Y entidadComercialId=null
- * - GASTOS_DIRECTOS: Entregas con entidadComercialId (gastos directos a proveedores)
+ * - ASIGNACIONES: categoría Gastos a Rendir y formaParteCalculoEntregaARendir=true (la entidad comercial no influye)
+ * - GASTOS_DIRECTOS: el resto de entregas (gastos directos a proveedores)
  * 
  * NOTA: Estos botones en el frontend son informativos, NO filtran datos.
  */
