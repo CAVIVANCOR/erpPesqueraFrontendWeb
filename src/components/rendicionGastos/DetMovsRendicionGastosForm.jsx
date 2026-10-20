@@ -709,9 +709,11 @@ const DetMovsRendicionGastosForm = ({
         moduloOrigenId: data.moduloOrigenId
           ? Number(data.moduloOrigenId)
           : null,
-        documentoOrigenId: data.documentoOrigenId
-          ? Number(data.documentoOrigenId)
-          : null,
+        // 0 = gasto urgente pendiente de generar su Orden de Compra: se envía tal cual (no es "sin dato")
+        documentoOrigenId:
+          data.documentoOrigenId === 0 || data.documentoOrigenId
+            ? Number(data.documentoOrigenId)
+            : null,
         responsableId: data.responsableId ? Number(data.responsableId) : null,
         tipoMovimientoId: data.tipoMovimientoId
           ? Number(data.tipoMovimientoId)

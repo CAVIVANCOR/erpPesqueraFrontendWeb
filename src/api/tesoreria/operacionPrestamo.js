@@ -37,3 +37,35 @@ export async function desembolsarPrestamo(data) {
   const res = await axios.post(`${API_URL}/desembolsar`, data, { headers: getAuthHeaders() });
   return res.data;
 }
+
+// ════════════════════════════════════════════════════════════
+// FACTORING: facturas entregadas en descuento y liquidación por cobro de la factura
+// ════════════════════════════════════════════════════════════
+
+/** Facturas (CxC) que se pueden entregar a un factoring. params: empresaId, monedaId */
+export async function getFacturasFactoringDisponibles(params) {
+  const res = await axios.get(`${API_URL}/factoring/facturas-disponibles`, { headers: getAuthHeaders(), params });
+  return res.data?.data || [];
+}
+
+/** Préstamos de factoring con facturas entregadas. params: empresaId */
+export async function getPrestamosFactoring(params = {}) {
+  const res = await axios.get(`${API_URL}/factoring/prestamos`, { headers: getAuthHeaders(), params });
+  return res.data?.data || [];
+}
+
+export async function getDetalleFactoring(prestamoId) {
+  const res = await axios.get(`${API_URL}/factoring/prestamos/${prestamoId}`, { headers: getAuthHeaders() });
+  return res.data?.data;
+}
+
+/** Liquidación por cobro de las facturas por la entidad (sin caja) */
+export async function liquidarFactoring(data) {
+  const res = await axios.post(`${API_URL}/factoring/liquidar`, data, { headers: getAuthHeaders() });
+  return res.data?.data;
+}
+
+export async function anularLiquidacionFactoring(pagoId) {
+  const res = await axios.post(`${API_URL}/factoring/liquidaciones/${pagoId}/anular`, {}, { headers: getAuthHeaders() });
+  return res.data?.data;
+}

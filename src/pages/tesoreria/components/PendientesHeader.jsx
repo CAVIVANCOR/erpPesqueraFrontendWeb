@@ -468,6 +468,10 @@ const PendientesHeader = ({
       ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.LETRAS_CAMBIO],
       value: TIPO_OPERACION_TESORERIA.LETRAS_CAMBIO,
     },
+    {
+      ...LABELS_TIPO_OPERACION[TIPO_OPERACION_TESORERIA.LIQUIDACION_FACTORING],
+      value: TIPO_OPERACION_TESORERIA.LIQUIDACION_FACTORING,
+    },
   ];
   // Función para manejar clic en operaciones
   const handleOperacionClick = (operacion) => {

@@ -14,7 +14,7 @@ import { Tag } from "primereact/tag";
 import { formatearNumero, formatearFecha } from "../../../utils/utils";
 import { consultarTipoCambioSunat } from "../../../api/consultaExterna";
 import { actualizarUrlVoucherIndividual } from "../../../api/tesoreria/transferencias";
-import { sincronizarAdjuntosPagoCuotaPrestamo } from "../../../api/tesoreria/operacionPrestamo";
+import { sincronizarAdjuntosPagoCuotaPrestamo, getFacturasFactoringDisponibles } from "../../../api/tesoreria/operacionPrestamo";
 import { useAuthStore } from "../../../shared/stores/useAuthStore";
 import CuentaCorrienteSelector from "../../common/CuentaCorrienteSelector";
 import TipoMovimientoSelector from "../../common/TipoMovimientoSelector";
@@ -106,6 +106,12 @@ const OperacionPrestamoForm = ({
   const [tipoCambio, setTipoCambio] = useState(1);
   const [tipoMovimientoId, setTipoMovimientoId] = useState(null);
 
+  // Factoring: facturas (CxC) que se entregan en descuento y neto que deposita la entidad
+  const [facturasDisponibles, setFacturasDisponibles] = useState([]);
+  const [facturasElegidas, setFacturasElegidas] = useState([]);
+  const [montoNeto, setMontoNeto] = useState(null);
+  const [cargandoFacturas, setCargandoFacturas] = useState(false);
+
   // Evita pisar la glosa que el usuario ya escribió al cambiar la selección
   const glosaEditada = useRef(false);
 
@@ -140,16 +146,45 @@ const OperacionPrestamoForm = ({
 
   // Total de la operación: cuotas = monto de cada cuota + su mora; desembolso = monto del préstamo
   const totalPrincipal = useMemo(() => {
-    if (esDesembolso) return Number(base?.saldoPendiente || 0);
+    // Factoring: el ingreso de caja es el NETO depositado (bruto de las facturas - descuento)
+    if (esDesembolso) return esFactoring ? Number(montoNeto || 0) : Number(base?.saldoPendiente || 0);
     return seleccionados.reduce(
       (acc, f) => acc + Number(montos[f.id] || 0) + Number(moras[f.id] || 0),
       0,
     );
-  }, [esDesembolso, base, seleccionados, montos, moras]);
+  }, [esDesembolso, esFactoring, montoNeto, base, seleccionados, montos, moras]);
   const totalSaldos = useMemo(
     () => seleccionados.reduce((acc, f) => acc + Number(f.saldoPendiente || 0), 0),
     [seleccionados],
   );
+
+  // Factoring: bruto = suma de las facturas elegidas; debe igualar el monto del préstamo
+  const brutoFacturas = useMemo(() => redondear2(facturasElegidas.reduce((a, f) => a + Number(f.saldoPendiente || 0), 0)), [facturasElegidas]);
+  const descuentoFactoring = redondear2(brutoFacturas - Number(montoNeto || 0));
+  const montoPrestamoFactoring = Number(base?.saldoPendiente || 0);
+  const facturasNoCuadran = esDesembolso && esFactoring && facturasElegidas.length > 0 && Math.abs(brutoFacturas - montoPrestamoFactoring) > 0.01;
+
+  useEffect(() => {
+    if (!esDesembolso || !esFactoring || !empresaId || !monedaPrestamo?.id) return;
+    setCargandoFacturas(true);
+    getFacturasFactoringDisponibles({ empresaId, monedaId: monedaPrestamo.id })
+      .then(setFacturasDisponibles)
+      .catch((err) =>
+        toast?.current?.show({
+          severity: "error",
+          summary: "No se pudieron cargar las facturas",
+          detail: err?.response?.data?.mensaje || err?.response?.data?.message || "Error al consultar las facturas disponibles para el factoring",
+          life: 8000,
+        }),
+      )
+      .finally(() => setCargandoFacturas(false));
+    setFacturasElegidas([]);
+  }, [esDesembolso, esFactoring, empresaId, monedaPrestamo?.id, filas]);
+
+  // El neto parte igual al bruto; el usuario lo reduce con lo que descuenta la entidad
+  useEffect(() => {
+    if (esDesembolso && esFactoring) setMontoNeto(brutoFacturas > 0 ? brutoFacturas : null);
+  }, [brutoFacturas]);
 
   const cuentaSeleccionada =
     cuentasCorrientes.find((c) => Number(c.id) === Number(cuentaId)) || null;
@@ -293,6 +328,18 @@ const OperacionPrestamoForm = ({
       return mostrarError(esDesembolso ? "Debe seleccionar un préstamo" : "Debe marcar al menos una cuota a pagar");
     }
     if (errorLote) return mostrarError(errorLote);
+    if (esDesembolso && esFactoring) {
+      if (facturasElegidas.length === 0) {
+        return mostrarError("Un factoring se desembolsa contra facturas: seleccione las facturas que entrega en descuento.");
+      }
+      if (facturasNoCuadran) {
+        return mostrarError(
+          `Las facturas suman ${simbolo} ${formatearNumero(brutoFacturas)} y el préstamo es de ${simbolo} ${formatearNumero(montoPrestamoFactoring)}: deben ser iguales. Ajuste las facturas o edite el monto del préstamo.`,
+        );
+      }
+      if (!(Number(montoNeto) > 0)) return mostrarError("Ingrese el monto neto que deposita la entidad de factoring.");
+      if (Number(montoNeto) > brutoFacturas) return mostrarError("El neto depositado no puede superar el total de las facturas.");
+    }
     if (!fecha) return mostrarError("Debe ingresar la fecha de la operación");
     if (!descripcion || descripcion.trim() === "") {
       return mostrarError("Debe ingresar la glosa de la operación");
@@ -441,6 +488,10 @@ const OperacionPrestamoForm = ({
           ? {
               ...comunes,
               prestamoBancarioId: Number(base.origenId),
+              ...(esFactoring && {
+                facturasFactoringIds: facturasElegidas.map((f) => Number(f.id)),
+                montoNeto: Number(montoNeto),
+              }),
               fechaDesembolso: fecha.toISOString(),
               cuentaCorrienteDestinoId: Number(cuentaId),
             }
@@ -712,6 +763,59 @@ const OperacionPrestamoForm = ({
                 />
               </div>
             </div>
+
+            {/* FACTORING: facturas que se entregan en descuento y neto depositado */}
+            {esDesembolso && esFactoring && (
+              <Panel header={<span>🧾 Factoring: facturas entregadas en descuento</span>} toggleable className="mb-2">
+                <DataTable
+                  value={facturasDisponibles}
+                  selection={facturasElegidas}
+                  onSelectionChange={(e) => setFacturasElegidas(e.value)}
+                  dataKey="id"
+                  loading={cargandoFacturas}
+                  size="small"
+                  stripedRows
+                  scrollable
+                  scrollHeight="220px"
+                  emptyMessage="No hay facturas fiscales disponibles (con saldo, sin cobros y en la moneda del préstamo)."
+                >
+                  <Column selectionMode="multiple" style={{ width: "3rem" }} />
+                  <Column field="numeroDocumento" header="Factura" />
+                  <Column field="cliente" header="Cliente" />
+                  <Column header="Vencimiento" body={(f) => formatearFecha(f.fechaVencimiento)} />
+                  <Column header="Saldo" body={(f) => `${f.simbolo} ${formatearNumero(f.saldoPendiente)}`} />
+                </DataTable>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end", marginTop: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <label className="font-bold block mb-1">Bruto (facturas)</label>
+                    <InputText value={`${simbolo} ${formatearNumero(brutoFacturas)}`} disabled style={{ width: "100%", fontWeight: "bold" }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label className="font-bold block mb-1">Neto depositado por la entidad *</label>
+                    <InputNumber
+                      value={montoNeto}
+                      onValueChange={(e) => setMontoNeto(e.value)}
+                      mode="decimal"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
+                      min={0}
+                      max={brutoFacturas || undefined}
+                      disabled={cargando || facturasElegidas.length === 0}
+                      inputStyle={{ width: "100%", fontWeight: "bold" }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label className="font-bold block mb-1">Descuento / interés (cuenta 673111)</label>
+                    <InputText value={`${simbolo} ${formatearNumero(Math.max(0, descuentoFactoring))}`} disabled style={{ width: "100%", fontWeight: "bold" }} />
+                  </div>
+                </div>
+                {facturasNoCuadran && (
+                  <small style={{ color: "#c62828", display: "block", marginTop: 6 }}>
+                    Las facturas suman {simbolo} {formatearNumero(brutoFacturas)} y el préstamo es de {simbolo} {formatearNumero(montoPrestamoFactoring)}: deben ser iguales.
+                  </small>
+                )}
+              </Panel>
+            )}
 
             {/* CUENTA: origen (egreso) o destino (ingreso) */}
             <Panel

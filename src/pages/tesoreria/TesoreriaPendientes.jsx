@@ -27,7 +27,9 @@ import OperacionPrestamoForm from "../../components/movimientoCaja/PrestamosPago
 import useOperacionPrestamo from "../../components/movimientoCaja/PrestamosPagoEspecializado/useOperacionPrestamo";
 import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ AGREGAR
 import TransferenciaInternaDialog from "../../components/movimientoCaja/transferenciaEspecializada/TransferenciaInternaDialog";
+import { mensajeDeError } from "../../utils/mensajeError";
 import PagoLetraCambioDialog from "../../components/movimientoCaja/LetrasCambioPagoEspecializado/PagoLetraCambioDialog";
+import LiquidarFactoringDialog from "../../components/movimientoCaja/PrestamosPagoEspecializado/LiquidarFactoringDialog";
 import DetMovsRendicionGastosForm from "../../components/rendicionGastos/DetMovsRendicionGastosForm";
 import PagarGastoDirectoDialog from "../../components/movimientoCaja/GastoDirectoEspecializado/PagarGastoDirectoDialog";
 import ListaOperacionesDialog from "../../components/movimientoCaja/reversionOperacion/ListaOperacionesDialog";
@@ -97,6 +99,7 @@ const TesoreriaPendientes = () => {
   // 🆕 Estados para diálogos de operaciones
   const [showTransferenciaInternaDialog, setShowTransferenciaInternaDialog] = useState(false);
   const [showPagoLetrasDialog, setShowPagoLetrasDialog] = useState(false);
+  const [showLiquidarFactoringDialog, setShowLiquidarFactoringDialog] = useState(false);
   const [showListaOperacionesDialog, setShowListaOperacionesDialog] = useState(false);
   const [showPagoProveedorDialog, setShowPagoProveedorDialog] = useState(false);
   const [showRetiroDineroDialog, setShowRetiroDineroDialog] = useState(false);
@@ -644,6 +647,9 @@ const TesoreriaPendientes = () => {
       case TIPO_OPERACION_TESORERIA.LETRAS_CAMBIO:
         setShowPagoLetrasDialog(true);
         break;
+      case TIPO_OPERACION_TESORERIA.LIQUIDACION_FACTORING:
+        setShowLiquidarFactoringDialog(true);
+        break;
       case TIPO_OPERACION_TESORERIA.PAGO_PROVEEDOR:
         setShowPagoProveedorDialog(true);
         break;
@@ -779,9 +785,9 @@ const TesoreriaPendientes = () => {
       console.error("Error al guardar gasto directo:", error);
       toast.current?.show({
         severity: "error",
-        summary: "Error",
-        detail: error.response?.data?.error || "Error al guardar el gasto directo",
-        life: 3000,
+        summary: "No se pudo guardar el gasto directo",
+        detail: mensajeDeError(error, "Error al guardar el gasto directo"),
+        life: 10000,
       });
     }
   };
@@ -1183,6 +1189,15 @@ const TesoreriaPendientes = () => {
         mediosPago={mediosPago}
         tiposMovimiento={tiposMovimiento}
         empresas={empresas}
+        onSuccess={() => {
+          recargarSaldos();
+        }}
+      />
+
+      <LiquidarFactoringDialog
+        visible={showLiquidarFactoringDialog}
+        onHide={() => setShowLiquidarFactoringDialog(false)}
+        toast={toast}
         onSuccess={() => {
           recargarSaldos();
         }}

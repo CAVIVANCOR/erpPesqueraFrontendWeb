@@ -145,6 +145,7 @@ export const TIPO_OPERACION_TESORERIA = {
   INGRESO_DINERO: 'INGRESO_DINERO',
   GASTO_URGENTE: 'GASTO_URGENTE',
   LETRAS_CAMBIO: 'LETRAS_CAMBIO',
+  LIQUIDACION_FACTORING: 'LIQUIDACION_FACTORING',
 };
 
 
@@ -699,6 +700,12 @@ export const LABELS_TIPO_OPERACION = {
     severity: 'help',
     icon: 'pi pi-file-edit',
     descripcion: 'Pago de letras por pagar y cobranza de letras por cobrar (capital, interés y mora)',
+  },
+  [TIPO_OPERACION_TESORERIA.LIQUIDACION_FACTORING]: {
+    label: 'Liquidar Factoring',
+    severity: 'secondary',
+    icon: 'pi pi-check-square',
+    descripcion: 'La entidad de factoring cobró las facturas al cliente (sin movimiento de caja)',
   },
 };
 
