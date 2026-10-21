@@ -712,6 +712,12 @@ export default function Dashboard() {
           tab: "operaciones",
         },
         {
+          label: "Préstamos Accionistas / Terceros",
+          key: "prestamoEntidad",
+          icon: "pi-users",
+          tab: "operaciones",
+        },
+        {
           label: "Línea de Crédito",
           key: "lineaCredito",
           icon: "pi-credit-card",

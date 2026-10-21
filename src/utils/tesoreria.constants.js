@@ -146,6 +146,7 @@ export const TIPO_OPERACION_TESORERIA = {
   GASTO_URGENTE: 'GASTO_URGENTE',
   LETRAS_CAMBIO: 'LETRAS_CAMBIO',
   LIQUIDACION_FACTORING: 'LIQUIDACION_FACTORING',
+  PRESTAMO_ENTIDAD: 'PRESTAMO_ENTIDAD',
 };
 
 
@@ -706,6 +707,12 @@ export const LABELS_TIPO_OPERACION = {
     severity: 'secondary',
     icon: 'pi pi-check-square',
     descripcion: 'La entidad de factoring cobró las facturas al cliente (sin movimiento de caja)',
+  },
+  [TIPO_OPERACION_TESORERIA.PRESTAMO_ENTIDAD]: {
+    label: 'Préstamos Accionistas / Terceros',
+    severity: 'warning',
+    icon: 'pi pi-users',
+    descripcion: 'Préstamos recibidos u otorgados a accionistas y terceros: desembolso, pago y cobranza de capital',
   },
 };
 

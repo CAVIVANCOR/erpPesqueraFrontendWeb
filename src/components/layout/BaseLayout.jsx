@@ -137,6 +137,7 @@ import EstadoGananciasYPerdidas from "../../pages/contabilidad/EstadoGananciasYP
 import PrestamoBancario from "../../pages/tesoreria/PrestamoBancario";
 import TipoPrestamo from "../../pages/tesoreria/TipoPrestamo";
 import PrestamoRelacionado from "../../pages/tesoreria/PrestamoRelacionado";
+import PrestamoEntidad from "../../pages/tesoreria/PrestamoEntidad";
 import LineaCredito from "../../pages/tesoreria/LineaCredito";
 import InversionFinanciera from "../../pages/tesoreria/InversionFinanciera";
 import ReporteLineasDisponibles from "../../pages/tesoreria/ReporteLineasDisponibles";
@@ -718,6 +719,10 @@ export default function BaseLayout({ children, onLogout }) {
     prestamoRelacionado: {
       label: "Préstamos entre Relacionadas",
       componente: <PrestamoRelacionado ruta="prestamoRelacionado" />,
+    },
+    "prestamoEntidad": {
+      label: "Préstamos Accionistas / Terceros",
+      componente: <PrestamoEntidad ruta="prestamoEntidad" />,
     },
     lineaCredito: {
       label: "Línea de Crédito",

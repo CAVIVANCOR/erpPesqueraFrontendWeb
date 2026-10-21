@@ -19,7 +19,7 @@ const COLORES_EMPRESAS = [
     "#117A65", // Verde Esmeralda
 ];
 
-export default function EmpresaSelector({ empresaId, onEmpresaChange }) {
+export default function EmpresaSelector({ empresaId, onEmpresaChange, permitirLimpiar = false, disabled = false }) {
     const [empresas, setEmpresas] = useState([]);
     const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
     const [dialogVisible, setDialogVisible] = useState(false);
@@ -52,7 +52,7 @@ export default function EmpresaSelector({ empresaId, onEmpresaChange }) {
                     console.warn("⚠️ No se encontró empresa con ID:", empresaId);
                 }
             } else {
-                console.warn("⚠️ No se recibió empresaId");
+                setEmpresaSeleccionada(null);
             }
         } catch (error) {
             console.error("❌ Error al cargar empresas:", error);
@@ -73,6 +73,7 @@ export default function EmpresaSelector({ empresaId, onEmpresaChange }) {
     return (
         <>
             {/* Botón Principal */}
+            <div style={permitirLimpiar ? { display: "flex", gap: 4 } : undefined}>
             <Button
                 label={
                     empresaSeleccionada
@@ -89,12 +90,27 @@ export default function EmpresaSelector({ empresaId, onEmpresaChange }) {
                     paddingLeft: "1rem",
                 }}
                 loading={loading}
+                disabled={disabled}
             >
                 <i
                     className="pi pi-chevron-down"
                     style={{ marginLeft: "auto", fontSize: "0.9rem" }}
                 />
             </Button>
+            {permitirLimpiar && empresaSeleccionada && (
+                <Button
+                    type="button"
+                    icon="pi pi-times"
+                    className="p-button-outlined p-button-secondary"
+                    onClick={() => {
+                        setEmpresaSeleccionada(null);
+                        onEmpresaChange?.(null);
+                    }}
+                    disabled={disabled}
+                    tooltip="Quitar el filtro de empresa"
+                />
+            )}
+            </div>
 
             {/* Dialog de Selección */}
             <Dialog

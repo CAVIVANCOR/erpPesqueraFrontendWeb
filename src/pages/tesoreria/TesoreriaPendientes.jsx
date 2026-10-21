@@ -30,6 +30,7 @@ import TransferenciaInternaDialog from "../../components/movimientoCaja/transfer
 import { mensajeDeError } from "../../utils/mensajeError";
 import PagoLetraCambioDialog from "../../components/movimientoCaja/LetrasCambioPagoEspecializado/PagoLetraCambioDialog";
 import LiquidarFactoringDialog from "../../components/movimientoCaja/PrestamosPagoEspecializado/LiquidarFactoringDialog";
+import PrestamoEntidadDialog from "../../components/movimientoCaja/PrestamosPagoEspecializado/PrestamoEntidadDialog";
 import DetMovsRendicionGastosForm from "../../components/rendicionGastos/DetMovsRendicionGastosForm";
 import PagarGastoDirectoDialog from "../../components/movimientoCaja/GastoDirectoEspecializado/PagarGastoDirectoDialog";
 import ListaOperacionesDialog from "../../components/movimientoCaja/reversionOperacion/ListaOperacionesDialog";
@@ -100,6 +101,7 @@ const TesoreriaPendientes = () => {
   const [showTransferenciaInternaDialog, setShowTransferenciaInternaDialog] = useState(false);
   const [showPagoLetrasDialog, setShowPagoLetrasDialog] = useState(false);
   const [showLiquidarFactoringDialog, setShowLiquidarFactoringDialog] = useState(false);
+  const [showPrestamoEntidadDialog, setShowPrestamoEntidadDialog] = useState(false);
   const [showListaOperacionesDialog, setShowListaOperacionesDialog] = useState(false);
   const [showPagoProveedorDialog, setShowPagoProveedorDialog] = useState(false);
   const [showRetiroDineroDialog, setShowRetiroDineroDialog] = useState(false);
@@ -650,6 +652,9 @@ const TesoreriaPendientes = () => {
       case TIPO_OPERACION_TESORERIA.LIQUIDACION_FACTORING:
         setShowLiquidarFactoringDialog(true);
         break;
+      case TIPO_OPERACION_TESORERIA.PRESTAMO_ENTIDAD:
+        setShowPrestamoEntidadDialog(true);
+        break;
       case TIPO_OPERACION_TESORERIA.PAGO_PROVEEDOR:
         setShowPagoProveedorDialog(true);
         break;
@@ -1185,6 +1190,18 @@ const TesoreriaPendientes = () => {
       <PagoLetraCambioDialog
         visible={showPagoLetrasDialog}
         onHide={() => setShowPagoLetrasDialog(false)}
+        toast={toast}
+        mediosPago={mediosPago}
+        tiposMovimiento={tiposMovimiento}
+        empresas={empresas}
+        onSuccess={() => {
+          recargarSaldos();
+        }}
+      />
+
+      <PrestamoEntidadDialog
+        visible={showPrestamoEntidadDialog}
+        onHide={() => setShowPrestamoEntidadDialog(false)}
         toast={toast}
         mediosPago={mediosPago}
         tiposMovimiento={tiposMovimiento}

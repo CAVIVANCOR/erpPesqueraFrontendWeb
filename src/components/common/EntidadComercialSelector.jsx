@@ -127,6 +127,7 @@ const EntidadComercialSelector = ({
   placeholder = "Seleccione entidad comercial",
   mostrarInactivas = false,
   refreshTrigger = null,
+  permitirLimpiar = false,
 }) => {
   const [dialogVisible, setDialogVisible] = useState(false);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
@@ -445,6 +446,7 @@ const EntidadComercialSelector = ({
       </label>
 
       {/* Botón selector */}
+      <div style={permitirLimpiar ? { display: "flex", gap: 4 } : undefined}>
       <Button
         type="button"
         icon="pi pi-search"
@@ -478,6 +480,17 @@ const EntidadComercialSelector = ({
           <span style={{ color: "#999" }}>{placeholder}</span>
         )}
       </Button>
+      {permitirLimpiar && entidadSeleccionada && (
+        <Button
+          type="button"
+          icon="pi pi-times"
+          className="p-button-outlined p-button-secondary"
+          onClick={() => onChange?.(null)}
+          disabled={disabled}
+          tooltip="Quitar el filtro"
+        />
+      )}
+      </div>
 
       {/* Mensaje de error */}
       {error && errorMessage && (

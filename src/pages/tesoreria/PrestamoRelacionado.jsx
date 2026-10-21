@@ -8,6 +8,8 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
+import EmpresaSelector from "../../components/common/EmpresaSelector";
+import BooleanToggleButton from "../../components/common/BooleanToggleButton";
 import { Calendar } from "primereact/calendar";
 import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
@@ -46,10 +48,9 @@ export default function PrestamoRelacionado({ ruta }) {
   const [prestatariaSeleccionada, setPrestatariaSeleccionada] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
-  const [fechaInicio, setFechaInicio] = useState(null);
-  const [fechaFin, setFechaFin] = useState(null);
-  const [filtroSaldoInicial, setFiltroSaldoInicial] = useState("TODOS"); // TODOS | SI | NO
-  const [filtroPendientes, setFiltroPendientes] = useState("PENDIENTES"); // PENDIENTES | TODOS
+  const [rangoFechas, setRangoFechas] = useState(null);
+  const [soloSaldosIniciales, setSoloSaldosIniciales] = useState(false);
+  const [soloPendientes, setSoloPendientes] = useState(true);
 
   // Reporte (PDF / Excel)
   const [showFormatSelector, setShowFormatSelector] = useState(false);
@@ -82,21 +83,20 @@ export default function PrestamoRelacionado({ ruta }) {
     if (prestatariaSeleccionada) filtrados = filtrados.filter((i) => Number(i.empresaPrestatariaId) === Number(prestatariaSeleccionada));
     if (estadoSeleccionado) filtrados = filtrados.filter((i) => Number(i.estadoId) === Number(estadoSeleccionado));
     if (monedaSeleccionada) filtrados = filtrados.filter((i) => Number(i.monedaId) === Number(monedaSeleccionada));
-    if (fechaInicio) {
-      const desde = new Date(fechaInicio);
+    if (rangoFechas?.[0]) {
+      const desde = new Date(rangoFechas[0]);
       desde.setHours(0, 0, 0, 0);
-      filtrados = filtrados.filter((i) => new Date(i.fechaDesembolso) >= desde);
-    }
-    if (fechaFin) {
-      const hasta = new Date(fechaFin);
+      const hasta = new Date(rangoFechas[1] || rangoFechas[0]);
       hasta.setHours(23, 59, 59, 999);
-      filtrados = filtrados.filter((i) => new Date(i.fechaDesembolso) <= hasta);
+      filtrados = filtrados.filter((i) => {
+        const f = new Date(i.fechaDesembolso);
+        return f >= desde && f <= hasta;
+      });
     }
-    if (filtroSaldoInicial === "SI") filtrados = filtrados.filter((i) => i.esSaldoInicial === true);
-    if (filtroSaldoInicial === "NO") filtrados = filtrados.filter((i) => i.esSaldoInicial === false);
-    if (filtroPendientes === "PENDIENTES") filtrados = filtrados.filter(esPendiente);
+    if (soloSaldosIniciales) filtrados = filtrados.filter((i) => i.esSaldoInicial === true);
+    if (soloPendientes) filtrados = filtrados.filter(esPendiente);
     return filtrados;
-  }, [items, prestamistaSeleccionada, prestatariaSeleccionada, estadoSeleccionado, monedaSeleccionada, fechaInicio, fechaFin, filtroSaldoInicial, filtroPendientes]);
+  }, [items, prestamistaSeleccionada, prestatariaSeleccionada, estadoSeleccionado, monedaSeleccionada, rangoFechas, soloSaldosIniciales, soloPendientes]);
 
   // Saldo pendiente de lo que se está viendo, por moneda
   const saldosPendientes = useMemo(() => agruparPorMoneda(itemsFiltrados.filter(esPendiente)), [itemsFiltrados]);
@@ -203,10 +203,9 @@ export default function PrestamoRelacionado({ ruta }) {
     setPrestatariaSeleccionada(null);
     setEstadoSeleccionado(null);
     setMonedaSeleccionada(null);
-    setFechaInicio(null);
-    setFechaFin(null);
-    setFiltroSaldoInicial("TODOS");
-    setFiltroPendientes("PENDIENTES");
+    setRangoFechas(null);
+    setSoloSaldosIniciales(false);
+    setSoloPendientes(true);
     setGlobalFilter("");
   };
 
@@ -312,16 +311,8 @@ export default function PrestamoRelacionado({ ruta }) {
                 </div>
               </div>
               <div style={{ flex: 0.5 }}>
-                <label htmlFor="filtroPendientes" style={etiqueta}>Mostrar</label>
-                <Button
-                  id="filtroPendientes"
-                  label={filtroPendientes === "PENDIENTES" ? "PENDIENTES" : "TODOS"}
-                  severity={filtroPendientes === "PENDIENTES" ? "warning" : "secondary"}
-                  onClick={() => setFiltroPendientes(filtroPendientes === "PENDIENTES" ? "TODOS" : "PENDIENTES")}
-                  disabled={loading}
-                  style={{ width: "100%", fontWeight: "bold" }}
-                  tooltip="Pendientes: préstamos vigentes con saldo por devolver. Clic para ver también los pagados y anulados."
-                />
+                <label style={etiqueta}>Mostrar</label>
+                <BooleanToggleButton value={soloPendientes} onChange={setSoloPendientes} labelTrue="PENDIENTES" labelFalse="TODOS" severityTrue="warning" severityFalse="secondary" disabled={loading} />
               </div>
               <div style={{ flex: 0.5 }}>
                 <Button
@@ -374,40 +365,28 @@ export default function PrestamoRelacionado({ ruta }) {
 
             <div style={filaFlex}>
               <div style={{ flex: 1 }}>
-                <label htmlFor="prestamistaFiltro" style={etiqueta}>Empresa Prestamista</label>
-                <Dropdown id="prestamistaFiltro" value={prestamistaSeleccionada} options={opciones.prestamistas} onChange={(e) => setPrestamistaSeleccionada(e.value)} placeholder="Todas" showClear filter disabled={loading} style={{ width: "100%" }} />
+                <label style={etiqueta}>Empresa Prestamista</label>
+                <EmpresaSelector empresaId={prestamistaSeleccionada} onEmpresaChange={setPrestamistaSeleccionada} permitirLimpiar disabled={loading} />
               </div>
               <div style={{ flex: 1 }}>
-                <label htmlFor="prestatariaFiltro" style={etiqueta}>Empresa Prestataria</label>
-                <Dropdown id="prestatariaFiltro" value={prestatariaSeleccionada} options={opciones.prestatarias} onChange={(e) => setPrestatariaSeleccionada(e.value)} placeholder="Todas" showClear filter disabled={loading} style={{ width: "100%" }} />
+                <label style={etiqueta}>Empresa Prestataria</label>
+                <EmpresaSelector empresaId={prestatariaSeleccionada} onEmpresaChange={setPrestatariaSeleccionada} permitirLimpiar disabled={loading} />
               </div>
               <div style={{ flex: 0.5 }}>
                 <label htmlFor="estadoFiltro" style={etiqueta}>Estado</label>
-                <Dropdown id="estadoFiltro" value={estadoSeleccionado} options={opciones.estados} onChange={(e) => { setEstadoSeleccionado(e.value); if (e.value) setFiltroPendientes("TODOS"); }} placeholder="Todos" showClear disabled={loading} style={{ width: "100%" }} />
+                <Dropdown id="estadoFiltro" value={estadoSeleccionado} options={opciones.estados} onChange={(e) => { setEstadoSeleccionado(e.value); if (e.value) setSoloPendientes(false); }} placeholder="Todos" showClear disabled={loading} style={{ width: "100%" }} />
               </div>
               <div style={{ flex: 0.5 }}>
                 <label htmlFor="monedaFiltro" style={etiqueta}>Moneda</label>
                 <Dropdown id="monedaFiltro" value={monedaSeleccionada} options={opciones.monedas} onChange={(e) => setMonedaSeleccionada(e.value)} placeholder="Todas" showClear disabled={loading} style={{ width: "100%" }} />
               </div>
-              <div style={{ flex: 0.75 }}>
-                <label htmlFor="fechaInicio" style={etiqueta}>F.Desembolso Desde</label>
-                <Calendar id="fechaInicio" value={fechaInicio} onChange={(e) => setFechaInicio(e.value)} placeholder="Desde" dateFormat="dd/mm/yy" showIcon disabled={loading} style={{ width: "100%" }} />
+              <div style={{ flex: 1.5 }}>
+                <label htmlFor="rangoFechas" style={etiqueta}>Rango F. Desembolso</label>
+                <Calendar id="rangoFechas" value={rangoFechas} onChange={(e) => setRangoFechas(e.value)} selectionMode="range" placeholder="Seleccione rango" dateFormat="dd/mm/yy" showIcon showButtonBar disabled={loading} style={{ width: "100%" }} />
               </div>
               <div style={{ flex: 0.75 }}>
-                <label htmlFor="fechaFin" style={etiqueta}>F.Desembolso Hasta</label>
-                <Calendar id="fechaFin" value={fechaFin} onChange={(e) => setFechaFin(e.value)} placeholder="Hasta" dateFormat="dd/mm/yy" showIcon disabled={loading} style={{ width: "100%" }} />
-              </div>
-              <div style={{ flex: 0.75 }}>
-                <label htmlFor="filtroSaldoInicial" style={etiqueta}>Saldos Iniciales</label>
-                <Button
-                  id="filtroSaldoInicial"
-                  label={filtroSaldoInicial === "TODOS" ? "TODOS" : filtroSaldoInicial === "SI" ? "SALDOS INICIALES" : "NUEVOS"}
-                  severity={filtroSaldoInicial === "TODOS" ? "secondary" : filtroSaldoInicial === "SI" ? "warning" : "info"}
-                  onClick={() => setFiltroSaldoInicial(filtroSaldoInicial === "TODOS" ? "SI" : filtroSaldoInicial === "SI" ? "NO" : "TODOS")}
-                  disabled={loading}
-                  style={{ width: "100%", fontWeight: "bold" }}
-                  tooltip="Clic para cambiar filtro"
-                />
+                <label style={etiqueta}>Saldos Iniciales</label>
+                <BooleanToggleButton value={soloSaldosIniciales} onChange={setSoloSaldosIniciales} labelTrue="SOLO SALDOS INICIALES" labelFalse="TODOS" severityTrue="warning" severityFalse="secondary" disabled={loading} />
               </div>
             </div>
           </div>

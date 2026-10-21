@@ -109,7 +109,8 @@ const OperacionPrestamoForm = ({
   // Factoring: facturas (CxC) que se entregan en descuento y neto que deposita la entidad
   const [facturasDisponibles, setFacturasDisponibles] = useState([]);
   const [facturasElegidas, setFacturasElegidas] = useState([]);
-  const [montoNeto, setMontoNeto] = useState(null);
+  const [busquedaCliente, setBusquedaCliente] = useState("");
+  const [montoDescuento, setMontoDescuento] = useState(0);
   const [cargandoFacturas, setCargandoFacturas] = useState(false);
 
   // Evita pisar la glosa que el usuario ya escribió al cambiar la selección
@@ -146,21 +147,37 @@ const OperacionPrestamoForm = ({
 
   // Total de la operación: cuotas = monto de cada cuota + su mora; desembolso = monto del préstamo
   const totalPrincipal = useMemo(() => {
-    // Factoring: el ingreso de caja es el NETO depositado (bruto de las facturas - descuento)
-    if (esDesembolso) return esFactoring ? Number(montoNeto || 0) : Number(base?.saldoPendiente || 0);
+    // Factoring: el ingreso de caja es el BRUTO de las facturas; el descuento / interés sale con su propio movimiento de egreso
+    if (esDesembolso) return esFactoring ? redondear2(facturasElegidas.reduce((a, f) => a + Number(f.saldoPendiente || 0), 0)) : Number(base?.saldoPendiente || 0);
     return seleccionados.reduce(
       (acc, f) => acc + Number(montos[f.id] || 0) + Number(moras[f.id] || 0),
       0,
     );
-  }, [esDesembolso, esFactoring, montoNeto, base, seleccionados, montos, moras]);
+  }, [esDesembolso, esFactoring, facturasElegidas, base, seleccionados, montos, moras]);
   const totalSaldos = useMemo(
     () => seleccionados.reduce((acc, f) => acc + Number(f.saldoPendiente || 0), 0),
     [seleccionados],
   );
 
   // Factoring: bruto = suma de las facturas elegidas; debe igualar el monto del préstamo
+  // Búsqueda por razón social del cliente (sin distinguir mayúsculas ni tildes)
+  const normalizar = (t) => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const facturasVisibles = useMemo(() => {
+    const texto = normalizar(busquedaCliente).trim();
+    const lista = texto ? facturasDisponibles.filter((f) => normalizar(f.cliente).includes(texto)) : facturasDisponibles;
+    // Las más recientes primero (por fecha de emisión, luego vencimiento e id)
+    const tiempo = (fecha) => (fecha ? new Date(fecha).getTime() : 0);
+    return [...lista].sort((a, b) => tiempo(b.fechaEmision) - tiempo(a.fechaEmision) || tiempo(b.fechaVencimiento) - tiempo(a.fechaVencimiento) || Number(b.id) - Number(a.id));
+  }, [facturasDisponibles, busquedaCliente]);
+  // Con la lista filtrada, la selección de las facturas ocultas se conserva
+  const cambiarSeleccionFacturas = (nueva) => {
+    const visibles = new Set(facturasVisibles.map((f) => f.id));
+    setFacturasElegidas((previa) => [...previa.filter((f) => !visibles.has(f.id)), ...nueva]);
+  };
+
   const brutoFacturas = useMemo(() => redondear2(facturasElegidas.reduce((a, f) => a + Number(f.saldoPendiente || 0), 0)), [facturasElegidas]);
-  const descuentoFactoring = redondear2(brutoFacturas - Number(montoNeto || 0));
+  const descuentoFactoring = redondear2(montoDescuento);
+  const netoFactoring = redondear2(brutoFacturas - descuentoFactoring);
   const montoPrestamoFactoring = Number(base?.saldoPendiente || 0);
   const facturasNoCuadran = esDesembolso && esFactoring && facturasElegidas.length > 0 && Math.abs(brutoFacturas - montoPrestamoFactoring) > 0.01;
 
@@ -179,11 +196,12 @@ const OperacionPrestamoForm = ({
       )
       .finally(() => setCargandoFacturas(false));
     setFacturasElegidas([]);
+    setBusquedaCliente("");
   }, [esDesembolso, esFactoring, empresaId, monedaPrestamo?.id, filas]);
 
-  // El neto parte igual al bruto; el usuario lo reduce con lo que descuenta la entidad
+  // El descuento / interés lo ingresa el usuario; si cambian las facturas elegidas se reinicia
   useEffect(() => {
-    if (esDesembolso && esFactoring) setMontoNeto(brutoFacturas > 0 ? brutoFacturas : null);
+    if (esDesembolso && esFactoring) setMontoDescuento(0);
   }, [brutoFacturas]);
 
   const cuentaSeleccionada =
@@ -197,7 +215,7 @@ const OperacionPrestamoForm = ({
 
   // Egreso: lo que sale del banco = pago + ITF + comisión. Ingreso: lo que queda = desembolso - ITF - comisión
   const totalDebitado = totalPrincipal + Number(itf || 0) + Number(comision || 0);
-  const totalNetoAcreditado = totalPrincipal - Number(itf || 0) - Number(comision || 0);
+  const totalNetoAcreditado = totalPrincipal - (esDesembolso && esFactoring ? descuentoFactoring : 0) - Number(itf || 0) - Number(comision || 0);
 
   // ════════════════════════════════════════════════════════════
   // EFECTOS
@@ -337,8 +355,8 @@ const OperacionPrestamoForm = ({
           `Las facturas suman ${simbolo} ${formatearNumero(brutoFacturas)} y el préstamo es de ${simbolo} ${formatearNumero(montoPrestamoFactoring)}: deben ser iguales. Ajuste las facturas o edite el monto del préstamo.`,
         );
       }
-      if (!(Number(montoNeto) > 0)) return mostrarError("Ingrese el monto neto que deposita la entidad de factoring.");
-      if (Number(montoNeto) > brutoFacturas) return mostrarError("El neto depositado no puede superar el total de las facturas.");
+      if (descuentoFactoring < 0) return mostrarError("El descuento / interés no puede ser negativo.");
+      if (descuentoFactoring >= brutoFacturas) return mostrarError("El descuento / interés debe ser menor al total de las facturas.");
     }
     if (!fecha) return mostrarError("Debe ingresar la fecha de la operación");
     if (!descripcion || descripcion.trim() === "") {
@@ -376,8 +394,8 @@ const OperacionPrestamoForm = ({
     if (!esMonedaNacional && !(Number(tipoCambio) > 0)) {
       return mostrarError("Debe ingresar un tipo de cambio válido");
     }
-    if (esDesembolso && Number(itf || 0) + Number(comision || 0) > totalPrincipal) {
-      return mostrarError("El ITF y la comisión no pueden superar el monto desembolsado");
+    if (esDesembolso && Number(itf || 0) + Number(comision || 0) + (esFactoring ? descuentoFactoring : 0) > totalPrincipal) {
+      return mostrarError("El descuento, el ITF y la comisión no pueden superar el monto desembolsado");
     }
 
     return true;
@@ -387,7 +405,7 @@ const OperacionPrestamoForm = ({
   // EntregarFondosForm. Un fallo aquí no interrumpe el flujo: la operación ya está registrada.
   const generarVouchers = async (data) => {
     try {
-      for (const clave of ["principal", "itf", "comision"]) {
+      for (const clave of ["principal", "interes", "itf", "comision"]) {
         const movimiento = data.movimientos[clave];
         if (!movimiento) continue;
 
@@ -490,7 +508,7 @@ const OperacionPrestamoForm = ({
               prestamoBancarioId: Number(base.origenId),
               ...(esFactoring && {
                 facturasFactoringIds: facturasElegidas.map((f) => Number(f.id)),
-                montoNeto: Number(montoNeto),
+                montoDescuento: descuentoFactoring,
               }),
               fechaDesembolso: fecha.toISOString(),
               cuentaCorrienteDestinoId: Number(cuentaId),
@@ -767,21 +785,37 @@ const OperacionPrestamoForm = ({
             {/* FACTORING: facturas que se entregan en descuento y neto depositado */}
             {esDesembolso && esFactoring && (
               <Panel header={<span>🧾 Factoring: facturas entregadas en descuento</span>} toggleable className="mb-2">
+                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
+                  <span className="p-input-icon-left" style={{ flex: 1, minWidth: 260 }}>
+                    <i className="pi pi-search" />
+                    <InputText
+                      value={busquedaCliente}
+                      onChange={(e) => setBusquedaCliente(e.target.value)}
+                      placeholder="Buscar por razón social del cliente"
+                      style={{ width: "100%" }}
+                    />
+                  </span>
+                  {busquedaCliente && <Button type="button" icon="pi pi-times" className="p-button-text" onClick={() => setBusquedaCliente("")} tooltip="Quitar la búsqueda" />}
+                  <small style={{ color: "#6c757d" }}>
+                    Mostrando {facturasVisibles.length} de {facturasDisponibles.length} - {facturasElegidas.length} elegida(s)
+                  </small>
+                </div>
                 <DataTable
-                  value={facturasDisponibles}
-                  selection={facturasElegidas}
-                  onSelectionChange={(e) => setFacturasElegidas(e.value)}
+                  value={facturasVisibles}
+                  selection={facturasElegidas.filter((f) => facturasVisibles.some((v) => v.id === f.id))}
+                  onSelectionChange={(e) => cambiarSeleccionFacturas(e.value)}
                   dataKey="id"
                   loading={cargandoFacturas}
                   size="small"
                   stripedRows
                   scrollable
                   scrollHeight="220px"
-                  emptyMessage="No hay facturas fiscales disponibles (con saldo, sin cobros y en la moneda del préstamo)."
+                  emptyMessage={busquedaCliente ? "Ninguna factura coincide con la razón social buscada." : "No hay facturas fiscales disponibles (con saldo, sin cobros y en la moneda del préstamo)."}
                 >
                   <Column selectionMode="multiple" style={{ width: "3rem" }} />
                   <Column field="numeroDocumento" header="Factura" />
                   <Column field="cliente" header="Cliente" />
+                  <Column header="Emisión" body={(f) => formatearFecha(f.fechaEmision)} />
                   <Column header="Vencimiento" body={(f) => formatearFecha(f.fechaVencimiento)} />
                   <Column header="Saldo" body={(f) => `${f.simbolo} ${formatearNumero(f.saldoPendiente)}`} />
                 </DataTable>
@@ -791,22 +825,23 @@ const OperacionPrestamoForm = ({
                     <InputText value={`${simbolo} ${formatearNumero(brutoFacturas)}`} disabled style={{ width: "100%", fontWeight: "bold" }} />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <label className="font-bold block mb-1">Neto depositado por la entidad *</label>
+                    <label className="font-bold block mb-1">Descuento / interés (cuenta 673111)</label>
                     <InputNumber
-                      value={montoNeto}
-                      onValueChange={(e) => setMontoNeto(e.value)}
+                      value={montoDescuento}
+                      onValueChange={(e) => setMontoDescuento(e.value ?? 0)}
                       mode="decimal"
                       minFractionDigits={2}
                       maxFractionDigits={2}
                       min={0}
-                      max={brutoFacturas || undefined}
+                      max={brutoFacturas > 0 ? brutoFacturas - 0.01 : undefined}
                       disabled={cargando || facturasElegidas.length === 0}
                       inputStyle={{ width: "100%", fontWeight: "bold" }}
                     />
+                    <small style={{ color: "#6c757d" }}>Se registra como un egreso aparte (INTERESES FINANCIEROS) en la misma cuenta.</small>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <label className="font-bold block mb-1">Descuento / interés (cuenta 673111)</label>
-                    <InputText value={`${simbolo} ${formatearNumero(Math.max(0, descuentoFactoring))}`} disabled style={{ width: "100%", fontWeight: "bold" }} />
+                    <label className="font-bold block mb-1">Neto depositado (bruto - descuento)</label>
+                    <InputText value={`${simbolo} ${formatearNumero(Math.max(0, netoFactoring))}`} disabled style={{ width: "100%", fontWeight: "bold" }} />
                   </div>
                 </div>
                 {facturasNoCuadran && (
