@@ -17,6 +17,7 @@ import { actualizarUrlVoucherIndividual } from "../../../api/tesoreria/transfere
 import { sincronizarAdjuntosPagoCuotaPrestamo, getFacturasFactoringDisponibles } from "../../../api/tesoreria/operacionPrestamo";
 import { useAuthStore } from "../../../shared/stores/useAuthStore";
 import CuentaCorrienteSelector from "../../common/CuentaCorrienteSelector";
+import BooleanToggleButton from "../../common/BooleanToggleButton";
 import TipoMovimientoSelector from "../../common/TipoMovimientoSelector";
 import { generarYSubirVoucherIndividual } from "../utils/VoucherIndividualMovimientoPDF";
 import { generarYSubirVoucherConsolidado } from "./VoucherConsolidadoPagoCuotasPrestamoPDF";
@@ -111,6 +112,7 @@ const OperacionPrestamoForm = ({
   const [facturasElegidas, setFacturasElegidas] = useState([]);
   const [busquedaCliente, setBusquedaCliente] = useState("");
   const [montoDescuento, setMontoDescuento] = useState(0);
+  const [interesAparte, setInteresAparte] = useState(false); // false: el banco descuenta el interés y deposita el neto
   const [cargandoFacturas, setCargandoFacturas] = useState(false);
 
   // Evita pisar la glosa que el usuario ya escribió al cambiar la selección
@@ -147,13 +149,18 @@ const OperacionPrestamoForm = ({
 
   // Total de la operación: cuotas = monto de cada cuota + su mora; desembolso = monto del préstamo
   const totalPrincipal = useMemo(() => {
-    // Factoring: el ingreso de caja es el BRUTO de las facturas; el descuento / interés sale con su propio movimiento de egreso
-    if (esDesembolso) return esFactoring ? redondear2(facturasElegidas.reduce((a, f) => a + Number(f.saldoPendiente || 0), 0)) : Number(base?.saldoPendiente || 0);
+    // Factoring: el ingreso de caja es el NETO depositado (bruto - descuento) si el banco descontó el interés,
+    // o el BRUTO si el interés se cobra aparte (con su propio movimiento de egreso). ITF y comisión nunca se restan aquí.
+    if (esDesembolso) {
+      if (!esFactoring) return Number(base?.saldoPendiente || 0);
+      const bruto = redondear2(facturasElegidas.reduce((a, f) => a + Number(f.saldoPendiente || 0), 0));
+      return interesAparte ? bruto : redondear2(bruto - Number(montoDescuento || 0));
+    }
     return seleccionados.reduce(
       (acc, f) => acc + Number(montos[f.id] || 0) + Number(moras[f.id] || 0),
       0,
     );
-  }, [esDesembolso, esFactoring, facturasElegidas, base, seleccionados, montos, moras]);
+  }, [esDesembolso, esFactoring, facturasElegidas, montoDescuento, interesAparte, base, seleccionados, montos, moras]);
   const totalSaldos = useMemo(
     () => seleccionados.reduce((acc, f) => acc + Number(f.saldoPendiente || 0), 0),
     [seleccionados],
@@ -179,7 +186,9 @@ const OperacionPrestamoForm = ({
   const descuentoFactoring = redondear2(montoDescuento);
   const netoFactoring = redondear2(brutoFacturas - descuentoFactoring);
   const montoPrestamoFactoring = Number(base?.saldoPendiente || 0);
-  const facturasNoCuadran = esDesembolso && esFactoring && facturasElegidas.length > 0 && Math.abs(brutoFacturas - montoPrestamoFactoring) > 0.01;
+  // El banco financia el total de cada factura: se cancelan todas aunque el monto del préstamo no las cubra (solo se avisa)
+  const diferenciaConPrestamo = redondear2(brutoFacturas - montoPrestamoFactoring);
+  const hayDiferenciaConPrestamo = esDesembolso && esFactoring && facturasElegidas.length > 0 && Math.abs(diferenciaConPrestamo) > 0.01;
 
   useEffect(() => {
     if (!esDesembolso || !esFactoring || !empresaId || !monedaPrestamo?.id) return;
@@ -215,7 +224,7 @@ const OperacionPrestamoForm = ({
 
   // Egreso: lo que sale del banco = pago + ITF + comisión. Ingreso: lo que queda = desembolso - ITF - comisión
   const totalDebitado = totalPrincipal + Number(itf || 0) + Number(comision || 0);
-  const totalNetoAcreditado = totalPrincipal - (esDesembolso && esFactoring ? descuentoFactoring : 0) - Number(itf || 0) - Number(comision || 0);
+  const totalAcreditado = totalPrincipal; // ITF y comisión nunca se restan: son movimientos aparte
 
   // ════════════════════════════════════════════════════════════
   // EFECTOS
@@ -350,11 +359,6 @@ const OperacionPrestamoForm = ({
       if (facturasElegidas.length === 0) {
         return mostrarError("Un factoring se desembolsa contra facturas: seleccione las facturas que entrega en descuento.");
       }
-      if (facturasNoCuadran) {
-        return mostrarError(
-          `Las facturas suman ${simbolo} ${formatearNumero(brutoFacturas)} y el préstamo es de ${simbolo} ${formatearNumero(montoPrestamoFactoring)}: deben ser iguales. Ajuste las facturas o edite el monto del préstamo.`,
-        );
-      }
       if (descuentoFactoring < 0) return mostrarError("El descuento / interés no puede ser negativo.");
       if (descuentoFactoring >= brutoFacturas) return mostrarError("El descuento / interés debe ser menor al total de las facturas.");
     }
@@ -394,10 +398,6 @@ const OperacionPrestamoForm = ({
     if (!esMonedaNacional && !(Number(tipoCambio) > 0)) {
       return mostrarError("Debe ingresar un tipo de cambio válido");
     }
-    if (esDesembolso && Number(itf || 0) + Number(comision || 0) + (esFactoring ? descuentoFactoring : 0) > totalPrincipal) {
-      return mostrarError("El descuento, el ITF y la comisión no pueden superar el monto desembolsado");
-    }
-
     return true;
   };
 
@@ -509,6 +509,7 @@ const OperacionPrestamoForm = ({
               ...(esFactoring && {
                 facturasFactoringIds: facturasElegidas.map((f) => Number(f.id)),
                 montoDescuento: descuentoFactoring,
+                interesAparte,
               }),
               fechaDesembolso: fecha.toISOString(),
               cuentaCorrienteDestinoId: Number(cuentaId),
@@ -820,12 +821,30 @@ const OperacionPrestamoForm = ({
                   <Column header="Saldo" body={(f) => `${f.simbolo} ${formatearNumero(f.saldoPendiente)}`} />
                 </DataTable>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end", marginTop: 10 }}>
+                  <div style={{ flex: 1.2 }}>
+                    <label className="font-bold block mb-1">¿Cómo cobró el banco el interés?</label>
+                    <BooleanToggleButton
+                      value={interesAparte}
+                      onChange={setInteresAparte}
+                      labelTrue="COBRADO APARTE"
+                      labelFalse="DESCONTADO DEL DESEMBOLSO"
+                      severityTrue="warning"
+                      severityFalse="success"
+                      icon={interesAparte ? "pi-minus-circle" : "pi-percentage"}
+                      disabled={cargando || facturasElegidas.length === 0}
+                    />
+                    <small style={{ color: "#6c757d" }}>
+                      {interesAparte
+                        ? "El banco deposita el total de las facturas y debita el interés después: ingreso por el bruto y egreso aparte por el interés."
+                        : "El banco descuenta el interés y deposita el neto: un solo ingreso por el neto y un solo asiento."}
+                    </small>
+                  </div>
                   <div style={{ flex: 1 }}>
-                    <label className="font-bold block mb-1">Bruto (facturas)</label>
+                    <label className="font-bold block mb-1">Total de las facturas (bruto)</label>
                     <InputText value={`${simbolo} ${formatearNumero(brutoFacturas)}`} disabled style={{ width: "100%", fontWeight: "bold" }} />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <label className="font-bold block mb-1">Descuento / interés (cuenta 673111)</label>
+                    <label className="font-bold block mb-1">Interés / descuento (cuenta 673111)</label>
                     <InputNumber
                       value={montoDescuento}
                       onValueChange={(e) => setMontoDescuento(e.value ?? 0)}
@@ -837,16 +856,29 @@ const OperacionPrestamoForm = ({
                       disabled={cargando || facturasElegidas.length === 0}
                       inputStyle={{ width: "100%", fontWeight: "bold" }}
                     />
-                    <small style={{ color: "#6c757d" }}>Se registra como un egreso aparte (INTERESES FINANCIEROS) en la misma cuenta.</small>
+                    <small style={{ color: "#6c757d" }}>No incluye el ITF ni la comisión bancaria: esos siempre van aparte.</small>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <label className="font-bold block mb-1">Neto depositado (bruto - descuento)</label>
-                    <InputText value={`${simbolo} ${formatearNumero(Math.max(0, netoFactoring))}`} disabled style={{ width: "100%", fontWeight: "bold" }} />
+                    <label className="font-bold block mb-1">{interesAparte ? "Monto que deposita el banco (total)" : "Monto que deposita el banco (neto)"}</label>
+                    <InputNumber
+                      value={interesAparte ? brutoFacturas : netoFactoring}
+                      onValueChange={(e) => !interesAparte && setMontoDescuento(redondear2(brutoFacturas - Number(e.value || 0)))}
+                      mode="decimal"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
+                      min={0}
+                      max={brutoFacturas || undefined}
+                      disabled={cargando || facturasElegidas.length === 0 || interesAparte}
+                      inputStyle={{ width: "100%", fontWeight: "bold" }}
+                    />
+                    {!interesAparte && <small style={{ color: "#6c757d" }}>Digite lo que ve en el estado de cuenta: el interés se calcula como la diferencia.</small>}
                   </div>
                 </div>
-                {facturasNoCuadran && (
-                  <small style={{ color: "#c62828", display: "block", marginTop: 6 }}>
-                    Las facturas suman {simbolo} {formatearNumero(brutoFacturas)} y el préstamo es de {simbolo} {formatearNumero(montoPrestamoFactoring)}: deben ser iguales.
+                {hayDiferenciaConPrestamo && (
+                  <small style={{ color: "#b45309", display: "block", marginTop: 6, fontWeight: 600 }}>
+                    <i className="pi pi-info-circle mr-1" />
+                    Las facturas suman {simbolo} {formatearNumero(brutoFacturas)} y el capital del préstamo es {simbolo} {formatearNumero(montoPrestamoFactoring)} (diferencia {simbolo} {formatearNumero(diferenciaConPrestamo)}).
+                    Se cancelarán todas las facturas por su saldo completo; revise el capital del préstamo.
                   </small>
                 )}
               </Panel>
@@ -980,12 +1012,12 @@ const OperacionPrestamoForm = ({
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span className="font-bold">{esDesembolso ? "Neto Acreditado:" : "Total a Debitar:"}</span>
+                    <span className="font-bold">{esDesembolso ? "Monto Acreditado:" : "Total a Debitar:"}</span>
                     <Tag
                       severity={esDesembolso ? "info" : "danger"}
                       style={{ fontSize: "1.2rem", padding: "0.5rem 1rem" }}
                     >
-                      {simbolo} {formatearNumero(esDesembolso ? totalNetoAcreditado : totalDebitado)}
+                      {simbolo} {formatearNumero(esDesembolso ? totalAcreditado : totalDebitado)}
                     </Tag>
                   </div>
                 </div>

@@ -266,8 +266,8 @@ export default function TransferenciaInternaDialog({
   }, [montoOrigen, itfOrigen, comisionOrigen]);
 
   const totalAcreditado = useMemo(() => {
-    return Number(montoDestino) - Number(itfDestino) - Number(comisionDestino);
-  }, [montoDestino, itfDestino, comisionDestino]);
+    return Number(montoDestino);
+  }, [montoDestino]);
 
   // ════════════════════════════════════════════════════════════
   // COMPUTED: DETECTAR SI EL MEDIO DE PAGO ES CHEQUE
@@ -1717,7 +1717,7 @@ export default function TransferenciaInternaDialog({
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="font-bold">Total a Acreditar:</span>
+                  <span className="font-bold">Monto a Acreditar:</span>
                   <Tag severity="success" style={{ fontSize: '1.2rem', padding: '0.5rem 1rem' }}>
                     {monedaDestino?.simbolo} {formatearNumero(totalAcreditado)}
                   </Tag>

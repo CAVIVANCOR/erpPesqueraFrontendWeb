@@ -1,22 +1,19 @@
 // src/components/tesoreria/PrestamoEntidadForm.jsx
-// Préstamo con accionista o tercero: registro de saldo inicial (préstamos anteriores al sistema) y
-// edición de datos básicos. Los préstamos nuevos nacen en Tesorería (Operaciones > Préstamos Accionistas / Terceros).
-import React, { useEffect, useRef, useState } from "react";
+// Préstamo con accionista o tercero. Mismo formulario que PrestamoRelacionadoForm.jsx.
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useForm, Controller } from "react-hook-form";
 import { Button } from "primereact/button";
-import { Dropdown } from "primereact/dropdown";
-import { Calendar } from "primereact/calendar";
-import { InputNumber } from "primereact/inputnumber";
 import { InputText } from "primereact/inputtext";
-import { SelectButton } from "primereact/selectbutton";
-import { Message } from "primereact/message";
+import { Dropdown } from "primereact/dropdown";
+import { InputTextarea } from "primereact/inputtextarea";
+import { InputNumber } from "primereact/inputnumber";
+import { Calendar } from "primereact/calendar";
 import { Toast } from "primereact/toast";
 import { Tag } from "primereact/tag";
+import { Message } from "primereact/message";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
-import EntidadComercialSelector from "../common/EntidadComercialSelector";
-import { getEmpresas } from "../../api/empresa";
-import { getMonedas } from "../../api/moneda";
 import {
   createPrestamoEntidad,
   updatePrestamoEntidad,
@@ -24,80 +21,186 @@ import {
   generarAsientoAperturaPrestamoEntidad,
   eliminarAsientosAperturaPrestamoEntidad,
 } from "../../api/tesoreria/prestamosEntidad";
+import { getMonedas } from "../../api/moneda";
+import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 import { mensajeDeError } from "../../utils/mensajeError";
-import { formatearNumero, getResponsiveFontSize } from "../../utils/utils";
+import BooleanToggleButton from "../common/BooleanToggleButton";
+import PartesPrestamoEntidad from "./PartesPrestamoEntidad";
+import { esIngresoMovimiento } from "../../utils/naturalezaMovimientoCaja";
 
-const etiqueta = { fontWeight: "bold", display: "block", marginBottom: 5 };
-const aFecha = (f) => (f ? new Date(f) : null);
-const aISO = (f) => (f ? `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, "0")}-${String(f.getDate()).padStart(2, "0")}` : null);
-const SENTIDOS = [
-  { label: "Recibido (la empresa es la deudora)", value: "RECIBIDO" },
-  { label: "Otorgado (la empresa es la acreedora)", value: "OTORGADO" },
-];
-const CONTRAPARTES = [
-  { label: "Accionista", value: true },
-  { label: "Tercero", value: false },
-];
+const etiqueta = { fontWeight: "bold", fontSize: getResponsiveFontSize() };
 
-export default function PrestamoEntidadForm({ prestamo, isEdit, onSave, onCancel, readOnly = false, puedeCrear = false, puedeEliminar = false }) {
+const nombreCuenta = (cuenta) =>
+  cuenta ? `${cuenta.banco?.nombreCorto || cuenta.banco?.nombre || "BANCO"} CTA. ${cuenta.numeroCuenta || cuenta.id}` : null;
+
+/**
+ * Movimientos de caja de una operación de Tesorería (movimiento principal, ITF y comisión).
+ * Se usa en el desembolso del préstamo y en cada devolución.
+ */
+function MovimientosCajaTabla({ movimientos = [] }) {
+  return (
+    <DataTable
+      value={movimientos}
+      size="small"
+      stripedRows
+      showGridlines
+      dataKey="id"
+      emptyMessage="No se encontraron los movimientos de caja de esta operación."
+      style={{ fontSize: getResponsiveFontSize() }}
+    >
+      <Column field="id" header="ID Mov." style={{ width: 80 }} />
+      <Column
+        header="Tipo"
+        style={{ width: 210 }}
+        body={(m) => {
+          const ingreso = esIngresoMovimiento(m);
+          return (
+            <span>
+              <Tag
+                value={ingreso === true ? "INGRESO" : ingreso === false ? "EGRESO" : "-"}
+                severity={ingreso === true ? "success" : ingreso === false ? "danger" : "info"}
+                style={{ marginRight: 6 }}
+              />
+              {m.tipoMovimiento?.nombre || "-"}
+            </span>
+          );
+        }}
+      />
+      <Column header="Empresa" body={(m) => m.empresa?.razonSocial || "-"} />
+      <Column
+        header="Cuenta (origen / destino)"
+        body={(m) => (
+          <div>
+            {m.cuentaCorrienteOrigen && <div>Origen: {nombreCuenta(m.cuentaCorrienteOrigen)}</div>}
+            {m.cuentaCorrienteDestino && <div>Destino: {nombreCuenta(m.cuentaCorrienteDestino)}</div>}
+            {!m.cuentaCorrienteOrigen && !m.cuentaCorrienteDestino && "-"}
+          </div>
+        )}
+      />
+      <Column header="Medio de pago" style={{ width: 130 }} body={(m) => m.medioPago?.nombre || "-"} />
+      <Column header="N° Op. banco" style={{ width: 110 }} body={(m) => m.numeroOperacionPagoBanco || "-"} />
+      <Column
+        header="Monto"
+        style={{ textAlign: "right", width: 140 }}
+        body={(m) => `${m.moneda?.simbolo || ""} ${formatearNumero(Number(m.monto), 2)}`}
+      />
+      <Column
+        header="Fecha"
+        style={{ width: 100 }}
+        body={(m) => (m.fechaOperacionMovCaja ? new Date(m.fechaOperacionMovCaja).toLocaleDateString("es-PE") : "-")}
+      />
+    </DataTable>
+  );
+}
+
+export default function PrestamoEntidadForm({
+  isEdit = false,
+  defaultValues = {},
+  onSubmit,
+  onCancel,
+  readOnly = false,
+  puedeCrear = false,
+  puedeEliminar = false,
+}) {
   const toast = useRef(null);
-  const [empresas, setEmpresas] = useState([]);
-  const [monedas, setMonedas] = useState([]);
+  const [cargandoDatos, setCargandoDatos] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [monedas, setMonedas] = useState([]);
   const [asientos, setAsientos] = useState([]);
   const [procesandoAsiento, setProcesandoAsiento] = useState(false);
   const [filasExpandidas, setFilasExpandidas] = useState(null);
+  const [pagosExpandidos, setPagosExpandidos] = useState(null);
 
-  const [empresaId, setEmpresaId] = useState(prestamo ? Number(prestamo.empresaId) : null);
-  const [entidadId, setEntidadId] = useState(prestamo ? Number(prestamo.entidadComercialId) : null);
-  const [sentido, setSentido] = useState(prestamo?.sentido || "RECIBIDO");
-  const [esAccionista, setEsAccionista] = useState(prestamo ? Boolean(prestamo.esAccionista) : true);
-  const [monedaId, setMonedaId] = useState(prestamo ? Number(prestamo.monedaId) : null);
-  const [fechaDesembolso, setFechaDesembolso] = useState(aFecha(prestamo?.fechaDesembolso) || new Date());
-  const [fechaVencimiento, setFechaVencimiento] = useState(aFecha(prestamo?.fechaVencimiento));
-  const [montoDesembolsado, setMontoDesembolsado] = useState(prestamo ? Number(prestamo.montoDesembolsado) : 0);
-  const [montoPagadoAnterior, setMontoPagadoAnterior] = useState(prestamo ? Number(prestamo.montoPagadoAnterior || 0) : 0);
-  const [tipoCambio, setTipoCambio] = useState(prestamo?.tipoCambioAplicado ? Number(prestamo.tipoCambioAplicado) : null);
-  const [observaciones, setObservaciones] = useState(prestamo?.observaciones || "");
+  // Préstamo generado desde Tesorería, con pagos o que no es saldo inicial: solo datos básicos
+  const generadoDesdeTesoreria = Boolean(defaultValues?.movimientoCajaDesembolsoId);
+  const cantidadPagos = defaultValues?.pagos?.length || 0;
+  const esSaldoInicialSinCaja = isEdit && Boolean(defaultValues?.esSaldoInicial) && !generadoDesdeTesoreria;
+  // Con asiento de apertura, los montos, la empresa y la contraparte ya no se pueden cambiar
+  const soloDatosBasicos =
+    isEdit && (!defaultValues?.esSaldoInicial || generadoDesdeTesoreria || cantidadPagos > 0 || asientos.length > 0);
 
-  // Con respaldo en caja o con pagos solo se editan vencimiento y observaciones
-  const esSaldoInicialSinCaja = isEdit && Boolean(prestamo?.esSaldoInicial) && !prestamo?.movimientoCajaDesembolsoId;
-  const soloBasicos =
-    isEdit && (!prestamo?.esSaldoInicial || Boolean(prestamo?.movimientoCajaDesembolsoId) || (prestamo?.pagos?.length || 0) > 0 || asientos.length > 0);
-  const bloqueado = readOnly || soloBasicos;
+  const { control, handleSubmit, watch, setValue } = useForm({
+    defaultValues: {
+      empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : null,
+      sentido: defaultValues?.sentido || "RECIBIDO",
+      esAccionista: defaultValues?.esAccionista === undefined ? true : Boolean(defaultValues.esAccionista),
+      entidadComercialId: defaultValues?.entidadComercialId ? Number(defaultValues.entidadComercialId) : null,
+      monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
+      montoDesembolsado: Number(defaultValues?.montoDesembolsado || 0),
+      montoPagadoAnterior: Number(defaultValues?.montoPagadoAnterior || 0),
+      tipoCambioAplicado: defaultValues?.tipoCambioAplicado ? Number(defaultValues.tipoCambioAplicado) : null,
+      fechaDesembolso: defaultValues?.fechaDesembolso ? new Date(defaultValues.fechaDesembolso) : null,
+      fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
+      fechaContable: defaultValues?.fechaContable ? new Date(defaultValues.fechaContable) : null,
+      esGerencial: Boolean(defaultValues?.esGerencial),
+      observaciones: defaultValues?.observaciones || "",
+    },
+  });
+
+  const monedaIdWatch = watch("monedaId");
+  const montoWatch = watch("montoDesembolsado");
+  const pagadoAnteriorWatch = watch("montoPagadoAnterior");
+  const esAccionistaWatch = watch("esAccionista");
+  const sentidoWatch = watch("sentido");
+  const empresaIdWatch = watch("empresaId");
+  const entidadIdWatch = watch("entidadComercialId");
 
   useEffect(() => {
-    Promise.all([getEmpresas(), getMonedas()])
-      .then(([e, m]) => {
-        setEmpresas(e);
-        setMonedas(m);
-      })
-      .catch((err) => toast.current?.show({ severity: "error", summary: "No se pudieron cargar los datos", detail: mensajeDeError(err, "Error al cargar empresas y monedas"), life: 8000 }));
+    (async () => {
+      try {
+        setMonedas(await getMonedas());
+      } catch (error) {
+        toast.current?.show({
+          severity: "error",
+          summary: "No se pudieron cargar los catálogos",
+          detail: mensajeDeError(error, "Error al cargar empresas y monedas"),
+          life: 8000,
+        });
+      } finally {
+        setCargandoDatos(false);
+      }
+    })();
   }, []);
 
   const cargarAsientos = async () => {
-    if (!esSaldoInicialSinCaja || !prestamo?.id) return;
+    if (!esSaldoInicialSinCaja || !defaultValues?.id) return;
     try {
-      setAsientos(await getAsientosAperturaPrestamoEntidad(Number(prestamo.id)));
-    } catch (err) {
-      toast.current?.show({ severity: "error", summary: "No se pudo cargar el asiento de apertura", detail: mensajeDeError(err, "Error al consultar el asiento de apertura"), life: 8000 });
+      setAsientos(await getAsientosAperturaPrestamoEntidad(Number(defaultValues.id)));
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "No se pudieron cargar los asientos de apertura",
+        detail: mensajeDeError(error, "Error al consultar los asientos de apertura"),
+        life: 8000,
+      });
     }
   };
 
   useEffect(() => {
     cargarAsientos();
-  }, [prestamo?.id]);
+  }, [defaultValues?.id]);
 
   const generarAsiento = async () => {
     setProcesandoAsiento(true);
     try {
-      await generarAsientoAperturaPrestamoEntidad(Number(prestamo.id));
-      toast.current?.show({ severity: "success", summary: "Asiento de apertura generado", detail: "El asiento del saldo inicial fue generado correctamente.", life: 4000 });
+      await generarAsientoAperturaPrestamoEntidad(Number(defaultValues.id));
+      toast.current?.show({
+        severity: "success",
+        summary: "Asiento de apertura generado",
+        detail: "Se generó el asiento de apertura del préstamo.",
+        life: 4000,
+      });
       await cargarAsientos();
-    } catch (err) {
-      toast.current?.show({ severity: "error", summary: "No se pudo generar el asiento de apertura", detail: mensajeDeError(err, "Error al generar el asiento de apertura"), life: 12000 });
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "No se pudo generar el asiento de apertura",
+        detail: mensajeDeError(error, "Error al generar el asiento de apertura"),
+        life: 12000,
+      });
+    } finally {
+      setProcesandoAsiento(false);
     }
-    setProcesandoAsiento(false);
   };
 
   const confirmarEliminarAsientos = () =>
@@ -111,17 +214,23 @@ export default function PrestamoEntidadForm({ prestamo, isEdit, onSave, onCancel
       accept: async () => {
         setProcesandoAsiento(true);
         try {
-          await eliminarAsientosAperturaPrestamoEntidad(Number(prestamo.id));
+          await eliminarAsientosAperturaPrestamoEntidad(Number(defaultValues.id));
           toast.current?.show({ severity: "success", summary: "Asiento eliminado", detail: "El asiento de apertura fue eliminado.", life: 3000 });
           await cargarAsientos();
-        } catch (err) {
-          toast.current?.show({ severity: "error", summary: "No se pudo eliminar el asiento", detail: mensajeDeError(err, "Error al eliminar el asiento de apertura"), life: 12000 });
+        } catch (error) {
+          toast.current?.show({
+            severity: "error",
+            summary: "No se pudo eliminar el asiento",
+            detail: mensajeDeError(error, "Error al eliminar el asiento de apertura"),
+            life: 12000,
+          });
+        } finally {
+          setProcesandoAsiento(false);
         }
-        setProcesandoAsiento(false);
       },
     });
 
-  const lineasAsiento = (asiento) => (
+  const lineasAsientoTemplate = (asiento) => (
     <DataTable value={asiento.detalles || []} size="small" showGridlines>
       <Column field="numeroLinea" header="#" style={{ width: 50 }} />
       <Column header="Cuenta" body={(d) => `${d.planCuenta?.codigoCuenta} - ${d.planCuenta?.nombreCuenta}`} />
@@ -130,124 +239,393 @@ export default function PrestamoEntidadForm({ prestamo, isEdit, onSave, onCancel
     </DataTable>
   );
 
-  const validar = () => {
-    if (!empresaId) return "Seleccione la empresa.";
-    if (!entidadId) return `Seleccione el ${esAccionista ? "accionista" : "tercero"}.`;
-    if (!monedaId) return "Seleccione la moneda.";
-    if (!fechaDesembolso) return "Indique la fecha de desembolso.";
-    if (!(Number(montoDesembolsado) > 0)) return "El monto desembolsado debe ser mayor a cero.";
-    if (Number(montoPagadoAnterior) < 0 || Number(montoPagadoAnterior) > Number(montoDesembolsado)) return "Lo pagado antes del sistema debe estar entre cero y el monto desembolsado.";
-    if (fechaVencimiento && fechaVencimiento < fechaDesembolso) return "La fecha de vencimiento no puede ser anterior a la fecha de desembolso.";
-    return null;
+  const monedasOptions = monedas.map((m) => ({ label: m.codigoSunat, value: Number(m.id) }));
+  const monedaSeleccionada = useMemo(
+    () => monedas.find((m) => Number(m.id) === Number(monedaIdWatch)),
+    [monedas, monedaIdWatch],
+  );
+  const simbolo = monedaSeleccionada?.simbolo || defaultValues?.moneda?.simbolo || "";
+  const saldoCalculado = Math.max(0, Number(montoWatch || 0) - Number(pagadoAnteriorWatch || 0));
+  const otraParte = sentidoWatch === "OTORGADO" ? "Deudor" : "Prestamista";
+
+  const validar = (data) => {
+    const faltantes = [];
+    if (!data.empresaId) faltantes.push("Empresa");
+    if (!data.entidadComercialId) faltantes.push(`${data.sentido === "OTORGADO" ? "Deudor" : "Prestamista"} (${data.esAccionista ? "accionista" : "tercero"})`);
+    if (!soloDatosBasicos) {
+      if (!data.sentido) faltantes.push("Rol de la empresa (Prestamista o Deudor)");
+      if (!data.monedaId) faltantes.push("Moneda");
+      if (!(Number(data.montoDesembolsado) > 0)) faltantes.push("Monto desembolsado");
+      if (!data.fechaDesembolso) faltantes.push("Fecha de desembolso");
+    }
+    if (faltantes.length > 0) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Dato obligatorio",
+        detail: `Complete los campos obligatorios: ${faltantes.join(", ")}.`,
+        life: 6000,
+      });
+      return false;
+    }
+    return true;
   };
 
-  const guardar = async () => {
-    const error = soloBasicos ? null : validar();
-    if (error) {
-      toast.current?.show({ severity: "error", summary: "Revise los datos del préstamo", detail: error, life: 8000 });
-      return;
-    }
+  const onSubmitForm = async (data) => {
+    if (!validar(data)) return;
     setGuardando(true);
     try {
-      const data = {
-        empresaId,
-        entidadComercialId: entidadId,
-        sentido,
-        esAccionista,
-        monedaId,
-        fechaDesembolso: aISO(fechaDesembolso),
-        fechaVencimiento: aISO(fechaVencimiento),
-        montoDesembolsado: Number(montoDesembolsado),
-        montoPagadoAnterior: Number(montoPagadoAnterior || 0),
-        tipoCambioAplicado: Number(tipoCambio) > 0 ? Number(tipoCambio) : null,
-        observaciones: observaciones || null,
+      const aIso = (fecha) => (fecha?.toISOString ? fecha.toISOString() : fecha || null);
+      const dataToSend = {
+        empresaId: data.empresaId,
+        entidadComercialId: data.entidadComercialId,
+        sentido: data.sentido,
+        esAccionista: data.esAccionista,
+        monedaId: data.monedaId,
+        montoDesembolsado: data.montoDesembolsado,
+        montoPagadoAnterior: data.montoPagadoAnterior || 0,
+        tipoCambioAplicado: data.tipoCambioAplicado || null,
+        fechaDesembolso: aIso(data.fechaDesembolso),
+        fechaVencimiento: aIso(data.fechaVencimiento),
+        fechaContable: aIso(data.fechaContable),
+        esGerencial: data.esGerencial,
+        observaciones: data.observaciones,
       };
-      if (isEdit) await updatePrestamoEntidad(prestamo.id, data);
-      else await createPrestamoEntidad(data);
-      onSave?.();
-    } catch (err) {
-      toast.current?.show({ severity: "error", summary: "No se pudo guardar el préstamo", detail: mensajeDeError(err, "Error al guardar el préstamo con accionista o tercero"), life: 10000 });
+      const resultado = isEdit
+        ? await updatePrestamoEntidad(Number(defaultValues.id), dataToSend)
+        : await createPrestamoEntidad(dataToSend);
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: isEdit ? "Préstamo actualizado correctamente" : "Préstamo registrado correctamente",
+        life: 3000,
+      });
+      onSubmit?.(resultado);
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: isEdit ? "No se pudo actualizar el préstamo" : "No se pudo registrar el préstamo",
+        detail: mensajeDeError(error, "Error al guardar el préstamo con accionista o tercero"),
+        life: 10000,
+      });
+    } finally {
+      setGuardando(false);
     }
-    setGuardando(false);
   };
 
-  const simbolo = monedas.find((m) => Number(m.id) === Number(monedaId))?.simbolo || "";
+  const bloqueado = (basico = false) => readOnly || guardando || (basico ? false : soloDatosBasicos);
+
+  if (cargandoDatos) return <div>Cargando...</div>;
+
   return (
     <div>
       <Toast ref={toast} />
-      {isEdit && (
+
+      {!isEdit && (
         <Message
-          severity={soloBasicos ? "info" : "warn"}
-          className="mb-3"
-          style={{ width: "100%", justifyContent: "flex-start" }}
-          text={
-            soloBasicos
-              ? `Préstamo ${prestamo.numeroPrestamo}: ${prestamo.movimientoCajaDesembolsoId ? "generado desde Tesorería" : "con pagos registrados"}; solo se pueden editar el vencimiento y las observaciones.`
-              : `Préstamo ${prestamo.numeroPrestamo} (saldo inicial, sin movimientos de caja).`
-          }
+          severity="info"
+          style={{ width: "100%", marginBottom: 10 }}
+          text="Use este formulario solo para registrar préstamos anteriores al sistema (saldo inicial). Los préstamos nuevos y sus devoluciones se registran en Tesorería Pendientes, en la operación Préstamos Accionistas / Terceros."
         />
       )}
-      {!isEdit && <Message severity="info" className="mb-3" style={{ width: "100%", justifyContent: "flex-start" }} text="Registre aquí solo préstamos anteriores al sistema. Los préstamos nuevos se registran en Tesorería Pendientes > Operaciones > Préstamos Accionistas / Terceros." />}
+      {isEdit && generadoDesdeTesoreria && (
+        <Message
+          severity="info"
+          style={{ width: "100%", marginBottom: 10 }}
+          text={`Préstamo generado desde Tesorería${
+            defaultValues?.refOperacionEspecializadaMovCaja ? ` (operación #${defaultValues.refOperacionEspecializadaMovCaja})` : ""
+          }: solo puede modificar el vencimiento y las observaciones. Para anularlo, revierta la operación en Tesorería Pendientes.`}
+        />
+      )}
+      {isEdit && !generadoDesdeTesoreria && soloDatosBasicos && (
+        <Message
+          severity="warn"
+          style={{ width: "100%", marginBottom: 10 }}
+          text="El préstamo ya tiene devoluciones o asiento de apertura registrados: solo puede modificar el vencimiento y las observaciones. Para cambiar montos, la empresa o el Prestamista y el Deudor, elimine primero el asiento de apertura."
+        />
+      )}
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-        <div style={{ flex: 2 }}>
-          <label style={etiqueta}>Empresa *</label>
-          <Dropdown value={empresaId} options={empresas.map((e) => ({ label: e.razonSocial, value: Number(e.id) }))} onChange={(e) => setEmpresaId(e.value)} filter disabled={bloqueado} style={{ width: "100%" }} />
+      <div style={{ display: "flex", gap: 10, marginBottom: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+        <div style={{ flex: 0.6 }}>
+          <label htmlFor="numeroPrestamo" style={etiqueta}>N° del Préstamo</label>
+          <InputText
+            id="numeroPrestamo"
+            value={isEdit ? defaultValues?.numeroPrestamo || "" : ""}
+            placeholder="Se genera al guardar"
+            disabled
+            style={{ width: "100%" }}
+          />
         </div>
-        <div style={{ flex: 2 }}>
-          <label style={etiqueta}>Sentido *</label>
-          <Dropdown value={sentido} options={SENTIDOS} onChange={(e) => setSentido(e.value)} disabled={bloqueado} style={{ width: "100%" }} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={etiqueta}>La contraparte es *</label>
-          <SelectButton value={esAccionista} options={CONTRAPARTES} onChange={(e) => e.value !== null && setEsAccionista(e.value)} disabled={bloqueado} />
-        </div>
-      </div>
-      <div style={{ marginBottom: 10 }}>
-        <EntidadComercialSelector value={entidadId} onChange={setEntidadId} label={esAccionista ? "Accionista *" : "Tercero *"} disabled={bloqueado} />
-      </div>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-        <div style={{ flex: 1 }}>
-          <label style={etiqueta}>Moneda *</label>
-          <Dropdown value={monedaId} options={monedas.map((m) => ({ label: m.codigoSunat, value: Number(m.id) }))} onChange={(e) => setMonedaId(e.value)} disabled={bloqueado} style={{ width: "100%" }} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={etiqueta}>Fecha de desembolso *</label>
-          <Calendar value={fechaDesembolso} onChange={(e) => setFechaDesembolso(e.value)} dateFormat="dd/mm/yy" showIcon disabled={bloqueado} style={{ width: "100%" }} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={etiqueta}>Fecha de vencimiento</label>
-          <Calendar value={fechaVencimiento} onChange={(e) => setFechaVencimiento(e.value)} dateFormat="dd/mm/yy" showIcon disabled={readOnly} style={{ width: "100%" }} />
-        </div>
-      </div>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-        <div style={{ flex: 1 }}>
-          <label style={etiqueta}>Monto desembolsado ({simbolo}) *</label>
-          <InputNumber value={montoDesembolsado} onValueChange={(e) => setMontoDesembolsado(e.value)} min={0} minFractionDigits={2} maxFractionDigits={2} disabled={bloqueado} style={{ width: "100%" }} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={etiqueta}>Pagado / cobrado antes del sistema ({simbolo})</label>
-          <InputNumber value={montoPagadoAnterior} onValueChange={(e) => setMontoPagadoAnterior(e.value)} min={0} minFractionDigits={2} maxFractionDigits={2} disabled={bloqueado} style={{ width: "100%" }} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={etiqueta}>Saldo pendiente ({simbolo})</label>
-          <InputText value={formatearNumero(Math.max(0, Number(montoDesembolsado || 0) - Number(montoPagadoAnterior || 0)), 2)} disabled style={{ width: "100%" }} />
-        </div>
-        {monedaId > 1 && (
-          <div style={{ flex: 1 }}>
-            <label style={etiqueta}>Tipo de cambio</label>
-            <InputNumber value={tipoCambio} onValueChange={(e) => setTipoCambio(e.value)} minFractionDigits={3} maxFractionDigits={4} disabled={bloqueado} style={{ width: "100%" }} />
+        <div style={{ flex: 0.4 }}>
+          <label style={etiqueta}>Estado</label>
+          <div style={{ paddingTop: 8 }}>
+            {isEdit ? (
+              <Tag
+                value={defaultValues?.estado?.descripcion || "N/A"}
+                severity={defaultValues?.estado?.severityColor}
+                style={{ fontWeight: "bold" }}
+              />
+            ) : (
+              <Tag value="VIGENTE" severity="info" style={{ fontWeight: "bold" }} />
+            )}
           </div>
-        )}
+        </div>
       </div>
+
+      <PartesPrestamoEntidad
+        esPrestamista={sentidoWatch === "OTORGADO"}
+        onRolChange={(v) => setValue("sentido", v ? "OTORGADO" : "RECIBIDO")}
+        empresaId={empresaIdWatch}
+        onEmpresaChange={(id) => setValue("empresaId", id)}
+        esAccionista={esAccionistaWatch}
+        onTipoChange={(v) => setValue("esAccionista", v)}
+        entidadId={entidadIdWatch}
+        onEntidadChange={(id) => setValue("entidadComercialId", id)}
+        disabled={bloqueado()}
+      />
+
+      <div style={{ display: "flex", gap: 10, marginBottom: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+        <div style={{ flex: 0.5 }}>
+          <label htmlFor="monedaId" style={etiqueta}>Moneda *</label>
+          <Controller
+            name="monedaId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="monedaId"
+                value={field.value}
+                options={monedasOptions}
+                onChange={(e) => field.onChange(e.value)}
+                placeholder="Seleccione moneda"
+                disabled={bloqueado()}
+                style={{ width: "100%" }}
+              />
+            )}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="montoDesembolsado" style={etiqueta}>Monto Desembolsado *</label>
+          <Controller
+            name="montoDesembolsado"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="montoDesembolsado"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                prefix={simbolo ? `${simbolo} ` : undefined}
+                disabled={bloqueado()}
+                style={{ width: "100%" }}
+              />
+            )}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="montoPagadoAnterior" style={etiqueta}>Devuelto antes del sistema</label>
+          <Controller
+            name="montoPagadoAnterior"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="montoPagadoAnterior"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                prefix={simbolo ? `${simbolo} ` : undefined}
+                disabled={bloqueado()}
+                style={{ width: "100%" }}
+              />
+            )}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={etiqueta}>Saldo de Capital</label>
+          <InputNumber
+            value={isEdit ? Number(defaultValues?.saldoCapital || 0) : saldoCalculado}
+            mode="decimal"
+            minFractionDigits={2}
+            maxFractionDigits={2}
+            prefix={simbolo ? `${simbolo} ` : undefined}
+            disabled
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div style={{ flex: 0.6 }}>
+          <label htmlFor="tipoCambioAplicado" style={etiqueta}>T/C del desembolso</label>
+          <Controller
+            name="tipoCambioAplicado"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="tipoCambioAplicado"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="decimal"
+                minFractionDigits={4}
+                maxFractionDigits={4}
+                disabled={bloqueado()}
+                style={{ width: "100%" }}
+              />
+            )}
+          />
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, marginBottom: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="fechaDesembolso" style={etiqueta}>Fecha de Desembolso *</label>
+          <Controller
+            name="fechaDesembolso"
+            control={control}
+            render={({ field }) => (
+              <Calendar
+                id="fechaDesembolso"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled={bloqueado()}
+                style={{ width: "100%" }}
+              />
+            )}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="fechaVencimiento" style={etiqueta}>Fecha de Vencimiento</label>
+          <Controller
+            name="fechaVencimiento"
+            control={control}
+            render={({ field }) => (
+              <Calendar
+                id="fechaVencimiento"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                showButtonBar
+                disabled={bloqueado(true)}
+                style={{ width: "100%" }}
+              />
+            )}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="fechaContable" style={etiqueta}>Fecha Contable</label>
+          <Controller
+            name="fechaContable"
+            control={control}
+            render={({ field }) => (
+              <Calendar
+                id="fechaContable"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled={bloqueado()}
+                style={{ width: "100%" }}
+              />
+            )}
+          />
+        </div>
+        <div style={{ flex: 0.7 }}>
+          <label htmlFor="esGerencial" style={etiqueta}>Tipo de Libro</label>
+          <Controller
+            name="esGerencial"
+            control={control}
+            render={({ field }) => (
+              <BooleanToggleButton
+                labelTrue="Gerencial"
+                labelFalse="Fiscal"
+                severityTrue="warning"
+                severityFalse="success"
+                value={field.value}
+                onChange={field.onChange}
+                disabled={bloqueado()}
+              />
+            )}
+          />
+        </div>
+      </div>
+
       <div style={{ marginBottom: 10 }}>
-        <label style={etiqueta}>Observaciones</label>
-        <InputText value={observaciones} onChange={(e) => setObservaciones(e.target.value)} disabled={readOnly} style={{ width: "100%" }} />
+        <label htmlFor="observaciones" style={etiqueta}>Observaciones</label>
+        <Controller
+          name="observaciones"
+          control={control}
+          render={({ field }) => (
+            <InputTextarea
+              id="observaciones"
+              {...field}
+              rows={2}
+              autoResize
+              disabled={bloqueado(true)}
+              style={{ width: "100%" }}
+            />
+          )}
+        />
       </div>
+
+      {isEdit && generadoDesdeTesoreria && (
+        <div style={{ marginBottom: 10 }}>
+          <label style={etiqueta}>
+            Movimientos de caja del desembolso
+            {defaultValues?.refOperacionEspecializadaMovCaja ? ` (operación #${defaultValues.refOperacionEspecializadaMovCaja})` : ""}
+          </label>
+          <MovimientosCajaTabla movimientos={defaultValues?.movimientosDesembolso || []} />
+        </div>
+      )}
+
+      {isEdit && (
+        <div style={{ marginBottom: 10 }}>
+          <label style={etiqueta}>
+            Devoluciones registradas ({cantidadPagos}) - despliegue una fila para ver sus movimientos de caja
+          </label>
+          <DataTable
+            value={defaultValues?.pagos || []}
+            size="small"
+            stripedRows
+            showGridlines
+            dataKey="id"
+            expandedRows={pagosExpandidos}
+            onRowToggle={(e) => setPagosExpandidos(e.data)}
+            rowExpansionTemplate={(p) => <MovimientosCajaTabla movimientos={p.movimientos || []} />}
+            emptyMessage="Aún no tiene devoluciones."
+            style={{ fontSize: getResponsiveFontSize() }}
+          >
+            <Column expander style={{ width: 40 }} />
+            <Column
+              field="fechaPago"
+              header="Fecha"
+              body={(p) => new Date(p.fechaPago).toLocaleDateString("es-PE")}
+              style={{ width: 110 }}
+            />
+            <Column field="refOperacionEspecializadaMovCaja" header="Operación" body={(p) => (p.refOperacionEspecializadaMovCaja ? `#${p.refOperacionEspecializadaMovCaja}` : "-")} style={{ width: 100 }} />
+            <Column
+              field="montoAplicado"
+              header="Capital aplicado"
+              body={(p) => `${simbolo} ${formatearNumero(Number(p.montoAplicado), 2)}`}
+              style={{ textAlign: "right", width: 150 }}
+            />
+            <Column header="Medio de pago" body={(p) => p.medioPago?.nombre || "-"} style={{ width: 150 }} />
+            <Column field="numeroOperacion" header="N° Operación" body={(p) => p.numeroOperacion || "-"} style={{ width: 130 }} />
+            <Column
+              field="tipoCambio"
+              header="T/C"
+              body={(p) => Number(p.tipoCambio || 1).toFixed(4)}
+              style={{ textAlign: "center", width: 90 }}
+            />
+          </DataTable>
+        </div>
+      )}
+
       {esSaldoInicialSinCaja && (
         <div style={{ marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5, flexWrap: "wrap" }}>
-            <label style={{ ...etiqueta, flex: 1, marginBottom: 0 }}>Asiento contable de apertura ({asientos.length})</label>
+            <label style={{ ...etiqueta, flex: 1 }}>Asiento contable de apertura ({asientos.length})</label>
             <Button
               type="button"
               label="Generar Asiento de Apertura"
@@ -255,10 +633,18 @@ export default function PrestamoEntidadForm({ prestamo, isEdit, onSave, onCancel
               severity="success"
               onClick={generarAsiento}
               loading={procesandoAsiento}
-              disabled={asientos.length > 0 || !puedeCrear || procesandoAsiento || Number(prestamo?.estadoId) === 85}
+              disabled={asientos.length > 0 || !puedeCrear || procesandoAsiento || Number(defaultValues?.estadoId) === 85}
               tooltip={asientos.length > 0 ? "El préstamo ya tiene asiento de apertura" : "Genera el asiento del saldo pendiente contra 591101 (utilidades acumuladas)"}
             />
-            <Button type="button" label="Eliminar Asiento" icon="pi pi-trash" severity="danger" outlined onClick={confirmarEliminarAsientos} disabled={asientos.length === 0 || !puedeEliminar || procesandoAsiento} />
+            <Button
+              type="button"
+              label="Eliminar Asiento"
+              icon="pi pi-trash"
+              severity="danger"
+              outlined
+              onClick={confirmarEliminarAsientos}
+              disabled={asientos.length === 0 || !puedeEliminar || procesandoAsiento}
+            />
           </div>
           <DataTable
             value={asientos}
@@ -268,24 +654,35 @@ export default function PrestamoEntidadForm({ prestamo, isEdit, onSave, onCancel
             dataKey="id"
             expandedRows={filasExpandidas}
             onRowToggle={(e) => setFilasExpandidas(e.data)}
-            rowExpansionTemplate={lineasAsiento}
+            rowExpansionTemplate={lineasAsientoTemplate}
             emptyMessage="Aún no se generó el asiento de apertura de este saldo inicial."
             style={{ fontSize: getResponsiveFontSize() }}
           >
             <Column expander style={{ width: 40 }} />
+            <Column field="empresa.razonSocial" header="Empresa" />
             <Column field="numeroAsiento" header="N° Asiento" style={{ width: 150 }} />
-            <Column header="Fecha" body={(a) => new Date(a.fechaAsiento).toLocaleDateString("es-PE")} style={{ width: 110 }} />
+            <Column field="fechaAsiento" header="Fecha" body={(a) => new Date(a.fechaAsiento).toLocaleDateString("es-PE")} style={{ width: 110 }} />
             <Column field="glosa" header="Glosa" />
-            <Column header="Total (S/)" body={(a) => formatearNumero((a.detalles || []).reduce((s, d) => s + Number(d.debe), 0), 2)} style={{ textAlign: "right", width: 120 }} />
+            <Column header="Total (S/)" body={(a) => formatearNumero(Number(a.detalles?.[0] ? a.detalles.reduce((s, d) => s + Number(d.debe), 0) : 0), 2)} style={{ textAlign: "right", width: 120 }} />
             <Column header="Estado" body={(a) => <Tag value={a.estado?.descripcion || "N/A"} severity={a.estado?.severityColor} />} style={{ width: 110 }} />
           </DataTable>
         </div>
       )}
+
       <ConfirmDialog />
-      <div style={{ textAlign: "right" }}>
-        <Button label="Cerrar" icon="pi pi-times" className="p-button-text" onClick={onCancel} disabled={guardando} />
-        {!readOnly && <Button label="Guardar" icon="pi pi-check" onClick={guardar} loading={guardando} />}
-      </div>
+
+      {!readOnly && (
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
+          <Button label="Cancelar" icon="pi pi-times" severity="secondary" onClick={onCancel} outlined disabled={guardando} />
+          <Button
+            label={isEdit ? "Actualizar Préstamo" : "Registrar Préstamo"}
+            icon="pi pi-save"
+            severity="success"
+            onClick={handleSubmit(onSubmitForm)}
+            loading={guardando}
+          />
+        </div>
+      )}
     </div>
   );
 }

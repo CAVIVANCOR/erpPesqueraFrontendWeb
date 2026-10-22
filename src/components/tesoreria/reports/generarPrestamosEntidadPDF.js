@@ -7,6 +7,7 @@ import {
   formatoFecha,
   situacionVencimiento,
   etiquetaSentido,
+  partesDelPrestamo,
 } from "./prestamosEntidadReporteUtils";
 
 /**
@@ -26,9 +27,9 @@ export async function generarPrestamosEntidadPDF(data) {
   const altoFila = 14;
   const limiteInferior = 45;
 
-  const colWidths = [58, 130, 46, 130, 52, 52, 78, 64, 64, 64];
-  const headers = ["N° Préstamo", "Empresa", "Tipo", "Contraparte", "F. Desemb.", "Vence", "Plazo", "Desembolsado", "Pagado/Cobr.", "Saldo"];
-  const alineacion = ["l", "l", "l", "l", "c", "c", "l", "r", "r", "r"];
+  const colWidths = [58, 150, 150, 52, 52, 78, 64, 64, 64];
+  const headers = ["N° Préstamo", "Prestamista", "Deudor", "F. Desemb.", "Vence", "Plazo", "Desembolsado", "Devuelto", "Saldo"];
+  const alineacion = ["l", "l", "l", "c", "c", "l", "r", "r", "r"];
 
   const paginas = [];
   let pagina;
@@ -106,12 +107,12 @@ export async function generarPrestamosEntidadPDF(data) {
         encabezadoTabla();
       }
       const venc = situacionVencimiento(p);
+      const partes = partesDelPrestamo(p);
       fila(
         [
           p.numeroPrestamo,
-          truncar(p.empresa?.razonSocial, 26),
-          p.esAccionista ? "Accion." : "Tercero",
-          truncar(p.entidadComercial?.razonSocial, 26),
+          truncar(partes.prestamista, 34),
+          truncar(partes.deudor, 34),
           formatoFecha(p.fechaDesembolso),
           formatoFecha(p.fechaVencimiento),
           venc.texto,
@@ -119,12 +120,12 @@ export async function generarPrestamosEntidadPDF(data) {
           formatoMonto(Number(p.capitalPagado || 0) + Number(p.montoPagadoAnterior || 0)),
           formatoMonto(p.saldoCapital),
         ],
-        { fondo: i % 2 === 0 ? rgb(0.96, 0.96, 0.96) : rgb(1, 1, 1), colorTexto: (col) => (col === 6 && venc.vencido ? rgb(0.7, 0, 0) : undefined) },
+        { fondo: i % 2 === 0 ? rgb(0.96, 0.96, 0.96) : rgb(1, 1, 1), colorTexto: (col) => (col === 5 && venc.vencido ? rgb(0.7, 0, 0) : undefined) },
       );
     });
 
     if (y < limiteInferior + altoFila) nuevaPagina();
-    fila(["", "", "", "", "", "", `TOTAL ${grupo.codigo} (${grupo.totales.cantidad})`, formatoMonto(grupo.totales.desembolsado), formatoMonto(grupo.totales.pagado), formatoMonto(grupo.totales.saldo)], {
+    fila(["", "", "", "", "", `TOTAL ${grupo.codigo} (${grupo.totales.cantidad})`, formatoMonto(grupo.totales.desembolsado), formatoMonto(grupo.totales.devuelto), formatoMonto(grupo.totales.saldo)], {
       fondo: rgb(0.9, 0.9, 0.9),
       bold: true,
     });
@@ -135,7 +136,7 @@ export async function generarPrestamosEntidadPDF(data) {
   const resumen = resumenPorEmpresa(items);
   if (resumen.length > 0) {
     nuevaPagina();
-    pagina.drawText("SALDOS POR EMPRESA (POR COBRAR Y POR PAGAR A ACCIONISTAS Y TERCEROS)", { x: margin, y: y - 4, size: 10, font: fontBold, color: rgb(0.1, 0.1, 0.1) });
+    pagina.drawText("SALDOS POR EMPRESA (COMO PRESTAMISTA Y COMO DEUDOR)", { x: margin, y: y - 4, size: 10, font: fontBold, color: rgb(0.1, 0.1, 0.1) });
     y -= 20;
 
     const anchos = [330, 140, 140, 140];
@@ -156,14 +157,14 @@ export async function generarPrestamosEntidadPDF(data) {
     for (const bloque of resumen) {
       if (y < limiteInferior + altoFila * 5) nuevaPagina();
       banda(`MONEDA: ${bloque.codigo}`);
-      filaResumen(["Empresa", "Por cobrar (otorgó)", "Por pagar (recibió)", "Neto"], { fondo: rgb(0.27, 0.45, 0.77), bold: true, color: () => rgb(1, 1, 1) });
+      filaResumen(["Empresa", "Como Prestamista", "Como Deudor", "Neto"], { fondo: rgb(0.27, 0.45, 0.77), bold: true, color: () => rgb(1, 1, 1) });
       bloque.filas.forEach((f, i) => {
-        filaResumen([truncar(f.empresa, 60), formatoMonto(f.porCobrar), formatoMonto(f.porPagar), formatoMonto(f.neto)], {
+        filaResumen([truncar(f.empresa, 60), formatoMonto(f.comoPrestamista), formatoMonto(f.comoDeudor), formatoMonto(f.neto)], {
           fondo: i % 2 === 0 ? rgb(0.96, 0.96, 0.96) : undefined,
           color: (col) => (col === 3 ? (f.neto < 0 ? rgb(0.7, 0, 0) : rgb(0, 0.5, 0)) : undefined),
         });
       });
-      filaResumen([`TOTAL ${bloque.codigo}`, formatoMonto(bloque.totales.porCobrar), formatoMonto(bloque.totales.porPagar), formatoMonto(bloque.totales.porCobrar - bloque.totales.porPagar)], { fondo: rgb(0.9, 0.9, 0.9), bold: true });
+      filaResumen([`TOTAL ${bloque.codigo}`, formatoMonto(bloque.totales.comoPrestamista), formatoMonto(bloque.totales.comoDeudor), formatoMonto(bloque.totales.comoPrestamista - bloque.totales.comoDeudor)], { fondo: rgb(0.9, 0.9, 0.9), bold: true });
       y -= altoFila / 2;
     }
   }

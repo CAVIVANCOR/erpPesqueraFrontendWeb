@@ -712,7 +712,7 @@ export const LABELS_TIPO_OPERACION = {
     label: 'Préstamos Accionistas / Terceros',
     severity: 'warning',
     icon: 'pi pi-users',
-    descripcion: 'Préstamos recibidos u otorgados a accionistas y terceros: desembolso, pago y cobranza de capital',
+    descripcion: 'Préstamos con accionistas y terceros: desembolso y devolución de capital, como Prestamista o como Deudor',
   },
 };
 

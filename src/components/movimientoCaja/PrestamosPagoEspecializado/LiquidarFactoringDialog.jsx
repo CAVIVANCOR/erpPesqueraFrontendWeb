@@ -22,7 +22,9 @@ import { mensajeDeError } from "../../../utils/mensajeError";
 import { formatearNumero } from "../../../utils/utils";
 
 const etiqueta = { fontWeight: "bold", display: "block", marginBottom: 5 };
-const aISO = (f) => (f ? `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, "0")}-${String(f.getDate()).padStart(2, "0")}` : null);
+const aISO = (f) => (f ? `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, "0")}-${String(f.getDate()).padStart(2, "0")}` : null); // solo para consultar el TC de SUNAT
+// Fecha para el backend: ISO completo (medianoche local). Sin hora se interpretaría en UTC y retrocedería un día en el resto del sistema
+const aFechaApi = (f) => (f ? f.toISOString() : null);
 const fechaCorta = (f) => (f ? new Date(f).toLocaleDateString("es-PE", { timeZone: "UTC" }) : "-");
 
 export default function LiquidarFactoringDialog({ visible, onHide, toast, onSuccess }) {
@@ -92,7 +94,7 @@ export default function LiquidarFactoringDialog({ visible, onHide, toast, onSucc
       const r = await liquidarFactoring({
         prestamoBancarioId: Number(detalle.prestamo.id),
         pagoIds: seleccion.map((f) => Number(f.pagoId)),
-        fecha: aISO(fecha),
+        fecha: aFechaApi(fecha),
         tipoCambio: esExtranjera ? Number(tipoCambio) : undefined,
       });
       toast?.current?.show({

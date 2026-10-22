@@ -1,6 +1,5 @@
 // src/pages/tesoreria/PrestamoEntidad.jsx
-// Préstamos con accionistas y terceros (recibidos y otorgados, solo capital).
-// Los préstamos nuevos y sus pagos/cobros se registran en Tesorería; aquí se consultan y se cargan saldos iniciales.
+// Préstamos con accionistas y terceros (recibidos y otorgados). Misma pantalla que PrestamoRelacionado.jsx.
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
@@ -10,33 +9,35 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
-import { Calendar } from "primereact/calendar";
-import EmpresaSelector from "../../components/common/EmpresaSelector";
 import { MultiSelect } from "primereact/multiselect";
+import EmpresaSelector from "../../components/common/EmpresaSelector";
 import BooleanToggleButton from "../../components/common/BooleanToggleButton";
+import { Calendar } from "primereact/calendar";
 import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
 import PrestamoEntidadForm from "../../components/tesoreria/PrestamoEntidadForm";
 import { getPrestamosEntidad, getPrestamoEntidadById, deletePrestamoEntidad } from "../../api/tesoreria/prestamosEntidad";
+import { usePermissions } from "../../hooks/usePermissions";
+import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
+import { mensajeDeError } from "../../utils/mensajeError";
 import ReportFormatSelector from "../../components/reports/ReportFormatSelector";
 import TemporaryPDFViewer from "../../components/reports/TemporaryPDFViewer";
 import TemporaryExcelViewer from "../../components/reports/TemporaryExcelViewer";
 import { generarPrestamosEntidadPDF } from "../../components/tesoreria/reports/generarPrestamosEntidadPDF";
 import { generarPrestamosEntidadExcel } from "../../components/tesoreria/reports/generarPrestamosEntidadExcel";
-import { esPendiente } from "../../components/tesoreria/reports/prestamosEntidadReporteUtils";
-import { usePermissions } from "../../hooks/usePermissions";
-import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
-import { mensajeDeError } from "../../utils/mensajeError";
+import { esPendiente, saldosPorSentido, formatoMonto, partesDelPrestamo, rolEmpresa } from "../../components/tesoreria/reports/prestamosEntidadReporteUtils";
 
 const etiqueta = { fontWeight: "bold", display: "block", marginBottom: 5 };
-const fechaCorta = (f) => (f ? new Date(f).toLocaleDateString("es-PE", { timeZone: "UTC" }) : "-");
-const SENTIDOS = [
-  { label: "Recibidos", value: "RECIBIDO" },
-  { label: "Otorgados", value: "OTORGADO" },
+
+// Valores internos: OTORGADO = la empresa es el Prestamista; RECIBIDO = la empresa es el Deudor
+const ROLES_EMPRESA = [
+  { label: "Prestamista", value: "OTORGADO" },
+  { label: "Deudor", value: "RECIBIDO" },
 ];
 
 export default function PrestamoEntidad({ ruta }) {
   const permisos = usePermissions(ruta);
+
   const toast = useRef(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -46,14 +47,18 @@ export default function PrestamoEntidad({ ruta }) {
   const [confirmState, setConfirmState] = useState({ visible: false, row: null });
   const [globalFilter, setGlobalFilter] = useState("");
 
-  const [empresaId, setEmpresaId] = useState(null);
-  const [sentido, setSentido] = useState(null);
+  // Filtros
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [sentidoSeleccionado, setSentidoSeleccionado] = useState(null);
   const [entidadesIds, setEntidadesIds] = useState([]);
   const [tipoContraparte, setTipoContraparte] = useState("TODOS"); // TODOS | ACCIONISTAS | TERCEROS
-  const [estadoId, setEstadoId] = useState(null);
-  const [soloPendientes, setSoloPendientes] = useState(true);
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
+  const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
   const [rangoFechas, setRangoFechas] = useState(null);
+  const [soloSaldosIniciales, setSoloSaldosIniciales] = useState(false);
+  const [soloPendientes, setSoloPendientes] = useState(true);
 
+  // Reporte (PDF / Excel)
   const [showFormatSelector, setShowFormatSelector] = useState(false);
   const [showPDFViewer, setShowPDFViewer] = useState(false);
   const [showExcelViewer, setShowExcelViewer] = useState(false);
@@ -68,49 +73,41 @@ export default function PrestamoEntidad({ ruta }) {
     try {
       setItems(await getPrestamosEntidad());
     } catch (err) {
-      toast.current?.show({ severity: "error", summary: "No se pudieron cargar los préstamos", detail: mensajeDeError(err, "Error al consultar los préstamos con accionistas y terceros"), life: 8000 });
+      toast.current?.show({
+        severity: "error",
+        summary: "No se pudieron cargar los préstamos",
+        detail: mensajeDeError(err, "Error al consultar los préstamos con accionistas y terceros"),
+        life: 8000,
+      });
     }
     setLoading(false);
   };
 
-  const opciones = useMemo(() => {
-    const unicos = (lista) => [...new Map(lista.filter((x) => x?.id).map((x) => [Number(x.id), x])).values()];
-    const entidades = unicos(items.map((i) => i.entidadComercial))
-      .map((e) => ({ label: e.numeroDocumento ? `${e.razonSocial} (${e.numeroDocumento})` : e.razonSocial, value: Number(e.id) }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-    return {
-      entidades,
-      estados: unicos(items.map((i) => i.estado)).map((e) => ({ label: e.descripcion, value: Number(e.id) })),
-    };
-  }, [items]);
-
   const itemsFiltrados = useMemo(() => {
-    const desde = rangoFechas?.[0] ? new Date(rangoFechas[0]) : null;
-    const hasta = rangoFechas?.[0] ? new Date(rangoFechas[1] || rangoFechas[0]) : null;
-    desde?.setHours(0, 0, 0, 0);
-    hasta?.setHours(23, 59, 59, 999);
-    const enRango = (fecha) => !desde || (new Date(fecha) >= desde && new Date(fecha) <= hasta);
-    return items.filter(
-        (i) =>
-          (!empresaId || Number(i.empresaId) === empresaId) &&
-          (!sentido || i.sentido === sentido) &&
-          (entidadesIds.length === 0 || entidadesIds.includes(Number(i.entidadComercialId))) &&
-          (tipoContraparte === "TODOS" || (tipoContraparte === "ACCIONISTAS") === Boolean(i.esAccionista)) &&
-          (!estadoId || Number(i.estadoId) === estadoId) &&
-          (!soloPendientes || Number(i.saldoCapital) > 0) &&
-          enRango(i.fechaDesembolso),
-    );
-  }, [items, empresaId, sentido, entidadesIds, tipoContraparte, estadoId, soloPendientes, rangoFechas]);
-
-  // Saldo pendiente por sentido y moneda de lo que se está viendo
-  const saldos = useMemo(() => {
-    const mapa = new Map();
-    for (const i of itemsFiltrados.filter((x) => Number(x.saldoCapital) > 0)) {
-      const clave = `${i.sentido}-${i.moneda?.simbolo}`;
-      mapa.set(clave, { sentido: i.sentido, simbolo: i.moneda?.simbolo, total: (mapa.get(clave)?.total || 0) + Number(i.saldoCapital) });
+    let filtrados = items;
+    if (empresaSeleccionada) filtrados = filtrados.filter((i) => Number(i.empresaId) === Number(empresaSeleccionada));
+    if (sentidoSeleccionado) filtrados = filtrados.filter((i) => i.sentido === sentidoSeleccionado);
+    if (entidadesIds.length > 0) filtrados = filtrados.filter((i) => entidadesIds.includes(Number(i.entidadComercialId)));
+    if (tipoContraparte !== "TODOS") filtrados = filtrados.filter((i) => Boolean(i.esAccionista) === (tipoContraparte === "ACCIONISTAS"));
+    if (estadoSeleccionado) filtrados = filtrados.filter((i) => Number(i.estadoId) === Number(estadoSeleccionado));
+    if (monedaSeleccionada) filtrados = filtrados.filter((i) => Number(i.monedaId) === Number(monedaSeleccionada));
+    if (rangoFechas?.[0]) {
+      const desde = new Date(rangoFechas[0]);
+      desde.setHours(0, 0, 0, 0);
+      const hasta = new Date(rangoFechas[1] || rangoFechas[0]);
+      hasta.setHours(23, 59, 59, 999);
+      filtrados = filtrados.filter((i) => {
+        const f = new Date(i.fechaDesembolso);
+        return f >= desde && f <= hasta;
+      });
     }
-    return [...mapa.values()];
-  }, [itemsFiltrados]);
+    if (soloSaldosIniciales) filtrados = filtrados.filter((i) => i.esSaldoInicial === true);
+    if (soloPendientes) filtrados = filtrados.filter(esPendiente);
+    return filtrados;
+  }, [items, empresaSeleccionada, sentidoSeleccionado, entidadesIds, tipoContraparte, estadoSeleccionado, monedaSeleccionada, rangoFechas, soloSaldosIniciales, soloPendientes]);
+
+  // Saldo pendiente de lo que se está viendo, por sentido y moneda
+  const saldosPendientes = useMemo(() => saldosPorSentido(itemsFiltrados.filter(esPendiente)), [itemsFiltrados]);
 
   const handleGenerarReporte = () => {
     setReportData({
@@ -121,15 +118,17 @@ export default function PrestamoEntidad({ ruta }) {
     setShowFormatSelector(true);
   };
 
-  const abrir = async (row, editar) => {
-    try {
-      setSelected(await getPrestamoEntidadById(Number(row.id)));
-      setIsEdit(editar);
-      setShowDialog(true);
-    } catch (err) {
-      toast.current?.show({ severity: "error", summary: "No se pudo cargar el préstamo", detail: mensajeDeError(err, "Error al cargar el préstamo"), life: 8000 });
-    }
-  };
+  // Opciones de los filtros: solo lo que existe en los préstamos
+  const opciones = useMemo(() => {
+    const unicos = (lista) => [...new Map(lista.filter((x) => x?.id).map((x) => [Number(x.id), x])).values()];
+    return {
+      entidades: unicos(items.map((i) => i.entidadComercial))
+        .map((e) => ({ label: e.numeroDocumento ? `${e.razonSocial} (${e.numeroDocumento})` : e.razonSocial, value: Number(e.id) }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+      estados: unicos(items.map((i) => i.estado)).map((e) => ({ label: e.descripcion, value: Number(e.id) })),
+      monedas: unicos(items.map((i) => i.moneda)).map((m) => ({ label: m.codigoSunat, value: Number(m.id) })),
+    };
+  }, [items]);
 
   const onNew = () => {
     if (!permisos.puedeCrear) {
@@ -141,12 +140,32 @@ export default function PrestamoEntidad({ ruta }) {
     setShowDialog(true);
   };
 
-  const onDelete = (row) => {
+  const onEdit = async (rowData) => {
+    if (!permisos.puedeVer && !permisos.puedeEditar) {
+      toast.current?.show({ severity: "warn", summary: "Acceso Denegado", detail: "No tiene permisos para ver o editar registros.", life: 3000 });
+      return;
+    }
+    try {
+      const prestamoCompleto = await getPrestamoEntidadById(Number(rowData.id));
+      setSelected(prestamoCompleto);
+      setIsEdit(true);
+      setShowDialog(true);
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "No se pudo cargar el préstamo",
+        detail: mensajeDeError(error, "Error al cargar el préstamo con accionista o tercero"),
+        life: 8000,
+      });
+    }
+  };
+
+  const onDelete = (rowData) => {
     if (!permisos.puedeEliminar) {
       toast.current?.show({ severity: "warn", summary: "Acceso Denegado", detail: "No tiene permisos para eliminar registros.", life: 3000 });
       return;
     }
-    setConfirmState({ visible: true, row });
+    setConfirmState({ visible: true, row: rowData });
   };
 
   const handleConfirmDelete = async () => {
@@ -156,156 +175,307 @@ export default function PrestamoEntidad({ ruta }) {
     setLoading(true);
     try {
       await deletePrestamoEntidad(row.id);
-      toast.current?.show({ severity: "success", summary: "Préstamo eliminado", detail: `El préstamo ${row.numeroPrestamo} fue eliminado correctamente.`, life: 3000 });
+      toast.current?.show({
+        severity: "success",
+        summary: "Préstamo eliminado",
+        detail: `El préstamo ${row.numeroPrestamo} fue eliminado correctamente.`,
+        life: 3000,
+      });
       await cargarDatos();
     } catch (err) {
-      toast.current?.show({ severity: "error", summary: "No se pudo eliminar el préstamo", detail: mensajeDeError(err, "Error al eliminar el préstamo"), life: 12000 });
+      toast.current?.show({
+        severity: "error",
+        summary: "No se pudo eliminar el préstamo",
+        detail: mensajeDeError(err, "Error al eliminar el préstamo con accionista o tercero"),
+        life: 12000,
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const cerrar = async (recargar) => {
+  const onCancel = () => {
     setShowDialog(false);
     setSelected(null);
     setIsEdit(false);
-    if (recargar) await cargarDatos();
+  };
+
+  const onSubmit = async () => {
+    setShowDialog(false);
+    setSelected(null);
+    setIsEdit(false);
+    await cargarDatos();
   };
 
   const limpiarFiltros = () => {
-    setEmpresaId(null);
-    setSentido(null);
+    setEmpresaSeleccionada(null);
+    setSentidoSeleccionado(null);
     setEntidadesIds([]);
     setTipoContraparte("TODOS");
-    setEstadoId(null);
-    setSoloPendientes(true);
+    setEstadoSeleccionado(null);
+    setMonedaSeleccionada(null);
     setRangoFechas(null);
+    setSoloSaldosIniciales(false);
+    setSoloPendientes(true);
     setGlobalFilter("");
   };
 
-  if (!permisos.tieneAcceso || !permisos.puedeVer) return <Navigate to="/sin-acceso" replace />;
+  const estadoTemplate = (rowData) => (
+    <Tag value={rowData.estado?.descripcion || "N/A"} severity={rowData.estado?.severityColor} />
+  );
+
+  const montoTemplate = (campo) => (rowData) =>
+    `${rowData.moneda?.simbolo || ""} ${formatearNumero(Number(rowData[campo] || 0), 2)}`;
+
+  const fechaTemplate = (campo) => (rowData) =>
+    rowData[campo] ? new Date(rowData[campo]).toLocaleDateString("es-PE") : "-";
+
+  const actionBodyTemplate = (rowData) => (
+    <div onClick={(e) => e.stopPropagation()}>
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-text p-mr-2"
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        onClick={() => onEdit(rowData)}
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+      />
+      <Button
+        icon="pi pi-trash"
+        className="p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={() => onDelete(rowData)}
+        tooltip="Eliminar"
+      />
+    </div>
+  );
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
+  const filaFlex = { alignItems: "end", display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row", marginBottom: 10 };
 
   return (
-    <div className="p-fluid">
+    <div className="p-m-4">
       <Toast ref={toast} />
       <ConfirmDialog
         visible={confirmState.visible}
         onHide={() => setConfirmState({ visible: false, row: null })}
-        message={`¿Eliminar el préstamo ${confirmState.row?.numeroPrestamo || ""}? Solo se pueden eliminar préstamos de saldo inicial sin pagos.`}
-        header="Confirmar eliminación"
+        message={
+          <span style={{ color: "#b71c1c", fontWeight: 600 }}>
+            ¿Está seguro que desea <span style={{ color: "#b71c1c" }}>eliminar</span> el préstamo{" "}
+            <b>{confirmState.row ? confirmState.row.numeroPrestamo : ""}</b>?<br />
+            <span style={{ fontWeight: 400, color: "#b71c1c" }}>Esta acción no se puede deshacer.</span>
+          </span>
+        }
+        header={<span style={{ color: "#b71c1c" }}>Confirmar eliminación</span>}
         icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
         acceptLabel="Eliminar"
         rejectLabel="Cancelar"
-        acceptClassName="p-button-danger"
         accept={handleConfirmDelete}
         reject={() => setConfirmState({ visible: false, row: null })}
+        style={{ minWidth: 400 }}
       />
-
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end", marginBottom: 10 }}>
-        <div style={{ flex: 2, minWidth: 200 }}>
-          <label style={etiqueta}>Empresa</label>
-          <EmpresaSelector empresaId={empresaId} onEmpresaChange={setEmpresaId} permitirLimpiar />
-        </div>
-        <div style={{ flex: 1, minWidth: 150 }}>
-          <label style={etiqueta}>Sentido</label>
-          <Dropdown value={sentido} options={SENTIDOS} onChange={(e) => setSentido(e.value)} showClear placeholder="Todos" style={{ width: "100%" }} />
-        </div>
-        <div style={{ flex: 2, minWidth: 260 }}>
-          <label style={etiqueta}>Accionista / Tercero</label>
-          <MultiSelect
-            value={entidadesIds}
-            options={opciones.entidades}
-            onChange={(e) => setEntidadesIds(e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Todos"
-            display="chip"
-            filter
-            showSelectAll
-            selectAllLabel="Seleccionar Todos"
-            maxSelectedLabels={3}
-            emptyMessage="No hay accionistas ni terceros con préstamos"
-            style={{ width: "100%" }}
-          />
-        </div>
-        <div style={{ flex: 1, minWidth: 150 }}>
-          <label style={etiqueta}>Contraparte</label>
-          <Button
-            type="button"
-            label={tipoContraparte === "TODOS" ? "TODOS" : tipoContraparte === "ACCIONISTAS" ? "ACCIONISTAS" : "TERCEROS"}
-            icon={tipoContraparte === "TODOS" ? "pi pi-users" : tipoContraparte === "ACCIONISTAS" ? "pi pi-briefcase" : "pi pi-user"}
-            severity={tipoContraparte === "TODOS" ? "secondary" : tipoContraparte === "ACCIONISTAS" ? "success" : "info"}
-            onClick={() => setTipoContraparte(tipoContraparte === "TODOS" ? "ACCIONISTAS" : tipoContraparte === "ACCIONISTAS" ? "TERCEROS" : "TODOS")}
-            style={{ width: "100%", fontWeight: "bold" }}
-            tooltip="Clic para cambiar: Todos, Accionistas, Terceros"
-            tooltipOptions={{ position: "top" }}
-          />
-        </div>
-        <div style={{ flex: 1, minWidth: 150 }}>
-          <label style={etiqueta}>Estado</label>
-          <Dropdown value={estadoId} options={opciones.estados} onChange={(e) => setEstadoId(e.value)} showClear placeholder="Todos" style={{ width: "100%" }} />
-        </div>
-        <div style={{ flex: 1.5, minWidth: 220 }}>
-          <label style={etiqueta}>Rango F. Desembolso</label>
-          <Calendar value={rangoFechas} onChange={(ev) => setRangoFechas(ev.value)} selectionMode="range" placeholder="Seleccione rango" dateFormat="dd/mm/yy" showIcon showButtonBar style={{ width: "100%" }} />
-        </div>
-        <div style={{ flex: 1, minWidth: 150 }}>
-          <label style={etiqueta}>Mostrar</label>
-          <BooleanToggleButton value={soloPendientes} onChange={setSoloPendientes} labelTrue="SOLO PENDIENTES" labelFalse="TODOS" severityTrue="warning" severityFalse="secondary" icon="pi-filter" />
-        </div>
-        <Button label="Limpiar" icon="pi pi-filter-slash" className="p-button-text" onClick={limpiarFiltros} style={{ width: "auto" }} />
-        <Button label="Reporte" icon="pi pi-file-pdf" severity="info" onClick={handleGenerarReporte} disabled={!itemsFiltrados.some(esPendiente)} tooltip="Reporte de saldos pendientes (PDF / Excel) según los filtros aplicados" style={{ width: "auto" }} />
-        <Button label="Nuevo saldo inicial" icon="pi pi-plus" onClick={onNew} disabled={!permisos.puedeCrear} style={{ width: "auto" }} />
-      </div>
-
-      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 10, fontWeight: "bold" }}>
-        {saldos.length === 0 ? <span>Sin saldos pendientes en la vista actual</span> : saldos.map((s) => (
-          <span key={`${s.sentido}-${s.simbolo}`}>
-            {s.sentido === "RECIBIDO" ? "Por pagar" : "Por cobrar"}: {s.simbolo} {formatearNumero(s.total, 2)}
-          </span>
-        ))}
-      </div>
-
       <DataTable
         value={itemsFiltrados}
         loading={loading}
-        paginator
-        rows={15}
-        rowsPerPageOptions={[15, 30, 60]}
-        stripedRows
         size="small"
-        globalFilter={globalFilter}
-        globalFilterFields={["numeroPrestamo", "entidadComercial.razonSocial", "empresa.razonSocial"]}
-        header={
-          <span className="p-input-icon-left">
-            <i className="pi pi-search" />
-            <InputText value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Buscar por número, empresa o contraparte" style={{ width: 360 }} />
-          </span>
-        }
-        onRowClick={(e) => abrir(e.data, false)}
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
-        emptyMessage="No hay préstamos con los filtros actuales."
+        stripedRows
+        showGridlines
+        paginator
+        rows={40}
+        rowsPerPageOptions={[40, 80, 160, 320]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} préstamos"
         sortField="fechaDesembolso"
         sortOrder={-1}
-      >
-        <Column field="numeroPrestamo" header="N°" sortable />
-        <Column header="Empresa" body={(r) => r.empresa?.razonSocial} sortable sortField="empresa.razonSocial" />
-        <Column header="Sentido" body={(r) => <Tag value={r.sentido === "RECIBIDO" ? "Recibido" : "Otorgado"} severity={r.sentido === "RECIBIDO" ? "warning" : "info"} />} sortable sortField="sentido" />
-        <Column header="Contraparte" body={(r) => `${r.esAccionista ? "Accionista" : "Tercero"}: ${r.entidadComercial?.razonSocial || ""}`} />
-        <Column header="Desembolso" body={(r) => fechaCorta(r.fechaDesembolso)} sortable sortField="fechaDesembolso" />
-        <Column header="Vence" body={(r) => fechaCorta(r.fechaVencimiento)} />
-        <Column header="Monto" body={(r) => `${r.moneda?.simbolo || ""} ${formatearNumero(r.montoDesembolsado, 2)}`} />
-        <Column header="Saldo" body={(r) => `${r.moneda?.simbolo || ""} ${formatearNumero(r.saldoCapital, 2)}`} />
-        <Column header="Origen" body={(r) => (r.esSaldoInicial ? "Saldo inicial" : "Tesorería")} />
-        <Column header="Estado" body={(r) => <Tag value={r.estado?.descripcion || "N/A"} severity={r.estado?.severityColor} />} />
-        <Column
-          header="Acciones"
-          body={(r) => (
-            <div style={{ display: "flex", gap: 4 }} onClick={(e) => e.stopPropagation()}>
-              <Button icon="pi pi-pencil" className="p-button-text p-button-sm" onClick={() => abrir(r, true)} disabled={!permisos.puedeEditar} tooltip="Editar" />
-              <Button icon="pi pi-trash" className="p-button-text p-button-danger p-button-sm" onClick={() => onDelete(r)} disabled={!permisos.puedeEliminar} tooltip="Eliminar" />
+        selectionMode="single"
+        selection={selected}
+        onSelectionChange={(e) => setSelected(e.value)}
+        onRowClick={permisos.puedeVer || permisos.puedeEditar ? (e) => onEdit(e.data) : undefined}
+        globalFilter={globalFilter}
+        globalFilterFields={["numeroPrestamo", "observaciones", "empresa.razonSocial", "entidadComercial.razonSocial"]}
+        emptyMessage="No se encontraron registros que coincidan con la búsqueda."
+        style={{ cursor: permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default", fontSize: getResponsiveFontSize() }}
+        header={
+          <div>
+            <div style={{ ...filaFlex, marginBottom: 15 }}>
+              <div style={{ flex: 1 }}>
+                <h2>Préstamos con Accionistas y Terceros</h2>
+                <small style={{ color: "#666", fontWeight: "normal" }}>
+                  Total de registros: {itemsFiltrados.length} de {items.length}
+                </small>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                  {saldosPendientes.length === 0 ? (
+                    <Tag value="Sin saldos pendientes" severity="success" />
+                  ) : (
+                    saldosPendientes.map((g) => (
+                      <Tag
+                        key={`${g.sentido}-${g.codigo}`}
+                        severity={g.sentido === "RECIBIDO" ? "warning" : "success"}
+                        style={{ fontWeight: "bold" }}
+                        value={`Empresa como ${rolEmpresa(g.sentido)} ${g.codigo}: ${g.simbolo} ${formatoMonto(g.total)}`}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+              <div style={{ flex: 0.5 }}>
+                <label style={etiqueta}>Mostrar</label>
+                <BooleanToggleButton value={soloPendientes} onChange={setSoloPendientes} labelTrue="PENDIENTES" labelFalse="TODOS" severityTrue="warning" severityFalse="secondary" disabled={loading} />
+              </div>
+              <div style={{ flex: 0.5 }}>
+                <Button
+                  label="Reporte"
+                  icon="pi pi-file-pdf"
+                  severity="info"
+                  onClick={handleGenerarReporte}
+                  disabled={saldosPendientes.length === 0}
+                  tooltip="Reporte de saldos pendientes (PDF / Excel) según los filtros aplicados"
+                  style={{ fontWeight: "bold" }}
+                />
+              </div>
+              <div style={{ flex: 0.5 }}>
+                <Button
+                  label="Nuevo (Saldo Inicial)"
+                  icon="pi pi-plus"
+                  className="p-button-success"
+                  raised
+                  disabled={!permisos.puedeCrear}
+                  tooltip="Registrar un préstamo anterior al sistema. Los préstamos nuevos se registran en Tesorería Pendientes."
+                  onClick={onNew}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="globalFilter" style={etiqueta}>Búsqueda Global</label>
+                <InputText
+                  id="globalFilter"
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  placeholder="Buscar por número, prestamista, deudor, observaciones..."
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 0.25 }}>
+                <Button
+                  icon="pi pi-refresh"
+                  severity="info"
+                  onClick={async () => {
+                    await cargarDatos();
+                    toast.current?.show({ severity: "success", summary: "Actualizado", detail: "Datos actualizados correctamente desde el servidor", life: 3000 });
+                  }}
+                  loading={loading}
+                  tooltip="Actualizar todos los datos desde el servidor"
+                />
+              </div>
+              <div style={{ flex: 0.25 }}>
+                <Button icon="pi pi-filter-slash" severity="secondary" onClick={limpiarFiltros} disabled={loading} tooltip="Limpiar Filtros" />
+              </div>
             </div>
-          )}
+
+            <div style={filaFlex}>
+              <div style={{ flex: 1 }}>
+                <label style={etiqueta}>Empresa</label>
+                <EmpresaSelector empresaId={empresaSeleccionada} onEmpresaChange={setEmpresaSeleccionada} permitirLimpiar disabled={loading} />
+              </div>
+              <div style={{ flex: 0.5 }}>
+                <label htmlFor="sentidoFiltro" style={etiqueta}>La empresa es</label>
+                <Dropdown id="sentidoFiltro" value={sentidoSeleccionado} options={ROLES_EMPRESA} onChange={(e) => setSentidoSeleccionado(e.value)} placeholder="Todos" showClear disabled={loading} style={{ width: "100%" }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="entidadesFiltro" style={etiqueta}>Accionista / Tercero</label>
+                <MultiSelect
+                  id="entidadesFiltro"
+                  value={entidadesIds}
+                  options={opciones.entidades}
+                  onChange={(e) => setEntidadesIds(e.value)}
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Todos"
+                  display="chip"
+                  filter
+                  showSelectAll
+                  selectAllLabel="Seleccionar Todos"
+                  maxSelectedLabels={3}
+                  emptyMessage="No hay accionistas ni terceros con préstamos"
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 0.5 }}>
+                <label style={etiqueta}>Tipo</label>
+                <Button
+                  type="button"
+                  label={tipoContraparte}
+                  icon={tipoContraparte === "TODOS" ? "pi pi-users" : tipoContraparte === "ACCIONISTAS" ? "pi pi-briefcase" : "pi pi-user"}
+                  severity={tipoContraparte === "TODOS" ? "secondary" : tipoContraparte === "ACCIONISTAS" ? "success" : "info"}
+                  onClick={() => setTipoContraparte(tipoContraparte === "TODOS" ? "ACCIONISTAS" : tipoContraparte === "ACCIONISTAS" ? "TERCEROS" : "TODOS")}
+                  disabled={loading}
+                  style={{ width: "100%", fontWeight: "bold" }}
+                  tooltip="Clic para cambiar: Todos, Accionistas, Terceros (el Prestamista o el Deudor que no es la empresa)"
+                  tooltipOptions={{ position: "top" }}
+                />
+              </div>
+              <div style={{ flex: 0.5 }}>
+                <label htmlFor="estadoFiltro" style={etiqueta}>Estado</label>
+                <Dropdown id="estadoFiltro" value={estadoSeleccionado} options={opciones.estados} onChange={(e) => { setEstadoSeleccionado(e.value); if (e.value) setSoloPendientes(false); }} placeholder="Todos" showClear disabled={loading} style={{ width: "100%" }} />
+              </div>
+              <div style={{ flex: 0.5 }}>
+                <label htmlFor="monedaFiltro" style={etiqueta}>Moneda</label>
+                <Dropdown id="monedaFiltro" value={monedaSeleccionada} options={opciones.monedas} onChange={(e) => setMonedaSeleccionada(e.value)} placeholder="Todas" showClear disabled={loading} style={{ width: "100%" }} />
+              </div>
+              <div style={{ flex: 1.5 }}>
+                <label htmlFor="rangoFechas" style={etiqueta}>Rango F. Desembolso</label>
+                <Calendar id="rangoFechas" value={rangoFechas} onChange={(e) => setRangoFechas(e.value)} selectionMode="range" placeholder="Seleccione rango" dateFormat="dd/mm/yy" showIcon showButtonBar disabled={loading} style={{ width: "100%" }} />
+              </div>
+              <div style={{ flex: 0.75 }}>
+                <label style={etiqueta}>Saldos Iniciales</label>
+                <BooleanToggleButton value={soloSaldosIniciales} onChange={setSoloSaldosIniciales} labelTrue="SOLO SALDOS INICIALES" labelFalse="TODOS" severityTrue="warning" severityFalse="secondary" disabled={loading} />
+              </div>
+            </div>
+          </div>
+        }
+      >
+        <Column field="id" header="ID" sortable style={{ width: 70 }} />
+        <Column field="numeroPrestamo" header="N° Préstamo" sortable style={{ width: 130 }} />
+        <Column field="empresa.razonSocial" header="Prestamista" body={(r) => partesDelPrestamo(r).prestamista} sortable style={{ width: 240 }} />
+        <Column field="entidadComercial.razonSocial" header="Deudor" body={(r) => partesDelPrestamo(r).deudor} sortable style={{ width: 240 }} />
+        <Column
+          field="sentido"
+          header="La empresa es"
+          body={(r) => <Tag value={rolEmpresa(r.sentido)} severity={r.sentido === "RECIBIDO" ? "warning" : "success"} style={{ fontWeight: "bold" }} />}
+          style={{ width: 130 }}
+          sortable
         />
+        <Column field="moneda.codigoSunat" header="Moneda" sortable style={{ width: 90 }} body={(r) => r.moneda?.codigoSunat || "N/A"} />
+        <Column field="montoDesembolsado" header="Monto Desembolsado" body={montoTemplate("montoDesembolsado")} style={{ width: 150, textAlign: "right" }} sortable />
+        <Column field="capitalPagado" header="Capital Devuelto" body={montoTemplate("capitalPagado")} style={{ width: 140, textAlign: "right" }} sortable />
+        <Column field="saldoCapital" header="Saldo Capital" body={montoTemplate("saldoCapital")} style={{ width: 150, textAlign: "right", fontWeight: "bold" }} sortable />
+        <Column field="fechaDesembolso" header="Fecha Desembolso" body={fechaTemplate("fechaDesembolso")} style={{ width: 130, textAlign: "center" }} sortable />
+        <Column field="fechaVencimiento" header="Vencimiento" body={fechaTemplate("fechaVencimiento")} style={{ width: 120, textAlign: "center" }} sortable />
+        <Column
+          field="refOperacionEspecializadaMovCaja"
+          header="Operación"
+          body={(r) => (r.refOperacionEspecializadaMovCaja ? `#${r.refOperacionEspecializadaMovCaja}` : "-")}
+          style={{ width: 100, textAlign: "center" }}
+          sortable
+        />
+        <Column field="estadoId" header="Estado" body={estadoTemplate} style={{ width: 110 }} sortable />
+        <Column
+          field="esSaldoInicial"
+          header="S.I."
+          body={(r) =>
+            r.esSaldoInicial ? (
+              <Tag value="SI" severity="warning" style={{ fontWeight: "bold" }} />
+            ) : (
+              <Tag value="NO" severity="info" style={{ fontWeight: "bold" }} />
+            )
+          }
+          style={{ width: 80, textAlign: "center" }}
+          sortable
+        />
+        <Column header="Acciones" body={actionBodyTemplate} style={{ width: 120 }} />
       </DataTable>
 
       <ReportFormatSelector
@@ -345,38 +515,22 @@ export default function PrestamoEntidad({ ruta }) {
       />
 
       <Dialog
-        header={isEdit ? `Préstamo ${selected?.numeroPrestamo || ""}` : selected ? `Préstamo ${selected.numeroPrestamo}` : "Nuevo préstamo (saldo inicial)"}
         visible={showDialog}
-        onHide={() => cerrar(false)}
-        style={{ width: "90vw", maxWidth: 1000 }}
+        onHide={onCancel}
+        header={isEdit ? "Editar Préstamo con Accionista o Tercero" : "Nuevo Préstamo con Accionista o Tercero (Saldo Inicial)"}
+        style={{ width: "1100px" }}
         modal
+        maximizable
       >
-        {showDialog && (
-          <>
-            <PrestamoEntidadForm
-              key={selected?.id || "nuevo"}
-              prestamo={selected}
-              isEdit={isEdit}
-              readOnly={Boolean(selected) && !isEdit}
-              onSave={() => cerrar(true)}
-              onCancel={() => cerrar(false)}
-              puedeCrear={permisos.puedeCrear}
-              puedeEliminar={permisos.puedeEliminar}
-            />
-            {selected?.pagos?.length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <h4>{selected.sentido === "RECIBIDO" ? "Pagos realizados" : "Cobros recibidos"}</h4>
-                <DataTable value={selected.pagos} size="small" stripedRows>
-                  <Column header="Fecha" body={(p) => fechaCorta(p.fechaPago)} />
-                  <Column header="Capital" body={(p) => `${p.moneda?.simbolo || ""} ${formatearNumero(p.montoAplicado, 2)}`} />
-                  <Column header="Medio de pago" body={(p) => p.medioPago?.nombre || "-"} />
-                  <Column field="numeroOperacion" header="N° operación" />
-                  <Column header="Operación Tesorería" body={(p) => (p.refOperacionEspecializadaMovCaja ? `#${p.refOperacionEspecializadaMovCaja}` : "-")} />
-                </DataTable>
-              </div>
-            )}
-          </>
-        )}
+        <PrestamoEntidadForm
+          isEdit={isEdit}
+          defaultValues={selected}
+          onSubmit={onSubmit}
+          onCancel={onCancel}
+          readOnly={isEdit ? !permisos.puedeEditar : !permisos.puedeCrear}
+          puedeCrear={permisos.puedeCrear}
+          puedeEliminar={permisos.puedeEliminar}
+        />
       </Dialog>
     </div>
   );

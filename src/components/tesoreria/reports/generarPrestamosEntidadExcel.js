@@ -1,6 +1,6 @@
 // src/components/tesoreria/reports/generarPrestamosEntidadExcel.js
 import ExcelJS from "exceljs";
-import { agruparPorSentidoYMoneda, resumenPorEmpresa, formatoFecha, situacionVencimiento, etiquetaSentido } from "./prestamosEntidadReporteUtils";
+import { agruparPorSentidoYMoneda, resumenPorEmpresa, formatoFecha, situacionVencimiento, etiquetaSentido, partesDelPrestamo } from "./prestamosEntidadReporteUtils";
 
 const BORDE = {
   top: { style: "thin", color: { argb: "FFCCCCCC" } },
@@ -52,8 +52,8 @@ export async function generarPrestamosEntidadExcel(data) {
   // ═════════ HOJA 1: DETALLE ═════════
   const hoja = workbook.addWorksheet("Saldos Pendientes");
   hoja.views = [{ showGridLines: false }];
-  const cabecera = ["N° Préstamo", "Empresa", "Tipo", "Contraparte", "Mon.", "F. Desembolso", "Vencimiento", "Plazo", "Desembolsado", "Pagado / Cobrado", "Saldo Pendiente"];
-  hoja.columns = [{ width: 14 }, { width: 34 }, { width: 12 }, { width: 34 }, { width: 8 }, { width: 14 }, { width: 14 }, { width: 18 }, { width: 16 }, { width: 16 }, { width: 18 }];
+  const cabecera = ["N° Préstamo", "Prestamista", "Deudor", "Mon.", "F. Desembolso", "Vencimiento", "Plazo", "Desembolsado", "Devuelto", "Saldo Pendiente"];
+  hoja.columns = [{ width: 14 }, { width: 40 }, { width: 40 }, { width: 8 }, { width: 14 }, { width: 14 }, { width: 18 }, { width: 16 }, { width: 16 }, { width: 18 }];
 
   let fila = 1;
   titulo(hoja, fila++, data.titulo || "PRÉSTAMOS CON ACCIONISTAS Y TERCEROS - SALDOS PENDIENTES", cabecera.length);
@@ -70,12 +70,12 @@ export async function generarPrestamosEntidadExcel(data) {
 
     grupo.items.forEach((p, i) => {
       const venc = situacionVencimiento(p);
+      const partes = partesDelPrestamo(p);
       const row = hoja.getRow(fila++);
       row.values = [
         p.numeroPrestamo,
-        p.empresa?.razonSocial || "-",
-        p.esAccionista ? "Accionista" : "Tercero",
-        p.entidadComercial?.razonSocial || "-",
+        partes.prestamista,
+        partes.deudor,
         grupo.codigo,
         formatoFecha(p.fechaDesembolso),
         formatoFecha(p.fechaVencimiento),
@@ -86,22 +86,22 @@ export async function generarPrestamosEntidadExcel(data) {
       ];
       row.eachCell({ includeEmpty: true }, (celda, col) => {
         celda.border = BORDE;
-        celda.alignment = { vertical: "middle", horizontal: col >= 9 ? "right" : col >= 5 && col <= 7 ? "center" : "left" };
-        if (col >= 9) celda.numFmt = FORMATO_MONTO;
-        if (col === 11) celda.font = { bold: true };
-        if (col === 8 && venc.vencido) celda.font = { bold: true, color: { argb: "FFB20000" } };
+        celda.alignment = { vertical: "middle", horizontal: col >= 8 ? "right" : col >= 4 && col <= 6 ? "center" : "left" };
+        if (col >= 8) celda.numFmt = FORMATO_MONTO;
+        if (col === 10) celda.font = { bold: true };
+        if (col === 7 && venc.vencido) celda.font = { bold: true, color: { argb: "FFB20000" } };
         if (i % 2 === 0) celda.fill = RELLENO("FFF5F5F5");
       });
     });
 
     const total = hoja.getRow(fila++);
-    total.values = ["", "", "", "", "", "", "", `TOTAL ${grupo.codigo} (${grupo.totales.cantidad})`, grupo.totales.desembolsado, grupo.totales.pagado, grupo.totales.saldo];
+    total.values = ["", "", "", "", "", "", `TOTAL ${grupo.codigo} (${grupo.totales.cantidad})`, grupo.totales.desembolsado, grupo.totales.devuelto, grupo.totales.saldo];
     total.eachCell({ includeEmpty: true }, (celda, col) => {
       celda.font = { bold: true };
       celda.border = BORDE;
       celda.fill = RELLENO("FFE8E8E8");
-      if (col >= 8) celda.alignment = { horizontal: "right" };
-      if (col >= 9) celda.numFmt = FORMATO_MONTO;
+      if (col >= 7) celda.alignment = { horizontal: "right" };
+      if (col >= 8) celda.numFmt = FORMATO_MONTO;
     });
     fila += 1;
   }
@@ -109,17 +109,17 @@ export async function generarPrestamosEntidadExcel(data) {
   // ═════════ HOJA 2: RESUMEN POR EMPRESA ═════════
   const resumen = workbook.addWorksheet("Resumen por Empresa");
   resumen.views = [{ showGridLines: false }];
-  resumen.columns = [{ width: 40 }, { width: 20 }, { width: 20 }, { width: 20 }];
+  resumen.columns = [{ width: 40 }, { width: 22 }, { width: 22 }, { width: 20 }];
   let filaR = 1;
-  titulo(resumen, filaR++, "SALDOS POR EMPRESA (POR COBRAR Y POR PAGAR A ACCIONISTAS Y TERCEROS)", 4);
+  titulo(resumen, filaR++, "SALDOS POR EMPRESA (COMO PRESTAMISTA Y COMO DEUDOR)", 4);
   filaR++;
 
   for (const bloque of resumenPorEmpresa(items)) {
     banda(resumen, filaR++, `MONEDA: ${bloque.codigo}`, 4);
-    encabezados(resumen, filaR++, ["Empresa", "Por cobrar (otorgó)", "Por pagar (recibió)", "Neto"]);
+    encabezados(resumen, filaR++, ["Empresa", "Como Prestamista", "Como Deudor", "Neto"]);
     bloque.filas.forEach((f, i) => {
       const row = resumen.getRow(filaR++);
-      row.values = [f.empresa, f.porCobrar, f.porPagar, f.neto];
+      row.values = [f.empresa, f.comoPrestamista, f.comoDeudor, f.neto];
       row.eachCell((celda, col) => {
         celda.border = BORDE;
         if (col > 1) {
@@ -131,7 +131,7 @@ export async function generarPrestamosEntidadExcel(data) {
       });
     });
     const total = resumen.getRow(filaR++);
-    total.values = [`TOTAL ${bloque.codigo}`, bloque.totales.porCobrar, bloque.totales.porPagar, bloque.totales.porCobrar - bloque.totales.porPagar];
+    total.values = [`TOTAL ${bloque.codigo}`, bloque.totales.comoPrestamista, bloque.totales.comoDeudor, bloque.totales.comoPrestamista - bloque.totales.comoDeudor];
     total.eachCell((celda, col) => {
       celda.font = { bold: true };
       celda.border = BORDE;

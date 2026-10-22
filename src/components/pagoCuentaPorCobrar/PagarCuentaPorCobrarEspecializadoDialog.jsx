@@ -535,7 +535,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
     const comision = Number(montoComision || 0);
     const detraccion = Number(montoDetraccionIngresado || 0);
 
-    const montoNetoCaja = montoBruto - itf - comision;
+    const montoAcreditado = montoBruto;
     const deudaCancelada = Number(montoAplicadoDeuda || 0);
     const saldoPendiente = Number(cuentaPorCobrar?.saldoPendiente || 0) - deudaCancelada;
 
@@ -544,7 +544,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       itf,
       comision,
       detraccion,
-      montoNetoCaja,
+      montoAcreditado,
       deudaCancelada,
       saldoPendiente: saldoPendiente > 0 ? saldoPendiente : 0
     };
@@ -1864,9 +1864,9 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
           </div>
 
           <div style={{ textAlign: 'center', borderRight: '1px solid #dee2e6', paddingRight: '1rem' }}>
-            <div style={{ fontSize: '0.85rem', color: '#6c757d', marginBottom: '0.25rem' }}>Neto en Caja</div>
+            <div style={{ fontSize: '0.85rem', color: '#6c757d', marginBottom: '0.25rem' }}>Monto Acreditado</div>
             <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#198754' }}>
-              {simbolo} {resumenOperacion.montoNetoCaja.toFixed(2)}
+              {simbolo} {resumenOperacion.montoAcreditado.toFixed(2)}
             </div>
           </div>
 

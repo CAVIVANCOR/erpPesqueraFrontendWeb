@@ -301,7 +301,7 @@ async function generarPDFVoucherConsolidado(datosPago, resultado, empresa, usuar
   const monto = Number(ingreso?.monto || 0);
   const itf = Number(resultado.movimientos?.itf?.monto || 0);
   const comision = Number(resultado.movimientos?.comision?.monto || 0);
-  const totalNeto = monto - itf - comision;
+  const totalAcreditado = monto;
 
   dibujarCampo("Banco:", cuenta?.banco?.nombre || "N/A", 10);
   dibujarCampo("Nº Cuenta:", cuenta?.numeroCuenta || "N/A", 10);
@@ -312,7 +312,7 @@ async function generarPDFVoucherConsolidado(datosPago, resultado, empresa, usuar
   dibujarCampo("Monto Cobrado:", `${simbolo} ${formatearNumero(monto)}`, 10);
   dibujarCampo("ITF:", `${simbolo} ${formatearNumero(itf)}`, 10);
   dibujarCampo("Comisión:", `${simbolo} ${formatearNumero(comision)}`, 10);
-  dibujarCampo("Total Neto Acreditado:", `${simbolo} ${formatearNumero(totalNeto)}`, 10);
+  dibujarCampo("Monto Acreditado:", `${simbolo} ${formatearNumero(totalAcreditado)}`, 10);
   y -= 10;
 
   // ═══════════════════════════════════════════════════════════
@@ -353,10 +353,10 @@ async function generarPDFVoucherConsolidado(datosPago, resultado, empresa, usuar
   page.drawRectangle({
     x: margin, y: y - 20, width: width - 2 * margin, height: 25, color: rgb(0.95, 0.95, 0.95),
   });
-  page.drawText("TOTAL NETO ACREDITADO EN LA CUENTA:", {
+  page.drawText("MONTO ACREDITADO EN LA CUENTA:", {
     x: margin + 10, y: y - 12, size: 10, font: fontBold, color: rgb(0, 0, 0),
   });
-  page.drawText(`${simbolo} ${formatearNumero(totalNeto)}`, {
+  page.drawText(`${simbolo} ${formatearNumero(totalAcreditado)}`, {
     x: width - margin - 150, y: y - 12, size: 10, font: fontBold, color: rgb(0.8, 0, 0),
   });
 

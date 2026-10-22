@@ -1,353 +1,511 @@
 // src/components/movimientoCaja/PrestamosPagoEspecializado/PrestamoEntidadDialog.jsx
 // Operaciones de Tesorería de préstamos con accionistas y terceros (solo capital, sin intereses):
-//   - Nuevo préstamo (desembolso): RECIBIDO = ingreso de caja, OTORGADO = egreso de caja.
-//   - Pago (préstamo recibido: egreso) o cobro (préstamo otorgado: ingreso) del capital.
-// El banco del asiento es la cuenta contable de la cuenta corriente elegida.
-import React, { useEffect, useMemo, useState } from "react";
+//   - Desembolso: ingreso de caja si la empresa es el Deudor, egreso si es el Prestamista.
+//   - Devolución de capital: egreso si la empresa es el Deudor, ingreso si es el Prestamista.
+// Mismo criterio de pantalla que OperacionPrestamoForm / TransferenciaInternaDialog. El banco del asiento es la
+// cuenta contable de la cuenta corriente elegida.
+import React, { useEffect, useRef, useState } from "react";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { InputNumber } from "primereact/inputnumber";
 import { InputText } from "primereact/inputtext";
-import { SelectButton } from "primereact/selectbutton";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { Message } from "primereact/message";
+import { Panel } from "primereact/panel";
+import { Tag } from "primereact/tag";
+import EmpresaSelector from "../../common/EmpresaSelector";
+import PartesPrestamoEntidad from "../../tesoreria/PartesPrestamoEntidad";
 import CuentaCorrienteSelector from "../../common/CuentaCorrienteSelector";
-import EntidadComercialSelector from "../../common/EntidadComercialSelector";
+import TipoMovimientoSelector from "../../common/TipoMovimientoSelector";
+import BooleanToggleButton from "../../common/BooleanToggleButton";
+import ConfirmarSinFondosDialog from "../../common/ConfirmarSinFondosDialog";
+import ConfirmacionPrestamoEntidadDialog from "./ConfirmacionPrestamoEntidadDialog";
+import { obtenerAvisoSinFondos } from "../../../utils/avisoSinFondos";
+import { consultarTipoCambioSunat } from "../../../api/consultaExterna";
+import { actualizarUrlVoucherIndividual } from "../../../api/tesoreria/transferencias";
+import { generarYSubirVoucherIndividual } from "../utils/VoucherIndividualMovimientoPDF";
 import { getPrestamosEntidadVigentes, desembolsarPrestamoEntidad, pagarPrestamoEntidad } from "../../../api/tesoreria/prestamosEntidad";
+import { useAuthStore } from "../../../shared/stores/useAuthStore";
 import { mensajeDeError } from "../../../utils/mensajeError";
 import { formatearNumero } from "../../../utils/utils";
 
-const etiqueta = { fontWeight: "bold", display: "block", marginBottom: 5 };
-const aISO = (f) => (f ? `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, "0")}-${String(f.getDate()).padStart(2, "0")}` : null);
-const fechaCorta = (f) => (f ? new Date(f).toLocaleDateString("es-PE", { timeZone: "UTC" }) : "-");
-const MODOS = [
-  { label: "Nuevo préstamo", value: "DESEMBOLSO" },
-  { label: "Pagar / cobrar un préstamo", value: "PAGO" },
-];
-const SENTIDOS = [
-  { label: "Recibido (la empresa es la deudora)", value: "RECIBIDO" },
-  { label: "Otorgado (la empresa es la acreedora)", value: "OTORGADO" },
-];
-const CONTRAPARTES = [
-  { label: "Accionista", value: true },
-  { label: "Tercero", value: false },
+// Solo hay dos términos: PRESTAMISTA (presta el dinero) y DEUDOR (recibe el préstamo y debe devolverlo).
+// Valores internos: OTORGADO = la empresa es el Prestamista; RECIBIDO = la empresa es el Deudor.
+const OPERACIONES = [
+  { label: "Desembolso: nuevo préstamo (el Prestamista entrega el dinero al Deudor)", value: "DESEMBOLSO" },
+  { label: "Devolución: el Deudor devuelve capital al Prestamista (total o parcial)", value: "PAGO" },
 ];
 
+const redondear2 = (valor) => Math.round(Number(valor || 0) * 100) / 100;
+const fila = { alignItems: "end", display: "flex", gap: 10, marginBottom: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" };
+
 export default function PrestamoEntidadDialog({ visible, onHide, onSuccess, toast, mediosPago = [], tiposMovimiento = [], empresas = [] }) {
-  const [modo, setModo] = useState("DESEMBOLSO");
+  const usuario = useAuthStore((state) => state.usuario);
+
+  const [operacion, setOperacion] = useState("DESEMBOLSO");
   const [empresaId, setEmpresaId] = useState(null);
   const [sentido, setSentido] = useState("RECIBIDO");
   const [esAccionista, setEsAccionista] = useState(true);
   const [entidadId, setEntidadId] = useState(null);
   const [vigentes, setVigentes] = useState([]);
-  const [prestamo, setPrestamo] = useState(null);
-  const [cargando, setCargando] = useState(false);
-  const [guardando, setGuardando] = useState(false);
+  const [prestamoId, setPrestamoId] = useState(null);
+  const [cargandoPrestamos, setCargandoPrestamos] = useState(false);
+  const [procesando, setProcesando] = useState(false);
 
   const [fecha, setFecha] = useState(new Date());
   const [fechaVencimiento, setFechaVencimiento] = useState(null);
-  const [cuenta, setCuenta] = useState(null);
+  const [esGerencial, setEsGerencial] = useState(false);
+  const [numeroOperacion, setNumeroOperacion] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [cuentaId, setCuentaId] = useState(null);
+  const [monedaCuenta, setMonedaCuenta] = useState(null);
   const [medioPagoId, setMedioPagoId] = useState(null);
   const [tipoMovimientoId, setTipoMovimientoId] = useState(null);
   const [monto, setMonto] = useState(0);
-  const [tipoCambio, setTipoCambio] = useState(null);
   const [itf, setItf] = useState(0);
   const [comision, setComision] = useState(0);
-  const [numeroOperacion, setNumeroOperacion] = useState("");
-  const [descripcion, setDescripcion] = useState("");
-  const [observaciones, setObservaciones] = useState("");
+  const [tipoCambio, setTipoCambio] = useState(null);
   const [resultado, setResultado] = useState(null);
+  const [showConfirmacion, setShowConfirmacion] = useState(false);
+  const [avisoSinFondos, setAvisoSinFondos] = useState(null);
 
-  const esPago = modo === "PAGO";
+  const glosaEditada = useRef(false);
+  const sinFondosConfirmadoRef = useRef(false);
+  const ultimaConsultaTC = useRef(null);
+
+  const esPago = operacion === "PAGO";
+  const prestamo = vigentes.find((p) => Number(p.id) === Number(prestamoId)) || null;
   const sentidoOperacion = esPago ? prestamo?.sentido : sentido;
   const contraparteEsAccionista = esPago ? prestamo?.esAccionista : esAccionista;
   // Ingreso: recibir un préstamo nuevo o cobrar uno otorgado. Egreso: otorgar un préstamo nuevo o pagar uno recibido.
   const esIngreso = esPago ? sentidoOperacion === "OTORGADO" : sentidoOperacion === "RECIBIDO";
 
+  const monedaOperacion = esPago ? (prestamo ? { id: Number(prestamo.monedaId), simbolo: prestamo.simbolo } : null) : monedaCuenta;
+  const simbolo = monedaOperacion?.simbolo || "";
+  const esMonedaNacional = !monedaOperacion || Number(monedaOperacion.id) === 1;
+
+  const totalAcreditado = redondear2(Number(monto || 0)); // ITF y comisión nunca se restan: son movimientos aparte
+  const totalDebitado = redondear2(Number(monto || 0) + Number(itf || 0) + Number(comision || 0));
+
   const reiniciar = () => {
     setFecha(new Date());
     setFechaVencimiento(null);
-    setCuenta(null);
+    setEsGerencial(false);
+    setNumeroOperacion("");
+    setDescripcion("");
+    glosaEditada.current = false;
+    setCuentaId(null);
+    setMonedaCuenta(null);
     setMedioPagoId(null);
     setTipoMovimientoId(null);
     setMonto(0);
-    setTipoCambio(null);
     setItf(0);
     setComision(0);
-    setNumeroOperacion("");
-    setDescripcion("");
-    setObservaciones("");
+    setTipoCambio(null);
+    setEntidadId(null);
+    setPrestamoId(null);
+    ultimaConsultaTC.current = null;
   };
 
   useEffect(() => {
     if (!visible) return;
     setResultado(null);
-    setPrestamo(null);
+    setShowConfirmacion(false);
     reiniciar();
-  }, [visible, modo]);
+  }, [visible, operacion]);
 
+  // Préstamos vigentes de la empresa (devolución)
   useEffect(() => {
     if (!visible || !esPago || !empresaId) {
       setVigentes([]);
       return;
     }
-    setCargando(true);
+    setCargandoPrestamos(true);
     getPrestamosEntidadVigentes({ empresaId })
       .then(setVigentes)
       .catch((err) => toast?.current?.show({ severity: "error", summary: "No se pudieron cargar los préstamos", detail: mensajeDeError(err, "Error al consultar los préstamos vigentes"), life: 8000 }))
-      .finally(() => setCargando(false));
-    setPrestamo(null);
+      .finally(() => setCargandoPrestamos(false));
+    setPrestamoId(null);
   }, [visible, esPago, empresaId]);
 
-  const seleccionarPrestamo = (p) => {
-    setPrestamo(p);
+  const seleccionarPrestamo = (id) => {
+    setPrestamoId(id);
+    const p = vigentes.find((x) => Number(x.id) === Number(id));
     setMonto(p ? Number(p.saldoCapital) : 0);
-    setCuenta(null);
+    setCuentaId(null);
+    setMonedaCuenta(null);
     setTipoMovimientoId(null);
   };
 
-  const monedaId = esPago ? Number(prestamo?.monedaId || 0) : Number(cuenta?.moneda?.id || 0);
-  const simbolo = esPago ? prestamo?.simbolo || "" : cuenta?.moneda?.simbolo || "";
-  const extranjera = monedaId > 1;
-  const tiposDisponibles = useMemo(() => {
-    const patron = contraparteEsAccionista ? /ACCIONISTA/i : /TERCERO/i;
-    return tiposMovimiento
-      .filter((t) => t.activo !== false && Boolean(t.esIngreso) === esIngreso)
-      .sort((a, b) => Number(patron.test(b.nombre)) - Number(patron.test(a.nombre)) || a.nombre.localeCompare(b.nombre))
-      .map((t) => ({ label: t.nombre, value: Number(t.id) }));
-  }, [tiposMovimiento, esIngreso, contraparteEsAccionista]);
+  // Glosa propuesta (editable): no se pisa si el usuario ya la escribió
+  useEffect(() => {
+    if (glosaEditada.current) return;
+    const tipo = contraparteEsAccionista ? "ACCIONISTA" : "TERCERO";
+    if (esPago) {
+      if (!prestamo) return setDescripcion("");
+      setDescripcion(`${sentidoOperacion === "RECIBIDO" ? "DEVOLUCIÓN DE PRÉSTAMO AL PRESTAMISTA" : "DEVOLUCIÓN DE PRÉSTAMO DEL DEUDOR"} ${tipo} ${prestamo.entidad} - PRÉSTAMO ${prestamo.numeroPrestamo}`);
+    } else {
+      setDescripcion(`${sentido === "RECIBIDO" ? "POR EL PRÉSTAMO RECIBIDO DEL PRESTAMISTA" : "POR EL PRÉSTAMO OTORGADO AL DEUDOR"} ${tipo}`);
+    }
+  }, [operacion, sentido, esAccionista, prestamoId, vigentes]);
+
+  // Tipo de cambio de venta de SUNAT (editable) cuando la operación no es en soles
+  useEffect(() => {
+    const consultar = async () => {
+      if (!fecha || esMonedaNacional) return;
+      const fechaISO = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}-${String(fecha.getDate()).padStart(2, "0")}`;
+      if (ultimaConsultaTC.current === fechaISO) return;
+      try {
+        const datos = await consultarTipoCambioSunat({ date: fechaISO });
+        if (datos?.sell_price) {
+          const tc = parseFloat(datos.sell_price);
+          setTipoCambio(tc);
+          ultimaConsultaTC.current = fechaISO;
+          toast?.current?.show({ severity: "success", summary: "✅ Tipo de Cambio Actualizado", detail: `TC SUNAT ${fechaISO}: ${tc.toFixed(4)} (Venta)`, life: 3000 });
+        }
+      } catch (error) {
+        toast?.current?.show({ severity: "error", summary: "Error", detail: "No se pudo obtener el tipo de cambio de SUNAT", life: 4000 });
+      }
+    };
+    consultar();
+  }, [fecha, esMonedaNacional, monedaOperacion?.id]);
 
   const validar = () => {
-    if (!esPago) {
-      if (!empresaId) return "Seleccione la empresa del préstamo.";
-      if (!entidadId) return `Seleccione el ${esAccionista ? "accionista" : "tercero"} del préstamo.`;
-    } else if (!prestamo) return "Seleccione el préstamo al que se aplica el pago o cobro.";
-    if (!fecha) return "Indique la fecha de la operación.";
-    if (!cuenta) return `Seleccione la cuenta bancaria ${esIngreso ? "a donde entra" : "de donde sale"} el dinero.`;
-    if (Number(cuenta.empresaId) !== Number(empresaId)) return "La cuenta seleccionada no es de la empresa del préstamo.";
-    if (esPago && Number(cuenta.moneda?.id) !== monedaId) return `La cuenta está en ${cuenta.moneda?.simbolo} y el préstamo en ${simbolo}: elija una cuenta en la moneda del préstamo.`;
-    if (!medioPagoId) return "Seleccione el medio de pago.";
-    if (!tipoMovimientoId) return "Seleccione el tipo de movimiento.";
-    if (!(Number(monto) > 0)) return "El monto debe ser mayor a cero.";
-    if (esPago && Number(monto) > Number(prestamo.saldoCapital) + 0.01) return `El monto (${formatearNumero(monto, 2)}) excede el saldo pendiente del préstamo (${formatearNumero(prestamo.saldoCapital, 2)}).`;
-    if (extranjera && !(Number(tipoCambio) > 0)) return "Ingrese el tipo de cambio de la fecha de la operación (el préstamo está en moneda extranjera).";
-    if (!esPago && fechaVencimiento && fechaVencimiento < fecha) return "La fecha de vencimiento no puede ser anterior a la fecha del desembolso.";
-    return null;
+    const error = (detail) => {
+      toast?.current?.show({ severity: "error", summary: "Error", detail, life: 4000 });
+      return false;
+    };
+    if (!empresaId) return error("Seleccione la empresa del préstamo.");
+    if (esPago) {
+      if (!prestamo) return error("Seleccione el préstamo al que se aplica la devolución.");
+    } else {
+      const otraParte = sentido === "RECIBIDO" ? "Prestamista" : "Deudor";
+      if (!entidadId) return error(`Seleccione el ${otraParte} (${esAccionista ? "accionista" : "tercero"}) del préstamo.`);
+    }
+    if (!fecha) return error("Debe ingresar la fecha de la operación");
+    if (!cuentaId) return error(`Seleccione la cuenta bancaria ${esIngreso ? "de destino" : "de origen"}.`);
+    if (esPago && Number(monedaCuenta?.id) !== Number(prestamo.monedaId)) {
+      return error(`La cuenta está en ${monedaCuenta?.simbolo} y el préstamo en ${simbolo}: elija una cuenta en la moneda del préstamo.`);
+    }
+    if (!medioPagoId) return error("Seleccione el medio de pago.");
+    if (!tipoMovimientoId) return error("Seleccione el tipo de movimiento.");
+    if (!(Number(monto) > 0)) return error("El monto debe ser mayor a cero.");
+    if (esPago && Number(monto) > Number(prestamo.saldoCapital) + 0.01) {
+      return error(`El monto (${simbolo} ${formatearNumero(monto)}) excede el saldo pendiente del préstamo (${simbolo} ${formatearNumero(prestamo.saldoCapital)}).`);
+    }
+    if (!esMonedaNacional && !(Number(tipoCambio) > 0)) return error("Debe ingresar un tipo de cambio válido");
+    if (!esPago && fechaVencimiento && fechaVencimiento < fecha) return error("La fecha de vencimiento no puede ser anterior a la fecha del desembolso.");
+    if (!descripcion || descripcion.trim() === "") return error("Debe ingresar la glosa de la operación");
+    return true;
   };
 
-  const confirmar = async () => {
-    const error = validar();
-    if (error) {
-      toast?.current?.show({ severity: "error", summary: "Revise los datos de la operación", detail: error, life: 8000 });
-      return;
+  // Vouchers individuales de cada movimiento (principal, ITF y comisión), mismo mecanismo que OperacionPrestamoForm.
+  // Un fallo aquí no interrumpe el flujo: la operación ya está registrada.
+  const generarVouchers = async (data) => {
+    for (const clave of ["principal", "itf", "comision"]) {
+      const movimiento = data.movimientos?.[clave];
+      if (!movimiento) continue;
+      try {
+        const empresaMovimiento = empresas.find((e) => Number(e.id) === Number(movimiento.empresaId));
+        const voucher = await generarYSubirVoucherIndividual(movimiento, null, empresaMovimiento, null, usuario);
+        if (voucher.success && voucher.urlPdf && voucher.urlPdf.trim() !== "") {
+          await actualizarUrlVoucherIndividual(movimiento.id, voucher.urlPdf);
+          data.movimientos[clave].urlOperacionIndividualOperacionCaja = voucher.urlPdf;
+        }
+      } catch (error) {
+        console.error(`❌ Error voucher ${clave}:`, error);
+      }
     }
-    setGuardando(true);
+  };
+
+  const handleSubmit = async (e) => {
+    e?.preventDefault?.();
+    if (!validar()) return;
+
+    // Egreso sin fondos: no se bloquea, pero se pide confirmación antes de procesar
+    if (!esIngreso && !sinFondosConfirmadoRef.current) {
+      const aviso = await obtenerAvisoSinFondos({ cuentaCorrienteId: cuentaId, totalRequerido: totalDebitado, simbolo });
+      if (aviso) {
+        setAvisoSinFondos(aviso);
+        return;
+      }
+    }
+    sinFondosConfirmadoRef.current = false;
+
+    setProcesando(true);
     try {
-      const comun = {
-        cuentaCorrienteId: cuenta.cuentaCorrienteId,
-        medioPagoId,
-        tipoMovimientoId,
+      const comunes = {
+        cuentaCorrienteId: cuentaId,
+        medioPagoId: Number(medioPagoId),
+        tipoMovimientoId: Number(tipoMovimientoId),
         monto: Number(monto),
-        tipoCambio: extranjera ? Number(tipoCambio) : undefined,
+        tipoCambio: esMonedaNacional ? undefined : Number(tipoCambio),
         itf: Number(itf || 0),
         comision: Number(comision || 0),
         numeroOperacion: numeroOperacion || undefined,
-        descripcion: descripcion || undefined,
-        observaciones: observaciones || undefined,
+        descripcion: descripcion.trim(),
       };
-      const r = esPago
-        ? await pagarPrestamoEntidad({ ...comun, prestamoEntidadId: prestamo.id, fechaPago: aISO(fecha) })
+      // Las fechas viajan como ISO completo (medianoche local): una fecha sin hora se interpretaría en UTC y retrocedería un día
+      const respuesta = esPago
+        ? await pagarPrestamoEntidad({ ...comunes, prestamoEntidadId: prestamo.id, fechaPago: fecha.toISOString() })
         : await desembolsarPrestamoEntidad({
-            ...comun,
+            ...comunes,
             empresaId,
             entidadComercialId: entidadId,
             sentido,
             esAccionista,
-            fechaDesembolso: aISO(fecha),
-            fechaVencimiento: fechaVencimiento ? aISO(fechaVencimiento) : undefined,
+            esGerencial,
+            fechaDesembolso: fecha.toISOString(),
+            fechaVencimiento: fechaVencimiento ? fechaVencimiento.toISOString() : undefined,
           });
-      setResultado(r.data);
-      toast?.current?.show({ severity: "success", summary: "Operación registrada", detail: r.message, life: 6000 });
-      onSuccess?.(r.data);
+      if (respuesta?.data) {
+        await generarVouchers(respuesta.data);
+        setResultado(respuesta.data);
+        setShowConfirmacion(true);
+        toast?.current?.show({ severity: "success", summary: "Operación registrada", detail: respuesta.message, life: 4000 });
+        onSuccess?.(respuesta.data);
+      }
     } catch (err) {
       toast?.current?.show({ severity: "error", summary: "No se pudo registrar la operación", detail: mensajeDeError(err, "Error al registrar la operación del préstamo"), life: 10000 });
     }
-    setGuardando(false);
+    setProcesando(false);
   };
 
-  if (resultado) {
-    const resumen = resultado.resumen;
-    return (
-      <Dialog header={`Préstamo ${resultado.numeroPrestamo} - Operación #${resultado.correlativo}`} visible={visible} onHide={onHide} style={{ width: "80vw", maxWidth: 900 }} modal>
-        <Message
-          severity="success"
-          className="mb-3"
-          style={{ width: "100%", justifyContent: "flex-start" }}
-          text={`${resultado.message}. ${resumen.prestamoCancelado ? "El préstamo quedó cancelado." : `Saldo pendiente del préstamo: ${formatearNumero(resumen.saldoCapital, 2)}.`}`}
-        />
-        <h4>Saldos de la cuenta</h4>
-        <DataTable value={resultado.saldosCuentaCorriente} size="small" stripedRows className="mb-3">
-          <Column field="tipo" header="Movimiento" />
-          <Column header="Saldo anterior" body={(s) => formatearNumero(s.saldoAnterior, 2)} />
-          <Column header="Ingresos" body={(s) => formatearNumero(s.ingresos, 2)} />
-          <Column header="Egresos" body={(s) => formatearNumero(s.egresos, 2)} />
-          <Column header="Saldo actual" body={(s) => formatearNumero(s.saldoActual, 2)} />
-        </DataTable>
-        <h4>Asientos contables generados</h4>
-        <ul>
-          {resultado.asientosContables.map((a) => (
-            <li key={String(a.id)}>{a.numeroAsiento}</li>
-          ))}
-        </ul>
-        <div style={{ textAlign: "right", marginTop: 12 }}>
-          <Button label="Cerrar" icon="pi pi-check" onClick={onHide} />
-        </div>
-      </Dialog>
-    );
-  }
-
-  const listoParaFormulario = esPago ? Boolean(prestamo) : true;
-  const accion = esPago ? (sentidoOperacion === "RECIBIDO" ? "Registrar pago" : "Registrar cobranza") : "Registrar desembolso";
+  const etiquetaBoton = esPago ? "Registrar Devolución" : "Registrar Desembolso";
+  const tiposDisponibles = tiposMovimiento;
 
   return (
-    <Dialog
-      header="Préstamos con accionistas y terceros"
-      visible={visible}
-      onHide={onHide}
-      style={{ width: "92vw", maxWidth: 1100 }}
-      modal
-      footer={
-        <div>
-          <Button label="Cancelar" icon="pi pi-times" className="p-button-text" onClick={onHide} disabled={guardando} />
-          <Button label={accion} icon="pi pi-check" onClick={confirmar} loading={guardando} disabled={!listoParaFormulario} />
-        </div>
-      }
-    >
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-        <div style={{ flex: 2 }}>
-          <label style={etiqueta}>Operación</label>
-          <SelectButton value={modo} options={MODOS} onChange={(e) => e.value && setModo(e.value)} />
-        </div>
-        <div style={{ flex: 2 }}>
-          <label style={etiqueta}>Empresa *</label>
-          <Dropdown value={empresaId} options={empresas.map((e) => ({ label: e.razonSocial, value: Number(e.id) }))} onChange={(e) => { setEmpresaId(e.value); setCuenta(null); }} placeholder="Seleccione la empresa" filter style={{ width: "100%" }} />
-        </div>
-      </div>
-
-      {!esPago && (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-          <div style={{ flex: 2 }}>
-            <label style={etiqueta}>Sentido *</label>
-            <Dropdown value={sentido} options={SENTIDOS} onChange={(e) => { setSentido(e.value); setTipoMovimientoId(null); }} style={{ width: "100%" }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={etiqueta}>La contraparte es *</label>
-            <SelectButton value={esAccionista} options={CONTRAPARTES} onChange={(e) => e.value !== null && (setEsAccionista(e.value), setTipoMovimientoId(null))} />
-          </div>
-          <div style={{ flex: 3 }}>
-            <EntidadComercialSelector value={entidadId} onChange={setEntidadId} label={esAccionista ? "Accionista *" : "Tercero *"} placeholder="Seleccione la persona o empresa" />
-          </div>
-        </div>
-      )}
-
-      {esPago && (
-        <DataTable
-          value={vigentes}
-          selection={prestamo}
-          onSelectionChange={(e) => seleccionarPrestamo(e.value)}
-          selectionMode="single"
-          dataKey="id"
-          loading={cargando}
-          size="small"
-          stripedRows
-          scrollable
-          scrollHeight="200px"
-          emptyMessage={empresaId ? "No hay préstamos vigentes con saldo para esta empresa." : "Seleccione la empresa."}
-          className="mb-3"
-        >
-          <Column field="numeroPrestamo" header="Préstamo" />
-          <Column header="Sentido" body={(p) => (p.sentido === "RECIBIDO" ? "Recibido" : "Otorgado")} />
-          <Column header="Contraparte" body={(p) => `${p.esAccionista ? "Accionista" : "Tercero"}: ${p.entidad}`} />
-          <Column header="Desembolso" body={(p) => fechaCorta(p.fechaDesembolso)} />
-          <Column header="Vence" body={(p) => fechaCorta(p.fechaVencimiento)} />
-          <Column header="Saldo" body={(p) => `${p.simbolo} ${formatearNumero(p.saldoCapital, 2)}`} />
-        </DataTable>
-      )}
-
-      {listoParaFormulario && (
-        <>
-          <Message
-            severity="info"
-            className="mb-3"
-            style={{ width: "100%", justifyContent: "flex-start" }}
-            text={`${esIngreso ? "INGRESO" : "EGRESO"} de caja: ${esPago ? (sentidoOperacion === "RECIBIDO" ? "pago del préstamo recibido" : "cobranza del préstamo otorgado") : sentidoOperacion === "RECIBIDO" ? "la empresa recibe el préstamo" : "la empresa otorga el préstamo"}. Solo capital, sin intereses.`}
-          />
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-            <div style={{ flex: 1 }}>
-              <label style={etiqueta}>Fecha de la operación *</label>
-              <Calendar value={fecha} onChange={(e) => setFecha(e.value)} dateFormat="dd/mm/yy" showIcon style={{ width: "100%" }} />
-            </div>
-            <div style={{ flex: 3 }}>
-              <label style={etiqueta}>{esIngreso ? "Cuenta de destino (a donde entra el dinero) *" : "Cuenta de origen (de donde sale el dinero) *"}</label>
-              <CuentaCorrienteSelector value={cuenta?.cuentaCorrienteId || null} onChange={setCuenta} label="" placeholder="Seleccione la cuenta bancaria" mostrarSaldo={true} />
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-            <div style={{ flex: 1 }}>
-              <label style={etiqueta}>Medio de pago *</label>
-              <Dropdown value={medioPagoId} options={mediosPago.map((m) => ({ label: m.nombre, value: Number(m.id) }))} onChange={(e) => setMedioPagoId(e.value)} placeholder="Seleccione" filter style={{ width: "100%" }} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={etiqueta}>Tipo de movimiento *</label>
-              <Dropdown value={tipoMovimientoId} options={tiposDisponibles} onChange={(e) => setTipoMovimientoId(e.value)} placeholder="Seleccione" filter style={{ width: "100%" }} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={etiqueta}>N° de operación bancaria</label>
-              <InputText value={numeroOperacion} onChange={(e) => setNumeroOperacion(e.target.value)} style={{ width: "100%" }} />
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-            <div style={{ flex: 1 }}>
-              <label style={etiqueta}>Monto ({simbolo || "moneda de la cuenta"}) *</label>
-              <InputNumber value={monto} onValueChange={(e) => setMonto(e.value)} min={0} minFractionDigits={2} maxFractionDigits={2} style={{ width: "100%" }} />
-              {esPago && <Button label="Saldo total" className="p-button-text p-button-sm" onClick={() => setMonto(Number(prestamo.saldoCapital))} />}
-            </div>
-            {extranjera && (
+    <>
+      <Dialog
+        header="🤝 Préstamos con Accionistas y Terceros"
+        visible={visible && !showConfirmacion}
+        style={{ width: "1300px" }}
+        onHide={onHide}
+        modal
+        maximizable
+      >
+        <form onSubmit={handleSubmit}>
+          <Panel header="🤝 Datos del Préstamo" className="mb-3">
+            <div style={fila}>
               <div style={{ flex: 1 }}>
-                <label style={etiqueta}>Tipo de cambio *</label>
-                <InputNumber value={tipoCambio} onValueChange={(e) => setTipoCambio(e.value)} minFractionDigits={3} maxFractionDigits={4} style={{ width: "100%" }} />
+                <label htmlFor="operacion" className="font-bold">Operación *</label>
+                <Dropdown id="operacion" value={operacion} options={OPERACIONES} onChange={(e) => setOperacion(e.value)} disabled={procesando} style={{ width: "100%" }} />
               </div>
-            )}
+            </div>
+
             {!esPago && (
-              <div style={{ flex: 1 }}>
-                <label style={etiqueta}>Fecha de vencimiento (opcional)</label>
-                <Calendar value={fechaVencimiento} onChange={(e) => setFechaVencimiento(e.value)} dateFormat="dd/mm/yy" showIcon style={{ width: "100%" }} />
-              </div>
+              <>
+                <PartesPrestamoEntidad
+                  esPrestamista={sentido === "OTORGADO"}
+                  onRolChange={(v) => { setSentido(v ? "OTORGADO" : "RECIBIDO"); setTipoMovimientoId(null); }}
+                  empresaId={empresaId}
+                  onEmpresaChange={(id) => { setEmpresaId(id); setCuentaId(null); setMonedaCuenta(null); }}
+                  esAccionista={esAccionista}
+                  onTipoChange={(v) => { setEsAccionista(v); setTipoMovimientoId(null); }}
+                  entidadId={entidadId}
+                  onEntidadChange={setEntidadId}
+                  disabled={procesando}
+                />
+                <small style={{ color: "#6c757d" }}>
+                  Se creará un nuevo préstamo. Su número (PE-000001...) se genera automáticamente al confirmar. Solo capital: sin intereses, mora ni retención.
+                </small>
+              </>
             )}
-            <div style={{ flex: 1 }}>
-              <label style={etiqueta}>ITF ({simbolo || "moneda de la cuenta"})</label>
-              <InputNumber value={itf} onValueChange={(e) => setItf(e.value)} min={0} minFractionDigits={2} maxFractionDigits={2} style={{ width: "100%" }} />
+
+            {esPago && (
+              <>
+                <div style={{ marginBottom: 10 }}>
+                  <label className="font-bold block mb-1">Empresa *</label>
+                  <EmpresaSelector empresaId={empresaId} onEmpresaChange={(id) => { setEmpresaId(id); setCuentaId(null); setMonedaCuenta(null); }} disabled={procesando} />
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <label htmlFor="prestamoId" className="font-bold">Préstamo que se devuelve *</label>
+                  <Dropdown
+                    id="prestamoId"
+                    value={prestamoId}
+                    options={vigentes.map((p) => ({
+                      label: `N° ${p.numeroPrestamo} · ${p.sentido === "OTORGADO" ? "Deudor" : "Prestamista"} ${p.esAccionista ? "accionista" : "tercero"} ${p.entidad} · saldo ${p.simbolo} ${formatearNumero(p.saldoCapital)}`,
+                      value: Number(p.id),
+                    }))}
+                    onChange={(e) => seleccionarPrestamo(e.value)}
+                    placeholder={cargandoPrestamos ? "Cargando préstamos..." : empresaId ? "Seleccione el préstamo" : "Seleccione primero la empresa"}
+                    emptyMessage="No hay préstamos vigentes con saldo para esta empresa"
+                    disabled={procesando || cargandoPrestamos || !empresaId}
+                    filter
+                    style={{ width: "100%" }}
+                  />
+                  <small style={{ color: "#6c757d" }}>
+                    Si la empresa es el Deudor, devuelve el capital (egreso). Si es el Prestamista, recibe la devolución (ingreso). Se admiten devoluciones parciales.
+                  </small>
+                </div>
+                {prestamo && (
+                  <PartesPrestamoEntidad
+                    nombres={{
+                      prestamista: prestamo.sentido === "OTORGADO" ? prestamo.empresa : prestamo.entidad,
+                      deudor: prestamo.sentido === "OTORGADO" ? prestamo.entidad : prestamo.empresa,
+                      tipoOtraParte: prestamo.esAccionista ? "ACCIONISTA" : "TERCERO",
+                      esPrestamistaLaEmpresa: prestamo.sentido === "OTORGADO",
+                    }}
+                  />
+                )}
+              </>
+            )}
+          </Panel>
+
+          <Panel header={esPago ? "💳 Datos de la Devolución" : "💳 Datos del Desembolso"} className="mb-3">
+            <div style={fila}>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fecha" className="font-bold">Fecha de la Operación *</label>
+                <Calendar id="fecha" value={fecha} onChange={(e) => setFecha(e.value)} dateFormat="dd/mm/yy" showIcon disabled={procesando} style={{ width: "100%" }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="numeroOperacion" className="font-bold">Nº Operación</label>
+                <InputText id="numeroOperacion" value={numeroOperacion} onChange={(e) => setNumeroOperacion(e.target.value)} placeholder="Número de operación bancaria" disabled={procesando} style={{ width: "100%" }} />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="descripcion" className="font-bold">Glosa *</label>
+                <InputText
+                  id="descripcion"
+                  value={descripcion}
+                  onChange={(e) => {
+                    glosaEditada.current = true;
+                    setDescripcion(e.target.value);
+                  }}
+                  placeholder="Ingrese glosa de la operación"
+                  disabled={procesando}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              {!esPago && (
+                <div style={{ flex: 1 }}>
+                  <label className="font-bold block mb-1">Tipo de Libro</label>
+                  <BooleanToggleButton
+                    labelTrue="GERENCIAL"
+                    labelFalse="FISCAL"
+                    severityTrue="help"
+                    severityFalse="success"
+                    icon={esGerencial ? "pi-eye-slash" : "pi-eye"}
+                    value={esGerencial}
+                    onChange={setEsGerencial}
+                    disabled={procesando}
+                  />
+                </div>
+              )}
+              {!esPago && (
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="fechaVencimiento" className="font-bold">Fecha de Vencimiento</label>
+                  <Calendar id="fechaVencimiento" value={fechaVencimiento} onChange={(e) => setFechaVencimiento(e.value)} dateFormat="dd/mm/yy" showIcon disabled={procesando} style={{ width: "100%" }} />
+                </div>
+              )}
             </div>
-            <div style={{ flex: 1 }}>
-              <label style={etiqueta}>Comisión ({simbolo || "moneda de la cuenta"})</label>
-              <InputNumber value={comision} onValueChange={(e) => setComision(e.value)} min={0} minFractionDigits={2} maxFractionDigits={2} style={{ width: "100%" }} />
-            </div>
+
+            <Panel header={<span>{esIngreso ? "📥 Cuenta de Destino (INGRESO)" : "📤 Cuenta de Origen (EGRESO)"}</span>} toggleable>
+              <div style={fila}>
+                <div style={{ flex: 1 }}>
+                  <label className="font-bold">Cuenta Corriente *</label>
+                  <CuentaCorrienteSelector
+                    empresaIdPreseleccionada={empresaId}
+                    value={cuentaId}
+                    onChange={({ cuentaCorrienteId, moneda }) => {
+                      setCuentaId(cuentaCorrienteId);
+                      setMonedaCuenta(moneda);
+                    }}
+                    label=""
+                    placeholder={esIngreso ? "Seleccione cuenta de destino" : "Seleccione cuenta de origen"}
+                    mostrarSaldo={true}
+                    disabled={procesando}
+                  />
+                </div>
+              </div>
+              <div style={fila}>
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="medioPago" className="font-bold">Medio de Pago *</label>
+                  <Dropdown
+                    id="medioPago"
+                    value={medioPagoId}
+                    options={mediosPago}
+                    onChange={(e) => setMedioPagoId(e.value)}
+                    optionLabel="nombre"
+                    optionValue="id"
+                    placeholder="Seleccione medio de pago"
+                    disabled={procesando}
+                    filter
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ flex: 2 }}>
+                  <TipoMovimientoSelector
+                    tiposMovimiento={tiposDisponibles}
+                    value={tipoMovimientoId}
+                    onChange={setTipoMovimientoId}
+                    esIngreso={esIngreso}
+                    required={true}
+                    placeholder="Buscar tipo de movimiento..."
+                    disabled={procesando}
+                  />
+                </div>
+              </div>
+              <div style={fila}>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="monto" className="font-bold">{`Monto del Capital${simbolo ? ` (${simbolo})` : ""} *`}</label>
+                  <InputNumber id="monto" value={monto} onValueChange={(e) => setMonto(e.value)} mode="decimal" minFractionDigits={2} maxFractionDigits={2} min={0} disabled={procesando} style={{ width: "100%" }} />
+                  {esPago && prestamo && <Button type="button" label="Saldo total" className="p-button-text p-button-sm" onClick={() => setMonto(Number(prestamo.saldoCapital))} />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="itf" className="font-bold">ITF</label>
+                  <InputNumber id="itf" value={itf} onValueChange={(e) => setItf(e.value)} mode="decimal" minFractionDigits={2} maxFractionDigits={2} disabled={procesando} style={{ width: "100%" }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="comision" className="font-bold">Comisión bancaria</label>
+                  <InputNumber id="comision" value={comision} onValueChange={(e) => setComision(e.value)} mode="decimal" minFractionDigits={2} maxFractionDigits={2} disabled={procesando} style={{ width: "100%" }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span className="font-bold">{esIngreso ? "Monto Acreditado:" : "Total a Debitar:"}</span>
+                    <Tag severity={esIngreso ? "info" : "danger"} style={{ fontSize: "1.2rem", padding: "0.5rem 1rem" }}>
+                      {simbolo} {formatearNumero(esIngreso ? totalAcreditado : totalDebitado)}
+                    </Tag>
+                  </div>
+                </div>
+              </div>
+
+              {/* TIPO DE CAMBIO: solo si el préstamo no es en soles (TC de venta, editable) */}
+              {!esMonedaNacional && (
+                <div style={{ marginTop: 10 }}>
+                  <label htmlFor="tipoCambio" className="font-bold">Tipo de Cambio (Venta) *</label>
+                  <InputNumber id="tipoCambio" value={tipoCambio} onValueChange={(e) => setTipoCambio(e.value)} mode="decimal" minFractionDigits={4} maxFractionDigits={4} disabled={procesando} style={{ width: "100%" }} placeholder="Tipo de cambio SUNAT" />
+                  <small className="p-text-secondary">Se propone el TC de venta de SUNAT; puede modificarlo. Se aplicará para registrar el asiento en soles</small>
+                </div>
+              )}
+            </Panel>
+          </Panel>
+
+          <div className="flex justify-content-end gap-2 mt-3">
+            <Button label="Cancelar" icon="pi pi-times" severity="secondary" outlined onClick={onHide} type="button" disabled={procesando} />
+            <Button label={etiquetaBoton} icon="pi pi-check" severity="success" type="submit" loading={procesando} />
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <div style={{ flex: 1 }}>
-              <label style={etiqueta}>Glosa (opcional: si la deja vacía se arma automáticamente)</label>
-              <InputText value={descripcion} onChange={(e) => setDescripcion(e.target.value)} style={{ width: "100%" }} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={etiqueta}>Observaciones</label>
-              <InputText value={observaciones} onChange={(e) => setObservaciones(e.target.value)} style={{ width: "100%" }} />
-            </div>
-          </div>
-        </>
-      )}
-    </Dialog>
+        </form>
+      </Dialog>
+
+      <ConfirmarSinFondosDialog
+        mensaje={avisoSinFondos}
+        onCancelar={() => setAvisoSinFondos(null)}
+        onConfirmar={() => {
+          sinFondosConfirmadoRef.current = true;
+          setAvisoSinFondos(null);
+          handleSubmit();
+        }}
+      />
+
+      <ConfirmacionPrestamoEntidadDialog
+        visible={visible && showConfirmacion}
+        onHide={() => {
+          setShowConfirmacion(false);
+          setResultado(null);
+          onHide?.();
+        }}
+        resultado={resultado}
+      />
+    </>
   );
 }

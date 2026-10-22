@@ -134,7 +134,7 @@ export default function ConfirmacionPagoDialog({
 
     const items = [
       { label: 'Monto Bruto', value: resumen.montoBruto, severity: 'info' },
-      { label: 'Neto en Caja', value: resumen.montoNetoCaja, severity: 'success' },
+      { label: 'Total Debitado', value: resumen.totalDebitado, severity: 'success' },
       { label: 'Deuda Cancelada', value: resumen.montoAplicadoDeuda, severity: 'success' },
       { label: 'Saldo Pendiente', value: resumen.saldoPendiente, severity: resumen.saldoPendiente === 0 ? 'success' : 'warning' },
     ].filter(Boolean);

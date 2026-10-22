@@ -18,7 +18,8 @@ import { mensajeDeError } from "../../../utils/mensajeError";
 import { formatearNumero } from "../../../utils/utils";
 
 const etiqueta = { fontWeight: "bold", display: "block", marginBottom: 5 };
-const aISO = (f) => (f ? `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, "0")}-${String(f.getDate()).padStart(2, "0")}` : null);
+// Fecha para el backend: ISO completo (medianoche local). Sin hora se interpretaría en UTC y retrocedería un día en el resto del sistema
+const aFechaApi = (f) => (f ? f.toISOString() : null);
 const r2 = (n) => Math.round((Number(n || 0) + Number.EPSILON) * 100) / 100;
 const fechaCorta = (f) => (f ? new Date(f).toLocaleDateString("es-PE", { timeZone: "UTC" }) : "-");
 const TIPOS = [
@@ -133,7 +134,7 @@ export default function PagoLetraCambioDialog({ visible, onHide, onSuccess, toas
     try {
       const r = await pagarLetra({
         letraCambioId: letra.id,
-        fechaPago: aISO(fechaPago),
+        fechaPago: aFechaApi(fechaPago),
         cuentaCorrienteId: cuenta.cuentaCorrienteId,
         medioPagoId,
         tipoMovimientoId,

@@ -385,7 +385,7 @@ async function generarPDFVoucherConsolidado(
   yPosition -= 15;
 
   const montoDestino = transferencia.montoDestino || movimientoEgreso?.monto || 0;
-  const totalAcreditado = montoDestino - (movimientoIngreso?.itf || 0) - (movimientoIngreso?.comision || 0);
+  const totalAcreditado = montoDestino;
 
   const datosDestino = [
     { label: "Banco:", valor: cuentaDestino?.banco?.nombre || "N/A" },
@@ -394,7 +394,7 @@ async function generarPDFVoucherConsolidado(
     { label: "Monto Recibido:", valor: `${movimientoIngreso?.moneda?.simbolo} ${formatearNumero(montoDestino)}` },
     { label: "ITF:", valor: `${movimientoIngreso?.moneda?.simbolo} ${formatearNumero(movimientoIngreso?.itf || 0)}` },
     { label: "Comisión:", valor: `${movimientoIngreso?.moneda?.simbolo} ${formatearNumero(movimientoIngreso?.comision || 0)}` },
-    { label: "Total Acreditado:", valor: `${movimientoIngreso?.moneda?.simbolo} ${formatearNumero(totalAcreditado)}` },
+    { label: "Monto Acreditado:", valor: `${movimientoIngreso?.moneda?.simbolo} ${formatearNumero(totalAcreditado)}` },
   ];
 
   for (const dato of datosDestino) {

@@ -708,7 +708,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
     const comision = Number(montoComision || 0) + Number(comisionDetraccion || 0);
     const detraccion = Number(montoDetraccionIngresado || 0);
 
-    const montoNetoCaja = montoBruto - itf - comision;
+    const totalDebitar = montoBruto + itf + comision;
     const deudaCancelada = Number(montoAplicadoDeuda || 0);
     const saldoPendiente = Number(cuentaPorPagar?.saldoPendiente || 0) - deudaCancelada;
 
@@ -717,7 +717,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
       itf,
       comision,
       detraccion,
-      montoNetoCaja,
+      totalDebitar,
       deudaCancelada,
       saldoPendiente: saldoPendiente > 0 ? saldoPendiente : 0
     };

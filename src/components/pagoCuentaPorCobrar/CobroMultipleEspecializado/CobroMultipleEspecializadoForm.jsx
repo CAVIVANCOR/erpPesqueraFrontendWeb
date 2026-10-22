@@ -124,7 +124,7 @@ const CobroMultipleEspecializadoForm = ({
   );
 
   // Lo que realmente queda en el banco: el ITF y la comisión se descuentan del depósito
-  const totalNetoAcreditado = Number(totalRecibido || 0) - Number(itf || 0) - Number(comision || 0);
+  const totalAcreditado = Number(totalRecibido || 0);
 
   // ════════════════════════════════════════════════════════════
   // EFECTOS
@@ -649,9 +649,9 @@ const CobroMultipleEspecializadoForm = ({
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span className="font-bold">Neto Acreditado:</span>
+                    <span className="font-bold">Monto Acreditado:</span>
                     <Tag severity="info" style={{ fontSize: "1.2rem", padding: "0.5rem 1rem" }}>
-                      {simbolo} {formatearNumero(totalNetoAcreditado)}
+                      {simbolo} {formatearNumero(totalAcreditado)}
                     </Tag>
                   </div>
                 </div>

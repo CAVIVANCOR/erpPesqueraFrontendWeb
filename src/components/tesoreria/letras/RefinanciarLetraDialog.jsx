@@ -14,7 +14,8 @@ import { mensajeDeError } from "../../../utils/mensajeError";
 import { formatearNumero } from "../../../utils/utils";
 
 const etiqueta = { fontWeight: "bold", display: "block", marginBottom: 5 };
-const aISO = (f) => (f ? `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, "0")}-${String(f.getDate()).padStart(2, "0")}` : null);
+// Fecha para el backend: ISO completo (medianoche local). Sin hora se interpretaría en UTC y retrocedería un día en el resto del sistema
+const aFechaApi = (f) => (f ? f.toISOString() : null);
 const sumarDias = (fecha, dias) => {
   const f = new Date(fecha);
   f.setDate(f.getDate() + dias);
@@ -74,9 +75,9 @@ export default function RefinanciarLetraDialog({ visible, letra, onHide, onSucce
     try {
       const r = await refinanciarLetra({
         letraId: letra.id,
-        fechaRefinanciacion: aISO(fecha),
+        fechaRefinanciacion: aFechaApi(fecha),
         observaciones: observaciones || undefined,
-        letras: nuevas.map((l) => ({ fechaVencimiento: aISO(l.fechaVencimiento), monto: Number(l.monto) })),
+        letras: nuevas.map((l) => ({ fechaVencimiento: aFechaApi(l.fechaVencimiento), monto: Number(l.monto) })),
       });
       toast?.current?.show({
         severity: "success",

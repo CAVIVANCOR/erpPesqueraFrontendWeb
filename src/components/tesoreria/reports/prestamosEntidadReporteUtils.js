@@ -1,10 +1,12 @@
 // src/components/tesoreria/reports/prestamosEntidadReporteUtils.js
 // Cálculos compartidos por la pantalla y los reportes (PDF / Excel) de préstamos con accionistas y terceros.
+// Solo hay dos términos: Prestamista (presta el dinero) y Deudor (recibe el préstamo y debe devolverlo).
+// Valores internos: OTORGADO = la empresa es el Prestamista; RECIBIDO = la empresa es el Deudor.
 
 const ESTADO_VIGENTE = 81;
 const MS_DIA = 24 * 60 * 60 * 1000;
 
-/** Préstamo con saldo pendiente (vigente y con capital por pagar o cobrar). */
+/** Préstamo con saldo por devolver (vigente y con capital pendiente). */
 export const esPendiente = (p) => Number(p?.estadoId) === ESTADO_VIGENTE && Number(p?.saldoCapital) > 0;
 
 export const formatoMonto = (valor) =>
@@ -12,7 +14,17 @@ export const formatoMonto = (valor) =>
 
 export const formatoFecha = (fecha) => (fecha ? new Date(fecha).toLocaleDateString("es-PE") : "-");
 
-export const etiquetaSentido = (sentido) => (sentido === "RECIBIDO" ? "Recibido (por pagar)" : "Otorgado (por cobrar)");
+/** Rol de la empresa en el préstamo. */
+export const rolEmpresa = (sentido) => (sentido === "OTORGADO" ? "Prestamista" : "Deudor");
+
+export const etiquetaSentido = (sentido) => `Empresa como ${rolEmpresa(sentido)}`;
+
+/** Quién es el Prestamista y quién el Deudor del préstamo (la otra parte lleva su tipo: accionista o tercero). */
+export function partesDelPrestamo(p) {
+  const otraParte = `${p.esAccionista ? "Accionista" : "Tercero"}: ${p.entidadComercial?.razonSocial || "-"}`;
+  const empresa = p.empresa?.razonSocial || "-";
+  return p.sentido === "OTORGADO" ? { prestamista: empresa, deudor: otraParte } : { prestamista: otraParte, deudor: empresa };
+}
 
 /** Situación del plazo: días vencido o por vencer (si tiene fecha de vencimiento). */
 export function situacionVencimiento(prestamo, hoy = new Date()) {
@@ -31,11 +43,11 @@ const sumar = (lista, campo) => lista.reduce((suma, p) => suma + Number(p[campo]
 export const totalesDe = (lista) => ({
   cantidad: lista.length,
   desembolsado: sumar(lista, "montoDesembolsado"),
-  pagado: sumar(lista, "capitalPagado") + sumar(lista, "montoPagadoAnterior"),
+  devuelto: sumar(lista, "capitalPagado") + sumar(lista, "montoPagadoAnterior"),
   saldo: sumar(lista, "saldoCapital"),
 });
 
-/** Agrupa por sentido y moneda: [{ sentido, codigo, simbolo, items, totales }], recibidos primero. */
+/** Agrupa por rol de la empresa y moneda: [{ sentido, codigo, simbolo, items, totales }], Deudor primero. */
 export function agruparPorSentidoYMoneda(items) {
   const grupos = new Map();
   for (const p of items) {
@@ -58,13 +70,13 @@ export function agruparPorSentidoYMoneda(items) {
     }));
 }
 
-/** Total por sentido y moneda (para la pantalla): [{ sentido, codigo, simbolo, total }]. */
+/** Total por rol de la empresa y moneda (para la pantalla): [{ sentido, codigo, simbolo, total }]. */
 export const saldosPorSentido = (items) =>
   agruparPorSentidoYMoneda(items).map((g) => ({ sentido: g.sentido, codigo: g.codigo, simbolo: g.simbolo, total: g.totales.saldo }));
 
 /**
- * Resumen por empresa y moneda: lo que cada empresa debe (préstamos recibidos) y le deben (otorgados)
- * a accionistas y terceros. Neto = por cobrar - por pagar.
+ * Resumen por empresa y moneda: lo que cada empresa debe como Deudor y lo que le deben como Prestamista.
+ * Neto = como Prestamista - como Deudor.
  */
 export function resumenPorEmpresa(items) {
   const monedas = new Map();
@@ -73,20 +85,20 @@ export function resumenPorEmpresa(items) {
     if (!monedas.has(codigo)) monedas.set(codigo, { codigo, simbolo: p.moneda?.simbolo || "", empresas: new Map() });
     const bloque = monedas.get(codigo);
     const id = String(p.empresa?.id);
-    if (!bloque.empresas.has(id)) bloque.empresas.set(id, { empresa: p.empresa?.razonSocial || `#${id}`, porCobrar: 0, porPagar: 0 });
+    if (!bloque.empresas.has(id)) bloque.empresas.set(id, { empresa: p.empresa?.razonSocial || `#${id}`, comoPrestamista: 0, comoDeudor: 0 });
     const fila = bloque.empresas.get(id);
-    if (p.sentido === "RECIBIDO") fila.porPagar += Number(p.saldoCapital || 0);
-    else fila.porCobrar += Number(p.saldoCapital || 0);
+    if (p.sentido === "RECIBIDO") fila.comoDeudor += Number(p.saldoCapital || 0);
+    else fila.comoPrestamista += Number(p.saldoCapital || 0);
   }
   return [...monedas.values()]
     .sort((a, b) => a.codigo.localeCompare(b.codigo))
     .map((m) => {
-      const filas = [...m.empresas.values()].map((f) => ({ ...f, neto: f.porCobrar - f.porPagar })).sort((a, b) => a.empresa.localeCompare(b.empresa));
+      const filas = [...m.empresas.values()].map((f) => ({ ...f, neto: f.comoPrestamista - f.comoDeudor })).sort((a, b) => a.empresa.localeCompare(b.empresa));
       return {
         codigo: m.codigo,
         simbolo: m.simbolo,
         filas,
-        totales: { porCobrar: filas.reduce((s, f) => s + f.porCobrar, 0), porPagar: filas.reduce((s, f) => s + f.porPagar, 0) },
+        totales: { comoPrestamista: filas.reduce((s, f) => s + f.comoPrestamista, 0), comoDeudor: filas.reduce((s, f) => s + f.comoDeudor, 0) },
       };
     });
 }
