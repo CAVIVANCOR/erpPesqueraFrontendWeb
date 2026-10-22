@@ -166,6 +166,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         ? new Date(defaultValues.fechaContable)
         : new Date(),
       esSaldoInicial: defaultValues?.esSaldoInicial || false,
+      interesDescontado: Boolean(defaultValues?.interesDescontado),
     },
   });
 
@@ -174,6 +175,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   const monedaIdWatch = watch("monedaId");
   const fechaDesembolsoWatch = watch("fechaDesembolso");
   const lineaCreditoIdWatch = watch("lineaCreditoId");
+  const tipoPrestamoIdWatch = watch("tipoPrestamoId");
+  // Solo un factoring define cómo cobra el interés el banco (descontado por adelantado o diferido en las cuotas)
+  const esFactoringSel = Boolean(
+    tiposPrestamo.find((t) => Number(t.id) === Number(tipoPrestamoIdWatch))?.esFactoring,
+  );
+  // Con el desembolso ya registrado la modalidad no se puede cambiar
+  const interesBloqueado = isEdit && Boolean(defaultValues?.movimientoCajaDesembolsoId);
 
 
   // ⭐ CALLBACK para AsientoContableManager
@@ -482,6 +490,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
           ? data.fechaContable.toISOString()
           : data.fechaContable,
         esSaldoInicial: data.esSaldoInicial,
+        interesDescontado: esFactoringSel ? Boolean(data.interesDescontado) : false,
       };
 
       let resultado;
@@ -1157,6 +1166,48 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
           </div>
+
+          {esFactoringSel && (
+            <div style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "center" }}>
+              <div style={{ flex: 1 }}>
+                <label
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: getResponsiveFontSize(),
+                  }}
+                >
+                  Interés del Factoring
+                </label>
+                <Controller
+                  name="interesDescontado"
+                  control={control}
+                  render={({ field }) => (
+                    <BooleanToggleButton
+                      labelTrue="DESCONTADO POR ADELANTADO"
+                      labelFalse="DIFERIDO EN LAS CUOTAS"
+                      severityTrue="success"
+                      severityFalse="info"
+                      value={field.value}
+                      onChange={field.onChange}
+                      disabled={readOnly || interesBloqueado}
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <small style={{ color: "#6c757d" }}>
+                  {watch("interesDescontado")
+                    ? "El banco descuenta el interés al desembolsar y deposita el neto. Las cuotas se generan solo de capital (interés 0) y el Monto Desembolsado debe ser el total de las facturas."
+                    : "El banco deposita el total de las facturas y cobra el interés junto con las cuotas."}
+                  {interesBloqueado
+                    ? " Ya tiene el desembolso registrado: no se puede cambiar."
+                    : isEdit
+                      ? " Al cambiarlo se regenera el cronograma de cuotas."
+                      : ""}
+                </small>
+              </div>
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 0.6 }}>

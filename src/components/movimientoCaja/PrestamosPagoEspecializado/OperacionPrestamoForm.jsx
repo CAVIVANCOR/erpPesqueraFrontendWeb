@@ -17,7 +17,6 @@ import { actualizarUrlVoucherIndividual } from "../../../api/tesoreria/transfere
 import { sincronizarAdjuntosPagoCuotaPrestamo, getFacturasFactoringDisponibles } from "../../../api/tesoreria/operacionPrestamo";
 import { useAuthStore } from "../../../shared/stores/useAuthStore";
 import CuentaCorrienteSelector from "../../common/CuentaCorrienteSelector";
-import BooleanToggleButton from "../../common/BooleanToggleButton";
 import TipoMovimientoSelector from "../../common/TipoMovimientoSelector";
 import { generarYSubirVoucherIndividual } from "../utils/VoucherIndividualMovimientoPDF";
 import { generarYSubirVoucherConsolidado } from "./VoucherConsolidadoPagoCuotasPrestamoPDF";
@@ -112,7 +111,6 @@ const OperacionPrestamoForm = ({
   const [facturasElegidas, setFacturasElegidas] = useState([]);
   const [busquedaCliente, setBusquedaCliente] = useState("");
   const [montoDescuento, setMontoDescuento] = useState(0);
-  const [interesAparte, setInteresAparte] = useState(false); // false: el banco descuenta el interés y deposita el neto
   const [cargandoFacturas, setCargandoFacturas] = useState(false);
 
   // Evita pisar la glosa que el usuario ya escribió al cambiar la selección
@@ -134,6 +132,8 @@ const OperacionPrestamoForm = ({
   const simbolo = monedaPrestamo?.simbolo || "";
   const prestamo = base?.prestamo;
   const esFactoring = Boolean(prestamo?.esFactoring);
+  // La modalidad del interés la define el préstamo: descontado por adelantado (el banco deposita el neto) o diferido en las cuotas
+  const interesDescontado = Boolean(prestamo?.interesDescontado);
 
   // El backend exige cuotas de un mismo préstamo (y un único préstamo por desembolso)
   const errorLote = useMemo(() => {
@@ -149,18 +149,18 @@ const OperacionPrestamoForm = ({
 
   // Total de la operación: cuotas = monto de cada cuota + su mora; desembolso = monto del préstamo
   const totalPrincipal = useMemo(() => {
-    // Factoring: el ingreso de caja es el NETO depositado (bruto - descuento) si el banco descontó el interés,
-    // o el BRUTO si el interés se cobra aparte (con su propio movimiento de egreso). ITF y comisión nunca se restan aquí.
+    // Factoring: el ingreso de caja es el NETO depositado (bruto menos el interés descontado por adelantado; igual al bruto
+    // si el interés es diferido). ITF y comisión nunca se restan aquí.
     if (esDesembolso) {
       if (!esFactoring) return Number(base?.saldoPendiente || 0);
       const bruto = redondear2(facturasElegidas.reduce((a, f) => a + Number(f.saldoPendiente || 0), 0));
-      return interesAparte ? bruto : redondear2(bruto - Number(montoDescuento || 0));
+      return redondear2(bruto - (interesDescontado ? Number(montoDescuento || 0) : 0));
     }
     return seleccionados.reduce(
       (acc, f) => acc + Number(montos[f.id] || 0) + Number(moras[f.id] || 0),
       0,
     );
-  }, [esDesembolso, esFactoring, facturasElegidas, montoDescuento, interesAparte, base, seleccionados, montos, moras]);
+  }, [esDesembolso, esFactoring, facturasElegidas, montoDescuento, interesDescontado, base, seleccionados, montos, moras]);
   const totalSaldos = useMemo(
     () => seleccionados.reduce((acc, f) => acc + Number(f.saldoPendiente || 0), 0),
     [seleccionados],
@@ -183,7 +183,7 @@ const OperacionPrestamoForm = ({
   };
 
   const brutoFacturas = useMemo(() => redondear2(facturasElegidas.reduce((a, f) => a + Number(f.saldoPendiente || 0), 0)), [facturasElegidas]);
-  const descuentoFactoring = redondear2(montoDescuento);
+  const descuentoFactoring = redondear2(interesDescontado ? montoDescuento : 0);
   const netoFactoring = redondear2(brutoFacturas - descuentoFactoring);
   const montoPrestamoFactoring = Number(base?.saldoPendiente || 0);
   // El banco financia el total de cada factura: se cancelan todas aunque el monto del préstamo no las cubra (solo se avisa)
@@ -405,7 +405,7 @@ const OperacionPrestamoForm = ({
   // EntregarFondosForm. Un fallo aquí no interrumpe el flujo: la operación ya está registrada.
   const generarVouchers = async (data) => {
     try {
-      for (const clave of ["principal", "interes", "itf", "comision"]) {
+      for (const clave of ["principal", "itf", "comision"]) {
         const movimiento = data.movimientos[clave];
         if (!movimiento) continue;
 
@@ -509,7 +509,6 @@ const OperacionPrestamoForm = ({
               ...(esFactoring && {
                 facturasFactoringIds: facturasElegidas.map((f) => Number(f.id)),
                 montoDescuento: descuentoFactoring,
-                interesAparte,
               }),
               fechaDesembolso: fecha.toISOString(),
               cuentaCorrienteDestinoId: Number(cuentaId),
@@ -821,58 +820,57 @@ const OperacionPrestamoForm = ({
                   <Column header="Saldo" body={(f) => `${f.simbolo} ${formatearNumero(f.saldoPendiente)}`} />
                 </DataTable>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end", marginTop: 10 }}>
-                  <div style={{ flex: 1.2 }}>
-                    <label className="font-bold block mb-1">¿Cómo cobró el banco el interés?</label>
-                    <BooleanToggleButton
-                      value={interesAparte}
-                      onChange={setInteresAparte}
-                      labelTrue="COBRADO APARTE"
-                      labelFalse="DESCONTADO DEL DESEMBOLSO"
-                      severityTrue="warning"
-                      severityFalse="success"
-                      icon={interesAparte ? "pi-minus-circle" : "pi-percentage"}
-                      disabled={cargando || facturasElegidas.length === 0}
+                  <div style={{ flex: 1.4 }}>
+                    <label className="font-bold block mb-1">Interés del factoring</label>
+                    <Tag
+                      value={interesDescontado ? "DESCONTADO POR ADELANTADO" : "DIFERIDO EN LAS CUOTAS"}
+                      severity={interesDescontado ? "success" : "info"}
+                      style={{ fontSize: "0.9rem" }}
                     />
-                    <small style={{ color: "#6c757d" }}>
-                      {interesAparte
-                        ? "El banco deposita el total de las facturas y debita el interés después: ingreso por el bruto y egreso aparte por el interés."
-                        : "El banco descuenta el interés y deposita el neto: un solo ingreso por el neto y un solo asiento."}
+                    <small style={{ color: "#6c757d", display: "block", marginTop: 4 }}>
+                      {interesDescontado
+                        ? "El banco descuenta el interés y deposita el neto: un solo ingreso por el neto y un solo asiento. Se define en el Préstamo Bancario."
+                        : "El banco deposita el total de las facturas y cobra el interés con las cuotas: no hay descuento en el desembolso. Se define en el Préstamo Bancario."}
                     </small>
                   </div>
                   <div style={{ flex: 1 }}>
                     <label className="font-bold block mb-1">Total de las facturas (bruto)</label>
                     <InputText value={`${simbolo} ${formatearNumero(brutoFacturas)}`} disabled style={{ width: "100%", fontWeight: "bold" }} />
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <label className="font-bold block mb-1">Interés / descuento (cuenta 673111)</label>
-                    <InputNumber
-                      value={montoDescuento}
-                      onValueChange={(e) => setMontoDescuento(e.value ?? 0)}
-                      mode="decimal"
-                      minFractionDigits={2}
-                      maxFractionDigits={2}
-                      min={0}
-                      max={brutoFacturas > 0 ? brutoFacturas - 0.01 : undefined}
-                      disabled={cargando || facturasElegidas.length === 0}
-                      inputStyle={{ width: "100%", fontWeight: "bold" }}
-                    />
-                    <small style={{ color: "#6c757d" }}>No incluye el ITF ni la comisión bancaria: esos siempre van aparte.</small>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label className="font-bold block mb-1">{interesAparte ? "Monto que deposita el banco (total)" : "Monto que deposita el banco (neto)"}</label>
-                    <InputNumber
-                      value={interesAparte ? brutoFacturas : netoFactoring}
-                      onValueChange={(e) => !interesAparte && setMontoDescuento(redondear2(brutoFacturas - Number(e.value || 0)))}
-                      mode="decimal"
-                      minFractionDigits={2}
-                      maxFractionDigits={2}
-                      min={0}
-                      max={brutoFacturas || undefined}
-                      disabled={cargando || facturasElegidas.length === 0 || interesAparte}
-                      inputStyle={{ width: "100%", fontWeight: "bold" }}
-                    />
-                    {!interesAparte && <small style={{ color: "#6c757d" }}>Digite lo que ve en el estado de cuenta: el interés se calcula como la diferencia.</small>}
-                  </div>
+                  {interesDescontado && (
+                    <>
+                      <div style={{ flex: 1 }}>
+                        <label className="font-bold block mb-1">Interés descontado (cuenta 673111)</label>
+                        <InputNumber
+                          value={montoDescuento}
+                          onValueChange={(e) => setMontoDescuento(e.value ?? 0)}
+                          mode="decimal"
+                          minFractionDigits={2}
+                          maxFractionDigits={2}
+                          min={0}
+                          max={brutoFacturas > 0 ? brutoFacturas - 0.01 : undefined}
+                          disabled={cargando || facturasElegidas.length === 0}
+                          inputStyle={{ width: "100%", fontWeight: "bold" }}
+                        />
+                        <small style={{ color: "#6c757d" }}>No incluye el ITF ni la comisión bancaria: esos siempre van aparte.</small>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label className="font-bold block mb-1">Monto que deposita el banco (neto)</label>
+                        <InputNumber
+                          value={netoFactoring}
+                          onValueChange={(e) => setMontoDescuento(redondear2(brutoFacturas - Number(e.value || 0)))}
+                          mode="decimal"
+                          minFractionDigits={2}
+                          maxFractionDigits={2}
+                          min={0}
+                          max={brutoFacturas || undefined}
+                          disabled={cargando || facturasElegidas.length === 0}
+                          inputStyle={{ width: "100%", fontWeight: "bold" }}
+                        />
+                        <small style={{ color: "#6c757d" }}>Digite lo que ve en el estado de cuenta: el interés se calcula como la diferencia.</small>
+                      </div>
+                    </>
+                  )}
                 </div>
                 {hayDiferenciaConPrestamo && (
                   <small style={{ color: "#b45309", display: "block", marginTop: 6, fontWeight: 600 }}>

@@ -182,7 +182,6 @@ export default function ConfirmacionOperacionPrestamoDialog({
     const tipoPrincipal = esDesembolso ? "Ingreso" : "Egreso";
     const definiciones = [
       { tipo: tipoPrincipal, clave: "principal", campoCuenta: "cuentaCorrienteDestino" },
-      { tipo: "Interés", clave: "interes", campoCuenta: "cuentaCorrienteOrigen" },
       { tipo: "ITF", clave: "itf", campoCuenta: "cuentaCorrienteOrigen" },
       { tipo: "Comisión", clave: "comision", campoCuenta: "cuentaCorrienteOrigen" },
     ];
@@ -281,8 +280,6 @@ export default function ConfirmacionOperacionPrestamoDialog({
 
       if (procesoId === Number(resultado.movimientoPrincipalId)) {
         tipo = esDesembolso ? "Desembolso" : "Pago de Cuotas";
-      } else if (procesoId === Number(resultado.movimientoInteresId)) {
-        tipo = "Interés (factoring)";
       } else if (procesoId === Number(resultado.movimientoITFId)) {
         tipo = "ITF";
       } else if (procesoId === Number(resultado.movimientoComisionId)) {
