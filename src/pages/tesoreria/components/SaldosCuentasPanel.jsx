@@ -3,8 +3,20 @@ import { Panel } from "primereact/panel";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Skeleton } from "primereact/skeleton";
+import { Tag } from "primereact/tag";
 import { formatearNumero } from "../../../utils/utils";
 import { getResponsiveFontSize } from "../../../utils/utils";
+
+const DIAS_ALERTA_TARJETA = 5;
+const diasHastaDiaDelMes = (dia, hoy = new Date()) => {
+  if (!dia) return null;
+  const objetivo = (anio, mes) => new Date(anio, mes, Math.min(dia, new Date(anio, mes + 1, 0).getDate()));
+  const inicioHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  let fecha = objetivo(hoy.getFullYear(), hoy.getMonth());
+  if (fecha < inicioHoy) fecha = objetivo(hoy.getFullYear(), hoy.getMonth() + 1);
+  return Math.round((fecha - inicioHoy) / 86400000);
+};
+const textoDias = (dias) => (dias === 0 ? "hoy" : dias === 1 ? "mañana" : `en ${dias} días`);
 
 const SaldosCuentasPanel = ({
   saldosCuentas,
@@ -20,6 +32,30 @@ const SaldosCuentasPanel = ({
     if (!saldosCuentas) return [];
     return saldosCuentas.filter((cuenta) => Number(cuenta.saldoActual) > 0);
   }, [saldosCuentas]);
+
+  // Tarjetas de crédito: su deuda no es caja y se muestra aparte con su línea y sus fechas de cierre y pago
+  const tarjetas = React.useMemo(
+    () =>
+      (saldoConsolidado?.tarjetasCredito || []).map((t) => ({
+        ...t,
+        diasCierre: diasHastaDiaDelMes(t.diaCierre),
+        diasPago: diasHastaDiaDelMes(t.diaPago),
+      })),
+    [saldoConsolidado],
+  );
+  const alertasTarjetas = tarjetas.filter(
+    (t) => (t.deuda > 0 && t.diasPago !== null && t.diasPago <= DIAS_ALERTA_TARJETA) || (t.diasCierre !== null && t.diasCierre <= DIAS_ALERTA_TARJETA),
+  ).length;
+
+  const fechaTarjetaTemplate = (dia, dias, conAlerta) => {
+    if (!dia) return <span style={{ color: "#6c757d" }}>-</span>;
+    return (
+      <span>
+        Día {dia}{" "}
+        <Tag value={textoDias(dias)} severity={conAlerta && dias <= DIAS_ALERTA_TARJETA ? "danger" : "info"} style={{ fontSize: "0.7rem" }} />
+      </span>
+    );
+  };
 
   // Template: Banco
   const bancoTemplate = (rowData) => {
@@ -102,7 +138,19 @@ const SaldosCuentasPanel = ({
 
   return (
     <Panel
-      header="💳 Saldos de Cuentas Corrientes"
+      header={
+        <span>
+          💳 Saldos de Cuentas Corrientes
+          {alertasTarjetas > 0 && (
+            <Tag
+              icon="pi pi-exclamation-triangle"
+              severity="danger"
+              value={`${alertasTarjetas} tarjeta(s) con cierre o pago próximo`}
+              style={{ marginLeft: 10, fontSize: "0.75rem" }}
+            />
+          )}
+        </span>
+      }
       toggleable
       collapsed={collapsed}
       onToggle={(e) => setCollapsed(e.value)}
@@ -162,6 +210,20 @@ const SaldosCuentasPanel = ({
             field="saldoActual"
           />
         </DataTable>
+      )}
+
+      {!loading && tarjetas.length > 0 && (
+        <div style={{ marginTop: "1rem" }}>
+          <h4 style={{ margin: "0 0 0.5rem 0" }}>💳 Tarjetas de Crédito (la deuda no se suma como caja)</h4>
+          <DataTable value={tarjetas} stripedRows showGridlines size="small" style={{ fontSize: getResponsiveFontSize() }}>
+            <Column header="Tarjeta" body={(t) => `${t.descripcion || t.numeroCuenta}${t.banco ? " - " + t.banco : ""}`} />
+            <Column header="Línea" body={(t) => `${t.moneda?.simbolo} ${formatearNumero(t.limiteCredito)}`} style={{ textAlign: "right" }} />
+            <Column header="Deuda" body={(t) => <span style={{ color: t.deuda > 0 ? "#c62828" : undefined, fontWeight: "bold" }}>{t.moneda?.simbolo} {formatearNumero(t.deuda)}</span>} style={{ textAlign: "right" }} />
+            <Column header="Disponible" body={(t) => <span style={{ color: t.disponible <= 0 ? "#c62828" : "#2e7d32", fontWeight: "bold" }}>{t.moneda?.simbolo} {formatearNumero(t.disponible)}</span>} style={{ textAlign: "right" }} />
+            <Column header="Cierra" body={(t) => fechaTarjetaTemplate(t.diaCierre, t.diasCierre, false)} />
+            <Column header="Vence el pago" body={(t) => fechaTarjetaTemplate(t.diaPago, t.diasPago, t.deuda > 0)} />
+          </DataTable>
+        </div>
       )}
     </Panel>
   );

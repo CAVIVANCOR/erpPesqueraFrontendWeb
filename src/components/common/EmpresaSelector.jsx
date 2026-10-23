@@ -75,6 +75,7 @@ export default function EmpresaSelector({ empresaId, onEmpresaChange, permitirLi
             {/* Botón Principal */}
             <div style={permitirLimpiar ? { display: "flex", gap: 4 } : undefined}>
             <Button
+                type="button"
                 label={
                     empresaSeleccionada
                         ? empresaSeleccionada.razonSocial

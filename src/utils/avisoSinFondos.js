@@ -29,6 +29,12 @@ export async function consultarSaldoCuenta(cuentaCorrienteId) {
 export async function obtenerAvisoSinFondos({ cuentaCorrienteId, totalRequerido, simbolo = "" }) {
   const datos = await consultarSaldoCuenta(cuentaCorrienteId);
   if (!datos) return null;
+  // Tarjeta de crédito: se compara contra la línea disponible (línea menos deuda), no contra el saldo de caja
+  if (datos.esTarjetaCredito) {
+    const disponible = Number(datos.disponible);
+    if (disponible >= Number(totalRequerido)) return null;
+    return `La tarjeta de crédito no tiene línea disponible suficiente.\nLínea: ${simbolo} ${formatear(datos.limiteCredito)}. Deuda actual: ${simbolo} ${formatear(-Number(datos.saldoActual))}. Disponible: ${simbolo} ${formatear(disponible)}. Requerido: ${simbolo} ${formatear(totalRequerido)}.`;
+  }
   const saldo = Number(datos.saldoActual);
   if (saldo >= Number(totalRequerido)) return null;
   return `La cuenta de origen no tiene fondos suficientes.\nSaldo disponible: ${simbolo} ${formatear(saldo)}. Requerido: ${simbolo} ${formatear(totalRequerido)}.`;
