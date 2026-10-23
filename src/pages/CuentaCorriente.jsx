@@ -14,7 +14,7 @@ import CuentaCorrienteForm from "../components/cuentaCorriente/CuentaCorrienteFo
 import {
   getAllCuentaCorriente,
   eliminarCuentaCorriente,
-  verificarMovimientosCuenta,
+  getReferenciasCuenta,
 } from "../api/cuentaCorriente";
 import { getUltimoSaldoCuenta } from "../api/saldoCuentaCorriente";
 import { getEmpresas } from "../api/empresa";
@@ -22,6 +22,7 @@ import { getBancos } from "../api/banco";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
+import { mensajeDeError } from "../utils/mensajeError";
 // Agregar después de los otros imports
 import ReportesCuentaCorriente from "../components/cuentaCorriente/ReportesCuentaCorriente";
 
@@ -251,16 +252,27 @@ const CuentaCorriente = ({ ruta }) => {
     }
 
     try {
-      // Verificar si tiene movimientos
-      const tieneMovimientos = await verificarMovimientosCuenta(cuenta.id);
+      // Verificar si otras tablas tienen registros que referencian la cuenta
+      const { tieneReferencias, referencias } = await getReferenciasCuenta(cuenta.id);
 
-      if (tieneMovimientos) {
+      if (tieneReferencias) {
         toast.current.show({
           severity: "error",
-          summary: "No se puede eliminar",
-          detail:
-            "La cuenta tiene movimientos registrados. No se puede eliminar.",
-          life: 5000,
+          summary: `No se puede eliminar la cuenta ${cuenta.numeroCuenta}`,
+          detail: (
+            <div>
+              <div>Tiene registros asociados en:</div>
+              <ul style={{ margin: "6px 0 6px 18px", padding: 0 }}>
+                {referencias.map((r) => (
+                  <li key={`${r.tabla}-${r.campo}`}>
+                    {r.descripcion}: <b>{r.cantidad}</b>
+                  </li>
+                ))}
+              </ul>
+              <div>Elimine o reasigne esos registros primero. Si la cuenta ya tiene movimientos, lo recomendable es desactivarla.</div>
+            </div>
+          ),
+          life: 15000,
         });
         return;
       }
@@ -292,9 +304,9 @@ const CuentaCorriente = ({ ruta }) => {
       console.error("Error al verificar cuenta:", error);
       toast.current.show({
         severity: "error",
-        summary: "Error",
-        detail: "Error al verificar la cuenta",
-        life: 3000,
+        summary: "No se pudo verificar la cuenta",
+        detail: mensajeDeError(error, "Error al verificar los registros asociados a la cuenta corriente"),
+        life: 10000,
       });
     }
   };
@@ -313,9 +325,9 @@ const CuentaCorriente = ({ ruta }) => {
       console.error("Error al eliminar cuenta:", error);
       toast.current.show({
         severity: "error",
-        summary: "Error",
-        detail: error.response?.data?.mensaje || "Error al eliminar cuenta",
-        life: 3000,
+        summary: "No se pudo eliminar la cuenta corriente",
+        detail: mensajeDeError(error, "Error al eliminar la cuenta corriente"),
+        life: 15000,
       });
     }
   };
