@@ -65,7 +65,3 @@ export async function liquidarFactoring(data) {
   return res.data?.data;
 }
 
-export async function anularLiquidacionFactoring(pagoId) {
-  const res = await axios.post(`${API_URL}/factoring/liquidaciones/${pagoId}/anular`, {}, { headers: getAuthHeaders() });
-  return res.data?.data;
-}

@@ -29,8 +29,8 @@ import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ A
 import TransferenciaInternaDialog from "../../components/movimientoCaja/transferenciaEspecializada/TransferenciaInternaDialog";
 import { mensajeDeError } from "../../utils/mensajeError";
 import PagoLetraCambioDialog from "../../components/movimientoCaja/LetrasCambioPagoEspecializado/PagoLetraCambioDialog";
-import LiquidarFactoringDialog from "../../components/movimientoCaja/PrestamosPagoEspecializado/LiquidarFactoringDialog";
 import PrestamoEntidadDialog from "../../components/movimientoCaja/PrestamosPagoEspecializado/PrestamoEntidadDialog";
+import GastoBancarioDialog from "../../components/movimientoCaja/GastoBancarioEspecializado/GastoBancarioDialog";
 import DetMovsRendicionGastosForm from "../../components/rendicionGastos/DetMovsRendicionGastosForm";
 import PagarGastoDirectoDialog from "../../components/movimientoCaja/GastoDirectoEspecializado/PagarGastoDirectoDialog";
 import ListaOperacionesDialog from "../../components/movimientoCaja/reversionOperacion/ListaOperacionesDialog";
@@ -100,8 +100,8 @@ const TesoreriaPendientes = () => {
   // 🆕 Estados para diálogos de operaciones
   const [showTransferenciaInternaDialog, setShowTransferenciaInternaDialog] = useState(false);
   const [showPagoLetrasDialog, setShowPagoLetrasDialog] = useState(false);
-  const [showLiquidarFactoringDialog, setShowLiquidarFactoringDialog] = useState(false);
   const [showPrestamoEntidadDialog, setShowPrestamoEntidadDialog] = useState(false);
+  const [showGastoBancarioDialog, setShowGastoBancarioDialog] = useState(false);
   const [showListaOperacionesDialog, setShowListaOperacionesDialog] = useState(false);
   const [showPagoProveedorDialog, setShowPagoProveedorDialog] = useState(false);
   const [showRetiroDineroDialog, setShowRetiroDineroDialog] = useState(false);
@@ -649,11 +649,11 @@ const TesoreriaPendientes = () => {
       case TIPO_OPERACION_TESORERIA.LETRAS_CAMBIO:
         setShowPagoLetrasDialog(true);
         break;
-      case TIPO_OPERACION_TESORERIA.LIQUIDACION_FACTORING:
-        setShowLiquidarFactoringDialog(true);
-        break;
       case TIPO_OPERACION_TESORERIA.PRESTAMO_ENTIDAD:
         setShowPrestamoEntidadDialog(true);
+        break;
+      case TIPO_OPERACION_TESORERIA.GASTOS_BANCARIOS:
+        setShowGastoBancarioDialog(true);
         break;
       case TIPO_OPERACION_TESORERIA.PAGO_PROVEEDOR:
         setShowPagoProveedorDialog(true);
@@ -1092,6 +1092,10 @@ const TesoreriaPendientes = () => {
               empresas={empresas}
               onSubmit={handleGuardarPagoMultiple}
               onCancel={handleCancelarPagoMultiple}
+              onOperacionRegistrada={() => {
+                recargarPendientes();
+                recargarSaldos();
+              }}
               loading={loadingOperacionPrestamo}
               toast={toast}
             />
@@ -1211,10 +1215,12 @@ const TesoreriaPendientes = () => {
         }}
       />
 
-      <LiquidarFactoringDialog
-        visible={showLiquidarFactoringDialog}
-        onHide={() => setShowLiquidarFactoringDialog(false)}
+      <GastoBancarioDialog
+        visible={showGastoBancarioDialog}
+        onHide={() => setShowGastoBancarioDialog(false)}
         toast={toast}
+        mediosPago={mediosPago}
+        empresas={empresas}
         onSuccess={() => {
           recargarSaldos();
         }}

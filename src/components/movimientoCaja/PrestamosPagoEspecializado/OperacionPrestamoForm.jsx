@@ -17,6 +17,8 @@ import { actualizarUrlVoucherIndividual } from "../../../api/tesoreria/transfere
 import { sincronizarAdjuntosPagoCuotaPrestamo, getFacturasFactoringDisponibles } from "../../../api/tesoreria/operacionPrestamo";
 import { useAuthStore } from "../../../shared/stores/useAuthStore";
 import CuentaCorrienteSelector from "../../common/CuentaCorrienteSelector";
+import BooleanToggleButton from "../../common/BooleanToggleButton";
+import LiquidacionFactoringPanel from "./LiquidacionFactoringPanel";
 import TipoMovimientoSelector from "../../common/TipoMovimientoSelector";
 import { generarYSubirVoucherIndividual } from "../utils/VoucherIndividualMovimientoPDF";
 import { generarYSubirVoucherConsolidado } from "./VoucherConsolidadoPagoCuotasPrestamoPDF";
@@ -79,6 +81,7 @@ const OperacionPrestamoForm = ({
   empresas = [],
   onSubmit,
   onCancel,
+  onOperacionRegistrada,
   loading = false,
   toast,
 }) => {
@@ -116,6 +119,9 @@ const OperacionPrestamoForm = ({
   // Evita pisar la glosa que el usuario ya escribió al cambiar la selección
   const glosaEditada = useRef(false);
 
+  // Factoring: quién pagó al banco. true = el cliente (sin caja, solo asiento y cuota cancelada); false = nosotros (pago normal desde nuestras cuentas)
+  const [pagoElCliente, setPagoElCliente] = useState(true);
+
   const [procesando, setProcesando] = useState(false);
   const [showConfirmacion, setShowConfirmacion] = useState(false);
   const [resultado, setResultado] = useState(null);
@@ -134,6 +140,7 @@ const OperacionPrestamoForm = ({
   const esFactoring = Boolean(prestamo?.esFactoring);
   // La modalidad del interés la define el préstamo: descontado por adelantado (el banco deposita el neto) o diferido en las cuotas
   const interesDescontado = Boolean(prestamo?.interesDescontado);
+  const pagaElCliente = !esDesembolso && esFactoring && pagoElCliente;
 
   // El backend exige cuotas de un mismo préstamo (y un único préstamo por desembolso)
   const errorLote = useMemo(() => {
@@ -616,6 +623,42 @@ const OperacionPrestamoForm = ({
   return (
     <>
       <form onSubmit={handleSubmit} className="p-fluid">
+        {/* FACTORING: ¿quién pagó al banco? */}
+        {!esDesembolso && esFactoring && (
+          <Panel header="🏦 Factoring: ¿quién pagó al banco?" className="mb-3">
+            <div style={{ display: "flex", gap: 15, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ width: 340 }}>
+                <BooleanToggleButton
+                  labelTrue="EL CLIENTE PAGÓ AL BANCO"
+                  labelFalse="NOSOTROS PAGAMOS AL BANCO"
+                  severityTrue="success"
+                  severityFalse="warning"
+                  icon={pagoElCliente ? "pi-check-circle" : "pi-wallet"}
+                  value={pagoElCliente}
+                  onChange={setPagoElCliente}
+                  disabled={cargando}
+                />
+              </div>
+              <small style={{ color: "#6c757d", flex: 1, minWidth: 260 }}>
+                {pagoElCliente
+                  ? "El cliente pagó directamente al banco: no hay movimiento de caja. Solo se registra el asiento y se cancela la cuota del préstamo."
+                  : "El cliente no pagó y el banco nos cobra: se paga la cuota desde nuestras cuentas, como cualquier pago de préstamo."}
+              </small>
+            </div>
+          </Panel>
+        )}
+
+        {pagaElCliente && (
+          <>
+            <LiquidacionFactoringPanel prestamoId={prestamo?.id} toast={toast} onRegistrada={onOperacionRegistrada} />
+            <div className="flex justify-content-end gap-2 mt-3">
+              <Button label="Cerrar" icon="pi pi-times" severity="secondary" outlined onClick={onCancel} type="button" />
+            </div>
+          </>
+        )}
+
+        {!pagaElCliente && (
+          <>
         {/* SECCIÓN 1: Cuotas a pagar (con casillas y montos) o préstamo a desembolsar */}
         <Panel header={esDesembolso ? "🏦 Préstamo a Desembolsar" : "🏦 Cuotas a Pagar"} className="mb-3">
           {esDesembolso ? (
@@ -1065,6 +1108,8 @@ const OperacionPrestamoForm = ({
             disabled={cargando || seleccionados.length === 0}
           />
         </div>
+          </>
+        )}
       </form>
 
       <ConfirmarSinFondosDialog

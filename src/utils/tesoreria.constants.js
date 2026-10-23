@@ -145,8 +145,8 @@ export const TIPO_OPERACION_TESORERIA = {
   INGRESO_DINERO: 'INGRESO_DINERO',
   GASTO_URGENTE: 'GASTO_URGENTE',
   LETRAS_CAMBIO: 'LETRAS_CAMBIO',
-  LIQUIDACION_FACTORING: 'LIQUIDACION_FACTORING',
   PRESTAMO_ENTIDAD: 'PRESTAMO_ENTIDAD',
+  GASTOS_BANCARIOS: 'GASTOS_BANCARIOS',
 };
 
 
@@ -702,17 +702,17 @@ export const LABELS_TIPO_OPERACION = {
     icon: 'pi pi-file-edit',
     descripcion: 'Pago de letras por pagar y cobranza de letras por cobrar (capital, interés y mora)',
   },
-  [TIPO_OPERACION_TESORERIA.LIQUIDACION_FACTORING]: {
-    label: 'Liquidar Factoring',
-    severity: 'secondary',
-    icon: 'pi pi-check-square',
-    descripcion: 'La entidad de factoring cobró las facturas al cliente (sin movimiento de caja)',
-  },
   [TIPO_OPERACION_TESORERIA.PRESTAMO_ENTIDAD]: {
     label: 'Préstamos Accionistas / Terceros',
     severity: 'warning',
     icon: 'pi pi-users',
     descripcion: 'Préstamos con accionistas y terceros: desembolso y devolución de capital, como Prestamista o como Deudor',
+  },
+  [TIPO_OPERACION_TESORERIA.GASTOS_BANCARIOS]: {
+    label: 'Gastos Bancarios',
+    severity: 'danger',
+    icon: 'pi pi-building',
+    descripcion: 'Comisiones, comisión por retención judicial, ITF y portes que el banco cargó a la cuenta',
   },
 };
 
