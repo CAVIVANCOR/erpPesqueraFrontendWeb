@@ -29,6 +29,9 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
   const [monedaId, setMonedaId] = useState(null);
   const [descripcion, setDescripcion] = useState("");
   const [saldoMinimo, setSaldoMinimo] = useState(0);
+  const [limiteCredito, setLimiteCredito] = useState(null);
+  const [diaCierre, setDiaCierre] = useState(null);
+  const [diaPago, setDiaPago] = useState(null);
   const [fechaApertura, setFechaApertura] = useState(null);
   const [fechaCierre, setFechaCierre] = useState(null);
   const [cuentaContableId, setCuentaContableId] = useState(null);
@@ -91,6 +94,9 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
     setMonedaId(cuenta.monedaId ? Number(cuenta.monedaId) : null);
     setDescripcion(cuenta.descripcion || "");
     setSaldoMinimo(cuenta.saldoMinimo ? Number(cuenta.saldoMinimo) : 0);
+    setLimiteCredito(cuenta.limiteCredito ? Number(cuenta.limiteCredito) : null);
+    setDiaCierre(cuenta.diaCierre ? Number(cuenta.diaCierre) : null);
+    setDiaPago(cuenta.diaPago ? Number(cuenta.diaPago) : null);
     setFechaApertura(
       cuenta.fechaApertura ? new Date(cuenta.fechaApertura) : null,
     );
@@ -165,6 +171,17 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
       return;
     }
 
+    // La línea de crédito es la base del control de disponible de la tarjeta
+    if (esTarjeta && !(Number(limiteCredito) > 0)) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Ingrese la línea de crédito de la tarjeta (monto mayor a cero)",
+        life: 3000,
+      });
+      return;
+    }
+
     // Advertencia formato CCI (20 dígitos) - No bloquea el guardado
     if (numeroCuentaCCI && numeroCuentaCCI.length !== 20) {
       toast.current.show({
@@ -197,6 +214,10 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
       monedaId: Number(monedaId),
       descripcion: descripcion ? descripcion.trim().toUpperCase() : null,
       saldoMinimo: saldoMinimo ? Number(saldoMinimo) : 0,
+      // Datos de tarjeta: solo se envían si el tipo de cuenta es tarjeta; si no, se limpian
+      limiteCredito: esTarjeta && limiteCredito ? Number(limiteCredito) : null,
+      diaCierre: esTarjeta && diaCierre ? Number(diaCierre) : null,
+      diaPago: esTarjeta && diaPago ? Number(diaPago) : null,
       fechaApertura: fechaApertura || null,
       fechaCierre: fechaCierre || null,
       cuentaContableId: Number(cuentaContableId),
@@ -266,6 +287,11 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
     label: t.nombre,
     value: Number(t.id),
   }));
+
+  // El tipo de cuenta elegido define si se piden los datos de tarjeta de crédito
+  const esTarjeta = Boolean(
+    tiposCuenta.find((t) => Number(t.id) === Number(tipoCuentaCorrienteId))?.esTarjetaCredito,
+  );
 
   // ✅ OPTIMIZADO: Obtener color de fondo de la moneda seleccionada
   const getMonedaColorFondo = () => {
@@ -469,6 +495,62 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
             </small>
           </div>
         </div>
+
+        {/* Sección tarjeta de crédito: solo para tipos de cuenta marcados como tarjeta */}
+        {esTarjeta && (
+          <div className="card" style={{ padding: "20px", backgroundColor: "#eef2ff" }}>
+            <h3 style={{ marginTop: 0, marginBottom: "16px", color: "#3730a3" }}>
+              <i className="pi pi-credit-card" style={{ marginRight: "8px" }} />
+              Datos de la Tarjeta de Crédito
+            </h3>
+            <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <label htmlFor="limiteCredito">Línea de Crédito *</label>
+                <InputNumber
+                  id="limiteCredito"
+                  value={limiteCredito}
+                  onValueChange={(e) => setLimiteCredito(e.value)}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  min={0}
+                  placeholder="0.00"
+                  style={{ width: "100%" }}
+                  inputStyle={{ fontWeight: "bold" }}
+                />
+                <small style={{ color: "#6b7280" }}>Monto máximo que puede gastarse con la tarjeta</small>
+              </div>
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <label htmlFor="diaCierre">Día de Cierre</label>
+                <InputNumber
+                  id="diaCierre"
+                  value={diaCierre}
+                  onValueChange={(e) => setDiaCierre(e.value)}
+                  useGrouping={false}
+                  min={1}
+                  max={31}
+                  placeholder="1 - 31"
+                  style={{ width: "100%" }}
+                />
+                <small style={{ color: "#6b7280" }}>Día del mes en que cierra el estado de cuenta</small>
+              </div>
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <label htmlFor="diaPago">Día de Pago</label>
+                <InputNumber
+                  id="diaPago"
+                  value={diaPago}
+                  onValueChange={(e) => setDiaPago(e.value)}
+                  useGrouping={false}
+                  min={1}
+                  max={31}
+                  placeholder="1 - 31"
+                  style={{ width: "100%" }}
+                />
+                <small style={{ color: "#6b7280" }}>Día del mes en que vence el pago</small>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Sección 3: VinculacióFn Contable */}
         <div

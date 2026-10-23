@@ -4,6 +4,7 @@ import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
+import BooleanToggleButton from "../common/BooleanToggleButton";
 import { Badge } from "primereact/badge";
 import { Toast } from "primereact/toast";
 import {
@@ -39,6 +40,7 @@ export default function TipoPrestamoForm({
     esComercioExterior: false,
     esLeasing: false,
     esFactoring: false,
+    esTarjetaCredito: false,
     permiteRefinanciar: true,
     severityColor: null,
     activo: true,
@@ -53,6 +55,7 @@ export default function TipoPrestamoForm({
         esComercioExterior: initialData.esComercioExterior || false,
         esLeasing: initialData.esLeasing || false,
         esFactoring: initialData.esFactoring || false,
+        esTarjetaCredito: initialData.esTarjetaCredito || false,
         permiteRefinanciar: initialData.permiteRefinanciar ?? true,
         severityColor: initialData.severityColor || null,
         activo: initialData.activo ?? true,
@@ -253,6 +256,18 @@ export default function TipoPrestamoForm({
               <label htmlFor="esFactoring" style={{ fontWeight: "500" }}>
                 Es Factoring
               </label>
+            </div>
+
+            <div style={{ minWidth: 260 }}>
+              <BooleanToggleButton
+                value={formData.esTarjetaCredito}
+                onChange={(valor) => handleChange("esTarjetaCredito", valor)}
+                labelTrue="COMPRA EN CUOTAS CON TARJETA"
+                labelFalse="NO ES DE TARJETA"
+                severityTrue="warning"
+                severityFalse="secondary"
+                icon={formData.esTarjetaCredito ? "pi-credit-card" : "pi-times"}
+              />
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>

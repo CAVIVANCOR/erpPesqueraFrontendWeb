@@ -4,16 +4,19 @@ import React from 'react';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Checkbox } from 'primereact/checkbox';
+import BooleanToggleButton from '../common/BooleanToggleButton';
 
 export default function TipoCuentaCorrienteForm({ isEdit, defaultValues, onSubmit, onCancel, loading }) {
   const [nombre, setNombre] = React.useState(defaultValues.nombre || '');
   const [descripcion, setDescripcion] = React.useState(defaultValues.descripcion || '');
   const [activo, setActivo] = React.useState(defaultValues.activo !== undefined ? !!defaultValues.activo : true);
+  const [esTarjetaCredito, setEsTarjetaCredito] = React.useState(!!defaultValues.esTarjetaCredito);
 
   React.useEffect(() => {
     setNombre(defaultValues.nombre || '');
     setDescripcion(defaultValues.descripcion || '');
     setActivo(defaultValues.activo !== undefined ? !!defaultValues.activo : true);
+    setEsTarjetaCredito(!!defaultValues.esTarjetaCredito);
   }, [defaultValues]);
 
   const handleSubmit = (e) => {
@@ -21,7 +24,8 @@ export default function TipoCuentaCorrienteForm({ isEdit, defaultValues, onSubmi
     onSubmit({
       nombre,
       descripcion,
-      activo
+      activo,
+      esTarjetaCredito
     });
   };
 
@@ -34,6 +38,20 @@ export default function TipoCuentaCorrienteForm({ isEdit, defaultValues, onSubmi
       <div className="p-field">
         <label htmlFor="descripcion">Descripción</label>
         <InputText id="descripcion" value={descripcion} onChange={e => setDescripcion(e.target.value)} disabled={loading} />
+      </div>
+      <div className="p-field">
+        <label>Tipo de cuenta</label>
+        <BooleanToggleButton
+          value={esTarjetaCredito}
+          onChange={setEsTarjetaCredito}
+          labelTrue="ES TARJETA DE CRÉDITO"
+          labelFalse="CUENTA BANCARIA / CAJA"
+          severityTrue="warning"
+          severityFalse="secondary"
+          icon={esTarjetaCredito ? "pi-credit-card" : "pi-building"}
+          disabled={loading}
+        />
+        <small>Las cuentas de este tipo se manejan como tarjeta: la deuda no cuenta como caja y se controla contra el límite de crédito.</small>
       </div>
       <div className="p-field-checkbox">
         <Checkbox id="activo" checked={activo} onChange={e => setActivo(e.checked)} disabled={loading} />

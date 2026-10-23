@@ -115,6 +115,7 @@ export default function TipoCuentaCorriente() {
         <Column field="id" header="ID" style={{ width: 80 }} />
         <Column field="nombre" header="Nombre" />
         <Column field="descripcion" header="Descripción" />
+        <Column field="esTarjetaCredito" header="Tarjeta de crédito" body={rowData => rowData.esTarjetaCredito ? "Sí" : "No"} />
         <Column field="activo" header="Activo" body={rowData => rowData.activo ? "Sí" : "No"} />
         <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
       </DataTable>
