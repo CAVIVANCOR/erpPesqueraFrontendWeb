@@ -13,7 +13,7 @@ import { getEmpresas } from "../../api/empresa";
 import { getBancos } from "../../api/banco";
 import { getMonedas } from "../../api/moneda";
 import { getAllTipoCuentaCorriente } from "../../api/tipoCuentaCorriente";
-import { getPlanCuentasContable } from "../../api/contabilidad/planCuentasContable";
+import PlanCuentaContableSelector from "../common/PlanCuentaContableSelector";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
@@ -39,7 +39,6 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
   const [bancos, setBancos] = useState([]);
   const [monedas, setMonedas] = useState([]);
   const [tiposCuenta, setTiposCuenta] = useState([]);
-  const [cuentasContables, setCuentasContables] = useState([]);
 
   const [loading, setLoading] = useState(false);
 
@@ -52,12 +51,6 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
       cargarDatosCuenta();
     }
   }, [isEdit, cuenta]);
-
-  useEffect(() => {
-    if (empresaId) {
-      cargarCuentasContables();
-    }
-  }, [empresaId]);
 
   const cargarCatalogos = async () => {
     try {
@@ -81,20 +74,6 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
         detail: "Error al cargar catálogos",
         life: 3000,
       });
-    }
-  };
-
-  const cargarCuentasContables = async () => {
-    try {
-      const cuentas = await getPlanCuentasContable(empresaId);
-      // Filtrar cuentas de efectivo: 101 (Caja) y 104 (Cuentas Corrientes)
-      const cuentasEfectivo = cuentas.filter(
-        (c) =>
-          c.codigoCuenta.startsWith("10"),
-      );
-      setCuentasContables(cuentasEfectivo);
-    } catch (error) {
-      console.error("Error al cargar cuentas contables:", error);
     }
   };
 
@@ -286,11 +265,6 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
   const tiposCuentaOptions = tiposCuenta.map((t) => ({
     label: t.nombre,
     value: Number(t.id),
-  }));
-
-  const cuentasContablesOptions = cuentasContables.map((c) => ({
-    label: `${c.codigoCuenta} - ${c.nombreCuenta}`,
-    value: Number(c.id),
   }));
 
   // ✅ OPTIMIZADO: Obtener color de fondo de la moneda seleccionada
@@ -507,30 +481,20 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
           </h3>
 
           <div>
-            <label htmlFor="cuentaContableId">Cuenta Contable *</label>
-            <Dropdown
-              id="cuentaContableId"
-              value={cuentaContableId}
-              options={cuentasContablesOptions}
-              onChange={(e) => setCuentaContableId(e.value)}
+            <PlanCuentaContableSelector
+              value={cuentaContableId ? Number(cuentaContableId) : null}
+              onChange={(id) => setCuentaContableId(id)}
+              label="Cuenta Contable *"
               placeholder="Seleccionar cuenta del Plan Contable"
-              filter
-              showClear
-              emptyMessage="No hay cuentas contables disponibles"
               disabled={!empresaId}
-              style={{
-                width: "100%",
-                fontWeight: "bold",
-                textTransform: "uppercase",
-              }}
+              showClearButton={true}
             />
             <small style={{ color: "#92400e", fontWeight: "bold" }}>
               <i
                 className="pi pi-exclamation-triangle"
                 style={{ marginRight: "4px" }}
               />
-              Requerido para generar asientos contables automáticamente. Ej:
-              1041 - CUENTAS CORRIENTES OPERATIVAS
+              Requerido para generar asientos contables automáticamente. Ej: 104111 - BCP SOLES (cuenta bancaria) o 451103 - TARJETA DE CREDITO (tarjeta)
             </small>
           </div>
         </div>

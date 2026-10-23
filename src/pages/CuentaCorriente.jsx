@@ -11,6 +11,7 @@ import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Tag } from "primereact/tag";
 import CuentaCorrienteForm from "../components/cuentaCorriente/CuentaCorrienteForm";
+import PlanCuentaContableSelector from "../components/common/PlanCuentaContableSelector";
 import {
   getAllCuentaCorriente,
   eliminarCuentaCorriente,
@@ -53,6 +54,7 @@ const CuentaCorriente = ({ ruta }) => {
   // Filtros
   const [empresaFiltro, setEmpresaFiltro] = useState(null);
   const [bancoFiltro, setBancoFiltro] = useState(null);
+  const [cuentaContableFiltro, setCuentaContableFiltro] = useState(null);
   const [estadoFiltro, setEstadoFiltro] = useState("TODOS");
   const [filtroSaldo, setFiltroSaldo] = useState("CON_SALDO"); // ✅ NUEVO: Por defecto muestra con saldo
   const [globalFilterValue, setGlobalFilterValue] = useState("");
@@ -70,7 +72,7 @@ const CuentaCorriente = ({ ruta }) => {
     if (todasLasCuentas.length > 0) {
       aplicarFiltros();
     }
-  }, [empresaFiltro, bancoFiltro, estadoFiltro, filtroSaldo]); // ✅ Agregado filtroSaldo
+  }, [empresaFiltro, bancoFiltro, cuentaContableFiltro, estadoFiltro, filtroSaldo]); // ✅ Agregado filtroSaldo
 
   const cargarDatosIniciales = async () => {
     try {
@@ -128,6 +130,12 @@ const CuentaCorriente = ({ ruta }) => {
     if (bancoFiltro) {
       cuentasFiltradas = cuentasFiltradas.filter(
         (c) => Number(c.bancoId) === Number(bancoFiltro),
+      );
+    }
+
+    if (cuentaContableFiltro) {
+      cuentasFiltradas = cuentasFiltradas.filter(
+        (c) => Number(c.cuentaContableId) === Number(cuentaContableFiltro),
       );
     }
 
@@ -335,6 +343,7 @@ const CuentaCorriente = ({ ruta }) => {
   const handleLimpiarFiltros = () => {
     setEmpresaFiltro(null);
     setBancoFiltro(null);
+    setCuentaContableFiltro(null);
     setEstadoFiltro("TODOS");
     setFiltroSaldo("CON_SALDO"); // ✅ Resetear a valor por defecto
     toast.current.show({
@@ -647,6 +656,12 @@ const CuentaCorriente = ({ ruta }) => {
       );
     }
 
+    if (cuentaContableFiltro) {
+      cuentasParaEstados = cuentasParaEstados.filter(
+        (c) => Number(c.cuentaContableId) === Number(cuentaContableFiltro),
+      );
+    }
+
     const tieneActivas = cuentasParaEstados.some(
       (c) => c.activa === true && !c.fechaCierre,
     );
@@ -773,6 +788,16 @@ const CuentaCorriente = ({ ruta }) => {
               placeholder="Todos los bancos"
               style={{ width: "100%", fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               filter
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <PlanCuentaContableSelector
+              value={cuentaContableFiltro}
+              onChange={(id) => setCuentaContableFiltro(id)}
+              label="Filtrar por Cuenta Contable"
+              placeholder="Todas las cuentas contables"
+              showClearButton={true}
             />
           </div>
 
