@@ -3,6 +3,7 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Tag } from "primereact/tag";
+import AsientoPrevioPrestamoDialog from "../../../components/movimientoCaja/PrestamosPagoEspecializado/AsientoPrevioPrestamoDialog";
 import { formatearNumero, formatearFecha } from "../../../utils/utils";
 import { getResponsiveFontSize } from "../../../utils/utils";
 import {
@@ -148,7 +149,11 @@ const PendientesTable = ({
   tipoDeuda,
   seleccion = [],
   onSeleccionChange,
+  toast,
+  onAsientoPrevioEliminado,
 }) => {
+  // Préstamo aprobado con asiento del flujo anterior cuyo detalle se revisa para decidir si se elimina
+  const [filaAsientoPrevio, setFilaAsientoPrevio] = React.useState(null);
   // Templates
   const tipoTemplate = (rowData) => {
     return (
@@ -178,6 +183,19 @@ const PendientesTable = ({
           <span style={{ color: "#2E7D32", fontWeight: "600" }}>
             {rowData.moneda?.codigoSunat || "N/A"}
           </span>
+          {rowData.asientosPrevios?.length > 0 && (
+            <Button
+              type="button"
+              label="Asiento previo: eliminar antes de desembolsar"
+              icon="pi pi-exclamation-triangle"
+              severity="danger"
+              size="small"
+              outlined
+              style={{ padding: "0.15rem 0.5rem", fontSize: "0.7rem" }}
+              tooltip="Este préstamo ya tiene un asiento del flujo anterior. Desembolsar sin eliminarlo duplicaría la contabilidad."
+              onClick={() => setFilaAsientoPrevio(rowData)}
+            />
+          )}
           {rowData.prestamo?.tipoPrestamo && (
             <>
               <span style={{ color: "#999" }}>-</span>
@@ -567,11 +585,12 @@ const PendientesTable = ({
   const columnasActivas = COLUMNAS_POR_CASO[claveCaso] || COLUMNAS_BASE;
 
   return (
+    <>
     <DataTable
       value={pendientes}
       loading={loading}
       {...(claveCaso === "DEUDAS_PERSONAL" || claveCaso === "DEUDAS_TRIBUTARIAS" || claveCaso === "COBRAR" || claveCaso === "PAGAR" || claveCaso === "PRESTAMOS_CUOTAS" || claveCaso === "PRESTAMOS_DESEMBOLSOS"
-        ? { selection: seleccion, onSelectionChange: (e) => onSeleccionChange?.(e.value), dataKey: "id" }
+        ? { selection: seleccion, onSelectionChange: (e) => onSeleccionChange?.(e.value), dataKey: "id", isDataSelectable: (e) => !(e.data.asientosPrevios?.length > 0) }
         : {})}
       paginator
       rows={20}
@@ -587,6 +606,17 @@ const PendientesTable = ({
         <Column key={`${claveCaso}-${clave}`} {...definicionesColumnas[clave]} />
       ))}
     </DataTable>
+      <AsientoPrevioPrestamoDialog
+        visible={Boolean(filaAsientoPrevio)}
+        onHide={() => setFilaAsientoPrevio(null)}
+        fila={filaAsientoPrevio}
+        toast={toast}
+        onEliminado={() => {
+          setFilaAsientoPrevio(null);
+          onAsientoPrevioEliminado?.();
+        }}
+      />
+    </>
   );
 };
 

@@ -933,6 +933,8 @@ const TesoreriaPendientes = () => {
           tipoDeuda={filtros.tipoDeuda}
           seleccion={deudasSeleccionadas}
           onSeleccionChange={setSeleccionDeudas}
+          toast={toast}
+          onAsientoPrevioEliminado={recargarPendientes}
         />
       </Card>
 

@@ -5,14 +5,11 @@
  * Muestra una tabla con Empresa, Familia, Subfamilia y Producto para facilitar la búsqueda
  * Incluye carrusel de filtros por empresa, familia y subfamilia con colores dinámicos
  * 
- * ⚠️ IMPORTANTE: Este componente excluye automáticamente la familia MERCADERÍA (ID=1)
- * porque en gastos planificados solo se usan productos de otras familias
- * (insumos, servicios, mantenimiento, etc.)
+ * No excluye ninguna familia: se listan todos los productos (incluida MERCADERÍA).
  * 
  * PATRÓN: Replica exactamente EntidadComercialSelector.jsx
  * - CARGA INTERNAMENTE todas las empresas, familias, subfamilias y productos
  * - Filtra dinámicamente por empresa, familia y subfamilia
- * - Excluye familia MERCADERÍA automáticamente
  * 
  * CORRECCIÓN v2.2.0: Layout de 4 columnas verticales + carga interna
  * - Columna 1: Botones de empresas (vertical)
@@ -171,13 +168,6 @@ const ProductoSelector = ({
     return producto;
   }, [productos, value]);
 
-  // ⚠️ FILTRO FAMILIA MERCADERÍA
-  // Excluimos productos con familiaId=1 (MERCADERÍA) porque no se usan en gastos planificados
-  const productosConFiltroMercaderia = useMemo(() => {
-    const filtrados = productos.filter((p) => Number(p.familiaId) !== 1);
-    return filtrados;
-  }, [productos]);
-
   // ✅ MOSTRAR TODAS LAS EMPRESAS - No filtrar por productos
   const empresasUnicas = useMemo(() => {
     const empresasOrdenadas = [...empresas].sort((a, b) =>
@@ -189,14 +179,14 @@ const ProductoSelector = ({
   // ⚠️ FILTRO POR EMPRESA PRIMERO
   const productosFiltradosPorEmpresa = useMemo(() => {
     if (!empresaFiltro) {
-      return productosConFiltroMercaderia;
+      return productos;
     }
     
-    const filtrados = productosConFiltroMercaderia.filter(
+    const filtrados = productos.filter(
       (producto) => Number(producto.empresaId) === Number(empresaFiltro)
     );
     return filtrados;
-  }, [productosConFiltroMercaderia, empresaFiltro]);
+  }, [productos, empresaFiltro]);
 
   // Extraer familias únicas desde los productos filtrados por empresa y ordenarlas alfabéticamente
   const familiasUnicas = useMemo(() => {

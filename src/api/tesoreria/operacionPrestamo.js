@@ -33,6 +33,12 @@ export async function sincronizarAdjuntosPagoCuotaPrestamo(pagoId) {
 /**
  * Desembolso del préstamo: ingreso del dinero a la cuenta de la empresa
  */
+/** Elimina un asiento del flujo anterior de un préstamo aprobado (antes de desembolsar) */
+export async function eliminarAsientoPrevioPrestamo(prestamoId, asientoId) {
+  const res = await axios.delete(`${API_URL}/prestamos/${prestamoId}/asientos-previos/${asientoId}`, { headers: getAuthHeaders() });
+  return res.data?.data;
+}
+
 export async function desembolsarPrestamo(data) {
   const res = await axios.post(`${API_URL}/desembolsar`, data, { headers: getAuthHeaders() });
   return res.data;
