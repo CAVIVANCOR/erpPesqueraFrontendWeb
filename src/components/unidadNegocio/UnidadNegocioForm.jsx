@@ -10,7 +10,7 @@ import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
 import { ColorPicker } from "primereact/colorpicker";
-import { Dropdown } from "primereact/dropdown";
+import CentroCostoSelector from "../common/CentroCostoSelector";
 
 // Esquema de validación profesional
 const schema = Yup.object().shape({
@@ -43,7 +43,6 @@ export default function UnidadNegocioForm({
   onCancel,
   loading,
   readOnly = false,
-  centrosCosto = [],
 }) {
   const {
     register,
@@ -151,30 +150,22 @@ export default function UnidadNegocioForm({
       </div>
 
       <div className="p-field" style={{ marginBottom: 18 }}>
-        <label htmlFor="centroCostoId">Centro de Costo</label>
         <Controller
           name="centroCostoId"
           control={control}
           render={({ field }) => (
-            <Dropdown
-              id="centroCostoId"
-              value={field.value}
-              options={centrosCosto.map((c) => ({
-                label: `${c.Codigo} - ${c.Nombre}`,
-                value: Number(c.id),
-              }))}
-              onChange={(e) => field.onChange(e.value)}
+            <CentroCostoSelector
+              value={field.value ? Number(field.value) : null}
+              onChange={field.onChange}
+              label="Centro de Costo"
               placeholder="Seleccione un centro de costo"
-              filter
-              showClear
               disabled={readOnly}
-              style={{ width: "100%" }}
+              error={!!errors.centroCostoId}
+              errorMessage={errors.centroCostoId?.message}
+              showClearButton={true}
             />
           )}
         />
-        {errors.centroCostoId && (
-          <small className="p-error">{errors.centroCostoId.message}</small>
-        )}
         <small className="p-text-secondary">
           Centro de costo asociado a esta unidad de negocio
         </small>

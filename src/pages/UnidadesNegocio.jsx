@@ -21,7 +21,7 @@ import {
   actualizarUnidadNegocio,
   eliminarUnidadNegocio,
 } from "../api/unidadNegocio";
-import { getCentrosCosto } from "../api/centroCosto";
+import { CentroCostoTagsPorId } from "../components/common/CentroCostoSelector";
 import UnidadNegocioForm from "../components/unidadNegocio/UnidadNegocioForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -53,11 +53,9 @@ export default function UnidadesNegocio({ ruta }) {
   const [unidadEdit, setUnidadEdit] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [centrosCosto, setCentrosCosto] = useState([]);
 
   useEffect(() => {
     cargarUnidades();
-    cargarCentrosCosto();
   }, []);
 
   async function cargarUnidades() {
@@ -81,15 +79,6 @@ export default function UnidadesNegocio({ ruta }) {
       );
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function cargarCentrosCosto() {
-    try {
-      const data = await getCentrosCosto();
-      setCentrosCosto(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Error al cargar centros de costo:", err);
     }
   }
 
@@ -217,12 +206,7 @@ export default function UnidadesNegocio({ ruta }) {
     );
   };
 
-    const centroCostoTemplate = (rowData) => {
-    if (rowData.centroCosto) {
-      return `${rowData.centroCosto.Codigo} - ${rowData.centroCosto.Nombre}`;
-    }
-    return rowData.centroCostoId ? rowData.centroCostoId : "-";
-  };
+  const centroCostoTemplate = (rowData) => <CentroCostoTagsPorId centroCostoId={rowData.centroCostoId} />;
 
   const accionesTemplate = (rowData) => (
     <div onClick={(e) => e.stopPropagation()}>
@@ -385,7 +369,6 @@ export default function UnidadesNegocio({ ruta }) {
           onCancel={() => setMostrarDialogo(false)}
           loading={formLoading}
           readOnly={modoEdicion && !permisos.puedeEditar}
-          centrosCosto={centrosCosto}
         />
       </Dialog>
     </div>

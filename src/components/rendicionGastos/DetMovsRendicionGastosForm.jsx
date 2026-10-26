@@ -68,13 +68,23 @@ const DetMovsRendicionGastosForm = ({
 
   // Gasto urgente: el origen siempre es el módulo COMPRAS (modelo OrdenCompra) y el documento es la Orden de
   // Compra que se genera después; mientras no exista queda en 0 y el sistema lo completa al generar la OC.
+  // Movimientos sin proceso (p. ej. gastos de gerencia): por defecto el origen es el módulo TESORERÍA (modelo
+  // DetMovsEntregaRendir), es decir el propio movimiento; el backend completa su id al crearlo y, al generar la compra,
+  // el origen pasa a COMPRAS + la Orden de Compra.
   const [moduloCompras, setModuloCompras] = useState(null);
+  const [moduloTesoreria, setModuloTesoreria] = useState(null);
   useEffect(() => {
-    if (modoGasto !== "directo") return;
     getModulos()
-      .then((modulos) => setModuloCompras((modulos || []).find((m) => m.modeloDocumentoOrigen === "OrdenCompra") || null))
-      .catch(() => setModuloCompras(null));
-  }, [modoGasto]);
+      .then((modulos) => {
+        const lista = modulos || [];
+        setModuloCompras(lista.find((m) => m.modeloDocumentoOrigen === "OrdenCompra") || null);
+        setModuloTesoreria(lista.find((m) => m.modeloDocumentoOrigen === "DetMovsEntregaRendir" && m.activo !== false) || null);
+      })
+      .catch(() => {
+        setModuloCompras(null);
+        setModuloTesoreria(null);
+      });
+  }, []);
   const origenAutomatico =
     modoGasto === "directo" &&
     (!movimiento?.id || (moduloCompras && Number(movimiento.moduloOrigenId) === Number(moduloCompras.id)));
@@ -682,6 +692,18 @@ const DetMovsRendicionGastosForm = ({
           moduloOrigenId: Number(moduloCompras.id),
           documentoOrigenId: Number(movimiento?.documentoOrigenId || 0),
         };
+      } else if (!Number(data.moduloOrigenId) && !Number(data.documentoOrigenId)) {
+        // Sin proceso elegido: el origen es el propio movimiento (TESORERÍA); documento 0 = el backend lo completa con su id
+        if (!moduloTesoreria) {
+          toast.current?.show({
+            severity: "error",
+            summary: "Falta configuración",
+            detail: "No se encontró un módulo activo con el modelo de documento DetMovsEntregaRendir (TESORERÍA) en el mantenimiento de módulos del sistema: es el origen de los movimientos sin proceso. Configúrelo o elija un módulo origen.",
+            life: 9000,
+          });
+          return;
+        }
+        data = { ...data, moduloOrigenId: Number(moduloTesoreria.id), documentoOrigenId: 0 };
       } else {
         if (!Number(data.moduloOrigenId)) {
           setError("moduloOrigenId", { type: "required", message: "El Módulo Origen es obligatorio." });
@@ -919,6 +941,9 @@ const DetMovsRendicionGastosForm = ({
                   documentoLabel="Documento Origen"
                   allowSinModulo={false}
                 />
+                <small style={{ color: "#6c757d" }}>
+                  Opcional: sin módulo ni documento, el origen es el propio movimiento (Tesorería) y pasa a Compras al generarse la compra.
+                </small>
 
                 {errors.moduloOrigenId && (
                   <Message

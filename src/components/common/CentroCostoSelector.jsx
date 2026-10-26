@@ -67,6 +67,75 @@ const getColorCategoria = (index) => {
   return COLORES_CATEGORIAS[index % COLORES_CATEGORIAS.length];
 };
 
+// Carga compartida de centros y categorías para todas las filas de una lista (una sola consulta por ráfaga de renders).
+// Vigencia corta para que un centro recién creado o editado se vea sin recargar toda la aplicación.
+const VIGENCIA_CARGA_MS = 15000;
+let cargaCentrosCategorias = null;
+let cargaCentrosCategoriasEn = 0;
+const cargarCentrosCategorias = () => {
+  if (!cargaCentrosCategorias || Date.now() - cargaCentrosCategoriasEn > VIGENCIA_CARGA_MS) {
+    cargaCentrosCategoriasEn = Date.now();
+    cargaCentrosCategorias = Promise.all([getCentrosCosto(), getAllCategoriaCCosto()]).catch((error) => {
+      cargaCentrosCategorias = null;
+      throw error;
+    });
+  }
+  return cargaCentrosCategorias;
+};
+
+/**
+ * Muestra las etiquetas del selector (categoría, subcategoría y descripción) a partir del id del centro de costo.
+ * Para listas y reportes: carga y relaciona los datos igual que el selector.
+ * @param {number|string} props.centroCostoId - ID del centro de costo
+ */
+export const CentroCostoTagsPorId = ({ centroCostoId }) => {
+  const [centro, setCentro] = useState(null);
+
+  useEffect(() => {
+    if (!centroCostoId) {
+      setCentro(null);
+      return undefined;
+    }
+    let vigente = true;
+    cargarCentrosCategorias()
+      .then(([centros, categorias]) => {
+        if (!vigente) return;
+        const encontrado = (centros || []).find((c) => Number(c.id) === Number(centroCostoId));
+        const categoria = encontrado
+          ? (categorias || []).find((cat) => Number(cat.id) === Number(encontrado.CategoriaID))
+          : null;
+        setCentro(encontrado ? { ...encontrado, categoria: categoria || null } : null);
+      })
+      .catch(() => vigente && setCentro(null));
+    return () => {
+      vigente = false;
+    };
+  }, [centroCostoId]);
+
+  if (!centroCostoId) return <span style={{ color: "#999" }}>-</span>;
+  return centro ? <CentroCostoTags centro={centro} /> : <span style={{ color: "#999" }}>...</span>;
+};
+
+/**
+ * Etiquetas de color de un centro de costo: categoría, subcategoría (ParentCentroID) y descripción.
+ * Es la misma presentación del selector, exportada para mostrarla igual en listas y reportes.
+ * @param {Object} props.centro - Centro de costo con su relación `categoria` ya poblada (opcional)
+ */
+export const CentroCostoTags = ({ centro }) => (
+  <span style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+    {/* Categoría */}
+    {centro.categoria && (
+      <Tag value={centro.categoria.nombre} severity="info" style={{ fontWeight: "bold", fontSize: "0.75rem" }} />
+    )}
+    {/* ParentCentroID (Subcategoría) */}
+    {centro.ParentCentroID && (
+      <Tag value={centro.ParentCentroID} severity="warning" style={{ fontWeight: "500", fontSize: "0.75rem" }} />
+    )}
+    {/* Descripción */}
+    <Tag value={centro.Descripcion || centro.Nombre} severity="success" style={{ fontSize: "0.75rem" }} />
+  </span>
+);
+
 /**
  * Componente CentroCostoSelector
  * @param {number|string} props.value - ID del centro de costo seleccionado
@@ -358,30 +427,7 @@ const CentroCostoSelector = ({
           {loading ? (
             <span style={{ color: "#999" }}>Cargando...</span>
           ) : centroSeleccionado ? (
-            <span style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-              {/* Categoría */}
-              {centroSeleccionado.categoria && (
-                <Tag
-                  value={centroSeleccionado.categoria.nombre}
-                  severity="info"
-                  style={{ fontWeight: "bold", fontSize: "0.75rem" }}
-                />
-              )}
-              {/* ParentCentroID (Subcategoría) */}
-              {centroSeleccionado.ParentCentroID && (
-                <Tag
-                  value={centroSeleccionado.ParentCentroID}
-                  severity="warning"
-                  style={{ fontWeight: "500", fontSize: "0.75rem" }}
-                />
-              )}
-              {/* Descripción */}
-              <Tag
-                value={centroSeleccionado.Descripcion || centroSeleccionado.Nombre}
-                severity="success"
-                style={{ fontSize: "0.75rem" }}
-              />
-            </span>
+            <CentroCostoTags centro={centroSeleccionado} />
           ) : (
             <span style={{ color: "#999" }}>📂 {placeholder}</span>
           )}
