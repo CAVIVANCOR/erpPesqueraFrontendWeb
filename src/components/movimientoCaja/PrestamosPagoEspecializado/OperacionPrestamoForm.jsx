@@ -215,10 +215,15 @@ const OperacionPrestamoForm = ({
     setBusquedaCliente("");
   }, [esDesembolso, esFactoring, empresaId, monedaPrestamo?.id, filas]);
 
-  // El descuento / interés lo ingresa el usuario; si cambian las facturas elegidas se reinicia
+  // Interés descontado por adelantado: lo define el registro del préstamo, no las facturas elegidas:
+  // monto aprobado (financiado) menos monto a desembolsar (neto que deposita el banco). El usuario puede ajustarlo con el
+  // neto del estado de cuenta. Con interés diferido no hay descuento en el desembolso.
+  const interesDelPrestamo = interesDescontado
+    ? Math.max(0, redondear2(Number(prestamo?.montoAprobado || 0) - Number(prestamo?.montoDesembolsado || 0)))
+    : 0;
   useEffect(() => {
-    if (esDesembolso && esFactoring) setMontoDescuento(0);
-  }, [brutoFacturas]);
+    if (esDesembolso && esFactoring) setMontoDescuento(interesDelPrestamo);
+  }, [esDesembolso, esFactoring, prestamo?.id, interesDelPrestamo]);
 
   const cuentaSeleccionada =
     cuentasCorrientes.find((c) => Number(c.id) === Number(cuentaId)) || null;
