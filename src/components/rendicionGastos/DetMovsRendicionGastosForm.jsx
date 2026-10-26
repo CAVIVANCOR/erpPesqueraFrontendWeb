@@ -23,6 +23,7 @@ import { Card } from "primereact/card";
 import TipoMovimientoSelector from "../common/TipoMovimientoSelector";
 import ModuloDocumentoSelector from "../common/ModuloDocumentoSelector";
 import { getModulos } from "../../api/moduloSistema";
+import { getUnidadesNegocio } from "../../api/unidadNegocio";
 import ProductoSelector from "../common/ProductoSelector";
 import PdfDetMovRendicionGastosCard from "./PdfDetMovRendicionGastosCard";
 import PdfComprobanteOperacionDetMovCard from "./PdfComprobanteOperacionDetMovCard";
@@ -73,6 +74,7 @@ const DetMovsRendicionGastosForm = ({
   // el origen pasa a COMPRAS + la Orden de Compra.
   const [moduloCompras, setModuloCompras] = useState(null);
   const [moduloTesoreria, setModuloTesoreria] = useState(null);
+  const [unidadGastosGenerales, setUnidadGastosGenerales] = useState(null);
   useEffect(() => {
     getModulos()
       .then((modulos) => {
@@ -84,6 +86,9 @@ const DetMovsRendicionGastosForm = ({
         setModuloCompras(null);
         setModuloTesoreria(null);
       });
+    getUnidadesNegocio()
+      .then((unidades) => setUnidadGastosGenerales((unidades || []).find((u) => u.esGastosGenerales && u.activo !== false) || null))
+      .catch(() => setUnidadGastosGenerales(null));
   }, []);
   const origenAutomatico =
     modoGasto === "directo" &&
@@ -164,6 +169,19 @@ const DetMovsRendicionGastosForm = ({
   const fechaOperacionMovCaja = watch("fechaOperacionMovCaja");
   const operacionMovCajaId = watch("operacionMovCajaId");
   const moduloOrigenMovCajaId = watch("moduloOrigenMovCajaId");
+
+  // Movimiento nuevo sin módulo de origen elegido (origen TESORERÍA): se propone una sola vez el centro de costo de la
+  // unidad de gastos generales; el usuario puede cambiarlo y la unidad de negocio se mantiene fija
+  const centroCostoActual = watch("centroCostoId");
+  const moduloOrigenActual = watch("moduloOrigenId");
+  const centroPropuesto = useRef(false);
+  useEffect(() => {
+    if (centroPropuesto.current || movimiento?.id || centroCostoActual || Number(moduloOrigenActual) > 0) return;
+    if (unidadGastosGenerales?.centroCostoId) {
+      centroPropuesto.current = true;
+      setValue("centroCostoId", Number(unidadGastosGenerales.centroCostoId), { shouldDirty: true });
+    }
+  }, [unidadGastosGenerales, centroCostoActual, moduloOrigenActual, movimiento?.id]);
   const urlComprobanteOperacionMovCaja = watch(
     "urlComprobanteOperacionMovCaja",
   );

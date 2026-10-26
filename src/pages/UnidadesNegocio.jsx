@@ -99,6 +99,7 @@ export default function UnidadesNegocio({ ruta }) {
         orden: Number(data.orden) || 0,
         centroCostoId: data.centroCostoId ? Number(data.centroCostoId) : null,
         activo: !!data.activo,
+        esGastosGenerales: !!data.esGastosGenerales,
       };
       if (modoEdicion && unidadEdit) {
         await actualizarUnidadNegocio(unidadEdit.id, payload);
@@ -334,6 +335,11 @@ export default function UnidadesNegocio({ ruta }) {
           body={centroCostoTemplate}
           sortable
           style={{ minWidth: 200 }}
+        />
+        <Column
+          header="Gastos generales"
+          body={(row) => (row.esGastosGenerales ? <Tag value="GASTOS GENERALES" severity="warning" icon="pi pi-star-fill" /> : "-")}
+          style={{ width: "160px" }}
         />
         <Column
           header="Estado"

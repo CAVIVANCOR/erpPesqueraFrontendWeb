@@ -11,6 +11,7 @@ import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
 import { ColorPicker } from "primereact/colorpicker";
 import CentroCostoSelector from "../common/CentroCostoSelector";
+import BooleanToggleButton from "../common/BooleanToggleButton";
 
 // Esquema de validación profesional
 const schema = Yup.object().shape({
@@ -30,6 +31,7 @@ const schema = Yup.object().shape({
     .nullable()
     .transform((value, originalValue) => originalValue === "" ? null : value),
   activo: Yup.boolean(),
+  esGastosGenerales: Yup.boolean(),
 });
 
 /**
@@ -58,7 +60,8 @@ export default function UnidadNegocioForm({
   color: "#3B82F6",
   orden: 0,
   centroCostoId: null,
-  activo: true 
+  activo: true,
+  esGastosGenerales: false,
 },
   });
 
@@ -171,6 +174,29 @@ export default function UnidadNegocioForm({
         </small>
       </div>
       
+      <div className="p-field" style={{ marginBottom: 18 }}>
+        <label>Unidad de gastos generales</label>
+        <Controller
+          name="esGastosGenerales"
+          control={control}
+          render={({ field }) => (
+            <BooleanToggleButton
+              value={!!field.value}
+              onChange={field.onChange}
+              labelTrue="UNIDAD DE GASTOS GENERALES"
+              labelFalse="UNIDAD OPERATIVA"
+              severityTrue="warning"
+              severityFalse="secondary"
+              icon={field.value ? "pi-star-fill" : "pi-building"}
+              disabled={readOnly}
+            />
+          )}
+        />
+        <small className="p-text-secondary">
+          Los movimientos sin proceso (origen Tesorería, p. ej. gastos de gerencia) usan siempre esta unidad. Solo una unidad puede estar marcada.
+        </small>
+      </div>
+
       <div className="p-field" style={{ marginBottom: 18 }}>
         <label htmlFor="activo">Estado</label>
         <Controller
