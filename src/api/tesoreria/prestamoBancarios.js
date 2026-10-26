@@ -111,3 +111,12 @@ export async function eliminarAsientoContable(id, asientoId) {
   const res = await axios.delete(`${API_URL}/${id}/asiento/${asientoId}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/** Facturas (CxC en ventas, CxP en compras) que pueden amarrarse a las cuotas de un factoring */
+export async function getFacturasParaCuotas({ tipo, empresaId, monedaId, prestamoId }) {
+  const res = await axios.get(`${API_URL}/facturas-cuotas`, {
+    headers: getAuthHeaders(),
+    params: { tipo, empresaId, monedaId, ...(prestamoId ? { prestamoId } : {}) },
+  });
+  return res.data;
+}

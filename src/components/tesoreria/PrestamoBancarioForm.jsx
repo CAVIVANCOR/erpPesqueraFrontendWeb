@@ -32,6 +32,7 @@ import { getAllPrestamoBancario } from "../../api/tesoreria/prestamoBancarios";
 import { getLineaCreditoVigentes } from "../../api/tesoreria/lineaCredito";
 import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 import CuotaPrestamoList from "./CuotaPrestamoList";
+import CuotasFacturaFactoring from "./CuotasFacturaFactoring";
 import GarantiaPrestamoCard from "./GarantiaPrestamoCard";
 import DocPrestamoPrincipal from "./DocPrestamoPrincipal";
 import DocPrestamoAdicional from "./DocPrestamoAdicional";
@@ -180,6 +181,14 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   const esFactoringSel = Boolean(
     tiposPrestamo.find((t) => Number(t.id) === Number(tipoPrestamoIdWatch))?.esFactoring,
   );
+  // Factoring de compras: financia facturas de proveedores (cuentas por pagar)
+  const esFactoringComprasSel = Boolean(
+    tiposPrestamo.find((t) => Number(t.id) === Number(tipoPrestamoIdWatch))?.esFactoringCompras,
+  );
+  const tipoFactoringSel = esFactoringSel ? "VENTAS" : esFactoringComprasSel ? "COMPRAS" : null;
+  // Factoring: las cuotas salen de sus facturas (una cuota por factura) mientras no haya desembolso ni sea saldo inicial
+  const usaCuotasFactura = Boolean(tipoFactoringSel) && !watch("esSaldoInicial") && !(isEdit && defaultValues?.movimientoCajaDesembolsoId);
+  const [cuotasFactura, setCuotasFactura] = useState([]);
   // Con el desembolso ya registrado la modalidad no se puede cambiar
   const interesBloqueado = isEdit && Boolean(defaultValues?.movimientoCajaDesembolsoId);
 
@@ -491,6 +500,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
           : data.fechaContable,
         esSaldoInicial: data.esSaldoInicial,
         interesDescontado: esFactoringSel ? Boolean(data.interesDescontado) : false,
+        ...(usaCuotasFactura ? { cuotasFactura } : {}),
       };
 
       let resultado;
@@ -2064,7 +2074,19 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         </TabPanel>
 
         <TabPanel header="Cuotas" leftIcon="pi pi-list">
-          {isEdit && defaultValues?.id ? (
+          {usaCuotasFactura ? (
+            <CuotasFacturaFactoring
+              key={tipoFactoringSel}
+              tipo={tipoFactoringSel}
+              empresaId={empresaIdWatch}
+              monedaId={monedaIdWatch}
+              prestamoId={isEdit ? defaultValues?.id : null}
+              interesDescontado={Boolean(watch("interesDescontado"))}
+              montoAprobado={Number(watch("montoAprobado") || 0)}
+              onChange={setCuotasFactura}
+              toast={toast}
+            />
+          ) : isEdit && defaultValues?.id ? (
             <CuotaPrestamoList
               prestamoBancarioId={defaultValues.id}
               readOnly={readOnly}

@@ -40,6 +40,7 @@ export default function TipoPrestamoForm({
     esComercioExterior: false,
     esLeasing: false,
     esFactoring: false,
+    esFactoringCompras: false,
     esTarjetaCredito: false,
     permiteRefinanciar: true,
     severityColor: null,
@@ -55,6 +56,7 @@ export default function TipoPrestamoForm({
         esComercioExterior: initialData.esComercioExterior || false,
         esLeasing: initialData.esLeasing || false,
         esFactoring: initialData.esFactoring || false,
+        esFactoringCompras: initialData.esFactoringCompras || false,
         esTarjetaCredito: initialData.esTarjetaCredito || false,
         permiteRefinanciar: initialData.permiteRefinanciar ?? true,
         severityColor: initialData.severityColor || null,
@@ -256,6 +258,18 @@ export default function TipoPrestamoForm({
               <label htmlFor="esFactoring" style={{ fontWeight: "500" }}>
                 Es Factoring
               </label>
+            </div>
+
+            <div style={{ minWidth: 260 }}>
+              <BooleanToggleButton
+                value={formData.esFactoringCompras}
+                onChange={(valor) => handleChange("esFactoringCompras", valor)}
+                labelTrue="FACTORING DE COMPRAS (PROVEEDORES)"
+                labelFalse="NO ES FACTORING DE COMPRAS"
+                severityTrue="help"
+                severityFalse="secondary"
+                icon={formData.esFactoringCompras ? "pi-shopping-cart" : "pi-times"}
+              />
             </div>
 
             <div style={{ minWidth: 260 }}>

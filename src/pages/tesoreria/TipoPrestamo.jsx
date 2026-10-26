@@ -232,6 +232,9 @@ export default function TipoPrestamo({ ruta }) {
       {row.esFactoring && (
         <Tag value="FACTORING" severity="help" style={{ fontSize: "0.7rem" }} />
       )}
+      {row.esFactoringCompras && (
+        <Tag value="FACTORING COMPRAS" severity="help" style={{ fontSize: "0.7rem" }} />
+      )}
       {row.esTarjetaCredito && (
         <Tag value="TARJETA" severity="warning" style={{ fontSize: "0.7rem" }} />
       )}

@@ -15,6 +15,7 @@ import { formatearNumero, formatearFecha } from "../../../utils/utils";
 import { consultarTipoCambioSunat } from "../../../api/consultaExterna";
 import { actualizarUrlVoucherIndividual } from "../../../api/tesoreria/transferencias";
 import { sincronizarAdjuntosPagoCuotaPrestamo, getFacturasFactoringDisponibles } from "../../../api/tesoreria/operacionPrestamo";
+import { getFacturasParaCuotas, getCronogramaPrestamo } from "../../../api/tesoreria/prestamoBancarios";
 import { useAuthStore } from "../../../shared/stores/useAuthStore";
 import CuentaCorrienteSelector from "../../common/CuentaCorrienteSelector";
 import BooleanToggleButton from "../../common/BooleanToggleButton";
@@ -113,6 +114,8 @@ const OperacionPrestamoForm = ({
   const [facturasDisponibles, setFacturasDisponibles] = useState([]);
   const [facturasElegidas, setFacturasElegidas] = useState([]);
   const [busquedaCliente, setBusquedaCliente] = useState("");
+  // Factoring cuyas cuotas ya están amarradas a sus facturas: el desembolso usa esas facturas y no se eligen aquí
+  const [facturasDeCuotas, setFacturasDeCuotas] = useState(false);
   const [montoDescuento, setMontoDescuento] = useState(0);
   const [cargandoFacturas, setCargandoFacturas] = useState(false);
 
@@ -197,22 +200,45 @@ const OperacionPrestamoForm = ({
   const diferenciaConPrestamo = redondear2(brutoFacturas - montoPrestamoFactoring);
   const hayDiferenciaConPrestamo = esDesembolso && esFactoring && facturasElegidas.length > 0 && Math.abs(diferenciaConPrestamo) > 0.01;
 
+  // Facturas del desembolso: las de las cuotas del préstamo (una por cuota); un préstamo sin cuotas amarradas conserva la selección manual
   useEffect(() => {
-    if (!esDesembolso || !esFactoring || !empresaId || !monedaPrestamo?.id) return;
+    if (!esDesembolso || !esFactoring || !empresaId || !monedaPrestamo?.id) return undefined;
+    let vigente = true;
     setCargandoFacturas(true);
-    getFacturasFactoringDisponibles({ empresaId, monedaId: monedaPrestamo.id })
-      .then(setFacturasDisponibles)
-      .catch((err) =>
-        toast?.current?.show({
-          severity: "error",
-          summary: "No se pudieron cargar las facturas",
-          detail: err?.response?.data?.mensaje || err?.response?.data?.message || "Error al consultar las facturas disponibles para el factoring",
-          life: 8000,
-        }),
-      )
-      .finally(() => setCargandoFacturas(false));
     setFacturasElegidas([]);
     setBusquedaCliente("");
+    setFacturasDeCuotas(false);
+    (async () => {
+      try {
+        const cuotas = prestamo?.id ? await getCronogramaPrestamo(Number(prestamo.id)) : [];
+        const idsCuotas = new Set((cuotas || []).filter((c) => c.cuentaPorCobrarId).map((c) => String(c.cuentaPorCobrarId)));
+        if (idsCuotas.size > 0) {
+          const lista = await getFacturasParaCuotas({ tipo: "VENTAS", empresaId, monedaId: monedaPrestamo.id, prestamoId: prestamo.id });
+          const deCuotas = (lista || []).filter((f) => idsCuotas.has(String(f.id))).map((f) => ({ ...f, cliente: f.entidad }));
+          if (!vigente) return;
+          setFacturasDisponibles(deCuotas);
+          setFacturasElegidas(deCuotas);
+          setFacturasDeCuotas(true);
+        } else {
+          const lista = await getFacturasFactoringDisponibles({ empresaId, monedaId: monedaPrestamo.id });
+          if (vigente) setFacturasDisponibles(lista);
+        }
+      } catch (err) {
+        if (vigente) {
+          toast?.current?.show({
+            severity: "error",
+            summary: "No se pudieron cargar las facturas",
+            detail: err?.response?.data?.mensaje || err?.response?.data?.message || "Error al consultar las facturas del factoring",
+            life: 8000,
+          });
+        }
+      } finally {
+        if (vigente) setCargandoFacturas(false);
+      }
+    })();
+    return () => {
+      vigente = false;
+    };
   }, [esDesembolso, esFactoring, empresaId, monedaPrestamo?.id, filas]);
 
   // Interés descontado por adelantado: lo define el registro del préstamo, no las facturas elegidas:
@@ -833,6 +859,11 @@ const OperacionPrestamoForm = ({
             {/* FACTORING: facturas que se entregan en descuento y neto depositado */}
             {esDesembolso && esFactoring && (
               <Panel header={<span>🧾 Factoring: facturas entregadas en descuento</span>} toggleable className="mb-2">
+                {facturasDeCuotas && (
+                  <small style={{ display: "block", color: "#1565C0", fontWeight: 600, marginBottom: 8 }}>
+                    Las facturas vienen de las cuotas del préstamo (una cuota por factura). Para cambiarlas edite las cuotas en Préstamo Bancario antes de desembolsar.
+                  </small>
+                )}
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
                   <span className="p-input-icon-left" style={{ flex: 1, minWidth: 260 }}>
                     <i className="pi pi-search" />
@@ -852,6 +883,7 @@ const OperacionPrestamoForm = ({
                   value={facturasVisibles}
                   selection={facturasElegidas.filter((f) => facturasVisibles.some((v) => v.id === f.id))}
                   onSelectionChange={(e) => cambiarSeleccionFacturas(e.value)}
+                  isDataSelectable={() => !facturasDeCuotas}
                   dataKey="id"
                   loading={cargandoFacturas}
                   size="small"
