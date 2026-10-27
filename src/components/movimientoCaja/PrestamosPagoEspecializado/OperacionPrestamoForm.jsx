@@ -43,8 +43,9 @@ import ConfirmacionOperacionPrestamoDialog from "./ConfirmacionOperacionPrestamo
  * tabla con casillas, panel de la cuenta, ITF y comisión, tipo de cambio de venta editable,
  * vouchers individuales por movimiento y confirmación con asientos.
  *
- * El caso contable (préstamo estándar / factoring) lo resuelve el backend con
- * TipoPrestamo.esFactoring; el formulario solo lo informa con una etiqueta.
+ * El caso contable (préstamo estándar / factoring / Warrant) lo resuelve el backend con
+ * TipoPrestamo.esFactoring y el id del tipo Warrant (esWarrant); el formulario solo lo informa
+ * con una etiqueta y un aviso.
  */
 
 // Tipos de movimiento sugeridos por defecto (el usuario puede elegir cualquiera:
@@ -141,6 +142,8 @@ const OperacionPrestamoForm = ({
   const simbolo = monedaPrestamo?.simbolo || "";
   const prestamo = base?.prestamo;
   const esFactoring = Boolean(prestamo?.esFactoring);
+  // WARRANT [CASO E]: el backend lo reconoce por el id del tipo de préstamo y lo informa en `esWarrant`
+  const esWarrant = Boolean(prestamo?.esWarrant);
   // La modalidad del interés la define el préstamo: descontado por adelantado (el banco deposita el neto) o diferido en las cuotas
   const interesDescontado = Boolean(prestamo?.interesDescontado);
   const pagaElCliente = !esDesembolso && esFactoring && pagoElCliente;
@@ -311,7 +314,7 @@ const OperacionPrestamoForm = ({
   }, [seleccionados, fecha, esDesembolso]);
 
   // Glosa automática (misma regla que el backend) mientras el usuario no la edite:
-  // [CASO A] préstamo estándar y [CASO B] factoring, ver MAPA DE BIFURCACIONES en
+  // [CASO A] préstamo estándar, [CASO B] factoring y [CASO E] Warrant, ver MAPA DE BIFURCACIONES en
   // operacionPrestamo.service.js
   useEffect(() => {
     if (glosaEditada.current || seleccionados.length === 0 || !prestamo) return;
@@ -326,16 +329,20 @@ const OperacionPrestamoForm = ({
       setDescripcion(
         esFactoring
           ? `POR INGRESO DE FACTORING ${banco} - ${detalle}`
-          : `POR EL PRESTAMO RECIBIDO DEL ${banco}, SEGÚN CONTRATO - ${detalle}`,
+          : esWarrant
+            ? `POR EL DESEMBOLSO DEL WARRANT ${banco} - ${detalle}`
+            : `POR EL PRESTAMO RECIBIDO DEL ${banco}, SEGÚN CONTRATO - ${detalle}`,
       );
     } else {
       setDescripcion(
         esFactoring
           ? `PAGO DE FACTORING ${banco} - ${detalle}`
-          : `POR EL PAGO DE LA CUOTA DEL PRESTAMO OTORGADO POR ${banco} - ${detalle}`,
+          : esWarrant
+            ? `POR EL PAGO DEL WARRANT ${banco} - ${detalle}`
+            : `POR EL PAGO DE LA CUOTA DEL PRESTAMO OTORGADO POR ${banco} - ${detalle}`,
       );
     }
-  }, [seleccionados, esFactoring, esDesembolso]);
+  }, [seleccionados, esFactoring, esWarrant, esDesembolso]);
 
   // Tipo de cambio SUNAT: solo si el préstamo no es en soles. Siempre TC de venta (sell_price);
   // el usuario puede editarlo y se respeta lo que escriba.
@@ -654,6 +661,18 @@ const OperacionPrestamoForm = ({
   return (
     <>
       <form onSubmit={handleSubmit} className="p-fluid">
+        {/* WARRANT: explica los asientos adicionales (sin caja) que genera la operación */}
+        {esWarrant && (
+          <div
+            className="mb-3"
+            style={{ background: "#FFF8E1", border: "1px solid #FFB300", borderRadius: 6, padding: "0.6rem 0.9rem", fontSize: "0.85rem" }}
+          >
+            <strong>Warrant:</strong>{" "}
+            {esDesembolso
+              ? "el capital ingresa a la cuenta bancaria y se contabiliza en 454915/454916. Además se registra un asiento sin caja con los intereses totales del cronograma (DEBE 373101 / HABER 454915/454916): la deuda queda por el bruto."
+              : "la cuota se paga contra 454915/454916 (capital e interés). Además se registra un asiento sin caja que devenga el interés pagado (DEBE 673111 / HABER 373101)."}
+          </div>
+        )}
         {/* FACTORING: ¿quién pagó al banco? */}
         {!esDesembolso && esFactoring && (
           <Panel header="🏦 Factoring: ¿quién pagó al banco?" className="mb-3">
@@ -849,8 +868,8 @@ const OperacionPrestamoForm = ({
               <div style={{ flex: 1 }}>
                 <label className="font-bold block mb-2">Caso contable</label>
                 <Tag
-                  value={esFactoring ? "FACTORING" : "PRÉSTAMO"}
-                  severity={esFactoring ? "info" : "success"}
+                  value={esFactoring ? "FACTORING" : esWarrant ? "WARRANT" : "PRÉSTAMO"}
+                  severity={esFactoring ? "info" : esWarrant ? "warning" : "success"}
                   icon="pi pi-building"
                 />
               </div>
