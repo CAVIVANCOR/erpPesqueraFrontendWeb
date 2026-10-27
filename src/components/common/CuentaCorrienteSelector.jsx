@@ -145,6 +145,8 @@ const CuentaCorrienteSelector = ({
   const [dialogVisible, setDialogVisible] = useState(false);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
   const [empresaFiltro, setEmpresaFiltro] = useState(empresaIdPreseleccionada);
+  // Filtro por banco (null = todos los bancos): no cambia el comportamiento de quien no lo use
+  const [bancoFiltro, setBancoFiltro] = useState(null);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -206,6 +208,7 @@ const CuentaCorrienteSelector = ({
   useEffect(() => {
     if (empresaIdPreseleccionada) {
       setEmpresaFiltro(empresaIdPreseleccionada);
+      setBancoFiltro(null);
     }
   }, [empresaIdPreseleccionada]);
 
@@ -239,22 +242,43 @@ const CuentaCorrienteSelector = ({
   }, [empresas]);
 
   // ⚠️ FILTRO POR EMPRESA
-  const cuentasFiltradas = useMemo(() => {
+  const cuentasPorEmpresa = useMemo(() => {
     if (!empresaFiltro) {
       return cuentasConFiltroEstado;
     }
 
-    const filtradas = cuentasConFiltroEstado.filter(
+    return cuentasConFiltroEstado.filter(
       (cuenta) => Number(cuenta.empresaId) === Number(empresaFiltro)
     );
-    return filtradas;
   }, [cuentasConFiltroEstado, empresaFiltro]);
+
+  // Bancos de las cuentas de la empresa seleccionada (todas las empresas si no hay una elegida)
+  const bancosDisponibles = useMemo(() => {
+    const porId = new Map();
+    cuentasPorEmpresa.forEach((cuenta) => {
+      if (cuenta.bancoId && !porId.has(Number(cuenta.bancoId))) {
+        porId.set(Number(cuenta.bancoId), {
+          id: Number(cuenta.bancoId),
+          nombre: cuenta.banco?.nombreCorto || cuenta.banco?.nombre || `ID: ${cuenta.bancoId}`,
+        });
+      }
+    });
+    return [...porId.values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [cuentasPorEmpresa]);
+
+  // ⚠️ FILTRO POR BANCO (sobre las cuentas de la empresa)
+  const cuentasFiltradas = useMemo(() => {
+    if (!bancoFiltro) {
+      return cuentasPorEmpresa;
+    }
+    return cuentasPorEmpresa.filter((cuenta) => Number(cuenta.bancoId) === Number(bancoFiltro));
+  }, [cuentasPorEmpresa, bancoFiltro]);
 
   // Verificar si la empresa seleccionada tiene cuentas
   const empresaTieneCuentas = useMemo(() => {
     if (!empresaFiltro) return true;
-    return cuentasFiltradas.length > 0;
-  }, [empresaFiltro, cuentasFiltradas]);
+    return cuentasPorEmpresa.length > 0;
+  }, [empresaFiltro, cuentasPorEmpresa]);
 
   // Ordenar cuentas: primero por banco, luego por moneda, luego por número de cuenta
   const cuentasOrdenadas = useMemo(() => {
@@ -281,6 +305,8 @@ const CuentaCorrienteSelector = ({
    */
   const handleEmpresaChange = (empresaId) => {
     setEmpresaFiltro(empresaId);
+    // Los bancos dependen de la empresa: se vuelve a "todos" para no dejar un banco que ya no aplica
+    setBancoFiltro(null);
   };
 
   /**
@@ -301,6 +327,7 @@ const CuentaCorrienteSelector = ({
 
     setDialogVisible(false);
     setGlobalFilterValue("");
+    setBancoFiltro(null);
   };
 
   /**
@@ -311,6 +338,7 @@ const CuentaCorrienteSelector = ({
     setGlobalFilterValue("");
     // Restaurar empresa preseleccionada al cerrar
     setEmpresaFiltro(empresaIdPreseleccionada);
+    setBancoFiltro(null);
   };
 
   /**
@@ -558,7 +586,7 @@ const CuentaCorrienteSelector = ({
         {/* Layout de 2 columnas */}
         <div style={{
           display: "grid",
-          gridTemplateColumns: "180px 1fr",
+          gridTemplateColumns: "180px 180px 1fr",
           gap: "1rem",
           height: "600px"
         }}>
@@ -633,7 +661,72 @@ const CuentaCorrienteSelector = ({
             </div>
           </div>
 
-          {/* ========== COLUMNA 2: TABLA DE CUENTAS CORRIENTES ========== */}
+          {/* ========== COLUMNA 2: BANCOS (los de las cuentas de la empresa seleccionada) ========== */}
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            borderRight: "1px solid #dee2e6"
+          }}>
+            <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: "600" }}>
+              Bancos
+            </h4>
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.35rem",
+              overflowY: "auto",
+              paddingRight: "0.5rem"
+            }}>
+              <Button
+                type="button"
+                label="TODOS"
+                size="small"
+                onClick={() => setBancoFiltro(null)}
+                style={{
+                  backgroundColor: !bancoFiltro ? COLOR_TODAS.bg : "#FFFFFF",
+                  color: !bancoFiltro ? COLOR_TODAS.text : COLOR_TODAS.bg,
+                  borderColor: COLOR_TODAS.border,
+                  fontWeight: "500",
+                  fontSize: "0.75rem",
+                  padding: "0.35rem 0.5rem",
+                  justifyContent: "flex-start",
+                  textAlign: "left",
+                }}
+                className={!bancoFiltro ? "" : "p-button-outlined"}
+              />
+              {bancosDisponibles.map((banco, index) => {
+                const color = getColorCategoria(index);
+                const isActive = Number(bancoFiltro) === banco.id;
+                return (
+                  <Button
+                    key={banco.id}
+                    type="button"
+                    label={banco.nombre}
+                    size="small"
+                    onClick={() => setBancoFiltro(banco.id)}
+                    style={{
+                      backgroundColor: isActive ? color.bg : "#FFFFFF",
+                      color: isActive ? color.text : color.bg,
+                      borderColor: color.border,
+                      fontWeight: "500",
+                      fontSize: "0.75rem",
+                      padding: "0.35rem 0.5rem",
+                      justifyContent: "flex-start",
+                      textAlign: "left",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                    className={isActive ? "" : "p-button-outlined"}
+                    tooltip={banco.nombre}
+                    tooltipOptions={{ position: 'right' }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ========== COLUMNA 3: TABLA DE CUENTAS CORRIENTES ========== */}
           <div style={{ display: "flex", flexDirection: "column" }}>
             {header}
 
@@ -698,13 +791,6 @@ const CuentaCorrienteSelector = ({
                 sortable
                 filterField="numeroCuenta"
                 style={{ minWidth: "180px" }}
-              />
-              <Column
-                field="numeroCuentaCCI"
-                header="CCI"
-                sortable
-                filterField="numeroCuentaCCI"
-                style={{ minWidth: "200px" }}
               />
               <Column
                 field="saldoActual"

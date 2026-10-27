@@ -11,6 +11,7 @@ import { useForm, Controller } from "react-hook-form";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
+import CuentaCorrienteSelector from "../common/CuentaCorrienteSelector";
 import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
@@ -838,17 +839,33 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 name="cuentaCorrienteId"
                 control={control}
                 render={({ field }) => (
-                  <Dropdown
-                    id="cuentaCorrienteId"
-                    value={field.value}
-                    options={cuentasCorrientesOptions}
-                    onChange={(e) => field.onChange(e.value)}
-                    placeholder="Seleccione cuenta"
-                    filter
-                    showClear
-                    disabled={readOnly || esFactoringComprasSel || !empresaIdWatch || !bancoIdWatch}
-                    style={{ width: "100%" }}
-                  />
+                  // Cuenta propuesta por defecto al desembolsar/pagar (opcional). Es una cuenta de la EMPRESA y puede ser
+                  // de cualquier banco: una financiera (p. ej. Conexa) no tiene cuentas propias en el sistema.
+                  // Solo se toma cuentaCorrienteId: el banco y la empresa del préstamo NO se sobrescriben con los de la cuenta.
+                  // El selector genérico no permite limpiar la cuenta: el botón "quitar" vive aquí para no alterar
+                  // el componente común que usan otros módulos.
+                  <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <CuentaCorrienteSelector
+                        value={field.value}
+                        onChange={({ cuentaCorrienteId }) => field.onChange(cuentaCorrienteId)}
+                        empresaIdPreseleccionada={empresaIdWatch}
+                        label=""
+                        placeholder="Seleccione cuenta"
+                        disabled={readOnly || esFactoringComprasSel || !empresaIdWatch || !bancoIdWatch}
+                      />
+                    </div>
+                    {field.value && !readOnly && !esFactoringComprasSel && (
+                      <Button
+                        type="button"
+                        icon="pi pi-times"
+                        className="p-button-rounded p-button-text p-button-danger"
+                        tooltip="Quitar la cuenta corriente"
+                        tooltipOptions={{ position: "top" }}
+                        onClick={() => field.onChange(null)}
+                      />
+                    )}
+                  </div>
                 )}
               />
             </div>
