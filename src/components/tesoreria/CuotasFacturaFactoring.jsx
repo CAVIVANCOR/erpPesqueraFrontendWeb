@@ -1,7 +1,8 @@
 // src/components/tesoreria/CuotasFacturaFactoring.jsx
 // Cuotas de un préstamo de factoring amarradas a su factura: una cuota por factura, con el vencimiento escrito por el usuario.
 //  - VENTAS: facturas por cobrar entregadas al banco; el cliente las paga directamente al banco.
-//  - COMPRAS: facturas por pagar de proveedores que el banco paga por la empresa; la empresa paga la cuota al banco.
+//  - COMPRAS (factoring indirecto): facturas por pagar de UN proveedor que cedió sus facturas al banco; MEGUI paga la cuota al banco.
+//    La cuota es solo capital: el interés lo factura el proveedor aparte.
 // El capital de cada cuota es siempre el saldo de la factura (el banco financia el 100 %).
 import React, { useEffect, useMemo, useState } from "react";
 import { DataTable } from "primereact/datatable";
@@ -19,7 +20,7 @@ const fechaCorta = (f) => (f ? new Date(f).toLocaleDateString("es-PE") : "-");
 const r2 = (v) => Math.round((Number(v || 0) + Number.EPSILON) * 100) / 100;
 
 export default function CuotasFacturaFactoring({
-  tipo,
+  tipo = "VENTAS",
   empresaId,
   monedaId,
   prestamoId = null,
@@ -89,10 +90,13 @@ export default function CuotasFacturaFactoring({
   }, [filas, inicializado, esVentas, interesDescontado]);
 
   const seleccionadas = useMemo(() => facturas.filter((f) => filas.some((x) => String(x.facturaId) === String(f.id))), [facturas, filas]);
+  // En compras, con la primera factura elegida solo se ofrecen las del mismo proveedor (un contrato = un proveedor)
+  const entidadFijada = !esVentas ? facturas.find((f) => filas.some((x) => String(x.facturaId) === String(f.id)))?.entidadId : null;
   const visibles = useMemo(() => {
     const t = busqueda.trim().toLowerCase();
-    return t ? facturas.filter((f) => `${f.numeroDocumento} ${f.entidad}`.toLowerCase().includes(t)) : facturas;
-  }, [facturas, busqueda]);
+    const delProveedor = entidadFijada ? facturas.filter((f) => String(f.entidadId) === String(entidadFijada)) : facturas;
+    return t ? delProveedor.filter((f) => `${f.numeroDocumento} ${f.entidad}`.toLowerCase().includes(t)) : delProveedor;
+  }, [facturas, busqueda, entidadFijada]);
 
   // La selección de las facturas ocultas por la búsqueda se conserva
   const cambiarSeleccion = (nuevas) => {

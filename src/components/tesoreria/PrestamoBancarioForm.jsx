@@ -33,6 +33,7 @@ import { getLineaCreditoVigentes } from "../../api/tesoreria/lineaCredito";
 import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 import CuotaPrestamoList from "./CuotaPrestamoList";
 import CuotasFacturaFactoring from "./CuotasFacturaFactoring";
+import FacturasInteresesFactoringIndirectoPanel from "./FacturasInteresesFactoringIndirectoPanel";
 import GarantiaPrestamoCard from "./GarantiaPrestamoCard";
 import DocPrestamoPrincipal from "./DocPrestamoPrincipal";
 import DocPrestamoAdicional from "./DocPrestamoAdicional";
@@ -181,13 +182,16 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   const esFactoringSel = Boolean(
     tiposPrestamo.find((t) => Number(t.id) === Number(tipoPrestamoIdWatch))?.esFactoring,
   );
-  // Factoring de compras: financia facturas de proveedores (cuentas por pagar)
+  // Factoring indirecto (compras): el proveedor cedió sus facturas al banco; no hay cuenta corriente propia
   const esFactoringComprasSel = Boolean(
     tiposPrestamo.find((t) => Number(t.id) === Number(tipoPrestamoIdWatch))?.esFactoringCompras,
   );
   const tipoFactoringSel = esFactoringSel ? "VENTAS" : esFactoringComprasSel ? "COMPRAS" : null;
   // Factoring: las cuotas salen de sus facturas (una cuota por factura) mientras no haya desembolso ni sea saldo inicial
-  const usaCuotasFactura = Boolean(tipoFactoringSel) && !watch("esSaldoInicial") && !(isEdit && defaultValues?.movimientoCajaDesembolsoId);
+  const usaCuotasFactura =
+    Boolean(tipoFactoringSel) &&
+    !watch("esSaldoInicial") &&
+    !(isEdit && (defaultValues?.movimientoCajaDesembolsoId || (esFactoringComprasSel && Number(defaultValues?.estadoId) !== 79)));
   const [cuotasFactura, setCuotasFactura] = useState([]);
   // Con el desembolso ya registrado la modalidad no se puede cambiar
   const interesBloqueado = isEdit && Boolean(defaultValues?.movimientoCajaDesembolsoId);
@@ -439,7 +443,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         bancoId: data.bancoId,
         lineaCreditoId: data.lineaCreditoId,
         sublineaCreditoId: data.sublineaCreditoId,
-        cuentaCorrienteId: data.cuentaCorrienteId,
+        cuentaCorrienteId: esFactoringComprasSel ? null : data.cuentaCorrienteId,
         numeroPrestamo: data.numeroPrestamo,
         numeroContrato: data.numeroContrato,
         fechaContrato: data.fechaContrato?.toISOString
@@ -751,7 +755,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                     optionValue="value"
                     filter
                     showClear
-                    disabled={readOnly || !empresaIdWatch || !bancoIdWatch}
+                    disabled={readOnly || esFactoringComprasSel || !empresaIdWatch || !bancoIdWatch}
                     style={{ width: "100%" }}
                   />
                 )}
@@ -842,7 +846,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                     placeholder="Seleccione cuenta"
                     filter
                     showClear
-                    disabled={readOnly || !empresaIdWatch || !bancoIdWatch}
+                    disabled={readOnly || esFactoringComprasSel || !empresaIdWatch || !bancoIdWatch}
                     style={{ width: "100%" }}
                   />
                 )}
@@ -2087,11 +2091,16 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               toast={toast}
             />
           ) : isEdit && defaultValues?.id ? (
-            <CuotaPrestamoList
-              prestamoBancarioId={defaultValues.id}
-              readOnly={readOnly}
-              onCuotasChanged={recargarSaldosPrestamo}
-            />
+            <>
+              <CuotaPrestamoList
+                prestamoBancarioId={defaultValues.id}
+                readOnly={readOnly}
+                onCuotasChanged={recargarSaldosPrestamo}
+              />
+              {esFactoringComprasSel && (
+                <FacturasInteresesFactoringIndirectoPanel prestamoId={defaultValues.id} toast={toast} disabled={readOnly} />
+              )}
+            </>
           ) : (
             <div
               style={{ padding: "20px", textAlign: "center", color: "#666" }}

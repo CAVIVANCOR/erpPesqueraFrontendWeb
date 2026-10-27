@@ -23,6 +23,7 @@ import CobroMultipleEspecializadoForm from "../../components/pagoCuentaPorCobrar
 import useCobrarFacturasMultiple from "../../components/pagoCuentaPorCobrar/CobroMultipleEspecializado/useCobrarFacturasMultiple";
 import PagoMultipleEspecializadoForm from "../../components/pagoCuentaPorPagar/PagoMultipleEspecializado/PagoMultipleEspecializadoForm";
 import usePagarFacturasMultiple from "../../components/pagoCuentaPorPagar/PagoMultipleEspecializado/usePagarFacturasMultiple";
+import DesembolsoFactoringIndirectoForm from "../../components/movimientoCaja/PrestamosPagoEspecializado/DesembolsoFactoringIndirectoForm";
 import OperacionPrestamoForm from "../../components/movimientoCaja/PrestamosPagoEspecializado/OperacionPrestamoForm";
 import useOperacionPrestamo from "../../components/movimientoCaja/PrestamosPagoEspecializado/useOperacionPrestamo";
 import EmpresaSelector from "../../components/common/EmpresaSelector";  // ✅ AGREGAR
@@ -1085,22 +1086,34 @@ const TesoreriaPendientes = () => {
             modal
             maximizable
           >
-            <OperacionPrestamoForm
-              modo={tipoPagoMultiple === "PRESTAMO_DESEMBOLSO" ? "DESEMBOLSO" : "PAGO_CUOTAS"}
-              filas={deudasPagoMultiple}
-              cuentasCorrientes={saldosCuentas}
-              mediosPago={mediosPago}
-              tiposMovimiento={tiposMovimiento}
-              empresas={empresas}
-              onSubmit={handleGuardarPagoMultiple}
-              onCancel={handleCancelarPagoMultiple}
-              onOperacionRegistrada={() => {
-                recargarPendientes();
-                recargarSaldos();
-              }}
-              loading={loadingOperacionPrestamo}
-              toast={toast}
-            />
+            {tipoPagoMultiple === "PRESTAMO_DESEMBOLSO" && deudasPagoMultiple?.[0]?.prestamo?.esFactoringCompras ? (
+              <DesembolsoFactoringIndirectoForm
+                filas={deudasPagoMultiple}
+                onOperacionRegistrada={() => {
+                  recargarPendientes();
+                  recargarSaldos();
+                }}
+                onCancel={handleCancelarPagoMultiple}
+                toast={toast}
+              />
+            ) : (
+              <OperacionPrestamoForm
+                modo={tipoPagoMultiple === "PRESTAMO_DESEMBOLSO" ? "DESEMBOLSO" : "PAGO_CUOTAS"}
+                filas={deudasPagoMultiple}
+                cuentasCorrientes={saldosCuentas}
+                mediosPago={mediosPago}
+                tiposMovimiento={tiposMovimiento}
+                empresas={empresas}
+                onSubmit={handleGuardarPagoMultiple}
+                onCancel={handleCancelarPagoMultiple}
+                onOperacionRegistrada={() => {
+                  recargarPendientes();
+                  recargarSaldos();
+                }}
+                loading={loadingOperacionPrestamo}
+                toast={toast}
+              />
+            )}
           </Dialog>
         )}
 

@@ -264,8 +264,8 @@ export default function TipoPrestamoForm({
               <BooleanToggleButton
                 value={formData.esFactoringCompras}
                 onChange={(valor) => handleChange("esFactoringCompras", valor)}
-                labelTrue="FACTORING DE COMPRAS (PROVEEDORES)"
-                labelFalse="NO ES FACTORING DE COMPRAS"
+                labelTrue="FACTORING INDIRECTO (COMPRAS)"
+                labelFalse="NO ES FACTORING INDIRECTO"
                 severityTrue="help"
                 severityFalse="secondary"
                 icon={formData.esFactoringCompras ? "pi-shopping-cart" : "pi-times"}

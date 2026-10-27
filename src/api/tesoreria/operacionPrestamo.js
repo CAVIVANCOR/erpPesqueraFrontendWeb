@@ -71,3 +71,24 @@ export async function liquidarFactoring(data) {
   return res.data?.data;
 }
 
+
+/**
+ * Desembolso de un factoring indirecto (compras): canjea las facturas de compra de las cuotas, sin caja.
+ * Body: prestamoBancarioId, fechaDesembolso (ISO), tipoCambio. Su reversión es por operación (Operaciones de Tesorería).
+ */
+export async function desembolsarFactoringIndirecto(data) {
+  const res = await axios.post(`${API_URL}/factoring-indirecto/desembolsar`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/** Cuotas del factoring indirecto con su factura de intereses y las facturas del proveedor que se pueden enlazar */
+export async function getInteresesFactoringIndirecto(prestamoId) {
+  const res = await axios.get(`${API_URL}/factoring-indirecto/${prestamoId}/intereses`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/** Enlaza (o suelta, con null) la factura de intereses del proveedor con una cuota del factoring indirecto */
+export async function enlazarFacturaInteresesCuota(cuotaId, cuentaPorPagarInteresId) {
+  const res = await axios.put(`${API_URL}/factoring-indirecto/cuotas/${cuotaId}/factura-intereses`, { cuentaPorPagarInteresId }, { headers: getAuthHeaders() });
+  return res.data;
+}

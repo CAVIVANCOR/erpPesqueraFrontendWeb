@@ -139,7 +139,7 @@ const RevertirOperacionDialog = ({ visible, onHide, movimientoId = null, empresa
               <div className="mb-2">
                 {plan.movimientos.length} movimiento(s) de caja · {plan.asientos.length} asiento(s) contable(s)
               </div>
-              <DataTable value={plan.movimientos} size="small" stripedRows>
+              <DataTable value={plan.movimientos} size="small" stripedRows emptyMessage="Operación sin movimiento de caja (canje de facturas): solo se eliminan sus pagos de canje y asientos.">
                 <Column field="id" header="Mov." style={{ width: "5rem" }} />
                 <Column field="tipo" header="Tipo" />
                 <Column field="empresa" header="Empresa" />
