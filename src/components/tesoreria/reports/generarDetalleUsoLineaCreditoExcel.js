@@ -83,7 +83,7 @@ export async function generarDetalleUsoLineaCreditoExcel(data) {
     const infoLinea = [
       { label: "Empresa", value: linea.empresa?.razonSocial || "-" },
       { label: "Banco", value: linea.banco?.nombre || "-" },
-      { label: "Moneda", value: linea.moneda?.codigo || "-" },
+      { label: "Moneda", value: linea.moneda?.codigoSunat || "-" },
       { label: "Monto Aprobado", value: formatMonto(linea.montoAprobado) },
       { label: "Monto Utilizado", value: formatMonto(linea.montoUtilizado) },
       { label: "Monto Disponible", value: formatMonto(linea.montoDisponible) },

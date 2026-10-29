@@ -16,6 +16,7 @@ import {
 import { getTipoPrestamo } from "../../api/tesoreria/tipoPrestamo";
 import { getPrestamoBancariosPorSublinea } from "../../api/tesoreria/prestamoBancarios";
 import { getResponsiveFontSize } from "../../utils/utils";
+import { calcularTotalesSublineas, esSublineaBase, comparteCupo } from "../../utils/lineaCredito";
 
 const SublineaCreditoList = ({
   lineaCreditoId,
@@ -172,6 +173,68 @@ const SublineaCreditoList = ({
   const rowExpansionTemplate = (data) => {
     const prestamos = prestamosData[data.id] || [];
 
+    // Totales por moneda de los préstamos listados (nunca se suman soles con dólares)
+    const totalesPorMoneda = Object.values(
+      prestamos.reduce((acumulado, prestamo) => {
+        const codigo = prestamo.moneda?.codigoSunat;
+        if (!codigo) return acumulado;
+        if (!acumulado[codigo]) {
+          acumulado[codigo] = {
+            codigo,
+            nombre: prestamo.moneda?.nombreLargo || codigo,
+            colorFondo: prestamo.moneda?.colorFondo || undefined,
+            cantidad: 0,
+            desembolsado: 0,
+            saldoCapital: 0,
+          };
+        }
+        acumulado[codigo].cantidad += 1;
+        acumulado[codigo].desembolsado += parseFloat(prestamo.montoDesembolsado || 0);
+        acumulado[codigo].saldoCapital += parseFloat(prestamo.saldoCapital || 0);
+        return acumulado;
+      }, {}),
+    ).sort((a, b) => a.codigo.localeCompare(b.codigo));
+
+    // Por cada moneda: una fila de rótulos y otra de importes, con el color de fondo de la moneda
+    const footerPrestamos =
+      totalesPorMoneda.length > 0 ? (
+        <ColumnGroup>
+          {totalesPorMoneda.flatMap((total) => {
+            const importe = (valor) =>
+              new Intl.NumberFormat("es-PE", { style: "currency", currency: total.codigo, minimumFractionDigits: 2 }).format(valor);
+            const fondo = total.colorFondo;
+            const estiloTitulo = { textAlign: "left", fontWeight: "bold", backgroundColor: fondo, color: "#000" };
+            const estiloRotulo = {
+              textAlign: "right",
+              fontSize: "0.7rem",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              backgroundColor: fondo,
+              color: "#000",
+            };
+            const estiloImporte = { textAlign: "right", fontWeight: "bold", backgroundColor: fondo, color: "#000" };
+            return [
+              <Row key={`${total.codigo}-rotulos`}>
+                <Column footer={`TOTALES EN ${total.nombre} (${total.codigo})`} colSpan={2} footerStyle={estiloTitulo} />
+                <Column footer="Monto desembolsado" footerStyle={estiloRotulo} />
+                <Column footer="Saldo capital" footerStyle={estiloRotulo} />
+                <Column footer="" footerStyle={estiloRotulo} />
+              </Row>,
+              <Row key={`${total.codigo}-importes`}>
+                <Column
+                  footer={`${total.cantidad} préstamo${total.cantidad === 1 ? "" : "s"} en ${total.codigo}`}
+                  colSpan={2}
+                  footerStyle={{ ...estiloTitulo, fontWeight: "normal" }}
+                />
+                <Column footer={importe(total.desembolsado)} footerStyle={estiloImporte} />
+                <Column footer={importe(total.saldoCapital)} footerStyle={estiloImporte} />
+                <Column footer="" footerStyle={estiloImporte} />
+              </Row>,
+            ];
+          })}
+        </ColumnGroup>
+      ) : null;
+
     return (
       <div className="p-3">
         <div style={{ textAlign: "center", marginBottom: "1rem" }}>
@@ -197,6 +260,7 @@ const SublineaCreditoList = ({
             stripedRows
             showGridlines
             emptyMessage="No hay préstamos"
+            footerColumnGroup={footerPrestamos}
           >
             <Column
               field="numeroPrestamo"
@@ -228,7 +292,7 @@ const SublineaCreditoList = ({
                 const monto = parseFloat(rowData.montoDesembolsado || 0);
                 return new Intl.NumberFormat("es-PE", {
                   style: "currency",
-                  currency: moneda === "PEN" ? "PEN" : "USD",
+                  currency: moneda,
                   minimumFractionDigits: 2,
                 }).format(monto);
               }}
@@ -243,7 +307,7 @@ const SublineaCreditoList = ({
                 const saldo = parseFloat(rowData.saldoCapital || 0);
                 return new Intl.NumberFormat("es-PE", {
                   style: "currency",
-                  currency: moneda === "PEN" ? "PEN" : "USD",
+                  currency: moneda,
                   minimumFractionDigits: 2,
                 }).format(saldo);
               }}
@@ -337,7 +401,19 @@ const SublineaCreditoList = ({
   };
 
   const tipoPrestamoTemplate = (rowData) => {
-    return rowData.tipoPrestamo?.descripcion || "-";
+    return (
+      <span>
+        {rowData.tipoPrestamo?.descripcion || "-"}
+        {comparteCupo(rowData, sublineas) && (
+          <Tag
+            value="CUPO COMPARTIDO"
+            severity="info"
+            style={{ marginLeft: 6, fontSize: "0.65rem" }}
+            title={`Comparte el cupo con las demás sublíneas "${rowData.descripcion}": el asignado cuenta una sola vez`}
+          />
+        )}
+      </span>
+    );
   };
 
   const montoAsignadoTemplate = (rowData) => {
@@ -476,129 +552,62 @@ const SublineaCreditoList = ({
     );
   };
 
-  const calcularTotales = () => {
-    // Agrupar sublíneas por descripción (excluir las marcadas como excluirDeCalculo)
-    const gruposPorDescripcion = sublineas
-      .filter((s) => !s.excluirDeCalculo)
-      .reduce((grupos, sublinea) => {
-        const descripcion = sublinea.descripcion || "Sin descripción";
-        if (!grupos[descripcion]) {
-          grupos[descripcion] = [];
-        }
-        grupos[descripcion].push(sublinea);
-        return grupos;
-      }, {});
+  // Las sublíneas con la misma descripción comparten cupo: ver utils/lineaCredito.js
+  const calcularTotales = () => calcularTotalesSublineas(sublineas);
 
-    // Calcular totales
-    let totalAsignado = 0;
-    let totalUtilizado = 0;
-    let totalDisponible = 0;
-    let totalSobregiros = 0;
-
-    // Para Monto Asignado y Disponible: sumar solo el máximo de cada grupo
-    Object.values(gruposPorDescripcion).forEach((grupo) => {
-      // Ordenar por monto descendente y tomar el primero
-      const sublineaMaxima = grupo.sort(
-        (a, b) =>
-          parseFloat(b.montoAsignado || 0) - parseFloat(a.montoAsignado || 0),
-      )[0];
-
-      totalAsignado += parseFloat(sublineaMaxima.montoAsignado || 0);
-      totalDisponible += parseFloat(sublineaMaxima.montoDisponible || 0);
-    });
-
-    // Para Monto Utilizado y Sobregiros: sumar TODAS las sublíneas sin excepción (no excluidas del cálculo)
-    sublineas
-      .filter((s) => !s.excluirDeCalculo)
-      .forEach((sublinea) => {
-        totalUtilizado += parseFloat(sublinea.montoUtilizado || 0);
-        totalSobregiros += parseFloat(sublinea.totalSobregiros || 0);
-      });
-
-    return { totalAsignado, totalUtilizado, totalDisponible, totalSobregiros };
-  };
-
-
-  const esFilaSumada = (rowData) => {
-    // Si está excluida del cálculo, no marcarla
-    if (rowData.excluirDeCalculo) return false;
-
-    // Agrupar sublíneas por descripción (excluir las marcadas como excluirDeCalculo)
-    const gruposPorDescripcion = sublineas
-      .filter((s) => !s.excluirDeCalculo)
-      .reduce((grupos, sublinea) => {
-        const descripcion = sublinea.descripcion || "Sin descripción";
-        if (!grupos[descripcion]) {
-          grupos[descripcion] = [];
-        }
-        grupos[descripcion].push(sublinea);
-        return grupos;
-      }, {});
-
-    // Verificar si esta fila es la que tiene el máximo monto en su grupo
-    const descripcion = rowData.descripcion || "Sin descripción";
-    const grupo = gruposPorDescripcion[descripcion] || [];
-
-    // Ordenar por monto descendente y tomar el primero
-    const sublineaMaxima = grupo.sort(
-      (a, b) =>
-        parseFloat(b.montoAsignado || 0) - parseFloat(a.montoAsignado || 0),
-    )[0];
-
-    return rowData.id === sublineaMaxima?.id;
-  };
+  const esFilaSumada = (rowData) => esSublineaBase(rowData, sublineas);
 
   const rowClassName = (rowData) => {
     return esFilaSumada(rowData) ? "fila-sumada" : "";
   };
 
-  const footerGroup = (
-    <ColumnGroup>
-      <Row>
-        <Column footer="" />
-        <Column
-          footer="TOTALES:"
-          colSpan={2}
-          footerStyle={{ textAlign: "right", fontWeight: "bold", fontSize: "0.95rem" }}
-        />
-        <Column
-          footer={new Intl.NumberFormat("es-PE", {
-            style: "currency",
-            currency: lineaCredito?.moneda?.codigoSunat || "PEN",
-            minimumFractionDigits: 2,
-          }).format(calcularTotales().totalAsignado)}
-          footerStyle={{ fontWeight: "bold", fontSize: "0.95rem", color: "#003366", textAlign: "right" }}
-        />
-        <Column
-          footer={new Intl.NumberFormat("es-PE", {
-            style: "currency",
-            currency: lineaCredito?.moneda?.codigoSunat || "PEN",
-            minimumFractionDigits: 2,
-          }).format(calcularTotales().totalUtilizado)}
-          footerStyle={{ fontWeight: "bold", fontSize: "0.95rem", color: "#006400", textAlign: "right" }}
-        />
-        <Column
-          footer={new Intl.NumberFormat("es-PE", {
-            style: "currency",
-            currency: lineaCredito?.moneda?.codigoSunat || "PEN",
-            minimumFractionDigits: 2,
-          }).format(calcularTotales().totalDisponible)}
-          footerStyle={{ fontWeight: "bold", fontSize: "0.95rem", color: "#4682B4", textAlign: "right" }}
-        />
-        <Column
-          footer={new Intl.NumberFormat("es-PE", {
-            style: "currency",
-            currency: lineaCredito?.moneda?.codigoSunat || "PEN",
-            minimumFractionDigits: 2,
-          }).format(calcularTotales().totalSobregiros)}
-          footerStyle={{ fontWeight: "bold", fontSize: "0.95rem", color: "#dc3545", textAlign: "right" }}
-        />
-        <Column footer="" />
-        <Column footer="" />
-        <Column footer="" />
-      </Row>
-    </ColumnGroup>
-  );
+  // Totales con cupo compartido (ver utils/lineaCredito.js): una fila de rótulos y otra de importes,
+  // ambas con el color de fondo de la moneda de la línea (Moneda.colorFondo)
+  const footerGroup = (() => {
+    const totales = calcularTotales();
+    const codigoMoneda = lineaCredito?.moneda?.codigoSunat || "PEN";
+    const importe = (valor) =>
+      new Intl.NumberFormat("es-PE", { style: "currency", currency: codigoMoneda, minimumFractionDigits: 2 }).format(valor);
+    const fondo = lineaCredito?.moneda?.colorFondo || undefined;
+    const estiloTitulo = { textAlign: "left", fontWeight: "bold", backgroundColor: fondo, color: "#000" };
+    const estiloRotulo = {
+      textAlign: "right",
+      fontSize: "0.7rem",
+      fontWeight: 600,
+      textTransform: "uppercase",
+      backgroundColor: fondo,
+      color: "#000",
+    };
+    const estiloImporte = { textAlign: "right", fontWeight: "bold", fontSize: "0.95rem", backgroundColor: fondo, color: "#000" };
+    const estiloVacio = { backgroundColor: fondo };
+
+    return (
+      <ColumnGroup>
+        <Row>
+          <Column footer="" footerStyle={estiloVacio} />
+          <Column footer={`TOTALES EN ${codigoMoneda}`} colSpan={2} footerStyle={estiloTitulo} />
+          <Column footer="Asignado" footerStyle={estiloRotulo} />
+          <Column footer="Utilizado" footerStyle={estiloRotulo} />
+          <Column footer="Disponible" footerStyle={estiloRotulo} />
+          <Column footer="Sobregiro autorizado" footerStyle={estiloRotulo} />
+          <Column footer="" colSpan={3} footerStyle={estiloVacio} />
+        </Row>
+        <Row>
+          <Column footer="" footerStyle={estiloVacio} />
+          <Column
+            footer="Las sublíneas con cupo compartido cuentan una sola vez"
+            colSpan={2}
+            footerStyle={{ ...estiloTitulo, fontWeight: "normal", fontSize: "0.8rem" }}
+          />
+          <Column footer={importe(totales.totalAsignado)} footerStyle={estiloImporte} />
+          <Column footer={importe(totales.totalUtilizado)} footerStyle={estiloImporte} />
+          <Column footer={importe(totales.totalDisponible)} footerStyle={estiloImporte} />
+          <Column footer={importe(totales.totalSobregiros)} footerStyle={estiloImporte} />
+          <Column footer="" colSpan={3} footerStyle={estiloVacio} />
+        </Row>
+      </ColumnGroup>
+    );
+  })();
 
   const header = (
     <div
@@ -611,6 +620,11 @@ const SublineaCreditoList = ({
     >
       <div style={{ flex: 2 }}>
         <h3 className="m-0">Sublíneas de Crédito</h3>
+        {calcularTotales().totalAsignado > parseFloat(lineaCredito?.montoAprobado || 0) && (
+          <small style={{ color: "#dc3545", fontWeight: "bold" }}>
+            El cupo asignado a las sublíneas supera el monto aprobado de la línea.
+          </small>
+        )}
       </div>
       <div style={{ flex: 1 }}>
         <Button

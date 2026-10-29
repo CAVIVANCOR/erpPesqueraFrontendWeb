@@ -3,6 +3,8 @@ import React, { useRef, useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import { ColumnGroup } from "primereact/columngroup";
+import { Row } from "primereact/row";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
@@ -629,6 +631,69 @@ export default function PrestamoBancario({ ruta }) {
     </div>
   );
 
+  // Totales del Monto Aprobado por moneda de los préstamos que cumplen los filtros (nunca se suman soles con dólares)
+  const totalesPorMoneda = Object.values(
+    (itemsFiltrados || []).reduce((acumulado, prestamo) => {
+      const codigo = prestamo.moneda?.codigoSunat;
+      if (!codigo) return acumulado;
+      if (!acumulado[codigo]) {
+        acumulado[codigo] = {
+          codigo,
+          nombre: prestamo.moneda?.nombreLargo || codigo,
+          colorFondo: prestamo.moneda?.colorFondo || undefined,
+          cantidad: 0,
+          montoAprobado: 0,
+        };
+      }
+      acumulado[codigo].cantidad += 1;
+      acumulado[codigo].montoAprobado += parseFloat(prestamo.montoAprobado || 0);
+      return acumulado;
+    }, {}),
+  ).sort((a, b) => a.codigo.localeCompare(b.codigo));
+
+  // Por cada moneda: una fila de rótulos y otra de importes, con el color de fondo de la moneda.
+  // El importe va bajo la columna "Monto Aprobado" (columna 9 de 16: 8 antes y 7 después)
+  const footerTotales =
+    totalesPorMoneda.length > 0 ? (
+      <ColumnGroup>
+        {totalesPorMoneda.flatMap((total) => {
+          const importe = new Intl.NumberFormat("es-PE", {
+            style: "currency",
+            currency: total.codigo,
+            minimumFractionDigits: 2,
+          }).format(total.montoAprobado);
+          const fondo = total.colorFondo;
+          const estiloTitulo = { textAlign: "left", fontWeight: "bold", backgroundColor: fondo, color: "#000" };
+          const estiloRotulo = {
+            textAlign: "right",
+            fontSize: "0.7rem",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            backgroundColor: fondo,
+            color: "#000",
+          };
+          const estiloImporte = { textAlign: "right", fontWeight: "bold", backgroundColor: fondo, color: "#000" };
+          const estiloVacio = { backgroundColor: fondo };
+          return [
+            <Row key={`${total.codigo}-rotulos`}>
+              <Column footer={`TOTALES EN ${total.nombre} (${total.codigo})`} colSpan={8} footerStyle={estiloTitulo} />
+              <Column footer="Monto aprobado" footerStyle={estiloRotulo} />
+              <Column footer="" colSpan={7} footerStyle={estiloVacio} />
+            </Row>,
+            <Row key={`${total.codigo}-importes`}>
+              <Column
+                footer={`${total.cantidad} préstamo${total.cantidad === 1 ? "" : "s"} en ${total.codigo}`}
+                colSpan={8}
+                footerStyle={{ ...estiloTitulo, fontWeight: "normal" }}
+              />
+              <Column footer={importe} footerStyle={estiloImporte} />
+              <Column footer="" colSpan={7} footerStyle={estiloVacio} />
+            </Row>,
+          ];
+        })}
+      </ColumnGroup>
+    ) : null;
+
   return (
     <div className="p-m-4">
       <Toast ref={toast} />
@@ -663,6 +728,7 @@ export default function PrestamoBancario({ ruta }) {
         size="small"
         stripedRows
         showGridlines
+        footerColumnGroup={footerTotales}
         paginator
         rows={40}
         rowsPerPageOptions={[40, 80, 160, 320]}

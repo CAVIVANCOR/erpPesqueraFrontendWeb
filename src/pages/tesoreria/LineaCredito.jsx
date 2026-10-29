@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import { ColumnGroup } from "primereact/columngroup";
+import { Row } from "primereact/row";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
@@ -21,6 +23,7 @@ import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFunc
 import LineaCreditoForm from "../../components/tesoreria/LineaCreditoForm";
 import ReporteLineasDisponibles from "../../components/tesoreria/ReporteLineasDisponibles";
 import { getResponsiveFontSize } from "../../utils/utils";
+import { calcularTotalesSublineas, esSublineaBase, comparteCupo } from "../../utils/lineaCredito";
 import { usePermissions } from "../../hooks/usePermissions";
 import ReportFormatSelector from "../../components/reports/ReportFormatSelector";
 import TemporaryPDFViewer from "../../components/reports/TemporaryPDFViewer";
@@ -61,6 +64,9 @@ const LineaCredito = ({ ruta }) => {
   const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
+  const [tipoPrestamoSeleccionado, setTipoPrestamoSeleccionado] = useState(null);
+  // Filas con sus sublíneas desplegadas ({ [idLinea]: true })
+  const [expandedRows, setExpandedRows] = useState({});
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [globalFilter, setGlobalFilter] = useState("");
@@ -69,6 +75,7 @@ const LineaCredito = ({ ruta }) => {
   const [bancosFiltrados, setBancosFiltrados] = useState([]);
   const [estadosFiltrados, setEstadosFiltrados] = useState([]);
   const [monedasFiltradas, setMonedasFiltradas] = useState([]);
+  const [tiposPrestamoFiltrados, setTiposPrestamoFiltrados] = useState([]);
   // Estados para reportes
   const [showReportSelector, setShowReportSelector] = useState(false);
   const [showDetalleReportSelector, setShowDetalleReportSelector] =
@@ -83,6 +90,10 @@ const LineaCredito = ({ ruta }) => {
   useEffect(() => {
     cargarDatos();
   }, []);
+
+  // ¿La línea tiene alguna sublínea de este tipo de préstamo?
+  const lineaTieneTipo = (linea, tipoPrestamoId) =>
+    (linea.sublineas || []).some((sublinea) => Number(sublinea.tipoPrestamoId) === Number(tipoPrestamoId));
 
   // Filtrar líneas por múltiples criterios
   useEffect(() => {
@@ -112,12 +123,18 @@ const LineaCredito = ({ ruta }) => {
       );
     }
 
+    // Solo las líneas que tienen alguna sublínea de ese tipo de préstamo
+    if (tipoPrestamoSeleccionado) {
+      filtradas = filtradas.filter((linea) => lineaTieneTipo(linea, tipoPrestamoSeleccionado));
+    }
+
     setLineasFiltradas(filtradas);
   }, [
     empresaSeleccionada,
     bancoSeleccionado,
     estadoSeleccionado,
     monedaSeleccionada,
+    tipoPrestamoSeleccionado,
     lineas,
   ]);
 
@@ -150,6 +167,21 @@ const LineaCredito = ({ ruta }) => {
       );
     }
 
+    if (tipoPrestamoSeleccionado) {
+      lineasFiltradas = lineasFiltradas.filter((linea) => lineaTieneTipo(linea, tipoPrestamoSeleccionado));
+    }
+
+    // Tipos de préstamo de las sublíneas de las líneas que cumplen los filtros
+    const tiposPorId = new Map();
+    lineasFiltradas.forEach((linea) =>
+      (linea.sublineas || []).forEach((sublinea) => {
+        if (sublinea.tipoPrestamo) tiposPorId.set(Number(sublinea.tipoPrestamoId), sublinea.tipoPrestamo);
+      }),
+    );
+    setTiposPrestamoFiltrados(
+      [...tiposPorId.values()].sort((a, b) => (a.descripcion || "").localeCompare(b.descripcion || "")),
+    );
+
     // Extraer IDs únicos de las líneas filtradas
     const bancosIds = [
       ...new Set(lineasFiltradas.map((l) => Number(l.bancoId))),
@@ -174,6 +206,7 @@ const LineaCredito = ({ ruta }) => {
     bancoSeleccionado,
     estadoSeleccionado,
     monedaSeleccionada,
+    tipoPrestamoSeleccionado,
     lineas,
     bancos,
     estados,
@@ -227,6 +260,10 @@ const LineaCredito = ({ ruta }) => {
   };
 
   const handleRowClick = (event) => {
+    // El clic en el expansor de sublíneas o en un botón no debe abrir la edición
+    if (event.originalEvent?.target?.closest(".p-row-toggler") || event.originalEvent?.target?.closest("button")) {
+      return;
+    }
     if (permisos.puedeVer || permisos.puedeEditar) {
       handleEdit(event.data);
     }
@@ -324,6 +361,7 @@ const LineaCredito = ({ ruta }) => {
     setBancoSeleccionado(null);
     setEstadoSeleccionado(null);
     setMonedaSeleccionada(null);
+    setTipoPrestamoSeleccionado(null);
     setGlobalFilter("");
 
     // Resetear catálogos filtrados a sus valores completos
@@ -355,24 +393,36 @@ const LineaCredito = ({ ruta }) => {
     return rowData.banco?.nombre || "";
   };
 
+  // La moneda del importe es la de la línea: el modelo Moneda expone `codigoSunat` (no existe `codigo`)
   const montoBodyTemplate = (rowData) => {
-    const moneda = rowData.moneda?.codigo || "USD";
+    const moneda = rowData.moneda?.codigoSunat || "USD";
     return formatCurrency(rowData.montoAprobado, moneda);
   };
 
   const utilizadoBodyTemplate = (rowData) => {
-    const moneda = rowData.moneda?.codigo || "USD";
-    return formatCurrency(rowData.montoUtilizado || 0, moneda);
+    const moneda = rowData.moneda?.codigoSunat || "USD";
+    return (
+      <span>
+        {formatCurrency(rowData.montoUtilizado || 0, moneda)}
+        {rowData.tipoCambioReferencial && (
+          <i
+            className="pi pi-exclamation-triangle"
+            style={{ marginLeft: 6, color: "#f59e0b" }}
+            title="Tipo de cambio referencial (3.75): no se pudo consultar SUNAT. El utilizado de préstamos en otra moneda es aproximado."
+          />
+        )}
+      </span>
+    );
   };
 
   const disponibleBodyTemplate = (rowData) => {
-    const moneda = rowData.moneda?.codigo || "USD";
+    const moneda = rowData.moneda?.codigoSunat || "USD";
     return formatCurrency(rowData.montoDisponible || 0, moneda);
   };
 
   const sobregirosBodyTemplate = (rowData) => {
     const totalSobregiros = parseFloat(rowData.totalSobregiros || 0);
-    const moneda = rowData.moneda?.codigo || "USD";
+    const moneda = rowData.moneda?.codigoSunat || "USD";
 
     if (totalSobregiros === 0) {
       return <span style={{ color: "#6c757d" }}>-</span>;
@@ -412,12 +462,12 @@ const LineaCredito = ({ ruta }) => {
   };
 
   const estadoBodyTemplate = (rowData) => {
-    // Usar severity directamente de la base de datos
-    const severity = rowData.estado?.severity?.toLowerCase() || "secondary";
+    // EstadoMultiFuncion expone `descripcion` y `severityColor` (no existen `nombre` ni `severity`)
+    const severity = rowData.estado?.severityColor?.toLowerCase() || "secondary";
 
     return (
       <Tag
-        value={rowData.estado?.nombre || ""}
+        value={rowData.estado?.descripcion || ""}
         severity={severity}
       />
     );
@@ -455,6 +505,14 @@ const LineaCredito = ({ ruta }) => {
       </>
     );
   };
+
+  const expandirTodo = () => {
+    const filas = {};
+    lineasFiltradas.forEach((linea) => (filas[linea.id] = true));
+    setExpandedRows(filas);
+  };
+
+  const contraerTodo = () => setExpandedRows({});
 
   // Header del DataTable con filtros
   const header = (
@@ -574,6 +632,34 @@ const LineaCredito = ({ ruta }) => {
         </div>
         <div style={{ flex: 1 }}>
           <Button
+            label="Expandir"
+            icon="pi pi-plus"
+            className="p-button-info"
+            outlined
+            onClick={expandirTodo}
+            disabled={loading || lineasFiltradas.length === 0}
+            tooltip="Expandir las sublíneas de todas las líneas"
+            tooltipOptions={{ position: "top" }}
+            style={{ width: "100%" }}
+            size="small"
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            label="Contraer"
+            icon="pi pi-minus"
+            className="p-button-warning"
+            outlined
+            onClick={contraerTodo}
+            disabled={loading || Object.keys(expandedRows).length === 0}
+            tooltip="Contraer todas las sublíneas"
+            tooltipOptions={{ position: "top" }}
+            style={{ width: "100%" }}
+            size="small"
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
             label="Limpiar"
             icon="pi pi-filter-slash"
             className="p-button-secondary"
@@ -666,6 +752,30 @@ const LineaCredito = ({ ruta }) => {
             style={{ width: "100%" }}
           />
         </div>
+        <div style={{ flex: 1 }}>
+          <label
+            htmlFor="tipoPrestamoFiltro"
+            style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
+          >
+            Tipo de Préstamo
+          </label>
+          <Dropdown
+            id="tipoPrestamoFiltro"
+            value={tipoPrestamoSeleccionado}
+            options={tiposPrestamoFiltrados.map((t) => ({
+              label: t.descripcion,
+              value: Number(t.id),
+            }))}
+            onChange={(e) => setTipoPrestamoSeleccionado(e.value)}
+            placeholder="Todos"
+            optionLabel="label"
+            optionValue="value"
+            filter
+            showClear
+            disabled={loading}
+            style={{ width: "100%" }}
+          />
+        </div>
       </div>
       <div style={{ marginTop: 10 }}>
         <span className="p-input-icon-left" style={{ width: "100%" }}>
@@ -682,6 +792,163 @@ const LineaCredito = ({ ruta }) => {
       </div>
     </div>
   );
+
+  // ========================================
+  // SUBLÍNEAS (fila expandible) Y TOTALES
+  // ========================================
+  const rowExpansionTemplate = (linea) => {
+    const sublineas = linea.sublineas || [];
+    const moneda = linea.moneda?.codigoSunat || "USD";
+    const totales = calcularTotalesSublineas(sublineas);
+    const importe = (valor) => formatCurrency(valor || 0, moneda);
+    const alDerecha = { textAlign: "right" };
+    const estiloTotal = { textAlign: "right", fontWeight: "bold", backgroundColor: linea.moneda?.colorFondo || undefined, color: "#000" };
+
+    const porcentajeSublinea = (sublinea) => {
+      const capacidad = parseFloat(sublinea.montoAsignado || 0) + parseFloat(sublinea.totalSobregiros || 0);
+      return capacidad > 0 ? ((parseFloat(sublinea.montoUtilizado || 0) / capacidad) * 100).toFixed(2) : "0.00";
+    };
+    const capacidadTotal = totales.totalAsignado + totales.totalSobregiros;
+    const porcentajeTotal = capacidadTotal > 0 ? ((totales.totalUtilizado / capacidadTotal) * 100).toFixed(2) : "0.00";
+
+    const footerSublineas = (
+      <ColumnGroup>
+        <Row>
+          <Column footer="TOTALES (las sublíneas con cupo compartido cuentan una sola vez):" colSpan={2} footerStyle={estiloTotal} />
+          <Column footer={importe(totales.totalAsignado)} footerStyle={estiloTotal} />
+          <Column footer={importe(totales.totalUtilizado)} footerStyle={estiloTotal} />
+          <Column footer={importe(totales.totalSobregiros)} footerStyle={estiloTotal} />
+          <Column footer={importe(totales.totalDisponible)} footerStyle={estiloTotal} />
+          <Column footer={`${porcentajeTotal}%`} footerStyle={estiloTotal} />
+        </Row>
+      </ColumnGroup>
+    );
+
+    return (
+      <div className="p-3">
+        <Tag
+          value={`Sublíneas de crédito - ${linea.banco?.nombre || ""} (${moneda})`}
+          severity="info"
+          style={{ width: "100%", marginBottom: "0.75rem" }}
+        />
+        <DataTable
+          value={sublineas}
+          size="small"
+          stripedRows
+          showGridlines
+          emptyMessage="Esta línea no tiene sublíneas"
+          rowClassName={(sublinea) => (esSublineaBase(sublinea, sublineas) ? "fila-sumada" : "")}
+          footerColumnGroup={sublineas.length > 0 ? footerSublineas : null}
+        >
+          <Column
+            header="Tipo de Préstamo"
+            body={(sublinea) => (
+              <span>
+                {sublinea.tipoPrestamo?.descripcion || "-"}
+                {comparteCupo(sublinea, sublineas) && (
+                  <Tag
+                    value="CUPO COMPARTIDO"
+                    severity="info"
+                    style={{ marginLeft: 6, fontSize: "0.65rem" }}
+                    title={`Comparte el cupo con las demás sublíneas "${sublinea.descripcion}": el asignado cuenta una sola vez`}
+                  />
+                )}
+              </span>
+            )}
+          />
+          <Column field="descripcion" header="Descripción" />
+          <Column header="Asignado" body={(sublinea) => importe(sublinea.montoAsignado)} style={alDerecha} />
+          <Column header="Utilizado" body={(sublinea) => importe(sublinea.montoUtilizado)} style={alDerecha} />
+          <Column
+            header="Sobregiro"
+            body={(sublinea) =>
+              parseFloat(sublinea.totalSobregiros || 0) === 0 ? (
+                <span style={{ color: "#6c757d" }}>-</span>
+              ) : (
+                <span style={{ color: "#dc3545", fontWeight: "bold" }}>{importe(sublinea.totalSobregiros)}</span>
+              )
+            }
+            style={alDerecha}
+          />
+          <Column header="Disponible" body={(sublinea) => importe(sublinea.montoDisponible)} style={alDerecha} />
+          <Column header="% Utilizado" body={(sublinea) => `${porcentajeSublinea(sublinea)}%`} style={alDerecha} />
+        </DataTable>
+      </div>
+    );
+  };
+
+  // Totales por moneda de las líneas que cumplen los filtros: nunca se suman soles con dólares
+  const totalesPorMoneda = Object.values(
+    lineasFiltradas.reduce((acumulado, linea) => {
+      const codigo = linea.moneda?.codigoSunat;
+      if (!codigo) return acumulado;
+      if (!acumulado[codigo]) {
+        acumulado[codigo] = {
+          codigo,
+          nombre: linea.moneda?.nombreLargo || codigo,
+          colorFondo: linea.moneda?.colorFondo || null,
+          cantidad: 0,
+          limite: 0,
+          utilizado: 0,
+          sobregiro: 0,
+          disponible: 0,
+        };
+      }
+      acumulado[codigo].cantidad += 1;
+      acumulado[codigo].limite += parseFloat(linea.montoAprobado || 0);
+      acumulado[codigo].utilizado += parseFloat(linea.montoUtilizado || 0);
+      acumulado[codigo].sobregiro += parseFloat(linea.totalSobregiros || 0);
+      acumulado[codigo].disponible += parseFloat(linea.montoDisponible || 0);
+      return acumulado;
+    }, {}),
+  ).sort((a, b) => a.codigo.localeCompare(b.codigo));
+
+  const estiloTotalLinea = { textAlign: "right", fontWeight: "bold" };
+  const footerTotales =
+    totalesPorMoneda.length > 0 ? (
+      <ColumnGroup>
+        {/* Por cada moneda: una fila con los rótulos (qué es cada cifra) y otra con los importes */}
+        {totalesPorMoneda.flatMap((total) => {
+          const porcentaje = total.limite > 0 ? ((total.utilizado / total.limite) * 100).toFixed(2) : "0.00";
+          // Cada bloque lleva el color de fondo de su moneda (Moneda.colorFondo)
+          const fondo = total.colorFondo || undefined;
+          const estiloRotulo = {
+            textAlign: "right",
+            fontSize: "0.7rem",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            backgroundColor: fondo,
+            color: "#000",
+          };
+          const estilo = { ...estiloTotalLinea, backgroundColor: fondo, color: "#000" };
+          const estiloTitulo = { textAlign: "left", fontWeight: "bold", backgroundColor: fondo, color: "#000" };
+          return [
+            <Row key={`${total.codigo}-rotulos`}>
+              <Column footer={`TOTALES EN ${total.nombre} (${total.codigo})`} colSpan={3} footerStyle={estiloTitulo} />
+              <Column footer="Límite" footerStyle={estiloRotulo} />
+              <Column footer="Utilizado" footerStyle={estiloRotulo} />
+              <Column footer="Sobregiro autorizado" footerStyle={estiloRotulo} />
+              <Column footer="Disponible" footerStyle={estiloRotulo} />
+              <Column footer="% Utilizado" footerStyle={estiloRotulo} />
+              <Column footer="" colSpan={3} footerStyle={estiloRotulo} />
+            </Row>,
+            <Row key={`${total.codigo}-importes`}>
+              <Column
+                footer={`${total.cantidad} línea${total.cantidad === 1 ? "" : "s"} en ${total.codigo}`}
+                colSpan={3}
+                footerStyle={{ ...estiloTitulo, fontWeight: "normal" }}
+              />
+              <Column footer={formatCurrency(total.limite, total.codigo)} footerStyle={estilo} />
+              <Column footer={formatCurrency(total.utilizado, total.codigo)} footerStyle={estilo} />
+              <Column footer={formatCurrency(total.sobregiro, total.codigo)} footerStyle={estilo} />
+              <Column footer={formatCurrency(total.disponible, total.codigo)} footerStyle={estilo} />
+              <Column footer={`${porcentaje}%`} footerStyle={estilo} />
+              <Column footer="" colSpan={3} footerStyle={estilo} />
+            </Row>,
+          ];
+        })}
+      </ColumnGroup>
+    ) : null;
 
   // Template de carga personalizado
   const loadingTemplate = () => {
@@ -721,6 +988,9 @@ const LineaCredito = ({ ruta }) => {
     <div className="card">
       <Toast ref={toast} />
       <ConfirmDialog />
+      <style>{`
+        .fila-sumada { background-color: #e8f5e9 !important; }
+      `}</style>
 
       <DataTable
         value={lineasFiltradas}
@@ -733,6 +1003,12 @@ const LineaCredito = ({ ruta }) => {
         rows={10}
         rowsPerPageOptions={[5, 10, 25, 50]}
         className="datatable-responsive"
+        showGridlines
+        dataKey="id"
+        expandedRows={expandedRows}
+        onRowToggle={(e) => setExpandedRows(e.data)}
+        rowExpansionTemplate={rowExpansionTemplate}
+        footerColumnGroup={footerTotales}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} líneas"
         sortField="fechaAprobacion"
@@ -746,6 +1022,7 @@ const LineaCredito = ({ ruta }) => {
           fontSize: getResponsiveFontSize(),
         }}
       >
+        <Column expander style={{ width: "3rem" }} />
         <Column body={empresaBodyTemplate} header="Empresa" sortable />
         <Column body={bancoBodyTemplate} header="Banco" sortable />
         <Column body={montoBodyTemplate} header="Límite" sortable />

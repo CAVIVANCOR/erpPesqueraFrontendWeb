@@ -3,6 +3,8 @@ import React, { useRef, useState, useEffect, useMemo } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import { ColumnGroup } from "primereact/columngroup";
+import { Row } from "primereact/row";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
@@ -100,6 +102,73 @@ export default function PrestamoRelacionado({ ruta }) {
 
   // Saldo pendiente de lo que se está viendo, por moneda
   const saldosPendientes = useMemo(() => agruparPorMoneda(itemsFiltrados.filter(esPendiente)), [itemsFiltrados]);
+
+  // Totales por moneda de los préstamos que se ven en la tabla (nunca se suman soles con dólares).
+  // Cada importe va bajo su columna: Monto Desembolsado, Capital Devuelto y Saldo Capital (columnas 6 a 8 de 14).
+  const footerTotales = useMemo(() => {
+    const monedas = {};
+    itemsFiltrados.forEach((prestamo) => {
+      const codigo = prestamo.moneda?.codigoSunat;
+      if (!codigo) return;
+      if (!monedas[codigo]) {
+        monedas[codigo] = {
+          codigo,
+          simbolo: prestamo.moneda?.simbolo || "",
+          colorFondo: prestamo.moneda?.colorFondo || undefined,
+          cantidad: 0,
+          desembolsado: 0,
+          devuelto: 0,
+          saldo: 0,
+        };
+      }
+      monedas[codigo].cantidad += 1;
+      monedas[codigo].desembolsado += Number(prestamo.montoDesembolsado || 0);
+      monedas[codigo].devuelto += Number(prestamo.capitalDevuelto || 0);
+      monedas[codigo].saldo += Number(prestamo.saldoCapital || 0);
+    });
+    const totales = Object.values(monedas).sort((a, b) => a.codigo.localeCompare(b.codigo));
+    if (totales.length === 0) return null;
+
+    return (
+      <ColumnGroup>
+        {totales.flatMap((total) => {
+          const importe = (valor) => `${total.simbolo} ${formatearNumero(valor, 2)}`;
+          const fondo = total.colorFondo;
+          const estiloTitulo = { textAlign: "left", fontWeight: "bold", backgroundColor: fondo, color: "#000" };
+          const estiloRotulo = {
+            textAlign: "right",
+            fontSize: "0.7rem",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            backgroundColor: fondo,
+            color: "#000",
+          };
+          const estiloImporte = { textAlign: "right", fontWeight: "bold", backgroundColor: fondo, color: "#000" };
+          const estiloVacio = { backgroundColor: fondo };
+          return [
+            <Row key={`${total.codigo}-rotulos`}>
+              <Column footer={`TOTALES EN ${total.codigo}`} colSpan={5} footerStyle={estiloTitulo} />
+              <Column footer="Monto desembolsado" footerStyle={estiloRotulo} />
+              <Column footer="Capital devuelto" footerStyle={estiloRotulo} />
+              <Column footer="Saldo capital" footerStyle={estiloRotulo} />
+              <Column footer="" colSpan={6} footerStyle={estiloVacio} />
+            </Row>,
+            <Row key={`${total.codigo}-importes`}>
+              <Column
+                footer={`${total.cantidad} préstamo${total.cantidad === 1 ? "" : "s"} en ${total.codigo}`}
+                colSpan={5}
+                footerStyle={{ ...estiloTitulo, fontWeight: "normal" }}
+              />
+              <Column footer={importe(total.desembolsado)} footerStyle={estiloImporte} />
+              <Column footer={importe(total.devuelto)} footerStyle={estiloImporte} />
+              <Column footer={importe(total.saldo)} footerStyle={estiloImporte} />
+              <Column footer="" colSpan={6} footerStyle={estiloVacio} />
+            </Row>,
+          ];
+        })}
+      </ColumnGroup>
+    );
+  }, [itemsFiltrados]);
 
   const handleGenerarReporte = () => {
     setReportData({
@@ -272,6 +341,7 @@ export default function PrestamoRelacionado({ ruta }) {
         size="small"
         stripedRows
         showGridlines
+        footerColumnGroup={footerTotales}
         paginator
         rows={40}
         rowsPerPageOptions={[40, 80, 160, 320]}
