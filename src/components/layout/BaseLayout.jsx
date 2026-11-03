@@ -265,11 +265,11 @@ export default function BaseLayout({ children, onLogout }) {
       componente: <CuentaPorCobrar ruta="cuentaPorCobrar" />,
     },
     pagoCuentaPorCobrar: {
-      label: "Pagos Cuentas Por Cobrar",
+      label: "Conbranzas Realizadas",
       componente: <PagoCuentaPorCobrar ruta="pagoCuentaPorCobrar" />,
     },
     pagoCuentaPorPagar: {
-      label: "Pagos Cuentas por Pagar",
+      label: "Pagos Realizados",
       componente: <PagoCuentaPorPagar ruta="pagoCuentaPorPagar" />,
     },
     pagoCuotaPrestamo: {

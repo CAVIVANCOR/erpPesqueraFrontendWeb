@@ -570,7 +570,7 @@ export default function TransferenciaInternaDialog({
       }
 
       // Validar tipo de cambio si hay diferencia de moneda
-      if (hayDiferenciaMoneda && (!tipoCambio || tipoCambio <= 0)) {
+      if (!tipoCambio || tipoCambio <= 0) {
         toast?.current?.show({
           severity: 'error',
           summary: 'Error',
@@ -792,7 +792,7 @@ export default function TransferenciaInternaDialog({
           comisionDestino: Number(comisionDestino || 0),
 
           // Tipo de cambio y monto destino
-          tipoCambio: Number(tipoCambio) || 1,
+          tipoCambio: Number(tipoCambio),
           montoDestino: Number(montoDestino),
 
           // Operación gerencial
@@ -833,7 +833,7 @@ export default function TransferenciaInternaDialog({
           comisionDestino: Number(comisionDestino || 0),
 
           // Tipo de cambio
-          tipoCambio: Number(tipoCambio) || 1,
+          tipoCambio: Number(tipoCambio),
           montoDestino: Number(montoDestino),
 
           // Operación gerencial
@@ -870,7 +870,7 @@ export default function TransferenciaInternaDialog({
           comisionDestino: 0,
 
           // Tipo de cambio
-          tipoCambio: Number(tipoCambio) || 1,
+          tipoCambio: Number(tipoCambio),
           montoDestino: 0,
 
           // Operación gerencial
@@ -1464,7 +1464,7 @@ export default function TransferenciaInternaDialog({
             >
               <div style={{ flex: 1 }}>
                 <label htmlFor="tipoCambio" className="font-bold">
-                  Tipo de Cambio {hayDiferenciaMoneda ? '*' : '(Referencial)'}
+                  Tipo de Cambio (Venta) *
                 </label>
                 <InputNumber
                   id="tipoCambio"

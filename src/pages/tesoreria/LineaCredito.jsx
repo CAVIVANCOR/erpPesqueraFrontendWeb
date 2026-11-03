@@ -65,7 +65,9 @@ const LineaCredito = ({ ruta }) => {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
   const [tipoPrestamoSeleccionado, setTipoPrestamoSeleccionado] = useState(null);
-  // Filas con sus sublíneas desplegadas ({ [idLinea]: true })
+  // Niveles desplegados: empresas ({ [empresaId]: true }), bancos ({ [empresaId-bancoId]: true }) y líneas con sus sublíneas ({ [lineaId]: true })
+  const [expandedEmpresas, setExpandedEmpresas] = useState({});
+  const [expandedBancos, setExpandedBancos] = useState({});
   const [expandedRows, setExpandedRows] = useState({});
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
@@ -128,6 +130,18 @@ const LineaCredito = ({ ruta }) => {
       filtradas = filtradas.filter((linea) => lineaTieneTipo(linea, tipoPrestamoSeleccionado));
     }
 
+    // Búsqueda de texto libre sobre empresa, banco, moneda y estado de la línea
+    const texto = globalFilter.trim().toLowerCase();
+    if (texto) {
+      filtradas = filtradas.filter((linea) =>
+        [linea.empresa?.razonSocial, linea.banco?.nombre, linea.moneda?.codigoSunat, linea.estado?.descripcion]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(texto),
+      );
+    }
+
     setLineasFiltradas(filtradas);
   }, [
     empresaSeleccionada,
@@ -135,6 +149,7 @@ const LineaCredito = ({ ruta }) => {
     estadoSeleccionado,
     monedaSeleccionada,
     tipoPrestamoSeleccionado,
+    globalFilter,
     lineas,
   ]);
 
@@ -507,12 +522,24 @@ const LineaCredito = ({ ruta }) => {
   };
 
   const expandirTodo = () => {
+    const empresasAbiertas = {};
+    const bancosAbiertos = {};
     const filas = {};
-    lineasFiltradas.forEach((linea) => (filas[linea.id] = true));
+    lineasFiltradas.forEach((linea) => {
+      empresasAbiertas[String(linea.empresaId)] = true;
+      bancosAbiertos[`${linea.empresaId}-${linea.bancoId}`] = true;
+      filas[linea.id] = true;
+    });
+    setExpandedEmpresas(empresasAbiertas);
+    setExpandedBancos(bancosAbiertos);
     setExpandedRows(filas);
   };
 
-  const contraerTodo = () => setExpandedRows({});
+  const contraerTodo = () => {
+    setExpandedEmpresas({});
+    setExpandedBancos({});
+    setExpandedRows({});
+  };
 
   // Header del DataTable con filtros
   const header = (
@@ -536,10 +563,10 @@ const LineaCredito = ({ ruta }) => {
           <label
             style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
           >
-            Empresa *
+            Empresa
           </label>
           <EmpresaSelector
-            empresaId={usuario?.empresaId}
+            permitirLimpiar
             onEmpresaChange={(id) => {
               setEmpresaIdSelector(id);
               setEmpresaSeleccionada(id);
@@ -559,7 +586,7 @@ const LineaCredito = ({ ruta }) => {
               !permisos.puedeCrear
                 ? "No tiene permisos para crear"
                 : !empresaSeleccionada
-                  ? "Seleccione una empresa primero"
+                  ? "Seleccione una empresa para crear la línea"
                   : "Nueva Línea de Crédito"
             }
             style={{ width: "100%" }}
@@ -877,9 +904,9 @@ const LineaCredito = ({ ruta }) => {
     );
   };
 
-  // Totales por moneda de las líneas que cumplen los filtros: nunca se suman soles con dólares
-  const totalesPorMoneda = Object.values(
-    lineasFiltradas.reduce((acumulado, linea) => {
+  // Totales por moneda de un conjunto de líneas: nunca se suman soles con dólares
+  const totalesPorMonedaDe = (lineasDelGrupo) => Object.values(
+    lineasDelGrupo.reduce((acumulado, linea) => {
       const codigo = linea.moneda?.codigoSunat;
       if (!codigo) return acumulado;
       if (!acumulado[codigo]) {
@@ -903,6 +930,120 @@ const LineaCredito = ({ ruta }) => {
     }, {}),
   ).sort((a, b) => a.codigo.localeCompare(b.codigo));
 
+  // Totales de las líneas que cumplen los filtros (footer general)
+  const totalesPorMoneda = totalesPorMonedaDe(lineasFiltradas);
+
+  // ========================================
+  // 3 NIVELES: EMPRESA > BANCO > LÍNEA DE CRÉDITO
+  // ========================================
+  const agruparPor = (lista, claveDe, datosDe) =>
+    Object.values(
+      lista.reduce((acumulado, linea) => {
+        const clave = claveDe(linea);
+        if (!acumulado[clave]) acumulado[clave] = { id: clave, ...datosDe(linea), lineas: [] };
+        acumulado[clave].lineas.push(linea);
+        return acumulado;
+      }, {}),
+    )
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+      .map((grupo) => ({ ...grupo, totales: totalesPorMonedaDe(grupo.lineas) }));
+
+  const empresasAgrupadas = agruparPor(
+    lineasFiltradas,
+    (linea) => String(linea.empresaId),
+    (linea) => ({ nombre: linea.empresa?.razonSocial || `Empresa ${linea.empresaId}` }),
+  ).map((empresa) => ({
+    ...empresa,
+    bancos: agruparPor(
+      empresa.lineas,
+      (linea) => `${linea.empresaId}-${linea.bancoId}`,
+      (linea) => ({ nombre: linea.banco?.nombre || `Banco ${linea.bancoId}` }),
+    ),
+  }));
+
+  // Cada moneda con su color de fondo; los importes de monedas distintas se muestran en líneas separadas
+  const celdaPorMoneda = (totales, campo) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-end" }}>
+      {totales.map((t) => (
+        <span
+          key={t.codigo}
+          style={{ backgroundColor: t.colorFondo || undefined, color: "#000", padding: "0.1rem 0.4rem", borderRadius: 4, fontWeight: 600, whiteSpace: "nowrap" }}
+        >
+          {formatCurrency(t[campo], t.codigo)}
+        </span>
+      ))}
+    </div>
+  );
+
+  const celdaPorcentaje = (totales) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-end" }}>
+      {totales.map((t) => (
+        <span key={t.codigo} style={{ fontWeight: 600 }}>
+          {t.limite > 0 ? ((t.utilizado / t.limite) * 100).toFixed(2) : "0.00"}% {totales.length > 1 ? t.codigo : ""}
+        </span>
+      ))}
+    </div>
+  );
+
+  const columnasTotales = (anchoPrimera) => [
+    <Column key="limite" header="Límite" body={(g) => celdaPorMoneda(g.totales, "limite")} style={{ textAlign: "right" }} />,
+    <Column key="utilizado" header="Utilizado" body={(g) => celdaPorMoneda(g.totales, "utilizado")} style={{ textAlign: "right" }} />,
+    <Column key="sobregiro" header="Sobregiro" body={(g) => celdaPorMoneda(g.totales, "sobregiro")} style={{ textAlign: "right" }} />,
+    <Column key="disponible" header="Disponible" body={(g) => celdaPorMoneda(g.totales, "disponible")} style={{ textAlign: "right" }} />,
+    <Column key="porcentaje" header="% Utilizado" body={(g) => celdaPorcentaje(g.totales)} style={{ textAlign: "right" }} />,
+  ];
+
+  // Nivel 3: las líneas de crédito de un banco (con sus sublíneas expandibles, edición y eliminación)
+  const lineasExpansionTemplate = (banco) => (
+    <div className="p-3">
+      <DataTable
+        value={banco.lineas}
+        dataKey="id"
+        size="small"
+        stripedRows
+        showGridlines
+        emptyMessage="Este banco no tiene líneas de crédito"
+        expandedRows={expandedRows}
+        onRowToggle={(e) => setExpandedRows(e.data)}
+        rowExpansionTemplate={rowExpansionTemplate}
+        sortField="fechaAprobacion"
+        sortOrder={-1}
+        onRowClick={permisos.puedeVer || permisos.puedeEditar ? handleRowClick : undefined}
+      >
+        <Column expander style={{ width: "3rem" }} />
+        <Column body={montoBodyTemplate} header="Límite" sortable />
+        <Column body={utilizadoBodyTemplate} header="Utilizado" sortable />
+        <Column body={sobregirosBodyTemplate} header="Sobregiro" sortable />
+        <Column body={disponibleBodyTemplate} header="Disponible" sortable />
+        <Column body={porcentajeBodyTemplate} header="% Utilizado" />
+        <Column body={fechaVencimientoBodyTemplate} header="Vencimiento" sortable />
+        <Column body={estadoBodyTemplate} header="Estado" sortable />
+        <Column body={accionesBodyTemplate} header="Acciones" style={{ width: 130, textAlign: "center" }} />
+      </DataTable>
+    </div>
+  );
+
+  // Nivel 2: los bancos de una empresa
+  const bancosExpansionTemplate = (empresa) => (
+    <div className="p-3">
+      <DataTable
+        value={empresa.bancos}
+        dataKey="id"
+        size="small"
+        stripedRows
+        showGridlines
+        expandedRows={expandedBancos}
+        onRowToggle={(e) => setExpandedBancos(e.data)}
+        rowExpansionTemplate={lineasExpansionTemplate}
+      >
+        <Column expander style={{ width: "3rem" }} />
+        <Column field="nombre" header="Banco" body={(b) => <strong>{b.nombre}</strong>} />
+        <Column header="Líneas" body={(b) => b.lineas.length} style={{ textAlign: "center", width: 80 }} />
+        {columnasTotales()}
+      </DataTable>
+    </div>
+  );
+
   const estiloTotalLinea = { textAlign: "right", fontWeight: "bold" };
   const footerTotales =
     totalesPorMoneda.length > 0 ? (
@@ -924,18 +1065,17 @@ const LineaCredito = ({ ruta }) => {
           const estiloTitulo = { textAlign: "left", fontWeight: "bold", backgroundColor: fondo, color: "#000" };
           return [
             <Row key={`${total.codigo}-rotulos`}>
-              <Column footer={`TOTALES EN ${total.nombre} (${total.codigo})`} colSpan={3} footerStyle={estiloTitulo} />
+              <Column footer={`TOTALES EN ${total.nombre} (${total.codigo})`} colSpan={4} footerStyle={estiloTitulo} />
               <Column footer="Límite" footerStyle={estiloRotulo} />
               <Column footer="Utilizado" footerStyle={estiloRotulo} />
               <Column footer="Sobregiro autorizado" footerStyle={estiloRotulo} />
               <Column footer="Disponible" footerStyle={estiloRotulo} />
               <Column footer="% Utilizado" footerStyle={estiloRotulo} />
-              <Column footer="" colSpan={3} footerStyle={estiloRotulo} />
             </Row>,
             <Row key={`${total.codigo}-importes`}>
               <Column
                 footer={`${total.cantidad} línea${total.cantidad === 1 ? "" : "s"} en ${total.codigo}`}
-                colSpan={3}
+                colSpan={4}
                 footerStyle={{ ...estiloTitulo, fontWeight: "normal" }}
               />
               <Column footer={formatCurrency(total.limite, total.codigo)} footerStyle={estilo} />
@@ -943,7 +1083,6 @@ const LineaCredito = ({ ruta }) => {
               <Column footer={formatCurrency(total.sobregiro, total.codigo)} footerStyle={estilo} />
               <Column footer={formatCurrency(total.disponible, total.codigo)} footerStyle={estilo} />
               <Column footer={`${porcentaje}%`} footerStyle={estilo} />
-              <Column footer="" colSpan={3} footerStyle={estilo} />
             </Row>,
           ];
         })}
@@ -992,55 +1131,29 @@ const LineaCredito = ({ ruta }) => {
         .fila-sumada { background-color: #e8f5e9 !important; }
       `}</style>
 
+      {/* Nivel 1: Empresa > Nivel 2: Banco > Nivel 3: Línea de crédito (con sus sublíneas) */}
       <DataTable
-        value={lineasFiltradas}
+        value={empresasAgrupadas}
         loading={loading}
         loadingIcon={loadingTemplate}
         header={header}
-        globalFilter={globalFilter}
         emptyMessage="No se encontraron líneas de crédito"
-        paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
         className="datatable-responsive"
         showGridlines
         dataKey="id"
-        expandedRows={expandedRows}
-        onRowToggle={(e) => setExpandedRows(e.data)}
-        rowExpansionTemplate={rowExpansionTemplate}
+        expandedRows={expandedEmpresas}
+        onRowToggle={(e) => setExpandedEmpresas(e.data)}
+        rowExpansionTemplate={bancosExpansionTemplate}
         footerColumnGroup={footerTotales}
-        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} líneas"
-        sortField="fechaAprobacion"
-        sortOrder={-1}
-        onRowClick={
-          permisos.puedeVer || permisos.puedeEditar
-            ? handleRowClick
-            : undefined
-        }
         style={{
           fontSize: getResponsiveFontSize(),
         }}
       >
         <Column expander style={{ width: "3rem" }} />
-        <Column body={empresaBodyTemplate} header="Empresa" sortable />
-        <Column body={bancoBodyTemplate} header="Banco" sortable />
-        <Column body={montoBodyTemplate} header="Límite" sortable />
-        <Column body={utilizadoBodyTemplate} header="Utilizado" sortable />
-        <Column body={sobregirosBodyTemplate} header="Sobregiro" sortable />
-        <Column body={disponibleBodyTemplate} header="Disponible" sortable />
-        <Column body={porcentajeBodyTemplate} header="% Utilizado" />
-        <Column
-          body={fechaVencimientoBodyTemplate}
-          header="Vencimiento"
-          sortable
-        />
-        <Column body={estadoBodyTemplate} header="Estado" sortable />
-        <Column
-          body={accionesBodyTemplate}
-          header="Acciones"
-          style={{ width: 130, textAlign: "center" }}
-        />
+        <Column field="nombre" header="Empresa" body={(e) => <strong>{e.nombre}</strong>} />
+        <Column header="Bancos" body={(e) => e.bancos.length} style={{ textAlign: "center", width: 80 }} />
+        <Column header="Líneas" body={(e) => e.lineas.length} style={{ textAlign: "center", width: 80 }} />
+        {columnasTotales()}
       </DataTable>
 
       {/* Dialog con Formulario */}

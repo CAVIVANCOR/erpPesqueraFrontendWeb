@@ -82,7 +82,7 @@ export default function GastoBancarioDialog({ visible, onHide, onSuccess, toast,
   // Tipo de cambio de venta de SUNAT (editable) cuando la cuenta no es en soles
   useEffect(() => {
     const consultar = async () => {
-      if (!fecha || esMonedaNacional) return;
+      if (!fecha) return;
       const fechaISO = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}-${String(fecha.getDate()).padStart(2, "0")}`;
       if (ultimaConsultaTC.current === fechaISO) return;
       try {
@@ -116,7 +116,7 @@ export default function GastoBancarioDialog({ visible, onHide, onSuccess, toast,
       if (!lineas[i].concepto) return error(`Seleccione el concepto del gasto ${i + 1}.`);
       if (!(Number(lineas[i].monto) > 0)) return error(`El monto del gasto ${i + 1} debe ser mayor a cero.`);
     }
-    if (!esMonedaNacional && !(Number(tipoCambio) > 0)) return error("Debe ingresar un tipo de cambio válido");
+    if (!(Number(tipoCambio) > 0)) return error("Debe ingresar un tipo de cambio válido");
     return true;
   };
 
@@ -164,7 +164,7 @@ export default function GastoBancarioDialog({ visible, onHide, onSuccess, toast,
         esGerencial,
         numeroOperacion: numeroOperacion || undefined,
         descripcion: descripcion.trim() || undefined,
-        tipoCambio: esMonedaNacional ? undefined : Number(tipoCambio),
+        tipoCambio: Number(tipoCambio),
         lineas: lineas.map((l) => ({ concepto: l.concepto, monto: Number(l.monto), glosa: l.glosa?.trim() || undefined })),
       });
       if (respuesta?.data) {
@@ -263,7 +263,7 @@ export default function GastoBancarioDialog({ visible, onHide, onSuccess, toast,
                 />
               </div>
             </div>
-            {!esMonedaNacional && (
+            {(
               <div>
                 <label htmlFor="tipoCambio" className="font-bold">Tipo de Cambio (Venta) *</label>
                 <InputNumber id="tipoCambio" value={tipoCambio} onValueChange={(e) => setTipoCambio(e.value)} mode="decimal" minFractionDigits={4} maxFractionDigits={4} disabled={procesando} style={{ width: "100%" }} placeholder="Tipo de cambio SUNAT" />

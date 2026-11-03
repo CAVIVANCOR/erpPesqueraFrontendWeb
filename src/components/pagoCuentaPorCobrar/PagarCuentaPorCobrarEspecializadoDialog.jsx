@@ -324,11 +324,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
   useEffect(() => {
     const consultarTipoCambio = async () => {
       if (!fechaPago || !visible) return;
-
-      if (monedaPagoId === cuentaPorCobrar?.monedaId) {
-        setTipoCambio(1);
-        return;
-      }
+      // El TC del día se consulta siempre (también si la moneda del pago y la del documento coinciden): se graba en los movimientos
 
       try {
         const year = fechaPago.getFullYear();
@@ -338,8 +334,9 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
 
         const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
 
-        if (tipoCambioData && tipoCambioData.buy_price) {
-          const tc = parseFloat(tipoCambioData.buy_price);
+        if (tipoCambioData && tipoCambioData.sell_price) {
+          // Siempre TC de venta (sell_price), igual que en todo el sistema
+          const tc = parseFloat(tipoCambioData.sell_price);
           setTipoCambio(tc);
         }
       } catch (error) {
@@ -1279,7 +1276,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
               <InputNumber
                 id="tipoCambio"
                 value={tipoCambio}
-                onValueChange={(e) => setTipoCambio(e.value || 1)}
+                onValueChange={(e) => setTipoCambio(e.value)}
                 mode="decimal"
                 minFractionDigits={2}
                 maxFractionDigits={4}

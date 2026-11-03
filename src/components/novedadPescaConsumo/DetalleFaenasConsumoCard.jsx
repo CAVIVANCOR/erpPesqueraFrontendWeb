@@ -32,8 +32,10 @@ import {
   crearFaenaPescaConsumo,
   actualizarFaenaPescaConsumo,
   eliminarFaenaPescaConsumo,
+  getDependenciasFaenaPescaConsumo,
   crearFaenaConsumoCompleta,
 } from "../../api/faenaPescaConsumo";
+import { mensajeDeError } from "../../utils/mensajeError";
 import { getCalasFaenaConsumoPorFaena } from "../../api/calaFaenaConsumo";
 import { getDetCalaPescaConsumoPorCala } from "../../api/detCalaPescaConsumo";
 import { getPuertosPesca } from "../../api/puertoPesca";
@@ -91,6 +93,8 @@ const DetalleFaenasConsumoCard = forwardRef(
       useState(false);
     const [confirmVisible, setConfirmVisible] = useState(false);
     const [faenaToDelete, setFaenaToDelete] = useState(null);
+    // Tablas hijas de la faena a eliminar ({ dependencias, bloqueo }); null si no se está eliminando
+    const [dependenciasEliminar, setDependenciasEliminar] = useState(null);
     const [puertosData, setPuertosData] = useState([]);
 
     // Estados para modal de resumen de creación
@@ -394,17 +398,35 @@ const DetalleFaenasConsumoCard = forwardRef(
     /**
      * Confirmar eliminación
      */
-    const handleEliminarFaena = (faena) => {
-      setFaenaToDelete(faena);
-      setConfirmVisible(true);
+    const handleEliminarFaena = async (faena) => {
+      try {
+        const resultado = await getDependenciasFaenaPescaConsumo(faena.id);
+        setFaenaToDelete(faena);
+        setDependenciasEliminar(resultado);
+        // Sin registros hijos basta una confirmación simple; con hijos se muestra el detalle por tabla
+        setConfirmVisible(resultado.dependencias.length === 0);
+      } catch (error) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: mensajeDeError(error, "No se pudo consultar los registros asociados a la faena"),
+          life: 6000,
+        });
+      }
+    };
+
+    const cerrarEliminacion = () => {
+      setConfirmVisible(false);
+      setFaenaToDelete(null);
+      setDependenciasEliminar(null);
     };
 
     /**
-     * Eliminar faena
+     * Eliminar faena (con sus registros hijos si el usuario lo confirmó)
      */
     const confirmarEliminacion = async () => {
       try {
-        await eliminarFaenaPescaConsumo(faenaToDelete.id);
+        await eliminarFaenaPescaConsumo(faenaToDelete.id, (dependenciasEliminar?.dependencias?.length || 0) > 0);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -418,12 +440,11 @@ const DetalleFaenasConsumoCard = forwardRef(
         toast.current?.show({
           severity: "error",
           summary: "Error",
-          detail: "Error al eliminar la faena",
-          life: 3000,
+          detail: mensajeDeError(error, "No se pudo eliminar la faena"),
+          life: 8000,
         });
       } finally {
-        setConfirmVisible(false);
-        setFaenaToDelete(null);
+        cerrarEliminacion();
       }
     };
 
@@ -1308,16 +1329,53 @@ const DetalleFaenasConsumoCard = forwardRef(
         {/* Dialog de confirmación */}
         <ConfirmDialog
           visible={confirmVisible}
-          onHide={() => setConfirmVisible(false)}
+          onHide={cerrarEliminacion}
           message="¿Está seguro de eliminar esta faena?"
           header="Confirmar Eliminación"
           icon="pi pi-exclamation-triangle"
           accept={confirmarEliminacion}
-          reject={() => setConfirmVisible(false)}
+          reject={cerrarEliminacion}
           acceptLabel="Sí, Eliminar"
           rejectLabel="Cancelar"
           acceptClassName="p-button-danger"
         />
+
+        {/* Eliminación de una faena que tiene registros en otras tablas */}
+        <Dialog
+          header="Eliminar faena y sus registros asociados"
+          visible={Boolean(dependenciasEliminar?.dependencias?.length)}
+          style={{ width: "600px" }}
+          modal
+          onHide={cerrarEliminacion}
+          footer={
+            <div>
+              <Button label="Cancelar" icon="pi pi-times" className="p-button-text" onClick={cerrarEliminacion} />
+              <Button
+                label="Eliminar faena y registros"
+                icon="pi pi-trash"
+                className="p-button-danger"
+                disabled={Boolean(dependenciasEliminar?.bloqueo)}
+                onClick={confirmarEliminacion}
+              />
+            </div>
+          }
+        >
+          <p style={{ marginTop: 0 }}>
+            La faena <strong>{faenaToDelete?.descripcion || `#${faenaToDelete?.id}`}</strong> tiene registros en las siguientes tablas:
+          </p>
+          <DataTable value={dependenciasEliminar?.dependencias || []} size="small" showGridlines>
+            <Column field="etiqueta" header="Registros" />
+            <Column field="tabla" header="Tabla" />
+            <Column field="cantidad" header="Cantidad" style={{ textAlign: "right", width: 100 }} />
+          </DataTable>
+          {dependenciasEliminar?.bloqueo ? (
+            <p style={{ color: "#D32F2F", fontWeight: "bold" }}>{dependenciasEliminar.bloqueo}</p>
+          ) : (
+            <p style={{ color: "#D32F2F", fontWeight: "bold" }}>
+              Si continúa, se eliminarán la faena y todos estos registros. Esta acción no se puede deshacer.
+            </p>
+          )}
+        </Dialog>
 
         {/* Modal de resumen de creación de faena */}
         <ResumenCreacionFaenaConsumoDialog

@@ -403,12 +403,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
   useEffect(() => {
     const consultarTipoCambio = async () => {
       if (!fechaPago || !visible || !monedaPagoId || !cuentaPorPagar?.monedaId) return;
-
-      // Si misma moneda, TC = 1 (sin consultar API)
-      if (monedaPagoId === cuentaPorPagar?.monedaId) {
-        setTipoCambio(1);
-        return;
-      }
+      // El TC del día se consulta siempre (también si la moneda del pago y la del documento coinciden): se graba en los movimientos
 
       // ✅ EVITAR CONSULTAS DUPLICADAS
       const year = fechaPago.getFullYear();
@@ -479,12 +474,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
   useEffect(() => {
     const consultarTipoCambioDetraccion = async () => {
       if (!fechaDepositoDetraccion || !visible || !monedaDetraccionId || !cuentaPorPagar?.monedaId) return;
-
-      // Si misma moneda, TC = 1 (sin consultar API)
-      if (monedaDetraccionId === cuentaPorPagar?.monedaId) {
-        setTipoCambioDetraccion(1);
-        return;
-      }
+      // El TC del día se consulta siempre (también si la moneda del pago y la del documento coinciden): se graba en los movimientos
 
       // ✅ EVITAR CONSULTAS DUPLICADAS
       const year = fechaDepositoDetraccion.getFullYear();
@@ -1084,7 +1074,7 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
           cuentaBancariaDetraccionId: Number(cuentaBancariaDetraccionId),
           medioPagoDetraccionId: MEDIO_PAGO_DEPOSITO_EN_CUENTA_ID,
           monedaDetraccionId: monedaDetraccionId ? Number(monedaDetraccionId) : null,
-          tipoCambioDetraccion: Number(tipoCambioDetraccion) || 1,
+          tipoCambioDetraccion: Number(tipoCambioDetraccion),
           montoDetraccion: Number(montoDetraccionIngresado) || 0,
           itfDetraccion: Number(itfDetraccion) || 0,
           comisionDetraccion: Number(comisionDetraccion) || 0,

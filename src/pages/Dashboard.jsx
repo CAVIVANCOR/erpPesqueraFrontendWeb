@@ -682,19 +682,19 @@ export default function Dashboard() {
           tab: "operaciones",
         },
         {
-          label: "Pagos Cuentas por Pagar",
+          label: "Pagos Realizados",
           key: "pagoCuentaPorPagar",
           icon: "pi-shopping-cart",
           tab: "operaciones",
         },
         {
-          label: "Pagos Cuentas Por Cobrar",
+          label: "Cobranzas Realizadas",
           key: "pagoCuentaPorCobrar",
           icon: "pi-shopping-cart",
           tab: "operaciones",
         },
         {
-          label: "Pagos Cuotas Prestamos",
+          label: "Pagos Prestamos",
           key: "pagoCuotaPrestamo",
           icon: "pi-shopping-cart",
           tab: "operaciones",
@@ -735,12 +735,12 @@ export default function Dashboard() {
           icon: "pi-tags",
           tab: "tablas",
         },
-        {
+  /*      {
           label: "Inversión Financiera",
           key: "inversionFinanciera",
           icon: "pi-chart-pie",
           tab: "tablas",
-        },
+        },*/
         {
           label: "Entidad Comercial",
           key: "entidadComercial",

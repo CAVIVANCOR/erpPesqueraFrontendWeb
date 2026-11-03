@@ -869,7 +869,7 @@ export default function MovimientoCaja({ ruta }) {
           />
           <Column
             field="refOperacionEspecializadaMovCaja"
-            header="Correlativo"
+            header="N° Operación Especializada"
             body={correlativoTemplate}
             style={{ width: 120, textAlign: "center", verticalAlign: "top" }}
             sortable

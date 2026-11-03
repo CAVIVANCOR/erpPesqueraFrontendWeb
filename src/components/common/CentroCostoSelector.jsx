@@ -157,6 +157,7 @@ const CentroCostoSelector = ({
   empresaId = null,
   label = "Centro de Costo",
   disabled = false,
+  soloLectura = false, // Solo muestra el valor, sin abrir el diálogo de selección
   required = false,
   error = false,
   errorMessage = "",
@@ -410,7 +411,7 @@ const CentroCostoSelector = ({
           type="button"
           icon="pi pi-building"
           onClick={() => {
-            if (!disabled) {
+            if (!disabled && !soloLectura) {
               setDialogVisible(true);
             }
           }}

@@ -15,6 +15,7 @@ import { Tag } from "primereact/tag";
 import CuentaCorrienteSelector from "../../common/CuentaCorrienteSelector";
 import { getLetrasPendientesPago, pagarLetra } from "../../../api/tesoreria/letrasOperaciones";
 import { mensajeDeError } from "../../../utils/mensajeError";
+import { consultarTipoCambioSunat } from "../../../api/consultaExterna";
 import { formatearNumero } from "../../../utils/utils";
 
 const etiqueta = { fontWeight: "bold", display: "block", marginBottom: 5 };
@@ -89,6 +90,22 @@ export default function PagoLetraCambioDialog({ visible, onHide, onSuccess, toas
     setLetra(null);
   }, [visible, empresaId, tipoLetra]);
 
+  // Tipo de cambio venta SUNAT de la fecha de la operación, siempre visible y editable (también para letras y cuentas en soles).
+  // Se vuelve a consultar al cambiar la fecha o la letra; lo que el usuario edite después se respeta.
+  useEffect(() => {
+    if (!visible || !fechaPago) return;
+    const fechaConsulta = `${fechaPago.getFullYear()}-${String(fechaPago.getMonth() + 1).padStart(2, "0")}-${String(fechaPago.getDate()).padStart(2, "0")}`;
+    let vigente = true;
+    consultarTipoCambioSunat({ date: fechaConsulta })
+      .then((tc) => vigente && tc?.sell_price && setTipoCambio(parseFloat(tc.sell_price)))
+      .catch((err) =>
+        toast?.current?.show({ severity: "warn", summary: "Tipo de cambio", detail: mensajeDeError(err, "No se pudo consultar el tipo de cambio SUNAT: ingréselo manualmente"), life: 6000 }),
+      );
+    return () => {
+      vigente = false;
+    };
+  }, [visible, fechaPago, letra?.id]);
+
   const seleccionarLetra = (l) => {
     setLetra(l);
     reiniciarFormulario(l);
@@ -120,7 +137,7 @@ export default function PagoLetraCambioDialog({ visible, onHide, onSuccess, toas
     if (Number(capital) < 0 || Number(interes) < 0 || Number(mora) < 0) return "El capital, el interés y la mora no pueden ser negativos.";
     if (!(totalLetra > 0)) return "Ingrese el capital, el interés o la mora que se paga: el total debe ser mayor a cero.";
     if (Number(capital) > saldoLetra + 0.01) return `El capital (${formatearNumero(capital, 2)}) excede el saldo de capital de la letra (${formatearNumero(saldoLetra, 2)}).`;
-    if (hayExtranjera && !(Number(tipoCambio) > 0)) return "Ingrese el tipo de cambio de la fecha de la operación (la letra o la cuenta están en moneda extranjera).";
+    if (!(Number(tipoCambio) > 0)) return "Ingrese el tipo de cambio (venta) de la fecha de la operación.";
     return null;
   };
 
@@ -141,7 +158,7 @@ export default function PagoLetraCambioDialog({ visible, onHide, onSuccess, toas
         montoCapital: Number(capital || 0),
         montoInteres: Number(interes || 0),
         montoMora: Number(mora || 0),
-        tipoCambio: hayExtranjera ? Number(tipoCambio) : undefined,
+        tipoCambio: Number(tipoCambio),
         itf: Number(itf || 0),
         comision: Number(comision || 0),
         numeroOperacion: numeroOperacion || undefined,
@@ -301,7 +318,7 @@ export default function PagoLetraCambioDialog({ visible, onHide, onSuccess, toas
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-            {hayExtranjera && (
+            {(
               <div style={{ flex: 1 }}>
                 <label style={etiqueta}>Tipo de cambio *</label>
                 <InputNumber value={tipoCambio} onValueChange={(e) => setTipoCambio(e.value)} minFractionDigits={3} maxFractionDigits={4} style={{ width: "100%" }} />

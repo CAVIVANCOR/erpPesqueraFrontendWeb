@@ -60,8 +60,21 @@ export async function actualizarFaenaPescaConsumo(id, data) {
  * @param {number} id - ID de la faena de pesca consumo a eliminar
  * @returns {Promise} Confirmación de eliminación
  */
-export async function eliminarFaenaPescaConsumo(id) {
-  const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+export async function eliminarFaenaPescaConsumo(id, eliminarHijos = false) {
+  const res = await axios.delete(`${API_URL}/${id}`, {
+    headers: getAuthHeaders(),
+    params: eliminarHijos ? { eliminarHijos: true } : undefined,
+  });
+  return res.data;
+}
+
+/**
+ * Tablas hijas de la faena con la cantidad de registros de cada una
+ * @param {number} id - ID de la faena
+ * @returns {Promise<{dependencias: Array<{tabla, etiqueta, cantidad}>, bloqueo: string|null}>}
+ */
+export async function getDependenciasFaenaPescaConsumo(id) {
+  const res = await axios.get(`${API_URL}/${id}/dependencias`, { headers: getAuthHeaders() });
   return res.data;
 }
 

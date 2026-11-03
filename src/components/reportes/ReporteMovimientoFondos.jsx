@@ -5,7 +5,7 @@ import { Calendar } from "primereact/calendar";
 import { Checkbox } from "primereact/checkbox";
 import { Message } from "primereact/message";
 import { generarPDFMovimientoFondos } from "./MovimientoFondosPDF";
-import { getDatosReporteMovimientoFondos } from "../../api/reporteMovimientoFondos";
+import { getDatosReporteMovimientoFondos, getCuentasParaSaldos } from "../../api/reporteMovimientoFondos";
 
 const REPORTES = [
   { clave: "movimientos", titulo: "Movimiento de Fondos", archivo: "movimiento-de-fondos" },
@@ -34,7 +34,7 @@ const enRango = (m, rango) => {
 /**
  * Botón "Reporte" genérico y autónomo. Emite DOS reportes independientes, que se muestran a la vez:
  *  1) Movimiento de Fondos: diario, por empresa (cada una en página nueva), por cuenta y con subtotales por día.
- *  2) Saldos por Cuentas Bancarias: todas las cuentas que se movieron en el rango, por empresa.
+ *  2) Saldos por Cuentas Bancarias: TODAS las cuentas activas de todas las empresas, por empresa, se hayan movido o no.
  *
  * Props:
  *  - movimientos: movimientos de caja a reportar, de todas las empresas (con sus relaciones)
@@ -114,6 +114,24 @@ export default function ReporteMovimientoFondos({
         }
       }
 
+      // Saldos por Cuentas Bancarias: todas las cuentas activas de todas las empresas, tengan o no movimientos
+      let cuentasSaldos = null;
+      try {
+        const desde = new Date(rango[0]);
+        desde.setHours(0, 0, 0, 0);
+        const hasta = new Date(rango[1] || rango[0]);
+        hasta.setHours(23, 59, 59, 999);
+        cuentasSaldos = await getCuentasParaSaldos(desde, hasta);
+      } catch (err) {
+        console.error("No se pudieron consultar los saldos de todas las cuentas:", err);
+        mostrar(
+          "warn",
+          "Saldos solo de cuentas con movimientos",
+          err.response?.data?.mensaje ||
+            "No se pudieron consultar todas las cuentas bancarias. El reporte de saldos incluirá solo las cuentas que se movieron."
+        );
+      }
+
       const nuevos = { movimientos: null, saldos: null };
       const nuevosErrores = { movimientos: null, saldos: null };
       let resumen = null;
@@ -124,6 +142,7 @@ export default function ReporteMovimientoFondos({
             parte: clave,
             movimientos: movimientosEnRango,
             enriquecimiento,
+            cuentasSaldos,
             empresas,
             rango,
             opciones: { incluirAnulados, incluirResumen },
@@ -144,7 +163,7 @@ export default function ReporteMovimientoFondos({
       if (resumen) {
         mostrar("success", "Reportes generados", `${resumen.totalMovimientos} movimiento(s) de ${resumen.totalEmpresas} empresa(s)`);
       } else {
-        throw new Error(nuevosErrores.movimientos || "No se pudo generar ningún reporte");
+        throw new Error(nuevosErrores.movimientos || nuevosErrores.saldos || "No se pudo generar ningún reporte");
       }
     } catch (err) {
       setError(err.message || "Error al generar los reportes");
@@ -175,8 +194,8 @@ export default function ReporteMovimientoFondos({
         icon="pi pi-file-pdf"
         className={className}
         onClick={abrir}
-        disabled={disabled || movimientos.length === 0}
-        tooltip={movimientos.length === 0 ? "No hay movimientos para reportar" : "Movimiento de fondos y saldos por cuentas bancarias"}
+        disabled={disabled}
+        tooltip="Movimiento de fondos y saldos por cuentas bancarias (todas las cuentas de todas las empresas)"
         tooltipOptions={{ position: "top" }}
       />
       <Dialog
@@ -232,7 +251,7 @@ export default function ReporteMovimientoFondos({
                 icon="pi pi-cog"
                 loading={generando}
                 onClick={generar}
-                disabled={generando || !rango?.[0] || movimientosEnRango.length === 0}
+                disabled={generando || !rango?.[0]}
               />
             </div>
           </div>

@@ -348,7 +348,7 @@ const OperacionPrestamoForm = ({
   // el usuario puede editarlo y se respeta lo que escriba.
   useEffect(() => {
     const consultarTipoCambio = async () => {
-      if (!fecha || esMonedaNacional || !monedaPrestamo) return;
+      if (!fecha || !monedaPrestamo) return;
 
       const year = fecha.getFullYear();
       const month = String(fecha.getMonth() + 1).padStart(2, "0");
@@ -440,7 +440,7 @@ const OperacionPrestamoForm = ({
     if (monedaCuentaSelector && Number(monedaCuentaSelector.id) !== Number(monedaPrestamo?.id)) {
       return mostrarError("La moneda de la cuenta no coincide con la del préstamo");
     }
-    if (!esMonedaNacional && !(Number(tipoCambio) > 0)) {
+    if (!(Number(tipoCambio) > 0)) {
       return mostrarError("Debe ingresar un tipo de cambio válido");
     }
     return true;
@@ -489,7 +489,7 @@ const OperacionPrestamoForm = ({
               numeroOperacion,
               // Si el usuario no escribió glosa, el backend armó una: se usa la del movimiento
               descripcion: descripcion.trim() || data.movimientos?.principal?.descripcion,
-              tipoCambio: esMonedaNacional ? 1 : tipoCambio,
+              tipoCambio: Number(tipoCambio),
               numeroCheque: esCheque ? numeroCheque : undefined,
             },
             data,
@@ -543,7 +543,7 @@ const OperacionPrestamoForm = ({
         descripcion: descripcion.trim(),
         itf: Number(itf || 0),
         comision: Number(comision || 0),
-        tipoCambio: esMonedaNacional ? 1 : Number(tipoCambio),
+        tipoCambio: Number(tipoCambio),
       };
 
       const respuesta = await onSubmit(
@@ -1121,7 +1121,7 @@ const OperacionPrestamoForm = ({
               </div>
 
               {/* TIPO DE CAMBIO: solo si el préstamo no es en soles (TC de venta, editable) */}
-              {!esMonedaNacional && (
+              {(
                 <div style={{ marginTop: 10 }}>
                   <label htmlFor="tipoCambio" className="font-bold">Tipo de Cambio (Venta) *</label>
                   <InputNumber

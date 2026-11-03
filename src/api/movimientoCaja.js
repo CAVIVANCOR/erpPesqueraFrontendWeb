@@ -223,6 +223,18 @@ export const getMovimientosPorCorrelativo = async (correlativo) => {
 };
 
 /**
+ * Origen (módulo y documento) que dio lugar a un movimiento de caja
+ * @param {number|string} id - ID del movimiento de caja
+ * @returns {Promise<{origen: Object|null, documentoId: number|null, documento: Object|null}>}
+ */
+export const getOrigenMovimientoCaja = async (id) => {
+  const response = await axios.get(`${API_URL}/${id}/origen-operacion`, {
+    headers: getAuthHeader()
+  });
+  return response.data;
+};
+
+/**
  * Obtiene movimientos de caja con filtros
  * @param {Object} filtros - Filtros a aplicar
  * @returns {Promise<Array>} Lista de movimientos filtrados

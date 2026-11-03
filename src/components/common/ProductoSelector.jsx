@@ -114,6 +114,7 @@ const ProductoSelector = ({
   onChange,
   empresaIdPreseleccionada = null,
   disabled = false,
+  soloLectura = false, // Solo muestra el valor, sin abrir el diálogo de selección
   required = false,
   error = false,
   errorMessage = "",
@@ -409,7 +410,7 @@ const ProductoSelector = ({
         type="button"
         icon="pi pi-search"
         onClick={() => {
-          if (!disabled) {
+          if (!disabled && !soloLectura) {
             setDialogVisible(true);
           }
         }}

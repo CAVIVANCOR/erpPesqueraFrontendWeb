@@ -132,7 +132,7 @@ const EntregarFondosForm = ({
   // Se usa TC de venta (sell_price), igual que la transferencia, porque alimenta el asiento.
   useEffect(() => {
     const consultarTipoCambio = async () => {
-      if (!fechaEntrega || esMonedaNacional) return;
+      if (!fechaEntrega) return;
 
       const year = fechaEntrega.getFullYear();
       const month = String(fechaEntrega.getMonth() + 1).padStart(2, "0");
@@ -199,7 +199,7 @@ const EntregarFondosForm = ({
     ) {
       return mostrarError("La moneda de la cuenta no coincide con la de la asignación");
     }
-    if (!esMonedaNacional && !(Number(tipoCambio) > 0)) {
+    if (!(Number(tipoCambio) > 0)) {
       return mostrarError("Debe ingresar un tipo de cambio válido");
     }
 
@@ -249,7 +249,7 @@ const EntregarFondosForm = ({
             fechaEntrega,
             numeroOperacion,
             descripcion,
-            tipoCambio: esMonedaNacional ? 1 : tipoCambio,
+            tipoCambio: Number(tipoCambio),
             esGerencial,
             numeroCheque,
           },
@@ -308,7 +308,7 @@ const EntregarFondosForm = ({
         itfOrigen: Number(itfOrigen || 0),
         comisionOrigen: Number(comisionOrigen || 0),
         esGerencial: Boolean(esGerencial),
-        tipoCambio: esMonedaNacional ? 1 : Number(tipoCambio),
+        tipoCambio: Number(tipoCambio),
       });
 
       if (resultado?.data) {
@@ -785,7 +785,7 @@ const EntregarFondosForm = ({
               </div>
 
               {/* TIPO DE CAMBIO: solo si la asignación no es en soles */}
-              {!esMonedaNacional && (
+              {(
                 <div style={{ marginTop: 10 }}>
                   <label htmlFor="tipoCambio" className="font-bold">Tipo de Cambio *</label>
                   <InputNumber

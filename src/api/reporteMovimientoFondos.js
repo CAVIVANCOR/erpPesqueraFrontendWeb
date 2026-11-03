@@ -14,3 +14,18 @@ export const getDatosReporteMovimientoFondos = async (ids) => {
   const response = await axios.post(`${API_URL}/datos`, { ids }, { headers: getAuthHeader() });
   return response.data;
 };
+
+/**
+ * Saldos de TODAS las cuentas bancarias / cajas activas de todas las empresas en el rango (incluye las que no
+ * tuvieron movimientos). Las fechas se envían como ISO de la fecha local (inicio y fin de día), igual que el resto del sistema.
+ * @param {Date} desde - inicio del rango (00:00 local)
+ * @param {Date} hasta - fin del rango (23:59:59.999 local)
+ */
+export const getCuentasParaSaldos = async (desde, hasta) => {
+  const response = await axios.post(
+    `${API_URL}/cuentas-saldos`,
+    { desde: desde.toISOString(), hasta: hasta.toISOString() },
+    { headers: getAuthHeader() }
+  );
+  return response.data;
+};

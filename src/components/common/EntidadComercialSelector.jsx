@@ -121,6 +121,7 @@ const EntidadComercialSelector = ({
   tipoEntidadFiltro = null,
   label = "Entidad Comercial",
   disabled = false,
+  soloLectura = false, // Solo muestra el valor, sin abrir el diálogo de selección
   required = false,
   error = false,
   errorMessage = "",
@@ -451,7 +452,7 @@ const EntidadComercialSelector = ({
         type="button"
         icon="pi pi-search"
         onClick={() => {
-          if (!disabled) {
+          if (!disabled && !soloLectura) {
             setDialogVisible(true);
           }
         }}

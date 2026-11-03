@@ -152,7 +152,7 @@ export default function PrestamoEntidadDialog({ visible, onHide, onSuccess, toas
   // Tipo de cambio de venta de SUNAT (editable) cuando la operación no es en soles
   useEffect(() => {
     const consultar = async () => {
-      if (!fecha || esMonedaNacional) return;
+      if (!fecha) return;
       const fechaISO = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}-${String(fecha.getDate()).padStart(2, "0")}`;
       if (ultimaConsultaTC.current === fechaISO) return;
       try {
@@ -193,7 +193,7 @@ export default function PrestamoEntidadDialog({ visible, onHide, onSuccess, toas
     if (esPago && Number(monto) > Number(prestamo.saldoCapital) + 0.01) {
       return error(`El monto (${simbolo} ${formatearNumero(monto)}) excede el saldo pendiente del préstamo (${simbolo} ${formatearNumero(prestamo.saldoCapital)}).`);
     }
-    if (!esMonedaNacional && !(Number(tipoCambio) > 0)) return error("Debe ingresar un tipo de cambio válido");
+    if (!(Number(tipoCambio) > 0)) return error("Debe ingresar un tipo de cambio válido");
     if (!esPago && fechaVencimiento && fechaVencimiento < fecha) return error("La fecha de vencimiento no puede ser anterior a la fecha del desembolso.");
     if (!descripcion || descripcion.trim() === "") return error("Debe ingresar la glosa de la operación");
     return true;
@@ -239,7 +239,7 @@ export default function PrestamoEntidadDialog({ visible, onHide, onSuccess, toas
         medioPagoId: Number(medioPagoId),
         tipoMovimientoId: Number(tipoMovimientoId),
         monto: Number(monto),
-        tipoCambio: esMonedaNacional ? undefined : Number(tipoCambio),
+        tipoCambio: Number(tipoCambio),
         itf: Number(itf || 0),
         comision: Number(comision || 0),
         numeroOperacion: numeroOperacion || undefined,
@@ -470,7 +470,7 @@ export default function PrestamoEntidadDialog({ visible, onHide, onSuccess, toas
               </div>
 
               {/* TIPO DE CAMBIO: solo si el préstamo no es en soles (TC de venta, editable) */}
-              {!esMonedaNacional && (
+              {(
                 <div style={{ marginTop: 10 }}>
                   <label htmlFor="tipoCambio" className="font-bold">Tipo de Cambio (Venta) *</label>
                   <InputNumber id="tipoCambio" value={tipoCambio} onValueChange={(e) => setTipoCambio(e.value)} mode="decimal" minFractionDigits={4} maxFractionDigits={4} disabled={procesando} style={{ width: "100%" }} placeholder="Tipo de cambio SUNAT" />

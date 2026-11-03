@@ -272,7 +272,7 @@ const PagoDeudasTributariasEspecializadoForm = ({
   // Se usa TC de venta (sell_price) porque alimenta el asiento (igual que EntregarFondosForm).
   useEffect(() => {
     const consultarTipoCambio = async () => {
-      if (!fechaPago || esMonedaNacional || !monedaDeuda) return;
+      if (!fechaPago || !monedaDeuda) return;
 
       const year = fechaPago.getFullYear();
       const month = String(fechaPago.getMonth() + 1).padStart(2, "0");
@@ -345,7 +345,7 @@ const PagoDeudasTributariasEspecializadoForm = ({
     if (monedaOrigenSelector && Number(monedaOrigenSelector.id) !== Number(monedaDeuda?.id)) {
       return mostrarError("La moneda de la cuenta no coincide con la de las deudas");
     }
-    if (!esMonedaNacional && !(Number(tipoCambio) > 0)) {
+    if (!(Number(tipoCambio) > 0)) {
       return mostrarError("Debe ingresar un tipo de cambio válido");
     }
 
@@ -396,7 +396,7 @@ const PagoDeudasTributariasEspecializadoForm = ({
             fechaPago,
             numeroOperacion,
             descripcion,
-            tipoCambio: esMonedaNacional ? 1 : tipoCambio,
+            tipoCambio: Number(tipoCambio),
             esGerencial,
             numeroCheque,
           },
@@ -464,7 +464,7 @@ const PagoDeudasTributariasEspecializadoForm = ({
         descripcion: descripcionFinal,
         itf: Number(itf || 0),
         comision: Number(comision || 0),
-        tipoCambio: esMonedaNacional ? 1 : Number(tipoCambio),
+        tipoCambio: Number(tipoCambio),
       });
 
       if (resultado?.data) {
@@ -888,7 +888,7 @@ const PagoDeudasTributariasEspecializadoForm = ({
               </div>
 
               {/* TIPO DE CAMBIO: solo si las deudas no son en soles */}
-              {!esMonedaNacional && (
+              {(
                 <div style={{ marginTop: 10 }}>
                   <label htmlFor="tipoCambio" className="font-bold">Tipo de Cambio *</label>
                   <InputNumber

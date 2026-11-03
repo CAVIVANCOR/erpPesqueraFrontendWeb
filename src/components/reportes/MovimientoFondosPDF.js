@@ -115,7 +115,7 @@ const acumular = (mapa, moneda, ingreso, egreso) => {
  * Genera uno de los dos reportes (PDF independientes), según `parte`:
  *  - "movimientos": "Movimiento de Fondos". Un bloque por empresa (cada empresa inicia en página nueva):
  *    movimientos agrupados por cuenta, con subtotales por día, resumen del período y controles.
- *  - "saldos": "Saldos por Cuentas Bancarias" de todas las cuentas que se movieron, por empresa.
+ *  - "saldos": "Saldos por Cuentas Bancarias" de TODAS las cuentas activas de todas las empresas (se hayan movido o no), por empresa.
  *
  * @param {string} params.parte - "movimientos" (por defecto) | "saldos"
  * @param {Object} params
@@ -129,6 +129,7 @@ const acumular = (mapa, moneda, ingreso, egreso) => {
 export async function generarPDFMovimientoFondos({
   movimientos = [],
   enriquecimiento = null,
+  cuentasSaldos = null,
   empresas = [],
   rango,
   opciones = {},
@@ -154,7 +155,9 @@ export async function generarPDFMovimientoFondos({
     return true;
   });
   const totalMovimientos = considerados.length;
-  if (totalMovimientos === 0) throw new Error("No hay movimientos en el rango de fechas elegido");
+  // El reporte de saldos lista todas las cuentas aunque no haya movimientos; el de movimientos sí los necesita
+  const saldosDeTodasLasCuentas = parte === "saldos" && Array.isArray(cuentasSaldos) && cuentasSaldos.length > 0;
+  if (totalMovimientos === 0 && !saldosDeTodasLasCuentas) throw new Error("No hay movimientos en el rango de fechas elegido");
 
   const infoMovimientos = enriquecimiento?.movimientos || {};
   const cuentasContables = enriquecimiento?.cuentas || {};
@@ -710,8 +713,42 @@ export async function generarPDFMovimientoFondos({
   // ════════════════════════════════════════════════════════════
   // REPORTE 2: SALDOS POR CUENTAS BANCARIAS - todas las cuentas que se movieron, por empresa
   // ════════════════════════════════════════════════════════════
+  let totalEmpresasReporte = gruposOrdenados.length;
   const dibujarSaldosPorCuentas = () => {
-    const conCuentas = gruposOrdenados.filter((g) => g.saldosCuentas.length > 0);
+    // TODAS las cuentas activas de todas las empresas, se hayan movido o no: los saldos salen de la base de datos
+    // (no dependen de los filtros de la pantalla). Las cuentas que se movieron pero ya no están activas se conservan.
+    const gruposSaldos = new Map();
+    const grupoSaldosDe = (claveEmp, info) => {
+      if (!gruposSaldos.has(claveEmp)) gruposSaldos.set(claveEmp, { info, saldosCuentas: [] });
+      return gruposSaldos.get(claveEmp);
+    };
+    const incluidas = new Set();
+    (cuentasSaldos || []).forEach((cs) => {
+      const claveEmp = String(cs.cuenta.empresaId ?? cs.cuenta.empresa?.id ?? 0);
+      const info = empresas.find((e) => String(e.id) === claveEmp) || cs.cuenta.empresa || { id: claveEmp, razonSocial: "SIN EMPRESA" };
+      grupoSaldosDe(claveEmp, info).saldosCuentas.push({
+        cuenta: cs.cuenta,
+        contable: cs.contable,
+        cantidad: cs.cantidad,
+        saldoInicial: cs.saldoInicial,
+        saldoFinal: cs.saldoFinal,
+        ingreso: cs.ingreso,
+        egreso: cs.egreso,
+      });
+      incluidas.add(String(cs.cuenta.id));
+    });
+    gruposOrdenados.forEach((g) =>
+      g.saldosCuentas.forEach((c) => {
+        if (incluidas.has(String(c.cuenta.id))) return;
+        grupoSaldosDe(String(g.info.id ?? 0), g.info).saldosCuentas.push(c);
+      })
+    );
+    const gruposParaSaldos = [...gruposSaldos.values()].sort((a, b) =>
+      String(a.info.razonSocial).localeCompare(String(b.info.razonSocial))
+    );
+    totalEmpresasReporte = gruposParaSaldos.length;
+
+    const conCuentas = gruposParaSaldos.filter((g) => g.saldosCuentas.length > 0);
     if (conCuentas.length === 0) throw new Error("No hay cuentas bancarias o cajas con movimientos en el rango de fechas elegido");
 
     encabezado = {
@@ -803,7 +840,7 @@ export async function generarPDFMovimientoFondos({
     page.drawText("Saldo Anterior: saldo de la cuenta antes del primer movimiento del rango. Saldo Final: saldo tras el ultimo movimiento del rango.", {
       x: MARGIN, y: y - 4, size: 6.5, font: fontItalic, color: COLORS.gray,
     });
-    page.drawText("Los importes se expresan en la moneda de cada cuenta; las cuentas sin saldos registrados muestran '-'.", {
+    page.drawText("Incluye todas las cuentas bancarias y cajas activas de todas las empresas, hayan tenido movimientos o no. Los importes se expresan en la moneda de cada cuenta.", {
       x: MARGIN, y: y - 13, size: 6.5, font: fontItalic, color: COLORS.gray,
     });
   };
@@ -821,5 +858,5 @@ export async function generarPDFMovimientoFondos({
   pdfDoc.setAuthor("ERP");
   pdfDoc.setSubject(parte === "saldos" ? "Saldos por cuentas bancarias" : "Reporte diario de movimientos de fondos");
 
-  return { bytes: await pdfDoc.save(), totalMovimientos, totalEmpresas: gruposOrdenados.length };
+  return { bytes: await pdfDoc.save(), totalMovimientos, totalEmpresas: totalEmpresasReporte };
 }

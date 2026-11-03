@@ -166,7 +166,7 @@ const CobroMultipleEspecializadoForm = ({
   // Siempre TC de venta (sell_price), igual que en todo el sistema.
   useEffect(() => {
     const consultarTipoCambio = async () => {
-      if (!fechaPago || esMonedaNacional || !monedaDoc) return;
+      if (!fechaPago || !monedaDoc) return;
 
       const year = fechaPago.getFullYear();
       const month = String(fechaPago.getMonth() + 1).padStart(2, "0");
@@ -239,7 +239,7 @@ const CobroMultipleEspecializadoForm = ({
     if (monedaDestinoSelector && Number(monedaDestinoSelector.id) !== Number(monedaDoc?.id)) {
       return mostrarError("La moneda de la cuenta no coincide con la de los documentos");
     }
-    if (!esMonedaNacional && !(Number(tipoCambio) > 0)) {
+    if (!(Number(tipoCambio) > 0)) {
       return mostrarError("Debe ingresar un tipo de cambio válido");
     }
     if (Number(itf || 0) + Number(comision || 0) > totalRecibido) {
@@ -293,7 +293,7 @@ const CobroMultipleEspecializadoForm = ({
             fechaPago,
             numeroOperacion,
             descripcion,
-            tipoCambio: esMonedaNacional ? 1 : tipoCambio,
+            tipoCambio: Number(tipoCambio),
             esGerencial,
           },
           resultado,
@@ -341,7 +341,7 @@ const CobroMultipleEspecializadoForm = ({
         descripcion: descripcion.trim(),
         itf: Number(itf || 0),
         comision: Number(comision || 0),
-        tipoCambio: esMonedaNacional ? 1 : Number(tipoCambio),
+        tipoCambio: Number(tipoCambio),
       });
 
       if (resultado?.data) {
@@ -658,7 +658,7 @@ const CobroMultipleEspecializadoForm = ({
               </div>
 
               {/* TIPO DE CAMBIO: solo si los documentos no son en soles (siempre TC de venta) */}
-              {!esMonedaNacional && (
+              {(
                 <div style={{ marginTop: 10 }}>
                   <label htmlFor="tipoCambio" className="font-bold">Tipo de Cambio (Venta) *</label>
                   <InputNumber
