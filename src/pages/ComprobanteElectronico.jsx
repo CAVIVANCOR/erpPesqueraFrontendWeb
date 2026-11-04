@@ -98,9 +98,9 @@ export default function ComprobanteElectronico({ ruta }) {
     // Filtro por estado SUNAT
     if (estadoSunatSeleccionado !== null) {
       if (estadoSunatSeleccionado === "aceptado") {
-        filtrados = filtrados.filter((item) => item.nubefactAceptadoPorSunat === true);
+        filtrados = filtrados.filter((item) => item.aceptadoPorSunat === true);
       } else if (estadoSunatSeleccionado === "rechazado") {
-        filtrados = filtrados.filter((item) => item.nubefactAceptadoPorSunat === false && item.fechaEnvioOSE);
+        filtrados = filtrados.filter((item) => item.aceptadoPorSunat === false && item.fechaEnvioOSE);
       } else if (estadoSunatSeleccionado === "pendiente") {
         filtrados = filtrados.filter((item) => !item.fechaEnvioOSE);
       }
@@ -165,7 +165,7 @@ export default function ComprobanteElectronico({ ruta }) {
     }
 
     // Validar que no esté aceptado por SUNAT
-    if (rowData.nubefactAceptadoPorSunat) {
+    if (rowData.aceptadoPorSunat) {
       toast.current.show({
         severity: "warn",
         summary: "No Permitido",
@@ -266,11 +266,11 @@ export default function ComprobanteElectronico({ ruta }) {
   };
 
   const montoTemplate = (rowData) => {
-    const simboloMoneda = rowData.moneda?.codigo === "USD" ? "$" : "S/";
+    const simboloMoneda = rowData.moneda?.codigoSunat === "USD" ? "$" : "S/";
     return (
       <div style={{ textAlign: "right" }}>
         <Tag
-          value={`${simboloMoneda} ${formatearNumero(rowData.total || 0)}`}
+          value={`${simboloMoneda} ${formatearNumero(rowData.totalComprobante || 0)}`}
           severity="info"
           style={{
             fontSize: "0.9rem",
@@ -287,7 +287,7 @@ export default function ComprobanteElectronico({ ruta }) {
       return <Badge value="PENDIENTE" severity="warning" />;
     }
 
-    if (rowData.nubefactAceptadoPorSunat) {
+    if (rowData.aceptadoPorSunat) {
       return <Badge value="ACEPTADO" severity="success" />;
     }
 
@@ -295,33 +295,33 @@ export default function ComprobanteElectronico({ ruta }) {
   };
 
   const enlacesTemplate = (rowData) => {
-    if (!rowData.nubefactEnlacePDF && !rowData.nubefactEnlaceXML) {
+    if (!rowData.enlacePDF && !rowData.enlaceXML) {
       return <span style={{ color: "#999" }}>Sin enlaces</span>;
     }
 
     return (
       <div style={{ display: "flex", gap: "8px" }}>
-        {rowData.nubefactEnlacePDF && (
+        {rowData.enlacePDF && (
           <Button
             icon="pi pi-file-pdf"
             className="p-button-rounded p-button-danger p-button-sm"
-            onClick={() => window.open(rowData.nubefactEnlacePDF, "_blank")}
+            onClick={() => window.open(rowData.enlacePDF, "_blank")}
             tooltip="Ver PDF"
           />
         )}
-        {rowData.nubefactEnlaceXML && (
+        {rowData.enlaceXML && (
           <Button
             icon="pi pi-file"
             className="p-button-rounded p-button-info p-button-sm"
-            onClick={() => window.open(rowData.nubefactEnlaceXML, "_blank")}
+            onClick={() => window.open(rowData.enlaceXML, "_blank")}
             tooltip="Ver XML"
           />
         )}
-        {rowData.nubefactEnlaceCDR && (
+        {rowData.enlaceCDR && (
           <Button
             icon="pi pi-check-circle"
             className="p-button-rounded p-button-success p-button-sm"
-            onClick={() => window.open(rowData.nubefactEnlaceCDR, "_blank")}
+            onClick={() => window.open(rowData.enlaceCDR, "_blank")}
             tooltip="Ver CDR"
           />
         )}
@@ -343,11 +343,11 @@ export default function ComprobanteElectronico({ ruta }) {
         onClick={() => handleDelete(rowData)}
         aria-label="Eliminar"
         tooltip={
-          rowData.nubefactAceptadoPorSunat
+          rowData.aceptadoPorSunat
             ? "No se puede eliminar un comprobante aceptado por SUNAT"
             : "Eliminar"
         }
-        disabled={!permisos.puedeEliminar || rowData.nubefactAceptadoPorSunat}
+        disabled={!permisos.puedeEliminar || rowData.aceptadoPorSunat}
       />
     </>
   );

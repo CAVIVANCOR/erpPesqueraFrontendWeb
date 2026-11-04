@@ -8,8 +8,8 @@ import {
   enviarComprobanteASunat,
   consultarComprobanteEnSunat,
   anularComprobante,
-  consultarAnulacion,
 } from "../../api/facturacionElectronica/comprobanteElectronico";
+import { mensajeDeError } from "../../utils/mensajeError";
 
 /**
  * Componente de acciones SUNAT para comprobantes electrónicos
@@ -43,9 +43,9 @@ const AccionesSunatComprobante = ({ comprobante, toast, onAccionCompletada, perm
           const resultado = await enviarComprobanteASunat(comprobante.id);
           
           toast?.current?.show({
-            severity: resultado.respuestaNubefact?.aceptado_por_sunat ? "success" : "warn",
-            summary: resultado.respuestaNubefact?.aceptado_por_sunat ? "Éxito" : "Advertencia",
-            detail: resultado.respuestaNubefact?.sunat_description || "Comprobante enviado a SUNAT",
+            severity: resultado.respuestaProveedor?.aceptadoPorSunat ? "success" : "warn",
+            summary: resultado.respuestaProveedor?.aceptadoPorSunat ? "Éxito" : "Advertencia",
+            detail: resultado.mensaje || "Comprobante enviado a SUNAT",
             life: 5000,
           });
 
@@ -57,8 +57,8 @@ const AccionesSunatComprobante = ({ comprobante, toast, onAccionCompletada, perm
           toast?.current?.show({
             severity: "error",
             summary: "Error",
-            detail: error.response?.data?.error || "No se pudo enviar el comprobante a SUNAT",
-            life: 5000,
+            detail: mensajeDeError(error, "No se pudo enviar el comprobante a SUNAT"),
+            life: 8000,
           });
         } finally {
           setLoading(false);
@@ -75,7 +75,7 @@ const AccionesSunatComprobante = ({ comprobante, toast, onAccionCompletada, perm
       toast?.current?.show({
         severity: "info",
         summary: "Estado en SUNAT",
-        detail: resultado.estadoSunat?.sunat_description || "Consulta realizada",
+        detail: resultado.estadoSunat?.descripcionEstado || "Consulta realizada",
         life: 5000,
       });
 
@@ -87,8 +87,8 @@ const AccionesSunatComprobante = ({ comprobante, toast, onAccionCompletada, perm
       toast?.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.error || "No se pudo consultar el estado",
-        life: 3000,
+        detail: mensajeDeError(error, "No se pudo consultar el estado"),
+        life: 8000,
       });
     } finally {
       setLoading(false);
@@ -128,8 +128,8 @@ const AccionesSunatComprobante = ({ comprobante, toast, onAccionCompletada, perm
       toast?.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.error || "No se pudo anular el comprobante",
-        life: 5000,
+        detail: mensajeDeError(error, "No se pudo anular el comprobante"),
+        life: 8000,
       });
     } finally {
       setLoading(false);
@@ -147,7 +147,7 @@ const AccionesSunatComprobante = ({ comprobante, toast, onAccionCompletada, perm
       return;
     }
 
-    if (!comprobante.nubefactAceptadoPorSunat) {
+    if (!comprobante.aceptadoPorSunat) {
       toast?.current?.show({
         severity: "warn",
         summary: "Advertencia",
@@ -164,7 +164,7 @@ const AccionesSunatComprobante = ({ comprobante, toast, onAccionCompletada, perm
   return (
     <>
       {/* Botón Enviar a SUNAT */}
-      {!comprobante.fechaEnvioOSE && (
+      {!comprobante.enlacePDF && (
         <Button
           icon="pi pi-send"
           className="p-button-rounded p-button-success p-button-sm"
@@ -176,7 +176,7 @@ const AccionesSunatComprobante = ({ comprobante, toast, onAccionCompletada, perm
       )}
 
       {/* Botón Consultar Estado */}
-      {comprobante.fechaEnvioOSE && (
+      {comprobante.enlacePDF && (
         <Button
           icon="pi pi-search"
           className="p-button-rounded p-button-info p-button-sm"
@@ -187,7 +187,7 @@ const AccionesSunatComprobante = ({ comprobante, toast, onAccionCompletada, perm
       )}
 
       {/* Botón Anular */}
-      {comprobante.nubefactAceptadoPorSunat && (
+      {comprobante.aceptadoPorSunat && !comprobante.ticketBaja && (
         <Button
           icon="pi pi-ban"
           className="p-button-rounded p-button-warning p-button-sm"

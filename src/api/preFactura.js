@@ -216,38 +216,6 @@ export async function getSeriesDoc(empresaId, tipoDocumentoId) {
   }
 }
 /**
- * Genera una Factura Electrónica desde una PreFactura
- * @param {number} id - ID de la pre-factura
- * @param {Object} datos - Datos para la generación (serieDocFinalId, tipoDocumentoFinalId)
- * @returns {Promise<Object>} Comprobante electrónico generado
- */
-export async function generarFacturaDesdePreFactura(id, datos) {
-  try {
-    const response = await axios.post(`${API_URL}/${id}/generar-factura`, datos, { headers: getAuthHeaders() });
-    return response.data;
-  } catch (error) {
-    console.error("Error al generar factura desde pre-factura:", error);
-    throw error;
-  }
-}
-
-/**
- * Genera una Boleta Electrónica desde una PreFactura
- * @param {number} id - ID de la pre-factura
- * @param {Object} datos - Datos para la generación (serieDocFinalId, tipoDocumentoFinalId)
- * @returns {Promise<Object>} Comprobante electrónico generado
- */
-export async function generarBoletaDesdePreFactura(preFacturaId, datosBoleta) {
-  try {
-    const response = await axios.post(`${API_URL}/${preFacturaId}/generar-boleta`, datosBoleta, { headers: getAuthHeaders() });
-    return response.data;
-  } catch (error) {
-    console.error("Error al generar boleta desde pre-factura:", error);
-    throw error;
-  }
-}
-
-/**
  * Particionar PreFactura: Clona en DOS copias idénticas con estado PENDIENTE
  */
 export async function partirPreFactura(preFacturaId) {

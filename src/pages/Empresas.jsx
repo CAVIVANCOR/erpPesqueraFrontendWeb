@@ -131,9 +131,9 @@ export default function Empresas({ ruta }) {
           data.cantDivisoriaCalcComisionMotorista,
         porcentajeCalcComisionPanguero: data.porcentajeCalcComisionPanguero,
         monedaCalculosLiqId: data.monedaCalculosLiqId,
-        // Campos Nubefact
-        nubefactUrl: data.nubefactUrl,
-        nubefactToken: data.nubefactToken,
+        // Credenciales de facturación electrónica
+        facturacionElectronicaUrl: data.facturacionElectronicaUrl,
+        facturacionElectronicaToken: data.facturacionElectronicaToken,
         // Campos SUNAT SIRE
         sunatUsuarioSol: data.sunatUsuarioSol,
         sunatClaveSol: data.sunatClaveSol,

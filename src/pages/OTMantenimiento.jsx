@@ -46,6 +46,7 @@ import { getEntidadesComerciales } from "../api/entidadComercial";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import OTMantenimientoForm from "../components/oTMantenimiento/OTMantenimientoForm";
+import ReporteEstadoCuentaProveedoresMantenimiento from "../components/reportes/ReporteEstadoCuentaProveedoresMantenimiento";
 import { formatearFecha } from "../utils/utils";
 import { getResponsiveFontSize } from "../utils/utils";
 import EmpresaSelector from "../components/common/EmpresaSelector";
@@ -837,6 +838,13 @@ const OTMantenimiento = ({ ruta }) => {
                     loading={loading}
                     tooltip="Actualizar todos los datos desde el servidor"
                     tooltipOptions={{ position: "bottom" }}
+                  />
+                </div>
+                <div style={{ flex: 2 }}>
+                  <ReporteEstadoCuentaProveedoresMantenimiento
+                    usuarioNombre={usuario?.nombreCompleto || usuario?.username || usuario?.email || ""}
+                    toast={toast}
+                    disabled={loading}
                   />
                 </div>
                 <div style={{ flex: 1 }}>

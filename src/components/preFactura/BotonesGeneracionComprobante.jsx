@@ -101,7 +101,7 @@ const BotonesGeneracionComprobante = ({
               <Badge
                 key={comp.id}
                 value={`${comp.tipoComprobante?.descripcion || 'Comprobante'}: ${comp.numeroCompleto || comp.id}`}
-                severity={comp.nubefactAceptadoPorSunat ? "success" : "warning"}
+                severity={comp.aceptadoPorSunat ? "success" : "warning"}
                 size="large"
               />
             ))}

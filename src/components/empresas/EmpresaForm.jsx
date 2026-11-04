@@ -71,15 +71,15 @@ const schema = Yup.object().shape({
   cantDivisoriaCalcComisionMotorista: Yup.number().nullable().min(0, "No puede ser negativo"),
   porcentajeCalcComisionPanguero: Yup.number().nullable().min(0, "No puede ser negativo"),
   monedaCalculosLiqId: Yup.number().nullable(),
-  // Campos Nubefact
-  nubefactUrl: Yup.string()
+  // Credenciales de facturación electrónica
+  facturacionElectronicaUrl: Yup.string()
     .nullable()
     .max(255, "La URL no puede exceder 255 caracteres")
     .test('url-format', 'Debe ser una URL válida (http:// o https://)', function (value) {
       if (!value) return true;
       return value.startsWith('http://') || value.startsWith('https://');
     }),
-  nubefactToken: Yup.string()
+  facturacionElectronicaToken: Yup.string()
     .nullable()
     .max(500, "El token no puede exceder 500 caracteres"),
   // Campos SUNAT SIRE
@@ -254,8 +254,8 @@ export default function EmpresaForm({
       cantPersonalCalcComisionMotorista: defaultValues.cantPersonalCalcComisionMotorista ?? null,
       cantDivisoriaCalcComisionMotorista: defaultValues.cantDivisoriaCalcComisionMotorista ?? null,
       porcentajeCalcComisionPanguero: defaultValues.porcentajeCalcComisionPanguero ?? null,
-      nubefactUrl: defaultValues.nubefactUrl ?? null,
-      nubefactToken: defaultValues.nubefactToken ?? null,
+      facturacionElectronicaUrl: defaultValues.facturacionElectronicaUrl ?? null,
+      facturacionElectronicaToken: defaultValues.facturacionElectronicaToken ?? null,
       sunatUsuarioSol: defaultValues.sunatUsuarioSol ?? null,
       sunatClaveSol: defaultValues.sunatClaveSol ?? null,
       sunatClientId: defaultValues.sunatClientId ?? null,
@@ -1257,7 +1257,7 @@ export default function EmpresaForm({
             </div>
           </div>
 
-          {/* Sección de Nubefact - Facturación Electrónica */}
+          {/* Sección de Facturación Electrónica */}
           <div
             style={{
               marginTop: 16,
@@ -1269,10 +1269,10 @@ export default function EmpresaForm({
           >
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
               <i className="pi pi-cloud-upload" style={{ fontSize: "1.5em", color: "#1976d2" }}></i>
-              <h3 style={{ margin: 0, color: "#1976d2" }}>Nubefact - Facturación Electrónica</h3>
+              <h3 style={{ margin: 0, color: "#1976d2" }}>Facturación Electrónica</h3>
             </div>
             <small style={{ display: "block", color: "#1565c0", marginBottom: 12 }}>
-              Configuración de credenciales para la integración con Nubefact (OSE - Operador de Servicios Electrónicos).
+              Credenciales del proveedor de facturación electrónica (Factpro) de esta empresa. Cada empresa usa su propio token.
             </small>
 
             <div
@@ -1283,14 +1283,14 @@ export default function EmpresaForm({
               }}
             >
               <div style={{ flex: 1 }}>
-                <label htmlFor="nubefactUrl">
-                  URL del API de Nubefact {!esSuperUsuario && <span style={{ color: "#e91e63", fontSize: "0.85em" }}>(Solo SuperUsuario)</span>}
+                <label htmlFor="facturacionElectronicaUrl">
+                  URL del API del proveedor {!esSuperUsuario && <span style={{ color: "#e91e63", fontSize: "0.85em" }}>(Solo SuperUsuario)</span>}
                 </label>
                 <InputText
-                  id="nubefactUrl"
-                  {...register("nubefactUrl")}
-                  className={errors.nubefactUrl ? "p-invalid" : ""}
-                  placeholder="https://api.nubefact.com/api/v1"
+                  id="facturacionElectronicaUrl"
+                  {...register("facturacionElectronicaUrl")}
+                  className={errors.facturacionElectronicaUrl ? "p-invalid" : ""}
+                  placeholder="https://api.factpro.la/api/v3"
                   disabled={readOnly || !esSuperUsuario}
                   style={{
                     fontWeight: "bold",
@@ -1298,25 +1298,25 @@ export default function EmpresaForm({
                     cursor: !esSuperUsuario ? "not-allowed" : undefined
                   }}
                 />
-                {errors.nubefactUrl && (
+                {errors.facturacionElectronicaUrl && (
                   <small className="p-error">
-                    {errors.nubefactUrl.message}
+                    {errors.facturacionElectronicaUrl.message}
                   </small>
                 )}
                 <small style={{ display: "block", color: "#666", marginTop: 4 }}>
-                  {esSuperUsuario ? "Ejemplo: https://api.nubefact.com/api/v1" : "⚠️ Solo el SuperUsuario puede modificar este campo"}
+                  {esSuperUsuario ? "Ejemplo: https://api.factpro.la/api/v3" : "⚠️ Solo el SuperUsuario puede modificar este campo"}
                 </small>
               </div>
 
               <div style={{ flex: 1 }}>
-                <label htmlFor="nubefactToken">
+                <label htmlFor="facturacionElectronicaToken">
                   Token de Autenticación {!esSuperUsuario && <span style={{ color: "#e91e63", fontSize: "0.85em" }}>(Solo SuperUsuario)</span>}
                 </label>
                 <InputText
-                  id="nubefactToken"
-                  {...register("nubefactToken")}
-                  className={errors.nubefactToken ? "p-invalid" : ""}
-                  placeholder="Token de Nubefact"
+                  id="facturacionElectronicaToken"
+                  {...register("facturacionElectronicaToken")}
+                  className={errors.facturacionElectronicaToken ? "p-invalid" : ""}
+                  placeholder="Token de la empresa en Factpro"
                   disabled={readOnly || !esSuperUsuario}
                   style={{
                     fontWeight: "bold",
@@ -1325,13 +1325,13 @@ export default function EmpresaForm({
                   }}
                   type="password"
                 />
-                {errors.nubefactToken && (
+                {errors.facturacionElectronicaToken && (
                   <small className="p-error">
-                    {errors.nubefactToken.message}
+                    {errors.facturacionElectronicaToken.message}
                   </small>
                 )}
                 <small style={{ display: "block", color: "#666", marginTop: 4 }}>
-                  {esSuperUsuario ? "Token proporcionado por Nubefact (se oculta por seguridad)" : "⚠️ Solo el SuperUsuario puede modificar este campo"}
+                  {esSuperUsuario ? "Token de la empresa en el proveedor (menú Token de Factpro) (se oculta por seguridad)" : "⚠️ Solo el SuperUsuario puede modificar este campo"}
                 </small>
               </div>
             </div>

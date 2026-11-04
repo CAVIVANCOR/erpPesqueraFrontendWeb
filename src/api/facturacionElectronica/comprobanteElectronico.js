@@ -31,27 +31,6 @@ export async function getComprobanteElectronicoById(id) {
 }
 
 /**
- * Crea un nuevo comprobante electrónico
- * @param {Object} data - Datos del comprobante
- * @returns {Promise<Object>} Comprobante creado
- */
-export async function createComprobanteElectronico(data) {
-  const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
-  return res.data;
-}
-
-/**
- * Actualiza un comprobante electrónico
- * @param {number} id - ID del comprobante
- * @param {Object} data - Datos actualizados
- * @returns {Promise<Object>} Comprobante actualizado
- */
-export async function updateComprobanteElectronico(id, data) {
-  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
-  return res.data;
-}
-
-/**
  * Elimina un comprobante electrónico
  * @param {number} id - ID del comprobante
  * @returns {Promise<Object>} Confirmación
@@ -62,7 +41,7 @@ export async function deleteComprobanteElectronico(id) {
 }
 
 /**
- * Envía un comprobante electrónico a SUNAT vía Nubefact
+ * Envía un comprobante electrónico a SUNAT a través del proveedor de facturación electrónica
  * @param {number} id - ID del comprobante
  * @returns {Promise<Object>} Respuesta de SUNAT
  */
@@ -89,16 +68,6 @@ export async function consultarComprobanteEnSunat(id) {
  */
 export async function anularComprobante(id, motivo) {
   const res = await axios.post(`${API_URL}/${id}/anular`, { motivo }, { headers: getAuthHeaders() });
-  return res.data;
-}
-
-/**
- * Consulta el estado de anulación de un comprobante
- * @param {number} id - ID del comprobante
- * @returns {Promise<Object>} Estado de anulación
- */
-export async function consultarAnulacion(id) {
-  const res = await axios.get(`${API_URL}/${id}/consultar-anulacion`, { headers: getAuthHeaders() });
   return res.data;
 }
 
