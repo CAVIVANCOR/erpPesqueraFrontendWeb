@@ -464,24 +464,14 @@ export default function Dashboard() {
           icon: "pi-money-bill",
           tab: "operaciones", // ← NUEVO
         },
-        {
-          label: "Deudas con el Personal",
-          key: "deudaConPersonal",
-          icon: "pi-money-bill",
-          tab: "operaciones", // ← NUEVO
-        },
+
         {
           label: "Deudas Tributarias",
           key: "deudaTributaria",
           icon: "pi-money-bill",
           tab: "operaciones", // ← NUEVO
         },
-        {
-          label: "Pagos Deuda al Personal",
-          key: "pagoDeudaPersonal",
-          icon: "pi-money-bill",
-          tab: "operaciones", // ← NUEVO
-        },
+
         {
           label: "Pagos Deuda Tributaria",
           key: "pagoDeudaTributaria",
@@ -592,18 +582,8 @@ export default function Dashboard() {
           icon: "pi-chart-bar",
           tab: "tablas", // ← NUEVO
         },
-        {
-          label: "Categorias Tipos Deuda con el Personal",
-          key: "categoriaTipoDeudaPersonal",
-          icon: "pi-folder",
-          tab: "tablas", // ← NUEVO
-        },
-        {
-          label: "Tipos Deuda de Personal",
-          key: "tipoDeudaPersonal",
-          icon: "pi-list",
-          tab: "tablas", // ← NUEVO
-        },
+
+
         {
           label: "Categorias Tipos Deudas Tributarias",
           key: "categoriaTipoDeudaTributaria",
@@ -862,6 +842,76 @@ export default function Dashboard() {
       ],
     },
     {
+      id: "recursosHumanos",
+      titulo: "RECURSOS HUMANOS",
+      descripcion: "Personal, contratos, planillas, asistencia y beneficios",
+      icono: "pi-id-card",
+      modulos: 10,
+      color: "#F5B041",
+      submenu: [
+        {
+          label: "Deudas con el Personal",
+          key: "deudaConPersonal",
+          icon: "pi-money-bill",
+          tab: "operaciones",
+        },
+        {
+          label: "Pagos Deuda al Personal",
+          key: "pagoDeudaPersonal",
+          icon: "pi-money-bill",
+          tab: "operaciones",
+        },
+        {
+          label: "Personal",
+          key: "personal",
+          icon: "pi-id-card",
+          tab: "maestros",
+        },
+        {
+          label: "Cargos Personal",
+          key: "cargosPersonal",
+          icon: "pi-briefcase",
+          tab: "maestros",
+        },
+        {
+          label: "Tipo Contrato",
+          key: "tipoContrato",
+          icon: "pi-file-edit",
+          tab: "maestros",
+        },
+        {
+          label: "Regímenes Laborales",
+          key: "regimenLaboral",
+          icon: "pi-briefcase",
+          tab: "tablas",
+        },
+        {
+          label: "Entidades de Pensión (AFP/ONP)",
+          key: "entidadPension",
+          icon: "pi-building",
+          tab: "tablas",
+        },
+        {
+          label: "Parámetros Legales de Planilla",
+          key: "parametroLegal",
+          icon: "pi-sliders-h",
+          tab: "tablas",
+        },
+        {
+          label: "Categorías Tipos Deuda con el Personal",
+          key: "categoriaTipoDeudaPersonal",
+          icon: "pi-folder",
+          tab: "tablas",
+        },
+        {
+          label: "Tipos Deuda de Personal",
+          key: "tipoDeudaPersonal",
+          icon: "pi-list",
+          tab: "tablas",
+        },
+      ],
+    },
+    {
       id: "maestros",
       titulo: "MAESTROS",
       descripcion: "Configuración de empresas, personal, productos y entidades",
@@ -869,12 +919,7 @@ export default function Dashboard() {
       modulos: 31,
       color: "#2874A6",
       submenu: [
-        {
-          label: "Personal",
-          key: "personal",
-          icon: "pi-users",
-          tab: "principales",
-        },
+
         {
           label: "Entidad Comercial",
           key: "entidadComercial",
@@ -911,18 +956,7 @@ export default function Dashboard() {
           icon: "pi-th-large",
           tab: "configuracion",
         },
-        {
-          label: "Cargos Personal",
-          key: "cargosPersonal",
-          icon: "pi-briefcase",
-          tab: "configuracion",
-        },
-        {
-          label: "Tipo Contrato",
-          key: "tipoContrato",
-          icon: "pi-file",
-          tab: "configuracion",
-        },
+
         {
           label: "Aprobadores",
           key: "parametroAprobador",

@@ -98,6 +98,9 @@ import TipoDeudaTributaria from "../../pages/TipoDeudaTributaria";
 import DeudaTributaria from "../../pages/DeudaTributaria";
 import PagoDeudaTributaria from "../../pages/PagoDeudaTributaria";
 import CategoriaTipoDeudaPersonal from "../../pages/CategoriaTipoDeudaPersonal";
+import RegimenLaboral from "../../pages/RegimenLaboral";
+import EntidadPension from "../../pages/EntidadPension";
+import ParametroLegal from "../../pages/ParametroLegal";
 import CategoriaTipoDeudaTributaria from "../../pages/CategoriaTipoDeudaTributaria";
 import TipoEstadoProducto from "../../pages/TipoEstadoProducto";
 import DestinoProducto from "../../pages/DestinoProducto";
@@ -323,6 +326,18 @@ export default function BaseLayout({ children, onLogout }) {
     categoriaTipoDeudaPersonal: {
       label: "Categorias Tipos Deuda con el Personal",
       componente: <CategoriaTipoDeudaPersonal ruta="categoriaTipoDeudaPersonal" />,
+    },
+    regimenLaboral: {
+      label: "Regímenes Laborales",
+      componente: <RegimenLaboral ruta="regimenLaboral" />,
+    },
+    entidadPension: {
+      label: "Entidades de Pensión (AFP/ONP)",
+      componente: <EntidadPension ruta="entidadPension" />,
+    },
+    parametroLegal: {
+      label: "Parámetros Legales de Planilla",
+      componente: <ParametroLegal ruta="parametroLegal" />,
     },
     categoriaTipoDeudaTributaria: {
       label: "Categorias Tipos Deudas Tributarias",
