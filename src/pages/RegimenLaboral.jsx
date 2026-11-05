@@ -1,13 +1,16 @@
 // src/pages/RegimenLaboral.jsx
+// Catálogo de regímenes laborales (General, Microempresa, Pequeña empresa).
+// Layout: patrón de LineaCredito.jsx (header con filtros dentro del DataTable, ConfirmDialog, Dialog del formulario).
 import React, { useState, useEffect, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
-import { Toast } from "primereact/toast";
 import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
-import { Toolbar } from "primereact/toolbar";
 import { Tag } from "primereact/tag";
 import RegimenLaboralForm from "../components/regimenLaboral/RegimenLaboralForm";
 import {
@@ -17,14 +20,20 @@ import {
   updateRegimenLaboral,
   deleteRegimenLaboral,
 } from "../api/recursosHumanos/regimenLaboral";
+import { getPersonal } from "../api/personal";
 import { useAuthStore } from "../shared/stores/useAuthStore";
-import { getResponsiveFontSize } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
+import { getResponsiveFontSize } from "../utils/utils";
 import { mensajeDeError } from "../utils/mensajeError";
 
-export default function RegimenLaboral({ ruta }) {
-  const { usuario } = useAuthStore();
+const OPCIONES_ESTADO = [
+  { label: "Activos", value: true },
+  { label: "Inactivos", value: false },
+];
+
+const RegimenLaboral = ({ ruta }) => {
   const permisos = usePermissions(ruta);
+  const usuario = useAuthStore((state) => state.usuario);
 
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
@@ -32,28 +41,32 @@ export default function RegimenLaboral({ ruta }) {
 
   const toast = useRef(null);
   const [regimenes, setRegimenes] = useState([]);
-  const [regimenSeleccionado, setRegimenSeleccionado] = useState(null);
-  const [regimenDialog, setRegimenDialog] = useState(false);
-  const [deleteDialog, setDeleteDialog] = useState(false);
-  const [isEdit, setIsEdit] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [regimenSeleccionado, setRegimenSeleccionado] = useState(null);
+  const [estadoFiltro, setEstadoFiltro] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [formData, setFormData] = useState({});
+  // Personal para mostrar quién creó o modificó cada registro (AuditoriaDialog)
+  const [personalAuditoria, setPersonalAuditoria] = useState([]);
+
+  const personalId = usuario?.personalId ? Number(usuario.personalId) : null;
 
   useEffect(() => {
-    loadData();
+    cargarDatos();
+    getPersonal()
+      .then((data) => setPersonalAuditoria(data || []))
+      .catch((error) => mostrarError(error, "No se pudo cargar el personal para la auditoría"));
   }, []);
 
   const mostrarError = (error, accionFallida) => {
-    toast.current?.show({
-      severity: "error",
-      summary: "Error",
-      detail: mensajeDeError(error, accionFallida),
-      life: 5000,
-    });
+    toast.current?.show({ severity: "error", summary: "Error", detail: mensajeDeError(error, accionFallida), life: 5000 });
   };
 
-  const loadData = async () => {
+  const denegar = (accion) =>
+    toast.current?.show({ severity: "warn", summary: "Acceso Denegado", detail: `No tiene permisos para ${accion}`, life: 3000 });
+
+  const cargarDatos = async () => {
     try {
       setLoading(true);
       setRegimenes((await getRegimenesLaborales()) || []);
@@ -64,26 +77,22 @@ export default function RegimenLaboral({ ruta }) {
     }
   };
 
-  const openNew = () => {
-    setFormData({});
+  const regimenesFiltrados = regimenes.filter((regimen) => {
+    if (estadoFiltro !== null && regimen.activo !== estadoFiltro) return false;
+    const texto = globalFilter.trim().toLowerCase();
+    return !texto || [regimen.codigoSunat, regimen.descripcion].filter(Boolean).join(" ").toLowerCase().includes(texto);
+  });
+
+  const handleNew = () => {
     setRegimenSeleccionado(null);
-    setIsEdit(false);
-    setRegimenDialog(true);
+    setVisible(true);
   };
 
-  const hideDialog = () => {
-    setRegimenDialog(false);
-    setFormData({});
-    setRegimenSeleccionado(null);
-  };
-
-  const editRegimen = async (regimen) => {
+  const handleEdit = async (regimen) => {
     try {
       setLoading(true);
-      setFormData(await getRegimenLaboralById(regimen.id));
-      setRegimenSeleccionado(regimen);
-      setIsEdit(true);
-      setRegimenDialog(true);
+      setRegimenSeleccionado(await getRegimenLaboralById(regimen.id));
+      setVisible(true);
     } catch (error) {
       mostrarError(error, "No se pudo cargar el régimen laboral");
     } finally {
@@ -91,31 +100,21 @@ export default function RegimenLaboral({ ruta }) {
     }
   };
 
-  const saveRegimen = async (data) => {
-    const esEdicion = isEdit && regimenSeleccionado;
+  const handleCancel = () => {
+    setVisible(false);
+    setRegimenSeleccionado(null);
+  };
 
-    if (esEdicion && !permisos.puedeEditar) {
-      toast.current?.show({ severity: "warn", summary: "Acceso Denegado", detail: "No tiene permisos para editar", life: 3000 });
-      return;
-    }
-    if (!esEdicion && !permisos.puedeCrear) {
-      toast.current?.show({ severity: "warn", summary: "Acceso Denegado", detail: "No tiene permisos para crear", life: 3000 });
-      return;
-    }
-
+  const handleSave = async (data) => {
+    const esEdicion = Boolean(regimenSeleccionado);
+    if (esEdicion && !permisos.puedeEditar) return denegar("editar");
+    if (!esEdicion && !permisos.puedeCrear) return denegar("crear");
     try {
-      setLoading(true);
-      const personalId = usuario?.personalId ? Number(usuario.personalId) : null;
-      const dataConAuditoria = {
-        ...data,
-        creadoPor: esEdicion ? undefined : personalId,
-        actualizadoPor: esEdicion ? personalId : undefined,
-      };
-
+      setGuardando(true);
       if (esEdicion) {
-        await updateRegimenLaboral(regimenSeleccionado.id, dataConAuditoria);
+        await updateRegimenLaboral(regimenSeleccionado.id, { ...data, actualizadoPor: personalId });
       } else {
-        await createRegimenLaboral(dataConAuditoria);
+        await createRegimenLaboral({ ...data, creadoPor: personalId });
       }
       toast.current?.show({
         severity: "success",
@@ -123,62 +122,48 @@ export default function RegimenLaboral({ ruta }) {
         detail: esEdicion ? "Régimen laboral actualizado correctamente" : "Régimen laboral creado correctamente",
         life: 3000,
       });
-      hideDialog();
-      loadData();
+      handleCancel();
+      cargarDatos();
     } catch (error) {
       mostrarError(error, "No se pudo guardar el régimen laboral");
     } finally {
-      setLoading(false);
+      setGuardando(false);
     }
   };
 
-  const confirmDelete = (regimen) => {
-    if (!permisos.puedeEliminar) {
-      toast.current?.show({ severity: "warn", summary: "Acceso Denegado", detail: "No tiene permisos para eliminar", life: 3000 });
-      return;
-    }
-    setRegimenSeleccionado(regimen);
-    setDeleteDialog(true);
+  const handleDelete = (regimen) => {
+    if (!permisos.puedeEliminar) return denegar("eliminar");
+    confirmDialog({
+      message: `¿Está seguro de eliminar el régimen laboral ${regimen.descripcion}?`,
+      header: "Confirmar eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
+      acceptLabel: "Sí, eliminar",
+      rejectLabel: "No",
+      accept: async () => {
+        try {
+          setLoading(true);
+          await deleteRegimenLaboral(regimen.id);
+          toast.current?.show({ severity: "success", summary: "Éxito", detail: "Régimen laboral eliminado correctamente", life: 3000 });
+          cargarDatos();
+        } catch (error) {
+          mostrarError(error, "No se pudo eliminar el régimen laboral");
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
-  const deleteConfirmed = async () => {
-    try {
-      setLoading(true);
-      await deleteRegimenLaboral(regimenSeleccionado.id);
-      toast.current?.show({ severity: "success", summary: "Éxito", detail: "Régimen laboral eliminado correctamente", life: 3000 });
-      setDeleteDialog(false);
-      setRegimenSeleccionado(null);
-      loadData();
-    } catch (error) {
-      mostrarError(error, "No se pudo eliminar el régimen laboral");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const hideDeleteDialog = () => {
-    setDeleteDialog(false);
-    setRegimenSeleccionado(null);
-  };
-
-  const remypeBodyTemplate = (rowData) => (
-    <Tag value={rowData.requiereRemype ? "SÍ" : "NO"} severity={rowData.requiereRemype ? "warning" : "secondary"} />
-  );
-
-  const activoBodyTemplate = (rowData) => (
-    <Tag value={rowData.activo ? "ACTIVO" : "INACTIVO"} severity={rowData.activo ? "success" : "danger"} />
-  );
-
-  const actionBodyTemplate = (rowData) => (
+  const accionesBodyTemplate = (regimen) => (
     <div className="flex gap-2">
       <Button
-        icon="pi pi-pencil"
+        icon={permisos.puedeEditar ? "pi pi-pencil" : "pi pi-eye"}
         rounded
         outlined
         className="p-button-warning"
-        onClick={() => editRegimen(rowData)}
-        disabled={!permisos.puedeEditar}
-        tooltip="Editar"
+        onClick={() => handleEdit(regimen)}
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
         tooltipOptions={{ position: "top" }}
       />
       <Button
@@ -186,7 +171,7 @@ export default function RegimenLaboral({ ruta }) {
         rounded
         outlined
         severity="danger"
-        onClick={() => confirmDelete(rowData)}
+        onClick={() => handleDelete(regimen)}
         disabled={!permisos.puedeEliminar}
         tooltip="Eliminar"
         tooltipOptions={{ position: "top" }}
@@ -194,93 +179,112 @@ export default function RegimenLaboral({ ruta }) {
     </div>
   );
 
-  const leftToolbarTemplate = () => (
-    <div className="flex flex-wrap gap-2">
-      <Button label="Nuevo" icon="pi pi-plus" severity="success" onClick={openNew} disabled={!permisos.puedeCrear} />
+  const header = (
+    <div
+      style={{
+        alignItems: "end",
+        display: "flex",
+        gap: 10,
+        flexDirection: window.innerWidth < 768 ? "column" : "row",
+        marginBottom: 15,
+      }}
+    >
+      <div style={{ flex: 2 }}>
+        <h3 style={{ margin: 0 }}>Regímenes Laborales</h3>
+        <small style={{ color: "#666", fontWeight: "normal" }}>Total de registros: {regimenesFiltrados.length}</small>
+      </div>
+      <div style={{ flex: 1.2 }}>
+        <label style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>Estado</label>
+        <Dropdown value={estadoFiltro} options={OPCIONES_ESTADO} onChange={(e) => setEstadoFiltro(e.value)} placeholder="Todos" showClear style={{ width: "100%" }} />
+      </div>
+      <div style={{ flex: 2 }}>
+        <label style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>Buscar</label>
+        <span className="p-input-icon-left" style={{ width: "100%" }}>
+          <i className="pi pi-search" />
+          <InputText value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Código o descripción" style={{ width: "100%" }} />
+        </span>
+      </div>
+      <div style={{ flex: 1 }}>
+        <Button
+          label="Nuevo"
+          icon="pi pi-plus"
+          className="p-button-success"
+          severity="success"
+          raised
+          onClick={handleNew}
+          disabled={!permisos.puedeCrear || loading}
+          tooltip={!permisos.puedeCrear ? "No tiene permisos para crear" : "Nuevo régimen laboral"}
+          style={{ width: "100%" }}
+          size="small"
+        />
+      </div>
+      <div style={{ flex: 0.6 }}>
+        <Button icon="pi pi-refresh" className="p-button-outlined p-button-info" onClick={cargarDatos} loading={loading} tooltip="Actualizar" tooltipOptions={{ position: "top" }} style={{ width: "100%" }} size="small" />
+      </div>
     </div>
-  );
-
-  const rightToolbarTemplate = () => (
-    <span className="p-input-icon-left">
-      <i className="pi pi-search" />
-      <InputText
-        type="search"
-        value={globalFilter}
-        onChange={(e) => setGlobalFilter(e.target.value)}
-        placeholder="Buscar..."
-        style={{ width: "300px" }}
-      />
-    </span>
-  );
-
-  const deleteDialogFooter = (
-    <>
-      <Button label="No" icon="pi pi-times" outlined onClick={hideDeleteDialog} />
-      <Button label="Sí" icon="pi pi-check" severity="danger" onClick={deleteConfirmed} />
-    </>
   );
 
   return (
     <div className="card">
       <Toast ref={toast} />
-      <h2 style={{ fontSize: getResponsiveFontSize() }}>Regímenes Laborales</h2>
-
-      <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate} />
+      <ConfirmDialog />
 
       <DataTable
-        value={regimenes}
+        value={regimenesFiltrados}
         loading={loading}
-        globalFilter={globalFilter}
+        header={header}
         emptyMessage="No se encontraron regímenes laborales"
-        paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
-        size="small"
-        stripedRows
+        className="datatable-responsive"
         showGridlines
+        stripedRows
+        paginator
+        rows={15}
+        rowsPerPageOptions={[10, 15, 25, 50]}
+        dataKey="id"
+        style={{ fontSize: getResponsiveFontSize() }}
       >
-        <Column field="id" header="ID" sortable style={{ width: "80px" }} />
-        <Column field="codigoSunat" header="Código SUNAT" sortable style={{ width: "140px" }} />
-        <Column field="descripcion" header="Descripción" sortable filter filterPlaceholder="Buscar por descripción" />
-        <Column field="requiereRemype" header="Requiere REMYPE" body={remypeBodyTemplate} sortable style={{ width: "160px" }} />
-        <Column field="activo" header="Estado" body={activoBodyTemplate} sortable style={{ width: "120px" }} />
-        <Column body={actionBodyTemplate} exportable={false} style={{ width: "120px" }} header="Acciones" />
+        <Column field="id" header="ID" sortable style={{ width: 80 }} />
+        <Column field="codigoSunat" header="Código SUNAT" sortable style={{ width: 140 }} body={(regimen) => <strong>{regimen.codigoSunat}</strong>} />
+        <Column field="descripcion" header="Descripción" sortable />
+        <Column
+          header="Requiere REMYPE"
+          body={(regimen) => <Tag value={regimen.requiereRemype ? "SÍ" : "NO"} severity={regimen.requiereRemype ? "warning" : "secondary"} />}
+          style={{ width: 160 }}
+        />
+        <Column
+          header="Estado"
+          body={(regimen) => <Tag value={regimen.activo ? "ACTIVO" : "INACTIVO"} severity={regimen.activo ? "success" : "danger"} />}
+          style={{ width: 110 }}
+        />
+        <Column header="Acciones" body={accionesBodyTemplate} exportable={false} style={{ width: 120 }} />
       </DataTable>
 
       <Dialog
-        visible={regimenDialog}
+        header={
+          regimenSeleccionado
+            ? permisos.puedeEditar
+              ? "Editar Régimen Laboral"
+              : "Ver Régimen Laboral"
+            : "Nuevo Régimen Laboral"
+        }
+        visible={visible}
         style={{ width: "600px" }}
-        header={isEdit ? "Editar Régimen Laboral" : "Nuevo Régimen Laboral"}
+        onHide={handleCancel}
         modal
         className="p-fluid"
-        onHide={hideDialog}
+        key={`regimen-${regimenSeleccionado?.id || "nuevo"}`}
       >
         <RegimenLaboralForm
-          isEdit={isEdit}
-          defaultValues={formData}
-          onSubmit={saveRegimen}
-          onCancel={hideDialog}
-          loading={loading}
+          isEdit={Boolean(regimenSeleccionado)}
+          defaultValues={regimenSeleccionado || {}}
+          personalAuditoria={personalAuditoria}
+          onSubmit={handleSave}
+          onCancel={handleCancel}
+          loading={guardando}
         />
-      </Dialog>
-
-      <Dialog
-        visible={deleteDialog}
-        style={{ width: "450px" }}
-        header="Confirmar"
-        modal
-        footer={deleteDialogFooter}
-        onHide={hideDeleteDialog}
-      >
-        <div className="confirmation-content">
-          <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: "2rem" }} />
-          {regimenSeleccionado && (
-            <span>
-              ¿Está seguro de eliminar el régimen laboral <b>{regimenSeleccionado.descripcion}</b>?
-            </span>
-          )}
-        </div>
       </Dialog>
     </div>
   );
-}
+};
+
+export default RegimenLaboral;

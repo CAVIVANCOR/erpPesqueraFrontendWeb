@@ -139,6 +139,15 @@ export default function Empresas({ ruta }) {
         sunatClaveSol: data.sunatClaveSol,
         sunatClientId: data.sunatClientId,
         sunatClientSecret: data.sunatClientSecret,
+        // Configuración de planilla (RRHH Fase 1)
+        procesaPlanilla: !!data.procesaPlanilla,
+        regimenLaboralId: data.regimenLaboralId ? Number(data.regimenLaboralId) : null,
+        inscritoRemype: !!data.inscritoRemype,
+        numeroRemype: data.numeroRemype || null,
+        usaSis: !!data.usaSis,
+        tieneEps: !!data.tieneEps,
+        relojcontrolApiKey: data.relojcontrolApiKey || null,
+        relojcontrolActivo: !!data.relojcontrolActivo,
       };
 
       if (modoEdicion && empresaEdit) {

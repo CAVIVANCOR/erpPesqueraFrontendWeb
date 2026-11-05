@@ -101,6 +101,9 @@ import CategoriaTipoDeudaPersonal from "../../pages/CategoriaTipoDeudaPersonal";
 import RegimenLaboral from "../../pages/RegimenLaboral";
 import EntidadPension from "../../pages/EntidadPension";
 import ParametroLegal from "../../pages/ParametroLegal";
+import ContratoPersonal from "../../pages/ContratoPersonal";
+import ConceptoPlanilla from "../../pages/ConceptoPlanilla";
+import PlantillaFormatoExterno from "../../pages/PlantillaFormatoExterno";
 import CategoriaTipoDeudaTributaria from "../../pages/CategoriaTipoDeudaTributaria";
 import TipoEstadoProducto from "../../pages/TipoEstadoProducto";
 import DestinoProducto from "../../pages/DestinoProducto";
@@ -338,6 +341,18 @@ export default function BaseLayout({ children, onLogout }) {
     parametroLegal: {
       label: "Parámetros Legales de Planilla",
       componente: <ParametroLegal ruta="parametroLegal" />,
+    },
+    contratoPersonal: {
+      label: "Contratos de Personal",
+      componente: <ContratoPersonal ruta="contratoPersonal" />,
+    },
+    conceptoPlanilla: {
+      label: "Conceptos de Planilla",
+      componente: <ConceptoPlanilla ruta="conceptoPlanilla" />,
+    },
+    plantillaFormatoExterno: {
+      label: "Formatos Externos (PLAME/AFPnet)",
+      componente: <PlantillaFormatoExterno ruta="plantillaFormatoExterno" />,
     },
     categoriaTipoDeudaTributaria: {
       label: "Categorias Tipos Deudas Tributarias",

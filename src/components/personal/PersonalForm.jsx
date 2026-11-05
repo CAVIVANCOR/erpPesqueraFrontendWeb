@@ -21,6 +21,8 @@ import { getSedes } from "../../api/sedes"; // API profesional de sedes
 import { getAreasFisicas } from "../../api/areasFisicas"; // API profesional de áreas físicas
 import { subirFotoPersonal, subirFirmaPersonal } from "../../api/personal"; // API profesional de subida de foto personal
 import { getEntidadesComerciales } from "../../api/entidadComercial"; // API profesional de entidades comerciales
+import { getEntidadesPensionActivas } from "../../api/recursosHumanos/entidadPension"; // ⭐ RRHH FASE 1 - AFP/ONP
+import { getAllBancos } from "../../api/banco"; // ⭐ RRHH FASE 1 - Banco de pago de remuneraciones
 import CentroCostoSelector from "../common/CentroCostoSelector"; // ⭐ NUEVO - Selector de Centro de Costo
 import EntidadComercialSelector from "../common/EntidadComercialSelector"; // ⭐ NUEVO - Selector de Entidad Comercial
 
@@ -28,7 +30,9 @@ import EntidadComercialSelector from "../common/EntidadComercialSelector"; // �
 const schema = Yup.object().shape({
   empresaId: Yup.number().required("La empresa es obligatoria"),
   nombres: Yup.string().required("Los nombres son obligatorios"),
-  apellidos: Yup.string().required("Los apellidos son obligatorios"),
+  // ⭐ RRHH FASE 1: AFPnet y PLAME piden los apellidos separados; "apellidos" se arma al grabar
+  apellidoPaterno: Yup.string().required("El apellido paterno es obligatorio"),
+  apellidoMaterno: Yup.string().nullable(),
   tipoDocumentoId: Yup.number().required("El tipo de documento es obligatorio"),
   numeroDocumento: Yup.string().required(
     "El número de documento es obligatorio",
@@ -77,8 +81,26 @@ export default function PersonalForm({
   readOnly = false,
 }) {
   // Normalización profesional: forzar empresaId y combos a number para evitar errores de tipo
+  // Registros anteriores a RRHH Fase 1 solo tienen "apellidos": se propone separarlos en el primer espacio
+  // (paterno = primera palabra, materno = el resto) y el usuario corrige los compuestos al grabar
+  const [paternoSugerido = "", ...restoApellidos] = (defaultValues.apellidos || "").trim().split(/\s+/);
   const normalizedDefaults = {
     ...defaultValues,
+    apellidoPaterno: defaultValues.apellidoPaterno ?? paternoSugerido,
+    apellidoMaterno: defaultValues.apellidoMaterno ?? (restoApellidos.join(" ") || ""),
+    // ⭐ RRHH FASE 1 - Datos laborales y de planilla
+    esObrero: typeof defaultValues.esObrero === "boolean" ? defaultValues.esObrero : false,
+    entidadPensionId: defaultValues.entidadPensionId ? Number(defaultValues.entidadPensionId) : null,
+    cuspp: defaultValues.cuspp || "",
+    comisionMixta: typeof defaultValues.comisionMixta === "boolean" ? defaultValues.comisionMixta : false,
+    tieneAsignacionFamiliar:
+      typeof defaultValues.tieneAsignacionFamiliar === "boolean" ? defaultValues.tieneAsignacionFamiliar : false,
+    aplicaSctr: typeof defaultValues.aplicaSctr === "boolean" ? defaultValues.aplicaSctr : false,
+    acuerdoCompensacionHoras:
+      typeof defaultValues.acuerdoCompensacionHoras === "boolean" ? defaultValues.acuerdoCompensacionHoras : false,
+    bancoId: defaultValues.bancoId ? Number(defaultValues.bancoId) : null,
+    numeroCuenta: defaultValues.numeroCuenta || "",
+    cci: defaultValues.cci || "",
     empresaId: defaultValues.empresaId ? Number(defaultValues.empresaId) : null,
     tipoDocumentoId: defaultValues.tipoDocumentoId
       ? Number(defaultValues.tipoDocumentoId)
@@ -162,6 +184,22 @@ export default function PersonalForm({
 
   const [areasFisicas, setAreasFisicas] = useState([]);
   const [sedesEmpresa, setSedesEmpresa] = useState([]);
+  // ⭐ RRHH FASE 1 - Combos de entidad de pensión y banco
+  const [entidadesPension, setEntidadesPension] = useState([]);
+  const [bancos, setBancos] = useState([]);
+
+  useEffect(() => {
+    const cargarCombosRRHH = async () => {
+      try {
+        const [pension, listaBancos] = await Promise.all([getEntidadesPensionActivas(), getAllBancos()]);
+        setEntidadesPension((pension || []).map((e) => ({ ...e, id: Number(e.id) })));
+        setBancos((listaBancos || []).map((b) => ({ ...b, id: Number(b.id) })));
+      } catch (error) {
+        console.error("Error al cargar entidades de pensión y bancos:", error);
+      }
+    };
+    cargarCombosRRHH();
+  }, []);
   // Ya no se usa la lista aquí (EntidadComercialSelector carga sus propias entidades); se conserva
   // la carga de combos tal cual para no alterar el orden de Promise.allSettled
   const [, setEntidadesComerciales] = useState([]);
@@ -676,7 +714,23 @@ export default function PersonalForm({
         : null,
       numeroDocumento: data.numeroDocumento || null,
       nombres: data.nombres || null,
-      apellidos: data.apellidos || null,
+      // "apellidos" se mantiene (lo usa el resto del sistema) y se arma con paterno + materno
+      apellidos: [data.apellidoPaterno?.trim(), data.apellidoMaterno?.trim()].filter(Boolean).join(" ") || null,
+      apellidoPaterno: data.apellidoPaterno?.trim() || null,
+      apellidoMaterno: data.apellidoMaterno?.trim() || null,
+      // ⭐ RRHH FASE 1 - Datos laborales y de planilla
+      esObrero: typeof data.esObrero === "boolean" ? data.esObrero : false,
+      entidadPensionId: data.entidadPensionId ? Number(data.entidadPensionId) : null,
+      cuspp: data.cuspp?.trim() || null,
+      comisionMixta: typeof data.comisionMixta === "boolean" ? data.comisionMixta : false,
+      tieneAsignacionFamiliar:
+        typeof data.tieneAsignacionFamiliar === "boolean" ? data.tieneAsignacionFamiliar : false,
+      aplicaSctr: typeof data.aplicaSctr === "boolean" ? data.aplicaSctr : false,
+      acuerdoCompensacionHoras:
+        typeof data.acuerdoCompensacionHoras === "boolean" ? data.acuerdoCompensacionHoras : false,
+      bancoId: data.bancoId ? Number(data.bancoId) : null,
+      numeroCuenta: data.numeroCuenta?.trim() || null,
+      cci: data.cci?.trim() || null,
       direccion: data.direccion || null,
       ubigeoId: data.ubigeoId ? Number(data.ubigeoId) : null,
       telefono: data.telefono || null,
@@ -1044,19 +1098,36 @@ export default function PersonalForm({
               <small className="p-error">{errors.nombres?.message}</small>
             </div>
             <div style={{ flex: 1 }}>
-              <label>Apellidos</label>
+              <label>Apellido paterno</label>
               <Controller
-                name="apellidos"
+                name="apellidoPaterno"
                 control={control}
                 render={({ field }) => (
                   <InputText
                     style={{ fontWeight: "bold" }}
                     {...field}
+                    value={field.value || ""}
                     disabled={readOnly || loading}
                   />
                 )}
               />
-              <small className="p-error">{errors.apellidos?.message}</small>
+              <small className="p-error">{errors.apellidoPaterno?.message}</small>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label>Apellido materno</label>
+              <Controller
+                name="apellidoMaterno"
+                control={control}
+                render={({ field }) => (
+                  <InputText
+                    style={{ fontWeight: "bold" }}
+                    {...field}
+                    value={field.value || ""}
+                    disabled={readOnly || loading}
+                  />
+                )}
+              />
+              <small className="p-error">{errors.apellidoMaterno?.message}</small>
             </div>
           </div>
           {/* Tipo de documento y Número de documento en una sola línea */}
@@ -1462,6 +1533,221 @@ export default function PersonalForm({
                         : "Personal operativo con horario flexible"
                     }
                     tooltipOptions={{ position: "top" }}
+                  />
+                )}
+              />
+            </div>
+          </div>
+
+          {/* ⭐ RRHH FASE 1 - Datos laborales y de planilla */}
+          <h4 style={{ marginTop: 18, marginBottom: 6 }}>Datos laborales y de planilla</h4>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexWrap: "wrap",
+              alignItems: "flex-end",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label>Entidad de pensión (AFP / ONP)</label>
+              <Controller
+                name="entidadPensionId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="entidadPensionId"
+                    value={field.value ? Number(field.value) : null}
+                    options={entidadesPension}
+                    optionLabel="descripcion"
+                    optionValue="id"
+                    placeholder="Seleccione AFP u ONP"
+                    style={{ fontWeight: "bold" }}
+                    filter
+                    showClear
+                    onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly || loading}
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label>CUSPP</label>
+              <Controller
+                name="cuspp"
+                control={control}
+                render={({ field }) => (
+                  <InputText
+                    style={{ fontWeight: "bold" }}
+                    {...field}
+                    value={field.value || ""}
+                    maxLength={20}
+                    placeholder="Código único de afiliado al SPP"
+                    disabled={readOnly || loading}
+                  />
+                )}
+              />
+            </div>
+            <Controller
+              name="comisionMixta"
+              control={control}
+              render={({ field }) => (
+                <ToggleButton
+                  id="comisionMixta"
+                  onLabel="Comisión Mixta"
+                  offLabel="Comisión sobre Flujo"
+                  onIcon="pi pi-check"
+                  offIcon="pi pi-percentage"
+                  checked={field.value || false}
+                  onChange={(e) => field.onChange(e.value)}
+                  disabled={readOnly || loading}
+                  tooltip="Modalidad de comisión de la AFP"
+                  tooltipOptions={{ position: "top" }}
+                />
+              )}
+            />
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexWrap: "wrap",
+              marginTop: 10,
+              alignItems: "center",
+            }}
+          >
+            <Controller
+              name="esObrero"
+              control={control}
+              render={({ field }) => (
+                <ToggleButton
+                  id="esObrero"
+                  onLabel="Obrero"
+                  offLabel="Empleado"
+                  onIcon="pi pi-wrench"
+                  offIcon="pi pi-briefcase"
+                  checked={field.value || false}
+                  onChange={(e) => field.onChange(e.value)}
+                  disabled={readOnly || loading}
+                  className={field.value ? "p-button-warning" : "p-button-info"}
+                  tooltip="Categoría de planilla. Patrón, motorista, panguero y tripulante son pescadores según su cargo."
+                  tooltipOptions={{ position: "top" }}
+                />
+              )}
+            />
+            <Controller
+              name="tieneAsignacionFamiliar"
+              control={control}
+              render={({ field }) => (
+                <ToggleButton
+                  id="tieneAsignacionFamiliar"
+                  onLabel="Asignación Familiar"
+                  offLabel="Sin Asignación Familiar"
+                  onIcon="pi pi-check"
+                  offIcon="pi pi-times"
+                  checked={field.value || false}
+                  onChange={(e) => field.onChange(e.value)}
+                  disabled={readOnly || loading}
+                />
+              )}
+            />
+            <Controller
+              name="aplicaSctr"
+              control={control}
+              render={({ field }) => (
+                <ToggleButton
+                  id="aplicaSctr"
+                  onLabel="Aplica SCTR"
+                  offLabel="Sin SCTR"
+                  onIcon="pi pi-check"
+                  offIcon="pi pi-times"
+                  checked={field.value || false}
+                  onChange={(e) => field.onChange(e.value)}
+                  disabled={readOnly || loading}
+                  tooltip="Seguro complementario de trabajo de riesgo"
+                  tooltipOptions={{ position: "top" }}
+                />
+              )}
+            />
+            <Controller
+              name="acuerdoCompensacionHoras"
+              control={control}
+              render={({ field }) => (
+                <ToggleButton
+                  id="acuerdoCompensacionHoras"
+                  onLabel="Compensa Horas"
+                  offLabel="No Compensa Horas"
+                  onIcon="pi pi-check"
+                  offIcon="pi pi-times"
+                  checked={field.value || false}
+                  onChange={(e) => field.onChange(e.value)}
+                  disabled={readOnly || loading}
+                  tooltip="Acuerdo para compensar horas adicionales con descanso"
+                  tooltipOptions={{ position: "top" }}
+                />
+              )}
+            />
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              marginTop: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label>Banco de pago</label>
+              <Controller
+                name="bancoId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="bancoId"
+                    value={field.value ? Number(field.value) : null}
+                    options={bancos}
+                    optionLabel="nombre"
+                    optionValue="id"
+                    placeholder="Seleccione el banco"
+                    style={{ fontWeight: "bold" }}
+                    filter
+                    showClear
+                    onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly || loading}
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label>Número de cuenta</label>
+              <Controller
+                name="numeroCuenta"
+                control={control}
+                render={({ field }) => (
+                  <InputText
+                    style={{ fontWeight: "bold" }}
+                    {...field}
+                    value={field.value || ""}
+                    maxLength={30}
+                    disabled={readOnly || loading}
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label>CCI</label>
+              <Controller
+                name="cci"
+                control={control}
+                render={({ field }) => (
+                  <InputText
+                    style={{ fontWeight: "bold" }}
+                    {...field}
+                    value={field.value || ""}
+                    maxLength={25}
+                    placeholder="Código de cuenta interbancario"
+                    disabled={readOnly || loading}
                   />
                 )}
               />

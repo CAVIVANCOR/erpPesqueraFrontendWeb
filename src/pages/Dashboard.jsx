@@ -715,12 +715,12 @@ export default function Dashboard() {
           icon: "pi-tags",
           tab: "tablas",
         },
-  /*      {
-          label: "Inversión Financiera",
-          key: "inversionFinanciera",
-          icon: "pi-chart-pie",
-          tab: "tablas",
-        },*/
+        /*      {
+                label: "Inversión Financiera",
+                key: "inversionFinanciera",
+                icon: "pi-chart-pie",
+                tab: "tablas",
+              },*/
         {
           label: "Entidad Comercial",
           key: "entidadComercial",
@@ -846,9 +846,21 @@ export default function Dashboard() {
       titulo: "RECURSOS HUMANOS",
       descripcion: "Personal, contratos, planillas, asistencia y beneficios",
       icono: "pi-id-card",
-      modulos: 10,
+      modulos: 13,
       color: "#F5B041",
       submenu: [
+        {
+          label: "Personal",
+          key: "personal",
+          icon: "pi-id-card",
+          tab: "operaciones",
+        },
+        {
+          label: "Contratos de Personal",
+          key: "contratoPersonal",
+          icon: "pi-file-edit",
+          tab: "operaciones",
+        },
         {
           label: "Deudas con el Personal",
           key: "deudaConPersonal",
@@ -862,11 +874,18 @@ export default function Dashboard() {
           tab: "operaciones",
         },
         {
-          label: "Personal",
-          key: "personal",
-          icon: "pi-id-card",
-          tab: "maestros",
+          label: "Conceptos de Planilla",
+          key: "conceptoPlanilla",
+          icon: "pi-list-check",
+          tab: "tablas",
         },
+        {
+          label: "Formatos Externos (PLAME/AFPnet)",
+          key: "plantillaFormatoExterno",
+          icon: "pi-file-export",
+          tab: "tablas",
+        },
+
         {
           label: "Cargos Personal",
           key: "cargosPersonal",

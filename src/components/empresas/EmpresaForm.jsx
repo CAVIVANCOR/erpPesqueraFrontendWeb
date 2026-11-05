@@ -24,6 +24,7 @@ import { useRef } from "react";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import EntidadComercialSelector from "../common/EntidadComercialSelector";
+import { getRegimenesLaboralesActivos } from "../../api/recursosHumanos/regimenLaboral";
 
 // Esquema de validación profesional con Yup alineado al modelo Empresa de Prisma
 const schema = Yup.object().shape({
@@ -87,6 +88,21 @@ const schema = Yup.object().shape({
   sunatClaveSol: Yup.string().nullable().max(100, "Máximo 100 caracteres"),
   sunatClientId: Yup.string().nullable().max(100, "Máximo 100 caracteres"),
   sunatClientSecret: Yup.string().nullable().max(255, "Máximo 255 caracteres"),
+  // Configuración de planilla (RRHH Fase 1)
+  procesaPlanilla: Yup.boolean(),
+  regimenLaboralId: Yup.number()
+    .nullable()
+    .transform((value, original) => (original === "" || original === null ? null : value))
+    .when("procesaPlanilla", {
+      is: true,
+      then: (schema) => schema.required("Seleccione el régimen laboral de la empresa"),
+    }),
+  inscritoRemype: Yup.boolean(),
+  numeroRemype: Yup.string().nullable().max(30, "Máximo 30 caracteres"),
+  usaSis: Yup.boolean(),
+  tieneEps: Yup.boolean(),
+  relojcontrolApiKey: Yup.string().nullable().max(255, "Máximo 255 caracteres"),
+  relojcontrolActivo: Yup.boolean(),
 });
 
 /**
@@ -232,6 +248,21 @@ export default function EmpresaForm({
     cargarMonedas();
   }, []);
 
+  // Regímenes laborales activos para la configuración de planilla (RRHH Fase 1)
+  const [regimenesLaborales, setRegimenesLaborales] = useState([]);
+  useEffect(() => {
+    const cargarRegimenes = async () => {
+      try {
+        const data = await getRegimenesLaboralesActivos();
+        setRegimenesLaborales((data || []).map((r) => ({ ...r, id: Number(r.id) })));
+      } catch (err) {
+        console.error("❌ Error al cargar regímenes laborales:", err);
+        setRegimenesLaborales([]);
+      }
+    };
+    cargarRegimenes();
+  }, []);
+
   // Reset al abrir en modo edición o alta
   useEffect(() => {
     reset({
@@ -260,6 +291,14 @@ export default function EmpresaForm({
       sunatClaveSol: defaultValues.sunatClaveSol ?? null,
       sunatClientId: defaultValues.sunatClientId ?? null,
       sunatClientSecret: defaultValues.sunatClientSecret ?? null,
+      procesaPlanilla: defaultValues.procesaPlanilla ?? false,
+      regimenLaboralId: defaultValues.regimenLaboralId ? Number(defaultValues.regimenLaboralId) : null,
+      inscritoRemype: defaultValues.inscritoRemype ?? false,
+      numeroRemype: defaultValues.numeroRemype ?? null,
+      usaSis: defaultValues.usaSis ?? false,
+      tieneEps: defaultValues.tieneEps ?? false,
+      relojcontrolApiKey: defaultValues.relojcontrolApiKey ?? null,
+      relojcontrolActivo: defaultValues.relojcontrolActivo ?? false,
     });
     // Actualiza el preview del logo si cambia la empresa
     /**
@@ -1432,6 +1471,188 @@ export default function EmpresaForm({
                   }}
                 />
                 {errors.sunatClientSecret && <small className="p-error">{errors.sunatClientSecret.message}</small>}
+              </div>
+            </div>
+          </div>
+
+          {/* SECCIÓN: RECURSOS HUMANOS - PLANILLA */}
+          <div
+            style={{
+              padding: 24,
+              border: "2px solid #f5b041",
+              borderRadius: 12,
+              backgroundColor: "#fef9e7",
+              marginBottom: 24,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+              <i className="pi pi-id-card" style={{ fontSize: "1.5em", color: "#b9770e" }}></i>
+              <h3 style={{ margin: 0, color: "#b9770e" }}>Recursos Humanos - Planilla</h3>
+            </div>
+            <small style={{ display: "block", color: "#9c640c", marginBottom: 12 }}>
+              Régimen laboral de la empresa, REMYPE, seguro de salud y Relojcontrol. Las personas naturales (RUC 10) no procesan planilla.
+            </small>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+              <div>
+                <Controller
+                  name="procesaPlanilla"
+                  control={control}
+                  render={({ field }) => (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Checkbox
+                        inputId="procesaPlanilla"
+                        checked={!!field.value}
+                        onChange={(e) => field.onChange(e.checked)}
+                        disabled={readOnly}
+                      />
+                      <label htmlFor="procesaPlanilla" style={{ fontWeight: "bold" }}>
+                        La empresa procesa planilla
+                      </label>
+                    </div>
+                  )}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="regimenLaboralId">Régimen laboral</label>
+                <Controller
+                  name="regimenLaboralId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="regimenLaboralId"
+                      value={field.value ? Number(field.value) : null}
+                      options={regimenesLaborales}
+                      optionLabel="descripcion"
+                      optionValue="id"
+                      placeholder="Seleccione el régimen laboral"
+                      onChange={(e) => field.onChange(e.value)}
+                      className={errors.regimenLaboralId ? "p-invalid" : ""}
+                      style={{ width: "100%", fontWeight: "bold" }}
+                      showClear
+                      disabled={readOnly}
+                    />
+                  )}
+                />
+                {errors.regimenLaboralId && <small className="p-error">{errors.regimenLaboralId.message}</small>}
+              </div>
+
+              <div>
+                <Controller
+                  name="inscritoRemype"
+                  control={control}
+                  render={({ field }) => (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Checkbox
+                        inputId="inscritoRemype"
+                        checked={!!field.value}
+                        onChange={(e) => field.onChange(e.checked)}
+                        disabled={readOnly}
+                      />
+                      <label htmlFor="inscritoRemype" style={{ fontWeight: "bold" }}>
+                        Inscrita en el REMYPE
+                      </label>
+                    </div>
+                  )}
+                />
+                <small style={{ color: "#9c640c" }}>
+                  Si no está inscrita, rige el régimen general aunque sea micro o pequeña empresa.
+                </small>
+              </div>
+
+              <div>
+                <label htmlFor="numeroRemype">Número de inscripción REMYPE</label>
+                <InputText
+                  id="numeroRemype"
+                  {...register("numeroRemype")}
+                  className={errors.numeroRemype ? "p-invalid" : ""}
+                  maxLength={30}
+                  disabled={readOnly}
+                  style={{ fontWeight: "bold" }}
+                />
+                {errors.numeroRemype && <small className="p-error">{errors.numeroRemype.message}</small>}
+              </div>
+
+              <div>
+                <Controller
+                  name="usaSis"
+                  control={control}
+                  render={({ field }) => (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Checkbox
+                        inputId="usaSis"
+                        checked={!!field.value}
+                        onChange={(e) => field.onChange(e.checked)}
+                        disabled={readOnly}
+                      />
+                      <label htmlFor="usaSis" style={{ fontWeight: "bold" }}>
+                        Usa SIS semicontributivo (en lugar de EsSalud)
+                      </label>
+                    </div>
+                  )}
+                />
+                <small style={{ color: "#9c640c" }}>Solo aplica a microempresas.</small>
+              </div>
+
+              <div>
+                <Controller
+                  name="tieneEps"
+                  control={control}
+                  render={({ field }) => (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Checkbox
+                        inputId="tieneEps"
+                        checked={!!field.value}
+                        onChange={(e) => field.onChange(e.checked)}
+                        disabled={readOnly}
+                      />
+                      <label htmlFor="tieneEps" style={{ fontWeight: "bold" }}>
+                        Tiene EPS (bonificación extraordinaria reducida)
+                      </label>
+                    </div>
+                  )}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="relojcontrolApiKey">
+                  ApiKey de Relojcontrol {!esSuperUsuario && <span style={{ color: "#e91e63", fontSize: "0.85em" }}>(Solo SuperUsuario)</span>}
+                </label>
+                <InputText
+                  id="relojcontrolApiKey"
+                  {...register("relojcontrolApiKey")}
+                  className={errors.relojcontrolApiKey ? "p-invalid" : ""}
+                  placeholder="ApiKey de la empresa en Relojcontrol"
+                  disabled={readOnly || !esSuperUsuario}
+                  type="password"
+                  style={{
+                    fontWeight: "bold",
+                    backgroundColor: !esSuperUsuario ? "#f5f5f5" : undefined,
+                    cursor: !esSuperUsuario ? "not-allowed" : undefined,
+                  }}
+                />
+                {errors.relojcontrolApiKey && <small className="p-error">{errors.relojcontrolApiKey.message}</small>}
+              </div>
+
+              <div>
+                <Controller
+                  name="relojcontrolActivo"
+                  control={control}
+                  render={({ field }) => (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Checkbox
+                        inputId="relojcontrolActivo"
+                        checked={!!field.value}
+                        onChange={(e) => field.onChange(e.checked)}
+                        disabled={readOnly || !esSuperUsuario}
+                      />
+                      <label htmlFor="relojcontrolActivo" style={{ fontWeight: "bold" }}>
+                        Importar marcaciones de Relojcontrol
+                      </label>
+                    </div>
+                  )}
+                />
               </div>
             </div>
           </div>

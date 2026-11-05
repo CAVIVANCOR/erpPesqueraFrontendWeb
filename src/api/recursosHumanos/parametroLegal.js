@@ -37,12 +37,6 @@ export async function updateParametroLegal(id, data) {
   return res.data;
 }
 
-/** Activa un borrador. Devuelve { parametro, advertencias }. */
-export async function activarParametroLegal(id, data = {}) {
-  const res = await axios.post(`${API_URL}/${id}/activar`, data, { headers: getAuthHeaders() });
-  return res.data;
-}
-
 export async function deleteParametroLegal(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;

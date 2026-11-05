@@ -8,6 +8,9 @@ import { Dropdown } from "primereact/dropdown";
 import { classNames } from "primereact/utils";
 import { useForm, Controller } from "react-hook-form";
 import { getRegimenesLaboralesActivos } from "../../api/recursosHumanos/regimenLaboral";
+import BooleanToggleButton from "../common/BooleanToggleButton";
+import AuditoriaDialog from "../common/AuditoriaDialog";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 const VALORES_INICIALES = {
   regimenLaboralId: null,
@@ -22,9 +25,10 @@ const aFecha = (valor) => (valor ? new Date(valor) : null);
 
 /**
  * Formulario de parámetro legal.
- * Un parámetro ACTIVO es histórico: solo se permite marcar la validación del contador (soloValidacion = true).
+ * Los parámetros se ingresan válidos y quedan vigentes desde la fecha indicada.
  */
-const ParametroLegalForm = ({ isEdit, defaultValues, onSubmit, onCancel, loading, soloValidacion = false }) => {
+const ParametroLegalForm = ({ isEdit, defaultValues, personalAuditoria = [], onSubmit, onCancel, loading }) => {
+  const usuario = useAuthStore((state) => state.usuario);
   const [regimenes, setRegimenes] = useState([]);
   const {
     control,
@@ -60,10 +64,6 @@ const ParametroLegalForm = ({ isEdit, defaultValues, onSubmit, onCancel, loading
   }, [defaultValues, reset]);
 
   const handleFormSubmit = (data) => {
-    if (soloValidacion) {
-      onSubmit({ validadoPorContador: Boolean(data.validadoPorContador) });
-      return;
-    }
     onSubmit({
       regimenLaboralId: data.regimenLaboralId ? Number(data.regimenLaboralId) : null,
       clave: data.clave.trim().toUpperCase(),
@@ -75,17 +75,10 @@ const ParametroLegalForm = ({ isEdit, defaultValues, onSubmit, onCancel, loading
     });
   };
 
-  const bloqueado = loading || soloValidacion;
+  const bloqueado = loading;
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="p-fluid">
-      {soloValidacion && (
-        <small className="block mb-3 text-color-secondary">
-          El parámetro está activo y forma parte del histórico: solo puede marcarse la validación del contador. Para cambiar
-          su valor, cree un parámetro nuevo con otra vigencia.
-        </small>
-      )}
-
       <div className="field">
         <label htmlFor="regimenLaboralId" className="font-medium">
           Régimen laboral
@@ -233,21 +226,43 @@ const ParametroLegalForm = ({ isEdit, defaultValues, onSubmit, onCancel, loading
           name="validadoPorContador"
           control={control}
           render={({ field }) => (
-            <Button
-              type="button"
-              label={field.value ? "VALIDADO POR EL CONTADOR" : "SIN VALIDAR POR EL CONTADOR"}
-              className={field.value ? "p-button-success" : "p-button-secondary"}
-              icon={field.value ? "pi pi-check-circle" : "pi pi-clock"}
-              onClick={() => field.onChange(!field.value)}
+            <BooleanToggleButton
+              value={field.value}
+              onChange={field.onChange}
+              labelTrue="VALIDADO POR EL CONTADOR"
+              labelFalse="SIN VALIDAR POR EL CONTADOR"
+              severityTrue="success"
+              severityFalse="secondary"
+              icon={field.value ? "pi-check-circle" : "pi-clock"}
               disabled={loading}
-              style={{ width: "100%" }}
             />
           )}
         />
-        <small className="text-color-secondary">Es informativo: si falta, se avisa al activar pero no se bloquea.</small>
+        <small className="text-color-secondary">Es solo informativo.</small>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "end", gap: 8, marginTop: 18 }}>
+        {/* Auditoría (solo en edición) */}
+        {isEdit && defaultValues?.id && (
+          <div style={{ flex: 1 }}>
+            <AuditoriaDialog
+              data={defaultValues}
+              fieldMapping={{
+                fechaCreacion: "creadoEn",
+                creadoPor: "creadoPor",
+                fechaActualizacion: "actualizadoEn",
+                actualizadoPor: "actualizadoPor",
+              }}
+              usuarios={personalAuditoria.map((p) => ({ label: `${p.nombres} ${p.apellidos}`.trim(), value: Number(p.id) }))}
+              esSuperUsuario={Boolean(usuario?.esSuperUsuario)}
+              buttonProps={{
+                label: usuario?.esSuperUsuario ? "Auditoría" : "Ver Auditoría",
+                className: "p-button-info",
+                style: { width: "100%" },
+              }}
+            />
+          </div>
+        )}
         <Button
           type="button"
           label="Cancelar"
@@ -262,7 +277,7 @@ const ParametroLegalForm = ({ isEdit, defaultValues, onSubmit, onCancel, loading
         />
         <Button
           type="submit"
-          label={isEdit ? "Actualizar" : "Guardar borrador"}
+          label={isEdit ? "Actualizar" : "Guardar"}
           icon="pi pi-check"
           loading={loading}
           disabled={loading}

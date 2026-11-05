@@ -6,6 +6,9 @@ import { classNames } from "primereact/utils";
 import { useForm, Controller } from "react-hook-form";
 import PlanCuentaContableSelector from "../common/PlanCuentaContableSelector";
 import EntidadComercialSelector from "../common/EntidadComercialSelector";
+import BooleanToggleButton from "../common/BooleanToggleButton";
+import AuditoriaDialog from "../common/AuditoriaDialog";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 const VALORES_INICIALES = {
   descripcion: "",
@@ -19,7 +22,8 @@ const VALORES_INICIALES = {
 // El selector de cuentas envía 0 cuando se limpia el valor: se normaliza a null
 const aIdOpcional = (valor) => (valor ? Number(valor) : null);
 
-const EntidadPensionForm = ({ isEdit, defaultValues, onSubmit, onCancel, loading }) => {
+const EntidadPensionForm = ({ isEdit, defaultValues, personalAuditoria = [], onSubmit, onCancel, loading }) => {
+  const usuario = useAuthStore((state) => state.usuario);
   const {
     control,
     handleSubmit,
@@ -93,14 +97,15 @@ const EntidadPensionForm = ({ isEdit, defaultValues, onSubmit, onCancel, loading
           name="esOnp"
           control={control}
           render={({ field }) => (
-            <Button
-              type="button"
-              label={field.value ? "ONP (Sistema Nacional de Pensiones)" : "AFP (Sistema Privado de Pensiones)"}
-              className={field.value ? "p-button-warning" : "p-button-info"}
-              icon={field.value ? "pi pi-building-columns" : "pi pi-briefcase"}
-              onClick={() => field.onChange(!field.value)}
+            <BooleanToggleButton
+              value={field.value}
+              onChange={field.onChange}
+              labelTrue="ONP (SISTEMA NACIONAL DE PENSIONES)"
+              labelFalse="AFP (SISTEMA PRIVADO DE PENSIONES)"
+              severityTrue="warning"
+              severityFalse="info"
+              icon={field.value ? "pi-building-columns" : "pi-briefcase"}
               disabled={loading}
-              style={{ width: "100%" }}
             />
           )}
         />
@@ -168,20 +173,42 @@ const EntidadPensionForm = ({ isEdit, defaultValues, onSubmit, onCancel, loading
           name="activo"
           control={control}
           render={({ field }) => (
-            <Button
-              type="button"
-              label={field.value ? "ACTIVO" : "INACTIVO"}
-              className={field.value ? "p-button-success" : "p-button-danger"}
-              icon={field.value ? "pi pi-check-circle" : "pi pi-times-circle"}
-              onClick={() => field.onChange(!field.value)}
+            <BooleanToggleButton
+              value={field.value}
+              onChange={field.onChange}
+              labelTrue="ACTIVO"
+              labelFalse="INACTIVO"
+              severityTrue="success"
+              severityFalse="danger"
+              icon={field.value ? "pi-check-circle" : "pi-times-circle"}
               disabled={loading}
-              style={{ width: "100%" }}
             />
           )}
         />
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "end", gap: 8, marginTop: 18 }}>
+        {/* Auditoría (solo en edición) */}
+        {isEdit && defaultValues?.id && (
+          <div style={{ flex: 1 }}>
+            <AuditoriaDialog
+              data={defaultValues}
+              fieldMapping={{
+                fechaCreacion: "creadoEn",
+                creadoPor: "creadoPor",
+                fechaActualizacion: "actualizadoEn",
+                actualizadoPor: "actualizadoPor",
+              }}
+              usuarios={personalAuditoria.map((p) => ({ label: `${p.nombres} ${p.apellidos}`.trim(), value: Number(p.id) }))}
+              esSuperUsuario={Boolean(usuario?.esSuperUsuario)}
+              buttonProps={{
+                label: usuario?.esSuperUsuario ? "Auditoría" : "Ver Auditoría",
+                className: "p-button-info",
+                style: { width: "100%" },
+              }}
+            />
+          </div>
+        )}
         <Button
           type="button"
           label="Cancelar"

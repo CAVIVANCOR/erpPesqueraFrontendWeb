@@ -1,14 +1,16 @@
 // src/pages/ParametroLegal.jsx
+// Parámetros legales (UIT, RMV, % EsSalud...) y reglas por régimen, con vigencia.
+// Layout: patrón de LineaCredito.jsx (header con filtros dentro del DataTable, ConfirmDialog, Dialog del formulario).
 import React, { useState, useEffect, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
-import { Toast } from "primereact/toast";
 import { Dialog } from "primereact/dialog";
-import { InputText } from "primereact/inputtext";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Dropdown } from "primereact/dropdown";
-import { Toolbar } from "primereact/toolbar";
+import { InputText } from "primereact/inputtext";
 import { Tag } from "primereact/tag";
 import ParametroLegalForm from "../components/parametroLegal/ParametroLegalForm";
 import {
@@ -16,26 +18,21 @@ import {
   getParametroLegalById,
   createParametroLegal,
   updateParametroLegal,
-  activarParametroLegal,
   deleteParametroLegal,
 } from "../api/recursosHumanos/parametroLegal";
 import { getRegimenesLaboralesActivos } from "../api/recursosHumanos/regimenLaboral";
+import { getPersonal } from "../api/personal";
 import { useAuthStore } from "../shared/stores/useAuthStore";
-import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
+import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 import { mensajeDeError } from "../utils/mensajeError";
 
 // Valor especial del filtro de régimen para los parámetros generales (sin régimen)
 const FILTRO_GENERAL = "general";
 
-const OPCIONES_ESTADO = [
-  { label: "Borradores", value: "false" },
-  { label: "Activos", value: "true" },
-];
-
-export default function ParametroLegal({ ruta }) {
-  const { usuario } = useAuthStore();
+const ParametroLegal = ({ ruta }) => {
   const permisos = usePermissions(ruta);
+  const usuario = useAuthStore((state) => state.usuario);
 
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
@@ -45,53 +42,42 @@ export default function ParametroLegal({ ruta }) {
   const [parametros, setParametros] = useState([]);
   const [regimenes, setRegimenes] = useState([]);
   const [regimenFiltro, setRegimenFiltro] = useState(null);
-  const [estadoFiltro, setEstadoFiltro] = useState(null);
-  const [parametroSeleccionado, setParametroSeleccionado] = useState(null);
-  const [parametroDialog, setParametroDialog] = useState(false);
-  const [deleteDialog, setDeleteDialog] = useState(false);
-  const [activarDialog, setActivarDialog] = useState(false);
-  const [isEdit, setIsEdit] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [formData, setFormData] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [parametroSeleccionado, setParametroSeleccionado] = useState(null);
+  // Personal para mostrar quién creó o modificó cada registro (AuditoriaDialog)
+  const [personalAuditoria, setPersonalAuditoria] = useState([]);
 
   const personalId = usuario?.personalId ? Number(usuario.personalId) : null;
 
   useEffect(() => {
-    cargarRegimenes();
+    getRegimenesLaboralesActivos()
+      .then((data) => setRegimenes(data || []))
+      .catch((error) => mostrarError(error, "No se pudieron cargar los regímenes laborales"));
+    getPersonal()
+      .then((data) => setPersonalAuditoria(data || []))
+      .catch((error) => mostrarError(error, "No se pudo cargar el personal para la auditoría"));
   }, []);
 
-  // Recarga al cambiar los filtros del servidor
+  // Recarga al cambiar el filtro de régimen
   useEffect(() => {
-    loadData();
-  }, [regimenFiltro, estadoFiltro]);
+    cargarDatos();
+  }, [regimenFiltro]);
 
   const mostrarError = (error, accionFallida) => {
-    toast.current?.show({
-      severity: "error",
-      summary: "Error",
-      detail: mensajeDeError(error, accionFallida),
-      life: 5000,
-    });
+    toast.current?.show({ severity: "error", summary: "Error", detail: mensajeDeError(error, accionFallida), life: 5000 });
   };
 
   const denegar = (accion) =>
     toast.current?.show({ severity: "warn", summary: "Acceso Denegado", detail: `No tiene permisos para ${accion}`, life: 3000 });
 
-  const cargarRegimenes = async () => {
-    try {
-      setRegimenes((await getRegimenesLaboralesActivos()) || []);
-    } catch (error) {
-      mostrarError(error, "No se pudieron cargar los regímenes laborales");
-    }
-  };
-
-  const loadData = async () => {
+  const cargarDatos = async () => {
     try {
       setLoading(true);
       const filtros = {};
       if (regimenFiltro) filtros.regimenLaboralId = regimenFiltro;
-      if (estadoFiltro) filtros.activo = estadoFiltro;
       setParametros((await getParametrosLegales(filtros)) || []);
     } catch (error) {
       mostrarError(error, "No se pudieron cargar los parámetros legales");
@@ -100,26 +86,21 @@ export default function ParametroLegal({ ruta }) {
     }
   };
 
-  const openNew = () => {
-    setFormData({});
+  const parametrosFiltrados = parametros.filter((parametro) => {
+    const texto = globalFilter.trim().toLowerCase();
+    return !texto || [parametro.clave, parametro.descripcion].filter(Boolean).join(" ").toLowerCase().includes(texto);
+  });
+
+  const handleNew = () => {
     setParametroSeleccionado(null);
-    setIsEdit(false);
-    setParametroDialog(true);
+    setVisible(true);
   };
 
-  const hideDialog = () => {
-    setParametroDialog(false);
-    setFormData({});
-    setParametroSeleccionado(null);
-  };
-
-  const editParametro = async (parametro) => {
+  const handleEdit = async (parametro) => {
     try {
       setLoading(true);
-      setFormData(await getParametroLegalById(parametro.id));
-      setParametroSeleccionado(parametro);
-      setIsEdit(true);
-      setParametroDialog(true);
+      setParametroSeleccionado(await getParametroLegalById(parametro.id));
+      setVisible(true);
     } catch (error) {
       mostrarError(error, "No se pudo cargar el parámetro legal");
     } finally {
@@ -127,13 +108,17 @@ export default function ParametroLegal({ ruta }) {
     }
   };
 
-  const saveParametro = async (data) => {
-    const esEdicion = isEdit && parametroSeleccionado;
+  const handleCancel = () => {
+    setVisible(false);
+    setParametroSeleccionado(null);
+  };
+
+  const handleSave = async (data) => {
+    const esEdicion = Boolean(parametroSeleccionado);
     if (esEdicion && !permisos.puedeEditar) return denegar("editar");
     if (!esEdicion && !permisos.puedeCrear) return denegar("crear");
-
     try {
-      setLoading(true);
+      setGuardando(true);
       if (esEdicion) {
         await updateParametroLegal(parametroSeleccionado.id, { ...data, actualizadoPor: personalId });
       } else {
@@ -142,276 +127,190 @@ export default function ParametroLegal({ ruta }) {
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: esEdicion ? "Parámetro legal actualizado correctamente" : "Parámetro legal registrado como borrador",
+        detail: esEdicion ? "Parámetro legal actualizado correctamente" : "Parámetro legal registrado correctamente",
         life: 3000,
       });
-      hideDialog();
-      loadData();
+      handleCancel();
+      cargarDatos();
     } catch (error) {
       mostrarError(error, "No se pudo guardar el parámetro legal");
     } finally {
-      setLoading(false);
+      setGuardando(false);
     }
   };
 
-  const confirmActivar = (parametro) => {
-    if (!permisos.puedeEditar) return denegar("activar parámetros");
-    setParametroSeleccionado(parametro);
-    setActivarDialog(true);
-  };
+  const valorTexto = (parametro) => Number(parametro.valor).toLocaleString("es-PE", { maximumFractionDigits: 6 });
 
-  const activarConfirmado = async () => {
-    try {
-      setLoading(true);
-      const { advertencias } = await activarParametroLegal(parametroSeleccionado.id, { actualizadoPor: personalId });
-      toast.current?.show({ severity: "success", summary: "Éxito", detail: "Parámetro legal activado correctamente", life: 3000 });
-      // La validación del contador es informativa: se avisa pero no se bloquea
-      (advertencias || []).forEach((mensaje) =>
-        toast.current?.show({ severity: "warn", summary: "Aviso", detail: mensaje, life: 6000 }),
-      );
-      setActivarDialog(false);
-      setParametroSeleccionado(null);
-      loadData();
-    } catch (error) {
-      mostrarError(error, "No se pudo activar el parámetro legal");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const confirmDelete = (parametro) => {
+  const handleDelete = (parametro) => {
     if (!permisos.puedeEliminar) return denegar("eliminar");
-    setParametroSeleccionado(parametro);
-    setDeleteDialog(true);
-  };
-
-  const deleteConfirmed = async () => {
-    try {
-      setLoading(true);
-      await deleteParametroLegal(parametroSeleccionado.id);
-      toast.current?.show({ severity: "success", summary: "Éxito", detail: "Parámetro legal eliminado correctamente", life: 3000 });
-      setDeleteDialog(false);
-      setParametroSeleccionado(null);
-      loadData();
-    } catch (error) {
-      mostrarError(error, "No se pudo eliminar el parámetro legal");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const cerrarDialogosConfirmacion = () => {
-    setDeleteDialog(false);
-    setActivarDialog(false);
-    setParametroSeleccionado(null);
+    confirmDialog({
+      message: `¿Está seguro de eliminar el parámetro ${parametro.clave}?`,
+      header: "Confirmar eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
+      acceptLabel: "Sí, eliminar",
+      rejectLabel: "No",
+      accept: async () => {
+        try {
+          setLoading(true);
+          await deleteParametroLegal(parametro.id);
+          toast.current?.show({ severity: "success", summary: "Éxito", detail: "Parámetro legal eliminado correctamente", life: 3000 });
+          cargarDatos();
+        } catch (error) {
+          mostrarError(error, "No se pudo eliminar el parámetro legal");
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   // ── Plantillas de celdas ───────────────────────────────────
 
-  const regimenBodyTemplate = (rowData) =>
-    rowData.regimenLaboral ? (
-      `${rowData.regimenLaboral.codigoSunat} - ${rowData.regimenLaboral.descripcion}`
+  const regimenBodyTemplate = (parametro) =>
+    parametro.regimenLaboral ? (
+      `${parametro.regimenLaboral.codigoSunat} - ${parametro.regimenLaboral.descripcion}`
     ) : (
       <Tag value="GENERAL" severity="info" />
     );
 
-  const valorBodyTemplate = (rowData) => Number(rowData.valor).toLocaleString("es-PE", { maximumFractionDigits: 6 });
-
-  const vigenciaBodyTemplate = (rowData) =>
-    rowData.vigenteHasta ? formatearFecha(rowData.vigenteHasta) : <Tag value="SIN FIN" severity="secondary" />;
-
-  const validadoBodyTemplate = (rowData) => (
-    <Tag
-      value={rowData.validadoPorContador ? "VALIDADO" : "SIN VALIDAR"}
-      severity={rowData.validadoPorContador ? "success" : "warning"}
-    />
-  );
-
-  const estadoBodyTemplate = (rowData) => (
-    <Tag value={rowData.activo ? "ACTIVO" : "BORRADOR"} severity={rowData.activo ? "success" : "secondary"} />
-  );
-
-  const actionBodyTemplate = (rowData) => (
+  const accionesBodyTemplate = (parametro) => (
     <div className="flex gap-2">
-      {!rowData.activo && (
-        <Button
-          icon="pi pi-check-circle"
-          rounded
-          outlined
-          severity="success"
-          onClick={() => confirmActivar(rowData)}
-          disabled={!permisos.puedeEditar}
-          tooltip="Activar"
-          tooltipOptions={{ position: "top" }}
-        />
-      )}
       <Button
-        icon="pi pi-pencil"
+        icon={permisos.puedeEditar ? "pi pi-pencil" : "pi pi-eye"}
         rounded
         outlined
         className="p-button-warning"
-        onClick={() => editParametro(rowData)}
-        disabled={!permisos.puedeEditar}
-        tooltip={rowData.activo ? "Marcar validación del contador" : "Editar"}
+        onClick={() => handleEdit(parametro)}
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
         tooltipOptions={{ position: "top" }}
       />
-      {!rowData.activo && (
-        <Button
-          icon="pi pi-trash"
-          rounded
-          outlined
-          severity="danger"
-          onClick={() => confirmDelete(rowData)}
-          disabled={!permisos.puedeEliminar}
-          tooltip="Eliminar borrador"
-          tooltipOptions={{ position: "top" }}
-        />
-      )}
+      <Button
+        icon="pi pi-trash"
+        rounded
+        outlined
+        severity="danger"
+        onClick={() => handleDelete(parametro)}
+        disabled={!permisos.puedeEliminar}
+        tooltip="Eliminar"
+        tooltipOptions={{ position: "top" }}
+      />
     </div>
   );
 
   const opcionesRegimen = [
     { label: "General (sin régimen)", value: FILTRO_GENERAL },
-    ...regimenes.map((regimen) => ({
-      label: `${regimen.codigoSunat} - ${regimen.descripcion}`,
-      value: String(regimen.id),
-    })),
+    ...regimenes.map((regimen) => ({ label: `${regimen.codigoSunat} - ${regimen.descripcion}`, value: String(regimen.id) })),
   ];
 
-  const leftToolbarTemplate = () => (
-    <div className="flex flex-wrap gap-2 align-items-center">
-      <Button label="Nuevo" icon="pi pi-plus" severity="success" onClick={openNew} disabled={!permisos.puedeCrear} />
-      <Dropdown
-        value={regimenFiltro}
-        options={opcionesRegimen}
-        onChange={(e) => setRegimenFiltro(e.value)}
-        placeholder="Todos los regímenes"
-        showClear
-        style={{ width: "260px" }}
-      />
-      <Dropdown
-        value={estadoFiltro}
-        options={OPCIONES_ESTADO}
-        onChange={(e) => setEstadoFiltro(e.value)}
-        placeholder="Todos los estados"
-        showClear
-        style={{ width: "180px" }}
-      />
+  const header = (
+    <div
+      style={{
+        alignItems: "end",
+        display: "flex",
+        gap: 10,
+        flexDirection: window.innerWidth < 768 ? "column" : "row",
+        marginBottom: 15,
+      }}
+    >
+      <div style={{ flex: 2 }}>
+        <h3 style={{ margin: 0 }}>Parámetros Legales y Reglas por Régimen</h3>
+        <small style={{ color: "#666", fontWeight: "normal" }}>Total de registros: {parametrosFiltrados.length}</small>
+      </div>
+      <div style={{ flex: 2 }}>
+        <label style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>Régimen</label>
+        <Dropdown value={regimenFiltro} options={opcionesRegimen} onChange={(e) => setRegimenFiltro(e.value)} placeholder="Todos los regímenes" showClear style={{ width: "100%" }} />
+      </div>
+      <div style={{ flex: 2 }}>
+        <label style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>Buscar</label>
+        <span className="p-input-icon-left" style={{ width: "100%" }}>
+          <i className="pi pi-search" />
+          <InputText value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Clave o descripción" style={{ width: "100%" }} />
+        </span>
+      </div>
+      <div style={{ flex: 1 }}>
+        <Button
+          label="Nuevo"
+          icon="pi pi-plus"
+          className="p-button-success"
+          severity="success"
+          raised
+          onClick={handleNew}
+          disabled={!permisos.puedeCrear || loading}
+          tooltip={!permisos.puedeCrear ? "No tiene permisos para crear" : "Nuevo parámetro legal"}
+          style={{ width: "100%" }}
+          size="small"
+        />
+      </div>
+      <div style={{ flex: 0.6 }}>
+        <Button icon="pi pi-refresh" className="p-button-outlined p-button-info" onClick={cargarDatos} loading={loading} tooltip="Actualizar" tooltipOptions={{ position: "top" }} style={{ width: "100%" }} size="small" />
+      </div>
     </div>
-  );
-
-  const rightToolbarTemplate = () => (
-    <span className="p-input-icon-left">
-      <i className="pi pi-search" />
-      <InputText
-        type="search"
-        value={globalFilter}
-        onChange={(e) => setGlobalFilter(e.target.value)}
-        placeholder="Buscar..."
-        style={{ width: "300px" }}
-      />
-    </span>
-  );
-
-  const deleteDialogFooter = (
-    <>
-      <Button label="No" icon="pi pi-times" outlined onClick={cerrarDialogosConfirmacion} />
-      <Button label="Sí" icon="pi pi-check" severity="danger" onClick={deleteConfirmed} />
-    </>
-  );
-
-  const activarDialogFooter = (
-    <>
-      <Button label="No" icon="pi pi-times" outlined onClick={cerrarDialogosConfirmacion} />
-      <Button label="Sí, activar" icon="pi pi-check" severity="success" onClick={activarConfirmado} />
-    </>
   );
 
   return (
     <div className="card">
       <Toast ref={toast} />
-      <h2 style={{ fontSize: getResponsiveFontSize() }}>Parámetros Legales y Reglas por Régimen</h2>
-
-      <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate} />
+      <ConfirmDialog />
 
       <DataTable
-        value={parametros}
+        value={parametrosFiltrados}
         loading={loading}
-        globalFilter={globalFilter}
+        header={header}
         emptyMessage="No se encontraron parámetros legales"
+        className="datatable-responsive"
+        showGridlines
+        stripedRows
         paginator
         rows={15}
         rowsPerPageOptions={[10, 15, 25, 50]}
-        size="small"
-        stripedRows
-        showGridlines
+        dataKey="id"
+        style={{ fontSize: getResponsiveFontSize() }}
       >
-        <Column field="clave" header="Clave" sortable filter filterPlaceholder="Buscar por clave" style={{ width: "200px" }} />
+        <Column field="clave" header="Clave" sortable style={{ width: 230 }} body={(parametro) => <strong>{parametro.clave}</strong>} />
         <Column field="descripcion" header="Descripción" sortable />
-        <Column header="Régimen" body={regimenBodyTemplate} style={{ width: "200px" }} />
-        <Column header="Valor" body={valorBodyTemplate} style={{ width: "120px", textAlign: "right" }} />
-        <Column field="vigenteDesde" header="Desde" body={(rowData) => formatearFecha(rowData.vigenteDesde)} sortable style={{ width: "110px" }} />
-        <Column header="Hasta" body={vigenciaBodyTemplate} style={{ width: "110px" }} />
-        <Column header="Contador" body={validadoBodyTemplate} style={{ width: "120px" }} />
-        <Column field="activo" header="Estado" body={estadoBodyTemplate} sortable style={{ width: "110px" }} />
-        <Column body={actionBodyTemplate} exportable={false} style={{ width: "150px" }} header="Acciones" />
+        <Column header="Régimen" body={regimenBodyTemplate} style={{ width: 200 }} />
+        <Column header="Valor" body={valorTexto} style={{ width: 120, textAlign: "right" }} />
+        <Column field="vigenteDesde" header="Desde" body={(parametro) => formatearFecha(parametro.vigenteDesde)} sortable style={{ width: 110 }} />
+        <Column
+          header="Hasta"
+          body={(parametro) => (parametro.vigenteHasta ? formatearFecha(parametro.vigenteHasta) : <Tag value="SIN FIN" severity="secondary" />)}
+          style={{ width: 110 }}
+        />
+        <Column
+          header="Contador"
+          body={(parametro) => <Tag value={parametro.validadoPorContador ? "VALIDADO" : "SIN VALIDAR"} severity={parametro.validadoPorContador ? "success" : "warning"} />}
+          style={{ width: 120 }}
+        />
+        <Column header="Acciones" body={accionesBodyTemplate} exportable={false} style={{ width: 120 }} />
       </DataTable>
 
       <Dialog
-        visible={parametroDialog}
+        header={
+          parametroSeleccionado
+            ? permisos.puedeEditar
+              ? "Editar Parámetro Legal"
+              : "Ver Parámetro Legal"
+            : "Nuevo Parámetro Legal"
+        }
+        visible={visible}
         style={{ width: "650px" }}
-        header={isEdit ? "Editar Parámetro Legal" : "Nuevo Parámetro Legal"}
+        onHide={handleCancel}
         modal
         className="p-fluid"
-        onHide={hideDialog}
+        key={`parametro-${parametroSeleccionado?.id || "nuevo"}`}
       >
         <ParametroLegalForm
-          isEdit={isEdit}
-          defaultValues={formData}
-          onSubmit={saveParametro}
-          onCancel={hideDialog}
-          loading={loading}
-          soloValidacion={Boolean(isEdit && parametroSeleccionado?.activo)}
+          isEdit={Boolean(parametroSeleccionado)}
+          defaultValues={parametroSeleccionado || {}}
+          personalAuditoria={personalAuditoria}
+          onSubmit={handleSave}
+          onCancel={handleCancel}
+          loading={guardando}
         />
-      </Dialog>
-
-      <Dialog
-        visible={activarDialog}
-        style={{ width: "500px" }}
-        header="Activar parámetro"
-        modal
-        footer={activarDialogFooter}
-        onHide={cerrarDialogosConfirmacion}
-      >
-        <div className="confirmation-content">
-          <i className="pi pi-question-circle mr-3" style={{ fontSize: "2rem" }} />
-          {parametroSeleccionado && (
-            <span>
-              ¿Activar <b>{parametroSeleccionado.clave}</b> con valor <b>{valorBodyTemplate(parametroSeleccionado)}</b> desde{" "}
-              <b>{formatearFecha(parametroSeleccionado.vigenteDesde)}</b>? El parámetro activo anterior de la misma clave se
-              cerrará el día previo.
-            </span>
-          )}
-        </div>
-      </Dialog>
-
-      <Dialog
-        visible={deleteDialog}
-        style={{ width: "450px" }}
-        header="Confirmar"
-        modal
-        footer={deleteDialogFooter}
-        onHide={cerrarDialogosConfirmacion}
-      >
-        <div className="confirmation-content">
-          <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: "2rem" }} />
-          {parametroSeleccionado && (
-            <span>
-              ¿Está seguro de eliminar el borrador del parámetro <b>{parametroSeleccionado.clave}</b>?
-            </span>
-          )}
-        </div>
       </Dialog>
     </div>
   );
-}
+};
+
+export default ParametroLegal;
