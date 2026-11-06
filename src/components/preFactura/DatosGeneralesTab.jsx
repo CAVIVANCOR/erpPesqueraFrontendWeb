@@ -1354,7 +1354,9 @@ export default function DatosGeneralesTab({
               }
               severity={formData.aplicaImpuestoRenta ? "warning" : "secondary"}
               onClick={() => onChange("aplicaImpuestoRenta", !formData.aplicaImpuestoRenta)}
-              disabled={!puedeEditarConPermiso}
+              disabled
+              tooltip="Las empresas del grupo no emiten recibos por honorarios: en ventas no hay retención de renta de 4ta"
+              tooltipOptions={{ position: "top" }}
               outlined
               style={{
                 width: "100%",

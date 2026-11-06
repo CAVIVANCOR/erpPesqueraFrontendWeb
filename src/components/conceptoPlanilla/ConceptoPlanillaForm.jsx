@@ -479,8 +479,8 @@ export default function ConceptoPlanillaForm({ concepto, personalAuditoria = [],
             <PlanCuentaContableSelector
               value={cuentas[clave]?.cuentaGastoId || null}
               onChange={(id) => actualizarCuenta(clave, "cuentaGastoId", id)}
-              label="Cuenta de gasto"
-              placeholder="Elegir cuenta de gasto"
+              label="Cuenta del Debe (gasto; en un descuento, la deuda con el trabajador)"
+              placeholder="Elegir cuenta del Debe"
               disabled={bloqueado}
               required={false}
               showClearButton={true}
@@ -490,8 +490,8 @@ export default function ConceptoPlanillaForm({ concepto, personalAuditoria = [],
             <PlanCuentaContableSelector
               value={cuentas[clave]?.cuentaPasivoId || null}
               onChange={(id) => actualizarCuenta(clave, "cuentaPasivoId", id)}
-              label="Cuenta por pagar"
-              placeholder="Elegir cuenta por pagar"
+              label="Cuenta del Haber (por pagar; en un descuento, la entidad)"
+              placeholder="Elegir cuenta del Haber"
               disabled={bloqueado}
               required={false}
               showClearButton={true}
@@ -512,7 +512,7 @@ export default function ConceptoPlanillaForm({ concepto, personalAuditoria = [],
                 fechaActualizacion: "actualizadoEn",
                 actualizadoPor: "actualizadoPor",
               }}
-              usuarios={personalAuditoria.map((p) => ({ label: `${p.nombres} ${p.apellidos}`.trim(), value: Number(p.id) }))}
+              usuarios={personalAuditoria.map((p) => ({ label: `${p.nombres} ${p.apellidos}`.trim(), value: Number(p.id), urlFotoPersona: p.urlFotoPersona }))}
               esSuperUsuario={Boolean(usuario?.esSuperUsuario)}
               buttonProps={{
                 label: usuario?.esSuperUsuario ? "Auditoría" : "Ver Auditoría",

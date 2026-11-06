@@ -8,6 +8,7 @@ import PlanCuentaContableSelector from "../common/PlanCuentaContableSelector";
 import EntidadComercialSelector from "../common/EntidadComercialSelector";
 import BooleanToggleButton from "../common/BooleanToggleButton";
 import AuditoriaDialog from "../common/AuditoriaDialog";
+import TarifaEntidadPensionList from "./TarifaEntidadPensionList";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 const VALORES_INICIALES = {
@@ -22,7 +23,7 @@ const VALORES_INICIALES = {
 // El selector de cuentas envía 0 cuando se limpia el valor: se normaliza a null
 const aIdOpcional = (valor) => (valor ? Number(valor) : null);
 
-const EntidadPensionForm = ({ isEdit, defaultValues, personalAuditoria = [], onSubmit, onCancel, loading }) => {
+const EntidadPensionForm = ({ isEdit, defaultValues, personalAuditoria = [], permisos = {}, onSubmit, onCancel, loading }) => {
   const usuario = useAuthStore((state) => state.usuario);
   const {
     control,
@@ -187,6 +188,13 @@ const EntidadPensionForm = ({ isEdit, defaultValues, personalAuditoria = [], onS
         />
       </div>
 
+      {/* Tarifas con vigencia: solo si la entidad ya existe (patrón de las sublíneas de la línea de crédito) */}
+      {isEdit && defaultValues?.id && (
+        <div className="mt-4">
+          <TarifaEntidadPensionList entidadPensionId={defaultValues.id} permisos={permisos} />
+        </div>
+      )}
+
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "end", gap: 8, marginTop: 18 }}>
         {/* Auditoría (solo en edición) */}
         {isEdit && defaultValues?.id && (
@@ -199,7 +207,7 @@ const EntidadPensionForm = ({ isEdit, defaultValues, personalAuditoria = [], onS
                 fechaActualizacion: "actualizadoEn",
                 actualizadoPor: "actualizadoPor",
               }}
-              usuarios={personalAuditoria.map((p) => ({ label: `${p.nombres} ${p.apellidos}`.trim(), value: Number(p.id) }))}
+              usuarios={personalAuditoria.map((p) => ({ label: `${p.nombres} ${p.apellidos}`.trim(), value: Number(p.id), urlFotoPersona: p.urlFotoPersona }))}
               esSuperUsuario={Boolean(usuario?.esSuperUsuario)}
               buttonProps={{
                 label: usuario?.esSuperUsuario ? "Auditoría" : "Ver Auditoría",

@@ -13,17 +13,12 @@ import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Tag } from "primereact/tag";
 import EntidadPensionForm from "../components/entidadPension/EntidadPensionForm";
-import TarifaEntidadPensionForm from "../components/entidadPension/TarifaEntidadPensionForm";
 import {
   getEntidadesPension,
   getEntidadPensionById,
   createEntidadPension,
   updateEntidadPension,
   deleteEntidadPension,
-  getTarifasEntidadPension,
-  createTarifaEntidadPension,
-  updateTarifaEntidadPension,
-  deleteTarifaEntidadPension,
 } from "../api/recursosHumanos/entidadPension";
 import { getPersonal } from "../api/personal";
 import { useAuthStore } from "../shared/stores/useAuthStore";
@@ -64,13 +59,6 @@ const EntidadPension = ({ ruta }) => {
   const [globalFilter, setGlobalFilter] = useState("");
   // Personal para mostrar quién creó o modificó cada registro (AuditoriaDialog)
   const [personalAuditoria, setPersonalAuditoria] = useState([]);
-
-  // Tarifas con vigencia de la entidad seleccionada
-  const [tarifasVisible, setTarifasVisible] = useState(false);
-  const [entidadTarifas, setEntidadTarifas] = useState(null);
-  const [tarifas, setTarifas] = useState([]);
-  const [tarifaFormVisible, setTarifaFormVisible] = useState(false);
-  const [tarifaSeleccionada, setTarifaSeleccionada] = useState(null);
 
   const personalId = usuario?.personalId ? Number(usuario.personalId) : null;
 
@@ -180,97 +168,6 @@ const EntidadPension = ({ ruta }) => {
     });
   };
 
-  // ── Tarifas ────────────────────────────────────────────────
-
-  const cargarTarifas = async (entidadId) => {
-    try {
-      setLoading(true);
-      setTarifas((await getTarifasEntidadPension(entidadId)) || []);
-    } catch (error) {
-      mostrarError(error, "No se pudieron cargar las tarifas de la entidad");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const abrirTarifas = async (entidad) => {
-    setEntidadTarifas(entidad);
-    setTarifasVisible(true);
-    await cargarTarifas(entidad.id);
-  };
-
-  const cerrarTarifas = () => {
-    setTarifasVisible(false);
-    setTarifas([]);
-    setEntidadTarifas(null);
-    cargarDatos();
-  };
-
-  const nuevaTarifa = () => {
-    setTarifaSeleccionada(null);
-    setTarifaFormVisible(true);
-  };
-
-  const editarTarifa = (tarifa) => {
-    setTarifaSeleccionada(tarifa);
-    setTarifaFormVisible(true);
-  };
-
-  const cerrarFormTarifa = () => {
-    setTarifaFormVisible(false);
-    setTarifaSeleccionada(null);
-  };
-
-  const handleSaveTarifa = async (data) => {
-    const esEdicion = Boolean(tarifaSeleccionada);
-    if (esEdicion && !permisos.puedeEditar) return denegar("editar");
-    if (!esEdicion && !permisos.puedeCrear) return denegar("crear");
-    try {
-      setGuardando(true);
-      if (esEdicion) {
-        await updateTarifaEntidadPension(tarifaSeleccionada.id, { ...data, actualizadoPor: personalId });
-      } else {
-        await createTarifaEntidadPension({ ...data, entidadPensionId: Number(entidadTarifas.id), creadoPor: personalId });
-      }
-      toast.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: esEdicion ? "Tarifa actualizada correctamente" : "Tarifa registrada correctamente",
-        life: 3000,
-      });
-      cerrarFormTarifa();
-      cargarTarifas(entidadTarifas.id);
-    } catch (error) {
-      mostrarError(error, "No se pudo guardar la tarifa");
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  const handleDeleteTarifa = (tarifa) => {
-    if (!permisos.puedeEliminar) return denegar("eliminar");
-    confirmDialog({
-      message: `¿Está seguro de eliminar la tarifa vigente desde ${formatearFecha(tarifa.vigenteDesde)}?`,
-      header: "Confirmar eliminación",
-      icon: "pi pi-exclamation-triangle",
-      acceptClassName: "p-button-danger",
-      acceptLabel: "Sí, eliminar",
-      rejectLabel: "No",
-      accept: async () => {
-        try {
-          setLoading(true);
-          await deleteTarifaEntidadPension(tarifa.id);
-          toast.current?.show({ severity: "success", summary: "Éxito", detail: "Tarifa eliminada correctamente", life: 3000 });
-          cargarTarifas(entidadTarifas.id);
-        } catch (error) {
-          mostrarError(error, "No se pudo eliminar la tarifa");
-        } finally {
-          setLoading(false);
-        }
-      },
-    });
-  };
-
   // ── Plantillas de celdas ───────────────────────────────────
 
   const ultimaTarifaBodyTemplate = (entidad) => {
@@ -281,15 +178,6 @@ const EntidadPension = ({ ruta }) => {
 
   const accionesBodyTemplate = (entidad) => (
     <div className="flex gap-2">
-      <Button
-        icon="pi pi-percentage"
-        rounded
-        outlined
-        severity="info"
-        onClick={() => abrirTarifas(entidad)}
-        tooltip="Tarifas con vigencia"
-        tooltipOptions={{ position: "top" }}
-      />
       <Button
         icon={permisos.puedeEditar ? "pi pi-pencil" : "pi pi-eye"}
         rounded
@@ -305,30 +193,6 @@ const EntidadPension = ({ ruta }) => {
         outlined
         severity="danger"
         onClick={() => handleDelete(entidad)}
-        disabled={!permisos.puedeEliminar}
-        tooltip="Eliminar"
-        tooltipOptions={{ position: "top" }}
-      />
-    </div>
-  );
-
-  const tarifaAccionesBodyTemplate = (tarifa) => (
-    <div className="flex gap-2">
-      <Button
-        icon={permisos.puedeEditar ? "pi pi-pencil" : "pi pi-eye"}
-        rounded
-        outlined
-        className="p-button-warning"
-        onClick={() => editarTarifa(tarifa)}
-        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
-        tooltipOptions={{ position: "top" }}
-      />
-      <Button
-        icon="pi pi-trash"
-        rounded
-        outlined
-        severity="danger"
-        onClick={() => handleDeleteTarifa(tarifa)}
         disabled={!permisos.puedeEliminar}
         tooltip="Eliminar"
         tooltipOptions={{ position: "top" }}
@@ -419,7 +283,7 @@ const EntidadPension = ({ ruta }) => {
           body={(entidad) => <Tag value={entidad.activo ? "ACTIVO" : "INACTIVO"} severity={entidad.activo ? "success" : "danger"} />}
           style={{ width: 110 }}
         />
-        <Column header="Acciones" body={accionesBodyTemplate} exportable={false} style={{ width: 170 }} />
+        <Column header="Acciones" body={accionesBodyTemplate} exportable={false} style={{ width: 120 }} />
       </DataTable>
 
       <Dialog
@@ -431,7 +295,7 @@ const EntidadPension = ({ ruta }) => {
             : "Nueva Entidad de Pensión"
         }
         visible={visible}
-        style={{ width: "650px" }}
+        style={{ width: "1000px" }}
         onHide={handleCancel}
         modal
         className="p-fluid"
@@ -441,71 +305,13 @@ const EntidadPension = ({ ruta }) => {
           isEdit={Boolean(entidadSeleccionada)}
           defaultValues={entidadSeleccionada || {}}
           personalAuditoria={personalAuditoria}
+          permisos={permisos}
           onSubmit={handleSave}
           onCancel={handleCancel}
           loading={guardando}
         />
       </Dialog>
 
-      {/* Tarifas con vigencia de la entidad */}
-      <Dialog
-        header={`Tarifas con vigencia - ${entidadTarifas?.descripcion || ""}`}
-        visible={tarifasVisible}
-        style={{ width: "1000px" }}
-        onHide={cerrarTarifas}
-        modal
-      >
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
-          <Button
-            label="Nueva tarifa"
-            icon="pi pi-plus"
-            className="p-button-success"
-            severity="success"
-            raised
-            size="small"
-            onClick={nuevaTarifa}
-            disabled={!permisos.puedeCrear}
-          />
-        </div>
-        <DataTable value={tarifas} loading={loading} emptyMessage="Esta entidad aún no tiene tarifas registradas" size="small" stripedRows showGridlines>
-          <Column field="vigenteDesde" header="Desde" body={(tarifa) => formatearFecha(tarifa.vigenteDesde)} sortable />
-          <Column
-            header="Hasta"
-            body={(tarifa) => (tarifa.vigenteHasta ? formatearFecha(tarifa.vigenteHasta) : <Tag value="VIGENTE" severity="success" />)}
-          />
-          <Column header="Aporte" body={(tarifa) => formatearPorcentaje(tarifa.porcentajeAporte)} />
-          <Column header="Seguro" body={(tarifa) => formatearPorcentaje(tarifa.porcentajeSeguro)} />
-          <Column header="Comisión flujo" body={(tarifa) => formatearPorcentaje(tarifa.porcentajeComisionFlujo)} />
-          <Column header="Comisión mixta" body={(tarifa) => formatearPorcentaje(tarifa.porcentajeComisionMixta)} />
-          <Column
-            header="Rem. máx. asegurable"
-            body={(tarifa) =>
-              tarifa.remuneracionMaximaAsegurable === null || tarifa.remuneracionMaximaAsegurable === undefined
-                ? "-"
-                : `S/ ${Number(tarifa.remuneracionMaximaAsegurable).toFixed(2)}`
-            }
-          />
-          <Column body={tarifaAccionesBodyTemplate} exportable={false} style={{ width: 120 }} header="Acciones" />
-        </DataTable>
-      </Dialog>
-
-      <Dialog
-        header={tarifaSeleccionada ? "Editar Tarifa" : "Nueva Tarifa"}
-        visible={tarifaFormVisible}
-        style={{ width: "550px" }}
-        onHide={cerrarFormTarifa}
-        modal
-        className="p-fluid"
-        key={`tarifa-${tarifaSeleccionada?.id || "nueva"}`}
-      >
-        <TarifaEntidadPensionForm
-          isEdit={Boolean(tarifaSeleccionada)}
-          defaultValues={tarifaSeleccionada || {}}
-          onSubmit={handleSaveTarifa}
-          onCancel={cerrarFormTarifa}
-          loading={guardando}
-        />
-      </Dialog>
     </div>
   );
 };

@@ -171,7 +171,7 @@ const RegimenLaboralForm = ({ isEdit, defaultValues, personalAuditoria = [], onS
                 fechaActualizacion: "actualizadoEn",
                 actualizadoPor: "actualizadoPor",
               }}
-              usuarios={personalAuditoria.map((p) => ({ label: `${p.nombres} ${p.apellidos}`.trim(), value: Number(p.id) }))}
+              usuarios={personalAuditoria.map((p) => ({ label: `${p.nombres} ${p.apellidos}`.trim(), value: Number(p.id), urlFotoPersona: p.urlFotoPersona }))}
               esSuperUsuario={Boolean(usuario?.esSuperUsuario)}
               buttonProps={{
                 label: usuario?.esSuperUsuario ? "Auditoría" : "Ver Auditoría",

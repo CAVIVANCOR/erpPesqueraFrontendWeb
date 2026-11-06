@@ -180,8 +180,10 @@ const AuditoriaDialog = ({
   return (
     <>
       <Button
+        type="button"
         {...defaultButtonProps}
         onClick={(e) => {
+          e.preventDefault();
           e.stopPropagation();
           setVisible(true);
         }}

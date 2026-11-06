@@ -846,13 +846,19 @@ export default function Dashboard() {
       titulo: "RECURSOS HUMANOS",
       descripcion: "Personal, contratos, planillas, asistencia y beneficios",
       icono: "pi-id-card",
-      modulos: 13,
+      modulos: 14,
       color: "#F5B041",
       submenu: [
         {
           label: "Personal",
           key: "personal",
           icon: "pi-id-card",
+          tab: "operaciones",
+        },
+        {
+          label: "Planillas",
+          key: "planilla",
+          icon: "pi-calculator",
           tab: "operaciones",
         },
         {
@@ -877,12 +883,6 @@ export default function Dashboard() {
           label: "Conceptos de Planilla",
           key: "conceptoPlanilla",
           icon: "pi-list-check",
-          tab: "tablas",
-        },
-        {
-          label: "Formatos Externos (PLAME/AFPnet)",
-          key: "plantillaFormatoExterno",
-          icon: "pi-file-export",
           tab: "tablas",
         },
 

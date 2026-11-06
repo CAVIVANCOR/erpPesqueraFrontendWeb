@@ -280,9 +280,9 @@ const ParametroLegal = ({ ruta }) => {
         <Column
           header="Contador"
           body={(parametro) => <Tag value={parametro.validadoPorContador ? "VALIDADO" : "SIN VALIDAR"} severity={parametro.validadoPorContador ? "success" : "warning"} />}
-          style={{ width: 120 }}
+          style={{ width: 140 }}
         />
-        <Column header="Acciones" body={accionesBodyTemplate} exportable={false} style={{ width: 120 }} />
+        <Column header="Acciones" body={accionesBodyTemplate} exportable={false} style={{ width: 140 }} />
       </DataTable>
 
       <Dialog

@@ -22,6 +22,7 @@ import {
 } from "../api/empresa";
 import EmpresaForm from "../components/empresas/EmpresaForm";
 import { getResponsiveFontSize } from "../utils/utils";
+import { mensajeDeError } from "../utils/mensajeError";
 
 /**
  * Página de gestión de empresas.
@@ -75,7 +76,7 @@ export default function Empresas({ ruta }) {
       const data = await getEmpresas();
       setEmpresas(Array.isArray(data) ? data : data.empresas || []);
     } catch (err) {
-      mostrarToast("error", "Error", "No se pudieron cargar las empresas");
+      mostrarToast("error", "Error", mensajeDeError(err, "No se pudieron cargar las empresas"));
     } finally {
       setLoading(false);
     }
@@ -83,7 +84,8 @@ export default function Empresas({ ruta }) {
 
   // Muestra notificación Toast
   function mostrarToast(severity, summary, detail) {
-    toast.current?.show({ severity, summary, detail, life: 3500 });
+    // Los errores duran más: el usuario necesita leer qué dato debe corregir
+    toast.current?.show({ severity, summary, detail, life: severity === "error" ? 8000 : 3500 });
   }
 
   // Maneja el submit del formulario (alta o edición)
@@ -168,7 +170,7 @@ export default function Empresas({ ruta }) {
       setMostrarDialogo(false);
       cargarEmpresas();
     } catch (err) {
-      mostrarToast("error", "Error", "No se pudo guardar la empresa.");
+      mostrarToast("error", "Error", mensajeDeError(err, "No se pudo guardar la empresa"));
     } finally {
       setFormLoading(false);
     }
@@ -205,7 +207,7 @@ export default function Empresas({ ruta }) {
       );
       cargarEmpresas();
     } catch (err) {
-      mostrarToast("error", "Error", "No se pudo eliminar la empresa.");
+      mostrarToast("error", "Error", mensajeDeError(err, "No se pudo eliminar la empresa"));
     } finally {
       setLoading(false);
     }

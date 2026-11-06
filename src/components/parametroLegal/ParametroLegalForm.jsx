@@ -18,6 +18,7 @@ const VALORES_INICIALES = {
   descripcion: "",
   valor: null,
   vigenteDesde: null,
+  vigenteHasta: null,
   validadoPorContador: false,
 };
 
@@ -40,7 +41,8 @@ const ParametroLegalForm = ({ isEdit, defaultValues, personalAuditoria = [], onS
   useEffect(() => {
     const cargarRegimenes = async () => {
       try {
-        setRegimenes((await getRegimenesLaboralesActivos()) || []);
+        // Ids como número: el valor del formulario es numérico y el Dropdown compara por igualdad estricta
+        setRegimenes(((await getRegimenesLaboralesActivos()) || []).map((r) => ({ ...r, id: Number(r.id) })));
       } catch (error) {
         console.error("Error al cargar regímenes laborales:", error);
       }
@@ -56,6 +58,7 @@ const ParametroLegalForm = ({ isEdit, defaultValues, personalAuditoria = [], onS
         descripcion: defaultValues.descripcion || "",
         valor: defaultValues.valor !== undefined && defaultValues.valor !== null ? Number(defaultValues.valor) : null,
         vigenteDesde: aFecha(defaultValues.vigenteDesde),
+        vigenteHasta: aFecha(defaultValues.vigenteHasta),
         validadoPorContador: Boolean(defaultValues.validadoPorContador),
       });
     } else {
@@ -71,6 +74,7 @@ const ParametroLegalForm = ({ isEdit, defaultValues, personalAuditoria = [], onS
       valor: Number(data.valor),
       // Fecha persistida: ISO de la medianoche local (nunca texto YYYY-MM-DD, que retrocede un día en Perú)
       vigenteDesde: data.vigenteDesde.toISOString(),
+      vigenteHasta: data.vigenteHasta ? data.vigenteHasta.toISOString() : null,
       validadoPorContador: Boolean(data.validadoPorContador),
     });
   };
@@ -216,6 +220,28 @@ const ParametroLegalForm = ({ isEdit, defaultValues, personalAuditoria = [], onS
           />
           {errors.vigenteDesde && <small className="p-error">{errors.vigenteDesde.message}</small>}
         </div>
+
+        <div className="field col-6">
+          <label htmlFor="vigenteHasta" className="font-medium">
+            Vigente hasta
+          </label>
+          <Controller
+            name="vigenteHasta"
+            control={control}
+            render={({ field }) => (
+              <Calendar
+                id={field.name}
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                showButtonBar
+                disabled={bloqueado}
+              />
+            )}
+          />
+          <small className="text-500">Último día en que rige. Vacío = sin fecha de término. Úselo cuando la norma deja de aplicar.</small>
+        </div>
       </div>
 
       <div className="field mt-4">
@@ -253,7 +279,7 @@ const ParametroLegalForm = ({ isEdit, defaultValues, personalAuditoria = [], onS
                 fechaActualizacion: "actualizadoEn",
                 actualizadoPor: "actualizadoPor",
               }}
-              usuarios={personalAuditoria.map((p) => ({ label: `${p.nombres} ${p.apellidos}`.trim(), value: Number(p.id) }))}
+              usuarios={personalAuditoria.map((p) => ({ label: `${p.nombres} ${p.apellidos}`.trim(), value: Number(p.id), urlFotoPersona: p.urlFotoPersona }))}
               esSuperUsuario={Boolean(usuario?.esSuperUsuario)}
               buttonProps={{
                 label: usuario?.esSuperUsuario ? "Auditoría" : "Ver Auditoría",
