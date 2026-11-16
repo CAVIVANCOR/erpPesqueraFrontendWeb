@@ -113,16 +113,14 @@ const EntregasARendirNovedadCard = ({
   };
 
   /**
-   * Cargar productos filtrados por familias de gastos y empresaId
+   * Cargar productos filtrados por familias de gastos (maestro único: sin filtro por empresa)
    */
   const cargarProductos = async () => {
     try {
       const familiasGastosIds = [2, 3, 4, 6, 7];
       const productosData = await getProductos();
-      const productosFiltrados = productosData.filter(
-        (p) =>
-          familiasGastosIds.includes(Number(p.familiaId)) &&
-          Number(p.empresaId) === Number(empresaId),
+      const productosFiltrados = productosData.filter((p) =>
+        familiasGastosIds.includes(Number(p.familiaId)),
       );
       setProductos(productosFiltrados);
     } catch (error) {

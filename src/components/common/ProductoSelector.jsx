@@ -177,17 +177,8 @@ const ProductoSelector = ({
     return empresasOrdenadas;
   }, [empresas]);
 
-  // ⚠️ FILTRO POR EMPRESA PRIMERO
-  const productosFiltradosPorEmpresa = useMemo(() => {
-    if (!empresaFiltro) {
-      return productos;
-    }
-    
-    const filtrados = productos.filter(
-      (producto) => Number(producto.empresaId) === Number(empresaFiltro)
-    );
-    return filtrados;
-  }, [productos, empresaFiltro]);
+  // Producto es un maestro único (MEGUI): Producto.empresaId está depreciado, por eso ya no se filtra por empresa.
+  const productosFiltradosPorEmpresa = productos;
 
   // Extraer familias únicas desde los productos filtrados por empresa y ordenarlas alfabéticamente
   const familiasUnicas = useMemo(() => {

@@ -17,6 +17,7 @@ import {
   actualizarDetalleOrdenCompra,
 } from "../../api/detalleOrdenCompra";
 import { Dropdown } from "primereact/dropdown"; // AGREGADO
+import { mensajeDeError } from "../../utils/mensajeError";
 
 export default function DetalleDialog({
   visible,
@@ -270,7 +271,7 @@ export default function DetalleDialog({
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: err.response?.data?.error || "No se pudo guardar el detalle",
+        detail: mensajeDeError(err, "No se pudo guardar el detalle"),
         life: 5000,
       });
     } finally {

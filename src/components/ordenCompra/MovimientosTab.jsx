@@ -10,6 +10,7 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Tag } from "primereact/tag";
 import { generarMovimientoAlmacen } from "../../api/ordenCompra";
 import { getConceptosMovAlmacen } from "../../api/conceptoMovAlmacen";
+import { mensajeDeError } from "../../utils/mensajeError";
 
 export default function MovimientosTab({ ordenCompraId, toast, onCountChange }) {
   const [movimientos, setMovimientos] = useState([]);
@@ -98,9 +99,8 @@ export default function MovimientosTab({ ordenCompraId, toast, onCountChange }) 
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail:
-          err.response?.data?.error ||
-          "No se pudo generar el movimiento de almacén",
+        detail: mensajeDeError(err, "No se pudo generar el movimiento de almacén"),
+        life: 6000,
       });
     }
     setGenerando(false);

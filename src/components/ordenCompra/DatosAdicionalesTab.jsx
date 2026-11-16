@@ -16,6 +16,7 @@ import {
   eliminarDatoAdicional,
 } from "../../api/detDatosAdicionalesOrdenCompra";
 import { getResponsiveFontSize } from "../../utils/utils";
+import { mensajeDeError } from "../../utils/mensajeError";
 
 import PDFMultiCapture from "../pdf/PDFMultiCapture";
 import PDFViewerV2 from "../pdf/PDFViewerV2";
@@ -115,9 +116,8 @@ export default function DatosAdicionalesTab({
           toast.current.show({
             severity: "error",
             summary: "Error",
-            detail:
-              err.response?.data?.error ||
-              "No se pudo eliminar el dato adicional",
+            detail: mensajeDeError(err, "No se pudo eliminar el dato adicional"),
+            life: 6000,
           });
         }
       },
@@ -195,8 +195,8 @@ export default function DatosAdicionalesTab({
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail:
-          err.response?.data?.error || "No se pudo guardar el dato adicional",
+        detail: mensajeDeError(err, "No se pudo guardar el dato adicional"),
+        life: 6000,
       });
     }
   };

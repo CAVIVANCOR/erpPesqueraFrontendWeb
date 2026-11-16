@@ -39,10 +39,9 @@ export const formatDate = (date) => {
  * @param {Object} params - Parámetros
  * @returns {Object} Filtros construidos
  */
-export const buildFiltrosProductos = ({ empresaId, propietarioStockId }) => {
+// Producto es un maestro único (MEGUI): el catálogo no se filtra por empresa ni por propietario del stock.
+export const buildFiltrosProductos = () => {
   return {
-    empresaId,
-    clienteId: propietarioStockId,
     cesado: false,
   };
 };

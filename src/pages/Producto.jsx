@@ -52,12 +52,9 @@ import { getTiposAlmacenamiento } from "../api/tipoAlmacenamiento";
 import { getPaises } from "../api/pais";
 import { getMarcas } from "../api/marca";
 import { getEspecies } from "../api/especie";
-import EmpresaSelector from "../components/common/EmpresaSelector";
 import { getTiposDetraccionActivos } from "../api/tipoDetraccion";
 import { getTiposAfectacionIGVActivos } from "../api/facturacionElectronica/tipoAfectacionIGV";
 import { generarProductosExcel } from "../components/producto/reports/generarProductosExcel";
-import ClonadorEntidadesDialog from "../components/common/ClonadorEntidadesDialog";
-import { clonarProductosAEmpresas } from "../api/producto";
 import AsignarCampoMasaProductoButton from "../components/common/AsignarCampoMasaProductoButton";
 
 const Producto = ({ ruta }) => {
@@ -79,9 +76,8 @@ const Producto = ({ ruta }) => {
   const [globalFilterValue, setGlobalFilterValue] = useState("");
   const [clientesCatalogo, setClientesCatalogo] = useState([]); // Catálogo completo
 
-  // Estados para clonación de productos
+  // Productos seleccionados en la tabla (para la asignación masiva)
   const [productosSeleccionados, setProductosSeleccionados] = useState([]);
-  const [clonarDialogVisible, setClonarDialogVisible] = useState(false);
   const [filters, setFilters] = useState({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
     "empresa.id": { value: null, matchMode: FilterMatchMode.EQUALS },
@@ -237,19 +233,8 @@ const Producto = ({ ruta }) => {
   const aplicarFiltros = () => {
     let resultado = [...productos];
 
-    // Aplicar filtros como en AccesoInstalacion
-    if (selectedEmpresa) {
-      resultado = resultado.filter(
-        (p) => Number(p.empresaId) === Number(selectedEmpresa.id)
-      );
-    }
-
-    if (selectedCliente) {
-      resultado = resultado.filter(
-        (p) => Number(p.clienteId) === Number(selectedCliente.id)
-      );
-    }
-
+    // Producto es un maestro único (MEGUI): Producto.empresaId y Producto.clienteId están depreciados,
+    // por eso ya no se filtra por empresa ni por cliente.
     if (selectedFamilia) {
       resultado = resultado.filter(
         (p) => Number(p.familiaId) === Number(selectedFamilia.id)
@@ -495,10 +480,12 @@ const Producto = ({ ruta }) => {
     }
   };
   const abrirDialogoNuevo = () => {
-    // Pre-cargar empresa y cliente seleccionados en los filtros
+    // Maestro único: todo producto nace en MEGUI (empresa 1) con la entidad comercial de esa empresa.
+    // El servidor vuelve a fijar estos dos valores al guardar.
+    const empresaMaestro = empresas.find((e) => Number(e.id) === 1);
     const productoInicial = {
-      empresaId: selectedEmpresa ? Number(selectedEmpresa.id) : null,
-      clienteId: selectedCliente ? Number(selectedCliente.id) : null,
+      empresaId: 1,
+      clienteId: empresaMaestro?.entidadComercialId ? Number(empresaMaestro.entidadComercialId) : null,
     };
     setProductoSeleccionado(productoInicial);
     setDialogVisible(true);
@@ -839,8 +826,9 @@ const Producto = ({ ruta }) => {
   };
 
   const renderHeader = () => {
-    // Deshabilitar el botón Nuevo hasta que se seleccione empresa y cliente, o sin permisos
-    const isNuevoDisabled = !permisos.puedeCrear || !selectedEmpresa || !selectedCliente;
+    // Deshabilitar el botón Nuevo sin permisos o si MEGUI no tiene entidad comercial asignada (dato que se asigna al producto)
+    const entidadMaestro = empresas.find((e) => Number(e.id) === 1)?.entidadComercialId;
+    const isNuevoDisabled = !permisos.puedeCrear || !entidadMaestro;
 
     return (
       <div className="flex align-items-center gap-2">
@@ -877,31 +865,6 @@ const Producto = ({ ruta }) => {
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          <div style={{ flex: 2}}>
-            <EmpresaSelector
-              empresaId={usuario?.empresaId}
-              onEmpresaChange={(id) => {
-                setEmpresaIdSelector(id);
-                const empresaObj = empresas.find(e => Number(e.id) === Number(id));
-                setSelectedEmpresa(empresaObj || null);
-                setSelectedCliente(null);
-              }}
-            />
-          </div>
-          <div style={{ flex: 2}}>
-            <Dropdown
-              value={selectedCliente}
-              options={clientes}
-              optionLabel="razonSocial"
-              placeholder="Cliente"
-              showClear
-              onChange={onClienteFilterChange}
-              className="w-15rem"
-              disabled={!selectedEmpresa}
-              filter
-              style={{ fontWeight: "bold", width: "100%" }}
-            />
-          </div>
           <div style={{ flex: 1}}>
             <Button
               label="Nuevo"
@@ -916,8 +879,8 @@ const Producto = ({ ruta }) => {
               tooltip={
                 !permisos.puedeCrear
                   ? "No tiene permisos para crear"
-                  : !selectedEmpresa || !selectedCliente
-                    ? "Seleccione empresa y cliente para crear un producto"
+                  : !entidadMaestro
+                    ? "MEGUI no tiene entidad comercial asignada: asígnela en Empresas"
                     : "Crear nuevo producto"
               }
               tooltipOptions={{ position: "top" }}
@@ -959,24 +922,6 @@ const Producto = ({ ruta }) => {
                 !globalFilterValue
               }
               tooltip="Limpiar todos los filtros aplicados"
-              tooltipOptions={{ position: "top" }}
-              style={{ width: "100%" }}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <Button
-              label="Clonar"
-              icon="pi pi-clone"
-              className="p-button-help"
-              onClick={() => setClonarDialogVisible(true)}
-              disabled={!permisos.puedeCrear || productosSeleccionados.length === 0}
-              tooltip={
-                !permisos.puedeCrear
-                  ? "No tiene permisos para clonar productos"
-                  : productosSeleccionados.length === 0
-                    ? "Seleccione productos para clonar"
-                    : `Clonar ${productosSeleccionados.length} producto(s) a otras empresas`
-              }
               tooltipOptions={{ position: "top" }}
               style={{ width: "100%" }}
             />
@@ -1300,47 +1245,6 @@ const Producto = ({ ruta }) => {
           readOnly={!!productoSeleccionado && !!productoSeleccionado.id && !permisos.puedeEditar}
         />
       </Dialog>
-
-      <ClonadorEntidadesDialog
-        visible={clonarDialogVisible}
-        onHide={() => {
-          setClonarDialogVisible(false);
-          setProductosSeleccionados([]);
-        }}
-        entidadesSeleccionadas={productosSeleccionados}
-        destinosDisponibles={empresas}
-        origenId={selectedEmpresa?.id}
-        onClonar={async (productosIds, empresasIds, clienteId) => {
-          const resultado = await clonarProductosAEmpresas(productosIds, empresasIds, clienteId);
-          await cargarProductos();
-          return resultado;
-        }}
-        configuracion={{
-          titulo: "Clonar Productos a Otras Empresas",
-          nombreEntidad: "Producto",
-          nombreDestino: "Empresa",
-          campoIdDestino: "id",
-          campoNombreDestino: "razonSocial",
-          campoSecundarioDestino: "ruc",
-          campoBusquedaDestino: ["razonSocial", "ruc"],
-          iconoEntidad: "pi-box",
-          iconoDestino: "pi-building",
-          renderEntidad: (producto) => (
-            <div>
-              <span className="font-semibold mr-2">{producto.codigo}</span>
-              <span>{producto.descripcionBase}</span>
-            </div>
-          ),
-          columnasResultado: [
-            { field: "productoOrigenCodigo", header: "Código Original" },
-            { field: "productoNuevoCodigo", header: "Código Nuevo" },
-            { field: "productoOrigenNombre", header: "Producto" },
-            { field: "empresaNombre", header: "Empresa Destino" }
-          ],
-          mensajeAdvertencia: "Se generarán códigos únicos automáticamente para evitar duplicados (formato: CODIGO-E{ID_EMPRESA})."
-        }}
-        toast={toast}
-      />
     </div>
   );
 };

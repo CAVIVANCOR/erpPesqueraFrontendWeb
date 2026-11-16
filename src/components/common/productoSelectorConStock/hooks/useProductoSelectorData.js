@@ -77,10 +77,9 @@ export const useProductoSelectorData = ({
    */
   const cargarProductosConStockConsolidado = async () => {
 
-    // 1. Cargar productos activos de la empresa
+    // 1. Cargar productos activos. Producto es un maestro único (MEGUI): no se filtra por empresa ni por propietario;
+    // el stock de cada empresa/propietario sale de SaldosProductoCliente (más abajo).
     const filtrosProductos = {
-      empresaId,
-      clienteId: propietarioStockId,
       cesado: false,
     };
     const productosData = await getProductos(filtrosProductos);
@@ -162,9 +161,8 @@ export const useProductoSelectorData = ({
 
     // CASO 1: Si es familia SERVICIOS (5), cargar desde catálogo de productos
     if (familiaProductoId && Number(familiaProductoId) === 5) {
+      // Maestro único de productos: sin filtro por empresa ni propietario
       const filtrosProductos = {
-        empresaId,
-        clienteId: propietarioStockId,
         cesado: false,
       };
       const productosData = await getProductos(filtrosProductos);

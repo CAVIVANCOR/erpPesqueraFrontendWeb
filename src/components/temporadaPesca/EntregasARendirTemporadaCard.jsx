@@ -100,11 +100,9 @@ const EntregasARendirTemporadaCard = ({
     try {
       const familiasGastosIds = [2, 3, 4, 6, 7];
       const data = await getProductos();
-      // Filtrar productos por familias de gastos y empresaId
-      const productosFiltrados = data.filter(
-        (p) =>
-          familiasGastosIds.includes(Number(p.familiaId)) &&
-          Number(p.empresaId) === Number(empresaId),
+      // Filtrar productos por familias de gastos (maestro único: sin filtro por empresa)
+      const productosFiltrados = data.filter((p) =>
+        familiasGastosIds.includes(Number(p.familiaId)),
       );
       setProductos(productosFiltrados);
     } catch (error) {

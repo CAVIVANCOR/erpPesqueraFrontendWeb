@@ -498,7 +498,8 @@ export default function DatosGeneralesProductoForm({
                   })}
                   style={{ fontWeight: "bold" }}
                   filter
-                  disabled={readOnly}
+                  // Producto es un maestro único (MEGUI): la empresa no se puede cambiar. El servidor la fija en 1.
+                  disabled
                 />
               )}
             />
@@ -529,7 +530,8 @@ export default function DatosGeneralesProductoForm({
                   })}
                   style={{ fontWeight: "bold" }}
                   filter
-                  disabled={readOnly || !empresaIdWatch}
+                  // Maestro único: el cliente es siempre la entidad comercial de MEGUI y no se puede cambiar.
+                  disabled
                 />
               )}
             />

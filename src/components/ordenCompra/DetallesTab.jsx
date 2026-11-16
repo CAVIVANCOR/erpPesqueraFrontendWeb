@@ -11,6 +11,7 @@ import {
   eliminarDetalleOrdenCompra,
 } from "../../api/detalleOrdenCompra";
 import { getResponsiveFontSize, formatearFecha } from "../../utils/utils";
+import { mensajeDeError } from "../../utils/mensajeError";
 
 export default function DetallesTab({
   ordenCompraId,
@@ -123,7 +124,8 @@ export default function DetallesTab({
           toast.current.show({
             severity: "error",
             summary: "Error",
-            detail: err.response?.data?.error || "No se pudo eliminar el detalle",
+            detail: mensajeDeError(err, "No se pudo eliminar el detalle"),
+            life: 6000,
           });
         }
       }
@@ -230,7 +232,9 @@ export default function DetallesTab({
             icon="pi pi-plus"
             className="p-button-success"
             onClick={handleAdd}
-            disabled={!puedeEditar}
+            disabled={!puedeEditar || !ordenCompraId}
+            tooltip={!ordenCompraId ? "Guarde primero el encabezado de la orden para poder agregar detalles" : undefined}
+            tooltipOptions={{ position: "top" }}
             style={{ width: "100%", fontWeight: "bold" }}
           />
         </div>

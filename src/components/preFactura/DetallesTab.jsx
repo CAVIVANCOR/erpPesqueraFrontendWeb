@@ -328,10 +328,8 @@ export default function DetallesTab({
     }
   };
 
-  // Filtrar productos por empresaId
-  const productosFiltrados = productos.filter(
-    (p) => Number(p.empresaId) === Number(empresaId),
-  );
+  // Producto es un maestro único (MEGUI): todos los productos sirven para cualquier empresa
+  const productosFiltrados = productos;
 
   const productosOptions = productosFiltrados.map((p) => ({
     label: `${p.codigo} - ${p.nombre}`,
