@@ -155,6 +155,17 @@ export default function DatosGeneralesProductoForm({
     }
   }, [familiaIdWatch, subfamilias, setValue, watch]);
 
+  // Producto nuevo: al elegir la familia se precargan los destinos (Compras / Ventas) según las banderas de la
+  // familia (esParaIngresos -> Compras, esParaEgresos -> Ventas). El usuario puede cambiarlos; en un producto
+  // existente nunca se sobrescriben.
+  useEffect(() => {
+    if (defaultValues?.id || !familiaIdWatch) return;
+    const familia = familias.find((f) => Number(f.id) === Number(familiaIdWatch));
+    if (!familia) return;
+    setValue("esParaCompras", Boolean(familia.esParaIngresos), { shouldDirty: true });
+    setValue("esParaVentas", Boolean(familia.esParaEgresos), { shouldDirty: true });
+  }, [familiaIdWatch, familias, defaultValues?.id, setValue]);
+
   // ✅ ELIMINADO: Ya no se limpia el cliente cuando cambia la empresa
   // Los clientes son globales y válidos para todas las empresas
 
@@ -540,6 +551,55 @@ export default function DatosGeneralesProductoForm({
             )}
           </div>
 
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+            marginBottom: 10,
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label className="font-bold">Se ofrece en Compras</label>
+            <Controller
+              name="esParaCompras"
+              control={control}
+              render={({ field }) => (
+                <BooleanToggleButton
+                  value={field.value || false}
+                  onChange={field.onChange}
+                  labelTrue="PARA COMPRAS"
+                  labelFalse="NO SE COMPRA"
+                  severityTrue="success"
+                  severityFalse="secondary"
+                  icon={field.value ? "pi-check-circle" : "pi-times-circle"}
+                  disabled={readOnly}
+                  style={{ marginTop: "0.5rem" }}
+                />
+              )}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className="font-bold">Se ofrece en Ventas</label>
+            <Controller
+              name="esParaVentas"
+              control={control}
+              render={({ field }) => (
+                <BooleanToggleButton
+                  value={field.value || false}
+                  onChange={field.onChange}
+                  labelTrue="PARA VENTAS"
+                  labelFalse="NO SE VENDE"
+                  severityTrue="success"
+                  severityFalse="secondary"
+                  icon={field.value ? "pi-check-circle" : "pi-times-circle"}
+                  disabled={readOnly}
+                  style={{ marginTop: "0.5rem" }}
+                />
+              )}
+            />
+          </div>
         </div>
         <div
           style={{

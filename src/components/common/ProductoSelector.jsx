@@ -119,6 +119,8 @@ const ProductoSelector = ({
   error = false,
   errorMessage = "",
   placeholder = "Seleccione producto",
+  // Destino del producto: "compra" = solo los que se ofrecen en Compras, "venta" = solo en Ventas, null = todos
+  uso = null,
 }) => {
   const [dialogVisible, setDialogVisible] = useState(false);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
@@ -178,7 +180,12 @@ const ProductoSelector = ({
   }, [empresas]);
 
   // Producto es un maestro único (MEGUI): Producto.empresaId está depreciado, por eso ya no se filtra por empresa.
-  const productosFiltradosPorEmpresa = productos;
+  // Se filtra solo por destino (compra / venta); el nombre se conserva por compatibilidad con el resto del componente.
+  const productosFiltradosPorEmpresa = useMemo(() => {
+    if (uso === "compra") return productos.filter((p) => p.esParaCompras === true);
+    if (uso === "venta") return productos.filter((p) => p.esParaVentas === true);
+    return productos;
+  }, [productos, uso]);
 
   // Extraer familias únicas desde los productos filtrados por empresa y ordenarlas alfabéticamente
   const familiasUnicas = useMemo(() => {

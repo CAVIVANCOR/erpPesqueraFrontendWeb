@@ -25,7 +25,7 @@ export async function generarProductosExcel(productos) {
     'Medida Alto', 'Unidad Alto', 'Medida Largo', 'Unidad Largo',
     'Medida Espesor', 'Unidad Espesor', 'Medida Ángulo', 'Unidad Ángulo',
     'Desc. Medida Adicional', 'URL Ficha Técnica', 'URL Foto Producto',
-    'Fecha Creación', 'Fecha Actualización'
+    'Fecha Creación', 'Fecha Actualización', 'Para Compras', 'Para Ventas'
   ];
 
   const headerRow = wsProductos.getRow(1);
@@ -59,7 +59,7 @@ export async function generarProductosExcel(productos) {
     { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 },
     { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 },
     { width: 15 }, { width: 15 }, { width: 30 }, { width: 30 }, { width: 30 },
-    { width: 12 }, { width: 12 }
+    { width: 12 }, { width: 12 }, { width: 14 }, { width: 14 }
   ];
 
   productos.forEach((prod, index) => {
@@ -121,7 +121,9 @@ export async function generarProductosExcel(productos) {
       prod.urlFichaTecnica || '',
       prod.urlFotoProducto || '',
       prod.fechaCreacion ? new Date(prod.fechaCreacion).toLocaleDateString('es-PE') : '',
-      prod.fechaActualizacion ? new Date(prod.fechaActualizacion).toLocaleDateString('es-PE') : ''
+      prod.fechaActualizacion ? new Date(prod.fechaActualizacion).toLocaleDateString('es-PE') : '',
+      prod.esParaCompras ? 'SÍ' : 'NO',
+      prod.esParaVentas ? 'SÍ' : 'NO'
     ];
 
     row.eachCell({ includeEmpty: true }, (cell, colNumber) => {

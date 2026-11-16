@@ -17,9 +17,15 @@ export const useProductoSelectorData = ({
   esCustodia,
   familiaProductoId = null,
   soloConSaldo = true,
+  // Destino del producto: "compra" = solo productos con esParaCompras, "venta" = solo con esParaVentas.
+  // null = sin filtro (por ejemplo los movimientos de almacén, que no son ni compra ni venta).
+  uso = null,
   toast,
 }) => {
   const [items, setItems] = useState([]);
+  const filtroUso = uso === "compra" ? { esParaCompras: true } : uso === "venta" ? { esParaVentas: true } : {};
+  const cumpleUso = (producto) =>
+    uso === "compra" ? producto?.esParaCompras === true : uso === "venta" ? producto?.esParaVentas === true : true;
   const [loading, setLoading] = useState(false);
   const esIngreso = modo === "ingreso";
 
@@ -81,6 +87,7 @@ export const useProductoSelectorData = ({
     // el stock de cada empresa/propietario sale de SaldosProductoCliente (más abajo).
     const filtrosProductos = {
       cesado: false,
+      ...filtroUso,
     };
     const productosData = await getProductos(filtrosProductos);
 
@@ -164,6 +171,7 @@ export const useProductoSelectorData = ({
       // Maestro único de productos: sin filtro por empresa ni propietario
       const filtrosProductos = {
         cesado: false,
+        ...filtroUso,
       };
       const productosData = await getProductos(filtrosProductos);
 
@@ -211,6 +219,11 @@ export const useProductoSelectorData = ({
         const familiaId = saldo.producto?.subfamilia?.familiaId;
         return Number(familiaId) === Number(familiaProductoId);
       });
+    }
+
+    // Destino del producto (compra / venta)
+    if (uso) {
+      saldosData = saldosData.filter((saldo) => cumpleUso(saldo.producto));
     }
 
     setItems(saldosData);

@@ -1033,6 +1033,7 @@ export default function DetallesTab({
         visible={showProductoSelector}
         onHide={() => setShowProductoSelector(false)}
         modo="egreso"
+        uso="venta"
         esCustodia={false}
         empresaId={empresaId}
         propietarioStockId={empresaEntidadComercialId}

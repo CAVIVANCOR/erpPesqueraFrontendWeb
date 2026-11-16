@@ -58,6 +58,8 @@ export default function ProductoSelectorDialog({
   monedaId = null,
   fechaDocumento = null,
   buscarPrecioVenta = false, // Flag para activar búsqueda de precio
+  // Destino del producto: "compra" | "venta" | null (sin filtro, p. ej. movimientos de almacén)
+  uso = null,
   onSelect,
 }) {
   const toast = useRef(null);
@@ -75,6 +77,7 @@ export default function ProductoSelectorDialog({
     esCustodia,
     familiaProductoId,
     soloConSaldo,
+    uso,
     toast,
   });
 

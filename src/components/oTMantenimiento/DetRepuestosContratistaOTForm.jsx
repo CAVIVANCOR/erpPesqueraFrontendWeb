@@ -32,6 +32,7 @@ export default function DetRepuestosContratistaOTForm({
       <div className="col-12 md:col-5">
         <label className="block font-medium mb-2">Producto/Servicio *</label>
         <ProductoSelector
+          uso="compra"
           empresaIdPreseleccionada={empresaId}
           value={formData.productoId}
           onChange={(productoId) => onChange("productoId", productoId)}

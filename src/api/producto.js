@@ -47,6 +47,8 @@ export const subirFotoProducto = async (id, archivoFoto) => {
  * @param {number|string} [filtros.subfamiliaId] - ID de la subfamilia
  * @param {number|string} [filtros.tipoAlmacenamientoId] - ID del tipo de almacenamiento
  * @param {number|string} [filtros.unidadMedidaId] - ID de la unidad de medida
+ * @param {boolean} [filtros.esParaCompras] - true = solo productos que se ofrecen en Compras
+ * @param {boolean} [filtros.esParaVentas] - true = solo productos que se ofrecen en Ventas
  * @param {string} [filtros.busqueda] - Término de búsqueda general
  * @returns {Promise<Array>} Lista de productos
  */
@@ -71,6 +73,8 @@ export async function getProductos(filtros = {}) {
     'subfamiliaId',
     'tipoAlmacenamientoId',
     'unidadMedidaId',
+    'esParaCompras',
+    'esParaVentas',
     'busqueda'
   ];
   filtrosAplicar.forEach(key => {

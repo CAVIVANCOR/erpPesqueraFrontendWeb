@@ -262,6 +262,7 @@ export default function GenerarDocumentoCompraDialog({
 
   const productoTemplate = (rowData, { rowIndex }) => (
     <ProductoSelector
+      uso="compra"
       value={rowData.productoId}
       onChange={(productoId) =>
         actualizarItem(rowIndex, "productoId", productoId)

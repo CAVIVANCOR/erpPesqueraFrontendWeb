@@ -1063,6 +1063,7 @@ export default function DetalleDialogCV({
           onHide={() => setShowProductoSelector(false)}
           onSelect={handleProductoSelect}
           modo="egreso"
+          uso="venta"
           empresaId={empresaId}
           propietarioStockId={entidadComercialId}
           esCustodia={false}

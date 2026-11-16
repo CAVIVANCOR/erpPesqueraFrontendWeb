@@ -122,6 +122,9 @@ const Producto = ({ ruta }) => {
     useState(null);
   const [selectedUnidadMedida, setSelectedUnidadMedida] = useState(null);
   const [selectedTipoAfectacionIGV, setSelectedTipoAfectacionIGV] = useState(null); // AGREGADO
+  // Filtros por destino del producto: null = todos, true = solo los marcados, false = solo los no marcados
+  const [filtroParaCompras, setFiltroParaCompras] = useState(null);
+  const [filtroParaVentas, setFiltroParaVentas] = useState(null);
 
   useEffect(() => {
     cargarProductos();
@@ -271,6 +274,13 @@ const Producto = ({ ruta }) => {
       resultado = resultado.filter(
         (p) => Number(p.tipoAfectacionIGVId) === Number(selectedTipoAfectacionIGV.id)
       );
+    }
+    // Destino del producto: se ofrece en Compras / en Ventas
+    if (filtroParaCompras !== null) {
+      resultado = resultado.filter((p) => Boolean(p.esParaCompras) === filtroParaCompras);
+    }
+    if (filtroParaVentas !== null) {
+      resultado = resultado.filter((p) => Boolean(p.esParaVentas) === filtroParaVentas);
     }
     // Búsqueda global
     if (globalFilterValue) {
@@ -448,6 +458,8 @@ const Producto = ({ ruta }) => {
     selectedTipoAlmacenamiento,
     selectedUnidadMedida,
     selectedTipoAfectacionIGV,
+    filtroParaCompras,
+    filtroParaVentas,
     globalFilterValue,
   ]);
   const handleExportarExcel = async () => {
@@ -498,6 +510,8 @@ const Producto = ({ ruta }) => {
     setSelectedSubfamilia(null);
     setSelectedEspecie(null);
     setSelectedTipoAfectacionIGV(null); // AGREGADO
+    setFiltroParaCompras(null);
+    setFiltroParaVentas(null);
     setSelectedTipoAlmacenamiento(null);
     setSelectedUnidadMedida(null);
     setGlobalFilterValue("");
@@ -919,6 +933,8 @@ const Producto = ({ ruta }) => {
                 !selectedTipoAlmacenamiento &&
                 !selectedUnidadMedida &&
                 !selectedTipoAfectacionIGV && // AGREGADO
+                filtroParaCompras === null &&
+                filtroParaVentas === null &&
                 !globalFilterValue
               }
               tooltip="Limpiar todos los filtros aplicados"
@@ -1050,6 +1066,26 @@ const Producto = ({ ruta }) => {
               emptyMessage="No hay tipos de afectación en los productos filtrados"
             />
           </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <Dropdown
+              value={filtroParaCompras}
+              options={[{ label: "Para Compras: SÍ", value: true }, { label: "Para Compras: NO", value: false }]}
+              placeholder="Para Compras"
+              showClear
+              onChange={(e) => setFiltroParaCompras(e.value === undefined ? null : e.value)}
+              style={{ fontWeight: "bold", width: "100%" }}
+            />
+          </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <Dropdown
+              value={filtroParaVentas}
+              options={[{ label: "Para Ventas: SÍ", value: true }, { label: "Para Ventas: NO", value: false }]}
+              placeholder="Para Ventas"
+              showClear
+              onChange={(e) => setFiltroParaVentas(e.value === undefined ? null : e.value)}
+              style={{ fontWeight: "bold", width: "100%" }}
+            />
+          </div>
           
 
         </div>
@@ -1163,6 +1199,24 @@ const Producto = ({ ruta }) => {
           sortable
           body={tipoDetraccionTemplate}
           style={{ width: "160px" }}
+        />
+        <Column
+          field="esParaCompras"
+          header="Compras"
+          sortable
+          body={(rowData) => (
+            <Tag value={rowData.esParaCompras ? "SÍ" : "NO"} severity={rowData.esParaCompras ? "success" : "secondary"} />
+          )}
+          style={{ width: "90px", textAlign: "center" }}
+        />
+        <Column
+          field="esParaVentas"
+          header="Ventas"
+          sortable
+          body={(rowData) => (
+            <Tag value={rowData.esParaVentas ? "SÍ" : "NO"} severity={rowData.esParaVentas ? "success" : "secondary"} />
+          )}
+          style={{ width: "90px", textAlign: "center" }}
         />
         <Column
           field="cuentaCompras.codigoCuenta"

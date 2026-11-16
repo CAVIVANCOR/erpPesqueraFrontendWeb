@@ -1401,6 +1401,7 @@ const DetMovsRendicionGastosForm = ({
                       control={control}
                       render={({ field }) => (
                         <ProductoSelector
+                          uso="compra"
                           empresaIdPreseleccionada={watch("empresaId")}
                           value={field.value}
                           onChange={(value) => {

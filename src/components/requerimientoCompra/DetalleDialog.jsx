@@ -308,6 +308,7 @@ export default function DetalleDialog({
           onHide={() => setShowProductoSelector(false)}
           onSelect={handleProductoSelect}
           modo="ingreso"
+          uso="compra"
           empresaId={empresaId}
           propietarioStockId={entidadComercialId}
           esCustodia={false}

@@ -190,6 +190,7 @@ const DetGastosPlanificadosForm = ({
             }}
             render={({ field }) => (
               <ProductoSelector
+                uso="compra"
                 productos={productos}
                 value={field.value}
                 onChange={(value) => {

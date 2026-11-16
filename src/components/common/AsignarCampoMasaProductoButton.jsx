@@ -75,6 +75,25 @@ const CAMPOS_CONFIG = [
     tipo: "cuenta",
     placeholder: "Elegir cuenta contable de ventas",
   },
+  // Destino del producto (sí/no): el backend recibe 1 = SÍ y 0/vacío = NO
+  {
+    key: "esParaCompras",
+    label: "Se ofrece en Compras",
+    tipo: "dropdown",
+    loader: async () => [{ id: 1, nombre: "SÍ" }, { id: 0, nombre: "NO" }],
+    optionLabel: (item) => item.nombre,
+    optionValue: (item) => Number(item.id),
+    placeholder: "Seleccione SÍ o NO",
+  },
+  {
+    key: "esParaVentas",
+    label: "Se ofrece en Ventas",
+    tipo: "dropdown",
+    loader: async () => [{ id: 1, nombre: "SÍ" }, { id: 0, nombre: "NO" }],
+    optionLabel: (item) => item.nombre,
+    optionValue: (item) => Number(item.id),
+    placeholder: "Seleccione SÍ o NO",
+  },
 ];
 
 export default function AsignarCampoMasaProductoButton({
