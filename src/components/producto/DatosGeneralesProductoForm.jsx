@@ -62,7 +62,6 @@ export default function DatosGeneralesProductoForm({
     }
   }, [porcentajeDetraccionWatch, setValue]);
   const familiaIdWatch = watch("familiaId");
-  const empresaIdWatch = watch("empresaId");
 
   // Opciones normalizadas para dropdowns
   const familiasOptions = familias.map((f) => ({
@@ -91,20 +90,6 @@ export default function DatosGeneralesProductoForm({
     label: c.nombre,
     value: Number(c.id),
   }));
-
-  const empresasOptions = empresas.map((e) => ({
-    label: e.razonSocial,
-    value: Number(e.id),
-  }));
-
-  // ✅ CLIENTES GLOBALES: EntidadComercial.empresaId está DEPRECIADO
-  // Los clientes/proveedores son válidos para TODAS las empresas
-  const clientesOptions = clientes
-    .filter((c) => c.esCliente) // Solo filtrar por esCliente
-    .map((c) => ({
-      label: c.razonSocial,
-      value: Number(c.id),
-    }));
 
   const tiposAlmacenamientoOptions = tiposAlmacenamiento.map((t) => ({
     label: t.nombre,
@@ -483,75 +468,6 @@ export default function DatosGeneralesProductoForm({
     <Fieldset style={{ padding: 0, margin: 0, border: "none" }}>
       <Toast ref={toastFoto} />
       <div className="p-fluid formgrid grid">
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-            marginBottom: 10,
-          }}
-        >
-          <div style={{ flex: 2 }}>
-            <label htmlFor="empresaId" className="font-bold">
-              Empresa *
-            </label>
-            <Controller
-              name="empresaId"
-              control={control}
-              render={({ field, fieldState }) => (
-                <Dropdown
-                  id="empresaId"
-                  {...field}
-                  options={empresasOptions}
-                  placeholder="Seleccione una empresa"
-                  className={classNames({
-                    "p-invalid": fieldState.error,
-                  })}
-                  style={{ fontWeight: "bold" }}
-                  filter
-                  // Producto es un maestro único (MEGUI): la empresa no se puede cambiar. El servidor la fija en 1.
-                  disabled
-                />
-              )}
-            />
-            {errors.empresaId && (
-              <small className="p-error">{errors.empresaId.message}</small>
-            )}
-          </div>
-
-          <div style={{ flex: 2 }}>
-            <label htmlFor="clienteId" className="font-bold">
-              Cliente *
-            </label>
-            <Controller
-              name="clienteId"
-              control={control}
-              render={({ field, fieldState }) => (
-                <Dropdown
-                  id="clienteId"
-                  {...field}
-                  options={clientesOptions}
-                  placeholder={
-                    empresaIdWatch
-                      ? "Seleccione un cliente"
-                      : "Primero seleccione una empresa"
-                  }
-                  className={classNames({
-                    "p-invalid": fieldState.error,
-                  })}
-                  style={{ fontWeight: "bold" }}
-                  filter
-                  // Maestro único: el cliente es siempre la entidad comercial de MEGUI y no se puede cambiar.
-                  disabled
-                />
-              )}
-            />
-            {errors.clienteId && (
-              <small className="p-error">{errors.clienteId.message}</small>
-            )}
-          </div>
-
-        </div>
         <div
           style={{
             display: "flex",

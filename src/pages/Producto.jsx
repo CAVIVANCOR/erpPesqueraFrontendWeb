@@ -720,22 +720,6 @@ const Producto = ({ ruta }) => {
     );
   };
 
-  const empresaTemplate = (rowData) => {
-    return (
-      <span style={{ whiteSpace: "normal", wordWrap: "break-word", display: "block" }}>
-        {rowData.empresa?.razonSocial || "N/A"}
-      </span>
-    );
-  };
-
-  const clienteTemplate = (rowData) => {
-    return (
-      <span style={{ fontStyle: "italic", whiteSpace: "normal", wordWrap: "break-word", display: "block" }}>
-        {rowData.cliente?.razonSocial || "N/A"}
-      </span>
-    );
-  };
-
   const cesadoTemplate = (rowData) => {
     return rowData.cesado ? (
       <span
@@ -1132,20 +1116,6 @@ const Producto = ({ ruta }) => {
       >
         <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} />
         <Column field="id" header="ID" sortable style={{ width: "80px" }} />
-        <Column
-          field="empresa.razonSocial"
-          header="Empresa"
-          sortable
-          body={empresaTemplate}
-          style={{ width: "60px", whiteSpace: "normal", wordWrap: "break-word" }}
-        />
-        <Column
-          field="cliente.razonSocial"
-          header="Cliente"
-          sortable
-          body={clienteTemplate}
-          style={{ width: "60px", whiteSpace: "normal", wordWrap: "break-word" }}
-        />
         <Column
           field="familia.nombre"
           header="Familia"
