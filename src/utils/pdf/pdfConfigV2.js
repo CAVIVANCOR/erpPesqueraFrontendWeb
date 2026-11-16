@@ -1017,6 +1017,15 @@ export const PDF_MODULES_CONFIG = {
     },
   },
 
+  // Archivos que entrega Factpro (PDF, XML, CDR) a través del servidor: no se guardan en disco
+  "comprobante-factpro": {
+    uploadPath: "uploads/comprobante-factpro",
+    oldPaths: [],
+    apiEndpoint: "/pre-facturas/factpro-archivo",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf"],
+    maxFiles: 1,
+  },
 };
 
 export function getModuleConfig(moduleName) {

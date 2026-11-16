@@ -30,7 +30,6 @@ import { getEmpresas } from "../api/empresa";
 import { getEntidadesComerciales } from "../api/entidadComercial";
 import { getMonedas } from "../api/moneda";
 import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
-import { getPreFacturas } from "../api/preFactura";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize, formatearFecha, formatearNumero } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
@@ -51,7 +50,6 @@ export default function CuentaPorCobrar({ ruta }) {
   const [clientes, setClientes] = useState([]);
   const [monedas, setMonedas] = useState([]);
   const [estados, setEstados] = useState([]);
-  const [preFacturas, setPreFacturas] = useState([]);
   const [periodosContables, setPeriodosContables] = useState([]);
   const [mediosPago, setMediosPago] = useState([]);
   const [bancos, setBancos] = useState([]);
@@ -93,7 +91,6 @@ export default function CuentaPorCobrar({ ruta }) {
         clientesData,
         monedasData,
         estadosData,
-        preFacturasData,
         periodosContablesData,
         mediosPagoData,
         bancosData,
@@ -104,7 +101,6 @@ export default function CuentaPorCobrar({ ruta }) {
         getEntidadesComerciales(),
         getMonedas(),
         getEstadosMultiFuncion(),
-        getPreFacturas(),
         getPeriodosContables(),
         getMediosPago(),
         getBancos(),
@@ -116,7 +112,6 @@ export default function CuentaPorCobrar({ ruta }) {
       setClientes(clientesData?.filter((c) => c.esCliente === true) || []);
       setMonedas(monedasData || []);
       setEstados(estadosData || []);
-      setPreFacturas(preFacturasData || []);
       setPeriodosContables(periodosContablesData || []);
       setMediosPago(mediosPagoData || []);
       setBancos(bancosData || []);

@@ -1,5 +1,7 @@
 // src/components/preFactura/PreFacturaForm.jsx
 import React, { useState, useEffect } from "react";
+import { mensajeDeError } from "../../utils/mensajeError";
+import { enviarComprobanteASunat, getComprobantesByPreFactura } from "../../api/facturacionElectronica/comprobanteElectronico";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Button } from "primereact/button";
 import DatosGeneralesTab from "./DatosGeneralesTab";
@@ -18,12 +20,13 @@ import {
   facturarPreFacturaNegra,
   facturarPreFacturaBlanca,
   generarComprobanteElectronico,
+  obtenerPdfDesdeFactpro,
 } from "../../api/preFactura";
 import { Dialog } from "primereact/dialog";
 import { InputNumber } from "primereact/inputnumber";
 import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 import AsientoContableManager from "../common/AsientoContableManager";
-import BotonDescargarPDFSunatVentas from "../common/BotonDescargarPDFSunatVentas";
+import PdfComprobanteVentaCard from "./PdfComprobanteVentaCard";
 import { crearDetallePreFactura } from "../../api/detallePreFactura";
 import { ESTADO_PREFACTURA } from "../../utils/estados.constants";
 import { getPreFacturaPorId } from "../../api/preFactura";
@@ -505,6 +508,21 @@ export default function PreFacturaForm({
   const [contactosCliente, setContactosCliente] = useState([]);
   const [direccionesCliente, setDireccionesCliente] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
+  // Comprobantes electrónicos de la venta (FLUJO B). Los comparten la pestaña (lista) y la barra inferior (botones).
+  const [comprobantes, setComprobantes] = useState([]);
+  const cargarComprobantes = async () => {
+    if (!defaultValues?.id) return;
+    try {
+      setComprobantes((await getComprobantesByPreFactura(defaultValues.id)) || []);
+    } catch (error) {
+      console.error("Error al cargar los comprobantes electrónicos:", error);
+      setComprobantes([]);
+    }
+  };
+  useEffect(() => {
+    if (isEdit && defaultValues?.id) cargarComprobantes();
+  }, [defaultValues?.id, isEdit]);
+  const [obteniendoPdfFactpro, setObteniendoPdfFactpro] = useState(false);
   const [detallesCount, setDetallesCount] = useState(0);
   const [refreshClientes, setRefreshClientes] = useState(null);
   const [pdfSunatUrl, setPdfSunatUrl] = useState(defaultValues?.urlPreFacturaPdf || null);
@@ -1523,8 +1541,8 @@ export default function PreFacturaForm({
         severity: "error",
         summary: "Error",
         detail:
-          error.response?.data?.mensaje || "No se pudo generar la CxC Gerencial",
-        life: 3000,
+          mensajeDeError(error, "No se pudo generar la CxC Gerencial"),
+        life: 8000,
       });
     }
   };
@@ -1552,40 +1570,65 @@ export default function PreFacturaForm({
         severity: "error",
         summary: "Error",
         detail:
-          error.response?.data?.mensaje || "No se pudo emitir el comprobante",
-        life: 3000,
+          mensajeDeError(error, "No se pudo emitir el comprobante"),
+        life: 8000,
       });
     }
   };
 
 
+  // Actualiza en pantalla lo que cambia al emitir el comprobante (estado y documento final) con el mismo formato del formulario
+  const aplicarDocumentoFinal = (p) =>
+    setFormData((prev) => ({
+      ...prev,
+      estadoId: p.estadoId ? Number(p.estadoId) : prev.estadoId,
+      facturado: p.facturado,
+      fechaFacturacion: p.fechaFacturacion ? new Date(p.fechaFacturacion) : null,
+      tipoDocumentoFinalId: p.tipoDocumentoFinalId ? Number(p.tipoDocumentoFinalId) : null,
+      serieDocFinalId: p.serieDocFinalId ? Number(p.serieDocFinalId) : null,
+      numSerieDocFinal: p.numSerieDocFinal || "",
+      numCorreDocFinal: p.numCorreDocFinal || "",
+      numeroDocumentoFinal: p.numeroDocumentoFinal || "",
+    }));
   // Handler para generar comprobante electrónico
   const handleGenerarComprobanteClick = async () => {
+    let comprobanteId = null;
     try {
       const resultado = await generarComprobanteElectronico(defaultValues.id);
-
+      comprobanteId = resultado?.data?.id;
+      // Factpro asigna el correlativo al emitir: se envía enseguida y se actualiza el documento final de la venta
+      const envio = await enviarComprobanteASunat(comprobanteId);
       toast?.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "Comprobante Electrónico generado exitosamente",
-        life: 5000,
+        severity: envio.respuestaProveedor?.aceptadoPorSunat ? "success" : "warn",
+        summary: envio.respuestaProveedor?.aceptadoPorSunat ? "Éxito" : "Advertencia",
+        detail: envio.mensaje || "Comprobante Electrónico generado y enviado",
+        life: 6000,
       });
-
-      // ✅ RECARGAR DATOS DEL FORMULARIO
-      if (defaultValues.id) {
-        const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
-        setFormData(preFacturaActualizada);
+      if (envio.advertencia) {
+        toast?.current?.show({ severity: "warn", summary: "PDF no guardado", detail: envio.advertencia, life: 10000 });
       }
     } catch (error) {
       console.error("Error al generar comprobante:", error);
       toast?.current?.show({
         severity: "error",
         summary: "Error",
-        detail:
-          error.response?.data?.mensaje || "No se pudo generar el Comprobante Electrónico",
-        life: 3000,
+        detail: comprobanteId
+          ? `El comprobante se creó pero no se pudo emitir en Factpro: ${mensajeDeError(error, "No se pudo enviar el comprobante")} Corrija el problema y use "Enviar a SUNAT".`
+          : mensajeDeError(error, "No se pudo generar el Comprobante Electrónico"),
+        life: 10000,
       });
     }
+
+    // ✅ RECARGAR DATOS DEL FORMULARIO (estado y documento final)
+    try {
+      if (defaultValues.id) {
+        const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
+        aplicarDocumentoFinal(preFacturaActualizada);
+      }
+    } catch (error) {
+      console.error("Error al recargar la pre-factura:", error);
+    }
+    await cargarComprobantes();
   };
 
   // Estados del documento
@@ -1598,6 +1641,46 @@ export default function PreFacturaForm({
   const estaComprobanteGenerado = estadoId === ESTADO_PREFACTURA.COMPROBANTE_ELECTRONICO_GENERADO;
   const estaValidadoSunat = estadoId === ESTADO_PREFACTURA.VALIDADO_SUNAT;
   const estaNoValidadoSunat = estadoId === ESTADO_PREFACTURA.NO_VALIDADO_SUNAT;
+
+  // PDF del comprobante fiscal según el flujo (ver BIFURCACIÓN en comprobanteElectronico.controller.js del backend):
+  //  - FLUJO A (histórico, sin comprobante en el ERP): "Descargar PDF SUNAT" (json.pe) o subida manual en la tarjeta.
+  //  - FLUJO B (nuevo, con comprobante de Factpro): el servidor ya copia el PDF al aceptarse; "Obtener de Factpro" reintenta.
+  // En ambos el PDF queda guardado en la venta (urlPreFacturaPdf) y se muestra con PdfComprobanteVentaCard.
+  const tipoDocFinalEncontrado = tiposDocumento.find((t) => Number(t.id) === Number(formData.tipoDocumentoFinalId));
+  const handleObtenerPdfFactpro = async () => {
+    try {
+      setObteniendoPdfFactpro(true);
+      const resultado = await obtenerPdfDesdeFactpro(defaultValues.id);
+      await alDescargarPdfSunat(resultado.pdfUrl);
+      toast?.current?.show({
+        severity: "success",
+        summary: "PDF obtenido de Factpro",
+        detail: `Documento ${resultado.documento}${resultado.estado ? ` (${resultado.estado})` : ""}`,
+        life: 5000,
+      });
+    } catch (error) {
+      console.error("Error al obtener el PDF desde Factpro:", error);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: mensajeDeError(error, "No se pudo obtener el PDF desde Factpro"),
+        life: 10000,
+      });
+    } finally {
+      setObteniendoPdfFactpro(false);
+    }
+  };
+  const alDescargarPdfSunat = async (pdfUrl) => {
+    setFormData((prev) => ({ ...prev, urlPreFacturaPdf: pdfUrl }));
+    setPdfSunatUrl(pdfUrl);
+    // Recargar la pre-factura para actualizar defaultValues
+    if (defaultValues?.id) {
+      const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
+      if (preFacturaActualizada) {
+        Object.assign(defaultValues, preFacturaActualizada);
+      }
+    }
+  };
 
   // ⭐ PERMISOS ESPECIALES: Usuario con puedeAprobarDocs tiene acceso total
   const tienePermisoEspecial = permisos.puedeAprobarDocs === true;
@@ -1844,33 +1927,71 @@ export default function PreFacturaForm({
             numSerieDocFinal={formData.numSerieDocFinal}
             onNumSerieDocFinalChange={(value) => handleChange("numSerieDocFinal", value)}
             numCorreDocFinal={formData.numCorreDocFinal}
+            correlativoAsignadoPorFactpro={estaComprobanteGenerado || estaValidadoSunat || estaNoValidadoSunat}
             onNumCorreDocFinalChange={(value) => handleChange("numCorreDocFinal", value)}
           />
         </TabPanel>
-        {/* TAB 2: IMPRESION PDF */}
-        <TabPanel header="Impresión PDF" leftIcon="pi pi-file-pdf">
-          <VerImpresionPreFacturaPDF
-            preFacturaId={defaultValues?.id}
-            datosPreFactura={{...defaultValues, urlPreFacturaPdf: pdfSunatUrl}}
-            toast={toast}
-          />
-        </TabPanel>
-        {/* TAB 3: FACTURACIÓN ELECTRÓNICA */}
+        {/* TAB 2: COMPROBANTE ELECTRÓNICO (documentos fiscales) / NOTA DE VENTA (documentos gerenciales) */}
         <TabPanel
-          header="Facturación Electrónica"
-          leftIcon="pi pi-send"
-          disabled={!isEdit}
+          header={formData.esGerencial ? "Nota de Venta" : "Comprobante Electrónico"}
+          leftIcon="pi pi-file-pdf"
         >
-          <BotonesGeneracionComprobante
-            preFacturaId={defaultValues?.id}
-            empresaId={empresaId}
-            tipoDocumentoId={formData.tipoDocumentoId}
-            esGerencial={formData.esGerencial}
-            estadoId={formData.estadoId}
-            toast={toast}
-            onGenerarComprobante={handleGenerarComprobanteClick}
-          />
-        </TabPanel>
+          {formData.esGerencial ? (
+            <VerImpresionPreFacturaPDF
+              preFacturaId={defaultValues?.id}
+              datosPreFactura={{...defaultValues, esGerencial: true, urlPreFacturaPdf: pdfSunatUrl}}
+              toast={toast}
+            />
+          ) : (
+            <>
+              {/* Lista de comprobantes de la venta. Los botones (Generar, Obtener de Factpro, XML/CDR, PDF SUNAT) están en PdfComprobanteVentaCard. */}
+              {isEdit && defaultValues?.id && (
+                <div className="mb-3">
+                  <BotonesGeneracionComprobante
+                    comprobantes={comprobantes}
+                    toast={toast}
+                    onRecargar={async () => {
+                      // Tras enviar a SUNAT cambian los comprobantes y el estado/documento final de la venta
+                      await cargarComprobantes();
+                      if (defaultValues?.id) {
+                        const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
+                        if (preFacturaActualizada) aplicarDocumentoFinal(preFacturaActualizada);
+                      }
+                    }}
+                  />
+                </div>
+              )}
+              {/* PDF del comprobante. Dos flujos (detalle en comprobanteElectronico.controller.js del backend):
+                  A = histórico emitido en el portal de SUNAT (sin comprobante en el ERP): "Descargar PDF SUNAT" o subida manual.
+                  B = nuevo emitido con Factpro (hay comprobante en el ERP): el PDF se copia solo al aceptarse; "Obtener de Factpro" reintenta. */}
+              {isEdit && formData.id && (
+                <PdfComprobanteVentaCard
+                  preFacturaId={formData.id}
+                  urlPdf={pdfSunatUrl}
+                  comprobantes={comprobantes}
+                  estadoId={formData.estadoId}
+                  tipoDocumentoId={formData.tipoDocumentoFinalId || formData.tipoDocumentoId}
+                  numeroDocumentoFinal={formData.numeroDocumentoFinal}
+                  numCorreDocFinal={formData.numCorreDocFinal}
+                  toast={toast}
+                  onGenerarComprobante={handleGenerarComprobanteClick}
+                  onObtenerPdfFactpro={handleObtenerPdfFactpro}
+                  obteniendoPdfFactpro={obteniendoPdfFactpro}
+                  sunat={{
+                    empresaId: formData.empresaId,
+                    tipoDoc: tipoDocFinalEncontrado?.codigoSunat,
+                    serie: formData.numSerieDocFinal,
+                    correlativo: formData.numCorreDocFinal,
+                    onSuccess: alDescargarPdfSunat,
+                  }}
+                  onUrlChange={(url) => {
+                    setFormData((prev) => ({ ...prev, urlPreFacturaPdf: url }));
+                    setPdfSunatUrl(url);
+                  }}
+                  readOnly={readOnly}
+                />
+              )}            </>
+          )}        </TabPanel>
       </TabView>
 
       {/* BOTONES DE ACCIÓN */}
@@ -2044,34 +2165,6 @@ export default function PreFacturaForm({
               onBeforeGenerate={handleBeforeGenerateAsiento}
             />
           )}
-          {/* Botón para descargar PDF desde SUNAT */}
-          {isEdit && formData.id && formData.numSerieDocFinal && formData.numCorreDocFinal && (() => {
-            const tipoDocEncontrado = tiposDocumento.find(t => Number(t.id) === Number(formData.tipoDocumentoFinalId));
-            return (
-              <BotonDescargarPDFSunatVentas
-                empresaId={formData.empresaId}
-                entityId={formData.id}
-                tipoDoc={tipoDocEncontrado?.codigoSunat}
-                serie={formData.numSerieDocFinal}
-                correlativo={formData.numCorreDocFinal}
-                toastRef={toast}
-                onSuccess={async (pdfUrl) => {
-                  setFormData(prev => ({ ...prev, urlPreFacturaPdf: pdfUrl }));
-                  setPdfSunatUrl(pdfUrl);
-                  // Recargar la pre-factura para actualizar defaultValues
-                  if (defaultValues?.id) {
-                    const preFacturaActualizada = await getPreFacturaPorId(defaultValues.id);
-                    if (preFacturaActualizada) {
-                      Object.assign(defaultValues, preFacturaActualizada);
-                    }
-                  }
-                }}
-                onError={(error) => {
-                  console.error('Error en descarga de PDF:', error);
-                }}
-              />
-            );
-          })()}
           <Button
             label="Cancelar"
             icon="pi pi-times"

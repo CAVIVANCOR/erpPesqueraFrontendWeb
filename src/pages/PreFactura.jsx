@@ -7,6 +7,16 @@
 // Usadas para obtener ParametroAprobador por módulo
 // ════════════════════════════════════════════════════════════
 const MODULO_VENTAS = 5; // Módulo de Ventas - usado para obtener respVentasId desde ParametroAprobador
+
+// Rango de fechas por defecto de la lista: los últimos 30 días (el servidor filtra por este rango)
+const rangoUltimosDias = (dias) => {
+  const hasta = new Date();
+  hasta.setHours(0, 0, 0, 0);
+  const desde = new Date(hasta);
+  desde.setDate(desde.getDate() - dias);
+  return [desde, hasta];
+};
+const rangoFechasPorDefecto = () => rangoUltimosDias(30);
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
@@ -21,6 +31,7 @@ import { Badge } from "primereact/badge";
 import { Menu } from "primereact/menu";
 import {
   getPreFacturas,
+  getDetalleExportacionPreFacturas,
   getPreFacturaPorId,
   eliminarPreFactura,
   crearPreFactura,
@@ -36,6 +47,7 @@ import {
 import { getMotivoNotaCreditoDebitoActivos } from "../api/ventas/motivoNotaCreditoDebito";
 import PreFacturaForm from "../components/preFactura/PreFacturaForm";
 import BoleteoAutomatico from "../components/common/boleteoAutomatico";
+import BotonDescargarPDFsMasivoSunat from "../components/common/BotonDescargarPDFsMasivoSunat";
 import CotizacionVentasForm from "../components/cotizacionVentas/CotizacionVentasForm"; // ⬅️ AGREGAR
 import MovimientoAlmacenForm from "../components/movimientoAlmacen/MovimientoAlmacenForm"; // ⬅️ AGREGAR
 import ContratoServicioForm from "../components/contratoServicio/ContratoServicioForm"; // ⬅️ AGREGAR
@@ -47,6 +59,7 @@ import {
   getSeverityColors,
 } from "../utils/utils";
 import { getEmpresas } from "../api/empresa";
+import { mensajeDeError } from "../utils/mensajeError";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getEntidadesComerciales } from "../api/entidadComercial";
 import { getFormasPago } from "../api/formaPago";
@@ -127,7 +140,7 @@ const PreFactura = ({ ruta }) => {
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [empresaIdSelector, setEmpresaIdSelector] = useState(null);
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState(null);
-  const [rangoFechas, setRangoFechas] = useState(null);
+  const [rangoFechas, setRangoFechas] = useState(rangoFechasPorDefecto);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [filtroParticionadas, setFiltroParticionadas] = useState(null);
   const [productosUnicos, setProductosUnicos] = useState([]);
@@ -174,7 +187,10 @@ const PreFactura = ({ ruta }) => {
   const [panelFiltrosAbierto, setPanelFiltrosAbierto] = useState(false);
 
   const toast = useRef(null);
+  const catalogosListos = useRef(false);
+  const solicitudLista = useRef(0);
   const menuExport = useRef(null);
+  const menuAtajosFecha = useRef(null);
   const opFiltrosAvanzados = useRef(null);
 
   // Valor de UI (no de BD) para la opción "Todos los periodos" del filtro.
@@ -189,15 +205,17 @@ const PreFactura = ({ ruta }) => {
       return [];
     }
 
+    // Solo los periodos que aparecen en las ventas del rango cargado (lista dinámica)
+    const periodosEnLista = new Set(items.map((i) => Number(i.periodoContableId)).filter(Boolean));
     const delaEmpresa = periodosContables
-      .filter(p => Number(p.empresaId) === Number(empresaIdSelector))
+      .filter(p => Number(p.empresaId) === Number(empresaIdSelector) && periodosEnLista.has(Number(p.id)))
       .sort((a, b) => (Number(b.anio) - Number(a.anio)) || (Number(b.mes) - Number(a.mes)));
 
     return [
       { id: PERIODO_TODOS, nombrePeriodo: "TODOS LOS PERIODOS", anio: null, mes: null },
       ...delaEmpresa,
     ];
-  }, [periodosContables, empresaIdSelector]);
+  }, [periodosContables, empresaIdSelector, items]);
 
   // Inicializa el periodo contable por defecto (mes/año actual) SOLO cuando:
   //   a) aún no hay periodo seleccionado, o
@@ -217,12 +235,8 @@ const PreFactura = ({ ruta }) => {
       periodosFiltrados.some((p) => p.id !== PERIODO_TODOS && Number(p.id) === Number(periodoSeleccionado));
     if (seleccionVigente) return;
 
-    const hoy = new Date();
-    const periodoActual = periodosFiltrados.find(
-      (p) => Number(p.mes) === hoy.getMonth() + 1 && Number(p.anio) === hoy.getFullYear()
-    );
-    // Fallback: el periodo real más reciente (índice 1, porque el 0 es "Todos")
-    setPeriodoSeleccionado(periodoActual ? periodoActual.id : periodosFiltrados[1].id);
+    // Por defecto manda el rango de fechas: se muestran todos los periodos del rango
+    setPeriodoSeleccionado(PERIODO_TODOS);
   }, [periodosFiltrados, periodoSeleccionado]);
 
   useEffect(() => {
@@ -251,7 +265,7 @@ const PreFactura = ({ ruta }) => {
         periodosContablesData, // ✅ AGREGADO
         motivosNCNDData,
       ] = await Promise.all([
-        getPreFacturas(),
+        getPreFacturas(construirFiltrosServidor()),
         getEmpresas(),
         getTiposDocumento(),
         getEntidadesComerciales(),
@@ -293,23 +307,8 @@ const PreFactura = ({ ruta }) => {
         id: Number(td.id),
       }));
 
-      const preFacturasNormalizadas = preFacturasData.map((pf) => {
-        const unidadNegocio = unidadesNegocioNormalizadas.find(
-          (un) => un.id === Number(pf.unidadNegocioId),
-        );
-        const tipoDocumento = tiposDocNormalizados.find(
-          (td) => td.id === Number(pf.tipoDocumentoId),
-        );
+      const preFacturasNormalizadas = normalizarPreFacturas(preFacturasData, unidadesNegocioNormalizadas, tiposDocNormalizados, estadosDocFiltrados);
 
-        return {
-          ...pf,
-          estadoDoc: estadosDocFiltrados.find(
-            (e) => Number(e.id) === Number(pf.estadoId),
-          ),
-          unidadNegocio,
-          tipoDocumento,
-        };
-      });
 
       setItems(preFacturasNormalizadas);
       setPreFacturas(preFacturasNormalizadas);
@@ -327,15 +326,89 @@ const PreFactura = ({ ruta }) => {
       setBancos(bancosData);
       setPeriodosContables(periodosContablesData || []);
       setMotivosNCND(motivosNCNDData || []);
+      catalogosListos.current = true;
     } catch (err) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo cargar los datos.",
+        detail: mensajeDeError(err, "No se pudo cargar los datos"),
+        life: 8000,
       });
     }
     setLoading(false);
   };
+
+  // Filtros que viajan al servidor: empresa, rango de fechas de documento y tipo de libro.
+  // El resto de filtros (estado, cliente, producto, tipos de documento, búsqueda) se aplican en pantalla.
+  const construirFiltrosServidor = () => {
+    const filtros = { tipoLibro: filtroTipoLibro };
+    if (empresaSeleccionada) filtros.empresaId = empresaSeleccionada;
+    if (rangoFechas && rangoFechas[0]) {
+      const desde = new Date(rangoFechas[0]);
+      desde.setHours(0, 0, 0, 0);
+      filtros.desde = desde.toISOString();
+      if (rangoFechas[1]) {
+        const hasta = new Date(rangoFechas[1]);
+        hasta.setHours(23, 59, 59, 999);
+        filtros.hasta = hasta.toISOString();
+      }
+    }
+    return filtros;
+  };
+
+  // Completa cada venta con los datos que salen de los catálogos de la pantalla (estado, unidad de negocio, tipo de documento)
+  const normalizarPreFacturas = (lista, unidades, tiposDoc, estados) =>
+    lista.map((pf) => ({
+      ...pf,
+      estadoDoc: estados.find((e) => Number(e.id) === Number(pf.estadoId)),
+      unidadNegocio: unidades.find((un) => Number(un.id) === Number(pf.unidadNegocioId)),
+      tipoDocumento: tiposDoc.find((td) => Number(td.id) === Number(pf.tipoDocumentoId)),
+    }));
+
+  // Recarga solo la lista de ventas cuando cambia empresa, rango de fechas o tipo de libro
+  const cargarPreFacturas = async () => {
+    const solicitud = ++solicitudLista.current;
+    setLoading(true);
+    try {
+      const data = await getPreFacturas(construirFiltrosServidor());
+      // Una consulta más nueva ya salió: esta respuesta quedó obsoleta
+      if (solicitud !== solicitudLista.current) return;
+      const normalizadas = normalizarPreFacturas(data, unidadesNegocio, tiposDocumento, estadosDoc);
+      setItems(normalizadas);
+      setPreFacturas(normalizadas);
+    } catch (err) {
+      if (solicitud !== solicitudLista.current) return;
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: err.response?.data?.mensaje || err.response?.data?.message || "No se pudo cargar la lista de ventas.",
+        life: 6000,
+      });
+    } finally {
+      if (solicitud === solicitudLista.current) setLoading(false);
+    }
+  };
+
+  // Actualiza solo la fila de esta venta en la lista (conserva filtros, página, orden y scroll) en lugar de recargar toda la
+  // pantalla tras una operación sobre un solo documento. Si la venta no estaba en la lista (recién creada) se agrega al inicio.
+  // Se conservan los datos que solo trae la lista (por ejemplo los movimientos de salida) cuando el registro completo no los tiene.
+  const refrescarFilaEnLista = (preFactura) => {
+    if (!preFactura?.id) return;
+    const [fila] = normalizarPreFacturas([preFactura], unidadesNegocio, tiposDocumento, estadosDoc);
+    const reemplazar = (lista) =>
+      lista.some((i) => Number(i.id) === Number(fila.id))
+        ? lista.map((i) => (Number(i.id) === Number(fila.id) ? { ...i, ...fila } : i))
+        : [fila, ...lista];
+    setItems(reemplazar);
+    setPreFacturas(reemplazar);
+  };
+  useEffect(() => {
+    // La carga inicial (con catálogos) la hace cargarDatos; aquí solo los cambios posteriores de filtros
+    if (!catalogosListos.current) return;
+    // Rango a medias (solo fecha inicial): se espera a que el usuario elija la fecha final
+    if (rangoFechas && rangoFechas[0] && !rangoFechas[1]) return;
+    cargarPreFacturas();
+  }, [empresaSeleccionada, rangoFechas, filtroTipoLibro]);
 
   const handleExportar = async (tipo) => {
     // El Registro de Ventas SUNAT es por periodo: no se exporta con "Todos" seleccionado
@@ -383,6 +456,16 @@ const PreFactura = ({ ruta }) => {
           });
           return;
         }
+
+        // La lista es liviana: el detalle completo (relaciones y montos en PEN) se pide solo de los documentos a exportar
+        const completos = await getDetalleExportacionPreFacturas(preFacturasParaExportar.map((pf) => pf.id));
+        const completoPorId = new Map(completos.map((c) => [Number(c.id), c]));
+        preFacturasParaExportar = preFacturasParaExportar.map((pf) => ({
+          ...completoPorId.get(Number(pf.id)),
+          estadoDoc: pf.estadoDoc,
+          unidadNegocio: pf.unidadNegocio,
+          tipoDocumento: pf.tipoDocumento,
+        }));
 
         // Ordenar por fecha de emisión del comprobante (fechaFacturacion) ASC, igual que el TXT SUNAT
         preFacturasParaExportar = preFacturasParaExportar.sort((a, b) => {
@@ -736,6 +819,27 @@ const PreFactura = ({ ruta }) => {
     items,
   ]);
 
+  // PDFs masivos desde SUNAT (json.pe), FLUJO A (históricos emitidos por el portal de SUNAT con Clave SOL): solo ventas fiscales
+  // seleccionadas que ya tienen su documento final (tipo, serie y correlativo) y todavía no tienen PDF. Las que ya lo tienen
+  // (subido a mano o copiado de Factpro) no se tocan: el servicio de PDF sobrescribiría el archivo.
+  const documentosParaPdfMasivo = (selectedRecords || [])
+    .filter(
+      (pf) =>
+        !pf.esGerencial &&
+        pf.numSerieDocFinal &&
+        pf.numCorreDocFinal &&
+        pf.tipoDocumentoFinal?.codigoSunat &&
+        !pf.urlPreFacturaPdf,
+    )
+    .map((pf) => ({
+      id: pf.id,
+      empresaId: pf.empresaId,
+      tipoDocCodigo: pf.tipoDocumentoFinal.codigoSunat,
+      serie: pf.numSerieDocFinal,
+      numero: pf.numCorreDocFinal,
+      moduloDestino: "pre-factura",
+    }));
+
   const handleRegenerarMasivoClick = () => {
     const registrosValidos = preFacturasFiltradas.filter(pf => {
       if (pf.estadoId === 47) return false;
@@ -767,7 +871,7 @@ const PreFactura = ({ ruta }) => {
       life: 5000
     });
 
-    cargarDatos();
+    cargarPreFacturas();
   };
 
   // ✅ Calcular totales por tipo de documento y moneda
@@ -961,16 +1065,11 @@ const PreFactura = ({ ruta }) => {
       setNavigationStack((prev) => [...prev, selectedPreFactura]);
     }
 
-    // Primero buscar en el array local
-    let preFacturaOrigen = preFacturas.find(
-      (pf) => Number(pf.id) === Number(preFacturaOrigenId),
-    );
-
-    // Si no está en el array local, buscar en el backend
-    if (!preFacturaOrigen) {
+    // La lista es liviana (y la venta origen puede estar fuera del rango mostrado): siempre se carga completa
+    let preFacturaOrigen = null;
+    {
       try {
-        const response = await getPreFacturaById(preFacturaOrigenId);
-        preFacturaOrigen = response.data;
+        preFacturaOrigen = await getPreFacturaPorId(preFacturaOrigenId);
       } catch (error) {
         console.error("Error al buscar Venta Origen:", error);
         toast.current.show({
@@ -1135,11 +1234,25 @@ const PreFactura = ({ ruta }) => {
       setDialogVisible(true);
     }
   };
-  const abrirDialogoEdicion = (preFactura) => {
+  // La lista es liviana: al abrir un documento se carga completo por id
+  const abrirDialogoEdicion = async (preFactura) => {
     setNavigationStack([]); // Limpiar el stack al abrir desde la lista
-    setSelectedPreFactura(preFactura);
-    setIsEditing(true);
-    setDialogVisible(true);
+    try {
+      setLoading(true);
+      const completa = await getPreFacturaPorId(preFactura.id);
+      setSelectedPreFactura(completa);
+      setIsEditing(true);
+      setDialogVisible(true);
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.mensaje || error.response?.data?.message || "No se pudo cargar la venta.",
+        life: 6000,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGuardarPreFactura = async (datos) => {
@@ -1185,6 +1298,7 @@ const PreFactura = ({ ruta }) => {
         );
         setSelectedPreFactura(preFacturaActualizada);
         setRefreshKey((prev) => prev + 1);
+        refrescarFilaEnLista(preFacturaActualizada);
       } else {
         const resultado = await crearPreFactura(datos);
         toast.current.show({
@@ -1200,9 +1314,8 @@ const PreFactura = ({ ruta }) => {
         setSelectedPreFactura(preFacturaCompleta);
         // ❌ NO incrementar refreshKey aquí - causa reset del formulario
         // setRefreshKey((prev) => prev + 1);
+        refrescarFilaEnLista(preFacturaCompleta);
       }
-
-      cargarDatos();
     } catch (err) {
       // Si el backend devuelve campos faltantes, mostrar lista
       if (
@@ -1257,7 +1370,7 @@ const PreFactura = ({ ruta }) => {
       });
 
       setSelectedRecords([]);
-      cargarDatos();
+      cargarPreFacturas();
     } catch (error) {
       console.error("Error actualizando tipo de operación:", error);
       toast.current?.show({
@@ -1282,7 +1395,7 @@ const PreFactura = ({ ruta }) => {
       });
 
       setSelectedRecords([]);
-      cargarDatos();
+      cargarPreFacturas();
     } catch (error) {
       console.error("Error actualizando tipo de afectación IGV:", error);
       toast.current?.show({
@@ -1307,7 +1420,7 @@ const PreFactura = ({ ruta }) => {
       });
 
       setSelectedRecords([]);
-      cargarDatos();
+      cargarPreFacturas();
     } catch (error) {
       console.error("Error actualizando unidad de negocio:", error);
       toast.current?.show({
@@ -1333,7 +1446,7 @@ const PreFactura = ({ ruta }) => {
       setDialogVisible(false);
       setSelectedPreFactura(null);
       setIsEditing(false);
-      cargarDatos(); // Recargar la lista para reflejar cambios
+      cargarPreFacturas(); // Recargar la lista para reflejar cambios
     }
   };
   // ⭐ FUNCIÓN AUXILIAR: Recalcular totales de una PreFactura
@@ -1411,8 +1524,8 @@ const PreFactura = ({ ruta }) => {
       setSelectedPreFactura(preFacturaAprobada);
       setRefreshKey((prev) => prev + 1);
 
-      // Recargar la lista en segundo plano
-      cargarDatos();
+      // Se actualiza solo la fila de esta venta en la lista (no se recarga toda la pantalla)
+      refrescarFilaEnLista(preFacturaAprobada);
     } catch (err) {
       console.error("Error al aprobar pre-factura:", err);
       const errorMsg =
@@ -1463,7 +1576,7 @@ const PreFactura = ({ ruta }) => {
             detail: "Pre-factura anulada correctamente.",
             life: 3000,
           });
-          cargarDatos();
+          cargarPreFacturas();
           cerrarDialogo();
         } catch (err) {
           console.error("Error al anular pre-factura:", err);
@@ -1557,7 +1670,7 @@ const PreFactura = ({ ruta }) => {
             life: 5000,
           });
 
-          cargarDatos();
+          cargarPreFacturas();
           cerrarDialogo();
         } catch (err) {
           console.error("Error al reactivar pre-factura:", err);
@@ -1727,7 +1840,7 @@ const PreFactura = ({ ruta }) => {
         life: 12000, // 12 segundos para leer toda la información
       });
 
-      cargarDatos();
+      cargarPreFacturas();
     } catch (error) {
 
       const mensajeError = error.response?.data?.error || error.message || "Error desconocido";
@@ -1773,8 +1886,9 @@ const PreFactura = ({ ruta }) => {
         return;
       }
 
-      // Guardar pre-factura actual para el diálogo
-      setKardexDocumentoActual(preFacturaActual);
+      // Guardar pre-factura actual para el diálogo (completa: el diálogo necesita los detalles)
+      const preFacturaCompleta = await getPreFacturaPorId(id);
+      setKardexDocumentoActual(preFacturaCompleta);
 
       if (preFacturaActual.movSalidaAlmacenId) {
         // Ya tiene kardex - Mostrar confirmación nativa
@@ -1807,7 +1921,8 @@ const PreFactura = ({ ruta }) => {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al procesar la solicitud",
+        detail: mensajeDeError(error, "Error al procesar la solicitud"),
+        life: 8000,
       });
     }
   };
@@ -1851,7 +1966,7 @@ const PreFactura = ({ ruta }) => {
       }
 
       // Recargar lista en segundo plano
-      cargarDatos();
+      cargarPreFacturas();
     } catch (error) {
       console.error("Error al generar movimiento:", error);
 
@@ -1879,7 +1994,7 @@ const PreFactura = ({ ruta }) => {
         const preFacturaActualizada = await getPreFacturaPorId(selectedPreFactura.id);
         setSelectedPreFactura(preFacturaActualizada);
       }
-      await cargarDatos();
+      await cargarPreFacturas();
     } catch (error) {
       console.error("Error al recargar la pre-factura tras el despacho de stock:", error);
     }
@@ -1908,7 +2023,7 @@ const PreFactura = ({ ruta }) => {
       }
 
       // Recargar lista en segundo plano
-      await cargarDatos();
+      await cargarPreFacturas();
     } catch (error) {
       console.error("Error al regenerar kardex:", error);
       toast.current.show({
@@ -2062,7 +2177,7 @@ const PreFactura = ({ ruta }) => {
 
   const limpiarFiltros = () => {
     setEmpresaSeleccionada(null);
-    setRangoFechas(null);
+    setRangoFechas(rangoFechasPorDefecto());
     setEstadoSeleccionado(null);
     setTiposDocInternoAplicados([]);
     setTiposDocFinalAplicados([]);
@@ -2203,7 +2318,14 @@ const PreFactura = ({ ruta }) => {
           onRowClick={
             permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
           }
-          emptyMessage="No se encontraron VENTAS"
+          emptyMessage={
+            <div style={{ textAlign: "center", padding: "1rem" }}>
+              <b>No hay ventas con los filtros actuales.</b>
+              <div style={{ marginTop: 6 }}>
+                Se muestra solo lo que está dentro del rango de fechas elegido. Amplíe el rango (por ejemplo "Año" o "Todo") para ver periodos anteriores.
+              </div>
+            </div>
+          }
           header={
             <div>
               <div
@@ -2312,7 +2434,7 @@ const PreFactura = ({ ruta }) => {
                     style={{ width: "100%" }}
                     disabled={!permisos.puedeCrear || loading}
                     toast={toast}
-                    onFinalizado={cargarDatos}
+                    onFinalizado={cargarPreFacturas}
                   />
                 </div>
 
@@ -2326,6 +2448,23 @@ const PreFactura = ({ ruta }) => {
                     tooltip={periodoSeleccionado === PERIODO_TODOS ? "Seleccione un periodo específico para exportar" : undefined}
                     tooltipOptions={{ position: "top" }}
                     style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ flex: 1.5 }}>
+                  <BotonDescargarPDFsMasivoSunat
+                    documentosSeleccionados={documentosParaPdfMasivo}
+                    label="PDFs SUNAT Masivo"
+                    className="p-button-info"
+                    onComplete={cargarPreFacturas}
+                    disabled={loading || documentosParaPdfMasivo.length === 0}
+                    tooltip={
+                      (selectedRecords || []).length === 0
+                        ? "Seleccione las ventas fiscales de las que necesita el PDF"
+                        : documentosParaPdfMasivo.length === 0
+                          ? "Ninguna de las ventas seleccionadas necesita PDF: son gerenciales, ya tienen PDF o les falta serie y correlativo"
+                          : `Descargar de SUNAT el PDF de ${documentosParaPdfMasivo.length} de las ${selectedRecords.length} ventas seleccionadas`
+                    }
+                    toast={toast}
                   />
                 </div>
                 {permisos.puedeReactivarDocs && (
@@ -2394,6 +2533,39 @@ const PreFactura = ({ ruta }) => {
 
 
 
+              {/* Alcance de la consulta: el usuario siempre sabe qué se está mostrando */}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+                <span style={{ fontWeight: "bold" }}>Mostrando:</span>
+                <Tag
+                  icon="pi pi-building"
+                  severity="info"
+                  value={`Empresa: ${empresas.find((e) => Number(e.id) === Number(empresaSeleccionada))?.razonSocial || "Todas las empresas"}`}
+                />
+                <Tag
+                  icon="pi pi-calendar"
+                  severity="info"
+                  value={
+                    rangoFechas && rangoFechas[0]
+                      ? rangoFechas[1]
+                        ? `Del ${formatearFecha(rangoFechas[0], "")} al ${formatearFecha(rangoFechas[1], "")}`
+                        : `Desde el ${formatearFecha(rangoFechas[0], "")}`
+                      : "Todo el historial"
+                  }
+                />
+                <Tag
+                  icon="pi pi-book"
+                  severity="info"
+                  value={
+                    {
+                      FISCAL_SSI: "Documentos fiscales, sin saldos iniciales",
+                      FISCAL_CSI: "Documentos fiscales, con saldos iniciales",
+                      GERENCIAL: "Documentos gerenciales",
+                      TODOS: "Todos los documentos",
+                    }[filtroTipoLibro] || "Todos los documentos"
+                  }
+                />
+                <Tag icon="pi pi-list" severity="success" value={`${preFacturasFiltradas.length} documentos`} />
+              </div>
               <div
                 style={{
                   alignItems: "end",
@@ -2407,18 +2579,41 @@ const PreFactura = ({ ruta }) => {
                   <label htmlFor="rangoFechas" style={{ fontWeight: "bold" }}>
                     Rango de Fechas
                   </label>
-                  <Calendar
-                    id="rangoFechas"
-                    value={rangoFechas}
-                    onChange={(e) => setRangoFechas(e.value)}
-                    selectionMode="range"
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    placeholder="Seleccionar rango..."
-                    style={{ width: "100%" }}
-                    disabled={loading}
-                    readOnlyInput
-                  />
+                  {/* Calendario y atajos en UNA sola línea: los atajos van en un menú emergente para no agregar alto al filtro */}
+                  <div style={{ display: "flex", gap: 4, alignItems: "stretch" }}>
+                    <Calendar
+                      id="rangoFechas"
+                      value={rangoFechas}
+                      onChange={(e) => setRangoFechas(e.value)}
+                      selectionMode="range"
+                      dateFormat="dd/mm/yy"
+                      showIcon
+                      placeholder="Seleccionar rango..."
+                      style={{ flex: 1 }}
+                      disabled={loading}
+                      readOnlyInput
+                    />
+                    <Button
+                      type="button"
+                      icon="pi pi-clock"
+                      className="p-button-outlined"
+                      onClick={(e) => menuAtajosFecha.current.toggle(e)}
+                      disabled={loading}
+                      tooltip="Atajos de rango: 30 días, 3 meses, año o todo el historial"
+                      tooltipOptions={{ position: "top" }}
+                      style={{ width: "auto" }}
+                    />
+                    <Menu
+                      popup
+                      ref={menuAtajosFecha}
+                      model={[
+                        { label: "Últimos 30 días", command: () => setRangoFechas(rangoUltimosDias(30)) },
+                        { label: "Últimos 3 meses", command: () => setRangoFechas(rangoUltimosDias(90)) },
+                        { label: "Último año", command: () => setRangoFechas(rangoUltimosDias(365)) },
+                        { label: "Todo el historial", command: () => setRangoFechas(null) },
+                      ]}
+                    />
+                  </div>
                 </div>
                 <div style={{ flex: 2 }}>
                   <label htmlFor="estadoFiltro" style={{ fontWeight: "bold" }}>

@@ -3,6 +3,7 @@ import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { Panel } from 'primereact/panel';
 import * as sireAPI from '../../api/sire';
+import * as ventasAPI from '../../api/ventas';
 
 /**
  * Componente genérico para descarga masiva de PDFs desde SUNAT
@@ -74,25 +75,32 @@ export default function BotonDescargarPDFsMasivoSunat({
             }]
           }));
 
-          if (!doc.empresaId || !doc.rucEmisorReceptor || !doc.tipoDocCodigo || !doc.serie || !doc.numero || !doc.fechaEmision || !doc.id) {
-            throw new Error('Faltan datos requeridos del documento');
-          }
-
-          // PATRÓN: Replica construcción de CAR de BotonDescargarPDFSunat.jsx
-          const ruc = String(doc.rucEmisorReceptor).padStart(11, '0');
-          const tipo = String(doc.tipoDocCodigo).padStart(2, '0');
-          const serieFormateada = String(doc.serie).padStart(4, '0');
-          const numeroFormateado = String(doc.numero).padStart(10, '0');
-          const car = `${ruc}${tipo}${serieFormateada}${numeroFormateado}`;
-
-          const fecha = new Date(doc.fechaEmision);
-          const periodo = `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, '0')}`;
-
           let resultado;
-          
+
           // PATRÓN: Replica llamada API de BotonDescargarPDFSunat.jsx
           if (doc.moduloDestino === 'orden-compra') {
+            if (!doc.empresaId || !doc.rucEmisorReceptor || !doc.tipoDocCodigo || !doc.serie || !doc.numero || !doc.fechaEmision || !doc.id) {
+              throw new Error('Faltan datos requeridos del documento');
+            }
+
+            // PATRÓN: Replica construcción de CAR de BotonDescargarPDFSunat.jsx
+            const ruc = String(doc.rucEmisorReceptor).padStart(11, '0');
+            const tipo = String(doc.tipoDocCodigo).padStart(2, '0');
+            const serieFormateada = String(doc.serie).padStart(4, '0');
+            const numeroFormateado = String(doc.numero).padStart(10, '0');
+            const car = `${ruc}${tipo}${serieFormateada}${numeroFormateado}`;
+
+            const fecha = new Date(doc.fechaEmision);
+            const periodo = `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+
             resultado = await sireAPI.descargarPDFParaOrdenCompra(doc.empresaId, periodo, car, doc.id);
+          } else if (doc.moduloDestino === 'pre-factura') {
+            // VENTAS (FLUJO A, comprobantes históricos emitidos por el portal de SUNAT): mismo servicio que BotonDescargarPDFSunatVentas
+            // (json.pe), que guarda el PDF en PreFactura.urlPreFacturaPdf.
+            if (!doc.empresaId || !doc.tipoDocCodigo || !doc.serie || !doc.numero || !doc.id) {
+              throw new Error('Faltan datos requeridos del documento');
+            }
+            resultado = await ventasAPI.descargarPDFParaPreFactura(doc.empresaId, doc.id, doc.tipoDocCodigo, doc.serie, doc.numero);
           } else {
             throw new Error('Módulo no soportado');
           }
@@ -113,7 +121,7 @@ export default function BotonDescargarPDFsMasivoSunat({
             }));
           } else {
             errores++;
-            resultados.push({ ...doc, success: false, error: resultado.mensaje });
+            resultados.push({ ...doc, success: false, error: resultado.mensaje || resultado.message });
 
             setProgreso(prev => ({
               ...prev,
@@ -121,7 +129,7 @@ export default function BotonDescargarPDFsMasivoSunat({
               errores: errores,
               log: [...prev.log, {
                 tipo: 'error',
-                mensaje: `✗ Error: ${resultado.mensaje}`,
+                mensaje: `✗ Error: ${resultado.mensaje || resultado.message}`,
                 timestamp: new Date().toLocaleTimeString()
               }]
             }));
@@ -129,7 +137,8 @@ export default function BotonDescargarPDFsMasivoSunat({
 
         } catch (error) {
           errores++;
-          resultados.push({ ...doc, success: false, error: error.message });
+          const motivo = error.response?.data?.mensaje || error.response?.data?.message || error.message;
+          resultados.push({ ...doc, success: false, error: motivo });
 
           setProgreso(prev => ({
             ...prev,
@@ -137,7 +146,7 @@ export default function BotonDescargarPDFsMasivoSunat({
             errores: errores,
             log: [...prev.log, {
               tipo: 'error',
-              mensaje: `✗ Excepción: ${error.message}`,
+              mensaje: `✗ Excepción: ${motivo}`,
               timestamp: new Date().toLocaleTimeString()
             }]
           }));

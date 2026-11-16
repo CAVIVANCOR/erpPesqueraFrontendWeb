@@ -20,6 +20,7 @@ import RequerimientoCompraForm from "../components/requerimientoCompra/Requerimi
 import MovimientoAlmacenForm from "../components/movimientoAlmacen/MovimientoAlmacenForm";
 import {
   getOrdenesCompra,
+  getDetalleExportacionOrdenesCompra,
   getOrdenCompraPorId,
   crearOrdenCompra,
   actualizarOrdenCompra,
@@ -80,6 +81,16 @@ import { generarRegistroComprasPDF } from "../components/ordenCompra/reports/gen
 import ImportadorSIRECompras from '../components/sire/ImportadorSIRECompras';
 import BotonDescargarPDFsMasivoSunat from '../components/common/BotonDescargarPDFsMasivoSunat';
 
+// Rango de fechas de documento por defecto: últimos N días (el rango es el filtro principal y se consulta en el servidor)
+const rangoUltimosDias = (dias) => {
+  const hasta = new Date();
+  hasta.setHours(0, 0, 0, 0);
+  const desde = new Date(hasta);
+  desde.setDate(desde.getDate() - dias);
+  return [desde, hasta];
+};
+const rangoFechasPorDefecto = () => rangoUltimosDias(30);
+
 export default function OrdenCompra({ ruta }) {
   const navigate = useNavigate();
   const usuario = useAuthStore((state) => state.usuario);
@@ -90,6 +101,9 @@ export default function OrdenCompra({ ruta }) {
   const toast = useRef(null);
   const menuExport = useRef(null);
   const opFiltrosAvanzados = useRef(null);
+  const menuAtajosFecha = useRef(null);
+  const catalogosListos = useRef(false);
+  const solicitudLista = useRef(0);
 
   const [items, setItems] = useState([]);
 
@@ -154,7 +168,7 @@ export default function OrdenCompra({ ruta }) {
   const [reportData, setReportData] = useState(null);
 
   // Estados para filtros de rango de fechas
-  const [rangoFechaDocumento, setRangoFechaDocumento] = useState(null);
+  const [rangoFechaDocumento, setRangoFechaDocumento] = useState(rangoFechasPorDefecto);
   const [tipoDocumentoFinalIdSeleccionado, setTipoDocumentoFinalIdSeleccionado] = useState(null);
 
   // Estados para filtros avanzados de tipo documento
@@ -196,23 +210,23 @@ export default function OrdenCompra({ ruta }) {
   // periodoContableId es numérico, por lo que un string no colisiona con ningún id real.
   const PERIODO_TODOS = "TODOS";
 
-  // Periodos de la empresa seleccionada, de TODOS los años, más recientes primero.
-  // La primera opción es "Todos los periodos" para consultar el histórico completo
-  // de un proveedor sin cambiar de periodo uno a uno.
+  // Periodos de la empresa seleccionada que aparecen en las órdenes del rango cargado (lista dinámica), más recientes primero.
+  // La primera opción es "Todos los periodos" = todos los del rango consultado.
   const periodosFiltrados = useMemo(() => {
     if (!empresaIdSelector) {
       return [];
     }
 
+    const periodosEnLista = new Set(items.map((i) => Number(i.periodoContableId)).filter(Boolean));
     const delaEmpresa = periodosContables
-      .filter(p => Number(p.empresaId) === Number(empresaIdSelector))
+      .filter(p => Number(p.empresaId) === Number(empresaIdSelector) && periodosEnLista.has(Number(p.id)))
       .sort((a, b) => (Number(b.anio) - Number(a.anio)) || (Number(b.mes) - Number(a.mes)));
 
     return [
       { id: PERIODO_TODOS, nombrePeriodo: "TODOS LOS PERIODOS", anio: null, mes: null },
       ...delaEmpresa,
     ];
-  }, [periodosContables, empresaIdSelector]);
+  }, [periodosContables, empresaIdSelector, items]);
 
 
   // Inicializa el periodo contable por defecto (mes/año actual) SOLO cuando:
@@ -233,12 +247,8 @@ export default function OrdenCompra({ ruta }) {
       periodosFiltrados.some((p) => p.id !== PERIODO_TODOS && Number(p.id) === Number(periodoSeleccionado));
     if (seleccionVigente) return;
 
-    const hoy = new Date();
-    const periodoActual = periodosFiltrados.find(
-      (p) => Number(p.mes) === hoy.getMonth() + 1 && Number(p.anio) === hoy.getFullYear()
-    );
-    // Fallback: el periodo real más reciente (índice 1, porque el 0 es "Todos")
-    setPeriodoSeleccionado(periodoActual ? periodoActual.id : periodosFiltrados[1].id);
+    // Por defecto manda el rango de fechas: se muestran todos los periodos del rango
+    setPeriodoSeleccionado(PERIODO_TODOS);
   }, [periodosFiltrados, periodoSeleccionado]);
 
 
@@ -570,7 +580,7 @@ export default function OrdenCompra({ ruta }) {
         motivosNCNDData,
         ubicacionesData,
       ] = await Promise.all([
-        getOrdenesCompra(),
+        getOrdenesCompra(construirFiltrosServidor()),
         getEmpresas(),
         getEntidadesComerciales(),
         getTiposAfectacionIGVActivos(), // AGREGADO
@@ -637,6 +647,7 @@ export default function OrdenCompra({ ruta }) {
         ),
       }));
       setItems(ordenesNormalizadas);
+      catalogosListos.current = true;
 
       const requerimientosAprobados = requerimientosData.filter(
         (r) => r.estadoDocId === 33,
@@ -653,12 +664,66 @@ export default function OrdenCompra({ ruta }) {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo cargar los datos.",
+        detail: mensajeDeError(err, "No se pudo cargar los datos"),
+        life: 8000,
       });
     }
     setLoading(false);
   };
 
+
+  // Filtros que viajan al servidor: empresa, rango de fechas de documento y tipo de libro.
+  // El resto de filtros (estado, proveedor, producto, tipos de documento, búsqueda) se aplican en pantalla.
+  const construirFiltrosServidor = () => {
+    const filtros = { tipoLibro: filtroTipoLibro };
+    if (empresaSeleccionada) filtros.empresaId = empresaSeleccionada;
+    if (rangoFechaDocumento && rangoFechaDocumento[0]) {
+      const desde = new Date(rangoFechaDocumento[0]);
+      desde.setHours(0, 0, 0, 0);
+      filtros.desde = desde.toISOString();
+      if (rangoFechaDocumento[1]) {
+        const hasta = new Date(rangoFechaDocumento[1]);
+        hasta.setHours(23, 59, 59, 999);
+        filtros.hasta = hasta.toISOString();
+      }
+    }
+    return filtros;
+  };
+
+  // Recarga solo la lista de órdenes cuando cambia empresa, rango de fechas o tipo de libro
+  const cargarOrdenes = async () => {
+    const solicitud = ++solicitudLista.current;
+    setLoading(true);
+    try {
+      const data = await getOrdenesCompra(construirFiltrosServidor());
+      // Una consulta más nueva ya salió: esta respuesta quedó obsoleta
+      if (solicitud !== solicitudLista.current) return;
+      setItems(
+        data.map((orden) => ({
+          ...orden,
+          estadoDoc: estadosDoc.find((e) => Number(e.id) === Number(orden.estadoId)),
+        })),
+      );
+    } catch (err) {
+      if (solicitud !== solicitudLista.current) return;
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: mensajeDeError(err, "No se pudo cargar la lista de órdenes de compra"),
+        life: 8000,
+      });
+    } finally {
+      if (solicitud === solicitudLista.current) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // La carga inicial (con catálogos) la hace cargarDatos; aquí solo los cambios posteriores de filtros
+    if (!catalogosListos.current) return;
+    // Rango a medias (solo fecha inicial): se espera a que el usuario elija la fecha final
+    if (rangoFechaDocumento && rangoFechaDocumento[0] && !rangoFechaDocumento[1]) return;
+    cargarOrdenes();
+  }, [empresaSeleccionada, rangoFechaDocumento, filtroTipoLibro]);
 
   // ✅ Cargar tipos de documento DINÁMICAMENTE desde órdenes filtradas
   useEffect(() => {
@@ -861,7 +926,7 @@ export default function OrdenCompra({ ruta }) {
         life: 12000,
       });
 
-      cargarDatos();
+      cargarOrdenes();
     } catch (error) {
       toast.current.show({
         severity: "error",
@@ -958,7 +1023,8 @@ export default function OrdenCompra({ ruta }) {
     setEstadoSeleccionado(null);
     setTipoAfectacionIGVSeleccionado(null);
     setSubmoduloOrigenSeleccionado(null);
-    setRangoFechaDocumento(null);
+    setRangoFechaDocumento(rangoFechasPorDefecto());
+    setPeriodoSeleccionado(null);
     setTipoDocumentoFinalIdSeleccionado(null);
     setTiposDocInternoAplicados([]);
     setTiposDocFinalAplicados([]);
@@ -1079,7 +1145,7 @@ export default function OrdenCompra({ ruta }) {
         life: 3000,
       });
 
-      await cargarDatos();
+      await cargarOrdenes();
       setOrdenesSeleccionadas([]);
     } catch (error) {
       console.error("Error al asignar centro de costo:", error);
@@ -1114,7 +1180,7 @@ export default function OrdenCompra({ ruta }) {
       });
 
       // Recargar datos y limpiar selección
-      await cargarDatos();
+      await cargarOrdenes();
       setOrdenesSeleccionadas([]);
     } catch (error) {
       console.error("Error al asignar activo:", error);
@@ -1338,7 +1404,7 @@ export default function OrdenCompra({ ruta }) {
         detail: `Orden generada exitosamente desde requerimiento.`,
         life: 5000,
       });
-      cargarDatos();
+      cargarOrdenes();
 
       const { getOrdenCompraPorId } = await import("../api/ordenCompra");
       const ordenCompleta = await getOrdenCompraPorId(resultado.id);
@@ -1499,8 +1565,15 @@ export default function OrdenCompra({ ruta }) {
               life: 5000,
             });
 
-            cargarDatos();
-            setShowDialog(false);
+            // Se actualiza solo esta orden en la lista (conserva filtros, página, orden y scroll) y el formulario
+            // sigue abierto con el estado nuevo, igual que al aprobar. Recargar toda la lista reordenaba la tabla.
+            const { getOrdenCompraPorId } = await import("../api/ordenCompra");
+            const ordenActualizada = await getOrdenCompraPorId(id);
+            actualizarRegistro(id, {
+              ...ordenActualizada,
+              estadoDoc: estadosDoc.find((e) => Number(e.id) === Number(ordenActualizada.estadoId)),
+            });
+            setEditing(ordenActualizada);
           } catch (err) {
             console.error("Error al generar CxP:", err);
             console.error("Error completo:", err.response?.data); // ⭐ LOG ADICIONAL
@@ -1551,7 +1624,7 @@ export default function OrdenCompra({ ruta }) {
         setEditing(ordenActualizada);
       }
       // Recargar lista en segundo plano
-      await cargarDatos();
+      await cargarOrdenes();
     } catch (error) {
       console.error("Error al regenerar kardex:", error);
       toast.current.show({
@@ -1604,7 +1677,7 @@ export default function OrdenCompra({ ruta }) {
       }
 
       // Recargar lista en segundo plano
-      cargarDatos();
+      cargarOrdenes();
     } catch (error) {
       console.error("Error al generar movimiento:", error);
 
@@ -1683,6 +1756,14 @@ export default function OrdenCompra({ ruta }) {
           });
           return;
         }
+
+        // La lista es liviana: el detalle completo (relaciones y montos en PEN) se pide solo de las órdenes a exportar
+        const completas = await getDetalleExportacionOrdenesCompra(ordenesParaExportar.map((oc) => oc.id));
+        const completaPorId = new Map(completas.map((c) => [Number(c.id), c]));
+        ordenesParaExportar = ordenesParaExportar.map((oc) => ({
+          ...completaPorId.get(Number(oc.id)),
+          estadoDoc: oc.estadoDoc,
+        }));
 
         // Ordenar por fecha de emisión del comprobante (fechaFacturacion) ASC, igual que el TXT SUNAT
         ordenesParaExportar = ordenesParaExportar.sort((a, b) => {
@@ -2443,7 +2524,7 @@ export default function OrdenCompra({ ruta }) {
                   empresaIdPadre={empresaIdSelector}
                   periodoIdPadre={periodoSeleccionado}
                   periodosContables={periodosContables}
-                  onImportComplete={cargarDatos}
+                  onImportComplete={cargarOrdenes}
                   toast={toast}
                 />
               </div>
@@ -2463,7 +2544,7 @@ export default function OrdenCompra({ ruta }) {
                     moduloDestino: "orden-compra"
                   }))}
                   onComplete={(resultados) => {
-                    cargarDatos();
+                    cargarOrdenes();
                   }}
                   disabled={!empresaIdSelector || !periodoSeleccionado || ordenesSeleccionadas.length === 0}
                   tooltip={
@@ -2518,7 +2599,39 @@ export default function OrdenCompra({ ruta }) {
               </div>
 
             </div>
-            <div
+            {/* Alcance de la consulta: el usuario siempre sabe qué se está mostrando */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontWeight: "bold" }}>Mostrando:</span>
+              <Tag
+                icon="pi pi-building"
+                severity="info"
+                value={`Empresa: ${empresas.find((e) => Number(e.id) === Number(empresaSeleccionada))?.razonSocial || "Todas las empresas"}`}
+              />
+              <Tag
+                icon="pi pi-calendar"
+                severity="info"
+                value={
+                  rangoFechaDocumento && rangoFechaDocumento[0]
+                    ? rangoFechaDocumento[1]
+                      ? `Del ${formatearFecha(rangoFechaDocumento[0], "")} al ${formatearFecha(rangoFechaDocumento[1], "")}`
+                      : `Desde el ${formatearFecha(rangoFechaDocumento[0], "")}`
+                    : "Todo el historial"
+                }
+              />
+              <Tag
+                icon="pi pi-book"
+                severity="info"
+                value={
+                  {
+                    FISCAL_SSI: "Documentos fiscales, sin saldos iniciales",
+                    FISCAL_CSI: "Documentos fiscales, con saldos iniciales",
+                    GERENCIAL: "Documentos gerenciales",
+                    TODOS: "Todos los documentos",
+                  }[filtroTipoLibro] || "Todos los documentos"
+                }
+              />
+              <Tag icon="pi pi-list" severity="success" value={`${ordenesFiltradas.length} documentos`} />
+            </div>            <div
               style={{
                 alignItems: "end",
                 display: "flex",
@@ -2720,15 +2833,40 @@ export default function OrdenCompra({ ruta }) {
                 <label style={{ fontWeight: "bold" }}>
                   Rango Fecha Documento:
                 </label>
-                <Calendar
-                  value={rangoFechaDocumento}
-                  onChange={(e) => setRangoFechaDocumento(e.value)}
-                  selectionMode="range"
-                  dateFormat="dd/mm/yy"
-                  placeholder="Seleccione rango"
-                  showIcon
-                  style={{ width: "100%" }}
-                />
+                {/* Calendario y atajos en UNA sola línea: los atajos van en un menú emergente para no agregar alto al filtro */}
+                <div style={{ display: "flex", gap: 4, alignItems: "stretch" }}>
+                  <Calendar
+                    value={rangoFechaDocumento}
+                    onChange={(e) => setRangoFechaDocumento(e.value)}
+                    selectionMode="range"
+                    dateFormat="dd/mm/yy"
+                    placeholder="Seleccione rango"
+                    showIcon
+                    style={{ flex: 1 }}
+                    disabled={loading}
+                    readOnlyInput
+                  />
+                  <Button
+                    type="button"
+                    icon="pi pi-clock"
+                    className="p-button-outlined"
+                    onClick={(e) => menuAtajosFecha.current.toggle(e)}
+                    disabled={loading}
+                    tooltip="Atajos de rango: 30 días, 3 meses, año o todo el historial"
+                    tooltipOptions={{ position: "top" }}
+                    style={{ width: "auto" }}
+                  />
+                  <Menu
+                    popup
+                    ref={menuAtajosFecha}
+                    model={[
+                      { label: "Últimos 30 días", command: () => setRangoFechaDocumento(rangoUltimosDias(30)) },
+                      { label: "Últimos 3 meses", command: () => setRangoFechaDocumento(rangoUltimosDias(90)) },
+                      { label: "Último año", command: () => setRangoFechaDocumento(rangoUltimosDias(365)) },
+                      { label: "Todo el historial", command: () => setRangoFechaDocumento(null) },
+                    ]}
+                  />
+                </div>
               </div>
               {/* Botón: Asignar Centro de Costo Masivo */}
               <div style={{ flex: 1 }}>
@@ -3309,7 +3447,7 @@ export default function OrdenCompra({ ruta }) {
             life: 5000
           });
 
-          cargarOrdenesCompra();
+          cargarOrdenes();
         }}
         toast={toast}
         aprobarOrdenCompra={aprobarOrdenCompra}

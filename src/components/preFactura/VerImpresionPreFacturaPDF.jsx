@@ -76,7 +76,7 @@ const VerImpresionPreFacturaPDF = ({
 
   const cardHeader = (
     <div className="flex justify-content-between align-items-center">
-      <h3 className="m-0">Vista Previa PDF Pre-Factura</h3>
+      <h3 className="m-0">{datosPreFactura?.esGerencial ? "Vista Previa PDF Nota de Venta" : "Vista Previa PDF Pre-Factura"}</h3>
       {datosPreFactura?.numeroDocumento && (
         <div className="text-600">
           <strong>Doc:</strong> {datosPreFactura.numeroDocumento} | 
@@ -93,12 +93,12 @@ const VerImpresionPreFacturaPDF = ({
         pdfData={datosPreFactura}
         moduleName="pre-factura"
         entityId={preFacturaId}
-        fileName={`PreFactura_${datosPreFactura.numeroDocumento || preFacturaId}.pdf`}
-        buttonLabel="Generar PDF Pre-Factura"
+        fileName={`${datosPreFactura?.esGerencial ? "NotaVenta" : "PreFactura"}_${datosPreFactura.numeroDocumento || preFacturaId}.pdf`}
+        buttonLabel={datosPreFactura?.esGerencial ? "Generar Nota de Venta" : "Generar PDF Pre-Factura"}
         buttonIcon="pi pi-file-pdf"
         buttonClassName="p-button-danger"
         disabled={!preFacturaId}
-        warningMessage={!preFacturaId ? "Guarde la pre-factura para poder generar el PDF" : null}
+        warningMessage={!preFacturaId ? `Guarde ${datosPreFactura?.esGerencial ? "la nota de venta" : "la pre-factura"} para poder generar el PDF` : null}
         toast={toast}
         viewerHeight="600px"
         onGenerateComplete={(url) => setPdfUrl(url)}

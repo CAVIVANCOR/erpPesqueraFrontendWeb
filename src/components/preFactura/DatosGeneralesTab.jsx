@@ -108,6 +108,7 @@ export default function DatosGeneralesTab({
   onNumSerieDocFinalChange,
   numCorreDocFinal,
   onNumCorreDocFinalChange,
+  correlativoAsignadoPorFactpro,
   onStockDespachado = () => { }, // ⭐ se llama tras generar movimientos de salida, kardex y saldos
 }) {
   // Determinar si es exportación para mostrar campos adicionales
@@ -694,7 +695,10 @@ export default function DatosGeneralesTab({
                 onNumSerieDocFinalChange(e.target.value.toUpperCase())
               }
               maxLength={40}
-              disabled={!puedeEditarConPermiso}
+              disabled={!puedeEditarConPermiso || correlativoAsignadoPorFactpro}
+              placeholder="LA ASIGNA FACTPRO"
+              tooltip={correlativoAsignadoPorFactpro ? "Serie asignada por Factpro según el tipo de documento" : "Déjela vacía para que Factpro asigne la serie al generar el comprobante electrónico"}
+              tooltipOptions={{ position: "top" }}
               style={{
                 width: "100%",
                 fontWeight: "bold",
@@ -719,7 +723,10 @@ export default function DatosGeneralesTab({
                 onNumCorreDocFinalChange(e.target.value)
               }
               maxLength={40}
-              disabled={!puedeEditarConPermiso}
+              disabled={!puedeEditarConPermiso || correlativoAsignadoPorFactpro}
+              placeholder="LO ASIGNA FACTPRO"
+              tooltip={correlativoAsignadoPorFactpro ? "Correlativo asignado por Factpro al emitir el comprobante" : "Déjelo vacío para que Factpro asigne el correlativo al generar el comprobante electrónico"}
+              tooltipOptions={{ position: "top" }}
               style={{
                 width: "100%",
                 fontWeight: "bold",

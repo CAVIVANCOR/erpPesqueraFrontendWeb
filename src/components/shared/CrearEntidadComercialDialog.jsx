@@ -63,8 +63,10 @@ export default function CrearEntidadComercialDialog({
     }
 
     // Si es modo creación, retornar valores por defecto
+    // EntidadComercial es un maestro único: Entidad.empresaId está depreciado y siempre vale 1 (MEGUI),
+    // sin importar la empresa con la que trabaje la pantalla de origen.
     const base = {
-      empresaId: empresaId,
+      empresaId: 1,
       agrupacionEntidadId: 1, // Default: S/A
       estado: true,
       ...defaultValues,
@@ -129,6 +131,7 @@ export default function CrearEntidadComercialDialog({
         {!toastProp && <Toast ref={toastLocal} />}
         <EntidadComercialForm
           entidadComercial={getDefaultEntidadValues()}
+          empresaIdForzada={1}
           onGuardar={handleGuardar}
           onCancelar={handleCancelar}
           toast={toastRef}

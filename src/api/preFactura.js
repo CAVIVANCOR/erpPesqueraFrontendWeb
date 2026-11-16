@@ -25,14 +25,25 @@ function getAuthHeaders() {
  * Obtiene todas las pre-facturas
  * @returns {Promise<Array>} Lista de pre-facturas
  */
-export async function getPreFacturas() {
+export async function getPreFacturas(filtros = {}) {
   try {
-    const response = await axios.get(API_URL, { headers: getAuthHeaders() });
+    // Con filtros (empresaId, desde, hasta, tipoLibro) el servidor filtra y devuelve la lista liviana
+    const params = Object.fromEntries(Object.entries(filtros).filter(([, v]) => v !== null && v !== undefined && v !== ""));
+    const response = await axios.get(API_URL, { params, headers: getAuthHeaders() });
     return response.data;
   } catch (error) {
     console.error("Error al obtener pre-facturas:", error);
     throw error;
   }
+}
+
+/**
+ * Detalle completo de las ventas indicadas (para Excel/PDF del registro de ventas)
+ * @param {Array<number>} ids - Ids de las pre-facturas mostradas
+ */
+export async function getDetalleExportacionPreFacturas(ids) {
+  const response = await axios.post(`${API_URL}/detalle-exportacion`, { ids }, { headers: getAuthHeaders() });
+  return response.data;
 }
 
 /**
@@ -252,6 +263,14 @@ export async function facturarPreFacturaBlanca(preFacturaId) {
     console.error("Error al facturar pre-factura blanca:", error);
     throw error;
   }
+}
+
+/**
+ * Obtener desde Factpro el PDF del documento final de la venta (consulta por serie y correlativo)
+ */
+export async function obtenerPdfDesdeFactpro(preFacturaId) {
+  const response = await axios.post(`${API_URL}/${preFacturaId}/obtener-pdf-factpro`, {}, { headers: getAuthHeaders() });
+  return response.data;
 }
 
 /**

@@ -133,8 +133,9 @@ export async function dibujarEncabezadoPDFPreFactura({
   });
 
   // Título
-  page.drawText("PRE-FACTURA", {
-    x: boxX + boxWidth / 2 - 40,
+  const tituloDocumento = datosPreFactura.esGerencial ? "NOTA DE VENTA" : "PRE-FACTURA";
+  page.drawText(tituloDocumento, {
+    x: boxX + boxWidth / 2 - fontBold.widthOfTextAtSize(tituloDocumento, 12) / 2,
     y: boxY + boxHeight - 20,
     size: 12,
     font: fontBold,

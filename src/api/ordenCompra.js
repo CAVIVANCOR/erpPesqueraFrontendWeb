@@ -9,8 +9,19 @@ function getAuthHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
-export async function getOrdenesCompra() {
-  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+// Con filtros (empresaId, desde, hasta, tipoLibro) el servidor filtra y devuelve la lista liviana; sin filtros, la lista completa histórica
+export async function getOrdenesCompra(filtros = {}) {
+  const params = Object.fromEntries(Object.entries(filtros).filter(([, v]) => v !== null && v !== undefined && v !== ""));
+  const res = await axios.get(API_URL, { params, headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Detalle completo de las órdenes indicadas (para Excel/PDF del registro de compras)
+ * @param {Array<number>} ids - Ids de las órdenes mostradas
+ */
+export async function getDetalleExportacionOrdenesCompra(ids) {
+  const res = await axios.post(`${API_URL}/detalle-exportacion`, { ids }, { headers: getAuthHeaders() });
   return res.data;
 }
 
