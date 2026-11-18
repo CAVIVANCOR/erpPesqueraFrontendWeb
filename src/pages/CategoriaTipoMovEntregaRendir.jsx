@@ -14,7 +14,10 @@ import {
   crearCategoriaTipoMovEntregaRendir,
   actualizarCategoriaTipoMovEntregaRendir,
   deleteCategoriaTipoMovEntregaRendir,
+  getUsoCategoriaTipoMovEntregaRendir,
 } from "../api/categoriaTipoMovEntregaRendir";
+import UsoRegistroDialog from "../components/common/UsoRegistroDialog";
+import { mensajeDeError } from "../utils/mensajeError";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
 import { ROLES_CATEGORIA_MOV } from "../utils/tiposMovimientoSistema.constants";
@@ -32,6 +35,8 @@ export default function CategoriaTipoMovEntregaRendir() {
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
+  // Historial de la categoría que se intentó eliminar (tablas y cantidad de registros); null = sin aviso
+  const [usoInfo, setUsoInfo] = useState(null);
 
   const [showFormatSelector, setShowFormatSelector] = useState(false);
   const [showPDFViewer, setShowPDFViewer] = useState(false);
@@ -64,9 +69,27 @@ export default function CategoriaTipoMovEntregaRendir() {
     setShowDialog(true);
   };
 
-  const handleDelete = (rowData) => {
-    setToDelete(rowData);
-    setShowConfirm(true);
+  // Antes de pedir confirmación se revisa el historial de la categoría en todas las tablas: si se usa, se avisa dónde y no se elimina
+  const handleDelete = async (rowData) => {
+    setLoading(true);
+    try {
+      const uso = await getUsoCategoriaTipoMovEntregaRendir(rowData.id);
+      if (uso.total > 0) {
+        setUsoInfo({ nombre: rowData.nombre, tablas: uso.tablas });
+        return;
+      }
+      setToDelete(rowData);
+      setShowConfirm(true);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "No se pudo verificar el historial",
+        detail: mensajeDeError(err, "No se pudo verificar si la categoría tiene historial"),
+        life: 8000,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -85,7 +108,8 @@ export default function CategoriaTipoMovEntregaRendir() {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: err.response?.data?.mensaje || "No se pudo eliminar.",
+        detail: mensajeDeError(err, "No se pudo eliminar la categoría"),
+        life: 8000,
       });
     }
     setLoading(false);
@@ -179,6 +203,13 @@ export default function CategoriaTipoMovEntregaRendir() {
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
+      <UsoRegistroDialog
+        visible={Boolean(usoInfo)}
+        onHide={() => setUsoInfo(null)}
+        entidad="la categoría"
+        nombre={usoInfo?.nombre}
+        tablas={usoInfo?.tablas || []}
+      />
       <ConfirmDialog
         visible={showConfirm}
         onHide={() => setShowConfirm(false)}

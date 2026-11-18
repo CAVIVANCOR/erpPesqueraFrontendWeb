@@ -14,6 +14,26 @@ function getAuthHeader() {
 }
 
 /**
+ * Reemplaza el tipo de movimiento de los movimientos de caja seleccionados (todo o nada)
+ * @param {number} tipoMovimientoId - Tipo de movimiento nuevo
+ * @param {Array<number>} movimientosIds - IDs de los movimientos seleccionados
+ * @returns {Promise<Object>} { success, count, message }
+ */
+export const reasignarTipoMovimientoCajaMasivo = async (tipoMovimientoId, movimientosIds) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/reasignar-tipo-masivo`,
+      { tipoMovimientoId, movimientosIds },
+      { headers: getAuthHeader() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error al reemplazar el tipo de movimiento de caja masivo:', error);
+    throw error;
+  }
+};
+
+/**
  * Obtiene todos los movimientos de caja del sistema
  * @returns {Promise<Array>} Lista de movimientos de caja
  */

@@ -261,6 +261,26 @@ export const asignarCentroCostoMasivo = async (centroCostoId, movimientosIds) =>
 };
 
 /**
+ * Reemplaza el tipo de movimiento de múltiples movimientos de forma masiva (todo o nada)
+ * @param {number} tipoMovimientoId - Tipo de movimiento nuevo
+ * @param {Array<number>} movimientosIds - IDs de los movimientos seleccionados
+ * @returns {Promise<Object>} { success, count, message }
+ */
+export const reasignarTipoMovimientoMasivo = async (tipoMovimientoId, movimientosIds) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/reasignar-tipo-movimiento-masivo`,
+      { tipoMovimientoId, movimientosIds },
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error al reemplazar el tipo de movimiento masivo:', error);
+    throw error;
+  }
+};
+
+/**
  * Asigna un activo a múltiples movimientos de forma masiva
  * Actualiza el campo activoAfectoId en todos los movimientos seleccionados
  * 

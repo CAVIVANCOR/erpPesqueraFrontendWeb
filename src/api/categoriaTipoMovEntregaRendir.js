@@ -47,6 +47,15 @@ export const actualizarCategoriaTipoMovEntregaRendir = async (id, categoriaData)
 };
 
 /**
+ * Historial de la categoría en todas las tablas: { total, tablas: [{ tabla, columna, registros, detalle }] }
+ * @param {number} id - ID de la categoría
+ */
+export const getUsoCategoriaTipoMovEntregaRendir = async (id) => {
+  const response = await axios.get(`${API_URL}/${id}/uso`, { headers: getAuthHeaders() });
+  return response.data;
+};
+
+/**
  * Elimina una categoría de tipo de movimiento de entrega a rendir
  * @param {number} id - ID de la categoría de tipo de movimiento de entrega a rendir a eliminar
  * @returns {Promise} Confirmación de eliminación

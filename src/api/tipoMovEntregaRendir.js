@@ -46,6 +46,15 @@ export const actualizarTipoMovEntregaRendir = async (id, tipoMovEntregaRendirDat
 };
 
 /**
+ * Historial del tipo de movimiento en todas las tablas: { total, tablas: [{ tabla, columna, registros }] }
+ * @param {number} id - ID del tipo de movimiento
+ */
+export const getUsoTipoMovEntregaRendir = async (id) => {
+  const response = await axios.get(`${API_URL}/${id}/uso`, { headers: getAuthHeaders() });
+  return response.data;
+};
+
+/**
  * Elimina un tipo de movimiento de entrega a rendir
  * @param {number} id - ID del tipo de movimiento de entrega a rendir a eliminar
  * @returns {Promise} Confirmación de eliminación

@@ -13,7 +13,9 @@ import { Button } from "primereact/button";
 import { Tag } from "primereact/tag";
 import { Badge } from "primereact/badge";
 import MovimientoCajaDialog from "../components/movimientoCaja/MovimientoCajaDialog";
-import { getAllMovimientoCaja, actualizarMovimientoCaja } from "../api/movimientoCaja";
+import { getAllMovimientoCaja, actualizarMovimientoCaja, reasignarTipoMovimientoCajaMasivo } from "../api/movimientoCaja";
+import ReasignarTipoMovimientoMasivo from "../components/common/ReasignarTipoMovimientoMasivo";
+import { mensajeDeError } from "../utils/mensajeError";
 import { getEmpresas } from "../api/empresa";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
@@ -236,6 +238,9 @@ export default function MovimientoCaja({ ruta }) {
 
   const [movimientos, setMovimientos] = useState([]);
   const [selectedMovimiento, setSelectedMovimiento] = useState(null);
+  // Selección múltiple (casillas) para el reemplazo masivo del tipo de movimiento
+  const [movimientosSeleccionados, setMovimientosSeleccionados] = useState([]);
+  const [showReasignarTipo, setShowReasignarTipo] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -419,7 +424,34 @@ export default function MovimientoCaja({ ruta }) {
     );
   };
 
+  // Reemplaza el tipo de movimiento de los movimientos marcados (todo o nada). true = aplicado (cierra el diálogo)
+  const handleReasignarTipoMovimiento = async (tipoMovimientoId, movimientosIds) => {
+    try {
+      const resultado = await reasignarTipoMovimientoCajaMasivo(tipoMovimientoId, movimientosIds);
+      toast.current?.show({
+        severity: "success",
+        summary: "Tipo de Movimiento Reemplazado",
+        detail: resultado.message || `Se actualizó el tipo de ${resultado.count} movimiento(s)`,
+        life: 4000,
+      });
+      await loadData();
+      setMovimientosSeleccionados([]);
+      return true;
+    } catch (error) {
+      console.error("Error al reemplazar el tipo de movimiento:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "No se reemplazó el tipo de movimiento",
+        detail: mensajeDeError(error, "No se pudo reemplazar el tipo de movimiento"),
+        life: 8000,
+      });
+      return false;
+    }
+  };
+
   const onRowClick = (e) => {
+    // Un clic en la casilla de selección no abre el detalle del movimiento
+    if (e.originalEvent?.target?.closest?.(".p-selection-column, .p-checkbox")) return;
     if (permisos.puedeVer || permisos.puedeEditar) {
       setSelectedMovimiento(e.data);
       setShowDialog(true);
@@ -599,6 +631,8 @@ export default function MovimientoCaja({ ruta }) {
           value={movimientosFiltrados}
           loading={loading}
           dataKey="id"
+          selection={movimientosSeleccionados}
+          onSelectionChange={(e) => setMovimientosSeleccionados(e.value)}
           paginator
           size="small"
           showGridlines
@@ -668,6 +702,24 @@ export default function MovimientoCaja({ ruta }) {
                     disabled={loading || !hayFiltros}
                   />
                 </div>
+                {permisos.puedeEditar && (
+                  <div style={{ flex: 1 }}>
+                    <Button
+                      label="Cambiar Tipo"
+                      icon="pi pi-sync"
+                      className="p-button-warning"
+                      onClick={() => setShowReasignarTipo(true)}
+                      disabled={loading || movimientosSeleccionados.length === 0}
+                      tooltip={
+                        movimientosSeleccionados.length === 0
+                          ? "Marque movimientos para cambiar su tipo de movimiento"
+                          : `Reemplazar el tipo de movimiento de ${movimientosSeleccionados.length} movimiento(s)`
+                      }
+                      tooltipOptions={{ position: "top" }}
+                      type="button"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Filtros principales */}
@@ -804,6 +856,7 @@ export default function MovimientoCaja({ ruta }) {
             </div>
           }
         >
+          {permisos.puedeEditar && <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />}
           <Column
             field="id"
             header="ID"
@@ -883,6 +936,14 @@ export default function MovimientoCaja({ ruta }) {
           />
         </DataTable>
       </div>
+
+      <ReasignarTipoMovimientoMasivo
+        visible={showReasignarTipo}
+        onHide={() => setShowReasignarTipo(false)}
+        registrosSeleccionados={movimientosSeleccionados}
+        onReasignar={handleReasignarTipoMovimiento}
+        nombreModulo="movimientos de caja"
+      />
 
       <MovimientoCajaDialog
         visible={showDialog}

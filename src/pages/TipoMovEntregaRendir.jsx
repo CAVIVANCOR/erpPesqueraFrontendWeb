@@ -23,7 +23,9 @@ import {
   crearTipoMovEntregaRendir,
   actualizarTipoMovEntregaRendir,
   deleteTipoMovEntregaRendir,
+  getUsoTipoMovEntregaRendir,
 } from "../api/tipoMovEntregaRendir";
+import UsoRegistroDialog from "../components/common/UsoRegistroDialog";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
 import { mensajeDeError } from "../utils/mensajeError";
@@ -39,6 +41,8 @@ export default function TipoMovEntregaRendir() {
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
+  // Historial del tipo que se intentó eliminar (tablas y cantidad de registros); null = sin historial / sin aviso
+  const [usoInfo, setUsoInfo] = useState(null);
   const [categorias, setCategorias] = useState([]);
   const [busquedaTexto, setBusquedaTexto] = useState("");
   // Filtros
@@ -194,9 +198,27 @@ export default function TipoMovEntregaRendir() {
     setShowDialog(true);
   };
 
-  const handleDelete = (rowData) => {
-    setToDelete(rowData);
-    setShowConfirm(true);
+  // Antes de pedir confirmación se revisa el historial del tipo en todas las tablas: si se usa, se avisa dónde y no se elimina
+  const handleDelete = async (rowData) => {
+    setLoading(true);
+    try {
+      const uso = await getUsoTipoMovEntregaRendir(rowData.id);
+      if (uso.total > 0) {
+        setUsoInfo({ nombre: rowData.nombre, tablas: uso.tablas });
+        return;
+      }
+      setToDelete(rowData);
+      setShowConfirm(true);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "No se pudo verificar el historial",
+        detail: mensajeDeError(err, "No se pudo verificar si el tipo de movimiento tiene historial"),
+        life: 8000,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -214,8 +236,9 @@ export default function TipoMovEntregaRendir() {
     } catch (err) {
       toast.current.show({
         severity: "error",
-        summary: "Error",
-        detail: "No se pudo eliminar.",
+        summary: "No se pudo eliminar",
+        detail: mensajeDeError(err, "No se pudo eliminar el tipo de movimiento"),
+        life: 8000,
       });
     }
     setLoading(false);
@@ -343,6 +366,13 @@ export default function TipoMovEntregaRendir() {
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
+      <UsoRegistroDialog
+        visible={Boolean(usoInfo)}
+        onHide={() => setUsoInfo(null)}
+        entidad="el tipo de movimiento"
+        nombre={usoInfo?.nombre}
+        tablas={usoInfo?.tablas || []}
+      />
       <ConfirmDialog
         visible={showConfirm}
         onHide={() => setShowConfirm(false)}

@@ -15,6 +15,8 @@ import { Tag } from "primereact/tag";
 import DetMovsRendicionGastosForm from "../../components/rendicionGastos/DetMovsRendicionGastosForm";
 import AsignarCentroCostoMasivo from "../../components/common/AsignarCentroCostoMasivo";
 import AsignarActivoMasivo from "../../components/common/AsignarActivoMasivo";
+import ReasignarTipoMovimientoMasivo from "../../components/common/ReasignarTipoMovimientoMasivo";
+import { mensajeDeError } from "../../utils/mensajeError";
 import GeneracionDocumentosLoteDialog from "../../components/rendicionGastos/GeneracionDocumentosLoteDialog";
 import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 import {
@@ -24,6 +26,7 @@ import {
   recalcularSaldosResponsable,
   asignarCentroCostoMasivo,
   asignarActivoMasivo,
+  reasignarTipoMovimientoMasivo,
 } from "../../api/detMovsEntregaRendir";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
@@ -93,6 +96,7 @@ export default function RendicionGastosList({ ruta }) {
   
   // Estados para diálogos de asignación masiva
   const [showAsignarCentroCostoDialog, setShowAsignarCentroCostoDialog] = useState(false);
+  const [showReasignarTipoDialog, setShowReasignarTipoDialog] = useState(false);
   const [showAsignarActivoDialog, setShowAsignarActivoDialog] = useState(false);
   const [showGenerarDocumentosLoteDialog, setShowGenerarDocumentosLoteDialog] = useState(false);
   // Cargar datos iniciales
@@ -372,6 +376,35 @@ export default function RendicionGastosList({ ruta }) {
         detail: error.response?.data?.message || "Error al asignar centro de costo",
         life: 5000,
       });
+    }
+  };
+
+  // 🔁 REEMPLAZAR TIPO DE MOVIMIENTO MASIVO
+  /**
+   * Reemplaza el tipo de movimiento de los movimientos seleccionados (todo o nada).
+   * @returns {Promise<boolean>} true si se aplicó (el diálogo se cierra), false si el servidor lo rechazó
+   */
+  const handleReasignarTipoMovimiento = async (tipoMovimientoId, movimientosIds) => {
+    try {
+      const resultado = await reasignarTipoMovimientoMasivo(tipoMovimientoId, movimientosIds);
+      toast.current?.show({
+        severity: "success",
+        summary: "Tipo de Movimiento Reemplazado",
+        detail: resultado.message || `Se actualizó el tipo de ${resultado.count} movimiento(s)`,
+        life: 4000,
+      });
+      await cargarDatos();
+      setSelectedMovimientos([]);
+      return true;
+    } catch (error) {
+      console.error("Error al reemplazar el tipo de movimiento:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "No se reemplazó el tipo de movimiento",
+        detail: mensajeDeError(error, "No se pudo reemplazar el tipo de movimiento"),
+        life: 8000,
+      });
+      return false;
     }
   };
 
@@ -1696,6 +1729,26 @@ export default function RendicionGastosList({ ruta }) {
                   />
                 </div>
 
+                {/* Botón: Reemplazar Tipo de Movimiento Masivo */}
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Cambiar Tipo"
+                    icon="pi pi-sync"
+                    className="p-button-warning"
+                    onClick={() => setShowReasignarTipoDialog(true)}
+                    disabled={loading || !Array.isArray(selectedMovimientos) || selectedMovimientos.length === 0}
+                    tooltip={
+                      !Array.isArray(selectedMovimientos) || selectedMovimientos.length === 0
+                        ? "Seleccione movimientos para cambiar su tipo de movimiento"
+                        : `Reemplazar el tipo de movimiento de ${selectedMovimientos.length} movimiento(s)`
+                    }
+                    tooltipOptions={{ position: "top" }}
+                    type="button"
+                    raised
+                    style={{ width: "100%" }}
+                  />
+                </div>
+
                 {/* Botón: Asignar Activo Masivo */}
                 <div style={{ flex: 1 }}>
                   <Button
@@ -2239,6 +2292,15 @@ export default function RendicionGastosList({ ruta }) {
         onHide={() => setShowAsignarCentroCostoDialog(false)}
         registrosSeleccionados={Array.isArray(selectedMovimientos) ? selectedMovimientos.map(m => m.id) : []}
         onAsignar={handleAsignarCentroCosto}
+        nombreModulo="movimientos"
+      />
+
+      {/* Diálogo: Reemplazar Tipo de Movimiento Masivo */}
+      <ReasignarTipoMovimientoMasivo
+        visible={showReasignarTipoDialog}
+        onHide={() => setShowReasignarTipoDialog(false)}
+        registrosSeleccionados={Array.isArray(selectedMovimientos) ? selectedMovimientos : []}
+        onReasignar={handleReasignarTipoMovimiento}
         nombreModulo="movimientos"
       />
 
