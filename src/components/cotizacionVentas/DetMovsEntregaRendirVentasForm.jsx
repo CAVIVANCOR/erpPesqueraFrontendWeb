@@ -96,6 +96,9 @@ const DetMovsEntregaRendirVentasForm = ({
     "urlComprobanteOperacionMovCaja",
   );
   const tipoMovimientoId = watch("tipoMovimientoId");
+  // Asignación = el tipo pertenece a la categoría con el rol GASTOS_A_RENDIR (no se usan ids de tipos)
+  const esTipoAsignacion =
+    tiposMovimiento.find((t) => Number(t.id) === Number(tipoMovimientoId))?.categoria?.codigoSistema === "GASTOS_A_RENDIR";
   const formaParteCalculoEntregaARendir = watch(
     "formaParteCalculoEntregaARendir",
   );
@@ -198,14 +201,14 @@ const DetMovsEntregaRendirVentasForm = ({
   ]);
   // Auto-setear formaParteCalculoEntregaARendir cuando es asignación (tipo 1 o 2)
   useEffect(() => {
-    if (tipoMovimientoId === 1 || tipoMovimientoId === 2) {
+    if (esTipoAsignacion) {
       setValue("formaParteCalculoEntregaARendir", true);
     }
   }, [tipoMovimientoId, setValue]);
 
   // Auto-asignar entidadComercialId desde CotizacionVentas.empresa.entidadComercialId cuando es asignación
   useEffect(() => {
-    if (tipoMovimientoId === 1 || tipoMovimientoId === 2) {
+    if (esTipoAsignacion) {
       if (
         cotizacionVentas &&
         cotizacionVentas.empresa &&
@@ -562,8 +565,7 @@ const DetMovsEntregaRendirVentasForm = ({
                 />
               </div>
               {/* Asignación Origen - Solo visible si NO es asignación Y formaParteCalculoEntregaARendir=true */}
-              {tipoMovimientoId !== 1 &&
-                tipoMovimientoId !== 2 &&
+              {!esTipoAsignacion &&
                 formaParteCalculoEntregaARendir === true && (
                   <div style={{ flex: 2 }}>
                     <label
@@ -604,7 +606,7 @@ const DetMovsEntregaRendirVentasForm = ({
                 )}
             </div>
             {/* Entidad Comercial, Familia y Producto - Solo visibles cuando NO es asignación */}
-            {tipoMovimientoId !== 1 && tipoMovimientoId !== 2 && (
+            {!esTipoAsignacion && (
               <div
                 style={{
                   display: "flex",
@@ -713,7 +715,7 @@ const DetMovsEntregaRendirVentasForm = ({
             )}
 
             {/* Detalle Gastos Planificados - Solo visible para asignaciones (tipo 1 o 2) */}
-            {(tipoMovimientoId === 1 || tipoMovimientoId === 2) && (
+            {esTipoAsignacion && (
               <div
                 style={{
                   display: "flex",

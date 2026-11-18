@@ -17,6 +17,7 @@ import {
 } from "../api/categoriaTipoMovEntregaRendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
+import { ROLES_CATEGORIA_MOV } from "../utils/tiposMovimientoSistema.constants";
 import ReportFormatSelector from "../components/reports/ReportFormatSelector";
 import TemporaryPDFViewer from "../components/reports/TemporaryPDFViewer";
 import TemporaryExcelViewer from "../components/reports/TemporaryExcelViewer";
@@ -250,6 +251,22 @@ export default function CategoriaTipoMovEntregaRendir() {
           sortable
         />
         <Column field="nombre" header="Nombre" sortable />
+        <Column
+          field="codigoSistema"
+          header="Función en el sistema"
+          sortable
+          body={(rowData) =>
+            rowData.codigoSistema ? (
+              <Tag
+                value={ROLES_CATEGORIA_MOV[rowData.codigoSistema]?.etiqueta || rowData.codigoSistema}
+                severity="info"
+                icon="pi pi-lock"
+              />
+            ) : (
+              "-"
+            )
+          }
+        />
         <Column
           field="cesado"
           header="Estado"

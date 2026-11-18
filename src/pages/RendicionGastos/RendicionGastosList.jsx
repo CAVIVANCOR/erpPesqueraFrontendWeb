@@ -840,13 +840,9 @@ export default function RendicionGastosList({ ruta }) {
 
     return movimientosBase
       .filter((mov) => {
-        const categoriaId =
-          mov.tipoMovimiento?.categoria?.id || mov.tipoMovimiento?.categoriaId;
-
-        // Validar que sea una asignación (categoría 17 y sin asignación origen)
+        // Validar que sea una asignación (categoría con el rol GASTOS_A_RENDIR y sin asignación origen)
         const esAsignacion =
-          categoriaId &&
-          Number(categoriaId) === 17 &&
+          mov.tipoMovimiento?.categoria?.codigoSistema === "GASTOS_A_RENDIR" &&
           (mov.asignacionOrigenId === null ||
             mov.asignacionOrigenId === undefined ||
             Number(mov.asignacionOrigenId) === 0);

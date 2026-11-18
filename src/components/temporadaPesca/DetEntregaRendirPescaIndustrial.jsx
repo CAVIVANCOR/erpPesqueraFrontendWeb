@@ -257,11 +257,23 @@ export default function DetEntregaRendirPescaIndustrial({
     }
   };
 
+  // Categoría "Gastos a Rendir": se identifica por su función en el sistema (rol GASTOS_A_RENDIR), nunca por su id.
+  // Se toma de los propios movimientos cargados (el filtro de categoría trabaja con ids de categoría).
+  const categoriaGastosARendirId = (() => {
+    const mov = movimientos.find(
+      (m) => m.tipoMovimiento?.categoria?.codigoSistema === "GASTOS_A_RENDIR",
+    );
+    return mov ? Number(mov.tipoMovimiento.categoria.id) : null;
+  })();
+  const filtroGastosARendirActivo =
+    categoriaGastosARendirId !== null &&
+    Number(filtroCategoriaMovimiento) === categoriaGastosARendirId;
+
   const alternarFiltroGastosARendir = () => {
-    if (filtroCategoriaMovimiento === 17) {
+    if (filtroGastosARendirActivo) {
       setFiltroCategoriaMovimiento(null);
     } else {
-      setFiltroCategoriaMovimiento(17);
+      setFiltroCategoriaMovimiento(categoriaGastosARendirId);
     }
   };
 
@@ -286,22 +298,19 @@ export default function DetEntregaRendirPescaIndustrial({
   };
 
   const obtenerPropiedadesFiltroGastosARendir = () => {
-    if (filtroCategoriaMovimiento === 17) {
+    if (filtroGastosARendirActivo) {
       return { label: "Gastos a Rendir", severity: "success" };
     } else {
       return { label: "Todos los Gastos", severity: "secondary" };
     }
   };
 
-  // Obtener asignaciones (categoría 17) para el dropdown
+  // Obtener asignaciones (categoría con el rol GASTOS_A_RENDIR) para el dropdown
   const obtenerAsignaciones = () => {
     return movimientos
       .filter((mov) => {
-        const categoriaId =
-          mov.tipoMovimiento?.categoria?.id || mov.tipoMovimiento?.categoriaId;
         return (
-          categoriaId &&
-          Number(categoriaId) === 17 &&
+          mov.tipoMovimiento?.categoria?.codigoSistema === "GASTOS_A_RENDIR" &&
           (mov.asignacionOrigenId === null ||
             mov.asignacionOrigenId === undefined ||
             Number(mov.asignacionOrigenId) === 0)

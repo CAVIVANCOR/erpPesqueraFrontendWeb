@@ -49,9 +49,9 @@ import ConfirmacionOperacionPrestamoDialog from "./ConfirmacionOperacionPrestamo
  */
 
 // Tipos de movimiento sugeridos por defecto (el usuario puede elegir cualquiera:
-// el selector muestra todos los tipos)
-const TIPO_MOVIMIENTO_PAGO_CUOTAS_DEFECTO = 152; // PRESTAMOS (egreso)
-const TIPO_MOVIMIENTO_DESEMBOLSO_DEFECTO = 15; // PRESTAMOS BANCARIOS (ingreso)
+// el selector muestra todos los tipos). Se buscan por su función en el sistema, nunca por id.
+const ROL_PAGO_CUOTAS_DEFECTO = "PRESTAMO_PAGO_CUOTAS_DEFECTO"; // egreso
+const ROL_DESEMBOLSO_DEFECTO = "PRESTAMO_DESEMBOLSO_DEFECTO"; // ingreso
 
 const redondear2 = (valor) => Math.round(Number(valor || 0) * 100) / 100;
 const aCentimos = (valor) => BigInt(Math.round(Number(valor || 0) * 100));
@@ -295,10 +295,9 @@ const OperacionPrestamoForm = ({
   // Tipo de movimiento sugerido (solo si existe y el usuario aún no eligió uno)
   useEffect(() => {
     if (tipoMovimientoId || !tiposMovimiento.length) return;
-    const sugerido = esDesembolso
-      ? TIPO_MOVIMIENTO_DESEMBOLSO_DEFECTO
-      : TIPO_MOVIMIENTO_PAGO_CUOTAS_DEFECTO;
-    if (tiposMovimiento.some((t) => Number(t.id) === sugerido)) setTipoMovimientoId(sugerido);
+    const rolSugerido = esDesembolso ? ROL_DESEMBOLSO_DEFECTO : ROL_PAGO_CUOTAS_DEFECTO;
+    const sugerido = tiposMovimiento.find((t) => t.codigoSistema === rolSugerido);
+    if (sugerido) setTipoMovimientoId(Number(sugerido.id));
   }, [tiposMovimiento, esDesembolso]);
 
   // Mora sugerida de cada cuota según la fecha de pago, salvo las que el usuario ya editó

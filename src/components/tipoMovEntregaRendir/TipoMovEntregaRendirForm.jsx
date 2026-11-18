@@ -5,6 +5,10 @@ import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
+import {
+  ROLES_TIPO_MOV,
+  opcionesRolesPorSentido,
+} from "../../utils/tiposMovimientoSistema.constants";
 
 export default function TipoMovEntregaRendirForm({
   isEdit,
@@ -35,6 +39,9 @@ export default function TipoMovEntregaRendirForm({
   const [activo, setActivo] = React.useState(
     defaultValues.activo !== undefined ? !!defaultValues.activo : true,
   );
+  const [codigoSistema, setCodigoSistema] = React.useState(
+    defaultValues.codigoSistema || null,
+  );
 
   React.useEffect(() => {
     setNombre(defaultValues.nombre || "");
@@ -53,15 +60,27 @@ export default function TipoMovEntregaRendirForm({
     setActivo(
       defaultValues.activo !== undefined ? !!defaultValues.activo : true,
     );
+    setCodigoSistema(defaultValues.codigoSistema || null);
   }, [defaultValues]);
 
-  // Limpiar categoriaId cuando el usuario cambia esIngreso manualmente
+  // Limpiar categoriaId y el rol del sistema cuando el usuario cambia esIngreso manualmente
+  // (el rol solo es válido para el sentido ingreso/egreso que le corresponde)
   React.useEffect(() => {
     if (prevEsIngreso.current !== esIngreso) {
       prevEsIngreso.current = esIngreso;
       setCategoriaId(null);
+      setCodigoSistema(null);
     }
   }, [esIngreso]);
+
+  const opcionesRol = React.useMemo(() => {
+    const opciones = opcionesRolesPorSentido(ROLES_TIPO_MOV, esIngreso);
+    // Si el tipo ya tiene un rol que no está en el catálogo actual, se muestra para no perderlo en silencio
+    if (codigoSistema && !opciones.some((o) => o.value === codigoSistema)) {
+      opciones.push({ label: codigoSistema, value: codigoSistema });
+    }
+    return opciones;
+  }, [esIngreso, codigoSistema]);
 
   const opcionesCategoria = React.useMemo(() => {
     const resultado = categorias
@@ -83,6 +102,7 @@ export default function TipoMovEntregaRendirForm({
       esIngreso,
       esTransferencia,
       activo,
+      codigoSistema: codigoSistema || null,
     });
   };
 
@@ -149,6 +169,25 @@ export default function TipoMovEntregaRendirForm({
           filter
           style={{ fontWeight: "bold", textTransform: "uppercase" }}
         />
+      </div>
+      <div className="p-field">
+        <label htmlFor="codigoSistema">Función en el sistema (opcional)</label>
+        <Dropdown
+          id="codigoSistema"
+          value={codigoSistema}
+          options={opcionesRol}
+          onChange={(e) => setCodigoSistema(e.value || null)}
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Ninguna"
+          disabled={loading}
+          showClear
+          filter
+        />
+        <small>
+          Solo un tipo puede cumplir cada función. El sistema usa la función, no el número del tipo, para
+          registrar ITF, SUNAT, remuneraciones, préstamos, etc.
+        </small>
       </div>
       <div className="p-field">
         <label htmlFor="nombre">Nombre*</label>

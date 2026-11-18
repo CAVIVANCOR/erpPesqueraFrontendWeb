@@ -195,7 +195,7 @@ const DetMovsRendicionGastosForm = ({
       (t) => Number(t.id) === Number(tipoMovimientoId),
     );
     return (
-      tipoMovSeleccionado && Number(tipoMovSeleccionado.categoriaId) === 17
+      tipoMovSeleccionado?.categoria?.codigoSistema === "GASTOS_A_RENDIR"
     );
   };
 
@@ -328,10 +328,7 @@ const DetMovsRendicionGastosForm = ({
         (t) => Number(t.id) === Number(tipoMovimientoId),
       );
 
-      if (
-        tipoMovSeleccionado &&
-        Number(tipoMovSeleccionado.categoriaId) === 17
-      ) {
+      if (tipoMovSeleccionado?.categoria?.codigoSistema === "GASTOS_A_RENDIR") {
         setValue("formaParteCalculoEntregaARendir", true);
         setValue("asignacionOrigenId", null);
       }

@@ -2,6 +2,7 @@
 // Componente para gestión de detalle de entregas a rendir en movimientos de almacén
 // Patrón replicado EXACTAMENTE de DetEntregaRendirContrato.jsx
 import React, { useState, useRef } from "react";
+import useTiposAsignacionEntregaRendir from "../../hooks/useTiposAsignacionEntregaRendir";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -81,10 +82,10 @@ export default function DetEntregaRendirMovAlmacen({
     return movimientosFiltrados;
   };
 
+  const esTipoAsignacion = useTiposAsignacionEntregaRendir();
   const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
     (mov) =>
-      (Number(mov.tipoMovimientoId) === 1 ||
-        Number(mov.tipoMovimientoId) === 2) &&
+      esTipoAsignacion(mov.tipoMovimientoId) &&
       mov.formaParteCalculoEntregaARendir === true &&
       (!editingMovimiento || Number(mov.id) !== Number(editingMovimiento.id)),
   );

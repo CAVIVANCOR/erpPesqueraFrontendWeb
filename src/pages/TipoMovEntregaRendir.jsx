@@ -26,6 +26,8 @@ import {
 } from "../api/tipoMovEntregaRendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
+import { mensajeDeError } from "../utils/mensajeError";
+import { ROLES_TIPO_MOV } from "../utils/tiposMovimientoSistema.constants";
 import { getAllCategoriaTipoMovEntregaRendir } from "../api/categoriaTipoMovEntregaRendir";
 
 export default function TipoMovEntregaRendir() {
@@ -245,7 +247,8 @@ export default function TipoMovEntregaRendir() {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo guardar.",
+        detail: mensajeDeError(err, "No se pudo guardar el tipo de movimiento"),
+        life: 8000,
       });
     }
     setLoading(false);
@@ -539,6 +542,22 @@ export default function TipoMovEntregaRendir() {
         />
         <Column field="nombre" header="Nombre" sortable />
         <Column field="descripcion" header="Descripción" sortable />
+        <Column
+          field="codigoSistema"
+          header="Función en el sistema"
+          sortable
+          body={(rowData) =>
+            rowData.codigoSistema ? (
+              <Tag
+                value={ROLES_TIPO_MOV[rowData.codigoSistema]?.etiqueta || rowData.codigoSistema}
+                severity="info"
+                icon="pi pi-lock"
+              />
+            ) : (
+              "-"
+            )
+          }
+        />
         <Column
           field="esTransferencia"
           header="Transferencia"

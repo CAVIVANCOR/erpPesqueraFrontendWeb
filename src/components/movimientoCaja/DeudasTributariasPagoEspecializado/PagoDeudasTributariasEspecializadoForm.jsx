@@ -41,9 +41,9 @@ import ConfirmacionPagoDeudasTributariasDialog from "./ConfirmacionPagoDeudasTri
  *   - La glosa toma el mes del período tributario de la deuda (p. ej. "2026-01").
  */
 
-// Tipo de movimiento SUNAT: valor por defecto sugerido (mismo valor que pagoDeudaTributaria.service.js).
+// Tipo de movimiento SUNAT: valor por defecto sugerido, buscado por su función en el sistema (nunca por id).
 // El selector muestra todos los tipos, igual que el resto de implementaciones.
-const TIPO_MOVIMIENTO_SUNAT_ID = 165;
+const ROL_TIPO_MOVIMIENTO_SUNAT = "SUNAT";
 
 const MESES = [
   "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
@@ -246,7 +246,7 @@ const PagoDeudasTributariasEspecializadoForm = ({
   // Tipo de movimiento por defecto: SUNAT, solo si existe en el catálogo cargado
   useEffect(() => {
     if (tipoMovimientoId) return;
-    const sunat = tiposMovimiento.find((t) => Number(t.id) === TIPO_MOVIMIENTO_SUNAT_ID);
+    const sunat = tiposMovimiento.find((t) => t.codigoSistema === ROL_TIPO_MOVIMIENTO_SUNAT);
     if (sunat) setTipoMovimientoId(Number(sunat.id));
   }, [tiposMovimiento]);
 

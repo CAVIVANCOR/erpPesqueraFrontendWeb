@@ -186,10 +186,12 @@ export default function TransferenciaInternaDialog({
   // ════════════════════════════════════════════════════════════
   // COMPUTED: PRÉSTAMO ENTRE EMPRESAS RELACIONADAS
   // ════════════════════════════════════════════════════════════
-  // Tipos de movimiento PRESTAMOS RELACIONADOS: egreso (188) en el origen e ingreso (187) en el destino.
-  // El servidor valida que las cuentas sean de empresas distintas.
-  const TIPO_PRESTAMO_RELACIONADO_EGRESO = 188;
-  const TIPO_PRESTAMO_RELACIONADO_INGRESO = 187;
+  // Tipos de movimiento PRESTAMOS RELACIONADOS: egreso en el origen e ingreso en el destino, identificados por su
+  // función en el sistema (nunca por id). El servidor valida que las cuentas sean de empresas distintas.
+  const TIPO_PRESTAMO_RELACIONADO_EGRESO =
+    Number(tiposMovimiento.find((t) => t.codigoSistema === "PRESTAMO_RELACIONADO_EGRESO")?.id) || null;
+  const TIPO_PRESTAMO_RELACIONADO_INGRESO =
+    Number(tiposMovimiento.find((t) => t.codigoSistema === "PRESTAMO_RELACIONADO_INGRESO")?.id) || null;
   const esPrestamoRelacionado = Boolean(
     cuentaOrigenId &&
     cuentaDestinoId &&
@@ -1623,9 +1625,9 @@ export default function TransferenciaInternaDialog({
                 />
                 <small style={{ color: '#6c757d' }}>
                   {operacionPrestamoRelacionado === 'DESEMBOLSO' &&
-                    'Origen: Cuentas por cobrar a relacionadas (171111) / Banco. Destino: Banco / Cuentas por pagar a relacionadas (471101).'}
+                    'Origen: Cuentas por cobrar a relacionadas (171201) / Banco. Destino: Banco / Cuentas por pagar a relacionadas (471101).'}
                   {operacionPrestamoRelacionado === 'DEVOLUCION' &&
-                    'Origen: Cuentas por pagar a relacionadas (471101) / Banco. Destino: Banco / Cuentas por cobrar a relacionadas (171111).'}
+                    'Origen: Cuentas por pagar a relacionadas (471101) / Banco. Destino: Banco / Cuentas por cobrar a relacionadas (171201).'}
                   {!operacionPrestamoRelacionado &&
                     'Indique si es un nuevo préstamo o la devolución de uno existente: define cómo se contabiliza en cada empresa.'}
                 </small>

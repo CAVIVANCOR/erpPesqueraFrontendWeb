@@ -372,7 +372,8 @@ const DetMovsEntregaRendirForm = ({
       const tipoMovimiento = tiposMovimiento.find(
         (tm) => Number(tm.id) === Number(data.tipoMovimientoId),
       );
-      const esAsignacion = tipoMovimiento?.categoriaId === 17;
+      // Asignación = el tipo pertenece a la categoría con el rol GASTOS_A_RENDIR (no se usa el id de la categoría)
+      const esAsignacion = tipoMovimiento?.categoria?.codigoSistema === "GASTOS_A_RENDIR";
 
       if (esAsignacion) {
         data.formaParteCalculoEntregaARendir = true;

@@ -1,6 +1,7 @@
 // src/components/requerimientoCompra/DetEntregaRendirCompras.jsx
 // Componente para gestión de detalle de entregas a rendir en compras
 import React, { useState, useRef } from "react";
+import useTiposAsignacionEntregaRendir from "../../hooks/useTiposAsignacionEntregaRendir";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -82,9 +83,10 @@ export default function DetEntregaRendirCompras({
     return movimientosFiltrados;
   };
 
+  const esTipoAsignacion = useTiposAsignacionEntregaRendir();
   const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
     (mov) =>
-      (mov.tipoMovimientoId === 1 || mov.tipoMovimientoId === 2) &&
+      esTipoAsignacion(mov.tipoMovimientoId) &&
       mov.formaParteCalculoEntregaARendir === true,
   );
 

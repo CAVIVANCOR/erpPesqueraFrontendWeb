@@ -40,9 +40,9 @@ import ConfirmacionPagoDeudasPersonalDialog from "./ConfirmacionPagoDeudasPerson
  *   - La operación (FISCAL/GERENCIAL) no se elige: la define la propia deuda.
  */
 
-// Tipo de movimiento SUELDOS: valor por defecto sugerido (mismo valor que pagoDeudaPersonal.service.js).
+// Tipo de movimiento SUELDOS: valor por defecto sugerido, buscado por su función en el sistema (nunca por id).
 // El selector muestra todos los tipos, igual que el resto de implementaciones.
-const TIPO_MOVIMIENTO_SUELDOS_ID = 149;
+const ROL_TIPO_MOVIMIENTO_SUELDOS = "REMUN_SUELDOS";
 
 const MESES = [
   "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
@@ -228,7 +228,7 @@ const PagoDeudasPersonalEspecializadoForm = ({
   // Tipo de movimiento por defecto: SUELDOS, solo si existe en el catálogo cargado
   useEffect(() => {
     if (tipoMovimientoId) return;
-    const sueldos = tiposMovimiento.find((t) => Number(t.id) === TIPO_MOVIMIENTO_SUELDOS_ID);
+    const sueldos = tiposMovimiento.find((t) => t.codigoSistema === ROL_TIPO_MOVIMIENTO_SUELDOS);
     if (sueldos) setTipoMovimientoId(Number(sueldos.id));
   }, [tiposMovimiento]);
 

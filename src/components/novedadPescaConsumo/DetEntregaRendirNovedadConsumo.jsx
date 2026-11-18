@@ -1,6 +1,7 @@
 // src/components/novedadPescaConsumo/DetEntregaRendirNovedadConsumo.jsx
 // Componente autónomo para gestión de detalle de entregas a rendir en pesca consumo
 import React, { useState, useRef } from "react";
+import useTiposAsignacionEntregaRendir from "../../hooks/useTiposAsignacionEntregaRendir";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -54,10 +55,10 @@ export default function DetEntregaRendirNovedadConsumo({
   const [editingMovimiento, setEditingMovimiento] = useState(null);
   // Filtrar movimientos que son asignaciones (inicial o adicional) y forman parte del cálculo
   // Excluir el movimiento en edición para evitar auto-referencia
+  const esTipoAsignacion = useTiposAsignacionEntregaRendir();
   const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
     (mov) =>
-      (Number(mov.tipoMovimientoId) === 1 ||
-        Number(mov.tipoMovimientoId) === 2) &&
+      esTipoAsignacion(mov.tipoMovimientoId) &&
       mov.formaParteCalculoEntregaARendir === true &&
       (!editingMovimiento || Number(mov.id) !== Number(editingMovimiento.id)),
   );
