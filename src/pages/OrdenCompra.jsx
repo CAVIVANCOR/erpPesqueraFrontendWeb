@@ -366,14 +366,10 @@ export default function OrdenCompra({ ruta }) {
   // ✅ Filtrado completo de órdenes. `excluir` omite un filtro avanzado
   // ("proveedor" | "producto" | "tipoInterno" | "tipoFinal") para calcular sus propias opciones.
   function filtrarItems(facets = facetsAplicados, excluir = []) {
-    let filtered = items;
-
-    // Filtro por empresa
-    if (empresaSeleccionada) {
-      filtered = filtered.filter(
-        (orden) => Number(orden.empresaId) === Number(empresaSeleccionada),
-      );
-    }
+    // Filtro por empresa: siempre se respeta la empresa elegida; sin empresa no se muestra nada (nunca se mezclan empresas)
+    let filtered = empresaSeleccionada
+      ? items.filter((orden) => Number(orden.empresaId) === Number(empresaSeleccionada))
+      : [];
 
     // Filtro por estado
     if (estadoSeleccionado) {
@@ -1019,7 +1015,7 @@ export default function OrdenCompra({ ruta }) {
   };
 
   const limpiarFiltros = () => {
-    setEmpresaSeleccionada(null);
+    // La empresa NO se limpia: siempre hay una empresa elegida y nunca se mezclan registros de empresas distintas
     setEstadoSeleccionado(null);
     setTipoAfectacionIGVSeleccionado(null);
     setSubmoduloOrigenSeleccionado(null);
@@ -1852,10 +1848,6 @@ export default function OrdenCompra({ ruta }) {
   ];
 
 
-  const empresaNombre = (rowData) => {
-    return rowData.empresa?.razonSocial || "";
-  };
-
   const proveedorNombre = (rowData) => {
     return rowData.proveedor?.razonSocial || "";
   };
@@ -2210,12 +2202,55 @@ export default function OrdenCompra({ ruta }) {
         style={{
           padding: "8px 10px",
           display: "flex",
-          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "8px",
           alignItems: "center",
           borderTop: "2px solid #dee2e6",
         }}
       >
-        {/* IZQUIERDA: Totales por tipo documento */}
+        {/* INICIO: alcance de la consulta (empresa, fechas, tipo de libro y cantidad). Una sola línea; si no cabe, baja a la siguiente */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
+          <span style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#495057" }}>Mostrando:</span>
+          <Tag
+            icon="pi pi-building"
+            severity="info"
+            style={{ fontSize: "0.75rem" }}
+            value={`Empresa: ${empresas.find((e) => Number(e.id) === Number(empresaSeleccionada))?.razonSocial || "Todas las empresas"}`}
+          />
+          <Tag
+            icon="pi pi-calendar"
+            severity="info"
+            style={{ fontSize: "0.75rem" }}
+            value={
+              rangoFechaDocumento && rangoFechaDocumento[0]
+                ? rangoFechaDocumento[1]
+                  ? `Del ${formatearFecha(rangoFechaDocumento[0], "")} al ${formatearFecha(rangoFechaDocumento[1], "")}`
+                  : `Desde el ${formatearFecha(rangoFechaDocumento[0], "")}`
+                : "Todo el historial"
+            }
+          />
+          <Tag
+            icon="pi pi-book"
+            severity="info"
+            style={{ fontSize: "0.75rem" }}
+            value={
+              {
+                FISCAL_SSI: "Documentos fiscales, sin saldos iniciales",
+                FISCAL_CSI: "Documentos fiscales, con saldos iniciales",
+                GERENCIAL: "Documentos gerenciales",
+                TODOS: "Todos los documentos",
+              }[filtroTipoLibro] || "Todos los documentos"
+            }
+          />
+          <Tag
+            icon="pi pi-list"
+            severity="success"
+            style={{ fontSize: "0.75rem" }}
+            value={`${ordenesFiltradas.length} documentos`}
+          />
+        </div>
+
+        {/* Totales por tipo documento */}
         <div
           style={{
             display: "flex",
@@ -2283,9 +2318,10 @@ export default function OrdenCompra({ ruta }) {
             })}
         </div>
 
-        {/* DERECHA: Total general */}
+        {/* DERECHA: Total general (marginLeft auto lo empuja al extremo derecho de la línea) */}
         <div
           style={{
+            marginLeft: "auto",
             display: "inline-flex",
             alignItems: "center",
             gap: "6px",
@@ -2599,39 +2635,7 @@ export default function OrdenCompra({ ruta }) {
               </div>
 
             </div>
-            {/* Alcance de la consulta: el usuario siempre sabe qué se está mostrando */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
-              <span style={{ fontWeight: "bold" }}>Mostrando:</span>
-              <Tag
-                icon="pi pi-building"
-                severity="info"
-                value={`Empresa: ${empresas.find((e) => Number(e.id) === Number(empresaSeleccionada))?.razonSocial || "Todas las empresas"}`}
-              />
-              <Tag
-                icon="pi pi-calendar"
-                severity="info"
-                value={
-                  rangoFechaDocumento && rangoFechaDocumento[0]
-                    ? rangoFechaDocumento[1]
-                      ? `Del ${formatearFecha(rangoFechaDocumento[0], "")} al ${formatearFecha(rangoFechaDocumento[1], "")}`
-                      : `Desde el ${formatearFecha(rangoFechaDocumento[0], "")}`
-                    : "Todo el historial"
-                }
-              />
-              <Tag
-                icon="pi pi-book"
-                severity="info"
-                value={
-                  {
-                    FISCAL_SSI: "Documentos fiscales, sin saldos iniciales",
-                    FISCAL_CSI: "Documentos fiscales, con saldos iniciales",
-                    GERENCIAL: "Documentos gerenciales",
-                    TODOS: "Todos los documentos",
-                  }[filtroTipoLibro] || "Todos los documentos"
-                }
-              />
-              <Tag icon="pi pi-list" severity="success" value={`${ordenesFiltradas.length} documentos`} />
-            </div>            <div
+            <div
               style={{
                 alignItems: "end",
                 display: "flex",
@@ -3100,7 +3104,6 @@ export default function OrdenCompra({ ruta }) {
           style={{ width: 110, textAlign: "center" }}
           sortable
         />
-        <Column field="empresaId" header="Empresa" body={empresaNombre} />
 
         <Column
           field="proveedorId"

@@ -208,7 +208,11 @@ const ModuloDocumentoSelector = ({
   };
 
   const cargarDocumentos = async (modulo, documentoIdInicial = 0) => {
-    if (!modulo?.modeloDocumentoOrigen) {
+    // TESORERÍA (DetMovsEntregaRendir): el origen es el propio movimiento, no hay documentos que listar
+    if (
+      !modulo?.modeloDocumentoOrigen ||
+      modulo.modeloDocumentoOrigen === "DetMovsEntregaRendir"
+    ) {
       limpiarDocumentos();
       setError(null);
       return;

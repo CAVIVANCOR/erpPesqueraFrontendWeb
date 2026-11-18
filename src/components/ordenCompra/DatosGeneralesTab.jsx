@@ -1,5 +1,5 @@
 // src/components/ordenCompra/DatosGeneralesTab.jsx
-import React from "react";
+import React, { useState } from "react";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
@@ -9,6 +9,7 @@ import { Panel } from "primereact/panel";
 import DetallesTab from "./DetallesTab";
 import { getResponsiveFontSize } from "../../utils/utils";
 import CrearEntidadComercialButton from "../shared/CrearEntidadComercialButton";
+import EntidadComercialSelector from "../common/EntidadComercialSelector";
 import IrACxPEditar from "../common/IrACxPEditar";
 import BooleanToggleButton from "../common/BooleanToggleButton";
 import CambiarTipoSerieDialog from "../common/CambiarTipoSerieDialog"; // ✅ AGREGAR
@@ -156,8 +157,11 @@ export default function DatosGeneralesTab({
         disabled: estadoId !== 73 && !isEdit, // Deshabilitar si no está ABIERTO (solo en creación)
       };
     });
+  // Fuerza al selector genérico a recargar sus entidades cuando se crea un proveedor
+  const [refreshProveedores, setRefreshProveedores] = useState(null);
   // ✅ Callback cuando se crea un proveedor
   const handleEntidadCreada = async (entidad) => {
+    setRefreshProveedores(Date.now());
     // ✅ PRIMERO: Recargar proveedores (esperar a que termine)
     if (onProveedorCreado && typeof onProveedorCreado === "function") {
       await onProveedorCreado(entidad);
@@ -620,27 +624,16 @@ export default function DatosGeneralesTab({
         }}
       >
         <div style={{ flex: 1.5 }}>
-          {/* PROVEEDOR */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="proveedorId"
-          >
-            Proveedor*
-          </label>
-          <Dropdown
-            id="proveedorId"
+          {/* PROVEEDOR: componente genérico (muestra razón social y RUC; solo entidades marcadas como proveedor) */}
+          <EntidadComercialSelector
             value={formData.proveedorId ? Number(formData.proveedorId) : null}
-            options={proveedores.map((p) => ({
-              label: p.razonSocial,
-              value: Number(p.id),
-            }))}
-            onChange={(e) => onChange("proveedorId", e.value)}
-            optionLabel="label"
-            optionValue="value"
+            onChange={(id) => onChange("proveedorId", id)}
+            tipoEntidadFiltro="PROVEEDOR"
+            label="Proveedor"
+            required
             placeholder="Seleccionar proveedor"
-            filter
             disabled={!puedeEditar || readOnly}
-            style={{ fontWeight: "bold", textTransform: "uppercase" }}
+            refreshTrigger={refreshProveedores}
           />
         </div>
         <div style={{ flex: 0.5 }}>

@@ -229,30 +229,34 @@ const EntidadComercialSelector = ({
   // ⚠️ FILTRO POR EMPRESA PRIMERO (antes de aplicar filtro de tipo)
   // Esto permite que al seleccionar una empresa se muestren TODAS sus entidades
   const entidadesFiltradosPorEmpresa = useMemo(() => {
-    if (!empresaFiltro) {
-      // Si no hay empresa seleccionada, aplicar filtro de tipo sobre todas las entidades
+    // El filtro por tipo (CLIENTE / PROVEEDOR / AMBOS) se aplica siempre que el llamador lo indique;
+    // antes se ignoraba cuando había empresa seleccionada, y como la empresa es siempre 1 nunca se aplicaba.
+    const aplicarFiltroTipo = (lista) => {
       if (!tipoEntidadFiltro) {
-        return entidadesConFiltroEstado;
+        return lista;
       }
 
       switch (tipoEntidadFiltro.toUpperCase()) {
         case 'CLIENTE':
-          return entidadesConFiltroEstado.filter((e) => e.esCliente === true);
+          return lista.filter((e) => e.esCliente === true);
         case 'PROVEEDOR':
         case 'CONTRATISTA':
-          return entidadesConFiltroEstado.filter((e) => e.esProveedor === true);
+          return lista.filter((e) => e.esProveedor === true);
         case 'AMBOS':
-          return entidadesConFiltroEstado.filter((e) => e.esCliente === true && e.esProveedor === true);
+          return lista.filter((e) => e.esCliente === true && e.esProveedor === true);
         default:
-          return entidadesConFiltroEstado;
+          return lista;
       }
+    };
+
+    if (!empresaFiltro) {
+      return aplicarFiltroTipo(entidadesConFiltroEstado);
     }
 
-    // Si hay empresa seleccionada, mostrar TODAS sus entidades (sin filtro de tipo)
     const filtradas = entidadesConFiltroEstado.filter(
       (entidad) => Number(entidad.empresaId) === Number(empresaFiltro)
     );
-    return filtradas;
+    return aplicarFiltroTipo(filtradas);
   }, [entidadesConFiltroEstado, empresaFiltro, tipoEntidadFiltro]);
 
   // Verificar si la empresa seleccionada tiene entidades
@@ -469,13 +473,18 @@ const EntidadComercialSelector = ({
           <span style={{ color: "#999" }}>Cargando...</span>
         ) : entidadSeleccionada ? (
           <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-            <span style={{ color: COLORES_TEXTO.tipo }}>
-              {entidadSeleccionada.tipoEntidad?.nombre || "Sin tipo"}
-            </span>
-            <span style={{ color: COLORES_TEXTO.separador }}> - </span>
             <span style={{ color: COLORES_TEXTO.entidad, fontWeight: "bold" }}>
               {entidadSeleccionada.razonSocial || "Sin razón social"}
             </span>
+            {entidadSeleccionada.numeroDocumento && (
+              <>
+                <span style={{ color: COLORES_TEXTO.separador }}> - </span>
+                <span style={{ color: COLORES_TEXTO.separador, fontWeight: "bold" }}>
+                  {entidadSeleccionada.tipoDocumento?.codigo || entidadSeleccionada.tipoDocumento?.nombre || "DOC"}:
+                </span>
+                <span style={{ color: "#333" }}>{entidadSeleccionada.numeroDocumento}</span>
+              </>
+            )}
           </span>
         ) : (
           <span style={{ color: "#999" }}>{placeholder}</span>

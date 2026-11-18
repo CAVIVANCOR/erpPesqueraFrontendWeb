@@ -660,14 +660,10 @@ const PreFactura = ({ ruta }) => {
   // Aplica todos los filtros sobre items. `excluir` permite omitir un filtro
   // ("cliente" | "producto" | "tipoInterno" | "tipoFinal") para calcular sus propias opciones.
   function filtrarItems(facets = facetsAplicados, excluir = []) {
-    let filtrados = items;
-
-    // Filtro por empresa
-    if (empresaSeleccionada) {
-      filtrados = filtrados.filter(
-        (item) => Number(item.empresaId) === Number(empresaSeleccionada),
-      );
-    }
+    // Filtro por empresa: siempre se respeta la empresa elegida; sin empresa no se muestra nada (nunca se mezclan empresas)
+    let filtrados = empresaSeleccionada
+      ? items.filter((item) => Number(item.empresaId) === Number(empresaSeleccionada))
+      : [];
 
     // Filtro por rango de fechas
     if (rangoFechas && rangoFechas[0]) {
@@ -936,12 +932,55 @@ const PreFactura = ({ ruta }) => {
         style={{
           padding: "8px 10px",
           display: "flex",
-          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "8px",
           alignItems: "center",
           borderTop: "2px solid #dee2e6",
         }}
       >
-        {/* IZQUIERDA: Totales por tipo documento */}
+        {/* INICIO: alcance de la consulta (empresa, fechas, tipo de libro y cantidad). Una sola línea; si no cabe, baja a la siguiente */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
+          <span style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#495057" }}>Mostrando:</span>
+          <Tag
+            icon="pi pi-building"
+            severity="info"
+            style={{ fontSize: "0.75rem" }}
+            value={`Empresa: ${empresas.find((e) => Number(e.id) === Number(empresaSeleccionada))?.razonSocial || "Todas las empresas"}`}
+          />
+          <Tag
+            icon="pi pi-calendar"
+            severity="info"
+            style={{ fontSize: "0.75rem" }}
+            value={
+              rangoFechas && rangoFechas[0]
+                ? rangoFechas[1]
+                  ? `Del ${formatearFecha(rangoFechas[0], "")} al ${formatearFecha(rangoFechas[1], "")}`
+                  : `Desde el ${formatearFecha(rangoFechas[0], "")}`
+                : "Todo el historial"
+            }
+          />
+          <Tag
+            icon="pi pi-book"
+            severity="info"
+            style={{ fontSize: "0.75rem" }}
+            value={
+              {
+                FISCAL_SSI: "Documentos fiscales, sin saldos iniciales",
+                FISCAL_CSI: "Documentos fiscales, con saldos iniciales",
+                GERENCIAL: "Documentos gerenciales",
+                TODOS: "Todos los documentos",
+              }[filtroTipoLibro] || "Todos los documentos"
+            }
+          />
+          <Tag
+            icon="pi pi-list"
+            severity="success"
+            style={{ fontSize: "0.75rem" }}
+            value={`${preFacturasFiltradas.length} documentos`}
+          />
+        </div>
+
+        {/* Totales por tipo documento */}
         <div
           style={{
             display: "flex",
@@ -1009,9 +1048,10 @@ const PreFactura = ({ ruta }) => {
             })}
         </div>
 
-        {/* DERECHA: Total general */}
+        {/* DERECHA: Total general (marginLeft auto lo empuja al extremo derecho de la línea) */}
         <div
           style={{
+            marginLeft: "auto",
             display: "inline-flex",
             alignItems: "center",
             gap: "6px",
@@ -2080,18 +2120,6 @@ const PreFactura = ({ ruta }) => {
     );
   };
 
-  const empresaTemplate = (rowData) => {
-    if (!rowData.empresa) return "N/A";
-
-    return (
-      <div>
-        <div className="font-medium text-blue-600">
-          {rowData.empresa.razonSocial || "Sin nombre"}
-        </div>
-      </div>
-    );
-  };
-
   const clienteTemplate = (rowData) => {
     if (!rowData.cliente) return "N/A";
 
@@ -2176,7 +2204,7 @@ const PreFactura = ({ ruta }) => {
 
 
   const limpiarFiltros = () => {
-    setEmpresaSeleccionada(null);
+    // La empresa NO se limpia: siempre hay una empresa elegida y nunca se mezclan registros de empresas distintas
     setRangoFechas(rangoFechasPorDefecto());
     setEstadoSeleccionado(null);
     setTiposDocInternoAplicados([]);
@@ -2533,39 +2561,6 @@ const PreFactura = ({ ruta }) => {
 
 
 
-              {/* Alcance de la consulta: el usuario siempre sabe qué se está mostrando */}
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
-                <span style={{ fontWeight: "bold" }}>Mostrando:</span>
-                <Tag
-                  icon="pi pi-building"
-                  severity="info"
-                  value={`Empresa: ${empresas.find((e) => Number(e.id) === Number(empresaSeleccionada))?.razonSocial || "Todas las empresas"}`}
-                />
-                <Tag
-                  icon="pi pi-calendar"
-                  severity="info"
-                  value={
-                    rangoFechas && rangoFechas[0]
-                      ? rangoFechas[1]
-                        ? `Del ${formatearFecha(rangoFechas[0], "")} al ${formatearFecha(rangoFechas[1], "")}`
-                        : `Desde el ${formatearFecha(rangoFechas[0], "")}`
-                      : "Todo el historial"
-                  }
-                />
-                <Tag
-                  icon="pi pi-book"
-                  severity="info"
-                  value={
-                    {
-                      FISCAL_SSI: "Documentos fiscales, sin saldos iniciales",
-                      FISCAL_CSI: "Documentos fiscales, con saldos iniciales",
-                      GERENCIAL: "Documentos gerenciales",
-                      TODOS: "Todos los documentos",
-                    }[filtroTipoLibro] || "Todos los documentos"
-                  }
-                />
-                <Tag icon="pi pi-list" severity="success" value={`${preFacturasFiltradas.length} documentos`} />
-              </div>
               <div
                 style={{
                   alignItems: "end",
@@ -2903,13 +2898,6 @@ const PreFactura = ({ ruta }) => {
             style={{ width: 150, textAlign: "center", verticalAlign: "top" }}
             sortable
           />
-          <Column
-            field="empresaId"
-            header="Empresa"
-            body={empresaTemplate}
-            style={{ verticalAlign: "top" }}
-          />
-
           <Column
             field="unidadNegocioId"
             header="Unidad Negocio"

@@ -938,19 +938,12 @@ export default function DatosGeneralesTab({
             }}
           >
             <div style={{ flex: 2 }}>
-              <label
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-                htmlFor="clienteId"
-              >
-                Cliente*
-              </label>
               <EntidadComercialSelector
                 empresaIdPreseleccionada={formData.empresaId}
                 value={formData.clienteId}
                 onChange={(value) => onChange("clienteId", value)}
+                tipoEntidadFiltro="CLIENTE"
+                label="Cliente"
                 disabled={!puedeEditar || readOnly || !formData.empresaId}
                 required={true}
                 placeholder="Seleccione un cliente"
