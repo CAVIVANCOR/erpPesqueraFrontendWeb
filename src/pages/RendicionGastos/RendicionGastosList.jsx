@@ -104,6 +104,18 @@ export default function RendicionGastosList({ ruta }) {
     cargarDatos();
   }, []);
 
+  // Marca el error de una carga con su nombre, para informar al usuario cuál de las cargas del módulo falló
+  const conNombre = (nombre, promesa) =>
+    promesa.catch((error) => {
+      if (error && typeof error === "object") {
+        error.cargaFallida = nombre;
+        if (error.response?.status && !error.response?.data?.mensaje && !error.response?.data?.message) {
+          error.message = `No se pudo cargar ${nombre} (el servidor respondió con error ${error.response.status}).`;
+        }
+      }
+      throw error;
+    });
+
   const cargarDatos = async () => {
     setLoading(true);
     try {
@@ -120,17 +132,18 @@ export default function RendicionGastosList({ ruta }) {
         empresasData,
         embarcacionesData, // ⭐ AGREGADO: Cargar embarcaciones
       ] = await Promise.all([
-        getAllDetMovsEntregaRendir(),
-        getPersonal(),
-        getCentrosCosto(),
-        getAllTipoMovEntregaRendir(),
-        getAllCategoriaTipoMovEntregaRendir(),
-        getEntidadesComerciales(),
-        getMonedas(),
-        getTiposDocumento(),
-        getProductos(),
-        getEmpresas(),
-        getEmbarcaciones(), // ⭐ AGREGADO: API call embarcaciones
+        // Cada carga lleva su nombre para que, si una falla, el aviso diga cuál (y no un mensaje genérico)
+        conNombre("los movimientos de rendición", getAllDetMovsEntregaRendir()),
+        conNombre("el personal", getPersonal()),
+        conNombre("los centros de costo", getCentrosCosto()),
+        conNombre("los tipos de movimiento", getAllTipoMovEntregaRendir()),
+        conNombre("las categorías de tipos de movimiento", getAllCategoriaTipoMovEntregaRendir()),
+        conNombre("las entidades comerciales", getEntidadesComerciales()),
+        conNombre("las monedas", getMonedas()),
+        conNombre("los tipos de documento", getTiposDocumento()),
+        conNombre("los productos", getProductos()),
+        conNombre("las empresas", getEmpresas()),
+        conNombre("las embarcaciones", getEmbarcaciones()), // ⭐ AGREGADO: API call embarcaciones
       ]);
       setMovimientos(movimientosData || []);
       setPersonal(
@@ -152,9 +165,9 @@ export default function RendicionGastosList({ ruta }) {
       console.error("Error al cargar datos:", error);
       toast.current?.show({
         severity: "error",
-        summary: "Error",
-        detail: "Error al cargar datos del módulo",
-        life: 3000,
+        summary: "Error al cargar datos del módulo",
+        detail: mensajeDeError(error, `No se pudo cargar ${error?.cargaFallida || "los datos del módulo"}`),
+        life: 10000,
       });
     } finally {
       setLoading(false);
