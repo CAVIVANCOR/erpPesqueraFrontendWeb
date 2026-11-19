@@ -132,21 +132,6 @@ export default function TipoMovEntregaRendir() {
     }
 
     setItems(itemsFiltrados);
-
-    // Mostrar mensaje con cantidad de registros
-    if (
-      categoriaFiltro ||
-      tipoFiltro !== "TODOS" ||
-      transferenciaFiltro !== "TODOS" ||
-      (busquedaTexto && busquedaTexto.trim() !== "")
-    ) {
-      toast.current.show({
-        severity: "info",
-        summary: "Filtros Aplicados",
-        detail: `Se encontraron ${itemsFiltrados.length} registro(s)`,
-        life: 2000,
-      });
-    }
   };
 
   const handleLimpiarFiltros = () => {

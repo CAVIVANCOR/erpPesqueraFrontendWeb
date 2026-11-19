@@ -162,16 +162,6 @@ const CuentaCorriente = ({ ruta }) => {
     // Si es "TODAS", no filtra
 
     setCuentas(cuentasFiltradas);
-
-    // Mostrar mensaje con cantidad de registros
-    if (empresaFiltro || bancoFiltro || estadoFiltro !== "TODOS") {
-      toast.current.show({
-        severity: "info",
-        summary: "Filtros Aplicados",
-        detail: `Se encontraron ${cuentasFiltradas.length} registro(s)`,
-        life: 2000,
-      });
-    }
   };
 
 
