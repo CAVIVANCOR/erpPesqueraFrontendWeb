@@ -308,6 +308,36 @@ export const asignarActivoMasivo = async (activoId, movimientosIds) => {
 };
 
 /**
+ * Plan (sin cambiar nada) de lo que se revertiría de los documentos generados desde Rendición de Gastos
+ * @param {number} id - ID del movimiento de rendición
+ */
+export const planRevertirDocumentos = async (id) => {
+  const response = await axios.get(`${API_URL}/${id}/revertir-documentos/plan`, { headers: getAuthHeaders() });
+  return response.data;
+};
+
+/**
+ * Revierte (sin volver a generar) los documentos generados desde Rendición de Gastos para un movimiento
+ * @param {number} id - ID del movimiento de rendición
+ */
+export const revertirDocumentos = async (id) => {
+  const response = await axios.post(`${API_URL}/${id}/revertir-documentos`, {}, { headers: getAuthHeaders() });
+  return response.data;
+};
+
+/** Órdenes de compra de Rendición de Gastos cuyo movimiento ya no existe, con lo que se eliminaría de cada una */
+export const listarDocumentosHuerfanos = async () => {
+  const response = await axios.get(`${API_URL}/documentos-huerfanos`, { headers: getAuthHeaders() });
+  return response.data;
+};
+
+/** Elimina las órdenes de compra huérfanas indicadas (con sus CxP, pagos y asientos) */
+export const revertirDocumentosHuerfanos = async (ordenCompraIds) => {
+  const response = await axios.post(`${API_URL}/documentos-huerfanos/revertir`, { ordenCompraIds }, { headers: getAuthHeaders() });
+  return response.data;
+};
+
+/**
  * Genera documentos financieros automáticamente desde DetMovsEntregaRendir
  * Genera: OrdenCompra → CuentaPorPagar → Pago → 2 Asientos Contables
  * @param {number} id - ID del detalle de movimientos entrega a rendir

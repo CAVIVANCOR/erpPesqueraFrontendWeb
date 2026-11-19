@@ -16,6 +16,7 @@ import DetMovsRendicionGastosForm from "../../components/rendicionGastos/DetMovs
 import AsignarCentroCostoMasivo from "../../components/common/AsignarCentroCostoMasivo";
 import AsignarActivoMasivo from "../../components/common/AsignarActivoMasivo";
 import ReasignarTipoMovimientoMasivo from "../../components/common/ReasignarTipoMovimientoMasivo";
+import RevertirDocumentosRendicionDialog from "../../components/rendicionGastos/RevertirDocumentosRendicionDialog";
 import { mensajeDeError } from "../../utils/mensajeError";
 import GeneracionDocumentosLoteDialog from "../../components/rendicionGastos/GeneracionDocumentosLoteDialog";
 import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
@@ -97,6 +98,8 @@ export default function RendicionGastosList({ ruta }) {
   // Estados para diálogos de asignación masiva
   const [showAsignarCentroCostoDialog, setShowAsignarCentroCostoDialog] = useState(false);
   const [showReasignarTipoDialog, setShowReasignarTipoDialog] = useState(false);
+  const [showRevertirDocumentosDialog, setShowRevertirDocumentosDialog] = useState(false);
+  const [showDocumentosHuerfanosDialog, setShowDocumentosHuerfanosDialog] = useState(false);
   const [showAsignarActivoDialog, setShowAsignarActivoDialog] = useState(false);
   const [showGenerarDocumentosLoteDialog, setShowGenerarDocumentosLoteDialog] = useState(false);
   // Cargar datos iniciales
@@ -1762,6 +1765,42 @@ export default function RendicionGastosList({ ruta }) {
                   />
                 </div>
 
+                {/* Botón: Revertir documentos generados (OC, CxP, pago y asientos) de los movimientos seleccionados */}
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Revertir Docs"
+                    icon="pi pi-undo"
+                    className="p-button-danger"
+                    onClick={() => setShowRevertirDocumentosDialog(true)}
+                    disabled={loading || !Array.isArray(selectedMovimientos) || selectedMovimientos.length === 0}
+                    tooltip={
+                      !Array.isArray(selectedMovimientos) || selectedMovimientos.length === 0
+                        ? "Seleccione movimientos para revertir los documentos generados (orden de compra, cuenta por pagar, pago y asientos)"
+                        : `Revertir los documentos generados de ${selectedMovimientos.length} movimiento(s)`
+                    }
+                    tooltipOptions={{ position: "top" }}
+                    type="button"
+                    raised
+                    style={{ width: "100%" }}
+                  />
+                </div>
+
+                {/* Botón: Documentos huérfanos (su movimiento de rendición ya no existe) */}
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Huérfanos"
+                    icon="pi pi-trash"
+                    className="p-button-secondary"
+                    onClick={() => setShowDocumentosHuerfanosDialog(true)}
+                    disabled={loading}
+                    tooltip="Órdenes de compra generadas desde Rendición de Gastos cuyo movimiento ya no existe"
+                    tooltipOptions={{ position: "top" }}
+                    type="button"
+                    raised
+                    style={{ width: "100%" }}
+                  />
+                </div>
+
                 {/* Botón: Asignar Activo Masivo */}
                 <div style={{ flex: 1 }}>
                   <Button
@@ -2315,6 +2354,26 @@ export default function RendicionGastosList({ ruta }) {
         registrosSeleccionados={Array.isArray(selectedMovimientos) ? selectedMovimientos : []}
         onReasignar={handleReasignarTipoMovimiento}
         nombreModulo="movimientos"
+      />
+
+      {/* Diálogos: reversión de documentos generados (seleccionados / huérfanos) */}
+      <RevertirDocumentosRendicionDialog
+        visible={showRevertirDocumentosDialog}
+        onHide={() => setShowRevertirDocumentosDialog(false)}
+        modo="movimientos"
+        movimientosSeleccionados={Array.isArray(selectedMovimientos) ? selectedMovimientos : []}
+        onRevertido={async () => {
+          await cargarDatos();
+          setSelectedMovimientos([]);
+        }}
+        toast={toast}
+      />
+      <RevertirDocumentosRendicionDialog
+        visible={showDocumentosHuerfanosDialog}
+        onHide={() => setShowDocumentosHuerfanosDialog(false)}
+        modo="huerfanos"
+        onRevertido={cargarDatos}
+        toast={toast}
       />
 
       {/* Diálogo: Asignar Activo Masivo */}
