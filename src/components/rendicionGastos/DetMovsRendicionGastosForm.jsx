@@ -64,6 +64,9 @@ const DetMovsRendicionGastosForm = ({
   onEntidadComercialCreada,
   modoGasto = "normal", // 'normal' | 'directo'
   onGeneracionDocumentosExitosa,
+  // Empresa elegida por quien abre el formulario (p. ej. el filtro de Tesorería Pendientes). Tiene prioridad
+  // sobre la empresa del usuario logueado para no registrar el gasto en otra empresa por confusión.
+  empresaIdInicial = null,
 }) => {
   const toast = useRef(null);
 
@@ -117,7 +120,7 @@ const DetMovsRendicionGastosForm = ({
     trigger,
   } = useForm({
     defaultValues: {
-      empresaId: usuario?.empresaId ? Number(usuario.empresaId) : null,
+      empresaId: empresaIdInicial || usuario?.empresaId ? Number(empresaIdInicial || usuario.empresaId) : null,
       moduloOrigenId: null,
       documentoOrigenId: null,
       responsableId: "",
@@ -275,8 +278,8 @@ const DetMovsRendicionGastosForm = ({
           activoAfectoId: movimiento.activoAfectoId ? Number(movimiento.activoAfectoId) : null,
         });
       } else {
-        // La empresa preseleccionada es la del usuario logueado
-        const empresaUsuario = usuario?.empresaId ? Number(usuario.empresaId) : null;
+        // La empresa elegida al abrir el formulario prevalece; si no hay, se usa la del usuario logueado
+        const empresaUsuario = empresaIdInicial || usuario?.empresaId ? Number(empresaIdInicial || usuario.empresaId) : null;
         if (empresaUsuario) {
           setValue("empresaId", empresaUsuario);
         } else if (rendicionGastos?.empresaId) {

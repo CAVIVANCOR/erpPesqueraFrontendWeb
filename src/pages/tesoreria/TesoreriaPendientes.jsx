@@ -1330,6 +1330,7 @@ const TesoreriaPendientes = () => {
           tiposDocumento={catalogosGastoDirecto.tiposDocumento}
           productos={catalogosGastoDirecto.productos}
           empresas={empresas}
+          empresaIdInicial={filtros.empresaId}
           movimientosAsignacionEntregaRendir={catalogosGastoDirecto.movimientosAsignacion}
           todosLosMovimientos={[]}
           onGuardadoExitoso={handleGuardarGastoDirecto}

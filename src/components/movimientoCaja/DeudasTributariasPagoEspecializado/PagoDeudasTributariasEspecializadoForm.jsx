@@ -116,6 +116,8 @@ const PagoDeudasTributariasEspecializadoForm = ({
   const [monedaOrigenSelector, setMonedaOrigenSelector] = useState(null);
   const [medioPagoId, setMedioPagoId] = useState(null);
   const [numeroCheque, setNumeroCheque] = useState("");
+  // Intereses del tributo: egreso aparte al fisco (asiento 659201), no reducen el saldo de las deudas
+  const [intereses, setIntereses] = useState(0);
   const [itf, setItf] = useState(0);
   const [comision, setComision] = useState(0);
   const [tipoCambio, setTipoCambio] = useState(1);
@@ -214,7 +216,9 @@ const PagoDeudasTributariasEspecializadoForm = ({
     return medioPago?.nombre?.toUpperCase().includes("CHEQUE") || false;
   }, [medioPagoId, mediosPago]);
 
-  const totalDebitado = Number(montoPago || 0) + Number(itf || 0) + Number(comision || 0);
+  // Total que sale de la cuenta: pago + intereses + ITF + comisión (cada uno es un movimiento de caja distinto)
+  const totalDebitado =
+    Number(montoPago || 0) + Number(intereses || 0) + Number(itf || 0) + Number(comision || 0);
 
   // ════════════════════════════════════════════════════════════
   // EFECTOS
@@ -359,7 +363,7 @@ const PagoDeudasTributariasEspecializadoForm = ({
     try {
       const movimientos = resultado.movimientos;
 
-      for (const clave of ["egreso", "itfOrigen", "comisionOrigen"]) {
+      for (const clave of ["egreso", "intereses", "itfOrigen", "comisionOrigen"]) {
         const movimiento = movimientos[clave];
         if (!movimiento) continue;
 
@@ -462,6 +466,7 @@ const PagoDeudasTributariasEspecializadoForm = ({
         entidadComercialId: Number(entidadDestinoId),
         numeroOperacion,
         descripcion: descripcionFinal,
+        intereses: Number(intereses || 0),
         itf: Number(itf || 0),
         comision: Number(comision || 0),
         tipoCambio: Number(tipoCambio),
@@ -850,6 +855,21 @@ const PagoDeudasTributariasEspecializadoForm = ({
                         : "Pago parcial: se reparte proporcionalmente entre las deudas marcadas."}
                     </small>
                   )}
+                </div>
+                {/* Intereses del tributo: se registran como egreso aparte con su propio asiento (659201) */}
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="intereses" className="font-bold">Intereses</label>
+                  <InputNumber
+                    id="intereses"
+                    value={intereses}
+                    onValueChange={(e) => setIntereses(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    min={0}
+                    disabled={cargando}
+                    style={{ width: "100%" }}
+                  />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label htmlFor="itfOrigen" className="font-bold">ITF</label>

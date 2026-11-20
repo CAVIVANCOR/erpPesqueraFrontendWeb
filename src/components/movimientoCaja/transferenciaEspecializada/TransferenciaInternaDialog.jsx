@@ -1625,9 +1625,9 @@ export default function TransferenciaInternaDialog({
                 />
                 <small style={{ color: '#6c757d' }}>
                   {operacionPrestamoRelacionado === 'DESEMBOLSO' &&
-                    'Origen: Cuentas por cobrar a relacionadas (171201) / Banco. Destino: Banco / Cuentas por pagar a relacionadas (471101).'}
+                    'Origen: Cuentas por cobrar a relacionadas (171111) / Banco. Destino: Banco / Cuentas por pagar a relacionadas (471101).'}
                   {operacionPrestamoRelacionado === 'DEVOLUCION' &&
-                    'Origen: Cuentas por pagar a relacionadas (471101) / Banco. Destino: Banco / Cuentas por cobrar a relacionadas (171201).'}
+                    'Origen: Cuentas por pagar a relacionadas (471101) / Banco. Destino: Banco / Cuentas por cobrar a relacionadas (171111).'}
                   {!operacionPrestamoRelacionado &&
                     'Indique si es un nuevo préstamo o la devolución de uno existente: define cómo se contabiliza en cada empresa.'}
                 </small>
