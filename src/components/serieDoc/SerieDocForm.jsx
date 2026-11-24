@@ -40,6 +40,10 @@ export default function SerieDocForm({
   const [activo, setActivo] = React.useState(
     defaultValues.activo !== undefined ? defaultValues.activo : true
   );
+  // Serie SUNAT para comprobantes electrónicos (F001, B001, FC01...): el servidor valida su formato
+  const [esElectronica, setEsElectronica] = React.useState(
+    defaultValues.esElectronica === true
+  );
 
   React.useEffect(() => {
     setEmpresaIdState(defaultValues.empresaId || empresaId || null);
@@ -52,6 +56,7 @@ export default function SerieDocForm({
     setNumCerosIzqCorre(defaultValues.numCerosIzqCorre || 0);
     setNumCerosIzqSerie(defaultValues.numCerosIzqSerie || 0);
     setActivo(defaultValues.activo !== undefined ? defaultValues.activo : true);
+    setEsElectronica(defaultValues.esElectronica === true);
   }, [defaultValues, empresaId]);
 
   const handleSubmit = (e) => {
@@ -65,6 +70,7 @@ export default function SerieDocForm({
       numCerosIzqCorre,
       numCerosIzqSerie,
       activo,
+      esElectronica,
     });
   };
 
@@ -240,6 +246,23 @@ export default function SerieDocForm({
             />
             <label htmlFor="activo">Activo</label>
           </div>
+          {/* Serie SUNAT: 4 caracteres (F001, B001, FC01...), 8 ceros de correlativo; el correlativo nunca retrocede */}
+          <div className="p-field-checkbox" style={{ marginTop: 8 }}>
+            <Checkbox
+              id="esElectronica"
+              checked={esElectronica}
+              onChange={(e) => setEsElectronica(e.checked)}
+              disabled={loading}
+              style={{ fontWeight: "bold" }}
+            />
+            <label htmlFor="esElectronica">Serie electrónica SUNAT (facturación electrónica)</label>
+          </div>
+          {esElectronica && (
+            <small style={{ display: "block", color: "#666", marginTop: 4 }}>
+              Formato: 4 caracteres que empiezan con F (factura), B (boleta) o F/B (notas), por ejemplo F001. Use 8 ceros
+              a la izquierda en el correlativo. El correlativo no puede retroceder ni la serie reutilizarse.
+            </small>
+          )}
         </div>
       </div>
       <div className="p-d-flex p-jc-end" style={{ gap: 8, marginTop: 16 }}>

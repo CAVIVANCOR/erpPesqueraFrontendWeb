@@ -266,14 +266,6 @@ export async function facturarPreFacturaBlanca(preFacturaId) {
 }
 
 /**
- * Obtener desde Factpro el PDF del documento final de la venta (consulta por serie y correlativo)
- */
-export async function obtenerPdfDesdeFactpro(preFacturaId) {
-  const response = await axios.post(`${API_URL}/${preFacturaId}/obtener-pdf-factpro`, {}, { headers: getAuthHeaders() });
-  return response.data;
-}
-
-/**
  * Generar Comprobante Electrónico desde PreFactura EMITIDA
  */
 export async function generarComprobanteElectronico(preFacturaId) {

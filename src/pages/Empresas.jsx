@@ -136,6 +136,9 @@ export default function Empresas({ ruta }) {
         // Credenciales de facturación electrónica
         facturacionElectronicaUrl: data.facturacionElectronicaUrl,
         facturacionElectronicaToken: data.facturacionElectronicaToken,
+        facturacionElectronicaUsuario: data.facturacionElectronicaUsuario,
+        facturacionElectronicaEntorno: data.facturacionElectronicaEntorno,
+        facturacionElectronicaBoletaModo: data.facturacionElectronicaBoletaModo,
         // Campos SUNAT SIRE
         sunatUsuarioSol: data.sunatUsuarioSol,
         sunatClaveSol: data.sunatClaveSol,

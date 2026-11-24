@@ -9,18 +9,17 @@
  * un comprobante en el ERP:
  *  - FLUJO A (histórico, emitido por el portal de SUNAT con Clave SOL; sin comprobante en el ERP): botón "Descargar PDF SUNAT"
  *    (json.pe) o subida manual del PDF. "Generar Comprobante Electrónico" advierte que duplicaría el documento ante SUNAT.
- *  - FLUJO B (nuevo, emitido con Factpro; con comprobante en el ERP): "Obtener de Factpro" y descarga de XML y CDR. El servidor
- *    guarda solo el PDF de Factpro cuando SUNAT acepta el comprobante; la tarjeta únicamente lo muestra o permite reemplazarlo.
+ *  - FLUJO B (nuevo, emitido por el ERP con Smart PSE; con comprobante en el ERP): descarga de XML firmado y CDR, que el servidor
+ *    guarda al emitir. El PDF se sube o se descarga a mano; la tarjeta lo muestra o permite reemplazarlo.
  *
  * PreFacturaForm no usa React Hook Form y PDFDocumentManager sí lo exige, por eso este wrapper tiene su propio useForm.
  * La subida ya actualiza PreFactura.urlPreFacturaPdf en el servidor; onUrlChange solo avisa a la pantalla para que refresque.
  *
  * @param {number|string} props.preFacturaId - ID de la venta (OBLIGATORIO)
- * @param {string} props.urlPdf - URL actual del PDF (puede cambiar desde fuera: descarga SUNAT / Factpro)
+ * @param {string} props.urlPdf - URL actual del PDF (puede cambiar desde fuera: descarga SUNAT)
  * @param {Function} props.onUrlChange - Se llama con la URL nueva cuando el usuario sube un PDF
  * @param {Array} props.comprobantes - Comprobantes de la venta (los carga PreFacturaForm)
- * @param {Function} props.onGenerarComprobante - Genera y envía el comprobante por Factpro
- * @param {Function} props.onObtenerPdfFactpro - Trae el PDF de Factpro y lo guarda en el ERP
+ * @param {Function} props.onGenerarComprobante - Genera y envía el comprobante a SUNAT por Smart PSE
  * @param {Object} props.sunat - { empresaId, tipoDoc, serie, correlativo, onSuccess } para "Descargar PDF SUNAT"
  * @param {Boolean} props.readOnly - Modo solo lectura
  */
@@ -46,8 +45,6 @@ const PdfComprobanteVentaCard = ({
   numCorreDocFinal,
   toast,
   onGenerarComprobante,
-  onObtenerPdfFactpro,
-  obteniendoPdfFactpro,
   sunat,
   readOnly = false,
 }) => {
@@ -60,7 +57,7 @@ const PdfComprobanteVentaCard = ({
   } = useForm({ defaultValues: { urlPreFacturaPdf: urlPdf || "" } });
   const [generando, setGenerando] = useState(false);
 
-  // La URL puede cambiar desde fuera de la tarjeta (descarga de SUNAT o de Factpro)
+  // La URL puede cambiar desde fuera de la tarjeta (descarga de SUNAT)
   useEffect(() => {
     setValue("urlPreFacturaPdf", urlPdf || "");
   }, [urlPdf, setValue]);
@@ -74,8 +71,8 @@ const PdfComprobanteVentaCard = ({
   const yaGenerado = comprobantes.length > 0;
   const puedeGenerar = Number(estadoId) === 96;
   const tipoLabel = ETIQUETA_TIPO_DOCUMENTO[Number(tipoDocumentoId)] || "Comprobante";
-  const comprobanteConXml = comprobantes.find((c) => c.enlaceXML);
-  const comprobanteConCdr = comprobantes.find((c) => c.enlaceCDR);
+  const comprobanteConXml = comprobantes.find((c) => c.rutaLocalXML);
+  const comprobanteConCdr = comprobantes.find((c) => c.rutaLocalCDR);
   const sunatCompleto = sunat?.tipoDoc && sunat?.serie && sunat?.correlativo;
 
   const generar = async () => {
@@ -88,13 +85,13 @@ const PdfComprobanteVentaCard = ({
   };
 
   const handleGenerarClick = () => {
-    // FLUJO A: documento ya numerado (emitido fuera de Factpro). El usuario decide antes de que Factpro asigne otro número.
+    // FLUJO A: documento ya numerado (emitido fuera del ERP, por el portal de SUNAT). El usuario decide antes de que el ERP asigne otro número.
     if (String(numCorreDocFinal || "").trim()) {
       confirmDialog({
-        message: `Este documento ya tiene el número ${numeroDocumentoFinal || numCorreDocFinal}, emitido fuera de Factpro. Si continúa, Factpro generará un NUEVO comprobante con otro correlativo y ese número reemplazará al actual en la venta; el documento original quedaría duplicado ante SUNAT. Si solo necesita el PDF del documento ya emitido, cancele y use "Descargar PDF SUNAT". ¿Desea emitir un comprobante nuevo en Factpro?`,
+        message: `Este documento ya tiene el número ${numeroDocumentoFinal || numCorreDocFinal}, emitido fuera del ERP. Si continúa, el ERP generará un NUEVO comprobante con otro correlativo y ese número reemplazará al actual en la venta; el documento original quedaría duplicado ante SUNAT. Si solo necesita el PDF del documento ya emitido, cancele y use "Descargar PDF SUNAT". ¿Desea emitir un comprobante nuevo?`,
         header: "El documento ya tiene numeración",
         icon: "pi pi-exclamation-triangle",
-        acceptLabel: "Sí, emitir nuevo en Factpro",
+        acceptLabel: "Sí, emitir nuevo",
         rejectLabel: "Cancelar",
         acceptClassName: "p-button-danger",
         accept: generar,
@@ -104,13 +101,13 @@ const PdfComprobanteVentaCard = ({
     generar();
   };
 
-  // XML y CDR no se guardan: el servidor los entrega desde Factpro a demanda (así el token del ERP no sale hacia un tercero).
+  // XML firmado y CDR se guardan en el servidor al emitir; se descargan con el token del ERP (no son archivos públicos).
   // Mismo mecanismo de descarga de PDFActionButtons; no se reutiliza ese componente porque reserva una celda para su botón "Ver"
   // y rompería la fila única de botones.
-  const descargarArchivoFactpro = async (tipo, nombreArchivo) => {
+  const descargarArchivoComprobante = async (tipo, nombreArchivo) => {
     try {
       const token = useAuthStore.getState().token;
-      const respuesta = await fetch(`${import.meta.env.VITE_API_URL}/pre-facturas/factpro-archivo/${preFacturaId}/${tipo}`, {
+      const respuesta = await fetch(`${import.meta.env.VITE_API_URL}/pre-facturas/comprobante-archivo/${preFacturaId}/${tipo}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!respuesta.ok) {
@@ -135,7 +132,7 @@ const PdfComprobanteVentaCard = ({
       toast?.current?.show({
         severity: "error",
         summary: "Error",
-        detail: mensajeDeError(error, `No se pudo descargar el ${tipo.toUpperCase()} desde Factpro`),
+        detail: mensajeDeError(error, `No se pudo descargar el ${tipo.toUpperCase()} del servidor`),
         life: 8000,
       });
     }
@@ -181,21 +178,7 @@ const PdfComprobanteVentaCard = ({
           />,
           2,
         )}
-        {/* FLUJO B: la venta tiene comprobante de Factpro */}
-        {yaGenerado &&
-          celda(
-            "obtener",
-            <Button
-              type="button"
-              label="Obtener de Factpro"
-              icon="pi pi-cloud-download"
-              className="p-button-outlined p-button-success"
-              onClick={onObtenerPdfFactpro}
-              loading={obteniendoPdfFactpro}
-              tooltip="Consulta el documento en Factpro, trae su PDF y lo guarda en el ERP"
-              tooltipOptions={{ position: "top" }}
-            />,
-          )}
+        {/* FLUJO B: la venta tiene comprobante emitido por el ERP */}
         {comprobanteConXml &&
           celda(
             "xml",
@@ -204,7 +187,7 @@ const PdfComprobanteVentaCard = ({
               label="Descargar XML"
               icon="pi pi-download"
               className="p-button-outlined"
-              onClick={() => descargarArchivoFactpro("xml", `${comprobanteConXml.numeroCompleto}.xml`)}
+              onClick={() => descargarArchivoComprobante("xml", `${comprobanteConXml.numeroCompleto}.${comprobanteConXml.rutaLocalXML.endsWith(".zip") ? "zip" : "xml"}`)}
             />,
           )}
         {comprobanteConCdr &&
@@ -215,7 +198,7 @@ const PdfComprobanteVentaCard = ({
               label="Descargar CDR"
               icon="pi pi-download"
               className="p-button-outlined"
-              onClick={() => descargarArchivoFactpro("cdr", `CDR-${comprobanteConCdr.numeroCompleto}.zip`)}
+              onClick={() => descargarArchivoComprobante("cdr", `CDR-${comprobanteConCdr.numeroCompleto}.${comprobanteConCdr.rutaLocalCDR.endsWith(".zip") ? "zip" : "xml"}`)}
             />,
           )}
         {/* FLUJO A: histórico, sin comprobante en el ERP; el PDF se baja de SUNAT (json.pe) */}
@@ -246,7 +229,7 @@ const PdfComprobanteVentaCard = ({
         viewButtonLabel="Ver"
         downloadButtonLabel="Descargar"
         emptyMessage="No hay PDF del comprobante cargado"
-        emptyDescription="Suba el PDF del comprobante emitido por el portal de SUNAT, descárguelo de SUNAT o, si se emitió con Factpro, obténgalo de Factpro."
+        emptyDescription="Suba el PDF del comprobante emitido por el portal de SUNAT, descárguelo de SUNAT o cárguelo desde su equipo."
         control={control}
         errors={errors}
         setValue={setValue}

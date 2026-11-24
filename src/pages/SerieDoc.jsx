@@ -439,6 +439,12 @@ export default function SerieDoc() {
         <Column field="numCerosIzqCorre" header="Ceros Correlativo" sortable/>
         <Column field="numCerosIzqSerie" header="Ceros Serie" sortable/>
         <Column
+          field="esElectronica"
+          header="Electrónica"
+          body={(rowData) => booleanTemplate(rowData, "esElectronica")}
+          sortable
+        />
+        <Column
           field="activo"
           header="Activo"
           body={(rowData) => booleanTemplate(rowData, "activo")}

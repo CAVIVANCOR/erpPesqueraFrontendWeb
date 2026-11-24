@@ -20,7 +20,6 @@ import {
   facturarPreFacturaNegra,
   facturarPreFacturaBlanca,
   generarComprobanteElectronico,
-  obtenerPdfDesdeFactpro,
 } from "../../api/preFactura";
 import { Dialog } from "primereact/dialog";
 import { InputNumber } from "primereact/inputnumber";
@@ -522,7 +521,6 @@ export default function PreFacturaForm({
   useEffect(() => {
     if (isEdit && defaultValues?.id) cargarComprobantes();
   }, [defaultValues?.id, isEdit]);
-  const [obteniendoPdfFactpro, setObteniendoPdfFactpro] = useState(false);
   const [detallesCount, setDetallesCount] = useState(0);
   const [refreshClientes, setRefreshClientes] = useState(null);
   const [pdfSunatUrl, setPdfSunatUrl] = useState(defaultValues?.urlPreFacturaPdf || null);
@@ -1596,7 +1594,7 @@ export default function PreFacturaForm({
     try {
       const resultado = await generarComprobanteElectronico(defaultValues.id);
       comprobanteId = resultado?.data?.id;
-      // Factpro asigna el correlativo al emitir: se envía enseguida y se actualiza el documento final de la venta
+      // El ERP asigna el correlativo al emitir: se envía enseguida y se actualiza el documento final de la venta
       const envio = await enviarComprobanteASunat(comprobanteId);
       toast?.current?.show({
         severity: envio.respuestaProveedor?.aceptadoPorSunat ? "success" : "warn",
@@ -1605,7 +1603,7 @@ export default function PreFacturaForm({
         life: 6000,
       });
       if (envio.advertencia) {
-        toast?.current?.show({ severity: "warn", summary: "PDF no guardado", detail: envio.advertencia, life: 10000 });
+        toast?.current?.show({ severity: "warn", summary: "Archivos no guardados", detail: envio.advertencia, life: 10000 });
       }
     } catch (error) {
       console.error("Error al generar comprobante:", error);
@@ -1613,7 +1611,7 @@ export default function PreFacturaForm({
         severity: "error",
         summary: "Error",
         detail: comprobanteId
-          ? `El comprobante se creó pero no se pudo emitir en Factpro: ${mensajeDeError(error, "No se pudo enviar el comprobante")} Corrija el problema y use "Enviar a SUNAT".`
+          ? `El comprobante se creó pero no se pudo emitir en SUNAT: ${mensajeDeError(error, "No se pudo enviar el comprobante")} Corrija el problema y use "Enviar a SUNAT".`
           : mensajeDeError(error, "No se pudo generar el Comprobante Electrónico"),
         life: 10000,
       });
@@ -1644,32 +1642,9 @@ export default function PreFacturaForm({
 
   // PDF del comprobante fiscal según el flujo (ver BIFURCACIÓN en comprobanteElectronico.controller.js del backend):
   //  - FLUJO A (histórico, sin comprobante en el ERP): "Descargar PDF SUNAT" (json.pe) o subida manual en la tarjeta.
-  //  - FLUJO B (nuevo, con comprobante de Factpro): el servidor ya copia el PDF al aceptarse; "Obtener de Factpro" reintenta.
+  //  - FLUJO B (nuevo, con comprobante del ERP): el XML firmado y el CDR quedan guardados al emitir; el PDF se sube o se baja a mano.
   // En ambos el PDF queda guardado en la venta (urlPreFacturaPdf) y se muestra con PdfComprobanteVentaCard.
   const tipoDocFinalEncontrado = tiposDocumento.find((t) => Number(t.id) === Number(formData.tipoDocumentoFinalId));
-  const handleObtenerPdfFactpro = async () => {
-    try {
-      setObteniendoPdfFactpro(true);
-      const resultado = await obtenerPdfDesdeFactpro(defaultValues.id);
-      await alDescargarPdfSunat(resultado.pdfUrl);
-      toast?.current?.show({
-        severity: "success",
-        summary: "PDF obtenido de Factpro",
-        detail: `Documento ${resultado.documento}${resultado.estado ? ` (${resultado.estado})` : ""}`,
-        life: 5000,
-      });
-    } catch (error) {
-      console.error("Error al obtener el PDF desde Factpro:", error);
-      toast?.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: mensajeDeError(error, "No se pudo obtener el PDF desde Factpro"),
-        life: 10000,
-      });
-    } finally {
-      setObteniendoPdfFactpro(false);
-    }
-  };
   const alDescargarPdfSunat = async (pdfUrl) => {
     setFormData((prev) => ({ ...prev, urlPreFacturaPdf: pdfUrl }));
     setPdfSunatUrl(pdfUrl);
@@ -1927,7 +1902,7 @@ export default function PreFacturaForm({
             numSerieDocFinal={formData.numSerieDocFinal}
             onNumSerieDocFinalChange={(value) => handleChange("numSerieDocFinal", value)}
             numCorreDocFinal={formData.numCorreDocFinal}
-            correlativoAsignadoPorFactpro={estaComprobanteGenerado || estaValidadoSunat || estaNoValidadoSunat}
+            correlativoAsignadoPorEmision={estaComprobanteGenerado || estaValidadoSunat || estaNoValidadoSunat}
             onNumCorreDocFinalChange={(value) => handleChange("numCorreDocFinal", value)}
           />
         </TabPanel>
@@ -1944,7 +1919,7 @@ export default function PreFacturaForm({
             />
           ) : (
             <>
-              {/* Lista de comprobantes de la venta. Los botones (Generar, Obtener de Factpro, XML/CDR, PDF SUNAT) están en PdfComprobanteVentaCard. */}
+              {/* Lista de comprobantes de la venta. Los botones (Generar, XML/CDR, PDF SUNAT) están en PdfComprobanteVentaCard. */}
               {isEdit && defaultValues?.id && (
                 <div className="mb-3">
                   <BotonesGeneracionComprobante
@@ -1963,7 +1938,7 @@ export default function PreFacturaForm({
               )}
               {/* PDF del comprobante. Dos flujos (detalle en comprobanteElectronico.controller.js del backend):
                   A = histórico emitido en el portal de SUNAT (sin comprobante en el ERP): "Descargar PDF SUNAT" o subida manual.
-                  B = nuevo emitido con Factpro (hay comprobante en el ERP): el PDF se copia solo al aceptarse; "Obtener de Factpro" reintenta. */}
+                  B = nuevo emitido por el ERP (hay comprobante en el ERP): se guardan XML firmado y CDR; el PDF se sube o descarga a mano. */}
               {isEdit && formData.id && (
                 <PdfComprobanteVentaCard
                   preFacturaId={formData.id}
@@ -1975,8 +1950,6 @@ export default function PreFacturaForm({
                   numCorreDocFinal={formData.numCorreDocFinal}
                   toast={toast}
                   onGenerarComprobante={handleGenerarComprobanteClick}
-                  onObtenerPdfFactpro={handleObtenerPdfFactpro}
-                  obteniendoPdfFactpro={obteniendoPdfFactpro}
                   sunat={{
                     empresaId: formData.empresaId,
                     tipoDoc: tipoDocFinalEncontrado?.codigoSunat,

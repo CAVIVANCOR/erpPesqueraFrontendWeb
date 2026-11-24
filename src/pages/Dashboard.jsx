@@ -275,6 +275,12 @@ export default function Dashboard() {
           tab: "tablas",
         },
         {
+          label: "Resúmenes y Bajas SUNAT",
+          key: "resumenSunat",
+          icon: "pi-file-export",
+          tab: "tablas",
+        },
+        {
           label: "Incoterms",
           key: "incoterm",
           icon: "pi-globe",

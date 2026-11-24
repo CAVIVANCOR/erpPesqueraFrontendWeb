@@ -83,6 +83,15 @@ const schema = Yup.object().shape({
   facturacionElectronicaToken: Yup.string()
     .nullable()
     .max(500, "El token no puede exceder 500 caracteres"),
+  facturacionElectronicaUsuario: Yup.string()
+    .nullable()
+    .max(100, "El usuario no puede exceder 100 caracteres"),
+  facturacionElectronicaEntorno: Yup.string()
+    .oneOf(["DEMO", "PRODUCCION"], "El entorno debe ser DEMO o PRODUCCION")
+    .required("El entorno es obligatorio"),
+  facturacionElectronicaBoletaModo: Yup.string()
+    .oneOf(["INDIVIDUAL", "RESUMEN_DIARIO"], "Modo de envío de boletas no válido")
+    .required("El modo de envío de boletas es obligatorio"),
   // Campos SUNAT SIRE
   sunatUsuarioSol: Yup.string().nullable().max(100, "Máximo 100 caracteres"),
   sunatClaveSol: Yup.string().nullable().max(100, "Máximo 100 caracteres"),
@@ -287,6 +296,9 @@ export default function EmpresaForm({
       porcentajeCalcComisionPanguero: defaultValues.porcentajeCalcComisionPanguero ?? null,
       facturacionElectronicaUrl: defaultValues.facturacionElectronicaUrl ?? null,
       facturacionElectronicaToken: defaultValues.facturacionElectronicaToken ?? null,
+      facturacionElectronicaUsuario: defaultValues.facturacionElectronicaUsuario ?? null,
+      facturacionElectronicaEntorno: defaultValues.facturacionElectronicaEntorno ?? "DEMO",
+      facturacionElectronicaBoletaModo: defaultValues.facturacionElectronicaBoletaModo ?? "INDIVIDUAL",
       sunatUsuarioSol: defaultValues.sunatUsuarioSol ?? null,
       sunatClaveSol: defaultValues.sunatClaveSol ?? null,
       sunatClientId: defaultValues.sunatClientId ?? null,
@@ -1311,7 +1323,7 @@ export default function EmpresaForm({
               <h3 style={{ margin: 0, color: "#1976d2" }}>Facturación Electrónica</h3>
             </div>
             <small style={{ display: "block", color: "#1565c0", marginBottom: 12 }}>
-              Credenciales del proveedor de facturación electrónica (Factpro) de esta empresa. Cada empresa usa su propio token.
+              Credenciales del proveedor de facturación electrónica (Smart PSE) de esta empresa. Cada empresa usa su propio usuario y token CPE (panel de Smart PSE, Credenciales API).
             </small>
 
             <div
@@ -1329,7 +1341,7 @@ export default function EmpresaForm({
                   id="facturacionElectronicaUrl"
                   {...register("facturacionElectronicaUrl")}
                   className={errors.facturacionElectronicaUrl ? "p-invalid" : ""}
-                  placeholder="https://api.factpro.la/api/v3"
+                  placeholder="https://panel.smartpse.pe"
                   disabled={readOnly || !esSuperUsuario}
                   style={{
                     fontWeight: "bold",
@@ -1343,7 +1355,7 @@ export default function EmpresaForm({
                   </small>
                 )}
                 <small style={{ display: "block", color: "#666", marginTop: 4 }}>
-                  {esSuperUsuario ? "Ejemplo: https://api.factpro.la/api/v3" : "⚠️ Solo el SuperUsuario puede modificar este campo"}
+                  {esSuperUsuario ? "URL base de Smart PSE: https://panel.smartpse.pe" : "⚠️ Solo el SuperUsuario puede modificar este campo"}
                 </small>
               </div>
 
@@ -1355,7 +1367,7 @@ export default function EmpresaForm({
                   id="facturacionElectronicaToken"
                   {...register("facturacionElectronicaToken")}
                   className={errors.facturacionElectronicaToken ? "p-invalid" : ""}
-                  placeholder="Token de la empresa en Factpro"
+                  placeholder="Token / Password de la empresa en Smart PSE"
                   disabled={readOnly || !esSuperUsuario}
                   style={{
                     fontWeight: "bold",
@@ -1370,7 +1382,96 @@ export default function EmpresaForm({
                   </small>
                 )}
                 <small style={{ display: "block", color: "#666", marginTop: 4 }}>
-                  {esSuperUsuario ? "Token de la empresa en el proveedor (menú Token de Factpro) (se oculta por seguridad)" : "⚠️ Solo el SuperUsuario puede modificar este campo"}
+                  {esSuperUsuario ? "Token / Password de las Credenciales API de Smart PSE (se oculta por seguridad)" : "⚠️ Solo el SuperUsuario puede modificar este campo"}
+                </small>
+              </div>
+            </div>
+
+            {/* Smart PSE: usuario CPE, entorno de emisión y modo de envío de boletas */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "end",
+                gap: 24,
+                marginTop: 12,
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="facturacionElectronicaUsuario">
+                  Usuario CPE {!esSuperUsuario && <span style={{ color: "#e91e63", fontSize: "0.85em" }}>(Solo SuperUsuario)</span>}
+                </label>
+                <InputText
+                  id="facturacionElectronicaUsuario"
+                  {...register("facturacionElectronicaUsuario")}
+                  className={errors.facturacionElectronicaUsuario ? "p-invalid" : ""}
+                  placeholder="Usuario de las Credenciales API de Smart PSE"
+                  disabled={readOnly || !esSuperUsuario}
+                  style={{
+                    fontWeight: "bold",
+                    backgroundColor: !esSuperUsuario ? "#f5f5f5" : undefined,
+                    cursor: !esSuperUsuario ? "not-allowed" : undefined,
+                  }}
+                />
+                {errors.facturacionElectronicaUsuario && (
+                  <small className="p-error">{errors.facturacionElectronicaUsuario.message}</small>
+                )}
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label htmlFor="facturacionElectronicaEntorno">
+                  Entorno {!esSuperUsuario && <span style={{ color: "#e91e63", fontSize: "0.85em" }}>(Solo SuperUsuario)</span>}
+                </label>
+                <Controller
+                  name="facturacionElectronicaEntorno"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="facturacionElectronicaEntorno"
+                      value={field.value ?? "DEMO"}
+                      options={[
+                        { label: "Demo (pruebas SUNAT beta)", value: "DEMO" },
+                        { label: "Producción", value: "PRODUCCION" },
+                      ]}
+                      onChange={(e) => field.onChange(e.value)}
+                      disabled={readOnly || !esSuperUsuario}
+                      className={errors.facturacionElectronicaEntorno ? "p-invalid" : ""}
+                      style={{ width: "100%" }}
+                    />
+                  )}
+                />
+                {errors.facturacionElectronicaEntorno && (
+                  <small className="p-error">{errors.facturacionElectronicaEntorno.message}</small>
+                )}
+                <small style={{ display: "block", color: "#666", marginTop: 4 }}>
+                  Cada firma consume un crédito del paquete, también en Demo.
+                </small>
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label htmlFor="facturacionElectronicaBoletaModo">Envío de boletas</label>
+                <Controller
+                  name="facturacionElectronicaBoletaModo"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="facturacionElectronicaBoletaModo"
+                      value={field.value ?? "INDIVIDUAL"}
+                      options={[
+                        { label: "Individual (al emitir cada boleta)", value: "INDIVIDUAL" },
+                        { label: "Resumen diario (RC)", value: "RESUMEN_DIARIO" },
+                      ]}
+                      onChange={(e) => field.onChange(e.value)}
+                      disabled={readOnly}
+                      className={errors.facturacionElectronicaBoletaModo ? "p-invalid" : ""}
+                      style={{ width: "100%" }}
+                    />
+                  )}
+                />
+                {errors.facturacionElectronicaBoletaModo && (
+                  <small className="p-error">{errors.facturacionElectronicaBoletaModo.message}</small>
+                )}
+                <small style={{ display: "block", color: "#666", marginTop: 4 }}>
+                  La anulación de una boleta siempre se informa por resumen diario.
                 </small>
               </div>
             </div>

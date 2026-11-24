@@ -75,7 +75,7 @@ const AccionesSunatComprobante = ({ comprobante, toast, onAccionCompletada, perm
       toast?.current?.show({
         severity: "info",
         summary: "Estado en SUNAT",
-        detail: resultado.estadoSunat?.descripcionEstado || "Consulta realizada",
+        detail: resultado.estadoSunat?.descripcion || resultado.estadoSunat?.error || "Sin respuesta de SUNAT registrada",
         life: 5000,
       });
 
@@ -164,25 +164,25 @@ const AccionesSunatComprobante = ({ comprobante, toast, onAccionCompletada, perm
   return (
     <>
       {/* Botón Enviar a SUNAT */}
-      {!comprobante.enlacePDF && (
+      {!comprobante.aceptadoPorSunat && (
         <Button
           icon="pi pi-send"
           className="p-button-rounded p-button-success p-button-sm"
           onClick={handleEnviarASunat}
           loading={loading}
           disabled={!permisos.puedeEditar}
-          tooltip="Enviar a SUNAT"
+          tooltip={comprobante.errorEnvio ? "Reenviar a SUNAT (mismo número)" : "Enviar a SUNAT"}
         />
       )}
 
       {/* Botón Consultar Estado */}
-      {comprobante.enlacePDF && (
+      {comprobante.aceptadoPorSunat && (
         <Button
           icon="pi pi-search"
           className="p-button-rounded p-button-info p-button-sm"
           onClick={handleConsultarEstado}
           loading={loading}
-          tooltip="Consultar Estado en SUNAT"
+          tooltip="Ver estado guardado del comprobante"
         />
       )}
 

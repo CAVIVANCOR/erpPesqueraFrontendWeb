@@ -817,7 +817,7 @@ const PreFactura = ({ ruta }) => {
 
   // PDFs masivos desde SUNAT (json.pe), FLUJO A (históricos emitidos por el portal de SUNAT con Clave SOL): solo ventas fiscales
   // seleccionadas que ya tienen su documento final (tipo, serie y correlativo) y todavía no tienen PDF. Las que ya lo tienen
-  // (subido a mano o copiado de Factpro) no se tocan: el servicio de PDF sobrescribiría el archivo.
+  // (subido a mano o descargado de SUNAT) no se tocan: el servicio de PDF sobrescribiría el archivo.
   const documentosParaPdfMasivo = (selectedRecords || [])
     .filter(
       (pf) =>

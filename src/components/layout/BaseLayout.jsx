@@ -148,6 +148,7 @@ import LineaCredito from "../../pages/tesoreria/LineaCredito";
 import InversionFinanciera from "../../pages/tesoreria/InversionFinanciera";
 import ReporteLineasDisponibles from "../../pages/tesoreria/ReporteLineasDisponibles";
 import ComprobanteElectronico from "../../pages/ComprobanteElectronico";
+import ResumenSunat from "../../pages/ResumenSunat";
 import UnidadesNegocio from "../../pages/UnidadesNegocio";
 import LetraCambioOperaciones from "../../pages/tesoreria/LetraCambioOperaciones";
 import UbicacionLetra from "../../pages/UbicacionLetra";
@@ -409,6 +410,10 @@ export default function BaseLayout({ children, onLogout }) {
     comprobanteElectronico: {
       label: "Comprobante Electronico SUNAT",
       componente: <ComprobanteElectronico ruta="comprobanteElectronico" />,
+    },
+    resumenSunat: {
+      label: "Resúmenes y Bajas SUNAT",
+      componente: <ResumenSunat ruta="resumenSunat" />,
     },
     contratoServicio: {
       label: "Contratos de Servicios",
