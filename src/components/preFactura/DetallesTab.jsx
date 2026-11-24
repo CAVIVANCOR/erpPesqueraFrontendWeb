@@ -236,7 +236,9 @@ export default function DetallesTab({
         });
         return;
       }
-      if (!detalleActual.precioUnitario || detalleActual.precioUnitario <= 0) {
+      // Línea NEGATIVA de un anticipo descontado en la factura final: se corrige su monto (negativo) para igualar el comprobante
+      const esLineaAnticipo = Boolean(detalleActual.id) && Number(detalleActual.precioUnitario) < 0;
+      if (!esLineaAnticipo && (!detalleActual.precioUnitario || detalleActual.precioUnitario <= 0)) {
         toast?.current?.show({
           severity: "warn",
           summary: "Validación",
@@ -913,7 +915,7 @@ export default function DetallesTab({
                     locale="es-PE"
                     minFractionDigits={2}
                     maxFractionDigits={6}
-                    min={0}
+                    min={detalleActual?.id && Number(detalleActual.precioUnitario) < 0 ? -999999999 : 0}
                     disabled={loading}
                     inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
                   />

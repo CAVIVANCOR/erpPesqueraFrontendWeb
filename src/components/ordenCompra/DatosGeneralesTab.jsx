@@ -16,6 +16,8 @@ import CambiarTipoSerieDialog from "../common/CambiarTipoSerieDialog"; // ✅ AG
 import CentroCostoSelector from "../common/CentroCostoSelector";
 import ActivoSelector from "../common/ActivoSelector"; // ⭐ AGREGADO: Selector de activos
 import SelectorDocumentoAfectoOC from "../common/SelectorDocumentoAfectoOC";
+import AplicarAnticiposPanel from "../common/AplicarAnticiposPanel";
+import { getAnticiposOC, aplicarAnticiposOC, revertirAnticiposOC } from "../../api/ordenCompra";
 import AplicarNotaCreditoPanel from "../preFactura/AplicarNotaCreditoPanel";
 import {
   getEstadoNotaCreditoOC,
@@ -100,6 +102,9 @@ export default function DatosGeneralesTab({
   onFechaFacturacionChange,
   esGerencial,
   onEsGerencialChange,
+  esAnticipo,
+  onEsAnticipoChange,
+  onAnticiposCambiados,
   ordenCompraOrigenId,
   onOrdenCompraOrigenIdChange,
   esParticionada,
@@ -615,6 +620,19 @@ export default function DatosGeneralesTab({
         </Panel>
       )}
 
+      {/* Anticipos entregados al proveedor que la factura final descuenta (el comprobante llega neto de anticipos) */}
+      {!esAnticipo && ![8, 9].includes(Number(formData.tipoDocumentoId)) && formData.id && (
+        <AplicarAnticiposPanel
+          documentoId={formData.id}
+          cargar={getAnticiposOC}
+          aplicar={aplicarAnticiposOC}
+          revertir={revertirAnticiposOC}
+          onCambio={onAnticiposCambiados}
+          puedeEditar={puedeEditar && !readOnly}
+          toast={toast}
+        />
+      )}
+
       <div
         style={{
           alignItems: "end",
@@ -761,6 +779,24 @@ export default function DatosGeneralesTab({
             onClick={() =>
               onEsGerencialChange && onEsGerencialChange(!esGerencial)
             }
+            disabled={!puedeEditar || readOnly}
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div style={{ flex: 0.25 }}>
+          {/* ES ANTICIPO: la compra es un anticipo entregado al proveedor (producto ANTICIPO A PROVEEDORES, cuenta 422101) */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="esAnticipo"
+          >
+            Es Anticipo
+          </label>
+          <Button
+            id="esAnticipo"
+            label={esAnticipo ? "ANTICIPO" : "NO"}
+            icon={esAnticipo ? "pi pi-check-circle" : "pi pi-times-circle"}
+            severity={esAnticipo ? "warning" : "secondary"}
+            onClick={() => onEsAnticipoChange && onEsAnticipoChange(!esAnticipo)}
             disabled={!puedeEditar || readOnly}
             style={{ width: "100%" }}
           />

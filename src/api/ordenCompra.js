@@ -45,6 +45,24 @@ export async function revertirNotaCreditoOC(id) {
   return res.data;
 }
 
+/** Anticipos disponibles y ya aplicados de una factura final de compra */
+export async function getAnticiposOC(id) {
+  const res = await axios.get(`${API_URL}/${id}/anticipos-disponibles`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/** Descuenta anticipos en la factura final de compra (línea negativa por anticipo) */
+export async function aplicarAnticiposOC(id, anticipoIds) {
+  const res = await axios.post(`${API_URL}/${id}/aplicar-anticipos`, { anticipoIds }, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/** Revierte los anticipos descontados en la factura final de compra */
+export async function revertirAnticiposOC(id) {
+  const res = await axios.post(`${API_URL}/${id}/revertir-anticipos`, {}, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function getOrdenCompraPorId(id) {
   const res = await axios.get(`${API_URL}/${id}`, {
     headers: getAuthHeaders(),

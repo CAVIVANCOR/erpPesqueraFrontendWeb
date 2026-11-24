@@ -1356,6 +1356,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 tiposMovimiento={tiposMovimiento}
                 value={tipoMovimientoIngresoId}
                 onChange={(value) => setTipoMovimientoIngresoId(value)}
+                esIngreso={true} // Un cobro es un INGRESO: el selector debe abrir en INGRESOS y no en su valor por defecto (EGRESOS)
                 required={!soloDetraccion}
                 placeholder="Buscar tipo de movimiento..."
               />

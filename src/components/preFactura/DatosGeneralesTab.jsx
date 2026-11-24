@@ -1,5 +1,5 @@
 // src/components/preFactura/DatosGeneralesTab.jsx
-import React from "react";
+import React, { useState } from "react";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
@@ -17,6 +17,8 @@ import { useAuthStore } from "../../shared/stores/useAuthStore"; // ← AGREGAR 
 import IrACxCEditar from "../common/IrACxCEditar";
 import SelectorDocumentoAfecto from "../common/SelectorDocumentoAfecto";
 import AplicarNotaCreditoPanel from "./AplicarNotaCreditoPanel";
+import AplicarAnticiposPanel from "../common/AplicarAnticiposPanel";
+import { getAnticiposPreFactura, aplicarAnticiposPreFactura, revertirAnticiposPreFactura } from "../../api/preFactura";
 import {
   getEstadoNotaCredito,
   aplicarNotaCreditoPreFactura,
@@ -109,8 +111,11 @@ export default function DatosGeneralesTab({
   numCorreDocFinal,
   onNumCorreDocFinalChange,
   correlativoAsignadoPorEmision,
+  onAnticiposCambiados,
   onStockDespachado = () => { }, // ⭐ se llama tras generar movimientos de salida, kardex y saldos
 }) {
+  // Sube al aplicar o revertir anticipos para volver a montar el detalle (cambian sus líneas negativas)
+  const [versionDetalles, setVersionDetalles] = useState(0);
   // Determinar si es exportación para mostrar campos adicionales
   const esExportacion = formData.paisDestinoId || formData.incotermId;
   const { usuario } = useAuthStore();
@@ -481,6 +486,24 @@ export default function DatosGeneralesTab({
                 justifyContent: "center",
                 color: "#000",
               }}
+            />
+          </div>
+          <div style={{ flex: 0.6 }}>
+            {/* ES ANTICIPO: venta de anticipo recibido del cliente (producto ANTICIPO DE CLIENTES, cuenta 122101) */}
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="esAnticipo"
+            >
+              Es Anticipo
+            </label>
+            <Button
+              id="esAnticipo"
+              label={formData.esAnticipo ? "ANTICIPO" : "NO"}
+              icon={formData.esAnticipo ? "pi pi-check-circle" : "pi pi-times-circle"}
+              severity={formData.esAnticipo ? "warning" : "secondary"}
+              onClick={() => onChange("esAnticipo", !formData.esAnticipo)}
+              disabled={!puedeEditar || readOnly || formData.facturado}
+              style={{ width: "100%", fontWeight: "bold", justifyContent: "center" }}
             />
           </div>
           <div style={{ flex: 0.5 }}>
@@ -909,6 +932,23 @@ export default function DatosGeneralesTab({
             />
           )}
         </Panel>
+      )}
+
+      {/* Anticipos recibidos del cliente que la factura final descuenta (el comprobante final va neto de anticipos) */}
+      {!formData.esAnticipo && ![8, 9].includes(Number(formData.tipoDocumentoId)) && preFacturaId && (
+        <AplicarAnticiposPanel
+          documentoId={preFacturaId}
+          cargar={getAnticiposPreFactura}
+          aplicar={aplicarAnticiposPreFactura}
+          revertir={revertirAnticiposPreFactura}
+          onCambio={async () => {
+            // Las líneas negativas cambian: se vuelve a montar el detalle y se pide recalcular los totales
+            setVersionDetalles((v) => v + 1);
+            if (onAnticiposCambiados) await onAnticiposCambiados();
+          }}
+          puedeEditar={puedeEditarConPermiso && !readOnly && !estaAnulada}
+          toast={toast}
+        />
       )}
 
       {/* ============================================ */}
@@ -1379,6 +1419,7 @@ export default function DatosGeneralesTab({
         style={{ marginTop: "1rem" }}
       >
         <DetallesTab
+          key={versionDetalles}
           preFacturaId={preFacturaId}
           productos={productos}
           empresaId={empresaId}

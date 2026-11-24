@@ -218,8 +218,12 @@ export async function generarPDFComprobanteElectronico(c) {
     y = ALTO - MARGEN;
   };
 
+  // Las líneas de ANTICIPO (anticipo = true) no son ítems: se muestran en los totales como descuento y en las leyendas
+  const lineasAnticipo = (c.detalles || []).filter((d) => d.anticipo);
+  const totalAnticipos = lineasAnticipo.reduce((suma, d) => suma + Number(d.total || 0), 0);
+
   dibujarCabeceraTabla();
-  for (const d of c.detalles || []) {
+  for (const d of (c.detalles || []).filter((linea) => !linea.anticipo)) {
     const lineasDesc = ajustarTexto(d.descripcion, font, 8, columnas[3].ancho - 6);
     const alto = Math.max(1, lineasDesc.length) * 10 + 5;
     if (y - alto < MARGEN + 40) {
@@ -255,6 +259,8 @@ export async function generarPDFComprobanteElectronico(c) {
     Number(c.totalInafecto) > 0 && ["Op. Inafecta", c.totalInafecto],
     Number(c.totalDescuentos) > 0 && ["Descuentos", c.totalDescuentos],
     ["IGV", c.totalIgv],
+    totalAnticipos > 0 && ["Total operación", Number(c.totalComprobante) + totalAnticipos],
+    totalAnticipos > 0 && ["(-) Anticipos", -totalAnticipos],
   ].filter(Boolean);
   const yTotales = y;
   for (const [etiqueta, valor] of totales) {
@@ -263,7 +269,7 @@ export async function generarPDFComprobanteElectronico(c) {
     y -= 13;
   }
   page.drawRectangle({ x: xTotales - 4, y: y - 5, width: 204, height: 17, color: rgb(0.92, 0.95, 0.98), borderColor: AZUL, borderWidth: 0.8 });
-  texto("IMPORTE TOTAL", xTotales, y, { size: 10, bold: true, color: AZUL });
+  texto(totalAnticipos > 0 ? "IMPORTE A PAGAR" : "IMPORTE TOTAL", xTotales, y, { size: 10, bold: true, color: AZUL });
   texto(`${simbolo} ${num(c.totalComprobante)}`, xTotales, y, { size: 10, bold: true, alinear: "der", ancho: 196 });
   const yFinTotales = y - 8;
 
@@ -271,6 +277,9 @@ export async function generarPDFComprobanteElectronico(c) {
   let yLey = yTotales;
   const anchoLey = xTotales - MARGEN - 12;
   const leyendas = [`SON: ${c.montoEnLetras || ""}`];
+  if (lineasAnticipo.length > 0) {
+    leyendas.push(`ANTICIPOS DESCONTADOS: ${lineasAnticipo.map((d) => `${d.codigoProducto} (${simbolo} ${num(d.total)})`).join(", ")}`);
+  }
   if (c.sujetoDetraccion && Number(c.montoDetraccion) > 0) {
     leyendas.push(
       `Operación sujeta al Sistema de Pago de Obligaciones Tributarias (SPOT): ${num(c.porcentajeDetraccion)}% - Monto de la detracción S/ ${num(c.montoDetraccion)}${c.empresa?.cuentaDetraccion ? ` - Cuenta Banco de la Nación N° ${c.empresa.cuentaDetraccion}` : ""}`,

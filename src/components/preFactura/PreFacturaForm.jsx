@@ -232,6 +232,7 @@ export default function PreFacturaForm({
 
     // Campos nuevos - Tipo de Facturación y Partición
     esGerencial: defaultValues?.esGerencial || false,
+    esAnticipo: defaultValues?.esAnticipo || false, // Anticipo recibido del cliente: su asiento nace al cobrarlo en Tesorería (HABER 122101)
     preFacturaOrigenId: defaultValues?.preFacturaOrigenId
       ? Number(defaultValues.preFacturaOrigenId)
       : null,
@@ -443,6 +444,7 @@ export default function PreFacturaForm({
 
         // Campos nuevos - Tipo de Facturación y Partición
         esGerencial: defaultValues?.esGerencial || false,
+        esAnticipo: defaultValues?.esAnticipo || false,
         preFacturaOrigenId: defaultValues?.preFacturaOrigenId
           ? Number(defaultValues.preFacturaOrigenId)
           : null,
@@ -1310,6 +1312,7 @@ export default function PreFacturaForm({
         ? Number(formData.movSalidaAlmacenId)
         : null,
       esGerencial: formData.esGerencial || false,
+      esAnticipo: formData.esAnticipo || false,
       // ════════════════════════════════════════════════════════════
       // AUDITORÍA - TRAZABILIDAD COMPLETA
       // En CREACIÓN: creadoPor y actualizadoPor = usuario actual
@@ -1919,6 +1922,7 @@ export default function PreFacturaForm({
             onNumSerieDocFinalChange={(value) => handleChange("numSerieDocFinal", value)}
             numCorreDocFinal={formData.numCorreDocFinal}
             correlativoAsignadoPorEmision={estaComprobanteGenerado || estaValidadoSunat || estaNoValidadoSunat}
+            onAnticiposCambiados={async () => setDetallesCount((prev) => prev + 0.0001)}
             onNumCorreDocFinalChange={(value) => handleChange("numCorreDocFinal", value)}
           />
         </TabPanel>

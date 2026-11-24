@@ -59,6 +59,8 @@ export default function DetalleDialog({
   const [showProductoSelector, setShowProductoSelector] = useState(false);
   const [saving, setSaving] = useState(false);
   const [usarUnidadComercial, setUsarUnidadComercial] = useState(false);
+  // Línea NEGATIVA de un anticipo descontado en la factura final: solo se corrige su monto para igualar el comprobante físico
+  const esLineaAnticipo = !!detalle && String(detalle.observaciones || "").startsWith("ANTICIPO-OC:");
 
   // AGREGADO: Determinar si el tipo de afectación aplica IGV
   const aplicaIGVSegunTipo = (tipoAfectacionIGVId) => {
@@ -261,7 +263,16 @@ export default function DetalleDialog({
         return;
       }
 
-      if (!formData.valorUnitarioSinIGV || formData.valorUnitarioSinIGV <= 0) {
+      if (esLineaAnticipo && !(Number(formData.valorUnitarioSinIGV) < 0)) {
+        toast.current.show({
+          severity: "warn",
+          summary: "Validación",
+          detail: "El monto del anticipo descontado debe ser negativo (por ejemplo -5000.00), igual a la base que descuenta el comprobante.",
+          life: 5000,
+        });
+        return;
+      }
+      if (!esLineaAnticipo && (!formData.valorUnitarioSinIGV || formData.valorUnitarioSinIGV <= 0)) {
         toast.current.show({
           severity: "warn",
           summary: "Validación",
@@ -517,7 +528,7 @@ export default function DetalleDialog({
                   mode="decimal"
                   minFractionDigits={2}
                   maxFractionDigits={6}
-                  min={0}
+                  min={esLineaAnticipo ? -999999999 : 0}
                   prefix={codigoMoneda ? `${codigoMoneda} ` : ""}
                   disabled={saving || !puedeEditarDetalles}
                   style={{

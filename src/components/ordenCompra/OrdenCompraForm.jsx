@@ -198,6 +198,8 @@ export default function OrdenCompraForm({
   const [esGerencial, setEsGerencial] = useState(
     defaultValues?.esGerencial || false,
   );
+  // Anticipo entregado al proveedor: su asiento nace al pagarlo en Tesorería (DEBE 422101 / HABER caja o banco)
+  const [esAnticipo, setEsAnticipo] = useState(defaultValues?.esAnticipo || false);
   const [ordenCompraOrigenId, setOrdenCompraOrigenId] = useState(
     defaultValues?.ordenCompraOrigenId || null,
   );
@@ -422,6 +424,7 @@ export default function OrdenCompraForm({
       setFechaFacturacionInicial(fechaFactInicial);
       fechaFacturacionInicializadaRef.current = true;
       setEsGerencial(defaultValues.esGerencial || false);
+      setEsAnticipo(defaultValues.esAnticipo || false);
       setOrdenCompraOrigenId(
         defaultValues.ordenCompraOrigenId
           ? Number(defaultValues.ordenCompraOrigenId)
@@ -1147,6 +1150,7 @@ export default function OrdenCompraForm({
       facturado: setFacturado,
       fechaFacturacion: setFechaFacturacion,
       esGerencial: setEsGerencial,
+      esAnticipo: setEsAnticipo,
       ordenCompraOrigenId: setOrdenCompraOrigenId,
       esParticionada: setEsParticionada,
       tipoDocumentoFinalId: setTipoDocumentoFinalId,
@@ -1202,6 +1206,7 @@ export default function OrdenCompraForm({
         facturado: facturado || false,
         fechaFacturacion: fechaFacturacion,
         esGerencial: esGerencial || false,
+        esAnticipo: esAnticipo || false,
         ordenCompraOrigenId: ordenCompraOrigenId ? Number(ordenCompraOrigenId) : null,
         esParticionada: esParticionada || false,
         motivoNotaCreditoDebitoId: motivoNotaCreditoDebitoId ? Number(motivoNotaCreditoDebitoId) : null,
@@ -1514,6 +1519,12 @@ export default function OrdenCompraForm({
             onFechaFacturacionChange={setFechaFacturacion}
             esGerencial={esGerencial}
             onEsGerencialChange={setEsGerencial}
+            esAnticipo={esAnticipo}
+            onEsAnticipoChange={setEsAnticipo}
+            onAnticiposCambiados={async () => {
+              setRefreshDetalles((prev) => prev + 1);
+              setDetallesCount((prev) => prev + 0.0001);
+            }}
             ordenCompraOrigenId={ordenCompraOrigenId}
             onOrdenCompraOrigenIdChange={setOrdenCompraOrigenId}
             esParticionada={esParticionada}

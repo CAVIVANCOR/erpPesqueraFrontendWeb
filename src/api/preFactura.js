@@ -71,6 +71,24 @@ export async function getEstadoNotaCredito(id) {
   return response.data;
 }
 
+/** Anticipos disponibles y ya aplicados de una factura final de venta */
+export async function getAnticiposPreFactura(id) {
+  const response = await axios.get(`${API_URL}/${id}/anticipos-disponibles`, { headers: getAuthHeaders() });
+  return response.data;
+}
+
+/** Descuenta anticipos recibidos del cliente en la factura final (línea negativa por anticipo) */
+export async function aplicarAnticiposPreFactura(id, anticipoIds) {
+  const response = await axios.post(`${API_URL}/${id}/aplicar-anticipos`, { anticipoIds }, { headers: getAuthHeaders() });
+  return response.data;
+}
+
+/** Revierte los anticipos descontados en la factura final de venta */
+export async function revertirAnticiposPreFactura(id) {
+  const response = await axios.post(`${API_URL}/${id}/revertir-anticipos`, {}, { headers: getAuthHeaders() });
+  return response.data;
+}
+
 /**
  * Aplica la Nota de Crédito al documento afecto (canje: baja su saldo y recalcula detracción/retención/percepción)
  * @param {number} id - ID de la pre-factura que es Nota de Crédito
