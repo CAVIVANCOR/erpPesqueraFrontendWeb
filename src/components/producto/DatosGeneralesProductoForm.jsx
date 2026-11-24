@@ -991,7 +991,7 @@ export default function DatosGeneralesProductoForm({
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="tipoDetraccionId" className="font-bold">
-                Tipo Detracción SUNAT
+                Tipo Detracción SUNAT (sugerido)
               </label>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'start' }}>
                 <Controller
@@ -1060,7 +1060,7 @@ export default function DatosGeneralesProductoForm({
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="porcentajeDetraccion" className="font-bold">
-                Detracción (%)
+                Detracción sugerida (%)
                 {porcentajeDetraccionWatch !== undefined && porcentajeDetraccionWatch !== null && (
                   <Tag
                     value={porcentajeDetraccionWatch > 0 ? "SUJETO" : "NO SUJETO"}

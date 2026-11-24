@@ -1352,6 +1352,8 @@ const PreFactura = ({ ruta }) => {
         const { getPreFacturaPorId } = await import("../api/preFactura");
         const preFacturaCompleta = await getPreFacturaPorId(resultado.id);
         setSelectedPreFactura(preFacturaCompleta);
+        // La venta ya existe: pasa a modo edición para que se muestren Aprobar, Anular y demás acciones sin cerrar y reabrir
+        setIsEditing(true);
         // ❌ NO incrementar refreshKey aquí - causa reset del formulario
         // setRefreshKey((prev) => prev + 1);
         refrescarFilaEnLista(preFacturaCompleta);

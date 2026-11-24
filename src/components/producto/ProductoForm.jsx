@@ -99,17 +99,19 @@ const schema = yup.object().shape({
     .transform((value, originalValue) => {
       return originalValue === "" ? null : value;
     }),
+  // Empresa y cliente del producto están depreciados: el servidor siempre los fija a MEGUI (empresa 1) y no hay campos para
+  // ellos en pantalla, así que no pueden ser obligatorios (bloqueaban el guardado sin mostrar ningún error visible)
   empresaId: yup
     .number()
-    .required("Empresa es obligatoria")
+    .nullable()
     .transform((value, originalValue) => {
-      return originalValue === "" ? null : value;
+      return originalValue === "" || originalValue == null ? null : value;
     }),
   clienteId: yup
     .number()
-    .required("Cliente es obligatorio")
+    .nullable()
     .transform((value, originalValue) => {
-      return originalValue === "" ? null : value;
+      return originalValue === "" || originalValue == null ? null : value;
     }),
   tipoMaterialId: yup
     .number()
@@ -437,8 +439,9 @@ export default function ProductoForm({
         procedenciaId: Number(data.procedenciaId),
         marcaId: Number(data.marcaId),
         estadoInicialId: Number(data.estadoInicialId),
-        empresaId: Number(data.empresaId),
-        clienteId: Number(data.clienteId),
+        // Solo si ya existen (edición): el servidor los vuelve a fijar a MEGUI de todas formas
+        ...(data.empresaId ? { empresaId: Number(data.empresaId) } : {}),
+        ...(data.clienteId ? { clienteId: Number(data.clienteId) } : {}),
         tipoMaterialId: Number(data.tipoMaterialId),
         colorId: Number(data.colorId),
         unidadDiametroId: Number(data.unidadDiametroId),

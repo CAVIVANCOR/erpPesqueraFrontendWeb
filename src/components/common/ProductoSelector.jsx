@@ -2,23 +2,23 @@
  * ProductoSelector.jsx
  * 
  * Componente reutilizable para selección de Producto con búsqueda avanzada
- * Muestra una tabla con Empresa, Familia, Subfamilia y Producto para facilitar la búsqueda
- * Incluye carrusel de filtros por empresa, familia y subfamilia con colores dinámicos
+ * Muestra una tabla con Familia, Subfamilia y Producto para facilitar la búsqueda
+ * Incluye filtros por familia y subfamilia con colores dinámicos
+ * Producto es un maestro global de MEGUI (empresa 1): no se muestra ni se filtra por empresa
  * 
  * No excluye ninguna familia: se listan todos los productos (incluida MERCADERÍA).
  * 
  * PATRÓN: Replica exactamente EntidadComercialSelector.jsx
- * - CARGA INTERNAMENTE todas las empresas, familias, subfamilias y productos
- * - Filtra dinámicamente por empresa, familia y subfamilia
+ * - CARGA INTERNAMENTE los productos con sus familias y subfamilias
+ * - Filtra dinámicamente por familia y subfamilia
  * 
- * CORRECCIÓN v2.2.0: Layout de 4 columnas verticales + carga interna
- * - Columna 1: Botones de empresas (vertical)
- * - Columna 2: Botones de familias (vertical)
- * - Columna 3: Botones de subfamilias (vertical)
- * - Columna 4: DataTable de productos con columna Empresa
+ * Layout de 3 columnas verticales + carga interna
+ * - Columna 1: Botones de familias (vertical)
+ * - Columna 2: Botones de subfamilias (vertical)
+ * - Columna 3: DataTable de productos
  * 
  * @author ERP Megui
- * @version 2.2.0
+ * @version 3.0.0
  */
 
 import React, { useState, useRef, useMemo, useEffect } from "react";
@@ -30,10 +30,9 @@ import { InputText } from "primereact/inputtext";
 import { classNames } from "primereact/utils";
 import { getResponsiveFontSize } from "../../utils/utils";
 import { getProductos } from "../../api/producto";
-import { getAllEmpresas } from "../../api/empresa";
 
 /**
- * Paleta de colores infinita para empresas, familias y subfamilias
+ * Paleta de colores infinita para familias y subfamilias
  * Se repite cíclicamente si hay más categorías que colores
  */
 const COLORES_CATEGORIAS = [
@@ -58,9 +57,8 @@ const COLORES_CATEGORIAS = [
 // Color para el botón "TODAS"
 const COLOR_TODAS = { bg: '#2196F3', text: '#FFFFFF', border: '#2196F3' }; // Azul
 
-// Colores específicos para Empresa, Familia, Subfamilia y Producto
+// Colores específicos para Familia, Subfamilia y Producto
 const COLORES_TEXTO = {
-  empresa: '#1565C0',      // 🔵 Azul oscuro
   familia: '#1976D2',      // 🔵 Azul
   subfamilia: '#2E7D32',   // 🟢 Verde
   producto: '#FF0000',     // 🔴 Rojo
@@ -76,32 +74,9 @@ const getColorCategoria = (index) => {
 };
 
 /**
- * Helper: Obtiene el nombre de la empresa dado un empresaId
- * BUSCA MANUALMENTE en el array de empresas
- */
-const getEmpresaNombre = (empresaId, empresas) => {
-  if (!empresaId) {
-    return "Sin empresa";
-  }
-  
-  if (!empresas || empresas.length === 0) {
-    return `ID: ${empresaId}`;
-  }
-  
-  const empresa = empresas.find((e) => Number(e.id) === Number(empresaId));
-  
-  if (!empresa) {
-    return `ID: ${empresaId}`;
-  }
-  
-  return empresa.nombre || empresa.razonSocial || `ID: ${empresaId}`;
-};
-
-/**
  * Componente ProductoSelector
  * @param {number|string} props.value - ID del producto seleccionado
  * @param {Function} props.onChange - Callback cuando se selecciona un producto (recibe el ID)
- * @param {number|string} props.empresaIdPreseleccionada - ID de empresa a preseleccionar
  * @param {boolean} props.disabled - Si el selector está deshabilitado
  * @param {boolean} props.required - Si el campo es obligatorio
  * @param {boolean} props.error - Si hay error de validación
@@ -112,7 +87,6 @@ const getEmpresaNombre = (empresaId, empresas) => {
 const ProductoSelector = ({
   value = null,
   onChange,
-  empresaIdPreseleccionada = null,
   disabled = false,
   soloLectura = false, // Solo muestra el valor, sin abrir el diálogo de selección
   required = false,
@@ -124,11 +98,9 @@ const ProductoSelector = ({
 }) => {
   const [dialogVisible, setDialogVisible] = useState(false);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
-  const [empresaFiltro, setEmpresaFiltro] = useState(empresaIdPreseleccionada);
   const [familiaFiltro, setFamiliaFiltro] = useState(null);
   const [subfamiliaFiltro, setSubfamiliaFiltro] = useState(null);
   const [productos, setProductos] = useState([]);
-  const [empresas, setEmpresas] = useState([]);
   const [loading, setLoading] = useState(false);
   const dt = useRef(null);
 
@@ -137,29 +109,16 @@ const ProductoSelector = ({
     const cargarDatos = async () => {
       setLoading(true);
       try {
-        const [productosData, empresasData] = await Promise.all([
-          getProductos(),
-          getAllEmpresas()
-        ]);
-        setProductos(productosData || []);
-        setEmpresas(empresasData || []);
+        setProductos((await getProductos()) || []);
       } catch (error) {
         console.error("❌ Error cargando datos:", error);
         setProductos([]);
-        setEmpresas([]);
       } finally {
         setLoading(false);
       }
     };
     cargarDatos();
   }, []);
-
-  // Actualizar empresaFiltro si cambia la preselección
-  useEffect(() => {
-    if (empresaIdPreseleccionada) {
-      setEmpresaFiltro(empresaIdPreseleccionada);
-    }
-  }, [empresaIdPreseleccionada]);
 
   // Obtener el producto seleccionado (buscar en array original completo)
   const productoSeleccionado = useMemo(() => {
@@ -171,26 +130,18 @@ const ProductoSelector = ({
     return producto;
   }, [productos, value]);
 
-  // ✅ MOSTRAR TODAS LAS EMPRESAS - No filtrar por productos
-  const empresasUnicas = useMemo(() => {
-    const empresasOrdenadas = [...empresas].sort((a, b) =>
-      (a.nombre || a.razonSocial || "").localeCompare(b.nombre || b.razonSocial || "")
-    );
-    return empresasOrdenadas;
-  }, [empresas]);
-
-  // Producto es un maestro único (MEGUI): Producto.empresaId está depreciado, por eso ya no se filtra por empresa.
-  // Se filtra solo por destino (compra / venta); el nombre se conserva por compatibilidad con el resto del componente.
-  const productosFiltradosPorEmpresa = useMemo(() => {
+  // Producto es un maestro único (MEGUI): Producto.empresaId está depreciado: ya no se muestra ni se filtra por empresa (la prop empresaIdPreseleccionada que aún pasan algunos formularios se ignora).
+  // Se filtra solo por destino (compra / venta).
+  const productosFiltradosPorUso = useMemo(() => {
     if (uso === "compra") return productos.filter((p) => p.esParaCompras === true);
     if (uso === "venta") return productos.filter((p) => p.esParaVentas === true);
     return productos;
   }, [productos, uso]);
 
-  // Extraer familias únicas desde los productos filtrados por empresa y ordenarlas alfabéticamente
+  // Extraer familias únicas desde los productos filtrados por destino y ordenarlas alfabéticamente
   const familiasUnicas = useMemo(() => {
     const familiasMap = new Map();
-    productosFiltradosPorEmpresa.forEach((producto) => {
+    productosFiltradosPorUso.forEach((producto) => {
       if (producto.familia && producto.familia.id) {
         familiasMap.set(Number(producto.familia.id), producto.familia);
       }
@@ -199,18 +150,18 @@ const ProductoSelector = ({
       (a.nombre || "").localeCompare(b.nombre || "")
     );
     return familias;
-  }, [productosFiltradosPorEmpresa]);
+  }, [productosFiltradosPorUso]);
 
   // Filtrar productos por familia seleccionada
   const productosFiltradosPorFamilia = useMemo(() => {
     if (!familiaFiltro) {
-      return productosFiltradosPorEmpresa;
+      return productosFiltradosPorUso;
     }
-    const filtrados = productosFiltradosPorEmpresa.filter(
+    const filtrados = productosFiltradosPorUso.filter(
       (producto) => Number(producto.familiaId) === Number(familiaFiltro)
     );
     return filtrados;
-  }, [productosFiltradosPorEmpresa, familiaFiltro]);
+  }, [productosFiltradosPorUso, familiaFiltro]);
 
   // Extraer subfamilias únicas desde los productos filtrados por familia
   const subfamiliasUnicas = useMemo(() => {
@@ -237,16 +188,10 @@ const ProductoSelector = ({
     return filtrados;
   }, [productosFiltradosPorFamilia, subfamiliaFiltro]);
 
-  // Ordenar productos: primero por empresa, luego por familia, luego por subfamilia, luego por descripción
+  // Ordenar productos: por familia, luego por subfamilia, luego por descripción
   const productosOrdenados = useMemo(() => {
     return [...productosFiltradosPorSubfamilia].sort((a, b) => {
-      // Primero por empresa
-      const empA = getEmpresaNombre(a.empresaId, empresas);
-      const empB = getEmpresaNombre(b.empresaId, empresas);
-      if (empA !== empB) {
-        return empA.localeCompare(empB);
-      }
-      // Luego por familia
+      // Primero por familia
       const famA = a.familia?.nombre || "";
       const famB = b.familia?.nombre || "";
       if (famA !== famB) {
@@ -261,17 +206,7 @@ const ProductoSelector = ({
       // Finalmente por descripción
       return (a.descripcionArmada || "").localeCompare(b.descripcionArmada || "");
     });
-  }, [productosFiltradosPorSubfamilia, empresas]);
-
-  /**
-   * Maneja el cambio de empresa
-   * Reset automático de familia y subfamilia al cambiar empresa
-   */
-  const handleEmpresaChange = (empresaId) => {
-    setEmpresaFiltro(empresaId);
-    setFamiliaFiltro(null);
-    setSubfamiliaFiltro(null);
-  };
+  }, [productosFiltradosPorSubfamilia]);
 
   /**
    * Maneja el cambio de familia
@@ -292,7 +227,6 @@ const ProductoSelector = ({
     
     setDialogVisible(false);
     setGlobalFilterValue("");
-    // No resetear empresaFiltro para mantener la preselección
     setFamiliaFiltro(null);
     setSubfamiliaFiltro(null);
   };
@@ -303,22 +237,8 @@ const ProductoSelector = ({
   const handleCloseDialog = () => {
     setDialogVisible(false);
     setGlobalFilterValue("");
-    // Restaurar empresa preseleccionada al cerrar
-    setEmpresaFiltro(empresaIdPreseleccionada);
     setFamiliaFiltro(null);
     setSubfamiliaFiltro(null);
-  };
-
-  /**
-   * Template para la empresa
-   */
-  const empresaTemplate = (rowData) => {
-    const nombreEmpresa = getEmpresaNombre(rowData.empresaId, empresas);
-    return (
-      <span style={{ color: COLORES_TEXTO.empresa, fontSize: "0.9rem", fontWeight: "bold" }}>
-        {nombreEmpresa}
-      </span>
-    );
   };
 
   /**
@@ -388,11 +308,6 @@ const ProductoSelector = ({
   const footer = (
     <div style={{ textAlign: "left", color: "#666", fontSize: "0.9rem" }}>
       Total: {productosOrdenados.length} producto(s)
-      {empresas.length === 0 && (
-        <span style={{ color: "red", marginLeft: "1rem" }}>
-          ⚠️ No se cargaron empresas
-        </span>
-      )}
     </div>
   );
 
@@ -425,10 +340,6 @@ const ProductoSelector = ({
           <span style={{ color: "#999" }}>Cargando...</span>
         ) : productoSeleccionado ? (
           <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-            <span style={{ color: COLORES_TEXTO.empresa }}>
-              {getEmpresaNombre(productoSeleccionado.empresaId, empresas)}
-            </span>
-            <span style={{ color: COLORES_TEXTO.separador }}> - </span>
             <span style={{ color: COLORES_TEXTO.familia }}>
               {productoSeleccionado.familia?.nombre || "Sin familia"}
             </span>
@@ -451,7 +362,7 @@ const ProductoSelector = ({
         <small className="p-error">{errorMessage}</small>
       )}
 
-      {/* Dialog con layout de 4 columnas */}
+      {/* Dialog con layout de 3 columnas */}
       <Dialog
         visible={dialogVisible}
         style={{ width: "95vw", maxWidth: "1800px" }}
@@ -462,85 +373,15 @@ const ProductoSelector = ({
         }}
         maximizable
       >
-        {/* Layout de 4 columnas */}
+        {/* Layout de 3 columnas */}
         <div style={{ 
           display: "grid", 
-          gridTemplateColumns: "160px 160px 160px 1fr", 
+          gridTemplateColumns: "160px 160px 1fr", 
           gap: "1rem",
           height: "600px"
         }}>
           
-          {/* ========== COLUMNA 1: EMPRESAS ========== */}
-          <div style={{ 
-            display: "flex", 
-            flexDirection: "column",
-            borderRight: "1px solid #dee2e6"
-          }}>
-            <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: "600" }}>
-              Empresas
-            </h4>
-            <div style={{ 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: "0.35rem",
-              overflowY: "auto",
-              paddingRight: "0.5rem"
-            }}>
-              {/* Botón TODAS */}
-              <Button
-                type="button"
-                label="TODAS"
-                size="small"
-                onClick={() => handleEmpresaChange(null)}
-                style={{
-                  backgroundColor: !empresaFiltro ? COLOR_TODAS.bg : "#FFFFFF",
-                  color: !empresaFiltro ? COLOR_TODAS.text : COLOR_TODAS.bg,
-                  borderColor: COLOR_TODAS.border,
-                  fontWeight: "500",
-                  fontSize: "0.75rem",
-                  padding: "0.35rem 0.5rem",
-                  justifyContent: "flex-start",
-                  textAlign: "left",
-                }}
-                className={!empresaFiltro ? "" : "p-button-outlined"}
-              />
-
-              {/* Botones de empresas */}
-              {empresasUnicas.map((empresa, index) => {
-                const color = getColorCategoria(index);
-                const isActive = Number(empresaFiltro) === Number(empresa.id);
-                const nombreEmpresa = empresa.nombre || empresa.razonSocial || `ID: ${empresa.id}`;
-
-                return (
-                  <Button
-                    key={empresa.id}
-                    type="button"
-                    label={nombreEmpresa}
-                    size="small"
-                    onClick={() => handleEmpresaChange(Number(empresa.id))}
-                    style={{
-                      backgroundColor: isActive ? color.bg : "#FFFFFF",
-                      color: isActive ? color.text : color.bg,
-                      borderColor: color.border,
-                      fontWeight: "500",
-                      fontSize: "0.75rem",
-                      padding: "0.35rem 0.5rem",
-                      justifyContent: "flex-start",
-                      textAlign: "left",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                    className={isActive ? "" : "p-button-outlined"}
-                    tooltip={nombreEmpresa}
-                    tooltipOptions={{ position: 'right' }}
-                  />
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ========== COLUMNA 2: FAMILIAS ========== */}
+          {/* ========== COLUMNA 1: FAMILIAS ========== */}
           <div style={{ 
             display: "flex", 
             flexDirection: "column",
@@ -549,7 +390,7 @@ const ProductoSelector = ({
             <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: "600" }}>
               Familias
             </h4>
-            {empresaFiltro && familiasUnicas.length > 0 ? (
+            {familiasUnicas.length > 0 ? (
               <div style={{ 
                 display: "flex", 
                 flexDirection: "column", 
@@ -610,12 +451,12 @@ const ProductoSelector = ({
               </div>
             ) : (
               <div style={{ color: "#999", fontSize: "0.85rem", fontStyle: "italic" }}>
-                {empresaFiltro ? "No hay familias disponibles" : "Seleccione una empresa"}
+                No hay familias disponibles
               </div>
             )}
           </div>
 
-          {/* ========== COLUMNA 3: SUBFAMILIAS ========== */}
+          {/* ========== COLUMNA 2: SUBFAMILIAS ========== */}
           <div style={{ 
             display: "flex", 
             flexDirection: "column",
@@ -690,7 +531,7 @@ const ProductoSelector = ({
             )}
           </div>
 
-          {/* ========== COLUMNA 4: TABLA DE PRODUCTOS ========== */}
+          {/* ========== COLUMNA 3: TABLA DE PRODUCTOS ========== */}
           <div style={{ display: "flex", flexDirection: "column" }}>
             {header}
             
@@ -717,13 +558,6 @@ const ProductoSelector = ({
               loading={loading}
               style={{ fontSize: getResponsiveFontSize() }}
             >
-              <Column
-                field="empresaId"
-                header="Empresa"
-                body={empresaTemplate}
-                sortable
-                style={{ minWidth: "120px" }}
-              />
               <Column
                 field="familia.nombre"
                 header="Familia"

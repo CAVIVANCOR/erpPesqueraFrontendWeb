@@ -5,8 +5,6 @@ import { Toast } from "primereact/toast";
 import { crearProducto } from "../../../../api/producto";
 import { obtenerPrecioVentaVigente } from "../../../../api/precioEntidad";
 import { consultarTipoCambioSunat } from "../../../../api/consultaExterna";
-import { getEmpresas } from "../../../../api/empresa";
-import { getEntidadesComerciales } from "../../../../api/entidadComercial";
 import { getColores } from "../../../../api/color";
 import { getEstadosMultiFuncion } from "../../../../api/estadoMultiFuncion";
 import { getUnidadesMedida } from "../../../../api/unidadMedida";
@@ -113,8 +111,6 @@ export default function ProductoSelectorDialog({
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
 
   // Estados para ProductoForm
-  const [empresas, setEmpresas] = useState([]);
-  const [clientes, setClientes] = useState([]);
   const [colores, setColores] = useState([]);
   const [estadosIniciales, setEstadosIniciales] = useState([]);
   const [unidadesMetricas, setUnidadesMetricas] = useState([]);
@@ -261,21 +257,15 @@ export default function ProductoSelectorDialog({
 
     try {
       const [
-        empresasData,
-        clientesData,
         coloresData,
         estadosData,
         unidadesMetricasData,
       ] = await Promise.all([
-        getEmpresas(),
-        getEntidadesComerciales(),
         getColores(),
         getEstadosMultiFuncion(),
         getUnidadesMedida(),
       ]);
 
-      setEmpresas(empresasData);
-      setClientes(clientesData);
       setColores(coloresData);
       const estadosProducto = estadosData.filter(
         (e) => Number(e.tipoProvieneDeId) === 2 && !e.cesado,
@@ -403,8 +393,6 @@ export default function ProductoSelectorDialog({
             unidadesMetricas={unidadesMetricas}
             tiposMaterial={catalogos.tiposMaterial}
             colores={colores}
-            empresas={empresas}
-            clientes={clientes}
             tiposAlmacenamiento={catalogos.tiposAlmacenamiento}
             paises={catalogos.paises}
             marcas={catalogos.marcas}

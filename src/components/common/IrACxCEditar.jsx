@@ -88,9 +88,10 @@ export default function IrACxCEditar({
         return;
       }
 
-      // ⭐ Solo cargar CxC si el estado NO es PENDIENTE
+      // La CxC se genera al facturar (FACTURADA 95 en adelante). Antes (Pendiente, Aprobada, Anulada, Particionada) no existe
+      // y consultarla solo producía un 404 en el servidor cada vez que se abría la venta
       const estadoId = Number(preFactura?.estadoId || 0);
-      if (estadoId === ESTADO_PREFACTURA.PENDIENTE) {
+      if (estadoId < ESTADO_PREFACTURA.FACTURADA) {
         if (isMounted) {
           setCxcData(null);
           setLoading(false);

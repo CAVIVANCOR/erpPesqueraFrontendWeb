@@ -452,10 +452,15 @@ export default function DetallesTab({
         <Column
           header="% Detrac."
           body={(rowData) => {
-            if (!rowData.producto?.porcentajeDetraccion) return "-";
+            // La detracción es la elegida en la línea (el producto solo la sugiere)
+            if (!rowData.tipoDetraccionId) return "-";
+            const porcentaje = rowData.porcentajeDetraccion ?? rowData.tipoDetraccion?.tasa;
             return (
-              <div style={{ textAlign: "right", fontWeight: "bold", color: "#FF9800" }}>
-                {Number(rowData.producto.porcentajeDetraccion).toFixed(2)}%
+              <div
+                style={{ textAlign: "right", fontWeight: "bold", color: "#FF9800" }}
+                title={rowData.tipoDetraccion ? `${rowData.tipoDetraccion.codigo} - ${rowData.tipoDetraccion.nombre}` : undefined}
+              >
+                {Number(porcentaje || 0).toFixed(2)}%
               </div>
             );
           }}

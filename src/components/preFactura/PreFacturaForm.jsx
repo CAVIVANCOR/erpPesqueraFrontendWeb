@@ -26,6 +26,7 @@ import { InputNumber } from "primereact/inputnumber";
 import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 import AsientoContableManager from "../common/AsientoContableManager";
 import PdfComprobanteVentaCard from "./PdfComprobanteVentaCard";
+import { generarYSubirPDFComprobanteElectronico } from "./ComprobanteElectronicoPDF";
 import { crearDetallePreFactura } from "../../api/detallePreFactura";
 import { ESTADO_PREFACTURA } from "../../utils/estados.constants";
 import { getPreFacturaPorId } from "../../api/preFactura";
@@ -509,6 +510,8 @@ export default function PreFacturaForm({
   const [activeTab, setActiveTab] = useState(0);
   // Comprobantes electrónicos de la venta (FLUJO B). Los comparten la pestaña (lista) y la barra inferior (botones).
   const [comprobantes, setComprobantes] = useState([]);
+  // Sube cada vez que se guarda un PDF nuevo con la misma URL, para que el visor lo vuelva a cargar
+  const [pdfVersion, setPdfVersion] = useState(0);
   const cargarComprobantes = async () => {
     if (!defaultValues?.id) return;
     try {
@@ -980,7 +983,9 @@ export default function PreFacturaForm({
 
   useEffect(() => {
     const obtenerTotalesDelBackend = async () => {
-      if (!defaultValues?.id || !isEdit) {
+      // Basta con que la venta exista: una venta recién creada en esta misma pantalla sigue con isEdit en false pero ya
+      // tiene id y totales en el servidor (exigir isEdit dejaba los totales en 0 hasta cerrar y reabrir)
+      if (!defaultValues?.id) {
         setTotales({
           subtotal: 0,
           igv: 0,
@@ -1037,7 +1042,9 @@ export default function PreFacturaForm({
       }
     };
     obtenerTotalesDelBackend();
-  }, [detallesCount, isEdit, defaultValues?.id]);
+    // Los totales los recalcula el servidor al guardar la venta: se vuelven a leer cuando la venta guardada trae importes nuevos
+    // (antes solo se leían al cambiar la cantidad de detalles, es decir, ANTES de guardar, y quedaban en 0)
+  }, [detallesCount, isEdit, defaultValues?.id, defaultValues?.subtotal, defaultValues?.total, defaultValues?.totalIGV]);
 
 
 
@@ -1605,6 +1612,14 @@ export default function PreFacturaForm({
       if (envio.advertencia) {
         toast?.current?.show({ severity: "warn", summary: "Archivos no guardados", detail: envio.advertencia, life: 10000 });
       }
+      // Aceptado por SUNAT: se genera enseguida el PDF (representación impresa) con los datos del comprobante firmado
+      if (envio.respuestaProveedor?.aceptadoPorSunat) {
+        const lista = (await getComprobantesByPreFactura(defaultValues.id)) || [];
+        const aceptado = lista.find((x) => String(x.id) === String(comprobanteId));
+        const pdf = aceptado ? await generarYSubirPDFComprobanteElectronico(aceptado, defaultValues.id) : { success: false, error: "No se encontró el comprobante" };
+        if (pdf.success) await alDescargarPdfSunat(pdf.url);
+        else toast?.current?.show({ severity: "warn", summary: "PDF no generado", detail: `${pdf.error}. Use el botón Generar PDF.`, life: 10000 });
+      }
     } catch (error) {
       console.error("Error al generar comprobante:", error);
       toast?.current?.show({
@@ -1646,6 +1661,7 @@ export default function PreFacturaForm({
   // En ambos el PDF queda guardado en la venta (urlPreFacturaPdf) y se muestra con PdfComprobanteVentaCard.
   const tipoDocFinalEncontrado = tiposDocumento.find((t) => Number(t.id) === Number(formData.tipoDocumentoFinalId));
   const alDescargarPdfSunat = async (pdfUrl) => {
+    setPdfVersion((v) => v + 1);
     setFormData((prev) => ({ ...prev, urlPreFacturaPdf: pdfUrl }));
     setPdfSunatUrl(pdfUrl);
     // Recargar la pre-factura para actualizar defaultValues
@@ -1944,6 +1960,7 @@ export default function PreFacturaForm({
                   preFacturaId={formData.id}
                   urlPdf={pdfSunatUrl}
                   comprobantes={comprobantes}
+                  pdfVersion={pdfVersion}
                   estadoId={formData.estadoId}
                   tipoDocumentoId={formData.tipoDocumentoFinalId || formData.tipoDocumentoId}
                   numeroDocumentoFinal={formData.numeroDocumentoFinal}

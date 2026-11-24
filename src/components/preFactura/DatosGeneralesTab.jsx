@@ -696,7 +696,7 @@ export default function DatosGeneralesTab({
               }
               maxLength={40}
               disabled={!puedeEditarConPermiso || correlativoAsignadoPorEmision}
-              placeholder="LA ASIGNA FACTPRO"
+              placeholder="SE ASIGNA AL EMITIR"
               tooltip={correlativoAsignadoPorEmision ? "Serie electrónica asignada según el tipo de documento" : "Déjela vacía para que el ERP asigne la serie electrónica al generar el comprobante"}
               tooltipOptions={{ position: "top" }}
               style={{
@@ -724,7 +724,7 @@ export default function DatosGeneralesTab({
               }
               maxLength={40}
               disabled={!puedeEditarConPermiso || correlativoAsignadoPorEmision}
-              placeholder="LO ASIGNA FACTPRO"
+              placeholder="SE ASIGNA AL EMITIR"
               tooltip={correlativoAsignadoPorEmision ? "Correlativo asignado por el ERP al emitir el comprobante" : "Déjelo vacío para que el ERP asigne el correlativo al emitir el comprobante electrónico"}
               tooltipOptions={{ position: "top" }}
               style={{

@@ -252,16 +252,6 @@ const SubfamiliaProducto = ({ ruta }) => {
   };
 
   /**
-   * Template para mostrar el centro de costo
-   */
-  const centroCostoTemplate = (rowData) => {
-    if (rowData.centroCosto) {
-      return `${rowData.centroCosto.Codigo} - ${rowData.centroCosto.Nombre}`;
-    }
-    return rowData.centroCostoId ? rowData.centroCostoId : "-";
-  };
-
-  /**
    * Template para acciones
    * Incluye botón de editar y eliminar (deshabilitados según permisos)
    * Estilo idéntico a Empresas.jsx: botones siempre visibles, deshabilitados según permisos
@@ -444,13 +434,6 @@ const SubfamiliaProducto = ({ ruta }) => {
           body={llevaKardexTemplate}
           sortable
           style={{ minWidth: "150px" }}
-        />
-        <Column
-          field="centroCosto.Nombre"
-          header="Centro de Costo"
-          body={centroCostoTemplate}
-          sortable
-          style={{ minWidth: 200 }}
         />
         <Column
           body={accionesTemplate}

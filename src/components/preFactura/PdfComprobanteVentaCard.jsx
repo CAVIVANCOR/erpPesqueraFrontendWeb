@@ -31,6 +31,8 @@ import PDFDocumentManager from "../pdf/PDFDocumentManager";
 import BotonDescargarPDFSunatVentas from "../common/BotonDescargarPDFSunatVentas";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { mensajeDeError } from "../../utils/mensajeError";
+import { generarYSubirPDFComprobanteElectronico } from "./ComprobanteElectronicoPDF";
+import { getComprobantesByPreFactura } from "../../api/facturacionElectronica/comprobanteElectronico";
 
 const ETIQUETA_TIPO_DOCUMENTO = { 2: "Factura", 4: "Boleta", 8: "Nota de Crédito", 9: "Nota de Débito" };
 
@@ -46,6 +48,7 @@ const PdfComprobanteVentaCard = ({
   toast,
   onGenerarComprobante,
   sunat,
+  pdfVersion = 0,
   readOnly = false,
 }) => {
   const {
@@ -56,6 +59,9 @@ const PdfComprobanteVentaCard = ({
     formState: { errors },
   } = useForm({ defaultValues: { urlPreFacturaPdf: urlPdf || "" } });
   const [generando, setGenerando] = useState(false);
+  const [generandoPdf, setGenerandoPdf] = useState(false);
+  // Un PDF regenerado conserva la misma URL, así que el visor no se entera: al cambiar esta versión se vuelve a montar y lo recarga
+  const [versionLocal, setVersionLocal] = useState(0);
 
   // La URL puede cambiar desde fuera de la tarjeta (descarga de SUNAT)
   useEffect(() => {
@@ -73,6 +79,7 @@ const PdfComprobanteVentaCard = ({
   const tipoLabel = ETIQUETA_TIPO_DOCUMENTO[Number(tipoDocumentoId)] || "Comprobante";
   const comprobanteConXml = comprobantes.find((c) => c.rutaLocalXML);
   const comprobanteConCdr = comprobantes.find((c) => c.rutaLocalCDR);
+  const comprobanteAceptado = comprobantes.find((c) => c.aceptadoPorSunat);
   const sunatCompleto = sunat?.tipoDoc && sunat?.serie && sunat?.correlativo;
 
   const generar = async () => {
@@ -138,6 +145,27 @@ const PdfComprobanteVentaCard = ({
     }
   };
 
+  // Representación impresa del comprobante aceptado: se arma con los datos firmados y reemplaza el PDF de la venta
+  const generarPdfComprobante = async () => {
+    setGenerandoPdf(true);
+    // Se vuelve a leer el comprobante del servidor: la lista en pantalla pudo cargarse antes y no traer el monto en letras ni el hash
+    let fresco = comprobanteAceptado;
+    try {
+      fresco = ((await getComprobantesByPreFactura(preFacturaId)) || []).find((c) => String(c.id) === String(comprobanteAceptado.id)) || comprobanteAceptado;
+    } catch (error) {
+      console.error("No se pudo refrescar el comprobante antes de generar el PDF:", error);
+    }
+    const resultado = await generarYSubirPDFComprobanteElectronico(fresco, preFacturaId);
+    setGenerandoPdf(false);
+    if (resultado.success) {
+      if (onUrlChange) onUrlChange(resultado.url);
+      setVersionLocal((v) => v + 1);
+      toast?.current?.show({ severity: "success", summary: "PDF generado", detail: `PDF de ${comprobanteAceptado.numeroCompleto} guardado en la venta`, life: 4000 });
+    } else {
+      toast?.current?.show({ severity: "error", summary: "Error", detail: mensajeDeError(new Error(resultado.error), "No se pudo generar el PDF del comprobante"), life: 8000 });
+    }
+  };
+
   // Cada botón va en una celda flex:1 dentro de .p-fluid, igual que la fila de PDFDocumentManager
   const celda = (clave, contenido, flex = 1) => (
     <div key={clave} style={{ flex }}>
@@ -179,6 +207,20 @@ const PdfComprobanteVentaCard = ({
           2,
         )}
         {/* FLUJO B: la venta tiene comprobante emitido por el ERP */}
+        {comprobanteAceptado &&
+          celda(
+            "pdf",
+            <Button
+              type="button"
+              label="Generar PDF"
+              icon="pi pi-file-pdf"
+              className="p-button-outlined p-button-danger"
+              onClick={generarPdfComprobante}
+              loading={generandoPdf}
+              tooltip="Genera la representación impresa del comprobante (con QR) y la guarda en la venta"
+              tooltipOptions={{ position: "top" }}
+            />,
+          )}
         {comprobanteConXml &&
           celda(
             "xml",
@@ -220,6 +262,7 @@ const PdfComprobanteVentaCard = ({
       </div>
 
       <PDFDocumentManager
+        key={`${pdfVersion}-${versionLocal}`}
         moduleName="pre-factura"
         fieldName="urlPreFacturaPdf"
         entityId={preFacturaId}

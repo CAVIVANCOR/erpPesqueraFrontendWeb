@@ -18,6 +18,8 @@ import {
 } from "../../api/detalleOrdenCompra";
 import { Dropdown } from "primereact/dropdown"; // AGREGADO
 import { mensajeDeError } from "../../utils/mensajeError";
+import { confirmDialog } from "primereact/confirmdialog";
+import { getTiposDetraccionActivos } from "../../api/tipoDetraccion";
 
 export default function DetalleDialog({
   visible,
@@ -47,7 +49,11 @@ export default function DetalleDialog({
     cantidadCompra: null,
     precioUnitarioCompra: null,
     tipoAfectacionIGVId: null,
+    // Detracción de ESTA línea (el producto solo la sugiere). detraccionRevisada = el usuario ya la confirmó o la cambió.
+    tipoDetraccionId: null,
+    detraccionRevisada: true,
   });
+  const [tiposDetraccion, setTiposDetraccion] = useState([]);
 
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [showProductoSelector, setShowProductoSelector] = useState(false);
@@ -61,6 +67,21 @@ export default function DetalleDialog({
     // Códigos SUNAT: 10=Gravado (aplica IGV), otros no aplican
     return tipo?.codigo === "10";
   };
+
+  useEffect(() => {
+    if (!visible) return;
+    getTiposDetraccionActivos()
+      .then((tipos) => setTiposDetraccion(tipos || []))
+      .catch((err) => {
+        console.error("Error al cargar tipos de detracción:", err);
+        toast?.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: mensajeDeError(err, "No se pudieron cargar los tipos de detracción"),
+          life: 6000,
+        });
+      });
+  }, [visible]);
 
   useEffect(() => {
     if (visible) {
@@ -84,6 +105,8 @@ export default function DetalleDialog({
           cantidadCompra: detalle.cantidadCompra ? Number(detalle.cantidadCompra) : null,
           precioUnitarioCompra: detalle.precioUnitarioCompra ? Number(detalle.precioUnitarioCompra) : null,
           tipoAfectacionIGVId: detalle.tipoAfectacionIGVId ? Number(detalle.tipoAfectacionIGVId) : null, // AGREGADO
+          tipoDetraccionId: detalle.tipoDetraccionId ? Number(detalle.tipoDetraccionId) : null,
+          detraccionRevisada: true,
         });
 
         setUsarUnidadComercial(tieneUnidadComercial);
@@ -106,6 +129,8 @@ export default function DetalleDialog({
           cantidadCompra: null,
           precioUnitarioCompra: null,
           tipoAfectacionIGVId: esExoneradoIGV ? 9 : 1,
+          tipoDetraccionId: null,
+          detraccionRevisada: true,
         });
         setProductoSeleccionado(null);
         setUsarUnidadComercial(false);
@@ -174,9 +199,23 @@ export default function DetalleDialog({
         }));
       }
 
+      // La detracción del producto es solo una SUGERENCIA: queda pendiente de revisión hasta que el usuario la confirme o cambie
+      setFormData((prev) => ({
+        ...prev,
+        tipoDetraccionId: producto.tipoDetraccionId ? Number(producto.tipoDetraccionId) : null,
+        detraccionRevisada: !producto.tipoDetraccionId,
+      }));
+
       setShowProductoSelector(false);
     }
   };
+
+  const tiposDetraccionOptions = tiposDetraccion.map((t) => ({
+    label: `${t.codigo} - ${t.nombre} (${Number(t.tasa)}%)`,
+    value: Number(t.id),
+  }));
+  const etiquetaDetraccion = tiposDetraccionOptions.find((o) => o.value === Number(formData.tipoDetraccionId))?.label;
+  const detraccionPorRevisar = !!formData.tipoDetraccionId && !formData.detraccionRevisada;
 
   const handleSave = async () => {
     // Validaciones
@@ -233,6 +272,22 @@ export default function DetalleDialog({
       }
     }
 
+    // El producto solo sugiere la detracción: antes de guardar se pide confirmar que coincide con la factura del proveedor
+    if (detraccionPorRevisar) {
+      confirmDialog({
+        message: `El producto sugiere la detracción "${etiquetaDetraccion}". Revise la factura del proveedor: un mismo servicio puede estar al 10 % o al 12 % según el concepto. ¿El tipo de detracción coincide con la factura?`,
+        header: "Revise el tipo de detracción",
+        icon: "pi pi-exclamation-triangle",
+        acceptLabel: "Sí, coincide",
+        rejectLabel: "Revisar",
+        accept: persistir,
+      });
+      return;
+    }
+    await persistir();
+  };
+
+  const persistir = async () => {
     setSaving(true);
     try {
       const dataToSave = {
@@ -240,6 +295,8 @@ export default function DetalleDialog({
         productoId: Number(formData.productoId),
         observaciones: formData.observaciones || null,
         tipoAfectacionIGVId: formData.tipoAfectacionIGVId ? Number(formData.tipoAfectacionIGVId) : null, // AGREGADO
+        // null = esta línea no lleva detracción; el porcentaje lo completa el servidor con la tasa del tipo elegido
+        tipoDetraccionId: formData.tipoDetraccionId ? Number(formData.tipoDetraccionId) : null,
       };
 
       // Agregar datos según modo
@@ -543,6 +600,31 @@ export default function DetalleDialog({
             filter
             showClear
           />
+        </div>
+
+        {/* Detracción de la línea: el producto la sugiere, pero la factura del proveedor manda */}
+        <div style={{ marginBottom: "1rem" }}>
+          <label htmlFor="tipoDetraccion">Tipo de Detracción (según la factura del proveedor)</label>
+          <Dropdown
+            id="tipoDetraccion"
+            value={formData.tipoDetraccionId}
+            options={tiposDetraccionOptions}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, tipoDetraccionId: e.value ?? null, detraccionRevisada: true }))
+            }
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Sin detracción"
+            disabled={saving || !puedeEditarDetalles}
+            filter
+            showClear
+          />
+          {detraccionPorRevisar && (
+            <small style={{ color: "#E65100", fontWeight: "bold", display: "block", marginTop: "0.25rem" }}>
+              <i className="pi pi-exclamation-triangle" /> Tipo sugerido por el producto: confirme que coincide con la factura del
+              proveedor. Un mismo servicio puede estar al 10 % o al 12 % según el concepto.
+            </small>
+          )}
         </div>
 
         <Divider />

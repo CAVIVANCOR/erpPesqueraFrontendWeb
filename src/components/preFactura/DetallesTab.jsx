@@ -945,7 +945,8 @@ export default function DetallesTab({
             )}
           </div>
 
-          {/* Mostrar resumen calculado */}
+          {/* Mostrar resumen calculado. Con unidad comercial el importe sale de cantidadVenta x precioUnitarioVenta: los campos
+              cantidad y precioUnitario solo se llenan en el modo de unidad base y daban 0 */}
           {((usarUnidadComercial && detalleActual.cantidadVenta > 0 && detalleActual.precioUnitarioVenta > 0) ||
             (!usarUnidadComercial && detalleActual.cantidad > 0 && detalleActual.precioUnitario > 0)) && (
               <div
@@ -975,8 +976,7 @@ export default function DetallesTab({
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     }).format(
-                      Number(detalleActual.cantidad) *
-                      Number(detalleActual.precioUnitario),
+                      (usarUnidadComercial ? Number(detalleActual.cantidadVenta) * Number(detalleActual.precioUnitarioVenta) : Number(detalleActual.cantidad) * Number(detalleActual.precioUnitario)),
                     )}
                   </span>
                 </div>
@@ -995,8 +995,7 @@ export default function DetallesTab({
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     }).format(
-                      Number(detalleActual.cantidad) *
-                      Number(detalleActual.precioUnitario) *
+                      (usarUnidadComercial ? Number(detalleActual.cantidadVenta) * Number(detalleActual.precioUnitarioVenta) : Number(detalleActual.cantidad) * Number(detalleActual.precioUnitario)) *
                       ((porcentajeIGV || 0) / 100),
                     )}
                   </span>
@@ -1018,8 +1017,7 @@ export default function DetallesTab({
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     }).format(
-                      Number(detalleActual.cantidad) *
-                      Number(detalleActual.precioUnitario) *
+                      (usarUnidadComercial ? Number(detalleActual.cantidadVenta) * Number(detalleActual.precioUnitarioVenta) : Number(detalleActual.cantidad) * Number(detalleActual.precioUnitario)) *
                       (1 + (porcentajeIGV || 0) / 100),
                     )}
                   </span>
