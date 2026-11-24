@@ -324,7 +324,7 @@ export default function GeneradorDocumentosFinancierosDialog({
             <div style={{ display: "flex", alignItems: "center", padding: "0.5rem", backgroundColor: "#FFFFFF", borderRadius: "4px" }}>
               <div style={{ fontSize: "1.5rem", marginRight: "0.75rem" }}>{esGastoDirecto ? "4️⃣" : "4️⃣"}</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: "bold" }}>📊 {esGastoDirecto ? (esGerencial ? "Asiento Contable Gerencial (Gasto y Proveedor)" : "Asientos Contables (Compra y Destino)") : (esGerencial ? "Asiento Contable Gerencial (Pago + Destino)" : "Asientos Contables (Compra, Destino y Pago)")}</div>
+                <div style={{ fontWeight: "bold" }}>📊 {esGastoDirecto ? (esGerencial ? "Asiento Contable Gerencial (Destino). El gasto contra caja/banco se registra al pagar" : "Asientos Contables (Compra y Destino)") : (esGerencial ? "Asiento Contable Gerencial (Pago + Destino)" : "Asientos Contables (Compra, Destino y Pago)")}</div>
                 <div style={{ fontSize: "0.85rem", color: "#757575" }}>Cantidad: {cantidadAsientos} (numeración auto-generada)</div>
               </div>
             </div>
