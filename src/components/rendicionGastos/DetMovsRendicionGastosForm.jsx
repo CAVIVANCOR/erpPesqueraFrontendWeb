@@ -929,32 +929,51 @@ const DetMovsRendicionGastosForm = ({
                 {origenAutomatico ? (
                   <>
                     <label style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>Origen (automático)</label>
-                    <InputText
-                      value={
-                        Number(movimiento?.documentoOrigenId) > 0
-                          ? `COMPRAS - ORDEN DE COMPRA #${movimiento.documentoOrigenId}`
-                          : "COMPRAS - SE ASIGNA AL GENERAR LA ORDEN DE COMPRA"
-                      }
-                      disabled
-                      style={{ width: "100%", fontWeight: "bold" }}
-                    />
-                    {!movimiento?.id && (
-                      <Button
-                        type="button"
-                        label="Elegir otro origen (Pesca de Consumo / Novedad de Pesca)"
-                        icon="pi pi-link"
-                        className="p-button-text p-button-sm"
-                        disabled={formularioDeshabilitado}
-                        onClick={() => {
-                          setValue("moduloOrigenId", 0, { shouldDirty: true });
-                          setValue("documentoOrigenId", 0, { shouldDirty: true });
-                          setOrigenManual(true);
-                        }}
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      {!movimiento?.id && (
+                        <Button
+                          type="button"
+                          icon="pi pi-link"
+                          className="p-button-warning"
+                          tooltip="Elegir otro origen (p. ej. PESCA DE CONSUMO y la Novedad de Pesca para amarrar el gasto a la liquidación)"
+                          tooltipOptions={{ position: "top" }}
+                          disabled={formularioDeshabilitado}
+                          onClick={() => {
+                            setValue("moduloOrigenId", 0, { shouldDirty: true });
+                            setValue("documentoOrigenId", 0, { shouldDirty: true });
+                            setOrigenManual(true);
+                          }}
+                        />
+                      )}
+                      <InputText
+                        value={
+                          Number(movimiento?.documentoOrigenId) > 0
+                            ? `COMPRAS - ORDEN DE COMPRA #${movimiento.documentoOrigenId}`
+                            : "COMPRAS - SE ASIGNA AL GENERAR LA ORDEN DE COMPRA"
+                        }
+                        disabled
+                        style={{ flex: 1, fontWeight: "bold" }}
                       />
-                    )}
+                    </div>
                   </>
                 ) : (
                 <>
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                {modoGasto === "directo" && origenManual && !movimiento?.id && (
+                  <Button
+                    type="button"
+                    icon="pi pi-undo"
+                    className="p-button-secondary"
+                    tooltip="Volver al origen automático (Compras)"
+                    tooltipOptions={{ position: "top" }}
+                    onClick={() => {
+                      setValue("moduloOrigenId", 0, { shouldDirty: true });
+                      setValue("documentoOrigenId", 0, { shouldDirty: true });
+                      setOrigenManual(false);
+                    }}
+                  />
+                )}
+                <div style={{ flex: 1 }}>
                 <ModuloDocumentoSelector
                   value={{
                     moduloOrigenId: Number(watch("moduloOrigenId") || 0),
@@ -978,24 +997,13 @@ const DetMovsRendicionGastosForm = ({
                   documentoLabel="Documento Origen"
                   allowSinModulo={false}
                 />
+                </div>
+                </div>
                 <small style={{ color: "#6c757d" }}>
                   {modoGasto === "directo"
                     ? "Para un descuento a la tripulación elija PESCA DE CONSUMO y la Novedad de Pesca: el gasto queda amarrado y podrá incluirse en la liquidación de pesca."
                     : "Opcional: sin módulo ni documento, el origen es el propio movimiento (Tesorería) y pasa a Compras al generarse la compra."}
                 </small>
-                {modoGasto === "directo" && origenManual && !movimiento?.id && (
-                  <Button
-                    type="button"
-                    label="Volver al origen automático (Compras)"
-                    icon="pi pi-undo"
-                    className="p-button-text p-button-sm"
-                    onClick={() => {
-                      setValue("moduloOrigenId", 0, { shouldDirty: true });
-                      setValue("documentoOrigenId", 0, { shouldDirty: true });
-                      setOrigenManual(false);
-                    }}
-                  />
-                )}
 
                 {errors.moduloOrigenId && (
                   <Message
