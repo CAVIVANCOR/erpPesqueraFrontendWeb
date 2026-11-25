@@ -1101,31 +1101,6 @@ export default function DatosGeneralesProductoForm({
                 </small>
               )}
             </div>
-            <div style={{ flex: 1 }}>
-              <label className="font-bold">Exonerado de Retención</label>
-              <Controller
-                name="exoneradoRetencion"
-                control={control}
-                render={({ field }) => (
-                  <BooleanToggleButton
-                    value={field.value || false}
-                    onChange={field.onChange}
-                    labelTrue="EXONERADO"
-                    labelFalse="APLICA RETENCIÓN"
-                    severityTrue="info"
-                    severityFalse="secondary"
-                    icon={field.value ? "pi-check-circle" : "pi-times-circle"}
-                    disabled={readOnly}
-                    style={{ marginTop: "0.5rem" }}
-                  />
-                )}
-              />
-              {errors.exoneradoRetencion && (
-                <small className="p-error">
-                  {errors.exoneradoRetencion.message}
-                </small>
-              )}
-            </div>
           </div>
 
         </Panel>

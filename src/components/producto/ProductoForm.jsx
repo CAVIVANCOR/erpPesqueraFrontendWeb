@@ -193,7 +193,6 @@ const schema = yup.object().shape({
     .max(20, "Medida ángulo no puede exceder 20 caracteres"),
   descripcionMedidaAdicional: yup.string().nullable(),
   exoneradoIgv: yup.boolean().default(false),
-  exoneradoRetencion: yup.boolean().default(false),
   esParaCompras: yup.boolean().default(false),
   esParaVentas: yup.boolean().default(false),
   sujetoDetraccion: yup.boolean().default(false),
@@ -340,7 +339,6 @@ export default function ProductoForm({
       cuentaCostoVentasId: (producto?.cuentaCostoVentasId !== null && producto?.cuentaCostoVentasId !== undefined) ? Number(producto.cuentaCostoVentasId) : null,
       cuentaVariacionId: (producto?.cuentaVariacionId !== null && producto?.cuentaVariacionId !== undefined) ? Number(producto.cuentaVariacionId) : null,
       cuentaVentasId: (producto?.cuentaVentasId !== null && producto?.cuentaVentasId !== undefined) ? Number(producto.cuentaVentasId) : null,
-      exoneradoRetencion: producto?.exoneradoRetencion || false,
       esParaCompras: producto?.esParaCompras || false,
       esParaVentas: producto?.esParaVentas || false,
       sujetoDetraccion: producto?.sujetoDetraccion || false,
@@ -467,7 +465,6 @@ export default function ProductoForm({
         cuentaVentasId: (data.cuentaVentasId !== null && data.cuentaVentasId !== undefined) ? Number(data.cuentaVentasId) : null,
         porcentajeDetraccion: data.porcentajeDetraccion,
         exoneradoIgv: data.exoneradoIgv,
-        exoneradoRetencion: data.exoneradoRetencion,
         esParaCompras: Boolean(data.esParaCompras),
         esParaVentas: Boolean(data.esParaVentas),
         sujetoDetraccion: data.porcentajeDetraccion > 0, // Forzar sincronización con porcentajeDetraccion
@@ -503,9 +500,6 @@ export default function ProductoForm({
       }
 
       // Asegurar que los campos booleanos críticos siempre se envíen
-      if (datosParaEnviar.exoneradoRetencion === undefined) {
-        datosParaEnviar.exoneradoRetencion = false;
-      }
       if (datosParaEnviar.sujetoDetraccion === undefined) {
         datosParaEnviar.sujetoDetraccion = data.porcentajeDetraccion > 0;
       }

@@ -93,8 +93,13 @@ const DetMovsRendicionGastosForm = ({
       .then((unidades) => setUnidadGastosGenerales((unidades || []).find((u) => u.esGastosGenerales && u.activo !== false) || null))
       .catch(() => setUnidadGastosGenerales(null));
   }, []);
+  // Gasto urgente que es un descuento de pago a la tripulación: la persona puede elegir otro origen (p. ej. PESCA DE CONSUMO + el id de la
+  // Novedad de Pesca) para que el gasto quede amarrado y entre en la liquidación de pesca. Al generar los documentos el sistema conserva
+  // cualquier origen distinto de COMPRAS/TESORERÍA: solo reemplaza el origen automático.
+  const [origenManual, setOrigenManual] = useState(false);
   const origenAutomatico =
     modoGasto === "directo" &&
+    !origenManual &&
     (!movimiento?.id || (moduloCompras && Number(movimiento.moduloOrigenId) === Number(moduloCompras.id)));
   const isEditing = !!movimiento;
   const { usuario } = useAuthStore();
@@ -933,6 +938,20 @@ const DetMovsRendicionGastosForm = ({
                       disabled
                       style={{ width: "100%", fontWeight: "bold" }}
                     />
+                    {!movimiento?.id && (
+                      <Button
+                        type="button"
+                        label="Elegir otro origen (Pesca de Consumo / Novedad de Pesca)"
+                        icon="pi pi-link"
+                        className="p-button-text p-button-sm"
+                        disabled={formularioDeshabilitado}
+                        onClick={() => {
+                          setValue("moduloOrigenId", 0, { shouldDirty: true });
+                          setValue("documentoOrigenId", 0, { shouldDirty: true });
+                          setOrigenManual(true);
+                        }}
+                      />
+                    )}
                   </>
                 ) : (
                 <>
@@ -960,8 +979,23 @@ const DetMovsRendicionGastosForm = ({
                   allowSinModulo={false}
                 />
                 <small style={{ color: "#6c757d" }}>
-                  Opcional: sin módulo ni documento, el origen es el propio movimiento (Tesorería) y pasa a Compras al generarse la compra.
+                  {modoGasto === "directo"
+                    ? "Para un descuento a la tripulación elija PESCA DE CONSUMO y la Novedad de Pesca: el gasto queda amarrado y podrá incluirse en la liquidación de pesca."
+                    : "Opcional: sin módulo ni documento, el origen es el propio movimiento (Tesorería) y pasa a Compras al generarse la compra."}
                 </small>
+                {modoGasto === "directo" && origenManual && !movimiento?.id && (
+                  <Button
+                    type="button"
+                    label="Volver al origen automático (Compras)"
+                    icon="pi pi-undo"
+                    className="p-button-text p-button-sm"
+                    onClick={() => {
+                      setValue("moduloOrigenId", 0, { shouldDirty: true });
+                      setValue("documentoOrigenId", 0, { shouldDirty: true });
+                      setOrigenManual(false);
+                    }}
+                  />
+                )}
 
                 {errors.moduloOrigenId && (
                   <Message
