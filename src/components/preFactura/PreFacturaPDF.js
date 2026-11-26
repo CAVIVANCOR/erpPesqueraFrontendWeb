@@ -138,6 +138,27 @@ async function generarPDFPreFactura(datosPreFactura, detalles, empresa) {
     const rowY = yPosition;
     xPos = margin;
 
+    // Observación de la línea: se parte en renglones del ancho de la columna Descripción y va debajo de ella, en letra menor
+    const anchoDescripcion = colWidths[2] - 6;
+    const lineasObs = String(detalle.observaciones || "")
+      .replace(/[^\x20-\x7E\u00A0-\u00FF\n\r]/g, "?")
+      .split(/\r?\n/)
+      .flatMap((parrafo) => {
+        const renglones = [];
+        let actual = "";
+        for (const palabra of parrafo.split(/\s+/).filter(Boolean)) {
+          const prueba = actual ? `${actual} ${palabra}` : palabra;
+          if (fontNormal.widthOfTextAtSize(prueba, 7) <= anchoDescripcion) actual = prueba;
+          else {
+            if (actual) renglones.push(actual);
+            actual = palabra;
+          }
+        }
+        if (actual) renglones.push(actual);
+        return renglones;
+      });
+    const alturaExtra = lineasObs.length * 9;
+
     const rowData = [
       String(index + 1),
       detalle.producto?.codigo || "-",
@@ -166,11 +187,21 @@ async function generarPDFPreFactura(datosPreFactura, detalles, empresa) {
       xPos += colWidth;
     });
 
+    lineasObs.forEach((renglon, k) =>
+      page.drawText(renglon, {
+        x: margin + colWidths[0] + colWidths[1] + 3,
+        y: rowY - 9 - k * 9,
+        size: 7,
+        font: fontNormal,
+        color: rgb(0.35, 0.35, 0.35),
+      }),
+    );
+
     subtotalTotal += Number(detalle.subtotal) || 0;
 
     lineX = margin;
     const lineStartY = rowY + 13;
-    const lineEndY = rowY - 5;
+    const lineEndY = rowY - 5 - alturaExtra;
 
     for (let i = 0; i <= colWidths.length; i++) {
       page.drawLine({
@@ -189,7 +220,7 @@ async function generarPDFPreFactura(datosPreFactura, detalles, empresa) {
       color: rgb(0.7, 0.7, 0.7),
     });
 
-    yPosition -= 18;
+    yPosition -= 18 + alturaExtra;
   });
 
   // 4. Calcular totales

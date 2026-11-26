@@ -5,6 +5,7 @@ import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { InputNumber } from "primereact/inputnumber";
+import { InputTextarea } from "primereact/inputtextarea";
 import { confirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import { Checkbox } from "primereact/checkbox";
@@ -84,6 +85,7 @@ export default function DetallesTab({
     precioUnitario: 0,
     cantidadVenta: null,
     precioUnitarioVenta: null,
+    observaciones: "",
   });
   // ⭐ ASIGNACIÓN DE STOCK: componente autónomo, el JSON vive en memoria y se limpia al cambiar/salir de la PreFactura
   const asignacionStock = useAsignacionStock({
@@ -149,6 +151,7 @@ export default function DetallesTab({
       precioUnitario: 0,
       cantidadVenta: null,
       precioUnitarioVenta: null,
+      observaciones: "",
     });
     setEditando(false);
     setUsarUnidadComercial(false);
@@ -164,6 +167,7 @@ export default function DetallesTab({
       precioUnitario: Number(detalle.precioUnitario),
       cantidadVenta: detalle.cantidadVenta ? Number(detalle.cantidadVenta) : null,
       precioUnitarioVenta: detalle.precioUnitarioVenta ? Number(detalle.precioUnitarioVenta) : null,
+      observaciones: detalle.observaciones || "",
     });
     setEditando(true);
     setUsarUnidadComercial(tieneUnidadComercial);
@@ -179,6 +183,7 @@ export default function DetallesTab({
       precioUnitario: 0,
       cantidadVenta: null,
       precioUnitarioVenta: null,
+      observaciones: "",
     });
   };
 
@@ -193,6 +198,12 @@ export default function DetallesTab({
     });
     setShowProductoSelector(false);
   };
+
+  // SUNAT admite 500 caracteres en la descripción del ítem: descripción armada + salto de línea + observación
+  const largoArmadaProducto = String(
+    productos.find((p) => Number(p.id) === Number(detalleActual.productoId))?.descripcionArmada || "",
+  ).length;
+  const maxObservaciones = Math.max(0, 499 - largoArmadaProducto);
 
   const handleGuardar = async () => {
     // Validaciones
@@ -255,6 +266,8 @@ export default function DetallesTab({
         preFacturaId: Number(preFacturaId),
         productoId: Number(detalleActual.productoId),
       };
+      // Descripción complementaria de la línea (null borra la que hubiera)
+      data.observaciones = String(detalleActual.observaciones || "").trim() || null;
       // Agregar datos según modo
       if (usarUnidadComercial) {
         data.cantidadVenta = Number(detalleActual.cantidadVenta);
@@ -345,6 +358,9 @@ export default function DetallesTab({
         <div style={{ fontWeight: "500" }}>
           {rowData.producto?.descripcionArmada || "N/A"}
         </div>
+        {rowData.observaciones && (
+          <div style={{ fontSize: "0.8rem", color: "#6c757d", whiteSpace: "pre-line" }}>{rowData.observaciones}</div>
+        )}
       </div>
     );
   };
@@ -945,6 +961,28 @@ export default function DetallesTab({
                 )}
               </>
             )}
+          </div>
+
+          {/* Descripción complementaria: se imprime debajo de la descripción del producto en el comprobante (también dentro del XML),
+              en la venta y en el voucher de almacén. Es texto libre de esta línea; no cambia el producto del maestro. */}
+          <div style={{ marginTop: "1rem" }}>
+            <label htmlFor="observacionesLinea" style={{ fontWeight: "bold" }}>
+              Observaciones (se imprimen debajo de la descripción)
+            </label>
+            <InputTextarea
+              id="observacionesLinea"
+              value={detalleActual.observaciones || ""}
+              onChange={(e) => setDetalleActual({ ...detalleActual, observaciones: e.target.value })}
+              rows={3}
+              autoResize
+              maxLength={maxObservaciones}
+              style={{ width: "100%" }}
+              placeholder="Ej.: características, presentación, lote o cualquier detalle que deba constar en el comprobante"
+            />
+            <small style={{ color: "#6c757d" }}>
+              {(detalleActual.observaciones || "").length}/{maxObservaciones}. En el comprobante electrónico, la descripción armada del producto
+              más esta observación no pueden pasar de 500 caracteres.
+            </small>
           </div>
 
           {/* Mostrar resumen calculado. Con unidad comercial el importe sale de cantidadVenta x precioUnitarioVenta: los campos

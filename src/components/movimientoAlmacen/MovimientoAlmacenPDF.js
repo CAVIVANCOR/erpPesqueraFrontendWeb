@@ -440,6 +440,36 @@ async function generarPDFMovimientoAlmacen(
     });
 
     yPosition -= 12;
+
+    // Observación de la línea: renglones del ancho de la tabla, debajo de la línea, en letra menor (máx. 4 renglones; el resto se corta).
+    // La página nueva se decide arriba con margen de sobra para estos renglones.
+    const anchoObs = tableWidth - 8;
+    const renglonesObs = [];
+    String(detalle.observaciones || "")
+      .replace(/[^\x20-\x7E\u00A0-\u00FF\n\r]/g, "?")
+      .split(/\r?\n/)
+      .forEach((parrafo) => {
+        let actual = "";
+        for (const palabra of parrafo.split(/\s+/).filter(Boolean)) {
+          const prueba = actual ? `${actual} ${palabra}` : palabra;
+          if (fontNormal.widthOfTextAtSize(prueba, 6) <= anchoObs) actual = prueba;
+          else {
+            if (actual) renglonesObs.push(actual);
+            actual = palabra;
+          }
+        }
+        if (actual) renglonesObs.push(actual);
+      });
+    renglonesObs.slice(0, 4).forEach((renglon) => {
+      page.drawText(renglon, {
+        x: margin + colWidths[0] + 2,
+        y: yPosition + 2,
+        size: 6,
+        font: fontNormal,
+        color: rgb(0.35, 0.35, 0.35),
+      });
+      yPosition -= 8;
+    });
   }
 
   // Agregar fila de TOTAL si incluye costos

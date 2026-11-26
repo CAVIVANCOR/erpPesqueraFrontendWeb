@@ -225,7 +225,13 @@ export async function generarPDFComprobanteElectronico(c) {
   dibujarCabeceraTabla();
   for (const d of (c.detalles || []).filter((linea) => !linea.anticipo)) {
     const lineasDesc = ajustarTexto(d.descripcion, font, 8, columnas[3].ancho - 6);
-    const alto = Math.max(1, lineasDesc.length) * 10 + 5;
+    // Observación de la línea (misma que viaja en el XML): debajo de la descripción, en letra menor. Solo caracteres que admite la fuente.
+    const lineasObs = String(d.observaciones || "")
+      .replace(/[^\x20-\x7E\u00A0-\u00FF\n\r]/g, "?")
+      .split(/\r?\n/)
+      .flatMap((parrafo) => ajustarTexto(parrafo.trim(), font, 7, columnas[3].ancho - 6))
+      .filter(Boolean);
+    const alto = Math.max(1, lineasDesc.length) * 10 + lineasObs.length * 9 + 5;
     if (y - alto < MARGEN + 40) {
       nuevaPagina();
       dibujarCabeceraTabla();
@@ -240,7 +246,10 @@ export async function generarPDFComprobanteElectronico(c) {
     ];
     let x = MARGEN;
     columnas.forEach((col, i) => {
-      if (i === 3) lineasDesc.forEach((l, k) => texto(l, x + 3, y - 9 - k * 10, { size: 8 }));
+      if (i === 3) {
+        lineasDesc.forEach((l, k) => texto(l, x + 3, y - 9 - k * 10, { size: 8 }));
+        lineasObs.forEach((l, k) => texto(l, x + 3, y - 9 - Math.max(1, lineasDesc.length) * 10 - k * 9 + 1, { size: 7, color: rgb(0.35, 0.35, 0.35) }));
+      }
       else texto(celdas[i], x + 3, y - 9, { size: 8, alinear: col.alinear, ancho: col.ancho - 6 });
       x += col.ancho;
     });
