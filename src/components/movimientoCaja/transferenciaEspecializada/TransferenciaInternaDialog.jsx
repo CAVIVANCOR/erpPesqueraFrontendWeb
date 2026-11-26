@@ -247,6 +247,12 @@ export default function TransferenciaInternaDialog({
   // ════════════════════════════════════════════════════════════
   // COMPUTED: DETECTAR SI HAY CAMBIO DE MONEDA
   // ════════════════════════════════════════════════════════════
+  // Origen y destino de empresas distintas sin préstamo entre relacionadas: el servidor lo rechaza, aquí se avisa antes
+  const empresasDistintasSinPrestamo = Boolean(
+    cuentaOrigenId && cuentaDestinoId && empresaOrigenSelector && empresaDestinoSelector &&
+    Number(empresaOrigenSelector) !== Number(empresaDestinoSelector) && !esPrestamoRelacionado
+  );
+
   const hayDiferenciaMoneda = useMemo(() => {
     if (!monedaOrigenSelector || !monedaDestinoSelector) {
       return false;
@@ -477,6 +483,17 @@ export default function TransferenciaInternaDialog({
     // FLUJO 1: TRANSFERENCIA ENTRE CUENTAS
     // ========================================
     if (cuentaOrigenId && cuentaDestinoId) {
+      // Entre empresas distintas solo se permite el préstamo entre relacionadas (cada empresa registra su asiento con la otra como contrapartida)
+      if (empresasDistintasSinPrestamo) {
+        toast?.current?.show({
+          severity: 'error',
+          summary: 'Cuentas de empresas distintas',
+          detail: 'Una transferencia solo se permite entre cuentas de la misma empresa. Para mover dinero entre empresas use el tipo de movimiento PRESTAMOS RELACIONADOS (Desembolso o Devolución).',
+          life: 8000
+        });
+        return false;
+      }
+
       // Validar que no sean la misma cuenta
       if (Number(cuentaOrigenId) === Number(cuentaDestinoId)) {
         toast?.current?.show({
@@ -1297,7 +1314,19 @@ export default function TransferenciaInternaDialog({
                 }
               />
             )}
-            {cuentaOrigenId && cuentaDestinoId && (
+            {empresasDistintasSinPrestamo && (
+              <Message
+                severity="error"
+                style={{ width: "100%", justifyContent: "flex-start" }}
+                content={
+                  <span>
+                    <b>Las cuentas son de empresas distintas.</b> Una transferencia solo se permite entre cuentas de la <b>misma empresa</b>.
+                    Para mover dinero entre empresas use el tipo de movimiento <b>PRESTAMOS RELACIONADOS</b> (Desembolso o Devolución) o cambie una de las cuentas.
+                  </span>
+                }
+              />
+            )}
+            {cuentaOrigenId && cuentaDestinoId && !empresasDistintasSinPrestamo && (
               <Message
                 severity="success"
                 style={{ width: "100%", justifyContent: "flex-start" }}
