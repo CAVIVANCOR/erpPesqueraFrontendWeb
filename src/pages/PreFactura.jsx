@@ -75,6 +75,7 @@ import { getPersonal } from "../api/personal";
 import { getBancos } from "../api/banco";
 import { getPeriodosContables } from "../api/contabilidad/periodoContable";
 import { usePermissions } from "../hooks/usePermissions";
+import ReemplazarProductoMasivoButton from "../components/common/ReemplazarProductoMasivoButton";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import EmpresaSelector from "../components/common/EmpresaSelector";
@@ -2465,6 +2466,16 @@ const PreFactura = ({ ruta }) => {
                     disabled={!permisos.puedeCrear || loading}
                     toast={toast}
                     onFinalizado={cargarPreFacturas}
+                  />
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <ReemplazarProductoMasivoButton
+                    modo="DOCUMENTOS"
+                    alcanceDocumentos={{ preFacturaIds: (selectedRecords || []).map((r) => Number(r.id)) }}
+                    disabled={!permisos.puedeEditar || loading}
+                    onExito={cargarPreFacturas}
+                    label="Reemplazar prod."
                   />
                 </div>
 

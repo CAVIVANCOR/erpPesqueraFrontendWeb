@@ -16,6 +16,7 @@ import DetMovsRendicionGastosForm from "../../components/rendicionGastos/DetMovs
 import AsignarCentroCostoMasivo from "../../components/common/AsignarCentroCostoMasivo";
 import AsignarActivoMasivo from "../../components/common/AsignarActivoMasivo";
 import ReasignarTipoMovimientoMasivo from "../../components/common/ReasignarTipoMovimientoMasivo";
+import ReemplazarProductoMasivoButton from "../../components/common/ReemplazarProductoMasivoButton";
 import RevertirDocumentosRendicionDialog from "../../components/rendicionGastos/RevertirDocumentosRendicionDialog";
 import { mensajeDeError } from "../../utils/mensajeError";
 import GeneracionDocumentosLoteDialog from "../../components/rendicionGastos/GeneracionDocumentosLoteDialog";
@@ -1742,6 +1743,19 @@ export default function RendicionGastosList({ ruta }) {
                     type="button"
                     raised
                     style={{ width: "100%" }}
+                  />
+                </div>
+
+                {/* Botón: Reemplazar producto en los gastos marcados (y en su compra generada) */}
+                <div style={{ flex: 1 }}>
+                  <ReemplazarProductoMasivoButton
+                    modo="DOCUMENTOS"
+                    alcanceDocumentos={{
+                      rendicionIds: (Array.isArray(selectedMovimientos) ? selectedMovimientos : []).map((m) => Number(m.id)),
+                    }}
+                    disabled={!permisos.puedeEditar || loading}
+                    onExito={cargarDatos}
+                    label="Reemplazar prod."
                   />
                 </div>
 

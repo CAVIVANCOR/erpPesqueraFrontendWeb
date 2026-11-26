@@ -1,5 +1,6 @@
 // src/components/pagoCuentaPorCobrar/PagarCuentaPorCobrarEspecializadoDialog.jsx
 import React, { useState, useEffect, useMemo } from 'react';
+import { getAllCuentaCorriente } from "../../api/cuentaCorriente";
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputNumber } from 'primereact/inputnumber';
@@ -451,6 +452,37 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
     }));
   }, [mediosPago]);
 
+  // El N° de operación solo es obligatorio si el medio de pago lo requiere (el maestro de medios lo indica: efectivo no lo requiere).
+  // Antes se exigía siempre y los usuarios escribían "S/N" solo para poder avanzar.
+  const medioPagoSeleccionado = mediosPago.find((mp) => Number(mp.id) === Number(medioPagoId));
+  const exigeNumeroOperacion = medioPagoSeleccionado ? medioPagoSeleccionado.requiereNumOperacion !== false : true;
+
+  // Al elegir EFECTIVO se preselecciona la caja chica activa de la empresa y de la moneda del pago (solo si hay UNA), para que el
+  // movimiento nunca quede sin caja. El usuario puede cambiarla; el servidor igualmente exige una cuenta.
+  const cambiarMedioPago = async (valor) => {
+    setMedioPagoId(valor);
+    const medio = mediosPago.find((mp) => Number(mp.id) === Number(valor));
+    if (!medio || cuentaBancariaId || !/EFECTIVO/i.test(`${medio.codigo || ''} ${medio.nombre || ''}`)) return;
+    try {
+      const empresaDoc = Number(cuentaPorCobrar?.empresaId);
+      const monedaDoc = Number(monedaPagoId || cuentaPorCobrar?.monedaId);
+      const cuentas = await getAllCuentaCorriente();
+      const cajas = (cuentas || []).filter(
+        (c) =>
+          c.activa === true &&
+          Number(c.empresaId) === empresaDoc &&
+          Number(c.monedaId ?? c.moneda?.id) === monedaDoc &&
+          /CAJA CHICA/i.test(c.tipoCuentaCorriente?.nombre || '')
+      );
+      if (cajas.length === 1) {
+        setCuentaBancariaId(Number(cajas[0].id));
+        setBancoId(cajas[0].bancoId ? Number(cajas[0].bancoId) : null);
+      }
+    } catch (error) {
+      console.error('No se pudo preseleccionar la caja chica:', error);
+    }
+  };
+
   const bancosOptions = useMemo(() => {
     return bancos.map(b => ({
       label: b.nombre,
@@ -579,8 +611,19 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
       return false;
     }
 
+    // La cuenta (o caja) es obligatoria: sin ella el movimiento no afecta ningún saldo ni genera asiento
+    if (!soloDetraccion && Number(montoNetoIngresado) > 0 && !cuentaBancariaId) {
+      toast?.current?.show({
+        severity: 'error',
+        summary: 'Cuenta obligatoria',
+        detail: 'Debe seleccionar la cuenta corriente o caja donde ingresa el cobro. Un cobro sin cuenta no afecta ningún saldo ni genera asiento.',
+        life: 6000
+      });
+      return false;
+    }
+
     // Validar N° Operación si hay pago neto
-    if (Number(montoNetoIngresado) > 0 && !numeroOperacion) {
+    if (Number(montoNetoIngresado) > 0 && exigeNumeroOperacion && !numeroOperacion) {
       toast?.current?.show({
         severity: 'error',
         summary: 'Error',
@@ -1230,7 +1273,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
           >
             <div style={{ flex: 1 }}>
               <label htmlFor="cuentaBancariaId" className="font-bold">
-                Cuenta Corriente
+                Cuenta Corriente {!soloDetraccion && <span className="text-red-500">*</span>}
               </label>
               <CuentaCorrienteSelector
                 empresaIdPreseleccionada={cuentaPorCobrar?.empresaId}
@@ -1331,7 +1374,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
                 id="medioPagoId"
                 value={medioPagoId}
                 options={mediosPagoOptions}
-                onChange={(e) => setMedioPagoId(e.value)}
+                onChange={(e) => cambiarMedioPago(e.value)}
                 placeholder="Seleccione medio de pago"
                 className="w-full"
                 filter
@@ -1341,7 +1384,7 @@ export default function PagarCuentaPorCobrarEspecializadoDialog({
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="numeroOperacion" className="font-bold">
-                N° Operación
+                N° Operación {exigeNumeroOperacion && <span className="text-red-500">*</span>}
               </label>
               <InputText
                 id="numeroOperacion"

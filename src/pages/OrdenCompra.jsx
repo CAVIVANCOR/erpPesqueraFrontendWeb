@@ -53,6 +53,7 @@ import { getAllDestinoProducto } from "../api/destinoProducto";
 import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
+import ReemplazarProductoMasivoButton from "../components/common/ReemplazarProductoMasivoButton";
 import { getResponsiveFontSize, formatearFecha, formatearNumero } from "../utils/utils";
 import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
 import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
@@ -2903,6 +2904,16 @@ export default function OrdenCompra({ ruta }) {
                       : `Asignar activo a ${ordenesSeleccionadas.length} orden(es)`
                   }
                   tooltipOptions={{ position: "bottom" }}
+                />
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <ReemplazarProductoMasivoButton
+                  modo="DOCUMENTOS"
+                  alcanceDocumentos={{ ordenCompraIds: (ordenesSeleccionadas || []).map((o) => Number(o.id)) }}
+                  disabled={!permisos.puedeEditar}
+                  onExito={cargarOrdenes}
+                  label="Reemplazar prod."
                 />
               </div>
 

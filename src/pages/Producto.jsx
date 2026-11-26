@@ -36,6 +36,7 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import ProductoForm from "../components/producto/ProductoForm";
 import { getResponsiveFontSize } from "../utils/utils";
+import { mensajeDeError } from "../utils/mensajeError";
 import { getFamiliasProducto } from "../api/familiaProducto";
 import { getSubfamiliasProducto } from "../api/subfamiliaProducto";
 import {
@@ -56,6 +57,7 @@ import { getTiposDetraccionActivos } from "../api/tipoDetraccion";
 import { getTiposAfectacionIGVActivos } from "../api/facturacionElectronica/tipoAfectacionIGV";
 import { generarProductosExcel } from "../components/producto/reports/generarProductosExcel";
 import AsignarCampoMasaProductoButton from "../components/common/AsignarCampoMasaProductoButton";
+import ReemplazarProductoMasivoButton from "../components/common/ReemplazarProductoMasivoButton";
 
 const Producto = ({ ruta }) => {
   const toast = useRef(null);
@@ -598,9 +600,9 @@ const Producto = ({ ruta }) => {
     } catch (error) {
       toast.current.show({
         severity: "error",
-        summary: "Error",
-        detail: "Error al eliminar producto",
-        life: 3000,
+        summary: "No se pudo eliminar el producto",
+        detail: mensajeDeError(error, "No se pudo eliminar el producto"),
+        life: 15000,
       });
     } finally {
       setConfirmVisible(false);
@@ -934,6 +936,16 @@ const Producto = ({ ruta }) => {
               label="Asignar"
               icon="pi pi-pencil"
               className="p-button-warning"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <ReemplazarProductoMasivoButton
+              modo="GLOBAL"
+              productoOrigen={productosSeleccionados.length === 1 ? { id: productosSeleccionados[0].id } : null}
+              totalSeleccionados={productosSeleccionados.length}
+              disabled={!permisos.puedeEditar}
+              onExito={cargarProductos}
+              label="Reemplazar"
             />
           </div>
           <div style={{ flex: 1 }}>

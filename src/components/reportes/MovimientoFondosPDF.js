@@ -78,7 +78,7 @@ const origenDe = (m) => {
 const esAnulado = (m) => /ANUL/i.test(m.estadoMovimientoCaja?.descripcion || "");
 
 const nombreCuenta = (cuenta) =>
-  cuenta ? `${cuenta.numeroCuenta || cuenta.id} - ${cuenta.banco?.nombre || "BANCO"}` : "SIN CUENTA BANCARIA / CAJA";
+  cuenta ? `${cuenta.numeroCuenta || cuenta.id} - ${cuenta.banco?.nombre || "BANCO"}` : "SIN CUENTA BANCARIA / CAJA - REVISAR (no afecta saldos)";
 
 /**
  * Convierte un movimiento en las líneas que afecta: una por cuenta tocada.

@@ -42,6 +42,7 @@ import { getSeriesDoc } from "../api/serieDoc";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
+import ReemplazarProductoMasivoButton from "../components/common/ReemplazarProductoMasivoButton";
 import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
 import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 import { Navigate } from "react-router-dom";
@@ -66,6 +67,7 @@ export default function MovimientoAlmacen({ ruta }) {
 
   const toast = useRef(null);
   const [items, setItems] = useState([]);
+  const [movimientosSeleccionados, setMovimientosSeleccionados] = useState([]);
 
   // Filtrado automático por Unidad de Negocio
   const { datosFiltrados: movimientosFiltrados } =
@@ -799,6 +801,8 @@ export default function MovimientoAlmacen({ ruta }) {
       />
       <DataTable
         value={itemsFiltrados}
+        selection={movimientosSeleccionados}
+        onSelectionChange={(e) => setMovimientosSeleccionados(e.value)}
         loading={loading}
         dataKey="id"
         paginator
@@ -865,6 +869,15 @@ export default function MovimientoAlmacen({ ruta }) {
                         ? "No tiene permisos para crear"
                         : "Nuevo Movimiento"
                   }
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <ReemplazarProductoMasivoButton
+                  modo="DOCUMENTOS"
+                  alcanceDocumentos={{ movimientoAlmacenIds: (movimientosSeleccionados || []).map((m) => Number(m.id)) }}
+                  disabled={!permisos.puedeEditar || loading}
+                  onExito={cargarDatos}
+                  label="Reemplazar prod."
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -1115,6 +1128,7 @@ export default function MovimientoAlmacen({ ruta }) {
           </div>
         }
       >
+        <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
         <Column field="id" header="ID" style={{ width: 80 }} sortable />
         <Column field="numeroDocumento" header="Nº Documento" sortable />
         <Column

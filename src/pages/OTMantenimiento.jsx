@@ -45,6 +45,7 @@ import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { getEntidadesComerciales } from "../api/entidadComercial";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
+import ReemplazarProductoMasivoButton from "../components/common/ReemplazarProductoMasivoButton";
 import OTMantenimientoForm from "../components/oTMantenimiento/OTMantenimientoForm";
 import ReporteEstadoCuentaProveedoresMantenimiento from "../components/reportes/ReporteEstadoCuentaProveedoresMantenimiento";
 import { formatearFecha } from "../utils/utils";
@@ -67,6 +68,7 @@ const OTMantenimiento = ({ ruta }) => {
 
   // Estados del componente
   const [ordenesTrabajo, setOrdenesTrabajo] = useState([]);
+  const [otSeleccionadas, setOtSeleccionadas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogoVisible, setDialogoVisible] = useState(false);
   const [ordenSeleccionada, setOrdenSeleccionada] = useState(null);
@@ -768,7 +770,8 @@ const OTMantenimiento = ({ ruta }) => {
           onRowClick={
             permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
           }
-          selectionMode="single"
+          selection={otSeleccionadas}
+          onSelectionChange={(e) => setOtSeleccionadas(e.value)}
           scrollable
           scrollHeight="600px"
           sortField="id"
@@ -819,6 +822,15 @@ const OTMantenimiento = ({ ruta }) => {
                           ? "No tiene permisos para crear"
                           : "Nueva Orden de Trabajo"
                     }
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <ReemplazarProductoMasivoButton
+                    modo="DOCUMENTOS"
+                    alcanceDocumentos={{ otMantenimientoIds: (otSeleccionadas || []).map((o) => Number(o.id)) }}
+                    disabled={!permisos.puedeEditar || loading}
+                    onExito={cargarOrdenes}
+                    label="Reemplazar prod."
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -1092,6 +1104,7 @@ const OTMantenimiento = ({ ruta }) => {
             </div>
           }
         >
+          <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} frozen />
           <Column
             field="id"
             header="ID"
