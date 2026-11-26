@@ -10,6 +10,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Panel } from 'primereact/panel';
 import { Divider } from 'primereact/divider';
 import { Tag } from 'primereact/tag';
+import { Message } from 'primereact/message';
 import { FileUpload } from 'primereact/fileupload';
 import CuentaCorrienteSelector from '../../common/CuentaCorrienteSelector';
 import BooleanToggleButton from '../../common/BooleanToggleButton';
@@ -1281,13 +1282,66 @@ export default function TransferenciaInternaDialog({
               </div>
             </div>
 
+          {/* AYUDA VISUAL: tipo de operación según las cuentas elegidas y su efecto contable.
+              Sin cuenta destino el egreso se contabiliza contra 461101/461102 (Reclamaciones de Terceros), no contra una cuenta propia. */}
+          <div style={{ marginBottom: 10 }}>
+            {!cuentaOrigenId && !cuentaDestinoId && (
+              <Message
+                severity="info"
+                style={{ width: "100%", justifyContent: "flex-start" }}
+                content={
+                  <span>
+                    <b>Elija las cuentas de la operación.</b> Transferencia entre cuentas propias (banco a banco, banco a caja, dólares a soles):
+                    elija <b>Cuenta de Origen</b> y <b>Cuenta de Destino</b>. Para un solo lado use el ingreso directo (solo destino) o el retiro (solo origen).
+                  </span>
+                }
+              />
+            )}
+            {cuentaOrigenId && cuentaDestinoId && (
+              <Message
+                severity="success"
+                style={{ width: "100%", justifyContent: "flex-start" }}
+                content={
+                  <span>
+                    <b>Transferencia entre cuentas.</b> Se registra un egreso en la cuenta de origen y un ingreso en la de destino. Asiento: <b>DEBE</b> cuenta contable
+                    del destino / <b>HABER</b> cuenta contable del origen{hayDiferenciaMoneda ? ' (con cambio de moneda al tipo de cambio indicado)' : ''}.
+                  </span>
+                }
+              />
+            )}
+            {cuentaOrigenId && !cuentaDestinoId && (
+              <Message
+                severity="warn"
+                style={{ width: "100%", justifyContent: "flex-start" }}
+                content={
+                  <span>
+                    <b>Retiro (egreso directo): no ha elegido Cuenta de Destino.</b> El asiento será <b>DEBE 461101/461102 Reclamaciones de Terceros</b> / HABER la cuenta de origen.
+                    Si es una transferencia entre cuentas propias (por ejemplo dólares a soles o banco a caja), abra el panel <b>Cuenta de Destino (INGRESO)</b> y elíjala.
+                  </span>
+                }
+              />
+            )}
+            {!cuentaOrigenId && cuentaDestinoId && (
+              <Message
+                severity="info"
+                style={{ width: "100%", justifyContent: "flex-start" }}
+                content={
+                  <span>
+                    <b>Ingreso directo: no ha elegido Cuenta de Origen.</b> El asiento será <b>DEBE</b> la cuenta de destino / <b>HABER 461101/461102 Reclamaciones de Terceros</b>.
+                    Si el dinero sale de una cuenta propia, elija también la <b>Cuenta de Origen (EGRESO)</b>.
+                  </span>
+                }
+              />
+            )}
+          </div>
+
           {/* CUENTA ORIGEN - Opcional para ingreso directo */}
           <Panel
             header={
               <div className="flex align-items-center gap-2">
                 <span>📤 Cuenta de Origen (EGRESO)</span>
                 {!cuentaOrigenId && cuentaDestinoId && (
-                  <Tag value="Opcional - Ingreso Directo" severity="info" />
+                  <Tag value="Sin origen: ingreso directo de Terceros (461)" severity="info" />
                 )}
               </div>
             }
@@ -1501,7 +1555,7 @@ export default function TransferenciaInternaDialog({
               <div className="flex align-items-center gap-2">
                 <span>📥 Cuenta de Destino (INGRESO)</span>
                 {cuentaOrigenId && !cuentaDestinoId && (
-                  <Tag value="Opcional - Egreso Directo" severity="warning" />
+                  <Tag value="Sin destino: egreso directo a Terceros (461)" severity="warning" />
                 )}
               </div>
             }
