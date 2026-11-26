@@ -135,7 +135,11 @@ export async function generarPDFMovimientoFondos({
   opciones = {},
   usuarioNombre = "",
   parte = "movimientos",
+  // Títulos del reporte según la variante (fondos / tarjetas de crédito / RUC 10). Sin tildes: se dibujan sin pasar por textoSeguro.
+  nombresReporte = null,
 }) {
+  const nombreMov = nombresReporte?.movimientos || "MOVIMIENTO DE FONDOS";
+  const nombreSal = nombresReporte?.saldos || "SALDOS POR CUENTAS BANCARIAS";
   const { incluirAnulados = false, incluirResumen = true } = opciones;
   const desde = new Date(rango[0]);
   desde.setHours(0, 0, 0, 0);
@@ -258,7 +262,7 @@ export async function generarPDFMovimientoFondos({
   let page;
   let y;
   // Qué se dibuja en el encabezado de cada página nueva
-  let encabezado = { empresa: null, logo: null, etiquetaMoneda: "", titulo: "MOVIMIENTO DE FONDOS", pie: "" };
+  let encabezado = { empresa: null, logo: null, etiquetaMoneda: "", titulo: nombreMov, pie: "" };
   // Contexto para repetir bandas y cabecera de columnas al saltar de página
   let contexto = null; // { empresa, cuentaTitulo, columnas: 'detalle' | 'saldos' | null }
 
@@ -656,8 +660,8 @@ export async function generarPDFMovimientoFondos({
       empresa: grupoEmp.info,
       logo: grupoEmp.logo,
       etiquetaMoneda: monedasLista.length === 1 ? nombreMoneda(monedasLista[0]) : monedasLista.length > 1 ? "MULTIMONEDA" : "",
-      titulo: "MOVIMIENTO DE FONDOS",
-      pie: `${textoSeguro(grupoEmp.info.razonSocial || "")} | Movimiento de Fondos ${tituloRango.toLowerCase()}`,
+      titulo: nombreMov,
+      pie: `${textoSeguro(grupoEmp.info.razonSocial || "")} | ${textoSeguro(nombreMov)} ${tituloRango.toLowerCase()}`,
     };
     contexto = null;
     nuevaPagina(); // cada empresa inicia en una página nueva
@@ -755,8 +759,8 @@ export async function generarPDFMovimientoFondos({
       empresa: null,
       logo: null,
       etiquetaMoneda: "",
-      titulo: "SALDOS POR CUENTAS BANCARIAS",
-      pie: "Saldos por Cuentas Bancarias",
+      titulo: nombreSal,
+      pie: textoSeguro(nombreSal),
     };
     contexto = null;
     nuevaPagina();
@@ -854,7 +858,7 @@ export async function generarPDFMovimientoFondos({
     pagina.drawText(paginado, { x: PAGE_SIZE[0] - MARGIN - ancho(paginado, 6.5), y: 18, size: 6.5, font: fontNormal, color: COLORS.gray });
   });
 
-  pdfDoc.setTitle(`${parte === "saldos" ? "Saldos por Cuentas Bancarias" : "Movimiento de Fondos"} ${tituloRango}`);
+  pdfDoc.setTitle(`${parte === "saldos" ? nombreSal : nombreMov} ${tituloRango}`);
   pdfDoc.setAuthor("ERP");
   pdfDoc.setSubject(parte === "saldos" ? "Saldos por cuentas bancarias" : "Reporte diario de movimientos de fondos");
 

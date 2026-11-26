@@ -693,6 +693,30 @@ export default function MovimientoCaja({ ruta }) {
                   />
                 </div>
                 <div style={{ flex: 1 }}>
+                  <ReporteMovimientoFondos
+                    variante="tarjetas"
+                    className="p-button-info"
+                    movimientos={movimientosParaReporte}
+                    rangoFechas={filtros.rangoFechas}
+                    empresas={empresas}
+                    usuarioNombre={usuario?.nombreCompleto || usuario?.username || usuario?.email || ""}
+                    toast={toast}
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <ReporteMovimientoFondos
+                    variante="ruc10"
+                    className="p-button-help"
+                    movimientos={movimientosParaReporte}
+                    rangoFechas={filtros.rangoFechas}
+                    empresas={empresas}
+                    usuarioNombre={usuario?.nombreCompleto || usuario?.username || usuario?.email || ""}
+                    toast={toast}
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
                   <Button
                     label="Limpiar Filtros"
                     icon="pi pi-filter-slash"

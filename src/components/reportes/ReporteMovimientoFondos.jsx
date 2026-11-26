@@ -12,6 +12,47 @@ const REPORTES = [
   { clave: "saldos", titulo: "Saldos por Cuentas Bancarias", archivo: "saldos-por-cuentas-bancarias" },
 ];
 
+// Variantes del reporte. "fondos" excluye las tarjetas de crédito y las empresas con RUC 10 (personas naturales); esas se emiten
+// en sus propios reportes para que no se mezclen con las cuentas de las empresas.
+const VARIANTES = {
+  fondos: {
+    label: "Reporte",
+    header: "Reportes - Movimiento de Fondos y Saldos por Cuentas Bancarias",
+    tooltip: "Movimiento de fondos y saldos por cuentas bancarias de las empresas (excluye tarjetas de credito y empresas con RUC 10)",
+    descripcion: "Cuentas bancarias y cajas de empresas con RUC 20 (sin tarjetas de credito ni RUC 10):",
+    nombres: null,
+    titulos: { movimientos: "Movimiento de Fondos", saldos: "Saldos por Cuentas Bancarias" },
+    archivos: { movimientos: "movimiento-de-fondos", saldos: "saldos-por-cuentas-bancarias" },
+  },
+  tarjetas: {
+    label: "Rep. Tarjetas",
+    header: "Reportes - Movimiento de Tarjetas de Credito y Saldos de Tarjetas",
+    tooltip: "Movimiento y saldos de las tarjetas de credito de todas las empresas",
+    descripcion: "Solo tarjetas de credito de todas las empresas:",
+    nombres: { movimientos: "MOVIMIENTO DE TARJETAS DE CREDITO", saldos: "SALDOS DE TARJETAS DE CREDITO" },
+    titulos: { movimientos: "Movimiento de Tarjetas de Credito", saldos: "Saldos de Tarjetas de Credito" },
+    archivos: { movimientos: "movimiento-de-tarjetas-de-credito", saldos: "saldos-de-tarjetas-de-credito" },
+  },
+  ruc10: {
+    label: "Rep. RUC 10",
+    header: "Reportes - Movimiento de Fondos y Saldos por Cuentas Bancarias (RUC 10)",
+    tooltip: "Movimiento de fondos y saldos por cuentas bancarias de las empresas con RUC 10 (sin tarjetas de credito)",
+    descripcion: "Cuentas bancarias y cajas de empresas con RUC 10 (sin tarjetas de credito):",
+    nombres: { movimientos: "MOVIMIENTO DE FONDOS - RUC 10", saldos: "SALDOS POR CUENTAS BANCARIAS - RUC 10" },
+    titulos: { movimientos: "Movimiento de Fondos RUC 10", saldos: "Saldos por Cuentas Bancarias RUC 10" },
+    archivos: { movimientos: "movimiento-de-fondos-ruc10", saldos: "saldos-por-cuentas-bancarias-ruc10" },
+  },
+};
+
+const esTarjeta = (cuenta) => Boolean(cuenta?.tipoCuentaCorriente?.esTarjetaCredito);
+const esRuc10 = (ruc) => String(ruc || "").trim().startsWith("10");
+// Una cuenta o movimiento pertenece a una variante según sea tarjeta y según el RUC de su empresa
+const cumpleVariante = (variante, tarjeta, ruc) => {
+  if (variante === "tarjetas") return tarjeta;
+  if (variante === "ruc10") return !tarjeta && esRuc10(ruc);
+  return !tarjeta && !esRuc10(ruc);
+};
+
 const rangoPorDefecto = (rangoFechas, movimientos) => {
   if (rangoFechas?.[0]) return [rangoFechas[0], rangoFechas[1] || rangoFechas[0]];
   const fechas = movimientos
@@ -51,9 +92,22 @@ export default function ReporteMovimientoFondos({
   usuarioNombre = "",
   toast = null,
   disabled = false,
-  label = "Reporte",
+  label = null,
+  variante = "fondos",
   className = "p-button-success",
 }) {
+  const cfg = VARIANTES[variante] || VARIANTES.fondos;
+  // Movimientos de la variante: tarjeta si su cuenta de origen o destino es una tarjeta de crédito; RUC según su empresa
+  const movimientosVariante = useMemo(
+    () =>
+      movimientos.filter((m) => {
+        const tarjeta = esTarjeta(m.cuentaCorrienteOrigen) || esTarjeta(m.cuentaCorrienteDestino);
+        const empresaId = Number(m.empresaId ?? m.empresaOrigen?.id);
+        const ruc = empresas.find((e) => Number(e.id) === empresaId)?.ruc ?? m.empresaOrigen?.ruc;
+        return cumpleVariante(variante, tarjeta, ruc);
+      }),
+    [movimientos, empresas, variante]
+  );
   const [visible, setVisible] = useState(false);
   const [rango, setRango] = useState(null);
   const [incluirAnulados, setIncluirAnulados] = useState(false);
@@ -78,7 +132,7 @@ export default function ReporteMovimientoFondos({
   useEffect(() => () => Object.values(pdfsRef.current).forEach((url) => url && URL.revokeObjectURL(url)), []);
 
   const abrir = () => {
-    setRango(rangoPorDefecto(rangoFechas, movimientos));
+    setRango(rangoPorDefecto(rangoFechas, movimientosVariante));
     setError(null);
     liberarPdfs();
     setVisible(true);
@@ -89,7 +143,7 @@ export default function ReporteMovimientoFondos({
     liberarPdfs();
   };
 
-  const movimientosEnRango = useMemo(() => movimientos.filter((m) => enRango(m, rango)), [movimientos, rango]);
+  const movimientosEnRango = useMemo(() => movimientosVariante.filter((m) => enRango(m, rango)), [movimientosVariante, rango]);
 
   const generar = async () => {
     if (!rango?.[0]) {
@@ -121,7 +175,9 @@ export default function ReporteMovimientoFondos({
         desde.setHours(0, 0, 0, 0);
         const hasta = new Date(rango[1] || rango[0]);
         hasta.setHours(23, 59, 59, 999);
-        cuentasSaldos = await getCuentasParaSaldos(desde, hasta);
+        cuentasSaldos = (await getCuentasParaSaldos(desde, hasta)).filter((cs) =>
+          cumpleVariante(variante, esTarjeta(cs.cuenta), cs.cuenta?.empresa?.ruc)
+        );
       } catch (err) {
         console.error("No se pudieron consultar los saldos de todas las cuentas:", err);
         mostrar(
@@ -140,6 +196,7 @@ export default function ReporteMovimientoFondos({
         try {
           const resultado = await generarPDFMovimientoFondos({
             parte: clave,
+            nombresReporte: cfg.nombres,
             movimientos: movimientosEnRango,
             enriquecimiento,
             cuentasSaldos,
@@ -173,14 +230,14 @@ export default function ReporteMovimientoFondos({
     }
   };
 
-  const descargar = ({ clave, archivo }) => {
+  const descargar = ({ clave }) => {
     const url = pdfs[clave];
     if (!url) return;
     const desde = new Date(rango[0]).toISOString().slice(0, 10);
     const hasta = new Date(rango[1] || rango[0]).toISOString().slice(0, 10);
     const enlace = document.createElement("a");
     enlace.href = url;
-    enlace.download = `${archivo}-${desde}${hasta !== desde ? `_a_${hasta}` : ""}.pdf`;
+    enlace.download = `${cfg.archivos[clave]}-${desde}${hasta !== desde ? `_a_${hasta}` : ""}.pdf`;
     enlace.click();
   };
 
@@ -190,16 +247,16 @@ export default function ReporteMovimientoFondos({
     <>
       <Button
         type="button"
-        label={label}
+        label={label || cfg.label}
         icon="pi pi-file-pdf"
         className={className}
         onClick={abrir}
         disabled={disabled}
-        tooltip="Movimiento de fondos y saldos por cuentas bancarias (todas las cuentas de todas las empresas)"
+        tooltip={cfg.tooltip}
         tooltipOptions={{ position: "top" }}
       />
       <Dialog
-        header="Reportes - Movimiento de Fondos y Saldos por Cuentas Bancarias"
+        header={cfg.header}
         visible={visible}
         onHide={cerrar}
         style={{ width: "96vw", maxWidth: "1800px" }}
@@ -258,7 +315,7 @@ export default function ReporteMovimientoFondos({
 
           <div style={{ marginTop: 10 }}>
             <small style={{ color: "#6c757d" }}>
-              {movimientosEnRango.length} movimiento(s) de todas las empresas en el rango elegido (de {movimientos.length} que
+              {cfg.descripcion} {movimientosEnRango.length} movimiento(s) en el rango elegido (de {movimientosVariante.length} que
               cumplen los filtros actuales de la pagina, sin considerar la empresa ni el rango).
             </small>
           </div>
@@ -270,7 +327,7 @@ export default function ReporteMovimientoFondos({
               {REPORTES.map((reporte) => (
                 <div key={reporte.clave} style={{ flex: 1, minWidth: "480px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <strong>{reporte.titulo}</strong>
+                    <strong>{cfg.titulos[reporte.clave]}</strong>
                     <Button
                       type="button"
                       label="Descargar PDF"
@@ -283,7 +340,7 @@ export default function ReporteMovimientoFondos({
                   </div>
                   {pdfs[reporte.clave] ? (
                     <iframe
-                      title={reporte.titulo}
+                      title={cfg.titulos[reporte.clave]}
                       src={pdfs[reporte.clave]}
                       style={{ width: "100%", height: "72vh", border: "1px solid #ced4da" }}
                     />
