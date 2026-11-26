@@ -2184,8 +2184,9 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         </TabPanel>
       </TabView>
 
-      {/* Componente genérico de asientos contables */}
-      {isEdit && defaultValues?.id && (
+      {/* Componente genérico de asientos contables: solo para préstamos de SALDO INICIAL. Un préstamo nuevo se contabiliza con el
+          desembolso desde Caja (Tesorería Pendientes); generar aquí su asiento lo duplicaría y bloquearía ese desembolso. */}
+      {isEdit && defaultValues?.id && watch("esSaldoInicial") && (
         <div style={{ marginTop: "1rem" }}>
           <AsientoContableManager
             documentoId={defaultValues.id}
