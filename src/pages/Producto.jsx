@@ -1040,7 +1040,7 @@ const Producto = ({ ruta }) => {
               value={selectedUnidadMedida}
               options={unidadesMedida}
               optionLabel="nombre"
-              placeholder="Unidad Medida"
+              placeholder="Presentación"
               showClear
               onChange={onUnidadMedidaFilterChange}
               className="w-15rem"
@@ -1156,7 +1156,7 @@ const Producto = ({ ruta }) => {
         />
         <Column
           field="unidadMedida.nombre"
-          header="Unidad Medida Kardex"
+          header="Presentación"
           sortable
           body={unidadMedidaTemplate}
           style={{ width: "150px", whiteSpace: "normal", wordWrap: "break-word" }}

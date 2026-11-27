@@ -64,15 +64,17 @@ const schema = yup.object().shape({
     }),
   unidadMedidaId: yup
     .number()
-    .required("Unidad de medida es obligatoria")
+    .typeError("La Presentación es obligatoria")
+    .required("La Presentación es obligatoria")
     .transform((value, originalValue) => {
       return originalValue === "" ? null : value;
     }),
   unidadMedidaComercialId: yup
     .number()
-    .nullable()
+    .typeError("La Unidad Comercial es obligatoria")
+    .required("La Unidad Comercial es obligatoria")
     .transform((value, originalValue) => {
-      // Convertir vacío o 0 a null (backend lo igualará a unidadMedidaId)
+      // Vacío o 0 se tratan como no elegido
       return originalValue === "" || originalValue === 0 ? null : value;
     }),
   tipoAlmacenamientoId: yup

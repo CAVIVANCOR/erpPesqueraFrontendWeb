@@ -156,7 +156,7 @@ export const ProductoSelectorFilters = ({
         {/* Unidad Medida */}
         <div>
           <label htmlFor="unidadMedidaId" style={{ fontWeight: "bold", fontSize: "0.9em" }}>
-            Unidad Medida
+            Presentación
           </label>
           <Dropdown
             id="unidadMedidaId"

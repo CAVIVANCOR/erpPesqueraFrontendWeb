@@ -190,6 +190,8 @@ export default function DetalleDialog({
 
       // El producto ya viene con todas las relaciones (familia, subfamilia, etc.)
       setProductoSeleccionado(producto);
+      // Con unidad comercial en el producto, la línea se captura en ella por defecto; la casilla permite pasar a Presentación
+      setUsarUnidadComercial(Boolean(producto.unidadMedidaComercialId));
       handleChange("productoId", productoId);
 
       // AGREGADO: Auto-asignar tipo de afectación IGV desde producto
@@ -206,6 +208,8 @@ export default function DetalleDialog({
         ...prev,
         tipoDetraccionId: producto.tipoDetraccionId ? Number(producto.tipoDetraccionId) : null,
         detraccionRevisada: !producto.tipoDetraccionId,
+        cantidadCompra: producto.unidadMedidaComercialId ? 1 : null,
+        precioUnitarioCompra: null,
       }));
 
       setShowProductoSelector(false);
@@ -641,7 +645,7 @@ export default function DetalleDialog({
         <Divider />
         {/* Observaciones */}
         <div style={{ marginBottom: "1rem" }}>
-          <label htmlFor="observaciones">Observaciones</label>
+          <label htmlFor="observaciones">Observaciones (se imprimen debajo de la descripción)</label>
           <InputTextarea
             id="observaciones"
             value={formData.observaciones}

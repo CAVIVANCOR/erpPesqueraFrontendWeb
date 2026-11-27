@@ -821,7 +821,7 @@ export default function DatosGeneralesProductoForm({
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="unidadMedidaId" className="font-bold">
-                Unidad de Medida *
+                Presentación *
               </label>
               <Controller
                 name="aplicaUnidadMedida"
@@ -848,7 +848,6 @@ export default function DatosGeneralesProductoForm({
                     className={classNames({
                       "p-invalid": fieldState.error,
                     })}
-                    showClear
                     filter
                     disabled={readOnly}
                   />
@@ -862,7 +861,7 @@ export default function DatosGeneralesProductoForm({
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="unidadMedidaComercialId" style={{ fontWeight: "bold", color: "green" }}>
-                Unidad Comercial
+                Unidad Comercial *
               </label>
               <Controller
                 name="unidadMedidaComercialId"
@@ -874,11 +873,10 @@ export default function DatosGeneralesProductoForm({
                     value={field.value || null}
                     onChange={(e) => field.onChange(e.value || null)}
                     options={unidadesMedidaOptions}
-                    placeholder="Por defecto usa Unidad de Almacén"
+                    placeholder="Seleccione la unidad comercial"
                     className={classNames({
                       "p-invalid": fieldState.error,
                     })}
-                    showClear
                     filter
                     disabled={readOnly}
                     style={{ fontWeight: "bold" }}

@@ -882,7 +882,7 @@ export default function DetalleMovimientoForm({
                 value={usarUnidadComercial}
                 onChange={setUsarUnidadComercial}
                 labelTrue={`Unidad Comercial (${productoSeleccionado?.unidadMedidaComercial?.simbolo})`}
-                labelFalse={`Unidad Almacén (${productoSeleccionado?.unidadMedida?.simbolo})`}
+                labelFalse={`Presentación (${productoSeleccionado?.unidadMedida?.simbolo})`}
                 severityTrue="info"
                 severityFalse="secondary"
                 icon={usarUnidadComercial ? "pi-shopping-cart" : "pi-box"}

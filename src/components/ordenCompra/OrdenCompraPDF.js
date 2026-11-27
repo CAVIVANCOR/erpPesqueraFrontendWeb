@@ -5,6 +5,7 @@ import { formatearNumero } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { dibujaEncabezadoPDFOC } from "./dibujaEncabezadoPDFOC";
 import { dibujaTotalesYFirmaPDFOC } from "./dibujaTotalesYFirmaPDFOC";
+import { observacionImprimible } from "../../utils/observacionLinea";
 
 /**
  * Genera un PDF de la orden de compra y lo sube al servidor
@@ -317,7 +318,11 @@ export async function generarPDFOrdenCompra(
       "PRODUCTO";
 
     // Calcular altura necesaria para la fila (producto + observaciones)
-    const observaciones = detalle.observaciones || "";
+    // Descripción complementaria de la línea (sin notas internas de la importación SIRE ni marca de anticipos); la fuente del PDF solo
+    // admite Latin-1, por eso los saltos de línea pasan a espacio y lo demás a "?"
+    const observaciones = observacionImprimible(detalle.observaciones)
+      .replace(/\s*[\r\n]+\s*/g, " ")
+      .replace(/[^\x20-\x7E\u00A0-\u00FF]/g, "?");
     const maxCharsPerLine = 60; // Caracteres máximos por línea en la columna de producto
     const observacionesLines = observaciones ? Math.ceil(observaciones.length / maxCharsPerLine) : 0;
     const rowHeight = 18 + (observacionesLines * 10); // Altura base + líneas de observaciones + padding

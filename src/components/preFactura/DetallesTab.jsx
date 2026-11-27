@@ -191,10 +191,23 @@ export default function DetallesTab({
     // productoData viene de ProductoSelectorDialog
     // Si es tipo "saldo" (egreso), puede traer precioUnitario automático
     // Si es tipo "producto" (ingreso), precioUnitario será 0
+    const producto = productos.find((p) => Number(p.id) === Number(productoData.productoId));
+    // Si el producto tiene unidad comercial, la línea se captura en ella por defecto; la casilla sigue disponible para pasar a Presentación
+    const usaComercial = Boolean(producto?.unidadMedidaComercialId);
+    const precioPresentacion = Number(productoData.precioUnitario || 0);
+    // El selector entrega el precio por Presentación; en unidad comercial se convierte con el mismo factor que usa el servidor
+    const factorComercial = Number(producto?.unidadMedidaComercial?.factorConversion) || 1;
+    const factorPresentacion = Number(producto?.unidadMedida?.factorConversion) || 1;
+    setUsarUnidadComercial(usaComercial);
     setDetalleActual({
       ...detalleActual,
       productoId: Number(productoData.productoId),
-      precioUnitario: Number(productoData.precioUnitario || 0),
+      precioUnitario: precioPresentacion,
+      cantidadVenta: usaComercial ? 1 : null,
+      precioUnitarioVenta:
+        usaComercial && precioPresentacion > 0
+          ? Number((precioPresentacion * (factorComercial / factorPresentacion)).toFixed(6))
+          : null,
     });
     setShowProductoSelector(false);
   };
