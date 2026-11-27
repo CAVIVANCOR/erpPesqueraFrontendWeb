@@ -156,7 +156,8 @@ const Producto = ({ ruta }) => {
         getEstadosMultiFuncionParaProductos(),
         getPaises(),
         getMarcas(),
-        getUnidadMetricaDefault(),
+        // Solo precarga la unidad de las dimensiones: si el catálogo no tiene "S/UM" no debe tumbar la carga de los demás catálogos
+        getUnidadMetricaDefault().catch(() => null),
         getEspecies().catch((err) => {
           return []; // Retornar array vacío si falla
         }),
