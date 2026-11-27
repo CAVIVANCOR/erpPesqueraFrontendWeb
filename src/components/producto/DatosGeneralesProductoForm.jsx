@@ -861,7 +861,7 @@ export default function DatosGeneralesProductoForm({
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="unidadMedidaComercialId" style={{ fontWeight: "bold", color: "green" }}>
-                Unidad Comercial *
+                Unidad Medida *
               </label>
               <Controller
                 name="unidadMedidaComercialId"

@@ -1155,15 +1155,8 @@ const Producto = ({ ruta }) => {
           style={{ width: "200px", whiteSpace: "normal", wordWrap: "break-word" }}
         />
         <Column
-          field="unidadMedida.nombre"
-          header="Presentación"
-          sortable
-          body={unidadMedidaTemplate}
-          style={{ width: "150px", whiteSpace: "normal", wordWrap: "break-word" }}
-        />
-        <Column
           field="unidadMedidaComercial.nombre"
-          header="U.M. Comercial"
+          header="U.Medida"
           sortable
           body={unidadMedidaComercialTemplate}
           style={{ width: "150px", whiteSpace: "normal", wordWrap: "break-word" }}
