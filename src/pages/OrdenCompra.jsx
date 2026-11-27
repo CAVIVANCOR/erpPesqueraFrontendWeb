@@ -936,6 +936,21 @@ export default function OrdenCompra({ ruta }) {
     setToDelete(null);
   };
 
+  // Al salir de la edición se refresca la fila de la lista con el documento completo desde el servidor: dentro del formulario
+  // hay acciones que cambian la compra sin pasar por "Guardar" (agregar/editar detalles, aprobar, generar CxP o Kardex, tipo de
+  // documento final, etc.) y la lista quedaba mostrando los valores anteriores hasta recargar la página.
+  const cerrarDialogoOrden = async () => {
+    const ordenId = editing?.id;
+    setShowDialog(false);
+    if (!ordenId) return;
+    try {
+      const { getOrdenCompraPorId } = await import("../api/ordenCompra");
+      actualizarRegistro(ordenId, await getOrdenCompraPorId(ordenId));
+    } catch {
+      cargarOrdenes();
+    }
+  };
+
   const handleFormSubmit = async (data) => {
     const esEdicion = editing && editing.id;
 
@@ -3251,9 +3266,7 @@ export default function OrdenCompra({ ruta }) {
         }
         visible={showDialog}
         style={{ width: "1300px" }}
-        onHide={() => {
-          setShowDialog(false);
-        }}
+        onHide={cerrarDialogoOrden}
         modal
         maximizable
         maximized={true}
@@ -3278,7 +3291,7 @@ export default function OrdenCompra({ ruta }) {
           motivosNCND={motivosNCND}
           empresaFija={empresaSeleccionada}
           onSubmit={handleFormSubmit}
-          onCancel={() => setShowDialog(false)}
+          onCancel={cerrarDialogoOrden}
           onAprobar={handleAprobar}
           onAnular={handleAnular}
           onReactivar={handleReactivar}
