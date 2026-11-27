@@ -852,7 +852,7 @@ export default function DetallesTab({
                 disabled={loading}
               />
               <label htmlFor="usarComercial" style={{ fontWeight: "bold" }}>
-                Usar Unidad Comercial ({productos.find(p => Number(p.id) === Number(detalleActual.productoId))?.unidadMedidaComercial?.simbolo})
+                Usar Unidad Medida ({productos.find(p => Number(p.id) === Number(detalleActual.productoId))?.unidadMedidaComercial?.simbolo})
               </label>
             </div>
           )}

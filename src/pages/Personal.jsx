@@ -23,6 +23,7 @@ import {
 import { getEmpresas } from "../api/empresa";
 import { Dialog } from "primereact/dialog";
 import { getCargosPersonal } from "../api/cargosPersonal";
+import { getTiposContrato } from "../api/tipoContrato";
 import { getSedes } from "../api/sedes";
 import { getAreasFisicas } from "../api/areasFisicas";
 import { Avatar } from "primereact/avatar";
@@ -63,7 +64,24 @@ export default function PersonalPage({ ruta }) {
   const [centroCostoFilter, setCentroCostoFilter] = useState(null); // ⭐ NUEVO - Filtro por Centro de Costo
   const [filtroTipoPesca, setFiltroTipoPesca] = useState("todos");
   const [filtroEstado, setFiltroEstado] = useState("activos");
+  // Filtro de 3 estados: todos / sin contrato (gerencial: eventuales fuera de planilla formal) / resto (con contrato)
+  const [filtroContrato, setFiltroContrato] = useState("todos");
+  const [tiposContrato, setTiposContrato] = useState([]);
   const [filteredPersonales, setFilteredPersonales] = useState([]);
+
+  useEffect(() => {
+    getTiposContrato().then((data) => setTiposContrato(data || [])).catch(() => setTiposContrato([]));
+  }, []);
+
+  // El "Sin contrato" se identifica en el catálogo de Tipos de Contrato por su nombre (ignora mayúsculas y tildes);
+  // no se fija ningún id, así que sigue funcionando si el catálogo se carga con otros ids.
+  const idsSinContrato = useMemo(
+    () =>
+      tiposContrato
+        .filter((t) => String(t.nombre || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase() === "SIN CONTRATO")
+        .map((t) => Number(t.id)),
+    [tiposContrato],
+  );
 
   /**
    * Carga los cargos desde el backend.
@@ -207,7 +225,7 @@ export default function PersonalPage({ ruta }) {
 
   useEffect(() => {
     aplicarFiltros();
-  }, [personales, filtroTipoPesca, filtroEstado, empresaFilter, cargoFilter, centroCostoFilter]); // ⭐ NUEVO - Agregar centroCostoFilter
+  }, [personales, filtroTipoPesca, filtroEstado, filtroContrato, idsSinContrato, empresaFilter, cargoFilter, centroCostoFilter]); // ⭐ NUEVO - Agregar centroCostoFilter
 
   const aplicarFiltros = () => {
     let personalesFiltrados = [...personales];
@@ -230,6 +248,13 @@ export default function PersonalPage({ ruta }) {
     if (centroCostoFilter) {
       personalesFiltrados = personalesFiltrados.filter(
         (personal) => Number(personal.centroCostoId) === Number(centroCostoFilter),
+      );
+    }
+    // Filtrar por tipo de contrato: "sin contrato" (gerencial) o el resto
+    if (filtroContrato !== "todos") {
+      const esSinContrato = (personal) => idsSinContrato.includes(Number(personal.tipoContratoId));
+      personalesFiltrados = personalesFiltrados.filter((personal) =>
+        filtroContrato === "sinContrato" ? esSinContrato(personal) : !esSinContrato(personal),
       );
     }
     // Filtrar por estado (cesado)
@@ -270,6 +295,24 @@ export default function PersonalPage({ ruta }) {
       consumo: "todos",
     };
     setFiltroTipoPesca(siguienteEstado[filtroTipoPesca]);
+  };
+
+  const cambiarFiltroContrato = () => {
+    const siguienteEstado = {
+      todos: "sinContrato",
+      sinContrato: "resto",
+      resto: "todos",
+    };
+    setFiltroContrato(siguienteEstado[filtroContrato]);
+  };
+
+  const obtenerConfigFiltroContrato = () => {
+    const config = {
+      todos: { label: "Todos", icon: "pi pi-list", severity: "success" },
+      sinContrato: { label: "Sin Contrato (Gerencial)", icon: "pi pi-eye-slash", severity: "warning" },
+      resto: { label: "Con Contrato", icon: "pi pi-file", severity: "info" },
+    };
+    return config[filtroContrato] || config.todos;
   };
 
   const cambiarFiltroEstado = () => {
@@ -868,6 +911,16 @@ export default function PersonalPage({ ruta }) {
                   style={{ width: "100%" }}
                 />
               </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="tipoContrato">Filtrar por Contrato</label>
+                <Button
+                  label={obtenerConfigFiltroContrato().label}
+                  icon={obtenerConfigFiltroContrato().icon}
+                  severity={obtenerConfigFiltroContrato().severity}
+                  onClick={cambiarFiltroContrato}
+                  style={{ width: "100%" }}
+                />
+              </div>
 
 
             </div>
@@ -927,6 +980,7 @@ export default function PersonalPage({ ruta }) {
                     setCentroCostoFilter(null);
                     setGlobalFilter("");
                     setFiltroTipoPesca("todos");
+                    setFiltroContrato("todos");
                     setFiltroEstado("activos");
                   }}
                 />

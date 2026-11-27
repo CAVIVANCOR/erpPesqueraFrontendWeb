@@ -402,7 +402,7 @@ export default function DetalleDialog({
               disabled={saving || !puedeEditarDetalles}
             />
             <label htmlFor="usarComercial" style={{ fontWeight: "bold" }}>
-              Usar Unidad Comercial ({productoSeleccionado?.unidadMedidaComercial?.simbolo})
+              Usar Unidad Medida ({productoSeleccionado?.unidadMedidaComercial?.simbolo})
             </label>
           </div>
         )}
