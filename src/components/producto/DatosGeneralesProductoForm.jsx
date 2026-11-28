@@ -81,6 +81,15 @@ export default function DatosGeneralesProductoForm({
     value: Number(u.id),
   }));
 
+  // Cada desplegable solo ofrece las unidades habilitadas para su uso (Unidades de Medida); la unidad que el producto ya tiene
+  // se conserva en la lista aunque no esté habilitada, para no perder el dato.
+  const armarOpcionesUnidad = (campoHabilitado, valorActual) =>
+    unidadesMedida
+      .filter((u) => u[campoHabilitado] !== false || Number(u.id) === Number(valorActual))
+      .map((u) => ({ label: `${u.nombre} (${u.simbolo})`, value: Number(u.id) }));
+  const unidadesPresentacionOptions = armarOpcionesUnidad("esParaPresentacion", watch("unidadMedidaId"));
+  const unidadesComercialesOptions = armarOpcionesUnidad("esParaUnidadMedidaComercial", watch("unidadMedidaComercialId"));
+
   const tiposMaterialOptions = tiposMaterial.map((t) => ({
     label: t.nombre,
     value: Number(t.id),
@@ -842,7 +851,7 @@ export default function DatosGeneralesProductoForm({
                   <Dropdown
                     id="unidadMedidaId"
                     {...field}
-                    options={unidadesMedidaOptions}
+                    options={unidadesPresentacionOptions}
                     placeholder="Seleccione una unidad"
                     style={{ fontWeight: "bold" }}
                     className={classNames({
@@ -872,7 +881,7 @@ export default function DatosGeneralesProductoForm({
                     {...field}
                     value={field.value || null}
                     onChange={(e) => field.onChange(e.value || null)}
-                    options={unidadesMedidaOptions}
+                    options={unidadesComercialesOptions}
                     placeholder="Seleccione la unidad comercial"
                     className={classNames({
                       "p-invalid": fieldState.error,

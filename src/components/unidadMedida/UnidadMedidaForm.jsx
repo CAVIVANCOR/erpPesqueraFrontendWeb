@@ -43,6 +43,8 @@ const esquemaValidacion = yup.object().shape({
     .min(0, "El factor de conversión debe ser mayor o igual a 0")
     .max(999999.9999, "El factor de conversión es demasiado grande"),
   esMedidaMetrica: yup.boolean().default(false),
+  esParaPresentacion: yup.boolean().default(true),
+  esParaUnidadMedidaComercial: yup.boolean().default(true),
 });
 
 /**
@@ -68,6 +70,8 @@ const UnidadMedidaForm = ({ unidadMedida, onSave, onCancel, toast, readOnly = fa
       simbolo: "",
       factorConversion: null,
       esMedidaMetrica: false,
+      esParaPresentacion: true,
+      esParaUnidadMedidaComercial: true,
     },
   });
 
@@ -84,6 +88,8 @@ const UnidadMedidaForm = ({ unidadMedida, onSave, onCancel, toast, readOnly = fa
           ? Number(unidadMedida.factorConversion) 
           : null,
         esMedidaMetrica: Boolean(unidadMedida.esMedidaMetrica),
+        esParaPresentacion: unidadMedida.esParaPresentacion !== false,
+        esParaUnidadMedidaComercial: unidadMedida.esParaUnidadMedidaComercial !== false,
       };
 
       reset(datosNormalizados);
@@ -94,6 +100,8 @@ const UnidadMedidaForm = ({ unidadMedida, onSave, onCancel, toast, readOnly = fa
         simbolo: "",
         factorConversion: null,
         esMedidaMetrica: false,
+        esParaPresentacion: true,
+        esParaUnidadMedidaComercial: true,
       });
     }
   }, [unidadMedida, modoEdicion, reset]);
@@ -108,6 +116,8 @@ const UnidadMedidaForm = ({ unidadMedida, onSave, onCancel, toast, readOnly = fa
       simbolo: datos.simbolo.trim().toUpperCase(),
       factorConversion: datos.factorConversion || null,
       esMedidaMetrica: Boolean(datos.esMedidaMetrica),
+      esParaPresentacion: Boolean(datos.esParaPresentacion),
+      esParaUnidadMedidaComercial: Boolean(datos.esParaUnidadMedidaComercial),
     };
   };
 
@@ -265,6 +275,48 @@ const UnidadMedidaForm = ({ unidadMedida, onSave, onCancel, toast, readOnly = fa
                   <Checkbox
                     {...field}
                     inputId="esMedidaMetrica"
+                    checked={field.value}
+                    disabled={isSubmitting || readOnly}
+                    className="mr-2"
+                  />
+                )}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Uso de la unidad en el producto: filtra los desplegables Presentación y Unidad Comercial */}
+        <div className="col-12 md:col-6">
+          <div className="field">
+            <label className="font-semibold">Se usa como Presentación</label>
+            <div className="flex align-items-center mt-2">
+              <Controller
+                name="esParaPresentacion"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    {...field}
+                    inputId="esParaPresentacion"
+                    checked={field.value}
+                    disabled={isSubmitting || readOnly}
+                    className="mr-2"
+                  />
+                )}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="col-12 md:col-6">
+          <div className="field">
+            <label className="font-semibold">Se usa como Unidad Comercial</label>
+            <div className="flex align-items-center mt-2">
+              <Controller
+                name="esParaUnidadMedidaComercial"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    {...field}
+                    inputId="esParaUnidadMedidaComercial"
                     checked={field.value}
                     disabled={isSubmitting || readOnly}
                     className="mr-2"
