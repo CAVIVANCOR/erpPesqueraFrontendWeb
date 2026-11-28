@@ -144,6 +144,17 @@ const PreFactura = ({ ruta }) => {
   const [rangoFechas, setRangoFechas] = useState(rangoFechasPorDefecto);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [filtroParticionadas, setFiltroParticionadas] = useState(null);
+  // Documentos con líneas sin tipo de afectación al IGV cuyo producto tiene una afectación distinta a la del documento
+  // (el IGV se calculó con la afectación del documento): se corrigen uno por uno abriendo y guardando el documento.
+  const [filtroProblemaIgv, setFiltroProblemaIgv] = useState(false);
+  const tieneProblemaIgv = (pf) =>
+    Array.isArray(pf.detalles) &&
+    pf.detalles.some(
+      (d) =>
+        !d.tipoAfectacionIGVId &&
+        d.producto?.tipoAfectacionIGVId &&
+        Number(d.producto.tipoAfectacionIGVId) !== Number(pf.tipoAfectacionIGVId),
+    );
   const [productosUnicos, setProductosUnicos] = useState([]);
   const [tiposDocInternoAplicados, setTiposDocInternoAplicados] = useState([]);
   const [tiposDocFinalAplicados, setTiposDocFinalAplicados] = useState([]);
@@ -734,6 +745,10 @@ const PreFactura = ({ ruta }) => {
       );
     }
 
+    if (filtroProblemaIgv) {
+      filtrados = filtrados.filter(tieneProblemaIgv);
+    }
+
     // Filtro por ID (#), número de liquidación o número de documento final
     if (nroLiquidacionBusqueda && nroLiquidacionBusqueda.trim() !== "") {
       const busqueda = nroLiquidacionBusqueda.trim();
@@ -810,6 +825,7 @@ const PreFactura = ({ ruta }) => {
     clientesAplicados,
     productosAplicados,
     filtroParticionadas,
+    filtroProblemaIgv,
     nroLiquidacionBusqueda,
     filtroTipoLibro,
     periodoSeleccionado,
@@ -2886,6 +2902,20 @@ const PreFactura = ({ ruta }) => {
                     }
                     disabled={loading}
                     tooltip="Click para cambiar filtro: Todas → Originales → Copias → Todas"
+                    tooltipOptions={{ position: "top" }}
+                  />
+                </div>
+                {/* Filtro de documentos con IGV mal calculado por líneas sin afectación */}
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label={filtroProblemaIgv ? "Con problema de IGV" : "Revisar IGV"}
+                    icon="pi pi-exclamation-triangle"
+                    severity={filtroProblemaIgv ? "danger" : "secondary"}
+                    outlined={!filtroProblemaIgv}
+                    onClick={() => setFiltroProblemaIgv(!filtroProblemaIgv)}
+                    badge={filtroProblemaIgv ? undefined : items.filter(tieneProblemaIgv).length.toString()}
+                    disabled={loading}
+                    tooltip="Documentos con líneas sin tipo de afectación al IGV cuyo producto es exonerado/inafecto: abra cada uno, guárdelo y regenere CxC y asientos"
                     tooltipOptions={{ position: "top" }}
                   />
                 </div>

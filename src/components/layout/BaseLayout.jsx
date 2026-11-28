@@ -102,6 +102,7 @@ import RegimenLaboral from "../../pages/RegimenLaboral";
 import EntidadPension from "../../pages/EntidadPension";
 import ParametroLegal from "../../pages/ParametroLegal";
 import ContratoPersonal from "../../pages/ContratoPersonal";
+import Vacaciones from "../../pages/Vacaciones";
 import ConceptoPlanilla from "../../pages/ConceptoPlanilla";
 import Planilla from "../../pages/Planilla";
 import CategoriaTipoDeudaTributaria from "../../pages/CategoriaTipoDeudaTributaria";
@@ -346,6 +347,10 @@ export default function BaseLayout({ children, onLogout }) {
     contratoPersonal: {
       label: "Contratos de Personal",
       componente: <ContratoPersonal ruta="contratoPersonal" />,
+    },
+    vacaciones: {
+      label: "Vacaciones y Suspensiones",
+      componente: <Vacaciones ruta="vacaciones" />,
     },
     conceptoPlanilla: {
       label: "Conceptos de Planilla",
