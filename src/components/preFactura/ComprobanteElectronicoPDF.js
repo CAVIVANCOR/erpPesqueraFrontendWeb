@@ -224,14 +224,17 @@ export async function generarPDFComprobanteElectronico(c) {
 
   dibujarCabeceraTabla();
   for (const d of (c.detalles || []).filter((linea) => !linea.anticipo)) {
-    const lineasDesc = ajustarTexto(d.descripcion, font, 8, columnas[3].ancho - 6);
+    // La línea puede ir sin descripción armada (mostrarDescripcionArmada = false): entonces solo se imprime la observación, igual que en el XML
+    const sinDescripcionArmada = d.mostrarDescripcionArmada === false;
+    const lineasDesc = sinDescripcionArmada ? [] : ajustarTexto(d.descripcion, font, 8, columnas[3].ancho - 6);
+    const altoDescripcion = sinDescripcionArmada ? 0 : Math.max(1, lineasDesc.length) * 10;
     // Observación de la línea (misma que viaja en el XML): debajo de la descripción, en letra menor. Solo caracteres que admite la fuente.
     const lineasObs = String(d.observaciones || "")
       .replace(/[^\x20-\x7E\u00A0-\u00FF\n\r]/g, "?")
       .split(/\r?\n/)
       .flatMap((parrafo) => ajustarTexto(parrafo.trim(), font, 7, columnas[3].ancho - 6))
       .filter(Boolean);
-    const alto = Math.max(1, lineasDesc.length) * 10 + lineasObs.length * 9 + 5;
+    const alto = Math.max(altoDescripcion + lineasObs.length * 9, 10) + 5;
     if (y - alto < MARGEN + 40) {
       nuevaPagina();
       dibujarCabeceraTabla();
@@ -248,7 +251,7 @@ export async function generarPDFComprobanteElectronico(c) {
     columnas.forEach((col, i) => {
       if (i === 3) {
         lineasDesc.forEach((l, k) => texto(l, x + 3, y - 9 - k * 10, { size: 8 }));
-        lineasObs.forEach((l, k) => texto(l, x + 3, y - 9 - Math.max(1, lineasDesc.length) * 10 - k * 9 + 1, { size: 7, color: rgb(0.35, 0.35, 0.35) }));
+        lineasObs.forEach((l, k) => texto(l, x + 3, y - 9 - altoDescripcion - k * 9 + (sinDescripcionArmada ? 0 : 1), { size: 7, color: rgb(0.35, 0.35, 0.35) }));
       }
       else texto(celdas[i], x + 3, y - 9, { size: 8, alinear: col.alinear, ancho: col.ancho - 6 });
       x += col.ancho;

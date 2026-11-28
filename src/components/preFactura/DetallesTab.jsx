@@ -86,6 +86,7 @@ export default function DetallesTab({
     cantidadVenta: null,
     precioUnitarioVenta: null,
     observaciones: "",
+    mostrarDescripcionArmada: true,
   });
   // ⭐ ASIGNACIÓN DE STOCK: componente autónomo, el JSON vive en memoria y se limpia al cambiar/salir de la PreFactura
   const asignacionStock = useAsignacionStock({
@@ -152,6 +153,7 @@ export default function DetallesTab({
       cantidadVenta: null,
       precioUnitarioVenta: null,
       observaciones: "",
+      mostrarDescripcionArmada: true,
     });
     setEditando(false);
     setUsarUnidadComercial(false);
@@ -168,6 +170,7 @@ export default function DetallesTab({
       cantidadVenta: detalle.cantidadVenta ? Number(detalle.cantidadVenta) : null,
       precioUnitarioVenta: detalle.precioUnitarioVenta ? Number(detalle.precioUnitarioVenta) : null,
       observaciones: detalle.observaciones || "",
+      mostrarDescripcionArmada: detalle.mostrarDescripcionArmada !== false,
     });
     setEditando(true);
     setUsarUnidadComercial(tieneUnidadComercial);
@@ -184,6 +187,7 @@ export default function DetallesTab({
       cantidadVenta: null,
       precioUnitarioVenta: null,
       observaciones: "",
+      mostrarDescripcionArmada: true,
     });
   };
 
@@ -281,6 +285,18 @@ export default function DetallesTab({
       };
       // Descripción complementaria de la línea (null borra la que hubiera)
       data.observaciones = String(detalleActual.observaciones || "").trim() || null;
+      // Sin descripción armada la observación pasa a ser la única descripción del comprobante: no puede ir vacía
+      data.mostrarDescripcionArmada = detalleActual.mostrarDescripcionArmada !== false;
+      if (!data.mostrarDescripcionArmada && !data.observaciones) {
+        toast?.current?.show({
+          severity: "error",
+          summary: "Observación obligatoria",
+          detail: 'Desmarcó "Mostrar descripción armada": escriba la observación de la línea, que será la única descripción en el comprobante.',
+          life: 6000,
+        });
+        setLoading(false);
+        return;
+      }
       // Agregar datos según modo
       if (usarUnidadComercial) {
         data.cantidadVenta = Number(detalleActual.cantidadVenta);
@@ -978,6 +994,16 @@ export default function DetallesTab({
 
           {/* Descripción complementaria: se imprime debajo de la descripción del producto en el comprobante (también dentro del XML),
               en la venta y en el voucher de almacén. Es texto libre de esta línea; no cambia el producto del maestro. */}
+          <div style={{ marginTop: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Checkbox
+              inputId="mostrarDescripcionArmada"
+              checked={detalleActual.mostrarDescripcionArmada !== false}
+              onChange={(e) => setDetalleActual({ ...detalleActual, mostrarDescripcionArmada: e.checked })}
+            />
+            <label htmlFor="mostrarDescripcionArmada" style={{ fontWeight: "bold", cursor: "pointer" }}>
+              Mostrar descripción armada en el comprobante (desmarcar para que solo salga la observación)
+            </label>
+          </div>
           <div style={{ marginTop: "1rem" }}>
             <label htmlFor="observacionesLinea" style={{ fontWeight: "bold" }}>
               Observaciones (se imprimen debajo de la descripción)

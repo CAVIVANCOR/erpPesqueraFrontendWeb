@@ -71,6 +71,7 @@ export default function ContratoPersonalForm({ contrato, empresaFija, personalAu
       fechaInicio: null,
       fechaFin: null,
       remuneracionBasica: null,
+      movilidadFija: null,
       esJornal: false,
       periodicidadDias: 30,
       pagaPorTemporada: false,
@@ -114,6 +115,7 @@ export default function ContratoPersonalForm({ contrato, empresaFija, personalAu
         fechaInicio: aFecha(contrato.fechaInicio),
         fechaFin: aFecha(contrato.fechaFin),
         remuneracionBasica: Number(contrato.remuneracionBasica),
+        movilidadFija: contrato.movilidadFija != null ? Number(contrato.movilidadFija) : null,
         esJornal: Boolean(contrato.esJornal),
         periodicidadDias: contrato.periodicidadDias ?? null,
         pagaPorTemporada: Boolean(contrato.pagaPorTemporada),
@@ -160,6 +162,7 @@ export default function ContratoPersonalForm({ contrato, empresaFija, personalAu
       fechaInicio: data.fechaInicio.toISOString(),
       fechaFin: data.fechaFin ? data.fechaFin.toISOString() : null,
       remuneracionBasica: Number(data.remuneracionBasica),
+      movilidadFija: data.movilidadFija ? Number(data.movilidadFija) : null,
       esJornal: Boolean(data.esJornal),
       periodicidadDias: data.pagaPorTemporada ? null : Number(data.periodicidadDias),
       pagaPorTemporada: Boolean(data.pagaPorTemporada),
@@ -294,6 +297,27 @@ export default function ContratoPersonalForm({ contrato, empresaFija, personalAu
             )}
           />
           <small className="p-error">{errors.remuneracionBasica?.message}</small>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label>Movilidad fija mensual (S/)</label>
+          <Controller
+            name="movilidadFija"
+            control={control}
+            rules={{ min: { value: 0, message: "No puede ser negativa" } }}
+            render={({ field }) => (
+              <InputNumber
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="currency"
+                currency="PEN"
+                locale="es-PE"
+                placeholder="Sin movilidad"
+                className={classNames({ "p-invalid": errors.movilidadFija })}
+                disabled={bloqueado}
+              />
+            )}
+          />
+          <small className="p-error">{errors.movilidadFija?.message}</small>
         </div>
         <div style={{ flex: 1 }}>
           <label>La remuneración es</label>

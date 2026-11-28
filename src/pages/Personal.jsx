@@ -73,15 +73,19 @@ export default function PersonalPage({ ruta }) {
     getTiposContrato().then((data) => setTiposContrato(data || [])).catch(() => setTiposContrato([]));
   }, []);
 
-  // El "Sin contrato" se identifica en el catálogo de Tipos de Contrato por su nombre (ignora mayúsculas y tildes);
-  // no se fija ningún id, así que sigue funcionando si el catálogo se carga con otros ids.
-  const idsSinContrato = useMemo(
-    () =>
-      tiposContrato
-        .filter((t) => String(t.nombre || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase() === "SIN CONTRATO")
-        .map((t) => Number(t.id)),
-    [tiposContrato],
-  );
+  // "Sin contrato" (gerencial) = los tipos de contrato marcados con esGerencial. Mientras ningún tipo esté marcado en el catálogo
+  // (por ejemplo antes de correr el script de datos) se usa el nombre "SIN CONTRATO" (sin importar mayúsculas ni tildes).
+  // No se fija ningún id, así que sigue funcionando si el catálogo se carga con otros ids.
+  const idsSinContrato = useMemo(() => {
+    const marcados = tiposContrato.filter((t) => t.esGerencial === true);
+    const candidatos =
+      marcados.length > 0
+        ? marcados
+        : tiposContrato.filter(
+            (t) => String(t.nombre || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase() === "SIN CONTRATO",
+          );
+    return candidatos.map((t) => Number(t.id));
+  }, [tiposContrato]);
 
   /**
    * Carga los cargos desde el backend.

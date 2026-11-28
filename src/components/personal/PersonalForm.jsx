@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
+import { getTiposComisionPension } from "../../api/tipoComisionPension";
 import { Calendar } from "primereact/calendar";
 import { Button } from "primereact/button";
 import { ToggleButton } from "primereact/togglebutton";
@@ -92,7 +93,7 @@ export default function PersonalForm({
     esObrero: typeof defaultValues.esObrero === "boolean" ? defaultValues.esObrero : false,
     entidadPensionId: defaultValues.entidadPensionId ? Number(defaultValues.entidadPensionId) : null,
     cuspp: defaultValues.cuspp || "",
-    comisionMixta: typeof defaultValues.comisionMixta === "boolean" ? defaultValues.comisionMixta : false,
+    tipoComisionPensionId: defaultValues.tipoComisionPensionId ? Number(defaultValues.tipoComisionPensionId) : null,
     tieneAsignacionFamiliar:
       typeof defaultValues.tieneAsignacionFamiliar === "boolean" ? defaultValues.tieneAsignacionFamiliar : false,
     aplicaSctr: typeof defaultValues.aplicaSctr === "boolean" ? defaultValues.aplicaSctr : false,
@@ -153,6 +154,12 @@ export default function PersonalForm({
     defaultValues: normalizedDefaults,
     mode: "onTouched",
   });
+
+  // Catálogo de tipos de comisión de pensiones para el selector (si falla queda vacío y el selector se deshabilita con aviso)
+  const [tiposComision, setTiposComision] = useState([]);
+  useEffect(() => {
+    getTiposComisionPension().then((data) => setTiposComision(data || [])).catch(() => setTiposComision([]));
+  }, []);
 
   const [fotoPreview, setFotoPreview] = useState(
     defaultValues.urlFotoPersona
@@ -722,7 +729,7 @@ export default function PersonalForm({
       esObrero: typeof data.esObrero === "boolean" ? data.esObrero : false,
       entidadPensionId: data.entidadPensionId ? Number(data.entidadPensionId) : null,
       cuspp: data.cuspp?.trim() || null,
-      comisionMixta: typeof data.comisionMixta === "boolean" ? data.comisionMixta : false,
+      tipoComisionPensionId: data.tipoComisionPensionId ? Number(data.tipoComisionPensionId) : null,
       tieneAsignacionFamiliar:
         typeof data.tieneAsignacionFamiliar === "boolean" ? data.tieneAsignacionFamiliar : false,
       aplicaSctr: typeof data.aplicaSctr === "boolean" ? data.aplicaSctr : false,
@@ -1589,20 +1596,21 @@ export default function PersonalForm({
                 )}
               />
             </div>
+            {/* Tipo de comisión de la AFP: catálogo abierto (sobre flujo, mixta, sin comisión, ...). Reemplaza al antiguo
+                interruptor comisionMixta, que ya no existe. */}
             <Controller
-              name="comisionMixta"
+              name="tipoComisionPensionId"
               control={control}
               render={({ field }) => (
-                <ToggleButton
-                  id="comisionMixta"
-                  onLabel="Comisión Mixta"
-                  offLabel="Comisión sobre Flujo"
-                  onIcon="pi pi-check"
-                  offIcon="pi pi-percentage"
-                  checked={field.value || false}
+                <Dropdown
+                  id="tipoComisionPensionId"
+                  value={field.value ?? null}
+                  options={tiposComision.map((t) => ({ label: t.nombre, value: Number(t.id), codigo: t.codigo }))}
                   onChange={(e) => field.onChange(e.value)}
-                  disabled={readOnly || loading}
-                  tooltip="Modalidad de comisión de la AFP"
+                  placeholder="Tipo de comisión"
+                  style={{ minWidth: 190 }}
+                  disabled={readOnly || loading || tiposComision.length === 0}
+                  tooltip={tiposComision.length === 0 ? "Falta cargar el catálogo de tipos de comisión (script de datos)" : "Modalidad de comisión de la AFP"}
                   tooltipOptions={{ position: "top" }}
                 />
               )}
