@@ -11,7 +11,7 @@
  *    diálogo (debe estar en esos documentos).
  *
  * Siempre hay una VISTA PREVIA antes de ejecutar: filas que cambian por tabla, movimientos de almacén que se reprocesan, avisos y
- * bloqueos (unidad distinta, período contable cerrado, etc.). Los precios, cantidades e importes de los documentos NO cambian:
+ * bloqueos (período contable cerrado, etc.); la unidad distinta solo avisa. Los precios, cantidades e importes de los documentos NO cambian:
  * solo cambia el producto vinculado. El kardex se reprocesa con el mismo código que lo genera.
  *
  * Props:

@@ -187,8 +187,10 @@ export default function ContratoPersonalForm({ contrato, empresaFija, personalAu
               <EmpresaSelector
                 empresaId={field.value ? Number(field.value) : null}
                 onEmpresaChange={(id) => {
+                  // El selector avisa también al cargar con la empresa que ya tiene el contrato: ahí NO se debe borrar el trabajador
+                  const cambio = Number(id) !== Number(field.value || 0);
                   field.onChange(id);
-                  setValue("personalId", null);
+                  if (cambio) setValue("personalId", null);
                 }}
                 disabled={bloqueado || Boolean(contrato)}
               />
