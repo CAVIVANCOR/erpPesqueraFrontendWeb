@@ -131,6 +131,13 @@ export async function generarPDFComprobanteElectronico(c) {
     page.drawText(limpio, { x: xx, y: yy, size, font: f, color });
   };
 
+  // Formato de la representación impresa: recuadros en negro, datos del cliente a dos columnas, tabla de ítems que ocupa la
+  // hoja hasta el pie (cantidad, unidad, código, descripción, valor y precio de venta unitarios, descuento y total) y, abajo,
+  // el monto en letras, el QR y el cuadro de totales.
+  const NEGRO = rgb(0, 0, 0);
+  const caja = (x, yTope, ancho, alto, grosor = 0.8) =>
+    page.drawRectangle({ x, y: yTope - alto, width: ancho, height: alto, borderColor: NEGRO, borderWidth: grosor });
+
   // ───────────── ENCABEZADO: emisor a la izquierda, cuadro del comprobante a la derecha ─────────────
   const anchoCuadro = 190;
   const xCuadro = ANCHO - MARGEN - anchoCuadro;
@@ -159,61 +166,86 @@ export async function generarPDFComprobanteElectronico(c) {
     }
   }
 
-  page.drawRectangle({ x: xCuadro, y: y - altoCuadro, width: anchoCuadro, height: altoCuadro, borderColor: AZUL, borderWidth: 1.5 });
-  texto(`R.U.C. ${c.empresa?.ruc || "-"}`, xCuadro, y - 22, { size: 12, bold: true, alinear: "centro", ancho: anchoCuadro });
-  texto(TITULO_TIPO[codigoTipo] || "COMPROBANTE ELECTRÓNICO", xCuadro, y - 44, { size: 10, bold: true, color: AZUL, alinear: "centro", ancho: anchoCuadro });
-  texto(c.numeroCompleto || `${c.numeroSerie}-${String(c.numeroCorrelativo).padStart(8, "0")}`, xCuadro, y - 66, { size: 13, bold: true, alinear: "centro", ancho: anchoCuadro });
+  caja(xCuadro, y, anchoCuadro, altoCuadro, 1.5);
+  texto(`R.U.C. ${c.empresa?.ruc || "-"}`, xCuadro, y - 24, { size: 12, bold: true, alinear: "centro", ancho: anchoCuadro });
+  texto(TITULO_TIPO[codigoTipo] || "COMPROBANTE ELECTRÓNICO", xCuadro, y - 46, { size: 10.5, bold: true, alinear: "centro", ancho: anchoCuadro });
+  texto(c.numeroCompleto || `${c.numeroSerie}-${String(c.numeroCorrelativo).padStart(8, "0")}`, xCuadro, y - 68, { size: 13, bold: true, alinear: "centro", ancho: anchoCuadro });
 
-  y = Math.min(y - altoCuadro, yEmisor) - 16;
+  y = Math.min(y - altoCuadro, yEmisor) - 14;
 
-  // ───────────── DATOS DEL CLIENTE Y DEL COMPROBANTE ─────────────
-  const filas = [
-    ["Señor(es):", c.razonSocialCliente],
-    [`${c.tipoDocumentoCliente?.codigo || "Documento"}:`, c.numeroDocumentoCliente],
-    ["Dirección:", c.direccionCliente],
-    ["Fecha de emisión:", `${formatearFecha(c.fechaEmision)} ${c.horaEmision || ""}`.trim()],
-    c.fechaVencimiento ? ["Fecha de vencimiento:", formatearFecha(c.fechaVencimiento)] : null,
-    ["Moneda:", `${c.moneda?.nombreLargo || c.moneda?.codigoSunat || ""} (${c.moneda?.codigoSunat || ""})`],
-    ["Condición de pago:", c.formaPago?.nombre],
-    c.ordenCompra ? ["Orden de compra:", c.ordenCompra] : null,
-    c.guiaRemision ? ["Guía de remisión:", c.guiaRemision] : null,
+  // ───────────── DATOS DEL CLIENTE Y DEL COMPROBANTE (dos columnas) ─────────────
+  const dibujarFilas = (filasBloque, x, anchoEtiqueta, anchoTotal, yInicio) => {
+    let yy = yInicio;
+    for (const [etiqueta, valor] of filasBloque) {
+      const lineas = ajustarTexto(valor || "-", font, 8, anchoTotal - anchoEtiqueta - 6);
+      texto(etiqueta, x, yy - 8, { size: 8, bold: true });
+      texto(":", x + anchoEtiqueta - 8, yy - 8, { size: 8, bold: true });
+      lineas.forEach((l, i) => texto(l, x + anchoEtiqueta, yy - 8 - i * 10, { size: 8 }));
+      yy -= Math.max(1, lineas.length) * 10 + 4;
+    }
+    return yy;
+  };
+  const anchoColIzq = 320;
+  const xColDer = MARGEN + anchoColIzq + 14;
+  const filasIzq = [
+    ["FECHA DE EMISIÓN", `${formatearFecha(c.fechaEmision)} ${c.horaEmision || ""}`.trim()],
+    c.fechaVencimiento ? ["FECHA DE VENCIMIENTO", formatearFecha(c.fechaVencimiento)] : null,
+    ["SEÑOR(ES)", c.razonSocialCliente],
+    ["DIRECCIÓN", c.direccionCliente],
+    c.ordenCompra ? ["ORDEN DE COMPRA", c.ordenCompra] : null,
+    c.guiaRemision ? ["GUÍA DE REMISIÓN", c.guiaRemision] : null,
   ].filter(Boolean);
-
-  const yInicioCliente = y;
-  y -= 4;
-  for (const [etiqueta, valor] of filas) {
-    const lineas = ajustarTexto(valor || "-", font, 9, anchoUtil - 110);
-    texto(etiqueta, MARGEN + 4, y - 9, { size: 9, bold: true });
-    lineas.forEach((l, i) => texto(l, MARGEN + 110, y - 9 - i * 11, { size: 9 }));
-    y -= Math.max(1, lineas.length) * 11 + 2;
-  }
-  page.drawRectangle({ x: MARGEN, y: y - 2, width: anchoUtil, height: yInicioCliente - y + 2, borderColor: rgb(0.7, 0.7, 0.7), borderWidth: 0.8 });
-  y -= 16;
+  const filasDer = [
+    ["NRO DE DOCUMENTO", c.numeroDocumentoCliente],
+    ["TIPO DOCUMENTO", c.tipoDocumentoCliente?.codigo],
+    ["MONEDA", c.moneda?.nombreLargo || c.moneda?.codigoSunat],
+    ["FORMA DE PAGO", c.formaPago?.nombre],
+  ];
+  const yIzq = dibujarFilas(filasIzq, MARGEN, 112, anchoColIzq, y);
+  const yDer = dibujarFilas(filasDer, xColDer, 92, MARGEN + anchoUtil - xColDer, y);
+  y = Math.min(yIzq, yDer) - 8;
 
   // ───────────── TABLA DE ÍTEMS ─────────────
   const columnas = [
-    { titulo: "Cant.", ancho: 50, alinear: "der" },
-    { titulo: "Unidad", ancho: 42, alinear: "izq" },
-    { titulo: "Código", ancho: 62, alinear: "izq" },
-    { titulo: "Descripción", ancho: 211, alinear: "izq" },
-    { titulo: "V. Unitario", ancho: 72, alinear: "der" },
-    { titulo: "Valor de venta", ancho: 78, alinear: "der" },
+    { titulo: "CANT.", ancho: 38, alinear: "centro" },
+    { titulo: "UNID.", ancho: 36, alinear: "centro" },
+    { titulo: "CÓD.", ancho: 46, alinear: "centro" },
+    { titulo: "DESCRIPCIÓN", ancho: 211, alinear: "izq" },
+    { titulo: "VALOR VTA.\nUNITARIO", ancho: 66, alinear: "der" },
+    { titulo: "PRECIO VTA.\nUNITARIO", ancho: 66, alinear: "der" },
+    { titulo: "TOTAL", ancho: 52, alinear: "der" },
   ];
   const anchoTabla = columnas.reduce((s, col) => s + col.ancho, 0);
+  const COL_DESCRIPCION = 3;
+  const ALTO_CABECERA = 24;
+  // Reserva al pie para el monto en letras, el QR y los totales: la tabla llega hasta ahí en cada hoja
+  const ALTO_PIE = 215;
+  let yTopeTabla = y;
 
   const dibujarCabeceraTabla = () => {
-    page.drawRectangle({ x: MARGEN, y: y - 14, width: anchoTabla, height: 16, color: AZUL });
+    yTopeTabla = y;
     let x = MARGEN;
     for (const col of columnas) {
-      texto(col.titulo, x + 3, y - 10, { size: 8, bold: true, color: rgb(1, 1, 1), alinear: col.alinear, ancho: col.ancho - 6 });
+      col.titulo.split("\n").forEach((t, k) => texto(t, x + 2, y - 10 - k * 8, { size: 7, bold: true, alinear: "centro", ancho: col.ancho - 4 }));
       x += col.ancho;
     }
-    y -= 16;
+    y -= ALTO_CABECERA;
   };
 
-  // Reserva al pie para totales, QR y leyendas: si no cabe, esa parte pasa a una hoja nueva
-  const ALTO_PIE = 215;
+  // Marco de la tabla hasta el pie reservado, con la línea bajo los títulos y las divisiones de columnas
+  const cerrarMarcoTabla = () => {
+    const yFondo = MARGEN + ALTO_PIE;
+    caja(MARGEN, yTopeTabla, anchoTabla, yTopeTabla - yFondo);
+    page.drawLine({ start: { x: MARGEN, y: yTopeTabla - ALTO_CABECERA }, end: { x: MARGEN + anchoTabla, y: yTopeTabla - ALTO_CABECERA }, thickness: 0.8, color: NEGRO });
+    let x = MARGEN;
+    for (const col of columnas.slice(0, -1)) {
+      x += col.ancho;
+      page.drawLine({ start: { x, y: yTopeTabla }, end: { x, y: yFondo }, thickness: 0.6, color: NEGRO });
+    }
+  };
+
   const nuevaPagina = () => {
+    cerrarMarcoTabla();
     page = pdfDoc.addPage(A4);
     y = ALTO - MARGEN;
   };
@@ -226,69 +258,80 @@ export async function generarPDFComprobanteElectronico(c) {
   for (const d of (c.detalles || []).filter((linea) => !linea.anticipo)) {
     // La línea puede ir sin descripción armada (mostrarDescripcionArmada = false): entonces solo se imprime la observación, igual que en el XML
     const sinDescripcionArmada = d.mostrarDescripcionArmada === false;
-    const lineasDesc = sinDescripcionArmada ? [] : ajustarTexto(d.descripcion, font, 8, columnas[3].ancho - 6);
+    const anchoDesc = columnas[COL_DESCRIPCION].ancho - 6;
+    const lineasDesc = sinDescripcionArmada ? [] : ajustarTexto(d.descripcion, font, 8, anchoDesc);
     const altoDescripcion = sinDescripcionArmada ? 0 : Math.max(1, lineasDesc.length) * 10;
     // Observación de la línea (misma que viaja en el XML): debajo de la descripción, en letra menor. Solo caracteres que admite la fuente.
     const lineasObs = String(d.observaciones || "")
       .replace(/[^\x20-\x7E\u00A0-\u00FF\n\r]/g, "?")
       .split(/\r?\n/)
-      .flatMap((parrafo) => ajustarTexto(parrafo.trim(), font, 7, columnas[3].ancho - 6))
+      .flatMap((parrafo) => ajustarTexto(parrafo.trim(), font, 7, anchoDesc))
       .filter(Boolean);
-    const alto = Math.max(altoDescripcion + lineasObs.length * 9, 10) + 5;
-    if (y - alto < MARGEN + 40) {
+    const alto = Math.max(altoDescripcion + lineasObs.length * 9, 10) + 6;
+    if (y - alto < MARGEN + ALTO_PIE + 4) {
       nuevaPagina();
       dibujarCabeceraTabla();
     }
+    const cantidad = Number(d.cantidad || 0);
+    // El precio de venta unitario incluye el IGV (total de la línea entre la cantidad); el valor unitario es el que viaja al XML
+    const precioVentaUnitario = cantidad > 0 ? Number(d.total || 0) / cantidad : 0;
     const celdas = [
       num(d.cantidad, 2),
-      d.codigoUnidadSUNAT || d.nombreUnidad || "",
+      d.nombreUnidad || d.codigoUnidadSUNAT || "",
       d.codigoProducto || "",
       null,
-      num(d.valorUnitario, 4),
-      num(d.subtotal, 2),
+      num(d.valorUnitario, 2),
+      num(precioVentaUnitario, 2),
+      num(d.total, 2),
     ];
     let x = MARGEN;
     columnas.forEach((col, i) => {
-      if (i === 3) {
+      if (i === COL_DESCRIPCION) {
         lineasDesc.forEach((l, k) => texto(l, x + 3, y - 9 - k * 10, { size: 8 }));
         lineasObs.forEach((l, k) => texto(l, x + 3, y - 9 - altoDescripcion - k * 9 + (sinDescripcionArmada ? 0 : 1), { size: 7, color: rgb(0.35, 0.35, 0.35) }));
+      } else {
+        texto(celdas[i], x + 2, y - 9, { size: 8, alinear: col.alinear, ancho: col.ancho - 4 });
       }
-      else texto(celdas[i], x + 3, y - 9, { size: 8, alinear: col.alinear, ancho: col.ancho - 6 });
       x += col.ancho;
     });
     y -= alto;
-    page.drawLine({ start: { x: MARGEN, y: y + 1 }, end: { x: MARGEN + anchoTabla, y: y + 1 }, thickness: 0.4, color: rgb(0.8, 0.8, 0.8) });
   }
+  cerrarMarcoTabla();
 
-  // ───────────── TOTALES, LEYENDAS Y QR ─────────────
-  if (y - ALTO_PIE < MARGEN) nuevaPagina();
-  y -= 14;
+  // ───────────── PIE: MONTO EN LETRAS, LEYENDAS Y QR A LA IZQUIERDA; TOTALES A LA DERECHA ─────────────
+  const yPie = MARGEN + ALTO_PIE - 8;
+  const anchoTotales = 170;
+  const xTotales = MARGEN + anchoUtil - anchoTotales;
+  const anchoIzquierda = xTotales - MARGEN - 10;
 
-  const xTotales = MARGEN + anchoUtil - 200;
-  const totales = [
-    Number(c.totalGravado) > 0 && ["Op. Gravada", c.totalGravado],
-    Number(c.totalExonerado) > 0 && ["Op. Exonerada", c.totalExonerado],
-    Number(c.totalInafecto) > 0 && ["Op. Inafecta", c.totalInafecto],
-    Number(c.totalDescuentos) > 0 && ["Descuentos", c.totalDescuentos],
-    ["IGV", c.totalIgv],
-    totalAnticipos > 0 && ["Total operación", Number(c.totalComprobante) + totalAnticipos],
-    totalAnticipos > 0 && ["(-) Anticipos", -totalAnticipos],
+  const filasTotales = [
+    ["OP. GRATUITAS", c.totalGratuito],
+    ["OP. EXONERADA", c.totalExonerado],
+    ["OP. INAFECTA", c.totalInafecto],
+    ["OP. GRAVADA", c.totalGravado],
+    ["I.S.C.", c.totalIsc],
+    ["I.G.V.", c.totalIgv],
+    totalAnticipos > 0 && ["(-) ANTICIPOS", -totalAnticipos],
+    [totalAnticipos > 0 ? "IMPORTE A PAGAR" : "IMPORTE TOTAL", c.totalComprobante, true],
   ].filter(Boolean);
-  const yTotales = y;
-  for (const [etiqueta, valor] of totales) {
-    texto(etiqueta, xTotales, y, { size: 9, bold: true });
-    texto(`${simbolo} ${num(valor)}`, xTotales, y, { size: 9, alinear: "der", ancho: 200 });
-    y -= 13;
+  const altoFila = 12;
+  caja(xTotales, yPie, anchoTotales, filasTotales.length * altoFila + 6);
+  let yFila = yPie - 11;
+  for (const [etiqueta, valor, resaltar] of filasTotales) {
+    texto(etiqueta, xTotales + 4, yFila, { size: 8, bold: Boolean(resaltar) });
+    texto(simbolo, xTotales + 98, yFila, { size: 8, bold: Boolean(resaltar) });
+    texto(num(valor), xTotales + 100, yFila, { size: 8, bold: Boolean(resaltar), alinear: "der", ancho: anchoTotales - 104 });
+    yFila -= altoFila;
   }
-  page.drawRectangle({ x: xTotales - 4, y: y - 5, width: 204, height: 17, color: rgb(0.92, 0.95, 0.98), borderColor: AZUL, borderWidth: 0.8 });
-  texto(totalAnticipos > 0 ? "IMPORTE A PAGAR" : "IMPORTE TOTAL", xTotales, y, { size: 10, bold: true, color: AZUL });
-  texto(`${simbolo} ${num(c.totalComprobante)}`, xTotales, y, { size: 10, bold: true, alinear: "der", ancho: 196 });
-  const yFinTotales = y - 8;
 
-  // Leyendas a la izquierda de los totales
-  let yLey = yTotales;
-  const anchoLey = xTotales - MARGEN - 12;
-  const leyendas = [`SON: ${c.montoEnLetras || ""}`];
+  // Monto en letras en un recuadro
+  const lineasSon = ajustarTexto(`SON: ${c.montoEnLetras || ""}`, fontBold, 8, anchoIzquierda - 8);
+  const altoSon = lineasSon.length * 10 + 8;
+  caja(MARGEN, yPie, anchoIzquierda, altoSon);
+  lineasSon.forEach((l, k) => texto(l, MARGEN + 4, yPie - 11 - k * 10, { size: 8, bold: true }));
+  let yLey = yPie - altoSon - 6;
+
+  const leyendas = [];
   if (lineasAnticipo.length > 0) {
     leyendas.push(`ANTICIPOS DESCONTADOS: ${lineasAnticipo.map((d) => `${d.codigoProducto} (${simbolo} ${num(d.total)})`).join(", ")}`);
   }
@@ -302,21 +345,20 @@ export async function generarPDFComprobanteElectronico(c) {
       `Crédito - Cuotas: ${c.cuotas.map((q) => `N° ${q.numeroCuota}: ${simbolo} ${num(q.montoCuota)} vence ${formatearFecha(q.fechaVencimiento)}`).join("; ")}`,
     );
   }
-  for (const [i, leyenda] of leyendas.entries()) {
-    for (const linea of ajustarTexto(leyenda, i === 0 ? fontBold : font, i === 0 ? 8.5 : 8, anchoLey)) {
-      texto(linea, MARGEN, yLey, { size: i === 0 ? 8.5 : 8, bold: i === 0 });
-      yLey -= 10;
+  for (const leyenda of leyendas) {
+    for (const linea of ajustarTexto(leyenda, font, 7.5, anchoIzquierda)) {
+      texto(linea, MARGEN, yLey - 7, { size: 7.5 });
+      yLey -= 9;
     }
-    yLey -= 4;
+    yLey -= 3;
   }
 
-  y = Math.min(yFinTotales, yLey) - 12;
-
   const qr = await incrustarQr(pdfDoc, c);
-  const lado = 85;
-  if (qr) page.drawImage(qr, { x: MARGEN, y: y - lado, width: lado, height: lado });
-  const xTxt = MARGEN + lado + 12;
-  let yTxt = y - 10;
+  const lado = 80;
+  const yQr = Math.min(yLey - 4, yPie - altoSon - 10);
+  if (qr) page.drawImage(qr, { x: MARGEN, y: yQr - lado, width: lado, height: lado });
+  const xTxt = MARGEN + lado + 10;
+  let yTxt = yQr - 8;
   const pie = [
     `Representación impresa de la ${(TITULO_TIPO[codigoTipo] || "comprobante electrónico").toLowerCase()}.`,
     "Consulte la validez del comprobante en el portal de SUNAT (www.sunat.gob.pe) con el RUC del emisor, tipo, serie y número.",
@@ -324,9 +366,9 @@ export async function generarPDFComprobanteElectronico(c) {
     c.descripcionEstadoProveedor ? `Estado SUNAT: ${c.descripcionEstadoProveedor}` : null,
   ].filter(Boolean);
   for (const p of pie) {
-    for (const linea of ajustarTexto(p, font, 8, ANCHO - MARGEN - xTxt)) {
-      texto(linea, xTxt, yTxt, { size: 8, color: GRIS });
-      yTxt -= 10;
+    for (const linea of ajustarTexto(p, font, 7.5, xTotales - 10 - xTxt)) {
+      texto(linea, xTxt, yTxt, { size: 7.5, color: GRIS });
+      yTxt -= 9;
     }
   }
 
