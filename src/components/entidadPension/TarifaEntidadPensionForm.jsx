@@ -1,10 +1,11 @@
 // src/components/entidadPension/TarifaEntidadPensionForm.jsx
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "primereact/button";
 import { Calendar } from "primereact/calendar";
 import { InputNumber } from "primereact/inputnumber";
 import { classNames } from "primereact/utils";
 import { useForm, Controller } from "react-hook-form";
+import { getTiposComisionPension } from "../../api/tipoComisionPension";
 
 const VALORES_INICIALES = {
   vigenteDesde: null,
@@ -33,6 +34,24 @@ const TarifaEntidadPensionForm = ({ isEdit, defaultValues, onSubmit, onCancel, l
     formState: { errors },
   } = useForm({ defaultValues: VALORES_INICIALES, mode: "onChange" });
 
+  // Tipos de comisión abiertos del catálogo (los que no son sobre flujo, mixta ni "sin comisión"): cada uno lleva su propio porcentaje
+  const [tiposExtra, setTiposExtra] = useState([]);
+  const [porcentajesExtra, setPorcentajesExtra] = useState({});
+
+  useEffect(() => {
+    getTiposComisionPension()
+      .then((tipos) =>
+        setTiposExtra((tipos || []).filter((t) => t.codigo !== "FLUJO" && t.codigo !== "MIXTA" && !t.sinComision)),
+      )
+      .catch(() => setTiposExtra([]));
+  }, []);
+
+  useEffect(() => {
+    setPorcentajesExtra(
+      Object.fromEntries((defaultValues?.comisiones || []).map((c) => [Number(c.tipoComisionPensionId), Number(c.porcentaje)])),
+    );
+  }, [defaultValues]);
+
   useEffect(() => {
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       reset({
@@ -59,6 +78,10 @@ const TarifaEntidadPensionForm = ({ isEdit, defaultValues, onSubmit, onCancel, l
       porcentajeSeguro: Number(data.porcentajeSeguro || 0),
       porcentajeComisionFlujo: Number(data.porcentajeComisionFlujo || 0),
       porcentajeComisionMixta: Number(data.porcentajeComisionMixta || 0),
+      comisiones: tiposExtra.map((t) => ({
+        tipoComisionPensionId: Number(t.id),
+        porcentaje: Number(porcentajesExtra[Number(t.id)] || 0),
+      })),
       remuneracionMaximaAsegurable:
         data.remuneracionMaximaAsegurable !== null && data.remuneracionMaximaAsegurable !== undefined
           ? Number(data.remuneracionMaximaAsegurable)
@@ -124,6 +147,26 @@ const TarifaEntidadPensionForm = ({ isEdit, defaultValues, onSubmit, onCancel, l
             )}
           />
           {errors[nombre] && <small className="p-error">{errors[nombre].message}</small>}
+        </div>
+      ))}
+
+      {tiposExtra.map((tipo) => (
+        <div className="field mt-3" key={tipo.id}>
+          <label htmlFor={`comision-${tipo.id}`} className="font-medium">
+            {tipo.nombre} (%)
+          </label>
+          <InputNumber
+            id={`comision-${tipo.id}`}
+            value={porcentajesExtra[Number(tipo.id)] ?? 0}
+            onValueChange={(e) => setPorcentajesExtra((previo) => ({ ...previo, [Number(tipo.id)]: e.value }))}
+            mode="decimal"
+            minFractionDigits={2}
+            maxFractionDigits={4}
+            min={0}
+            max={100}
+            suffix=" %"
+            disabled={loading}
+          />
         </div>
       ))}
 

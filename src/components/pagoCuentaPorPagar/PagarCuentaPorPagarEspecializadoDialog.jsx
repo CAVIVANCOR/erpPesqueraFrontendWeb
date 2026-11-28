@@ -1158,6 +1158,11 @@ export default function PagarCuentaPorPagarEspecializadoDialog({
 
       if (response.success) {
         const { pagoCuentaPorPagar, movimientos, conceptosSunat, resumen } = response.data;
+
+        // Avisos de la reclasificación del IGV por acreditar (167301 -> 40111): período cerrado, plazo vencido, más de 12 meses...
+        (response.data.avisosIgvDetraccion || []).forEach((aviso) =>
+          toast?.current?.show({ severity: "warn", summary: "IGV por acreditar", detail: aviso, life: 20000 }),
+        );
         
        
         const empresaData = empresas.find(e => Number(e.id) === Number(cuentaPorPagar.empresaId));
